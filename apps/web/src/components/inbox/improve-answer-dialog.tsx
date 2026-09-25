@@ -172,6 +172,7 @@ export function ImproveAnswerDialog({
         {tab === "create" ? (
           <div>
             <Input
+              aria-label="Improvement title"
               autoFocus
               value={title}
               maxLength={TITLE_MAX}
@@ -188,6 +189,7 @@ export function ImproveAnswerDialog({
             <div className="relative">
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                aria-label="Search existing improvements"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search improvements..."

@@ -12,13 +12,8 @@ import type {
 } from "@agent-hub/core";
 import { applicationConnectionOwnerType } from "@agent-hub/core";
 import type { ApplicationScopeOption } from "@agent-hub/agent";
-import {
-  AppWindow,
-  Plus,
-  RefreshCw,
-  Settings2,
-  Trash2,
-} from "lucide-react";
+import { AppWindow, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import {
   Badge,
   Button,

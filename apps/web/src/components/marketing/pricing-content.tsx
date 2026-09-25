@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Check, Minus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { ArrowDown, Check, Minus } from "lucide-react";
 import React from "react";
 import {
   Badge,

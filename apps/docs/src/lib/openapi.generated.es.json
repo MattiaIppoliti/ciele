@@ -29,7 +29,7 @@
     {
       "name": "flows",
       "x-displayName": "Flujos",
-      "description": "Endpoints públicos de flujos."
+      "description": "Puntos de conexión públicos de flujos."
     },
     {
       "name": "knowledge",
@@ -54,12 +54,12 @@
     {
       "name": "entities",
       "x-displayName": "Entidades",
-      "description": "Endpoints públicos de entidades."
+      "description": "Puntos de conexión públicos de entidades."
     },
     {
       "name": "memories",
       "x-displayName": "Recuerdos",
-      "description": "Endpoints públicos de recuerdos."
+      "description": "Puntos de conexión públicos de recuerdos."
     },
     {
       "name": "projects",
@@ -89,22 +89,22 @@
     {
       "name": "skills",
       "x-displayName": "Habilidades",
-      "description": "Endpoints públicos de habilidades."
+      "description": "Puntos de conexión públicos de habilidades."
     },
     {
       "name": "goals",
       "x-displayName": "Objetivos",
-      "description": "Puntos de conexión públicos de objetivos."
+      "description": "Endpoints públicos de objetivos."
     },
     {
       "name": "alerts",
       "x-displayName": "Alertas",
-      "description": "Endpoints públicos de alertas."
+      "description": "Puntos de conexión públicos de alertas."
     },
     {
       "name": "organization",
       "x-displayName": "Organización",
-      "description": "Puntos de conexión públicos de la organización."
+      "description": "Endpoints públicos de la organización."
     },
     {
       "name": "members",
@@ -134,12 +134,12 @@
     {
       "name": "reviews",
       "x-displayName": "Valoraciones",
-      "description": "Puntos de conexión públicos de reseñas."
+      "description": "Endpoints públicos de reseñas."
     },
     {
       "name": "usage",
       "x-displayName": "Uso",
-      "description": "Endpoints públicos de uso."
+      "description": "Puntos de conexión públicos de uso."
     }
   ],
   "components": {
@@ -156,7 +156,7 @@
       "get": {
         "operationId": "getMeta",
         "summary": "Descubrimiento: versión de la API, versión del servidor, dominios incluidos",
-        "description": "No se requiere ninguna clave de API.",
+        "description": "No se requiere ninguna clave API.",
         "tags": [
           "discovery"
         ],
@@ -298,7 +298,7 @@
       "get": {
         "operationId": "getOpenapiJson",
         "summary": "Este documento",
-        "description": "No se requiere ninguna clave de API.",
+        "description": "No se requiere ninguna clave API.",
         "tags": [
           "discovery"
         ],
@@ -668,7 +668,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -822,7 +822,7 @@
       "post": {
         "operationId": "postAssistants",
         "summary": "Crea un asistente",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "assistants"
         ],
@@ -916,7 +916,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -1292,7 +1292,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -1446,7 +1446,7 @@
       "patch": {
         "operationId": "patchAssistantsById",
         "summary": "Actualiza un asistente",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "assistants"
         ],
@@ -1539,7 +1539,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -1797,6 +1797,112 @@
                   "attachmentsEnabled": {
                     "type": "boolean"
                   },
+                  "voice": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "transcription": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "speech": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "voiceId": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "pattern": "^[a-zA-Z0-9._-]*$"
+                      },
+                      "inputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "outputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "voiceLanguages": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^(google|openai|elevenlabs):[a-zA-Z0-9._-]{1,200}$"
+                        },
+                        "additionalProperties": {
+                          "type": "string",
+                          "enum": [
+                            "auto",
+                            "en",
+                            "it",
+                            "es",
+                            "fr",
+                            "de",
+                            "pt"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "transcription",
+                      "speech",
+                      "voiceId"
+                    ]
+                  },
                   "style": {},
                   "allowedDomains": {
                     "maxItems": 100,
@@ -1821,7 +1927,7 @@
       "delete": {
         "operationId": "deleteAssistantsById",
         "summary": "Eliminar un asistente (admin+)",
-        "description": "Necesitas una clave API de organización con la capacidad de publicar.",
+        "description": "Necesitas una clave API de la organización con la capacidad de publicar.",
         "tags": [
           "assistants"
         ],
@@ -1845,7 +1951,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -2030,8 +2136,8 @@
     "/api/v1/assistants/{id}/duplicate": {
       "post": {
         "operationId": "postAssistantsByIdDuplicate",
-        "summary": "Duplicar: configuración + Flujos; la base de conocimiento se mantiene",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "summary": "Duplicar: configuración + flujos; la base de conocimiento se mantiene",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "assistants"
         ],
@@ -2133,7 +2239,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -2429,7 +2535,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -2583,7 +2689,7 @@
       "patch": {
         "operationId": "patchAssistantsByIdEntities",
         "summary": "Sustituye las Entidades seleccionadas del Asistente",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "assistants"
         ],
@@ -2625,7 +2731,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -2832,7 +2938,7 @@
     "/api/v1/assistants/{id}/flows": {
       "get": {
         "operationId": "getAssistantsByIdFlows",
-        "summary": "Lista ordenada de Flows de un Assistant",
+        "summary": "Lista ordenada de flujos de un asistente",
         "description": "Necesitas una clave API de organización con la capacidad de miembro.",
         "tags": [
           "flows"
@@ -3464,7 +3570,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -3618,7 +3724,7 @@
       "post": {
         "operationId": "postAssistantsByIdFlows",
         "summary": "Crea un flujo",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "flows"
         ],
@@ -4905,7 +5011,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -6367,8 +6473,8 @@
     "/api/v1/assistants/{id}/flows/reorder": {
       "post": {
         "operationId": "postAssistantsByIdFlowsReorder",
-        "summary": "Reordena los flujos (el predeterminado se mantiene al final)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Reordena los flujos (el predeterminado se mantiene como el último)",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "flows"
         ],
@@ -6999,7 +7105,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -7480,7 +7586,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -7636,7 +7742,7 @@
       "post": {
         "operationId": "postFlowsDraft",
         "summary": "Comprueba un parche de Flow sin guardarlo (muestra la puerta de revisión humana insertada)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "flows"
         ],
@@ -8592,7 +8698,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -10011,7 +10117,7 @@
       "post": {
         "operationId": "postAssistantsByIdFlowsValidate",
         "summary": "Comprueba un Flow completo sin crearlo (muestra lo que se almacenaría)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "flows"
         ],
@@ -10978,7 +11084,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -12579,7 +12685,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -13093,7 +13199,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -13675,6 +13781,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "trace": {
                             "oneOf": [
                               {
@@ -13772,7 +13897,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -15206,7 +15331,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -15359,8 +15484,8 @@
       },
       "patch": {
         "operationId": "patchFlowsById",
-        "summary": "Actualiza un flujo (incl. activar/desactivar)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Actualiza un Flow (incl. activar/desactivar)",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "flows"
         ],
@@ -16638,7 +16763,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -18031,7 +18156,7 @@
       "delete": {
         "operationId": "deleteFlowsById",
         "summary": "Eliminar un flujo (el comportamiento predeterminado lo rechaza, 409)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "flows"
         ],
@@ -18055,7 +18180,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -18307,7 +18432,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -18571,7 +18696,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -18724,8 +18849,8 @@
       },
       "post": {
         "operationId": "postCollectionsByIdSources",
-        "summary": "Añade una fuente: texto/URL JSON o archivo multipart",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "summary": "Añade una fuente: texto/URL en JSON o archivo multipart",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "knowledge"
         ],
@@ -18831,7 +18956,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -19188,7 +19313,7 @@
       "post": {
         "operationId": "postCollectionsByIdFaqs",
         "summary": "Añade una pregunta frecuente",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "knowledge"
         ],
@@ -19248,7 +19373,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -19546,7 +19671,7 @@
       "post": {
         "operationId": "postCollectionsByIdFaqsImport",
         "summary": "Importación masiva de preguntas frecuentes (CSV)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "knowledge"
         ],
@@ -19614,7 +19739,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -19920,7 +20045,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -20074,7 +20199,7 @@
       "delete": {
         "operationId": "deleteSourcesById",
         "summary": "Eliminar una fuente (eliminación en cascada de conceptos)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "knowledge"
         ],
@@ -20098,7 +20223,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -20284,7 +20409,7 @@
       "post": {
         "operationId": "postSourcesByIdRecrawl",
         "summary": "Reinicia el rastreo de una fuente de sitio web",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "knowledge"
         ],
@@ -20323,7 +20448,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -20733,7 +20858,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -20887,7 +21012,7 @@
       "post": {
         "operationId": "postKnowledgeSources",
         "summary": "Añade una fuente a la Biblioteca de Conocimientos (no hace falta ID de colección)",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "knowledge"
         ],
@@ -20985,7 +21110,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -21362,7 +21487,7 @@
       "put": {
         "operationId": "putSourcesByIdLinks",
         "summary": "Sustituye el conjunto de asistentes vinculados de una fuente",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "knowledge"
         ],
@@ -21420,7 +21545,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -21630,7 +21755,7 @@
       "put": {
         "operationId": "putSourcesByIdDirectAccess",
         "summary": "Activa el acceso directo para un asistente en un archivo Source",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "knowledge"
         ],
@@ -21688,7 +21813,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -21898,7 +22023,7 @@
       "post": {
         "operationId": "postKnowledgeFaqs",
         "summary": "Añade una pregunta frecuente a nivel de organización (Biblioteca de conocimientos)",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "knowledge"
         ],
@@ -21961,7 +22086,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -22252,7 +22377,7 @@
       "post": {
         "operationId": "postKnowledgeFaqsImport",
         "summary": "Importación masiva de preguntas frecuentes a nivel de organización (CSV)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "knowledge"
         ],
@@ -22289,7 +22414,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -22520,7 +22645,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -22752,7 +22877,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -22906,7 +23031,7 @@
       "post": {
         "operationId": "postProjects",
         "summary": "Crea un proyecto",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "projects"
         ],
@@ -22981,7 +23106,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -23495,7 +23620,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -23649,7 +23774,7 @@
       "patch": {
         "operationId": "patchProjectsById",
         "summary": "Cambia el nombre, modifica la descripción o archiva un proyecto",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "projects"
         ],
@@ -23723,7 +23848,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -23931,8 +24056,8 @@
       },
       "delete": {
         "operationId": "deleteProjectsById",
-        "summary": "Eliminar un proyecto (las decisiones se propagan en cascada, se desvinculan los compañeros de equipo; archívalo en su lugar para conservar el registro)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Eliminar un proyecto (las decisiones se propagan en cascada, los compañeros de equipo se desvinculan; archívalo en su lugar para conservar el registro)",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "projects"
         ],
@@ -23956,7 +24081,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -24142,7 +24267,7 @@
       "put": {
         "operationId": "putProjectsByIdDocument",
         "summary": "Sustituye el documento de memoria del proyecto (el cuerpo anterior se conserva en el historial)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "projects"
         ],
@@ -24247,7 +24372,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -24529,7 +24654,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -24735,7 +24860,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -24987,7 +25112,7 @@
       "delete": {
         "operationId": "deleteAssistantsByIdPublish",
         "summary": "Anular la publicación (admin+)",
-        "description": "Necesitas una clave API de organización con la capacidad de publicar.",
+        "description": "Necesitas una clave API de la organización con la capacidad de publicar.",
         "tags": [
           "publish"
         ],
@@ -25011,7 +25136,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -25249,7 +25374,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -25614,6 +25739,18 @@
                               }
                             ]
                           },
+                          "hasNeutralFeedback": {
+                            "oneOf": [
+                              {
+                                "type": "boolean",
+                                "const": false
+                              },
+                              {
+                                "type": "boolean",
+                                "const": true
+                              }
+                            ]
+                          },
                           "metadata": {
                             "type": "object",
                             "properties": {
@@ -25939,7 +26076,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -26094,7 +26231,7 @@
     "/api/v1/conversations/{id}": {
       "get": {
         "operationId": "getConversationsById",
-        "summary": "Una transcripción (seguimiento restringido por rol)",
+        "summary": "Una transcripción (trazabilidad restringida por rol)",
         "description": "Necesitas una clave API de organización con la capacidad de miembro.",
         "tags": [
           "inbox"
@@ -26580,6 +26717,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "createdAt": {
                             "type": "string"
                           }
@@ -26591,6 +26747,7 @@
                           "flowId",
                           "flowName",
                           "feedback",
+                          "feedbackReaction",
                           "createdAt"
                         ]
                       }
@@ -26605,7 +26762,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -26758,7 +26915,7 @@
       },
       "patch": {
         "operationId": "patchConversationsById",
-        "summary": "Fija o suelta una conversación",
+        "summary": "Fija o desancla una conversación",
         "description": "Necesitas una clave API de organización con la capacidad de miembro.",
         "tags": [
           "inbox"
@@ -27115,7 +27272,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -27287,7 +27444,7 @@
       },
       "delete": {
         "operationId": "deleteConversationsById",
-        "summary": "Eliminar una conversación",
+        "summary": "Elimina una conversación",
         "description": "Necesitas una clave API de organización con la capacidad de miembro.",
         "tags": [
           "inbox"
@@ -27312,7 +27469,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -27824,7 +27981,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -28200,7 +28357,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -28423,18 +28580,38 @@
                           "const": -1
                         }
                       ]
+                    },
+                    "reaction": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "const": "positive"
+                        },
+                        {
+                          "type": "string",
+                          "const": "neutral"
+                        },
+                        {
+                          "type": "string",
+                          "const": "negative"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "messageId",
-                    "feedback"
+                    "feedback",
+                    "reaction"
                   ]
                 }
               }
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -28818,7 +28995,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -29208,6 +29385,25 @@
                                   }
                                 ]
                               },
+                              "feedbackReaction": {
+                                "oneOf": [
+                                  {
+                                    "type": "null"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "positive"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "neutral"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "negative"
+                                  }
+                                ]
+                              },
                               "trace": {
                                 "oneOf": [
                                   {
@@ -29287,6 +29483,14 @@
                                     {}
                                   ]
                                 },
+                                "feedbackReaction": {
+                                  "oneOf": [
+                                    {},
+                                    {},
+                                    {},
+                                    {}
+                                  ]
+                                },
                                 "trace": {
                                   "oneOf": [
                                     {},
@@ -29351,6 +29555,18 @@
                                   {
                                     "type": "number",
                                     "const": -1
+                                  }
+                                ]
+                              },
+                              "hasNeutralFeedback": {
+                                "oneOf": [
+                                  {
+                                    "type": "boolean",
+                                    "const": false
+                                  },
+                                  {
+                                    "type": "boolean",
+                                    "const": true
                                   }
                                 ]
                               },
@@ -29745,7 +29961,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -29899,7 +30115,7 @@
       "patch": {
         "operationId": "patchImprovementsById",
         "summary": "Actualiza una mejora",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "improvements"
         ],
@@ -30059,7 +30275,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -30454,7 +30670,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -30608,7 +30824,7 @@
       "post": {
         "operationId": "postEntities",
         "summary": "Crea una entidad",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "entities"
         ],
@@ -30726,7 +30942,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -31124,7 +31340,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -31278,7 +31494,7 @@
       "patch": {
         "operationId": "patchEntitiesById",
         "summary": "Actualiza una entidad",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "entities"
         ],
@@ -31405,7 +31621,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -31611,7 +31827,7 @@
       "delete": {
         "operationId": "deleteEntitiesById",
         "summary": "Eliminar una entidad y sus registros",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "entities"
         ],
@@ -31635,7 +31851,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -31934,7 +32150,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -32181,7 +32397,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -32381,7 +32597,7 @@
       "post": {
         "operationId": "postEntitiesByIdRecordsImport",
         "summary": "Importa y realiza un upsert idempotente de registros desde un archivo CSV",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "entities"
         ],
@@ -32427,7 +32643,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -32662,7 +32878,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -32816,7 +33032,7 @@
       "patch": {
         "operationId": "patchMemoriesSettings",
         "summary": "Activa o desactiva la memoria a largo plazo",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "memories"
         ],
@@ -32846,7 +33062,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -33141,7 +33357,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -33374,7 +33590,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -33528,7 +33744,7 @@
       "delete": {
         "operationId": "deleteMemoriesSubjectsBySubjectId",
         "summary": "Borra todos los Recuerdos de un sujeto",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "memories"
         ],
@@ -33552,7 +33768,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -33738,7 +33954,7 @@
       "delete": {
         "operationId": "deleteMemoriesById",
         "summary": "Elimina un recuerdo",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "memories"
         ],
@@ -33762,7 +33978,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -33947,8 +34163,8 @@
     "/api/v1/sso/identity": {
       "get": {
         "operationId": "getSsoIdentity",
-        "summary": "Consulta la configuración de la declaración de identidad SSO",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "summary": "Consulta la configuración de la reclamación de identidad SSO",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "sso"
         ],
@@ -34043,7 +34259,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -34227,7 +34443,7 @@
       "patch": {
         "operationId": "patchSsoIdentity",
         "summary": "Establece o borra la reclamación de identidad SSO",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "sso"
         ],
@@ -34264,7 +34480,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -34476,7 +34692,7 @@
       "post": {
         "operationId": "postSsoIdentityValidate",
         "summary": "Valida la conexión SSO almacenada",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "sso"
         ],
@@ -34527,7 +34743,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -34712,7 +34928,7 @@
     "/api/v1/teammates": {
       "get": {
         "operationId": "getTeammates",
-        "summary": "Muestra una lista de los compañeros de equipo de IA que esta clave puede ver",
+        "summary": "Muestra una lista de los compañeros de equipo de IA a los que esta clave puede ver",
         "description": "Necesitas una clave API de organización con la capacidad de miembro.",
         "tags": [
           "teammates"
@@ -34930,7 +35146,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -35083,8 +35299,8 @@
       },
       "post": {
         "operationId": "postTeammates",
-        "summary": "Crea un compañero de equipo de IA",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Crea un AI Teammate",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "teammates"
         ],
@@ -35302,7 +35518,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -35544,7 +35760,7 @@
       "post": {
         "operationId": "postTeammatesProvision",
         "summary": "Crea un Teammate funcional con una sola llamada: persona, permisos, rutinas",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "teammates"
         ],
@@ -35969,7 +36185,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -36333,7 +36549,7 @@
     "/api/v1/teammates/{id}": {
       "get": {
         "operationId": "getTeammatesById",
-        "summary": "Un compañero de equipo de IA",
+        "summary": "Un compañero de equipo IA",
         "description": "Necesitas una clave API de organización con la capacidad de miembro.",
         "tags": [
           "teammates"
@@ -36561,7 +36777,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -36715,7 +36931,7 @@
       "patch": {
         "operationId": "patchTeammatesById",
         "summary": "Actualiza un compañero de equipo de IA (se aplica a su próximo mensaje)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "teammates"
         ],
@@ -36942,7 +37158,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -37217,7 +37433,7 @@
       "delete": {
         "operationId": "deleteTeammatesById",
         "summary": "Retira a un Teammate de IA (eliminación lógica; sus conversaciones siguen siendo legibles)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "teammates"
         ],
@@ -37241,7 +37457,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -37776,7 +37992,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -38358,6 +38574,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "trace": {
                             "oneOf": [
                               {
@@ -38455,7 +38690,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -38691,7 +38926,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -38844,8 +39079,8 @@
       },
       "put": {
         "operationId": "putTeammatesByIdGrants",
-        "summary": "Sustituye los dominios concedidos a un Teammate (y su límite / exención)",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "summary": "Sustituye los dominios concedidos a un Teammate (y su límite/excepción)",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "teammates"
         ],
@@ -38925,7 +39160,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -39326,7 +39561,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -39480,7 +39715,7 @@
       "put": {
         "operationId": "putTeammatesByIdMemory",
         "summary": "Sustituye el documento de memoria del Agente (el cuerpo anterior se conserva en el historial)",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "teammates"
         ],
@@ -39585,7 +39820,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -39933,7 +40168,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -40087,7 +40322,7 @@
       "post": {
         "operationId": "postTeammatesByIdRoutines",
         "summary": "Añade una rutina (máximo 5 por Teammate)",
-        "description": "Necesitas una clave de API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
+        "description": "Necesitas una clave API de organización con capacidad de edición. Proporciona una Idempotency-Key cuando vuelvas a intentar la misma solicitud.",
         "tags": [
           "teammates"
         ],
@@ -40222,7 +40457,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -40511,7 +40746,7 @@
       "patch": {
         "operationId": "patchRoutinesById",
         "summary": "Cambia la instrucción, la cadencia, la hora o el indicador de activación de una rutina",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "teammates"
         ],
@@ -40637,7 +40872,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -40855,7 +41090,7 @@
       "delete": {
         "operationId": "deleteRoutinesById",
         "summary": "Eliminar una rutina",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "teammates"
         ],
@@ -40879,7 +41114,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -41197,7 +41432,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -41419,7 +41654,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -41623,7 +41858,7 @@
       "get": {
         "operationId": "getChannelsOversight",
         "summary": "Todos los canales de la organización, sin tener en cuenta la pertenencia (propietario/administrador)",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "channels"
         ],
@@ -41755,7 +41990,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -41940,8 +42175,8 @@
     "/api/v1/channels/oversight/{id}": {
       "get": {
         "operationId": "getChannelsOversightById",
-        "summary": "Transcripción de un canal sin estar asignado a él (Propietario/Administrador)",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "summary": "Transcripción de un canal sin estar «sentado» en él (Propietario/Administrador)",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "channels"
         ],
@@ -42484,7 +42719,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -43213,7 +43448,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -43444,7 +43679,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -43651,7 +43886,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -43831,7 +44066,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -44043,7 +44278,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -44223,7 +44458,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -44435,7 +44670,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -44692,7 +44927,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -44845,8 +45080,8 @@
       },
       "post": {
         "operationId": "postHelpDesks",
-        "summary": "Crea un servicio de asistencia",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Crea un servicio de asistencia técnica",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -44947,7 +45182,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -45493,7 +45728,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -45647,7 +45882,7 @@
       "patch": {
         "operationId": "patchHelpDesksById",
         "summary": "Actualiza un Help Desk",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -45757,7 +45992,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -45966,7 +46201,7 @@
       "delete": {
         "operationId": "deleteHelpDesksById",
         "summary": "Elimina un Help Desk",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -45990,7 +46225,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -46176,7 +46411,7 @@
       "post": {
         "operationId": "postHelpDesksByIdChannels",
         "summary": "Añade un canal de escalamiento",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -46725,7 +46960,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -46957,7 +47192,7 @@
       "patch": {
         "operationId": "patchHelpDesksByIdChannelsByChannelId",
         "summary": "Actualiza un canal de escalamiento",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -47514,7 +47749,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -47730,8 +47965,8 @@
       },
       "delete": {
         "operationId": "deleteHelpDesksByIdChannelsByChannelId",
-        "summary": "Elimina un canal de escalamiento",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Eliminar un canal de escalamiento",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -47763,7 +47998,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -47948,8 +48183,8 @@
     "/api/v1/help-desks/{id}/channels/reorder": {
       "post": {
         "operationId": "postHelpDesksByIdChannelsReorder",
-        "summary": "Reordena los canales de escalamiento",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Reordena los canales de escalado",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -48201,7 +48436,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -48408,8 +48643,8 @@
     "/api/v1/help-desks/{id}/ticketing": {
       "delete": {
         "operationId": "deleteHelpDesksByIdTicketing",
-        "summary": "Desconectar la integración de gestión de tickets",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Desconecta la integración de gestión de tickets",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -48433,7 +48668,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -48619,7 +48854,7 @@
       "post": {
         "operationId": "postHelpDesksByIdTicketingServicenow",
         "summary": "Conecta la integración de tickets de ServiceNow",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "help-desks"
         ],
@@ -48729,7 +48964,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -49035,7 +49270,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -49189,7 +49424,7 @@
       "post": {
         "operationId": "postSkills",
         "summary": "Crea una habilidad",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "skills"
         ],
@@ -49247,7 +49482,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -49468,7 +49703,7 @@
       "patch": {
         "operationId": "patchSkillsById",
         "summary": "Actualiza una habilidad",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "skills"
         ],
@@ -49535,7 +49770,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -49750,7 +49985,7 @@
       "delete": {
         "operationId": "deleteSkillsById",
         "summary": "Eliminar una habilidad",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "skills"
         ],
@@ -49774,7 +50009,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -50038,7 +50273,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -50192,7 +50427,7 @@
       "patch": {
         "operationId": "patchAssistantsByIdSkills",
         "summary": "Sustituir las habilidades asociadas a un asistente",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "skills"
         ],
@@ -50270,7 +50505,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -50622,7 +50857,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -50776,7 +51011,7 @@
       "post": {
         "operationId": "postAssistantsByIdGoals",
         "summary": "Crea un objetivo permanente",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "goals"
         ],
@@ -50909,7 +51144,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -51135,7 +51370,7 @@
       "patch": {
         "operationId": "patchAssistantsByIdGoalsByGoalId",
         "summary": "Actualiza un objetivo permanente",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "goals"
         ],
@@ -51276,7 +51511,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -51503,7 +51738,7 @@
       "delete": {
         "operationId": "deleteAssistantsByIdGoalsByGoalId",
         "summary": "Elimina un objetivo permanente",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "goals"
         ],
@@ -51535,7 +51770,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -51853,7 +52088,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -52009,7 +52244,7 @@
       "post": {
         "operationId": "postAlertsByIdResolve",
         "summary": "Resuelve una alerta operativa",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "alerts"
         ],
@@ -52139,7 +52374,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -52393,7 +52628,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -52547,7 +52782,7 @@
       "patch": {
         "operationId": "patchOrganization",
         "summary": "Actualiza la configuración de la organización",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "organization"
         ],
@@ -52615,7 +52850,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -52853,8 +53088,8 @@
     "/api/v1/members": {
       "get": {
         "operationId": "getMembers",
-        "summary": "Mostrar la lista de miembros de la organización",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Muestra una lista de los miembros de la organización",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "members"
         ],
@@ -52968,7 +53203,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -53154,7 +53389,7 @@
       "patch": {
         "operationId": "patchMembersByUserId",
         "summary": "Cambiar el rol de un miembro",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "members"
         ],
@@ -53266,7 +53501,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -53475,7 +53710,7 @@
       "delete": {
         "operationId": "deleteMembersByUserId",
         "summary": "Eliminar a un miembro",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "members"
         ],
@@ -53499,7 +53734,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -53684,8 +53919,8 @@
     "/api/v1/invites": {
       "get": {
         "operationId": "getInvites",
-        "summary": "Muestra las invitaciones pendientes",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "summary": "Mostrar las invitaciones pendientes",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "members"
         ],
@@ -53763,7 +53998,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -53947,7 +54182,7 @@
       "post": {
         "operationId": "postInvites",
         "summary": "Crea una invitación",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "members"
         ],
@@ -54014,7 +54249,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -54230,7 +54465,7 @@
       "delete": {
         "operationId": "deleteInvitesById",
         "summary": "Revocar una invitación",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "members"
         ],
@@ -54254,7 +54489,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -54544,7 +54779,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -54833,7 +55068,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -55072,7 +55307,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -55257,7 +55492,7 @@
     "/api/v1/assistants/{id}/api-integration": {
       "get": {
         "operationId": "getAssistantsByIdApiIntegration",
-        "summary": "Lee la integración de la API de un asistente (segura para secretos)",
+        "summary": "Lee la integración de API de un asistente (segura para secretos)",
         "description": "Necesitas una clave API de organización con la capacidad de miembro.",
         "tags": [
           "api-integrations"
@@ -55434,7 +55669,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -55588,7 +55823,7 @@
       "put": {
         "operationId": "putAssistantsByIdApiIntegration",
         "summary": "Crea o reemplaza una integración de la API de Assistant",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "api-integrations"
         ],
@@ -55786,7 +56021,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -56128,8 +56363,8 @@
       },
       "delete": {
         "operationId": "deleteAssistantsByIdApiIntegration",
-        "summary": "Elimina una integración de API de un asistente",
-        "description": "Necesitas una clave API de la organización con permiso de edición.",
+        "summary": "Elimina una integración de API de Assistant",
+        "description": "Necesitas una clave API de la organización con la capacidad de edición.",
         "tags": [
           "api-integrations"
         ],
@@ -56153,7 +56388,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -56338,8 +56573,8 @@
     "/api/v1/sso/connection": {
       "get": {
         "operationId": "getSsoConnection",
-        "summary": "Consulta la configuración completa de SSO que no es secreta",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "summary": "Consulta la configuración completa de SSO no secreta",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "sso"
         ],
@@ -56459,7 +56694,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -56643,7 +56878,7 @@
       "put": {
         "operationId": "putSsoConnection",
         "summary": "Crea o reemplaza la conexión SSO",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "sso"
         ],
@@ -56763,7 +56998,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -56990,7 +57225,7 @@
       "delete": {
         "operationId": "deleteSsoConnection",
         "summary": "Desconectar el SSO",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "sso"
         ],
@@ -57005,7 +57240,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -57191,7 +57426,7 @@
       "get": {
         "operationId": "getProviders",
         "summary": "Muestra las conexiones de proveedores de modelos (sin revelar secretos)",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "providers"
         ],
@@ -57257,6 +57492,10 @@
                               {
                                 "type": "string",
                                 "const": "openai_compatible"
+                              },
+                              {
+                                "type": "string",
+                                "const": "elevenlabs"
                               },
                               {
                                 "type": "string",
@@ -57424,7 +57663,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -57610,7 +57849,7 @@
       "post": {
         "operationId": "postProvidersApiKey",
         "summary": "Crea y valida una conexión de proveedor BYOK",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "providers"
         ],
@@ -57674,6 +57913,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -57895,6 +58138,10 @@
                             },
                             {
                               "type": "string",
+                              "const": "elevenlabs"
+                            },
+                            {
+                              "type": "string",
                               "const": "azure_openai"
                             }
                           ]
@@ -58058,7 +58305,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -58251,7 +58498,8 @@
                     "enum": [
                       "anthropic",
                       "openai",
-                      "google"
+                      "google",
+                      "elevenlabs"
                     ]
                   },
                   "apiKey": {
@@ -58277,7 +58525,7 @@
       "post": {
         "operationId": "postProvidersOpenaiCompatible",
         "summary": "Crea una conexión de proveedor compatible con OpenAI",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "providers"
         ],
@@ -58341,6 +58589,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58562,6 +58814,10 @@
                             },
                             {
                               "type": "string",
+                              "const": "elevenlabs"
+                            },
+                            {
+                              "type": "string",
                               "const": "azure_openai"
                             }
                           ]
@@ -58725,7 +58981,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -58946,7 +59202,7 @@
       "post": {
         "operationId": "postProvidersFederated",
         "summary": "Crea una conexión de proveedor de nube federada",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "providers"
         ],
@@ -59007,6 +59263,10 @@
                         {
                           "type": "string",
                           "const": "openai_compatible"
+                        },
+                        {
+                          "type": "string",
+                          "const": "elevenlabs"
                         },
                         {
                           "type": "string",
@@ -59168,7 +59428,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -59464,7 +59724,7 @@
       "delete": {
         "operationId": "deleteProvidersById",
         "summary": "Elimina una conexión de proveedor",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "providers"
         ],
@@ -59488,7 +59748,7 @@
             "description": "Sin contenido"
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -59674,7 +59934,7 @@
       "patch": {
         "operationId": "patchProvidersEmbedding",
         "summary": "Elige la conexión de proveedor de incrustación",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "providers"
         ],
@@ -59711,7 +59971,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -60093,7 +60353,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -60408,7 +60668,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -60564,7 +60824,7 @@
       "post": {
         "operationId": "postApplicationsConnectionsByIdReconsent",
         "summary": "Calcula la unión de ámbitos para las acciones del conector especificadas y la ruta de inicio de OAuth que se va a abrir",
-        "description": "Necesitas una clave API de organización con la capacidad de publicar.",
+        "description": "Necesitas una clave API de la organización con la capacidad de publicar.",
         "tags": [
           "applications"
         ],
@@ -60654,7 +60914,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -61126,7 +61386,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -61533,7 +61793,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -61688,7 +61948,7 @@
     "/api/v1/reviews/{id}/decide": {
       "post": {
         "operationId": "postReviewsByIdDecide",
-        "summary": "Aprueba o rechaza una revisión humana (un asignado o una clave de Propietario/Administrador); prevalece la primera decisión.",
+        "summary": "Aprueba o rechaza una revisión humana (una persona asignada o una clave de Propietario/Administrador); prevalece la primera decisión.",
         "description": "Necesitas una clave API de organización con la capacidad de miembro.",
         "tags": [
           "reviews"
@@ -61940,7 +62200,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -62128,7 +62388,7 @@
       "get": {
         "operationId": "getUsageMeters",
         "summary": "Los medidores del plan: límite, créditos usados y ventana por recurso (un despliegue sin medidor lo indica)",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "usage"
         ],
@@ -62252,7 +62512,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {
@@ -62438,7 +62698,7 @@
       "get": {
         "operationId": "getUsageSpenders",
         "summary": "Quién gastó los créditos de una ventana, agrupado por dimensión (un turno nombra dos, por lo que las dimensiones no suman)",
-        "description": "Necesitas una clave de API de organización con la capacidad manageMembers.",
+        "description": "Necesitas una clave API de organización con la capacidad manageMembers.",
         "tags": [
           "usage"
         ],
@@ -62447,7 +62707,7 @@
             "name": "from",
             "in": "query",
             "required": false,
-            "description": "Inicio del periodo de uso, como marca temporal ISO 8601.",
+            "description": "Inicio del periodo de uso, como marca de tiempo ISO 8601.",
             "schema": {
               "type": "string"
             }
@@ -62456,7 +62716,7 @@
             "name": "to",
             "in": "query",
             "required": false,
-            "description": "Fin del periodo de uso, como marca temporal ISO 8601.",
+            "description": "Fin del periodo de uso, como marca de tiempo ISO 8601.",
             "schema": {
               "type": "string"
             }
@@ -62562,7 +62822,7 @@
             }
           },
           "400": {
-            "description": "Solicitud u operación con datos de entrada no válidos",
+            "description": "Solicitud u entrada de operación no válida",
             "content": {
               "application/json": {
                 "schema": {

@@ -1,6 +1,7 @@
 "use client";
 
-import { FileText, Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
+import { FileText, Upload, X } from "lucide-react";
+import { Image as ImageIcon, Loader2 } from "lucide-react";
 import { isImageAttachment } from "@/lib/attachments";
 import type { AttachmentEntry } from "@/components/chat/use-attachments";
 

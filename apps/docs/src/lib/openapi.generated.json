@@ -1797,6 +1797,112 @@
                   "attachmentsEnabled": {
                     "type": "boolean"
                   },
+                  "voice": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "transcription": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "speech": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "voiceId": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "pattern": "^[a-zA-Z0-9._-]*$"
+                      },
+                      "inputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "outputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "voiceLanguages": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^(google|openai|elevenlabs):[a-zA-Z0-9._-]{1,200}$"
+                        },
+                        "additionalProperties": {
+                          "type": "string",
+                          "enum": [
+                            "auto",
+                            "en",
+                            "it",
+                            "es",
+                            "fr",
+                            "de",
+                            "pt"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "transcription",
+                      "speech",
+                      "voiceId"
+                    ]
+                  },
                   "style": {},
                   "allowedDomains": {
                     "maxItems": 100,
@@ -13672,6 +13778,25 @@
                               {
                                 "type": "number",
                                 "const": -1
+                              }
+                            ]
+                          },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
                               }
                             ]
                           },
@@ -25614,6 +25739,18 @@
                               }
                             ]
                           },
+                          "hasNeutralFeedback": {
+                            "oneOf": [
+                              {
+                                "type": "boolean",
+                                "const": false
+                              },
+                              {
+                                "type": "boolean",
+                                "const": true
+                              }
+                            ]
+                          },
                           "metadata": {
                             "type": "object",
                             "properties": {
@@ -26580,6 +26717,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "createdAt": {
                             "type": "string"
                           }
@@ -26591,6 +26747,7 @@
                           "flowId",
                           "flowName",
                           "feedback",
+                          "feedbackReaction",
                           "createdAt"
                         ]
                       }
@@ -28423,11 +28580,31 @@
                           "const": -1
                         }
                       ]
+                    },
+                    "reaction": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "const": "positive"
+                        },
+                        {
+                          "type": "string",
+                          "const": "neutral"
+                        },
+                        {
+                          "type": "string",
+                          "const": "negative"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "messageId",
-                    "feedback"
+                    "feedback",
+                    "reaction"
                   ]
                 }
               }
@@ -29208,6 +29385,25 @@
                                   }
                                 ]
                               },
+                              "feedbackReaction": {
+                                "oneOf": [
+                                  {
+                                    "type": "null"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "positive"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "neutral"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "negative"
+                                  }
+                                ]
+                              },
                               "trace": {
                                 "oneOf": [
                                   {
@@ -29287,6 +29483,14 @@
                                     {}
                                   ]
                                 },
+                                "feedbackReaction": {
+                                  "oneOf": [
+                                    {},
+                                    {},
+                                    {},
+                                    {}
+                                  ]
+                                },
                                 "trace": {
                                   "oneOf": [
                                     {},
@@ -29351,6 +29555,18 @@
                                   {
                                     "type": "number",
                                     "const": -1
+                                  }
+                                ]
+                              },
+                              "hasNeutralFeedback": {
+                                "oneOf": [
+                                  {
+                                    "type": "boolean",
+                                    "const": false
+                                  },
+                                  {
+                                    "type": "boolean",
+                                    "const": true
                                   }
                                 ]
                               },
@@ -38355,6 +38571,25 @@
                               {
                                 "type": "number",
                                 "const": -1
+                              }
+                            ]
+                          },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
                               }
                             ]
                           },
@@ -57260,6 +57495,10 @@
                               },
                               {
                                 "type": "string",
+                                "const": "elevenlabs"
+                              },
+                              {
+                                "type": "string",
                                 "const": "azure_openai"
                               }
                             ]
@@ -57677,6 +57916,10 @@
                             },
                             {
                               "type": "string",
+                              "const": "elevenlabs"
+                            },
+                            {
+                              "type": "string",
                               "const": "azure_openai"
                             }
                           ]
@@ -57892,6 +58135,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58251,7 +58498,8 @@
                     "enum": [
                       "anthropic",
                       "openai",
-                      "google"
+                      "google",
+                      "elevenlabs"
                     ]
                   },
                   "apiKey": {
@@ -58341,6 +58589,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58559,6 +58811,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -59007,6 +59263,10 @@
                         {
                           "type": "string",
                           "const": "openai_compatible"
+                        },
+                        {
+                          "type": "string",
+                          "const": "elevenlabs"
                         },
                         {
                           "type": "string",

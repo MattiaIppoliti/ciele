@@ -5,7 +5,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 // `Minimize2` stays a plain lucide glyph: only the expanding direction is
 // animated, the same split `ChatHeader` makes.
-import { Minimize2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Minimize2 } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { Maximize2Icon } from "@/components/ui/icons/maximize-2";

@@ -1,6 +1,7 @@
 import type { LanguageModel, ModelMessage, ToolSet } from "ai";
 import type { Assistant, Flow, KnowledgeSearchResult, SkillSnapshot } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS, STUDY_MODE_FLOW_ID } from "@agent-hub/core";
+import { voiceReplyLanguage } from "../voice-language";
 import {
   mintUntrustedNonce,
   untrustedContentPolicy,
@@ -99,6 +100,7 @@ export function resolveAnsweringStyle(
         `Additional instructions for this flow (apply on top of the above):\n${flowAnsweringStyle}`
       );
   }
+  if (assistant.voice?.enabled) lines.push(voiceReplyLanguage(assistant));
   return lines.length > 0 ? lines.join("\n\n") : undefined;
 }
 
@@ -261,7 +263,7 @@ export function buildSystemPrompt(
           "",
           "# You are in the SECOND phase: write the reply",
           "You have no tools now. Write from what you gathered above, following the instructions on the readyToAnswer result. Never invent what the knowledge base did not give you.",
-          "Be concise and helpful. Answer in the user's language.",
+          `Be concise and helpful. ${voiceReplyLanguage(assistant)}`,
         ]),
   ]
     .filter((line): line is string => typeof line === "string")

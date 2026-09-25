@@ -3,29 +3,8 @@
 import { useState } from "react";
 import type { ApplicationProvider } from "@agent-hub/core";
 import { APP_BRANDS, AppBrandMark } from "@/components/ui/app-brand";
-import {
-  Bell,
-  BookText,
-  Check,
-  ChevronDown,
-  CircleAlert,
-  CloudUpload,
-  Code2,
-  Globe,
-  GripVertical,
-  Lock,
-  Pencil,
-  Plane,
-  Plus,
-  RefreshCw,
-  Search,
-  Sparkles,
-  SquareArrowOutUpRight,
-  Trash2,
-  Terminal,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
+import { Bell, BookText, CircleAlert, CloudUpload, GripVertical, Lock, Plane, Plus, RefreshCw, Search, Sparkles, Trash2, Terminal, Workflow, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, Code2, Globe, Pencil, SquareArrowOutUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionHeading } from "@/components/ui/section-heading";
 

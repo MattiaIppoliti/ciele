@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { ConversationMetadata, Teammate } from "@agent-hub/core";
+import { feedbackReactionScore, type ConversationMetadata, type FeedbackReactionId, type Teammate } from "@agent-hub/core";
 import { teammateSearchesKnowledge } from "@agent-hub/core";
 import { threadEntryLabel } from "@/lib/teammates/thread-label";
 import { EMPTY_TURN_TRACE, consumeTurnStream } from "@agent-hub/agent/client";
@@ -10,13 +10,8 @@ import type { ChatModelOption } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatMessagesFromStored } from "@/components/chat/stored-messages";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
-import {
-  ArrowLeft,
-  Paperclip,
-  Settings2,
-  Sparkles,
-  UserRoundPlus,
-} from "lucide-react";
+import { Sparkles, UserRoundPlus } from "lucide-react";
+import { ArrowLeft, Paperclip, Settings2 } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
 import Link from "next/link";
 import { ChatHeader } from "@/components/chat/chat-header";
@@ -339,15 +334,18 @@ export function TeammateWorkspace({
     }
   }
 
-  async function vote(bot: ChatBotMsg, value: -1 | 1) {
+  async function vote(bot: ChatBotMsg, reaction: FeedbackReactionId | null) {
     if (!bot.id) return;
-    const feedback = bot.feedback === value ? 0 : value;
+    const nextReaction = bot.feedbackReaction === reaction ? null : reaction;
+    const feedback = feedbackReactionScore(nextReaction);
     setMessages((prev) =>
       prev.map((m) =>
-        m.role === "bot" && m.id === bot.id ? { ...m, feedback } : m
+        m.role === "bot" && m.id === bot.id
+          ? { ...m, feedback, feedbackReaction: nextReaction }
+          : m
       )
     );
-    await setMessageFeedbackAction(bot.id, feedback);
+    await setMessageFeedbackAction(bot.id, feedback, nextReaction);
   }
 
   function newChat() {

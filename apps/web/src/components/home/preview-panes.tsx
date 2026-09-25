@@ -6,32 +6,8 @@ import {
   useContext,
   useState,
 } from "react";
-import {
-  Archive,
-  ArrowLeft,
-  ArrowUp,
-  BookText,
-  ChartLine,
-  ChevronDown,
-  ChevronRight,
-  CircleHelp,
-  Copy,
-  Ellipsis,
-  ExternalLink,
-  FlaskConical,
-  Globe,
-  Hash,
-  LayoutGrid,
-  Link2,
-  MessageCircle,
-  Plus,
-  Search,
-  ThumbsDown,
-  ThumbsUp,
-  Trash2,
-  UserPlus,
-  type LucideIcon,
-} from "lucide-react";
+import { Archive, ArrowUp, BookText, ChartLine, CircleHelp, Copy, ExternalLink, FlaskConical, LayoutGrid, MessageCircle, Plus, Search, Trash2, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Ellipsis, Globe, Hash, Link2, UserPlus } from "lucide-react";
 import type { AnimatedIcon } from "@/components/ui/animated-icon";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -377,9 +353,9 @@ function InboxPane() {
                   {conversation.assistant}
                 </span>
                 {conversation.up ? (
-                  <ThumbsUp className="size-3 text-emerald-500" />
+                  <span aria-label="Positive response" title="Positive response">🙂</span>
                 ) : (
-                  <ThumbsDown className="text-destructive size-3" />
+                  <span aria-label="Negative response" title="Negative response">🙁</span>
                 )}
               </div>
             </div>
@@ -409,8 +385,9 @@ function InboxPane() {
                 <span className="bg-muted rounded-md border px-1.5 py-0.5">
                   IT KB · VPN access
                 </span>
-                <ThumbsUp className="size-3.5 text-emerald-500" />
-                <ThumbsDown className="size-3.5" />
+                <span aria-label="Positive response" title="Positive response">🙂</span>
+                <span aria-label="Neutral response" title="Neutral response">😐</span>
+                <span aria-label="Negative response" title="Negative response">🙁</span>
               </div>
             </div>
             <div className="bg-muted ml-auto w-fit max-w-[70%] rounded-2xl rounded-br-sm px-4 py-2.5 text-sm">

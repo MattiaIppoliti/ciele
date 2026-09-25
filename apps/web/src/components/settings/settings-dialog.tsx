@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowUpRight, X } from "lucide-react";
 import Link from "next/link";
+import { Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
 import { AnimateIcons, AnimatedIcon } from "@/components/ui/animated-icon";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
 import { useExitTransition } from "@/components/motion/use-exit-transition";
-import { useModalFocus } from "@/components/motion/use-modal-focus";
 import {
   crossScopeLink,
   scopeTitle,
@@ -47,10 +47,11 @@ export function SettingsDialog({
   const scope = settingsScopeFromPath(pathname);
   const tabs = tabsForScope(scope);
   const cross = crossScopeLink(scope);
+  const activeTab = tabs.find((tab) => tab.slug === active);
+  const dialogTitle = activeTab?.label ?? scopeTitle(scope);
   // Leaving the personal scope for the Organization one is only offered where
   // there is something to manage; the reverse is always available.
   const showCross = scope === "personal" ? canManageOrg : true;
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   const navigateAway = useCallback(() => {
     // One back step leaves the dialog because switching tabs *replaces* the
@@ -67,41 +68,24 @@ export function SettingsDialog({
   // `close` now plays the reverse of the entrance first.
   const { exiting, beginExit } = useExitTransition(navigateAway, 150);
   const close = beginExit;
-  useModalFocus(true, dialogRef);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented) close();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
 
   return (
-    // A phone has no "over the console" to show: the dialog takes the whole
-    // screen there (no inset, no rounding) and only becomes a floating card
-    // once there is room around it.
-    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-8">
-      <button
-        type="button"
-        aria-label="Close settings"
-        onClick={close}
-        className={`absolute inset-0 bg-black/50 duration-150 ${
-          exiting ? "animate-out fade-out" : "animate-in fade-in"
-        }`}
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={scope === "personal" ? "Personal settings" : "Settings"}
-        tabIndex={-1}
-        className={`bg-background relative flex h-full w-full max-w-5xl flex-col overflow-hidden border shadow-2xl duration-150 sm:max-h-[46rem] sm:flex-row sm:rounded-xl ${
+    <Dialog
+      open={!exiting}
+      onOpenChange={(open) => {
+        if (!open) close();
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        overlayClassName="bg-black/50 backdrop-blur-[1px]"
+        className={`flex h-dvh w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden border bg-background p-0 shadow-2xl outline-none duration-150 sm:h-[calc(100dvh-4rem)] sm:w-[calc(100vw-4rem)] sm:max-h-[46rem] sm:max-w-5xl sm:flex-row sm:rounded-xl ${
           exiting
             ? "animate-out fade-out zoom-out-95"
             : "animate-in fade-in zoom-in-95"
         }`}
       >
+        <DialogTitle className="sr-only">{dialogTitle}</DialogTitle>
         {/* The rail is chrome, not page content: re-enable the shell's animated
             icons, which `(admin)/layout.tsx` switches off for pages. */}
         <AnimateIcons>
@@ -148,7 +132,7 @@ export function SettingsDialog({
           type="button"
           aria-label="Close settings"
           onClick={close}
-          className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-2.5 right-3 z-10 flex size-9 items-center justify-center rounded-lg transition-colors sm:top-3 sm:size-8"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-2.5 right-3 z-10 flex size-11 items-center justify-center rounded-lg transition-colors sm:top-3 lg:size-8"
         >
           <X className="size-4" />
         </button>
@@ -157,8 +141,8 @@ export function SettingsDialog({
             {children}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -180,6 +164,7 @@ function RailRow({
       // not stack history entries that the close button then has to unwind one
       // by one (it used to take a click per tab visited).
       replace
+      aria-current={active ? "page" : undefined}
       data-highlight-row
       className={`relative flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap transition-colors sm:shrink sm:whitespace-normal ${
         active

@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import type { RoutineCadence, TeammateRoutine } from "@agent-hub/core";
 import { ROUTINE_CADENCES, TEAMMATE_ROUTINE_CAP } from "@agent-hub/core";
 import { Button, Input, Label } from "@agent-hub/ui";
-import { AlertTriangle, Pause, Play, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Pause, Play } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/toast";
 import {
@@ -153,7 +154,7 @@ export function RoutinesPanel({
           <Textarea
             value={instruction}
             rows={3}
-            placeholder="Every morning, triage yesterday's thumbs-down and file what is new."
+            placeholder="Every morning, triage yesterday's negative feedback and file what is new."
             onChange={(e) => setInstruction(e.target.value.slice(0, 2000))}
           />
           <div className="flex flex-wrap items-end gap-2">

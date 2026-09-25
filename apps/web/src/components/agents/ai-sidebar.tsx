@@ -1,14 +1,8 @@
 "use client";
 // beui.dev/components/agents/ai-sidebar
 
-import {
-  Bookmark,
-  FileText,
-  Folder,
-  FolderOpen,
-  MoreHorizontal,
-  Pencil,
-} from "lucide-react";
+import { FileText } from "lucide-react";
+import { Bookmark, Folder, FolderOpen, MoreHorizontal, Pencil } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   type DragEvent,

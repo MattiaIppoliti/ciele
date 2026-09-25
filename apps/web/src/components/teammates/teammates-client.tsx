@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { ChannelUnread, Teammate, TeammateVisibility } from "@agent-hub/core";
-import { Eye, EyeOff, Lock, Pencil, Search } from "lucide-react";
+import { Lock, Search } from "lucide-react";
+import { Eye, EyeOff, Pencil } from "lucide-react";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";

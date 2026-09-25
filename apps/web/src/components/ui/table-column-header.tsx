@@ -1,15 +1,8 @@
 "use client";
 
 import * as React from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Check,
-  ChevronsUpDown,
-  Columns3,
-  Search,
-  X,
-} from "lucide-react";
+import { ArrowUp, ChevronsUpDown, Columns3, Search, X } from "lucide-react";
+import { ArrowDown, Check } from "lucide-react";
 
 import {
   Button,

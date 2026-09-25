@@ -1,4 +1,5 @@
-import { Building2, Shield, Users, UserRound, Bot, ScrollText } from "lucide-react";
+import { Building2, Users, UserRound, Bot } from "lucide-react";
+import { Shield, ScrollText } from "lucide-react";
 
 /* Orbit diagram: the Organization at the centre, everything governance touches
    placed on rings around it. Positions are hand-placed percentages rather than

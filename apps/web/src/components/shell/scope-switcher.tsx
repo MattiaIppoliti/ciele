@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, LayoutGrid, Search, X } from "lucide-react";
+import { ChevronsUpDown, LayoutGrid, Search, X } from "lucide-react";
+import { Check } from "lucide-react";
 import {
   Popover,
   PopoverContent,

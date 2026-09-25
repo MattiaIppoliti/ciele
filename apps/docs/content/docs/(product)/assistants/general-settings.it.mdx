@@ -8,37 +8,160 @@ Apri un Assistente e seleziona **General**.
 ## Selezione del runtime
 
 Seleziona la connessione al provider e il modello per l'Assistente. Seleziona
-**Graph** o **Vector** come motore di conoscenza principale.
+**Graph** o **Vector** come Knowledge engine principale.
 
-Il recupero del grafo utilizza il grafo della conoscenza quando sono disponibili
-i servizi di grafo. Il recupero vettoriale utilizza gli embedding di concetti
+Il recupero tramite grafo utilizza il Knowledge graph quando i servizi grafo
+sono disponibili. Il Vector retrieval utilizza gli embedding dei documenti
 indicizzati e il fallback lessicale.
+
+## Scelta del modello per i visitatori
+
+Seleziona i modelli che la finestra di chat mostra ai visitatori. Il modello
+Assistant è sempre disponibile. Ogni modello aggiuntivo che selezioni diventa
+un'opzione nella finestra di chat.
+
+Se non selezioni alcun modello aggiuntivo, la finestra di chat non mostra alcun
+controllo dei modelli. Tutte le conversazioni utilizzano il modello Assistant.
+
+La finestra di chat mostra un modello solo se la tua organizzazione dispone di
+una connessione al provider per quel modello. Se rimuovi la connessione al
+provider, la finestra di chat smette di mostrare il modello. Le conversazioni
+proseguono con il modello Assistant.
+
+L'elenco mostra **no credential yet** accanto a un provider senza una
+connessione. La riga sotto l'elenco conta solo i modelli che la finestra di chat
+può mostrare.
+
+Preview mostra immediatamente il nuovo elenco. Seleziona **Publish** per
+assegnarlo al widget, che utilizza l'ultima versione pubblicata.
+
+Il tuo abbonamento AI personale ha la priorità in Preview. Se imposti un modello
+predefinito in **Settings**, quindi in **AI**, quel modello risponde ai turni di
+Preview e il modello della finestra di chat non viene applicato.
+
+## Allegati
+
+Imposta **Let visitors attach files** per dotare la finestra di chat di un
+controllo per l'allegamento. Per impostazione predefinita, è disattivato.
+
+Esistono tre modi per allegare un file:
+
+- seleziona **+** nella casella del messaggio, quindi **Attach a file**
+- trascina il file nella casella del messaggio
+- copia un'immagine, quindi incollala nella casella del messaggio
+
+La finestra di chat accetta i seguenti tipi di file:
+
+- PDF, Word e PowerPoint
+- Excel e CSV
+- testo e Markdown
+- immagini (PNG, JPEG, GIF e WebP)
+
+La dimensione massima è di 8 MB.
+
+I file Office di vecchia generazione (.doc, .xls e .ppt) non sono supportati.
+Salva il file come .docx, .xlsx o .pptx.
+
+Ciele legge il file e lo converte in testo, quindi fornisce risposte basate su
+quel testo. **Ciele does not keep the file.** I byte vengono letti una sola
+volta e poi scartati. Non c'è alcuna copia da scaricare, conservare o eliminare.
+
+Un'immagine non prevede una fase separata di estrazione del testo. Ciele invia
+l'immagine al provider di IA della tua organizzazione e gli chiede di leggerla.
+Ciò comporta una chiamata all'IA per ogni immagine. Il risultato include il
+testo presente nell'immagine e una breve descrizione di quest'ultima.
+
+Un allegato rimane disponibile per il resto della conversazione. La finestra di
+chat mostra ogni allegato finché l'utente non lo rimuove.
+
+L'Anteprima rispecchia questa impostazione non appena salvi. Mostra la casella
+dei messaggi che un visitatore visualizza, prima della pubblicazione. Le chat
+tra colleghi del team accettano sempre gli allegati, perché non hanno
+visitatori.
+
+Seleziona **Publish** dopo aver modificato questa impostazione.
+
+## Modalità vocale
+
+Abilita **Voice mode** per aggiungere l'input del microfono e la riproduzione
+audio. Per impostazione predefinita, è disattivato.
+
+1. Collega una chiave API di Google AI Studio, OpenAI o ElevenLabs in
+   **Settings**, quindi **AI**.
+2. In **Voice input**, seleziona la trascrizione **Model** e **Language**.
+   L'impostazione predefinita, **Auto**, rileva la lingua parlata senza tradurre
+   la trascrizione.
+3. In **Voice output**, seleziona la riproduzione **Model**, **Language** e una
+   delle tre opzioni **Voice**. L'impostazione predefinita, **Auto**, segue la
+   lingua dell'ultimo input.
+4. Seleziona il pulsante Play di una voce per ascoltare un'anteprima nella
+   lingua di output. Le anteprime automatiche utilizzano un testo di esempio in
+   inglese.
+5. Seleziona **Save changes**. Pubblica l'Assistente per aggiornare il widget.
+
+Gli elenchi dei modelli utilizzano i cataloghi dei provider connessi.
+**Refresh** ricarica gli elenchi. Le opzioni vocali seguono il modello di
+riproduzione. L'accesso ai modelli dipende anche dalle autorizzazioni del
+provider, dalla fatturazione e dalle quote. L'elenco mostra tre voci
+compatibili, o un numero inferiore se il provider ne ha meno disponibili. Una
+voce già selezionata rimane nell'elenco.
+
+Le lingue di input e di output sono indipendenti e per entrambe il valore
+predefinito è **Auto**. Per le registrazioni brevi, seleziona una lingua di
+input nota per migliorare il riconoscimento. Puoi anche correggere la
+trascrizione prima di inviarla. Una lingua di output esplicitamente indicata
+orienta le nuove risposte generate dall'IA e la relativa riproduzione audio. Le
+risposte automatiche seguono l'ultimo messaggio, incluso un transcript
+modificato. I messaggi di Flow configurati e le risposte salvate mantengono le
+loro parole originali. La riproduzione audio legge quel testo senza tradurlo.
+
+Seleziona il microfono accanto a **Send** per registrare una domanda. La
+registrazione si interrompe dopo 60 secondi e accetta file fino a 4 MB.
+Seleziona il comando stop per trascrivere la registrazione oppure **Cancel
+recording** per eliminarla. Il testo viene visualizzato nella casella del
+messaggio. Puoi modificarlo prima di selezionare **Send**.
+
+Seleziona **Read response aloud** accanto a una risposta completata per
+ascoltarla. Seleziona lo stesso controllo per mettere in pausa la riproduzione.
+La riproduzione audio supporta risposte fino a 4.000 caratteri. Le voci sono
+generate dall'intelligenza artificiale.
+
+Il tuo browser deve consentire l'accesso al microfono. Anche i widget
+incorporati necessitano dell'autorizzazione per l'accesso al microfono nel loro
+iframe. Aggiorna i vecchi snippet iframe da **Publish** se l'accesso al
+microfono è bloccato. Anche il tuo sistema operativo deve consentire al browser
+o all'app host di utilizzare il microfono. Su macOS, apri **System Settings →
+Privacy & Security → Microphone** e abilita quell'app. Se macOS ti chiede di
+riavviare l'app, fallo prima di registrare di nuovo. Autorizzare soltanto il
+sito non sostituisce questa impostazione di sistema. Ciele invia le
+registrazioni al provider selezionato per la trascrizione. Ciele non memorizza
+la registrazione.
 
 ## Identità
 
 Configura questi campi:
 
 - **Title** identifica l'Assistente nella console.
-- **Nickname** appare nel widget.
+- **Nickname** viene visualizzato nel widget.
 - **Description** registra lo scopo dell'Assistente.
 - **Avatar** fornisce l'immagine dell'Assistente.
 
 ## Impostazioni predefinite della conversazione
 
-- **Welcome message** appare all'inizio di una chat.
-- **AI disclaimer** aggiunge il testo di divulgazione configurato.
-- **Answering style** fornisce istruzioni per le risposte standard.
-- **Simplified thinking** converte l'avanzamento in fase di esecuzione in
-  passaggi più brevi rivolti al visitatore.
+- **Welcome message** viene visualizzato all'inizio di una chat.
+- **AI disclaimer** aggiunge il testo di informativa configurato.
+- **Answering style** fornisce le istruzioni per le risposte standard.
+- **Simplified thinking** converte l'avanzamento dell'esecuzione in passaggi più
+  brevi rivolti ai Visitor.
 - **Suggested questions** controlla i suggerimenti di follow-up generati.
-- **Quick replies** aggiunge azioni iniziali configurate.
+- **Quick replies** aggiungi le starter actions configurate.
 
 ## Salva e pubblica
 
 1. Modifica un gruppo di impostazioni.
 2. Salva la bozza.
-3. Prova la bozza in Anteprima.
+3. Prova la bozza in Preview.
 4. Pubblica l'Assistente quando il risultato è corretto.
 
-Il widget live continua a utilizzare la Pubblicazione precedente fino al
+Il widget live continua a utilizzare la Publication precedente fino al
 completamento del passaggio 4.

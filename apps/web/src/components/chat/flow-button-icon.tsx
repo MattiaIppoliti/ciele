@@ -1,15 +1,7 @@
 import type { FlowButtonIcon as FlowButtonIconName } from "@agent-hub/core";
 import type { CSSProperties } from "react";
-import {
-  Bell,
-  ExternalLink,
-  Headphones,
-  Headset,
-  Mail,
-  MessageCircle,
-  Phone,
-  type LucideIcon,
-} from "lucide-react";
+import { Bell, ExternalLink, Mail, MessageCircle, Phone, type LucideIcon } from "lucide-react";
+import { Headphones, Headset } from "lucide-react";
 
 export const FLOW_BUTTON_ICON_OPTIONS: Array<{
   value: FlowButtonIconName;

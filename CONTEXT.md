@@ -24,6 +24,10 @@ _Avoid_: user (ambiguous with widget end users), account
 A Member's permission level: Owner, Admin, Editor or Viewer. Publish and member management require Owner/Admin; Editors edit and test assistants; Viewers only read and test.
 _Avoid_: permission, group
 
+**Voice settings**:
+Per-Assistant configuration for microphone transcription and AI-generated answer playback. Each capability selects a model from a connected Google, OpenAI or ElevenLabs provider; playback also selects a voice. Disabled by default and frozen into the Publication. Audio input becomes a draft before the Visitor sends it through normal Flow routing.
+Voice input and output have separate language preferences, both defaulting to Auto. Input Auto detects the spoken language without translating the transcript. Output Auto answers in the latest input's language; an explicit output language guides generative replies and playback. Configured verbatim Flow messages remain unchanged. Playback selects one of three compatible voices.
+
 **API Key**:
 An Organization-scoped credential (`ciele_sk_…`) for programmatic access (CLI, MCP server, public API). Minted by an Admin+ Member, it acts with a Role capped at its creator's; only the secret's hash is stored, and revocation keeps the row for audit.
 _Avoid_: token (ambiguous with invite tokens and LLM tokens), PAT

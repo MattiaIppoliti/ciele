@@ -89,12 +89,12 @@
     {
       "name": "skills",
       "x-displayName": "Competenze",
-      "description": "Endpoint pubblici delle competenze."
+      "description": "Endpoint pubblici per le competenze."
     },
     {
       "name": "goals",
       "x-displayName": "Obiettivi",
-      "description": "Endpoint pubblici per gli obiettivi."
+      "description": "Endpoint pubblici degli obiettivi."
     },
     {
       "name": "alerts",
@@ -104,7 +104,7 @@
     {
       "name": "organization",
       "x-displayName": "Organizzazione",
-      "description": "Endpoint pubblici delle organizzazioni."
+      "description": "Endpoint pubblici dell'organizzazione."
     },
     {
       "name": "members",
@@ -156,7 +156,7 @@
       "get": {
         "operationId": "getMeta",
         "summary": "Rilevamento: versione dell'API, versione del server, domini forniti",
-        "description": "Non ti serve alcuna chiave API.",
+        "description": "Non è richiesta alcuna chiave API.",
         "tags": [
           "discovery"
         ],
@@ -298,7 +298,7 @@
       "get": {
         "operationId": "getOpenapiJson",
         "summary": "Questo documento",
-        "description": "Non ti serve alcuna chiave API.",
+        "description": "Non è richiesta alcuna chiave API.",
         "tags": [
           "discovery"
         ],
@@ -822,7 +822,7 @@
       "post": {
         "operationId": "postAssistants",
         "summary": "Crea un Assistente",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "assistants"
         ],
@@ -1797,6 +1797,112 @@
                   "attachmentsEnabled": {
                     "type": "boolean"
                   },
+                  "voice": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "transcription": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "speech": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "voiceId": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "pattern": "^[a-zA-Z0-9._-]*$"
+                      },
+                      "inputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "outputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "voiceLanguages": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^(google|openai|elevenlabs):[a-zA-Z0-9._-]{1,200}$"
+                        },
+                        "additionalProperties": {
+                          "type": "string",
+                          "enum": [
+                            "auto",
+                            "en",
+                            "it",
+                            "es",
+                            "fr",
+                            "de",
+                            "pt"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "transcription",
+                      "speech",
+                      "voiceId"
+                    ]
+                  },
                   "style": {},
                   "allowedDomains": {
                     "maxItems": 100,
@@ -2031,7 +2137,7 @@
       "post": {
         "operationId": "postAssistantsByIdDuplicate",
         "summary": "Duplica: config + Flussi; la knowledge rimane invariata",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "assistants"
         ],
@@ -3618,7 +3724,7 @@
       "post": {
         "operationId": "postAssistantsByIdFlows",
         "summary": "Crea un Flow",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "flows"
         ],
@@ -12386,7 +12492,7 @@
     "/api/v1/flows/{id}/runs": {
       "get": {
         "operationId": "getFlowsByIdRuns",
-        "summary": "Esecuzioni inbound recenti di un Flow attivato da HTTP (?limit=)",
+        "summary": "Esecuzioni in entrata recenti di un Flow attivato tramite HTTP (?limit=)",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "flows"
@@ -13248,7 +13354,7 @@
     "/api/v1/assistants/{id}/flows-agent/conversations/{conversationId}": {
       "get": {
         "operationId": "getAssistantsByIdFlowsAgentConversationsByConversationId",
-        "summary": "Conversazione di un agente Flows con i suoi turni",
+        "summary": "Conversazione di un agente One Flows con i suoi turni",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "flows"
@@ -13672,6 +13778,25 @@
                               {
                                 "type": "number",
                                 "const": -1
+                              }
+                            ]
+                          },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
                               }
                             ]
                           },
@@ -18725,7 +18850,7 @@
       "post": {
         "operationId": "postCollectionsByIdSources",
         "summary": "Aggiungi una fonte: testo JSON/URL oppure file multipart",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "knowledge"
         ],
@@ -19019,7 +19144,7 @@
             }
           },
           "429": {
-            "description": "Hai superato il limite di frequenza per l'inserimento delle fonti",
+            "description": "Hai superato il limite di frequenza per l'ingestione delle fonti",
             "content": {
               "application/json": {
                 "schema": {
@@ -19172,7 +19297,7 @@
                   },
                   "assistantIds": {
                     "type": "string",
-                    "description": "Array opzionale codificato in JSON di ID degli Assistenti da collegare agli elementi importati."
+                    "description": "Array opzionale, codificato in JSON, di ID degli Assistenti da collegare agli elementi importati."
                   }
                 },
                 "required": [
@@ -19188,7 +19313,7 @@
       "post": {
         "operationId": "postCollectionsByIdFaqs",
         "summary": "Aggiungi una FAQ",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "knowledge"
         ],
@@ -19807,7 +19932,7 @@
                   },
                   "assistantIds": {
                     "type": "string",
-                    "description": "Array opzionale codificato in JSON di ID degli Assistenti da collegare agli elementi importati."
+                    "description": "Array opzionale, codificato in JSON, di ID degli Assistenti da collegare agli elementi importati."
                   }
                 },
                 "required": [
@@ -19822,7 +19947,7 @@
     "/api/v1/sources/{id}": {
       "get": {
         "operationId": "getSourcesById",
-        "summary": "Una sola Source, controlla lo stato finché non si stabilizza",
+        "summary": "Una sola Source; controlla lo stato finché non si stabilizza",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "knowledge"
@@ -20073,7 +20198,7 @@
       },
       "delete": {
         "operationId": "deleteSourcesById",
-        "summary": "Elimina una Source (eliminazione a cascata dei Concept)",
+        "summary": "Elimina una Source (propagazione a cascata dei Concept)",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "knowledge"
@@ -20886,8 +21011,8 @@
       },
       "post": {
         "operationId": "postKnowledgeSources",
-        "summary": "Aggiungi una Source alla Knowledge Library (non è necessario l'ID della Collection)",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "summary": "Aggiungi una Fonte alla Knowledge Library (non è necessario l'ID della Collection)",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "knowledge"
         ],
@@ -21173,7 +21298,7 @@
             }
           },
           "429": {
-            "description": "Hai superato il limite di frequenza per l'inserimento delle fonti",
+            "description": "Hai superato il limite di frequenza per l'ingestione delle fonti",
             "content": {
               "application/json": {
                 "schema": {
@@ -21346,7 +21471,7 @@
                   },
                   "assistantIds": {
                     "type": "string",
-                    "description": "Array opzionale codificato in JSON di ID degli Assistenti da collegare agli elementi importati."
+                    "description": "Array opzionale, codificato in JSON, di ID degli Assistenti da collegare agli elementi importati."
                   }
                 },
                 "required": [
@@ -21361,7 +21486,7 @@
     "/api/v1/sources/{id}/links": {
       "put": {
         "operationId": "putSourcesByIdLinks",
-        "summary": "Sostituisci il set di assistenti collegati di una fonte",
+        "summary": "Sostituisci il set di assistenti collegati di una Source",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "knowledge"
@@ -21898,7 +22023,7 @@
       "post": {
         "operationId": "postKnowledgeFaqs",
         "summary": "Aggiungi una FAQ a livello di organizzazione (Libreria delle conoscenze)",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "knowledge"
         ],
@@ -22482,7 +22607,7 @@
                   },
                   "assistantIds": {
                     "type": "string",
-                    "description": "Array opzionale codificato in JSON di ID degli Assistenti da collegare agli elementi importati."
+                    "description": "Array opzionale, codificato in JSON, di ID degli Assistenti da collegare agli elementi importati."
                   }
                 },
                 "required": [
@@ -22906,7 +23031,7 @@
       "post": {
         "operationId": "postProjects",
         "summary": "Crea un progetto",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "projects"
         ],
@@ -23648,7 +23773,7 @@
       },
       "patch": {
         "operationId": "patchProjectsById",
-        "summary": "Rinomina, modifica la descrizione o archivia un progetto",
+        "summary": "Rinomina, modifica la descrizione o archivia un Progetto",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "projects"
@@ -23931,7 +24056,7 @@
       },
       "delete": {
         "operationId": "deleteProjectsById",
-        "summary": "Elimina un Progetto (le decisioni si propagano a cascata, i colleghi del team vengono scollegati; archivia invece per conservare la traccia)",
+        "summary": "Elimina un Progetto (le decisioni si propagano a cascata, i colleghi del team vengono scollegati; archivia invece per conservare la cronologia)",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "projects"
@@ -24683,7 +24808,7 @@
       "post": {
         "operationId": "postAssistantsByIdPublish",
         "summary": "Pubblica una nuova istantanea (admin+)",
-        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione per la pubblicazione. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di pubblicazione. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "publish"
         ],
@@ -25197,7 +25322,7 @@
       "post": {
         "operationId": "postAssistantsByIdRepublish",
         "summary": "Riattiva una Pubblicazione precedente (admin+)",
-        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione per la pubblicazione. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di pubblicazione. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "publish"
         ],
@@ -25611,6 +25736,18 @@
                               {
                                 "type": "number",
                                 "const": -1
+                              }
+                            ]
+                          },
+                          "hasNeutralFeedback": {
+                            "oneOf": [
+                              {
+                                "type": "boolean",
+                                "const": false
+                              },
+                              {
+                                "type": "boolean",
+                                "const": true
                               }
                             ]
                           },
@@ -26580,6 +26717,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "createdAt": {
                             "type": "string"
                           }
@@ -26591,6 +26747,7 @@
                           "flowId",
                           "flowName",
                           "feedback",
+                          "feedbackReaction",
                           "createdAt"
                         ]
                       }
@@ -26758,7 +26915,7 @@
       },
       "patch": {
         "operationId": "patchConversationsById",
-        "summary": "Fissa o togli il fissaggio di una conversazione",
+        "summary": "Fissa o sgancia una conversazione",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "inbox"
@@ -28423,11 +28580,31 @@
                           "const": -1
                         }
                       ]
+                    },
+                    "reaction": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "const": "positive"
+                        },
+                        {
+                          "type": "string",
+                          "const": "neutral"
+                        },
+                        {
+                          "type": "string",
+                          "const": "negative"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "messageId",
-                    "feedback"
+                    "feedback",
+                    "reaction"
                   ]
                 }
               }
@@ -28973,7 +29150,7 @@
     "/api/v1/improvements/{id}": {
       "get": {
         "operationId": "getImprovementsById",
-        "summary": "Un miglioramento (associazioni + proposta)",
+        "summary": "Un Miglioramento (associazioni + proposta)",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "improvements"
@@ -29208,6 +29385,25 @@
                                   }
                                 ]
                               },
+                              "feedbackReaction": {
+                                "oneOf": [
+                                  {
+                                    "type": "null"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "positive"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "neutral"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "negative"
+                                  }
+                                ]
+                              },
                               "trace": {
                                 "oneOf": [
                                   {
@@ -29287,6 +29483,14 @@
                                     {}
                                   ]
                                 },
+                                "feedbackReaction": {
+                                  "oneOf": [
+                                    {},
+                                    {},
+                                    {},
+                                    {}
+                                  ]
+                                },
                                 "trace": {
                                   "oneOf": [
                                     {},
@@ -29351,6 +29555,18 @@
                                   {
                                     "type": "number",
                                     "const": -1
+                                  }
+                                ]
+                              },
+                              "hasNeutralFeedback": {
+                                "oneOf": [
+                                  {
+                                    "type": "boolean",
+                                    "const": false
+                                  },
+                                  {
+                                    "type": "boolean",
+                                    "const": true
                                   }
                                 ]
                               },
@@ -29898,7 +30114,7 @@
       },
       "patch": {
         "operationId": "patchImprovementsById",
-        "summary": "Aggiorna un Miglioramento",
+        "summary": "Aggiorna un miglioramento",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "improvements"
@@ -32380,7 +32596,7 @@
     "/api/v1/entities/{id}/records/import": {
       "post": {
         "operationId": "postEntitiesByIdRecordsImport",
-        "summary": "Importa ed esegui l'upsert in modo idempotente dei record da un file CSV",
+        "summary": "Importa ed esegui un upsert idempotente dei Record da un file CSV",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "entities"
@@ -32816,7 +33032,7 @@
       "patch": {
         "operationId": "patchMemoriesSettings",
         "summary": "Attiva o disattiva la memoria a lungo termine",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "memories"
         ],
@@ -33947,8 +34163,8 @@
     "/api/v1/sso/identity": {
       "get": {
         "operationId": "getSsoIdentity",
-        "summary": "Leggi la configurazione dell'identity-claim SSO",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "summary": "Leggi la configurazione dell'identity claim SSO",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "sso"
         ],
@@ -34227,7 +34443,7 @@
       "patch": {
         "operationId": "patchSsoIdentity",
         "summary": "Imposta o cancella il claim di identità SSO",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "sso"
         ],
@@ -34476,7 +34692,7 @@
       "post": {
         "operationId": "postSsoIdentityValidate",
         "summary": "Convalida la connessione SSO memorizzata",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "sso"
         ],
@@ -35544,7 +35760,7 @@
       "post": {
         "operationId": "postTeammatesProvision",
         "summary": "Crea un Teammate funzionante con una sola chiamata: persona, autorizzazioni, routine",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "teammates"
         ],
@@ -36714,7 +36930,7 @@
       },
       "patch": {
         "operationId": "patchTeammatesById",
-        "summary": "Aggiorna un AI Teammate (si applica al suo messaggio successivo)",
+        "summary": "Aggiorna un AI Teammate (si applica al suo prossimo messaggio)",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "teammates"
@@ -38358,6 +38574,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "trace": {
                             "oneOf": [
                               {
@@ -38844,8 +39079,8 @@
       },
       "put": {
         "operationId": "putTeammatesByIdGrants",
-        "summary": "Sostituisci i domini concessi a un Teammate (e il relativo limite massimo / bypass)",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "summary": "Sostituisci i domini concessi a un Teammate (e il suo limite massimo / bypass)",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "teammates"
         ],
@@ -40087,7 +40322,7 @@
       "post": {
         "operationId": "postTeammatesByIdRoutines",
         "summary": "Aggiungi una Routine (max 5 per Teammate)",
-        "description": "Richiede una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
+        "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione di modifica. Fornisci un Idempotency-Key quando riprovi la stessa richiesta.",
         "tags": [
           "teammates"
         ],
@@ -41623,7 +41858,7 @@
       "get": {
         "operationId": "getChannelsOversight",
         "summary": "Tutti i canali dell'Organizzazione, indipendentemente dall'appartenenza (Owner/Admin)",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "channels"
         ],
@@ -41941,7 +42176,7 @@
       "get": {
         "operationId": "getChannelsOversightById",
         "summary": "Trascrizione di un canale senza esservi assegnato (Owner/Admin)",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "channels"
         ],
@@ -43626,7 +43861,7 @@
       },
       "delete": {
         "operationId": "deleteChannelsById",
-        "summary": "Chiudi un canale (la sua trascrizione viene inclusa)",
+        "summary": "Chiudi un canale (la relativa trascrizione viene inclusa)",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "channels"
@@ -48408,7 +48643,7 @@
     "/api/v1/help-desks/{id}/ticketing": {
       "delete": {
         "operationId": "deleteHelpDesksByIdTicketing",
-        "summary": "Scollega l'integrazione per i ticket",
+        "summary": "Scollega l'integrazione dei ticket",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "help-desks"
@@ -49959,7 +50194,7 @@
     "/api/v1/assistants/{id}/skills": {
       "get": {
         "operationId": "getAssistantsByIdSkills",
-        "summary": "Elenca le competenze associate a un Assistente",
+        "summary": "Elenca le Skill associate a un Assistant",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "skills"
@@ -50191,7 +50426,7 @@
       },
       "patch": {
         "operationId": "patchAssistantsByIdSkills",
-        "summary": "Sostituisci le Skill associate a un Assistente",
+        "summary": "Sostituisci le Skill associate a un Assistant",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "skills"
@@ -51720,7 +51955,7 @@
     "/api/v1/alerts": {
       "get": {
         "operationId": "getAlerts",
-        "summary": "Elenca gli avvisi operativi",
+        "summary": "Elenca gli Avvisi operativi",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "alerts"
@@ -52008,7 +52243,7 @@
     "/api/v1/alerts/{id}/resolve": {
       "post": {
         "operationId": "postAlertsByIdResolve",
-        "summary": "Risolvi un Alert operativo",
+        "summary": "Risolvi un avviso operativo",
         "description": "Ti serve una chiave API dell'organizzazione con l'autorizzazione edit.",
         "tags": [
           "alerts"
@@ -52547,7 +52782,7 @@
       "patch": {
         "operationId": "patchOrganization",
         "summary": "Aggiorna le impostazioni dell'organizzazione",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "organization"
         ],
@@ -53154,7 +53389,7 @@
       "patch": {
         "operationId": "patchMembersByUserId",
         "summary": "Modifica il ruolo di un membro",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "members"
         ],
@@ -53475,7 +53710,7 @@
       "delete": {
         "operationId": "deleteMembersByUserId",
         "summary": "Rimuovi un membro",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "members"
         ],
@@ -53685,7 +53920,7 @@
       "get": {
         "operationId": "getInvites",
         "summary": "Elenca gli inviti in sospeso",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "members"
         ],
@@ -53947,7 +54182,7 @@
       "post": {
         "operationId": "postInvites",
         "summary": "Crea un invito",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "members"
         ],
@@ -54230,7 +54465,7 @@
       "delete": {
         "operationId": "deleteInvitesById",
         "summary": "Revoca un invito",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "members"
         ],
@@ -54440,7 +54675,7 @@
       "get": {
         "operationId": "getApiKeys",
         "summary": "Elenca le chiavi API dell'organizzazione",
-        "description": "Hai bisogno di una chiave API dell'organizzazione con la capability manageApiKeys.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageApiKeys.",
         "tags": [
           "api-keys"
         ],
@@ -54728,7 +54963,7 @@
       "post": {
         "operationId": "postApiKeys",
         "summary": "Crea una chiave API; il segreto viene restituito una sola volta",
-        "description": "Hai bisogno di una chiave API dell'organizzazione con la capability manageApiKeys.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageApiKeys.",
         "tags": [
           "api-keys"
         ],
@@ -55048,7 +55283,7 @@
       "delete": {
         "operationId": "deleteApiKeysById",
         "summary": "Revoca una chiave API",
-        "description": "Hai bisogno di una chiave API dell'organizzazione con la capability manageApiKeys.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageApiKeys.",
         "tags": [
           "api-keys"
         ],
@@ -56339,7 +56574,7 @@
       "get": {
         "operationId": "getSsoConnection",
         "summary": "Leggi la configurazione SSO completa non segreta",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "sso"
         ],
@@ -56643,7 +56878,7 @@
       "put": {
         "operationId": "putSsoConnection",
         "summary": "Crea o sostituisci la connessione SSO",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "sso"
         ],
@@ -56990,7 +57225,7 @@
       "delete": {
         "operationId": "deleteSsoConnection",
         "summary": "Scollega l'SSO",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "sso"
         ],
@@ -57191,7 +57426,7 @@
       "get": {
         "operationId": "getProviders",
         "summary": "Elenca le connessioni ai provider di modelli (senza segreti)",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "providers"
         ],
@@ -57257,6 +57492,10 @@
                               {
                                 "type": "string",
                                 "const": "openai_compatible"
+                              },
+                              {
+                                "type": "string",
+                                "const": "elevenlabs"
                               },
                               {
                                 "type": "string",
@@ -57610,7 +57849,7 @@
       "post": {
         "operationId": "postProvidersApiKey",
         "summary": "Crea e valida una connessione provider BYOK",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "providers"
         ],
@@ -57674,6 +57913,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -57892,6 +58135,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58251,7 +58498,8 @@
                     "enum": [
                       "anthropic",
                       "openai",
-                      "google"
+                      "google",
+                      "elevenlabs"
                     ]
                   },
                   "apiKey": {
@@ -58277,7 +58525,7 @@
       "post": {
         "operationId": "postProvidersOpenaiCompatible",
         "summary": "Crea una connessione provider compatibile con OpenAI",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "providers"
         ],
@@ -58341,6 +58589,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58559,6 +58811,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58946,7 +59202,7 @@
       "post": {
         "operationId": "postProvidersFederated",
         "summary": "Crea una connessione provider per cloud federato",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "providers"
         ],
@@ -59007,6 +59263,10 @@
                         {
                           "type": "string",
                           "const": "openai_compatible"
+                        },
+                        {
+                          "type": "string",
+                          "const": "elevenlabs"
                         },
                         {
                           "type": "string",
@@ -59464,7 +59724,7 @@
       "delete": {
         "operationId": "deleteProvidersById",
         "summary": "Elimina una connessione provider",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "providers"
         ],
@@ -59673,8 +59933,8 @@
     "/api/v1/providers/embedding": {
       "patch": {
         "operationId": "patchProvidersEmbedding",
-        "summary": "Scegli la connessione al provider di embedding",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "summary": "Scegli la connessione provider di embedding",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "providers"
         ],
@@ -60864,7 +61124,7 @@
     "/api/v1/reviews": {
       "get": {
         "operationId": "getReviews",
-        "summary": "Richieste di revisione umana, le più recenti per prime (filtra per stato, conversazione o assistente)",
+        "summary": "Richieste di revisione umana, dalla più recente (filtra per stato, conversazione o assistente)",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "reviews"
@@ -60883,7 +61143,7 @@
             "name": "conversationId",
             "in": "query",
             "required": false,
-            "description": "Filtra per Conversazione.",
+            "description": "Filtra per conversazione.",
             "schema": {
               "type": "string"
             }
@@ -61688,7 +61948,7 @@
     "/api/v1/reviews/{id}/decide": {
       "post": {
         "operationId": "postReviewsByIdDecide",
-        "summary": "Approva o rifiuta una revisione umana (un assegnatario o una chiave Owner/Admin); la prima decisione prevale",
+        "summary": "Approva o rifiuta una revisione umana (un assegnatario o una chiave Owner/Admin); prevale la prima decisione",
         "description": "Hai bisogno di una chiave API dell'organizzazione con la capability member.",
         "tags": [
           "reviews"
@@ -62127,8 +62387,8 @@
     "/api/v1/usage/meters": {
       "get": {
         "operationId": "getUsageMeters",
-        "summary": "I contatori del piano: limite massimo, crediti utilizzati e finestra per risorsa (una distribuzione non soggetta a conteggio lo indica)",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "summary": "I contatori del piano: limite massimo, crediti utilizzati e finestra per risorsa (una distribuzione non soggetta a misurazione lo indica)",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "usage"
         ],
@@ -62437,8 +62697,8 @@
     "/api/v1/usage/spenders": {
       "get": {
         "operationId": "getUsageSpenders",
-        "summary": "Chi ha speso i crediti di una finestra, raggruppati per dimensione (un turno ne indica due, quindi le dimensioni non fanno somma)",
-        "description": "Richiede una chiave API dell'organizzazione con la funzionalità manageMembers.",
+        "summary": "Chi ha speso i crediti di una finestra, raggruppati per dimensione (un turno ne indica due, quindi le dimensioni non fanno la somma)",
+        "description": "Ti serve una chiave API dell'organizzazione con la funzionalità manageMembers.",
         "tags": [
           "usage"
         ],
@@ -62456,7 +62716,7 @@
             "name": "to",
             "in": "query",
             "required": false,
-            "description": "Fine della finestra di utilizzo, espressa come timestamp ISO 8601.",
+            "description": "Fine della finestra di utilizzo, come timestamp ISO 8601.",
             "schema": {
               "type": "string"
             }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { Entity } from "@agent-hub/core";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Button,
   Dialog,
@@ -58,6 +58,7 @@ export function EntityImportDialog({
         </DialogHeader>
         <div className="space-y-3">
           <Input
+            aria-label="CSV file to import"
             type="file"
             accept=".csv,text/csv"
             onChange={async (event) => {
@@ -66,6 +67,7 @@ export function EntityImportDialog({
             }}
           />
           <textarea
+            aria-label="CSV data to import"
             value={csvText}
             onChange={(event) => setCsvText(event.target.value)}
             placeholder={`${entity.attributes.map((attribute) => attribute.key).join(",")}\n…`}

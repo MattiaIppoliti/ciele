@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { memoryDocumentChanges } from "@agent-hub/core";
-import { Plus, SquareArrowOutUpRight } from "lucide-react";
+import { Plus } from "lucide-react";
+import { SquareArrowOutUpRight } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import { ProjectPicker } from "@/components/teammates/project-picker";
 import { ProjectDialog } from "@/components/projects/project-dialog";

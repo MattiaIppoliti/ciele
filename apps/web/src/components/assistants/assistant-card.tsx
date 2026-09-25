@@ -4,14 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import type { Assistant } from "@agent-hub/core";
-import {
-  ChevronRight,
-  CopyPlus,
-  Ellipsis,
-  MessageCircle,
-  SlidersHorizontal,
-  Trash2,
-} from "lucide-react";
+import { CopyPlus, MessageCircle, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ChevronRight, Ellipsis } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { duplicateAssistantAction } from "@/app/actions";
@@ -57,7 +51,11 @@ function MoreActionsButton() {
       onClick={(event) => {
         if (wasOpen.current) return;
         const rect = event.currentTarget.getBoundingClientRect();
-        openAt({ x: rect.right - MENU_WIDTH, y: rect.bottom + 4 }, "pointer");
+        openAt(
+          { x: rect.right - MENU_WIDTH, y: rect.bottom + 4 },
+          "pointer",
+          { feedback: false }
+        );
       }}
     >
       <Ellipsis className="size-4" />

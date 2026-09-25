@@ -1,16 +1,8 @@
 "use client";
 // beui.dev/components/blocks/notification-stack
 
-import {
-  ArrowUpRight,
-  BellOff,
-  CircleCheck,
-  Info,
-  OctagonX,
-  TriangleAlert,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { CircleCheck, OctagonX, X, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, BellOff, Info, TriangleAlert } from "lucide-react";
 import {
   motion,
   useAnimationControls,

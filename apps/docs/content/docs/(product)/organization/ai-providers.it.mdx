@@ -1,48 +1,56 @@
 ---
 title: Provider di IA
-description: Collega un provider di modelli e seleziona il modello per ogni Assistente.
+description: Collega un provider di modelli e seleziona il modello per ciascun Assistente.
 ---
 
-Ciele utilizza un'unica astrazione del provider per i modelli Anthropic, OpenAI
-e Google. Un Assistente seleziona la connessione al provider e il modello.
+Ciele utilizza un'unica astrazione del provider per i modelli di Anthropic,
+OpenAI e Google. Un Assistant seleziona la propria connessione al provider e il
+modello.
 
 ## Tipi di connessione al provider
 
-| Tipo | Utilizzo |
+| Type | Use |
 | --- | --- |
-| Piano della piattaforma | Utilizza i modelli forniti dal piano Ciele gestito. |
-| Abbonamento | Utilizza un abbonamento membro per le chat di quel membro. |
-| Chiave API | Utilizza una chiave provider gestita dall'organizzazione. |
+| Platform plan | Utilizza i modelli forniti dal piano Ciele gestito. |
+| Subscription | Utilizza un abbonamento del membro per le sue chat personali. |
+| API key | Utilizza una chiave del provider gestita dall'organizzazione. |
 
-Un abbonamento membro esegue solo le chat di quel membro: l'Anteprima
-dell'Assistente e le sue chat con un AI Teammate. Non serve un widget pubblicato
-e non esegue la chat di un altro membro. Seleziona un piano Platform o una
-connessione con chiave API per il traffico pubblicato.
+Un abbonamento membro gestisce solo le chat di quel membro: l'Assistant Preview
+e le sue chat con un AI Teammate. Non serve un widget pubblicato e non gestisce
+la chat di un altro membro. Seleziona un piano Platform o una connessione
+tramite API key per il traffico pubblicato.
 
 ## Aggiungi una connessione con chiave API
 
 1. Apri **Settings**.
 2. Seleziona **AI Provider**.
 3. Aggiungi una connessione al provider.
-4. Seleziona Anthropic, OpenAI o Google.
-5. Inserisci la credenziale del provider richiesta.
+4. Seleziona Anthropic, OpenAI, Google o ElevenLabs.
+5. Inserisci le credenziali del provider richieste.
 6. Salva la connessione.
 
-Ciele cripta le credenziali prima di archiviarle. Non riutilizzare una chiave
-personale che abbia autorizzazioni non correlate.
+Ciele crittografa le credenziali prima di memorizzarle. Non riutilizzare una
+chiave personale che dispone di autorizzazioni non correlate.
 
-## Seleziona un modello di Assistente
+Le connessioni ElevenLabs forniscono modelli vocali. Seleziona questi modelli
+nelle impostazioni **General** dell'Assistente, alla voce **Voice mode**. Anche
+le connessioni Google e OpenAI possono fornire modelli vocali. I modelli
+disponibili dipendono dall'account collegato e dalle sue autorizzazioni API.
+ElevenLabs non compare nei selettori del modello di testo né in quelli
+dell'embedding della conoscenza.
+
+## Seleziona un modello di Assistant
 
 1. Apri l'Assistente.
 2. Seleziona **General**.
-3. Seleziona la connessione del provider.
+3. Seleziona la connessione al provider.
 4. Seleziona un modello disponibile.
-5. Prova l'Assistente in Anteprima.
+5. Prova l'Assistente in Preview.
 6. Pubblica l'Assistente.
 
-Il widget pubblicato utilizza il provider e il modello nella sua istantanea di
-pubblicazione. Le successive modifiche generali richiedono un'altra
-pubblicazione.
+Il widget pubblicato utilizza il provider e il modello nel suo snapshot di
+pubblicazione. Le modifiche generali apportate successivamente richiedono
+un'altra pubblicazione.
 
 <Callout title="Provider accounts are separate">
 Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.

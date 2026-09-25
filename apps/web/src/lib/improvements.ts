@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
-import { ChartNoAxesColumnIncreasing, MoreHorizontal } from "lucide-react";
+import { ChartNoAxesColumnIncreasing } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import type {
   Improvement,
   ImprovementListItem,

@@ -2,13 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ChevronDown,
-  CircleCheck,
-  LoaderCircle,
-  OctagonX,
-  X,
-} from "lucide-react";
+import { CircleCheck, OctagonX, X } from "lucide-react";
+import { ChevronDown, LoaderCircle } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useFeedback } from "@agent-hub/ui/feedback";
 import { EASE_OUT, SPRING_LAYOUT } from "@/lib/ease";

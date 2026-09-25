@@ -1,4 +1,5 @@
-import { Cloud, Cloudy, HardDrive, Hash, Mail, Workflow } from "lucide-react";
+import { Cloud, Mail, Workflow } from "lucide-react";
+import { Cloudy, HardDrive, Hash } from "lucide-react";
 import type { ApplicationProvider } from "@agent-hub/core";
 import { cn } from "@/lib/utils";
 

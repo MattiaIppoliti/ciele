@@ -1,16 +1,5 @@
-import {
-  Check,
-  Circle,
-  FileText,
-  Globe2,
-  ImageIcon,
-  MessageSquare,
-  PencilLine,
-  Search,
-  Sparkles,
-  SquareTerminal,
-  Wrench,
-} from "lucide-react";
+import { Circle, FileText, MessageSquare, Search, Sparkles, Wrench } from "lucide-react";
+import { Check, Globe2, ImageIcon, PencilLine, SquareTerminal } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { EASE_OUT, SPRING_LAYOUT } from "@/lib/ease";
 import { cn } from "@/lib/utils";

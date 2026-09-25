@@ -1,8 +1,8 @@
-import type { Provider } from "@agent-hub/core";
+import type { ProviderConnectionProvider } from "@agent-hub/core";
 
 /** Thrown when the provider explicitly rejected the credential. */
 export class InvalidProviderKeyError extends Error {
-  constructor(provider: Provider) {
+  constructor(provider: ProviderConnectionProvider) {
     super(`The ${provider} API key was rejected by the provider.`);
     this.name = "InvalidProviderKeyError";
   }
@@ -15,9 +15,9 @@ interface ProbeRequest {
   invalidStatuses: number[];
 }
 
-const KNOWN_PROVIDERS: Provider[] = ["anthropic", "openai", "google"];
+const KNOWN_PROVIDERS: ProviderConnectionProvider[] = ["anthropic", "openai", "google", "elevenlabs"];
 
-function probeFor(provider: Provider, apiKey: string): ProbeRequest {
+function probeFor(provider: ProviderConnectionProvider, apiKey: string): ProbeRequest {
   switch (provider) {
     case "anthropic":
       return {
@@ -38,6 +38,12 @@ function probeFor(provider: Provider, apiKey: string): ProbeRequest {
         headers: {},
         invalidStatuses: [400, 401, 403],
       };
+    case "elevenlabs":
+      return {
+        url: "https://api.elevenlabs.io/v1/user",
+        headers: { "xi-api-key": apiKey },
+        invalidStatuses: [401, 403],
+      };
     default:
       // Runtime value from a server action, not guaranteed by the Provider
       // type at the boundary, never silently "pass" an unrecognized value.
@@ -54,7 +60,7 @@ function probeFor(provider: Provider, apiKey: string): ProbeRequest {
  * throws unconditionally instead of being swallowed by the network catch.
  */
 export async function validateProviderApiKey(
-  provider: Provider,
+  provider: ProviderConnectionProvider,
   apiKey: string
 ): Promise<void> {
   if (!KNOWN_PROVIDERS.includes(provider)) {

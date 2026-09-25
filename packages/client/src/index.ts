@@ -1236,7 +1236,7 @@ export class CieleClient {
     list: (): Promise<{ data: ProviderConnectionView[] }> =>
       this.request("GET", "/providers"),
     createApiKey: (input: {
-      provider: "anthropic" | "openai" | "google";
+      provider: "anthropic" | "openai" | "google" | "elevenlabs";
       apiKey: string;
       displayName?: string;
     }): Promise<{ connection?: ProviderConnectionView; error?: string }> =>

@@ -12,7 +12,7 @@ export interface InboxFilters {
   language: string;
   workflow: string;
   conversationIds: string;
-  feedback: "" | "up" | "down";
+  feedback: "" | "up" | "down" | "neutral";
   escalation: "" | "escalated" | "not_escalated";
   /**
    * Staff (member-subject) conversations, admin Preview, the data

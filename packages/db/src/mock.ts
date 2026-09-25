@@ -45,6 +45,7 @@ import type {
   FlowPatch,
   FlowTrust,
   FlowTrustEvent,
+  FeedbackReactionId,
   HelpDesk,
   Improvement,
   ImprovementAssociation,
@@ -2417,6 +2418,7 @@ function inboxConversationRows(organizationId: string): InboxConversation[] {
         notificationOnly:
           own.length > 0 && own.every((message) => isProactiveMessage(message.content)),
         feedback,
+        hasNeutralFeedback: own.some((message) => message.feedbackReaction === "neutral"),
       };
     })
     .sort(compareInboxConversation);
@@ -5655,10 +5657,10 @@ export const mockDb: Db = {
       .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
   },
 
-  async setMessageFeedback(messageId, feedback) {
+  async setMessageFeedback(messageId, feedback, reaction: FeedbackReactionId | null = null) {
     const store = getStore();
     const message = store.messages.get(messageId);
-    if (message) store.messages.set(messageId, { ...message, feedback });
+    if (message) store.messages.set(messageId, { ...message, feedback, feedbackReaction: reaction });
   },
 
   async listTraceRetentionPolicies() {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, LoaderCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import type { ApplicationProvider } from "@agent-hub/core";
 import { APP_BRANDS, AppBrandMark } from "@/components/ui/app-brand";

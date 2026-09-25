@@ -7,6 +7,7 @@ import {
   Gauge,
   Globe,
   KeyRound,
+  Palette,
   Sparkles,
   Users,
   type LucideIcon,
@@ -80,6 +81,13 @@ export const PERSONAL_SETTINGS_TABS: SettingsTab[] = [
     slug: "profile",
     href: "/settings/profile",
     icon: Fingerprint,
+  },
+  {
+    label: "Theme",
+    slug: "theme",
+    href: "/settings/theme",
+    icon: Palette,
+    hint: "Appearance, Midnight and Mist Blue",
   },
   {
     // Personal scope, not organization: the document is the Member's own and

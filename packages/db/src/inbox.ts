@@ -99,6 +99,7 @@ export function inboxConversationMatches(
   }
   if (query.feedback === "up" && conversation.feedback !== 1) return false;
   if (query.feedback === "down" && conversation.feedback !== -1) return false;
+  if (query.feedback === "neutral" && !conversation.hasNeutralFeedback) return false;
   if (query.escalation === "escalated" && !conversation.metadata.escalated) return false;
   if (query.escalation === "not_escalated" && conversation.metadata.escalated) return false;
   if ((query.staff ?? "") === "" && conversation.subjectType === "member") return false;

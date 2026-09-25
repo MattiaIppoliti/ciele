@@ -1,11 +1,9 @@
 ﻿import type { Alert } from "@agent-hub/core";
 
 /**
- * The bottom-right notification banner shows two kinds of thing: operational
- * **alerts** read from the server (they persist until resolved) and transient
- * **events** raised by the UI itself, "Published v3", "Upload failed". This
- * module holds the pure part: the shape, the ordering, and the auto-dismiss
- * policy. The React store and the banner live in
+ * The bottom-right notification banner shows operational **alerts** read from
+ * the server and **mentions** that point to unread group messages. This module
+ * holds the pure projection and ordering. The banner lives in
  * `components/notifications/notification-center.tsx`.
  */
 
@@ -17,7 +15,7 @@ export type NotificationStatus = "success" | "error" | "warning" | "info";
  * is nobody else's business and it is not an operational fault, so it never
  * reaches `/alerts`. Opening the group is what clears it.
  */
-export type NotificationSource = "alert" | "event" | "mention";
+export type NotificationSource = "alert" | "mention";
 
 export interface AppNotification {
   id: string;
@@ -29,20 +27,6 @@ export interface AppNotification {
   /** Epoch ms, newest sorts first. */
   createdAt: number;
   source: NotificationSource;
-}
-
-/** How long a self-clearing event stays up before it fades on its own. */
-export const AUTO_DISMISS_MS = 6_000;
-
-/**
- * Successes and neutral notices clear themselves; anything the user may need
- * to act on (errors, warnings, alerts) waits to be dismissed or resolved.
- */
-export function autoDismisses(notification: AppNotification): boolean {
-  // A mention waits like an alert does: it is a person asking you something,
-  // and a card that fades after six seconds is a message you never saw.
-  if (notification.source !== "event") return false;
-  return notification.status === "success" || notification.status === "info";
 }
 
 const ALERT_STATUS: Record<Alert["type"], NotificationStatus> = {
@@ -104,8 +88,7 @@ export function mentionNotification(mention: {
 
 /**
  * The cards the banner renders: newest first, dismissed ids dropped, capped at
- * `limit`. Events outrank alerts at equal timestamps, a result the user just
- * caused is what they are looking for.
+ * `limit`. Alerts win ties because they need an operator's attention.
  */
 export function visibleNotifications(
   notifications: AppNotification[],
@@ -117,7 +100,7 @@ export function visibleNotifications(
     .sort((a, b) => {
       if (b.createdAt !== a.createdAt) return b.createdAt - a.createdAt;
       if (a.source === b.source) return 0;
-      return a.source === "event" ? -1 : 1;
+      return a.source === "alert" ? -1 : 1;
     })
     .slice(0, limit);
 }

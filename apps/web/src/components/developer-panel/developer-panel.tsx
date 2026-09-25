@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronsRight, Loader2 } from "lucide-react";
+import { ChevronsRight } from "lucide-react";
+import { ArrowUpRight, Loader2 } from "lucide-react";
 import { Badge, Button, Hint } from "@agent-hub/ui";
 import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
 import { CodeBlock } from "@/components/ui/code-block";

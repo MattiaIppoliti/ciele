@@ -38,6 +38,7 @@ import {
 import type { ActionContext, ActionHandler } from "./types";
 import { errorMessageOf } from "./telemetry";
 import { usageTotals } from "./usage";
+import { voiceReplyLanguage } from "./voice-language";
 
 /**
  * Flow Action handlers: one Adapter per action, dispatched by the live
@@ -877,7 +878,7 @@ function basicReplyPrompt(
     "",
     "# This turn",
     "The user said something conversational: a greeting, a thanks, a goodbye, or an acknowledgement. It carries no question, so there is nothing to look up and you have no knowledge base access this turn.",
-    "Reply in one or two short sentences, in the user's own language. Acknowledge what they said, say briefly what you can help with, and invite their actual question.",
+    `Reply in one or two short sentences. ${voiceReplyLanguage(assistant)} Acknowledge what they said, say briefly what you can help with, and invite their actual question.`,
     "State NO facts about the organization, its services, dates, policies or people; you have not looked anything up, so you do not know them. Do not apologise and do not explain your own machinery.",
   ]
     .filter((line): line is string => typeof line === "string")

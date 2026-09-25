@@ -11,39 +11,46 @@ modèle.
 
 | Type | Utilisation |
 | --- | --- |
-| Forfait plateforme | Utilise les modèles fournis par le forfait Ciele géré. |
-| Abonnement | Utilise un abonnement de membre pour les propres chats de ce membre. |
-| Clé API | Utilise une clé de fournisseur gérée par l'organisation. |
+| Platform plan | Utilise les modèles fournis par le plan Ciele géré. |
+| Subscription | Utilise un abonnement de membre pour les chats propres à ce membre. |
+| API key | Utilise une clé de fournisseur gérée par l'organisation. |
 
-Un abonnement de membre exécute uniquement les chats de ce membre : l'Aperçu de
-l'assistant et ses chats avec un coéquipier IA. Il ne prend pas en charge un
+Un abonnement de membre ne fait fonctionner que les chats propres à ce membre :
+l'Assistant Preview et ses chats avec un AI Teammate. Il ne dessert pas un
 widget publié et n'exécute pas le chat d'un autre membre. Sélectionnez un
-abonnement Platform ou une connexion par clé API pour le trafic publié.
+forfait Platform ou une connexion par clé API pour le trafic publié.
 
-## Ajoutez une connexion par clé API
+## Ajouter une connexion par clé API
 
 1. Ouvrez **Settings**.
 2. Sélectionnez **AI Provider**.
-3. Ajoutez une connexion à un fournisseur.
-4. Sélectionnez Anthropic, OpenAI ou Google.
-5. Saisissez l'identifiant du fournisseur requis.
+3. Ajoutez une connexion de fournisseur.
+4. Sélectionnez Anthropic, OpenAI, Google ou ElevenLabs.
+5. Saisissez l'identifiant de connexion requis pour le fournisseur.
 6. Enregistrez la connexion.
 
-Ciele chiffre l'identifiant avant son stockage. Ne réutilisez pas une clé
-personnelle associée à des autorisations sans rapport.
+Ciele chiffre les identifiants avant de les stocker. N'utilisez pas une clé
+personnelle qui dispose d'autorisations non pertinentes.
+
+Les connexions ElevenLabs fournissent des modèles vocaux. Sélectionnez ces
+modèles dans les paramètres **General** de l'Assistant, sous **Voice mode**. Les
+connexions Google et OpenAI peuvent également fournir des modèles vocaux. Les
+modèles disponibles dépendent du compte connecté et de ses autorisations API.
+ElevenLabs n'apparaît pas dans les sélecteurs de modèle de texte ni dans ceux
+d'embedding de connaissances.
 
 ## Sélectionnez un modèle d'Assistant
 
 1. Ouvrez l'Assistant.
 2. Sélectionnez **General**.
-3. Sélectionnez la connexion du fournisseur.
+3. Sélectionnez la connexion au fournisseur.
 4. Sélectionnez un modèle disponible.
-5. Testez l'Assistant en mode Aperçu.
+5. Testez l'Assistant en mode Preview.
 6. Publiez l'Assistant.
 
-Le widget publié utilise le fournisseur et le modèle dans son instantané de
-publication. Les modifications générales ultérieures nécessitent une nouvelle
-publication.
+Le widget publié utilise le fournisseur et le modèle figurant dans son
+instantané de publication. Les modifications générales ultérieures nécessitent
+une nouvelle publication.
 
 <Callout title="Provider accounts are separate">
 Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.

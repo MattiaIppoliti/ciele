@@ -7,6 +7,7 @@ import type {
   ReviewRequest,
   StoredMessage,
 } from "@agent-hub/core";
+import { feedbackReactionScore } from "@agent-hub/core";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
 
@@ -24,7 +25,7 @@ const inboxQuerySchema = z.object({
   language: z.string().optional(),
   workflow: z.string().optional(),
   conversationIds: z.array(z.string().min(1)).max(500).optional(),
-  feedback: z.enum(["", "up", "down"]).optional(),
+  feedback: z.enum(["", "up", "down", "neutral"]).optional(),
   escalation: z.enum(["", "escalated", "not_escalated"]).optional(),
   staff: z.enum(["", "include", "only"]).optional(),
 });
@@ -276,9 +277,13 @@ export const setMessageFeedbackOp = defineOperation({
   input: z.object({
     messageId: z.string().min(1),
     feedback: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+    reaction: z.enum(["positive", "neutral", "negative"]).nullable().optional(),
   }),
   entities: () => [{ kind: "inbox" as const }],
-  run: async (ctx, { messageId, feedback }) => {
+  run: async (ctx, { messageId, feedback, reaction }) => {
+    if (reaction && feedbackReactionScore(reaction) !== feedback) {
+      throw new OperationError("invalid_input", "Reaction and feedback score do not match");
+    }
     const conversation = await ctx.db.getConversationForMessage(messageId);
     if (!conversation) throw new OperationError("not_found", "Message not found");
     // No Assistant means a Teammate Conversation, which the Inbox does not
@@ -289,7 +294,7 @@ export const setMessageFeedbackOp = defineOperation({
     if (!assistant || assistant.organizationId !== ctx.organizationId) {
       throw new OperationError("not_found", "Message not found");
     }
-    await ctx.db.setMessageFeedback(messageId, feedback);
-    return { messageId, feedback };
+    await ctx.db.setMessageFeedback(messageId, feedback, reaction ?? null);
+    return { messageId, feedback, reaction: reaction ?? null };
   },
 });

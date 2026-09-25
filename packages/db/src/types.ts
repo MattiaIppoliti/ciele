@@ -67,6 +67,7 @@ import type {
   FlowPatch,
   FlowTrust,
   FlowTrustEvent,
+  FeedbackReactionId,
   GoalExpectations,
   HelpDesk,
   Improvement,
@@ -1352,7 +1353,11 @@ export interface Db {
     succeeded: boolean;
     error?: string;
   }): Promise<boolean>;
-  setMessageFeedback(messageId: string, feedback: -1 | 0 | 1): Promise<void>;
+  setMessageFeedback(
+    messageId: string,
+    feedback: -1 | 0 | 1,
+    reaction?: FeedbackReactionId | null,
+  ): Promise<void>;
   /**
    * Organizations that opted into a trace-retention window (#573), for the
    * cron sweep. Orgs with the keep-forever default are not returned.

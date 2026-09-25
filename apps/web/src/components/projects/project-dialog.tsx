@@ -7,16 +7,11 @@ import {
 } from "@agent-hub/core";
 import type { MemoryDocumentEntry } from "@agent-hub/core";
 import { Archive, ArchiveRestore, ChevronRight, Trash2, X } from "lucide-react";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Skeleton,
-} from "@agent-hub/ui";
+import { Button, Dialog, DialogContent, DialogTitle, Skeleton } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { FoldersIcon } from "@/components/ui/icons/folders";
 import { Textarea } from "@/components/ui/textarea";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { toast } from "@/lib/toast";
 import { MemoryHistory } from "@/components/teammates/memory-history";
 import {
@@ -71,6 +66,7 @@ export function ProjectDialog({
   );
   const [unreadable, setUnreadable] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   useEffect(() => {
     if (!projectId) return;
@@ -153,6 +149,7 @@ export function ProjectDialog({
   const loading = !creating && saved === null && !unreadable;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         showCloseButton={false}
@@ -204,14 +201,14 @@ export function ProjectDialog({
               placeholder="Project name"
               aria-label="Project name"
               onChange={(e) => setName(e.target.value.slice(0, 120))}
-              className="placeholder:text-muted-foreground w-full bg-transparent text-2xl font-semibold outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+              className="placeholder:text-muted-foreground w-full bg-transparent text-2xl font-semibold outline-none"
             />
             <input
               value={description}
               placeholder="Add a short summary..."
               aria-label="Short summary"
               onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
-              className="placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+              className="placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none"
             />
 
             <div className="mt-4 border-t pt-4">
@@ -227,7 +224,7 @@ export function ProjectDialog({
                    hard against the edge of the field with nothing to read
                    into, which is what the panel's own gutter gives every other
                    line on this screen. */
-                className="min-h-48 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                className="min-h-48 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0"
               />
               <p className="text-muted-foreground text-xs">
                 {body.length} / {MEMORY_DOCUMENT_MAX_CHARS} characters. Every
@@ -285,21 +282,20 @@ export function ProjectDialog({
                 size="sm"
                 className="text-destructive"
                 disabled={isPending}
+                aria-label="Delete project"
                 onClick={() => {
-                  // Archiving keeps the record; deleting does not. The
-                  // difference is worth one sentence before it happens.
-                  if (
-                    !confirm(
-                      `Delete ${name}? Its decisions go with it, and every attached teammate and improvement detaches. Archive instead to keep the record.`
-                    )
-                  ) {
-                    return;
-                  }
-                  run(async () => {
+                  confirmDelete({
+                    title: `Delete ${name}?`,
+                    description:
+                      "Its decisions go with it, and every attached teammate and improvement detaches. Archive instead to keep the record.",
+                    confirmLabel: "Delete project",
+                    onConfirm: async () => {
                     await deleteProjectAction(projectId);
                     onDeleted?.(projectId);
                     onClose();
-                  }, "Project deleted");
+                    toast.success("Project deleted");
+                    },
+                  });
                 }}
               >
                 <Trash2 className="size-4" />
@@ -318,5 +314,7 @@ export function ProjectDialog({
         </footer>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }

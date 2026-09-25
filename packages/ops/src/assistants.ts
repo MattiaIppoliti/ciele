@@ -56,6 +56,26 @@ export const assistantPatchSchema = z
     modelId: z.string().max(200),
     allowedModels: allowedModelsSchema,
     attachmentsEnabled: z.boolean(),
+    voice: z.object({
+      enabled: z.boolean(),
+      transcription: z.object({
+        provider: z.enum(["google", "openai", "elevenlabs"]),
+        modelId: z.string().max(200).regex(/^[a-zA-Z0-9._-]*$/),
+      }),
+      speech: z.object({
+        provider: z.enum(["google", "openai", "elevenlabs"]),
+        modelId: z.string().max(200).regex(/^[a-zA-Z0-9._-]*$/),
+      }),
+      voiceId: z.string().max(200).regex(/^[a-zA-Z0-9._-]*$/),
+      inputLanguage: z.enum(["auto", "en", "it", "es", "fr", "de", "pt"]).optional(),
+      outputLanguage: z.enum(["auto", "en", "it", "es", "fr", "de", "pt"]).optional(),
+      voiceLanguages: z.record(
+        z.string().regex(/^(google|openai|elevenlabs):[a-zA-Z0-9._-]{1,200}$/),
+        z.enum(["auto", "en", "it", "es", "fr", "de", "pt"]),
+      ).refine((languages) => Object.keys(languages).length <= 100, "Too many voice preferences").optional(),
+    }).refine((voice) => !voice.enabled || Boolean(
+      voice.transcription.modelId && voice.speech.modelId && voice.voiceId
+    ), "Choose transcription, playback model and voice before enabling voice mode"),
     style: z.custom<Assistant["style"]>(
       (v) => typeof v === "object" && v !== null
     ),
@@ -139,7 +159,15 @@ export const updateAssistantOp = defineOperation({
   entities: ({ id }) => [{ kind: "assistant" as const, id }],
   run: async (ctx, { id, patch }) => {
     await requireAssistant(ctx, id);
-    return ctx.db.updateAssistant(id, patch);
+    try {
+      return await ctx.db.updateAssistant(id, patch);
+    } catch (error) {
+      const details = error as { code?: string; message?: string } | null;
+      if (patch.voice && ["PGRST204", "42703"].includes(details?.code ?? "") && /voice/.test(details?.message ?? "")) {
+        throw new OperationError("invalid_input", "Voice settings require the latest database migration. Apply the assistant_voice_and_elevenlabs migration and try again.");
+      }
+      throw error;
+    }
   },
 });
 
@@ -189,6 +217,7 @@ export const duplicateAssistantOp = defineOperation({
       modelId: source.modelId,
       allowedModels: source.allowedModels,
       attachmentsEnabled: source.attachmentsEnabled,
+      voice: source.voice,
       style: source.style,
       allowedDomains: source.allowedDomains,
       helpDeskSettings: source.helpDeskSettings,

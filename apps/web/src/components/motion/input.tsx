@@ -5,12 +5,16 @@ import {
   AnimatePresence,
   animate,
   motion,
+  useMotionValue,
   useReducedMotion,
+  useSpring,
 } from "motion/react";
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useId,
+  useImperativeHandle,
   useRef,
   useState,
   type InputHTMLAttributes,
@@ -54,6 +58,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     onChange,
     onFocus,
     onBlur,
+    onClick,
+    onKeyUp,
     error,
     success,
     leftIcon,
@@ -70,17 +76,110 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const reactId = useId();
   const id = idProp ?? reactId;
   const reduce = useReducedMotion();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const caretX = useMotionValue(0);
+  const caretOpacity = useMotionValue(0);
+  const springCaretX = useSpring(
+    caretX,
+    reduce
+      ? { stiffness: 10000, damping: 100, mass: 0.1 }
+      : { stiffness: 500, damping: 30, mass: 0.5 },
+  );
 
   const controlled = valueProp !== undefined;
   const [internal, setInternal] = useState(defaultValue ?? "");
   const value = controlled ? (valueProp ?? "") : internal;
 
   const [focused, setFocused] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
 
   const fieldRef = useRef<HTMLDivElement>(null);
 
   const hasError = Boolean(error);
   const errorMessage = typeof error === "string" ? error : null;
+  const smoothCaretEnabled =
+    !type || ["text", "search", "email", "password", "tel", "url"].includes(type);
+
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
+
+  const updateCaret = useCallback(() => {
+    const input = inputRef.current;
+    const measure = measureRef.current;
+    const field = fieldRef.current;
+    if (!input || !measure || !field || !smoothCaretEnabled) return;
+
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    const hasSelection = start !== end;
+    setHasSelection((current) =>
+      current === hasSelection ? current : hasSelection,
+    );
+    const caretIndex =
+      hasSelection && input.selectionDirection === "backward" ? start : end;
+    const textBeforeCaret =
+      input.type === "password"
+        ? "•".repeat(caretIndex)
+        : input.value.slice(0, caretIndex);
+    const inputStyle = window.getComputedStyle(input);
+    measure.style.font = `${inputStyle.fontStyle} ${inputStyle.fontVariant} ${inputStyle.fontWeight} ${inputStyle.fontSize}/${inputStyle.lineHeight} ${inputStyle.fontFamily}`;
+    measure.style.letterSpacing = inputStyle.letterSpacing;
+    measure.style.fontFeatureSettings = inputStyle.fontFeatureSettings;
+    measure.textContent = textBeforeCaret;
+
+    const inputRect = input.getBoundingClientRect();
+    const fieldRect = field.getBoundingClientRect();
+    const paddingLeft = Number.parseFloat(inputStyle.paddingLeft) || 0;
+    const paddingRight = Number.parseFloat(inputStyle.paddingRight) || 0;
+    const caretPosition =
+      inputRect.left -
+      fieldRect.left +
+      paddingLeft +
+      measure.getBoundingClientRect().width -
+      input.scrollLeft;
+    const visibleLeft = inputRect.left - fieldRect.left + paddingLeft;
+    const visibleRight = inputRect.right - fieldRect.left - paddingRight;
+    const isVisible =
+      caretPosition >= visibleLeft - 1 && caretPosition <= visibleRight + 1;
+
+    caretX.set(Math.min(caretPosition, visibleRight));
+    caretOpacity.set(isVisible && !hasSelection ? 1 : 0);
+  }, [caretOpacity, caretX, smoothCaretEnabled]);
+
+  useEffect(() => {
+    if (!focused || !smoothCaretEnabled) {
+      caretOpacity.set(0);
+      return;
+    }
+    updateCaret();
+  }, [caretOpacity, focused, value, type, smoothCaretEnabled, updateCaret]);
+
+  useEffect(() => {
+    if (!smoothCaretEnabled) return;
+    const input = inputRef.current;
+    const field = fieldRef.current;
+    if (!input || !field) return;
+
+    const updateIfFocused = () => {
+      if (document.activeElement === input) updateCaret();
+    };
+    const handleSelectionChange = () => {
+      if (document.activeElement === input) requestAnimationFrame(updateIfFocused);
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    document.fonts.addEventListener("loadingdone", updateIfFocused);
+    input.addEventListener("scroll", updateIfFocused);
+    const resizeObserver = new ResizeObserver(updateIfFocused);
+    resizeObserver.observe(field);
+    void document.fonts.ready.then(updateIfFocused);
+
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      document.fonts.removeEventListener("loadingdone", updateIfFocused);
+      input.removeEventListener("scroll", updateIfFocused);
+      resizeObserver.disconnect();
+    };
+  }, [smoothCaretEnabled, updateCaret]);
 
   // Right edge shows the success check, otherwise the caller's right icon.
   const rightSlot = success ? null : rightIcon;
@@ -148,7 +247,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         ) : null}
 
         <input
-          ref={ref}
+          ref={inputRef}
           id={id}
           type={type}
           value={value}
@@ -156,24 +255,56 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           aria-invalid={hasError || undefined}
           aria-describedby={errorMessage ? `${id}-error` : undefined}
           {...rest}
-          onChange={(e) => handleChange(e.target.value)}
           onFocus={(event) => {
             setFocused(true);
+            setHasSelection(false);
             onFocus?.(event);
           }}
           onBlur={(event) => {
             setFocused(false);
+            setHasSelection(false);
+            caretOpacity.set(0);
             onBlur?.(event);
           }}
           className={cn(
-            "peer h-full w-full bg-transparent text-base leading-6 text-foreground caret-foreground outline-none",
+            "peer h-full w-full bg-transparent text-base leading-6 text-foreground outline-none",
             "placeholder:text-muted-foreground/60",
+            smoothCaretEnabled && focused && !hasSelection
+              ? "caret-transparent"
+              : "caret-foreground",
             leftIcon ? "pl-10" : "pl-3.5",
             rightSlot || success ? "pr-10" : "pr-3.5",
             disabled && "cursor-not-allowed",
             classNames?.input,
           )}
+          onChange={(event) => {
+            handleChange(event.target.value);
+            requestAnimationFrame(updateCaret);
+          }}
+          onKeyUp={(event) => {
+            onKeyUp?.(event);
+            requestAnimationFrame(updateCaret);
+          }}
+          onClick={(event) => {
+            onClick?.(event);
+            requestAnimationFrame(updateCaret);
+          }}
         />
+
+        {smoothCaretEnabled ? (
+          <>
+            <span
+              ref={measureRef}
+              aria-hidden="true"
+              className="pointer-events-none invisible absolute left-0 top-0 whitespace-pre"
+            />
+            <motion.span
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 z-10 h-5 w-0.5 -translate-y-1/2 rounded-full bg-foreground"
+              style={{ x: springCaretX, opacity: caretOpacity }}
+            />
+          </>
+        ) : null}
 
         {success ? (
           <motion.svg

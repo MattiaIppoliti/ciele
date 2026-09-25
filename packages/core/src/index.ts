@@ -25,6 +25,12 @@
 
 // The domain vocabulary: every noun in CONTEXT.md, as a type.
 export * from "./types";
+export {
+  FEEDBACK_REACTIONS,
+  feedbackReactionById,
+  feedbackReactionScore,
+  isFeedbackReactionId,
+} from "./feedback-reactions";
 // The billing / plan / usage-cap vocabulary (pure types + the one shared
 // warn threshold). The runtime's enterprise registry re-exports these; new
 // code should import them from here.

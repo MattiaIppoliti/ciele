@@ -1,7 +1,8 @@
 "use client";
 // beui.dev/components/agents/streaming-response
 
-import { ChevronDown, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
+import { RotateCcw } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 // Icon data for the copy mark, which reshapes into the check on click.
 import { Check as CheckData, Copy as CopyData } from "lucide";
 import { MorphIcon } from "morphicons/react";
@@ -21,9 +22,11 @@ import { AgentDisclosure } from "@/components/agents/agent-disclosure";
 import { useCopied } from "@/lib/hooks/use-copied";
 import { EASE_OUT, SPRING_PRESS, SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
+import { EmojiFeedback } from "@/components/chat/emoji-feedback";
+import type { FeedbackReactionId } from "@agent-hub/core";
 
 export type StreamingResponseStatus = "streaming" | "complete" | "error";
-export type StreamingResponseFeedback = "up" | "down" | null;
+export type StreamingResponseFeedback = FeedbackReactionId | null;
 
 export interface StreamingResponseProps {
   /** Rendered response content. Pass plain text or the output of a Markdown renderer. */
@@ -48,15 +51,17 @@ export interface StreamingResponseProps {
   /** Hides the built-in completion actions without changing response status. */
   showActions?: boolean;
   /**
-   * Whether the action row offers 👍/👎 at all. Default true, which is every
+   * Whether the action row offers answer reactions at all. Default true, which is every
    * chat surface that persists a vote. A channel transcript passes false: its
-   * messages live in their own table with no feedback column, and thumbs that
+   * messages live in their own table with no feedback column, and reactions that
    * light up and store nothing are worse than none (#778).
    */
   showFeedback?: boolean;
   className?: string;
   contentClassName?: string;
   actionsClassName?: string;
+  /** Optional actions beside copy and feedback, such as reading aloud. */
+  extraActions?: ReactNode;
 }
 
 function ResponseAction({
@@ -111,6 +116,7 @@ export function StreamingResponse({
   className,
   contentClassName,
   actionsClassName,
+  extraActions,
 }: StreamingResponseProps) {
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
@@ -119,7 +125,7 @@ export function StreamingResponse({
     useState<StreamingResponseFeedback>(defaultFeedback);
   const [internalSourcesOpen, setInternalSourcesOpen] =
     useState(defaultSourcesOpen);
-  const currentFeedback = feedback ?? internalFeedback;
+  const currentFeedback = feedback === undefined ? internalFeedback : feedback;
   const currentSourcesOpen = sourcesOpen ?? internalSourcesOpen;
   const streaming = status === "streaming";
   const complete = status === "complete";
@@ -138,8 +144,7 @@ export function StreamingResponse({
     markCopied();
   }, [copyText, onCopy, markCopied]);
 
-  const setFeedback = (next: Exclude<StreamingResponseFeedback, null>) => {
-    const value = currentFeedback === next ? null : next;
+  const setFeedback = (value: StreamingResponseFeedback) => {
     if (feedback === undefined) setInternalFeedback(value);
     onFeedbackChange?.(value);
   };
@@ -186,28 +191,17 @@ export function StreamingResponse({
                   <MorphIcon icon={copied ? CheckData : CopyData} size={14} />
                 </ResponseAction>
               ) : null}
+              {extraActions}
               {onRetry ? (
                 <ResponseAction label="Retry response" onClick={onRetry}>
                   <RotateCcw className="size-3.5" />
                 </ResponseAction>
               ) : null}
               {complete && showFeedback ? (
-                <>
-                  <ResponseAction
-                    label="Helpful"
-                    active={currentFeedback === "up"}
-                    onClick={() => setFeedback("up")}
-                  >
-                    <ThumbsUp className="size-3.5" />
-                  </ResponseAction>
-                  <ResponseAction
-                    label="Not helpful"
-                    active={currentFeedback === "down"}
-                    onClick={() => setFeedback("down")}
-                  >
-                    <ThumbsDown className="size-3.5" />
-                  </ResponseAction>
-                </>
+                <EmojiFeedback
+                  value={currentFeedback}
+                  onChange={setFeedback}
+                />
               ) : null}
               {hasSources ? (
                 <button

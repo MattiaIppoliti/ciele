@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { ChatReplyPart, TurnView } from "@agent-hub/agent/client";
+import type { FeedbackReactionId } from "@agent-hub/core";
 
 /** The one variant the referral card renders (#773). */
 export type TeammateReferralPart = Extract<
@@ -11,16 +12,8 @@ export type TeammateReferralPart = Extract<
 /** The Human review gate's card (#841). */
 export type HumanReviewPart = Extract<ChatReplyPart, { type: "human_review" }>;
 export type ActionApprovalPart = Extract<ChatReplyPart, { type: "action_approval" }>;
-import {
-  HelpCircle,
-  Radio,
-  ShieldQuestion,
-  ThumbsDown,
-  ThumbsUp,
-  UserCheck,
-  UserRoundPlus,
-} from "lucide-react";
-import { Hint } from "@agent-hub/ui";
+import { ShieldQuestion, UserRoundPlus } from "lucide-react";
+import { HelpCircle, Radio, UserCheck } from "lucide-react";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
 import { ComponentReplyPart } from "@/components/chat/component-part";
@@ -35,9 +28,12 @@ import {
   MessageContent,
 } from "@/components/agents/message";
 import { StreamingResponse } from "@/components/agents/streaming-response";
+import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 import { Citations } from "@/components/agents/citations";
 import { toCitationItems } from "@/components/chat/citation-items";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import { SpeechPlayback } from "@/components/chat/speech-playback";
+import type { VoiceEndpoint } from "@/components/chat/voice-input-button";
 
 /**
  * The chat transcript, shared by the console's two chat surfaces (#768): the
@@ -390,6 +386,7 @@ export interface ChatBotMsg extends TurnView {
   /** Persisted message id, null while the turn is still streaming. */
   id: string | null;
   feedback: -1 | 0 | 1;
+  feedbackReaction?: FeedbackReactionId | null;
   /** Set in a channel: which Teammate is answering. */
   author?: ChatAuthor;
 }
@@ -428,7 +425,7 @@ export function ChatThread({
   messages,
   pending,
   onSend,
-  /** Absent leaves the 👍/👎 controls out: not every surface collects feedback. */
+  /** Absent leaves reaction controls out: not every surface collects feedback. */
   onVote,
   /** Absent means the surface has no escalation panel to open. */
   onOpenSupport,
@@ -456,11 +453,12 @@ export function ChatThread({
    * nobody to mention.
    */
   renderUserText,
+  speechPlayback,
 }: {
   messages: ChatMsg[];
   pending: boolean;
   onSend: (text: string) => void;
-  onVote?: (msg: ChatBotMsg, feedback: 1 | -1) => void;
+  onVote?: (msg: ChatBotMsg, reaction: FeedbackReactionId | null) => void;
   onOpenSupport?: (helpDeskId?: string) => void;
   hasPersistentSupport?: boolean;
   onAcceptReferral?: (part: TeammateReferralPart) => void;
@@ -471,6 +469,7 @@ export function ChatThread({
     decision: "approved" | "rejected"
   ) => void;
   renderUserText?: (text: string) => ReactNode;
+  speechPlayback?: VoiceEndpoint;
 }) {
   return (
     <>
@@ -511,8 +510,7 @@ export function ChatThread({
                     part.type === "sources" ? part.sources : []
                   )
                 );
-                const feedback =
-                  msg.feedback === 1 ? "up" : msg.feedback === -1 ? "down" : null;
+                const feedback = msg.feedbackReaction ?? null;
                 return (
                   <Message key={i} from="assistant">
                     <MessageContent className="gap-2">
@@ -534,6 +532,9 @@ export function ChatThread({
                               status="complete"
                               copyText={part.text}
                               showActions={isLast && Boolean(msg.id)}
+                              extraActions={isLast && speechPlayback && !(pending && i === messages.length - 1) ? (
+                                <SpeechPlayback {...speechPlayback} text={parts.filter((item) => item.type === "text").map((item) => item.text).join("\n\n")} />
+                              ) : null}
                               // A surface that cannot store a vote does not
                               // offer one; copy and sources still stand.
                               showFeedback={Boolean(onVote)}
@@ -541,12 +542,7 @@ export function ChatThread({
                               feedback={isLast ? feedback : null}
                               onFeedbackChange={
                                 onVote
-                                  ? (next) => {
-                                      if (next === "up") onVote(msg, 1);
-                                      else if (next === "down") onVote(msg, -1);
-                                      // Clearing = re-voting the active value.
-                                      else onVote(msg, msg.feedback === 1 ? 1 : -1);
-                                    }
+                                  ? (next) => onVote(msg, next)
                                   : undefined
                               }
                             >
@@ -582,28 +578,10 @@ export function ChatThread({
                         </StreamingResponse>
                       )}
                       {onVote && lastTextIndex === -1 && msg.id && parts.length > 0 && (
-                        <div className="flex gap-1">
-                          <Hint label="Good response">
-                            <button
-                              type="button"
-                              aria-label="Good response"
-                              onClick={() => onVote(msg, 1)}
-                              className={`rounded p-1 transition-colors ${msg.feedback === 1 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-                            >
-                              <ThumbsUp className="size-3.5" />
-                            </button>
-                          </Hint>
-                          <Hint label="Bad response">
-                            <button
-                              type="button"
-                              aria-label="Bad response"
-                              onClick={() => onVote(msg, -1)}
-                              className={`rounded p-1 transition-colors ${msg.feedback === -1 ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:text-foreground"}`}
-                            >
-                              <ThumbsDown className="size-3.5" />
-                            </button>
-                          </Hint>
-                        </div>
+                        <EmojiFeedback
+                          value={msg.feedbackReaction ?? null}
+                          onChange={(reaction) => onVote(msg, reaction)}
+                        />
                       )}
                     </MessageContent>
                   </Message>

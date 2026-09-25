@@ -37,11 +37,12 @@ import {
   DialogTitle,
 } from "@agent-hub/ui";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Hint } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
@@ -61,7 +62,8 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 
 /** Providers the generic hosted-API-key dialog can connect. OpenAI-compatible
  *  endpoints have their own form (base URL + models, key optional). */
-const BYOK_PROVIDERS: Provider[] = ["anthropic", "openai", "google"];
+type ApiKeyProvider = Exclude<ProviderConnectionProvider, "azure_openai" | "openai_compatible">;
+const BYOK_PROVIDERS: ApiKeyProvider[] = ["anthropic", "openai", "google", "elevenlabs"];
 
 type OpenAiCompatibleTestResult = Awaited<
   ReturnType<typeof testOpenAiCompatibleConnectionAction>
@@ -70,6 +72,7 @@ type OpenAiCompatibleTestResult = Awaited<
 const CONNECTION_PROVIDER_LABELS: Record<ProviderConnectionProvider, string> = {
   ...PROVIDER_LABELS,
   azure_openai: "Azure OpenAI",
+  elevenlabs: "ElevenLabs (Voice)",
 };
 
 function isGoogleVertexConfig(
@@ -119,7 +122,7 @@ export function AiSettingsClient({
 }) {
   const router = useRouter();
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
-  const [provider, setProvider] = useState<Provider>("anthropic");
+  const [provider, setProvider] = useState<ApiKeyProvider>("anthropic");
   const [apiKey, setApiKey] = useState("");
   const [keyName, setKeyName] = useState("");
   const [vertexDialogOpen, setVertexDialogOpen] = useState(false);
@@ -238,7 +241,7 @@ export function AiSettingsClient({
         const result = await createProviderConnectionAction(
           provider,
           apiKey,
-          keyName.trim() || PROVIDER_LABELS[provider]
+          keyName.trim() || CONNECTION_PROVIDER_LABELS[provider]
         );
         if (result?.error) {
           toast.error(result.error);
@@ -734,26 +737,18 @@ export function AiSettingsClient({
           <form onSubmit={handleAddKey} className="space-y-4">
             <div className="space-y-2">
               <Label>Provider</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-start"
-                    />
-                  }
-                >
-                  {PROVIDER_LABELS[provider]}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-72">
+              <Select value={provider} onValueChange={(value) => setProvider(value as ApiKeyProvider)}>
+                <SelectTrigger aria-label="Provider" className="w-full">
+                  <SelectValue>{CONNECTION_PROVIDER_LABELS[provider]}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
                   {BYOK_PROVIDERS.map((p) => (
-                    <DropdownMenuItem key={p} onClick={() => setProvider(p)}>
-                      {PROVIDER_LABELS[p]}
-                    </DropdownMenuItem>
+                    <SelectItem key={p} value={p}>
+                      {CONNECTION_PROVIDER_LABELS[p]}
+                    </SelectItem>
                   ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="api-key">API key</Label>

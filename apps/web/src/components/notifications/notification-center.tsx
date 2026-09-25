@@ -1,22 +1,15 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Alert } from "@agent-hub/core";
 import type { ChannelMention } from "@ciele/ops";
 import { useFeedback } from "@agent-hub/ui/feedback";
 import { NotificationStack } from "@/components/motion/notification-stack";
 import {
-  setNotificationListener,
-  type NotificationInput,
-} from "@/lib/notification-bus";
-import {
   alertNotification,
-  autoDismisses,
   mentionNotification,
   visibleNotifications,
-  AUTO_DISMISS_MS,
-  type AppNotification,
 } from "@/lib/notifications";
 
 /** Cards the banner shows at once; the rest wait behind the count badge. */
@@ -27,12 +20,9 @@ const VISIBLE_LIMIT = 3;
  *
  * - **Alerts** rendered on the server (operational health), they stay until an
  *   admin resolves them, and clicking through opens `/alerts`.
- * - **Events** raised by the UI through `@/lib/toast`, "Published v3",
- *   "Upload failed". Successes and notices clear themselves; errors and
- *   warnings wait for the close control.
+ * - **Mentions** that point to a group where this Member was named.
  *
- * Alert cards step aside on `/alerts` itself (the page already lists them);
- * event cards keep showing there.
+ * Alert cards step aside on `/alerts` itself (the page already lists them).
  */
 export function NotificationCenter({
   alerts,
@@ -51,46 +41,9 @@ export function NotificationCenter({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [events, setEvents] = useState<AppNotification[]>([]);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const sequence = useRef(0);
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-
-  const drop = useCallback((id: string) => {
-    const timer = timers.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      timers.current.delete(id);
-    }
-    setEvents((current) => current.filter((event) => event.id !== id));
-  }, []);
-
-  const push = useCallback(
-    (input: NotificationInput) => {
-      const id = `event:${(sequence.current += 1)}`;
-      const event: AppNotification = {
-        ...input,
-        id,
-        createdAt: Date.now(),
-        source: "event",
-      };
-      setEvents((current) => [...current, event]);
-      if (autoDismisses(event)) {
-        timers.current.set(
-          id,
-          setTimeout(() => drop(id), AUTO_DISMISS_MS),
-        );
-      }
-    },
-    [drop],
-  );
-
-  useEffect(() => {
-    setNotificationListener(push);
-    return () => setNotificationListener(null);
-  }, [push]);
 
   // A new Alert or mention *arriving* while the page is open gets one `chime`
   // (#817). The initial render is not an arrival, and neither is a re-render
@@ -113,16 +66,6 @@ export function NotificationCenter({
     if (arrived) play("arrive");
   }, [alerts, mentions, play]);
 
-  // An event pushed right before unmount must not leave a setTimeout holding
-  // this tree alive, so sweep every pending auto-dismiss on the way out.
-  useEffect(() => {
-    const pending = timers.current;
-    return () => {
-      for (const timer of pending.values()) clearTimeout(timer);
-      pending.clear();
-    };
-  }, []);
-
   const onAlertsPage = pathname.startsWith("/alerts");
 
   const items = useMemo(() => {
@@ -134,11 +77,11 @@ export function NotificationCenter({
         (mention) => !pathname.startsWith(`/teammates/channels/${mention.channelId}`)
       )
       .map(mentionNotification);
-    return visibleNotifications([...alertItems, ...mentionItems, ...events], {
+    return visibleNotifications([...alertItems, ...mentionItems], {
       limit: VISIBLE_LIMIT,
       dismissed,
     });
-  }, [alerts, mentions, events, dismissed, onAlertsPage, pathname]);
+  }, [alerts, mentions, dismissed, onAlertsPage, pathname]);
 
   if (items.length === 0) return null;
 
@@ -146,9 +89,6 @@ export function NotificationCenter({
   const hiddenAlerts = onAlertsPage ? 0 : totalAlertCount - shownAlerts;
 
   const closeAll = () => {
-    for (const item of items) {
-      if (item.source === "event") drop(item.id);
-    }
     setDismissed((current) => {
       const next = new Set(current);
       for (const item of items) next.add(item.id);

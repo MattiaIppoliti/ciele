@@ -1561,6 +1561,25 @@
                 }
               ]
             },
+            "feedbackReaction": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "positive"
+                },
+                {
+                  "type": "string",
+                  "const": "neutral"
+                },
+                {
+                  "type": "string",
+                  "const": "negative"
+                }
+              ]
+            },
             "trace": {
               "oneOf": [
                 {
@@ -8506,6 +8525,25 @@
                 }
               ]
             },
+            "feedbackReaction": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "positive"
+                },
+                {
+                  "type": "string",
+                  "const": "neutral"
+                },
+                {
+                  "type": "string",
+                  "const": "negative"
+                }
+              ]
+            },
             "createdAt": {
               "type": "string"
             }
@@ -8517,6 +8555,7 @@
             "flowId",
             "flowName",
             "feedback",
+            "feedbackReaction",
             "createdAt"
           ]
         }
@@ -9081,6 +9120,18 @@
                 {
                   "type": "number",
                   "const": -1
+                }
+              ]
+            },
+            "hasNeutralFeedback": {
+              "oneOf": [
+                {
+                  "type": "boolean",
+                  "const": false
+                },
+                {
+                  "type": "boolean",
+                  "const": true
                 }
               ]
             },
@@ -15998,6 +16049,25 @@
                     }
                   ]
                 },
+                "feedbackReaction": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string",
+                      "const": "positive"
+                    },
+                    {
+                      "type": "string",
+                      "const": "neutral"
+                    },
+                    {
+                      "type": "string",
+                      "const": "negative"
+                    }
+                  ]
+                },
                 "trace": {
                   "oneOf": [
                     {
@@ -16077,6 +16147,14 @@
                       {}
                     ]
                   },
+                  "feedbackReaction": {
+                    "oneOf": [
+                      {},
+                      {},
+                      {},
+                      {}
+                    ]
+                  },
                   "trace": {
                     "oneOf": [
                       {},
@@ -16141,6 +16219,18 @@
                     {
                       "type": "number",
                       "const": -1
+                    }
+                  ]
+                },
+                "hasNeutralFeedback": {
+                  "oneOf": [
+                    {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    {
+                      "type": "boolean",
+                      "const": true
                     }
                   ]
                 },
@@ -17522,11 +17612,31 @@
             "const": -1
           }
         ]
+      },
+      "reaction": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "const": "positive"
+          },
+          {
+            "type": "string",
+            "const": "neutral"
+          },
+          {
+            "type": "string",
+            "const": "negative"
+          }
+        ]
       }
     },
     "required": [
       "messageId",
-      "feedback"
+      "feedback",
+      "reaction"
     ]
   },
   "get /meta": {
@@ -18366,6 +18476,10 @@
               },
               {
                 "type": "string",
+                "const": "elevenlabs"
+              },
+              {
+                "type": "string",
                 "const": "azure_openai"
               }
             ]
@@ -18592,6 +18706,10 @@
           },
           {
             "type": "string",
+            "const": "elevenlabs"
+          },
+          {
+            "type": "string",
             "const": "azure_openai"
           }
         ]
@@ -18795,6 +18913,10 @@
               {
                 "type": "string",
                 "const": "openai_compatible"
+              },
+              {
+                "type": "string",
+                "const": "elevenlabs"
               },
               {
                 "type": "string",
@@ -19008,6 +19130,10 @@
                 {
                   "type": "string",
                   "const": "openai_compatible"
+                },
+                {
+                  "type": "string",
+                  "const": "elevenlabs"
                 },
                 {
                   "type": "string",
@@ -20916,6 +21042,25 @@
                 {
                   "type": "number",
                   "const": -1
+                }
+              ]
+            },
+            "feedbackReaction": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "positive"
+                },
+                {
+                  "type": "string",
+                  "const": "neutral"
+                },
+                {
+                  "type": "string",
+                  "const": "negative"
                 }
               ]
             },

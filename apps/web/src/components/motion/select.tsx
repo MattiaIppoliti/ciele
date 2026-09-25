@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import {
+  type HTMLMotionProps,
   motion,
   type Transition,
   useReducedMotion,
@@ -9,6 +10,8 @@ import {
 } from "motion/react";
 import {
   createContext,
+  type HTMLAttributes,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   useCallback,
   useContext,
@@ -19,6 +22,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useOpenChangeFeedback } from "@agent-hub/ui/feedback";
 import {
   EASE_OUT,
   SPRING_NUDGE,
@@ -48,19 +52,22 @@ type Placement = "bottom" | "top";
 
 interface SelectContextValue {
   value: string | undefined;
+  selectedValues: string[];
+  multiple: boolean;
   open: boolean;
   setOpen: (open: boolean) => void;
-  restoreFocus: () => void;
   select: (value: string) => void;
   register: (value: string, label: string) => void;
   unregister: (value: string) => void;
   labelFor: (value: string | undefined) => string | undefined;
   reduce: boolean;
   triggerId: string;
+  setTriggerId: (id: string) => void;
   listId: string;
   disabled: boolean;
   placement: Placement;
   setPlacement: (p: Placement) => void;
+  focusTrigger: () => void;
 }
 
 const SelectContext = createContext<SelectContextValue | null>(null);
@@ -71,19 +78,41 @@ function useSelectContext(component: string) {
   return ctx;
 }
 
-export interface SelectProps {
-  value?: string;
-  defaultValue?: string;
-  onValueChange?: (value: string) => void;
+interface SelectSharedProps {
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   className?: string;
   children: ReactNode;
 }
 
+export interface SelectSingleProps extends SelectSharedProps {
+  multiple?: false;
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+}
+
+export interface SelectMultipleProps extends SelectSharedProps {
+  multiple: true;
+  value?: string[];
+  defaultValue?: string[];
+  onValueChange?: (value: string[]) => void;
+}
+
+export type SelectProps = SelectSingleProps | SelectMultipleProps;
+
+export function Select(props: SelectMultipleProps): ReactNode;
+export function Select(props: SelectSingleProps): ReactNode;
 export function Select({
   value,
   defaultValue,
   onValueChange,
+  multiple = false,
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
   disabled = false,
   className,
   children,
@@ -91,28 +120,59 @@ export function Select({
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const [internal, setInternal] = useState(defaultValue);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const [internal, setInternal] = useState<string | string[] | undefined>(defaultValue);
   const [labels, setLabels] = useState<Map<string, string>>(new Map());
   const [placement, setPlacement] = useState<Placement>("bottom");
+  const [triggerId, setTriggerId] = useState(`${baseId}-trigger`);
 
   const controlled = value !== undefined;
-  const current = controlled ? value : internal;
-
-  const restoreFocus = useCallback(() => {
-    rootRef.current
-      ?.querySelector<HTMLButtonElement>(`#${CSS.escape(`${baseId}-trigger`)}`)
-      ?.focus({ preventScroll: true });
-  }, [baseId]);
+  const current = multiple
+    ? undefined
+    : controlled
+      ? (value as string | undefined)
+      : (internal as string | undefined);
+  const selectedValues = useMemo(
+    () =>
+      multiple
+        ? controlled
+          ? (value as string[])
+          : ((internal as string[] | undefined) ?? [])
+        : current === undefined
+          ? []
+          : [current],
+    [controlled, current, internal, multiple, value],
+  );
+  const openControlled = openProp !== undefined;
+  const open = openControlled ? openProp : internalOpen;
+  const onOpenChangeWithFeedback = useOpenChangeFeedback(onOpenChange);
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!openControlled) setInternalOpen(next);
+      onOpenChangeWithFeedback?.(next);
+    },
+    [onOpenChangeWithFeedback, openControlled],
+  );
+  const focusTrigger = useCallback(() => {
+    document.getElementById(triggerId)?.focus();
+  }, [triggerId]);
 
   const select = useCallback(
     (next: string) => {
+      if (multiple) {
+        const nextValues = selectedValues.includes(next)
+          ? selectedValues.filter((selected) => selected !== next)
+          : [...selectedValues, next];
+        if (!controlled) setInternal(nextValues);
+        (onValueChange as ((values: string[]) => void) | undefined)?.(nextValues);
+        return;
+      }
       if (!controlled) setInternal(next);
-      onValueChange?.(next);
+      (onValueChange as ((selected: string) => void) | undefined)?.(next);
       setOpen(false);
-      restoreFocus();
+      requestAnimationFrame(focusTrigger);
     },
-    [controlled, onValueChange, restoreFocus],
+    [controlled, focusTrigger, multiple, onValueChange, selectedValues, setOpen],
   );
 
   const register = useCallback((v: string, label: string) => {
@@ -131,19 +191,14 @@ export function Select({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented) return;
-      e.preventDefault();
-      restoreFocus();
-      setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        focusTrigger();
+      }
     };
     const onPointer = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node))
         setOpen(false);
-        window.requestAnimationFrame(() => {
-          const listbox = rootRef.current?.querySelector('[role="listbox"]');
-          if (listbox?.contains(document.activeElement)) restoreFocus();
-        });
-      }
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("pointerdown", onPointer);
@@ -151,56 +206,94 @@ export function Select({
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("pointerdown", onPointer);
     };
-  }, [open, restoreFocus]);
+  }, [focusTrigger, open, setOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => {
+      const options = document
+        .getElementById(`${baseId}-list`)
+        ?.querySelectorAll<HTMLButtonElement>("[role=option]:not(:disabled)");
+      if (!options) return;
+      const selected = Array.from(options).find(
+        (option) => option.getAttribute("aria-selected") === "true",
+      );
+      (selected ?? options.item(0))?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [baseId, open]);
 
   const ctx = useMemo<SelectContextValue>(
     () => ({
-      value: current,
+      value: current ?? (multiple ? selectedValues[0] : undefined),
+      selectedValues,
+      multiple,
       open,
       setOpen,
-      restoreFocus,
       select,
       register,
       unregister,
       labelFor: (v) => (v === undefined ? undefined : labels.get(v)),
       reduce,
-      triggerId: `${baseId}-trigger`,
+      triggerId,
+      setTriggerId,
       listId: `${baseId}-list`,
       disabled,
       placement,
       setPlacement,
+      focusTrigger,
     }),
     [
       current,
+      selectedValues,
+      multiple,
       open,
-      restoreFocus,
+      setOpen,
       select,
       register,
       unregister,
       labels,
       reduce,
       baseId,
+      triggerId,
+      setTriggerId,
       disabled,
       placement,
+      focusTrigger,
     ],
   );
 
   return (
     <SelectContext.Provider value={ctx}>
-      <div ref={rootRef} className={cn("relative", className)}>
+      <div ref={rootRef} data-slot="select" className={cn("relative", className)}>
         {children}
       </div>
     </SelectContext.Provider>
   );
 }
 
-export interface SelectTriggerProps {
-  className?: string;
+export interface SelectTriggerProps
+  extends Omit<HTMLMotionProps<"button">, "children" | "size"> {
+  size?: "sm" | "default";
   children: ReactNode;
 }
 
-export function SelectTrigger({ className, children }: SelectTriggerProps) {
+export function SelectTrigger({
+  className,
+  size = "default",
+  children,
+  id,
+  onClick,
+  onKeyDown,
+  disabled = false,
+  ...props
+}: SelectTriggerProps) {
   const ctx = useSelectContext("SelectTrigger");
+  const setTriggerId = ctx.setTriggerId;
+  const actualId = id ?? `${ctx.triggerId}`;
+  useLayoutEffect(() => {
+    setTriggerId(actualId);
+  }, [actualId, setTriggerId]);
   const isTop = ctx.placement === "top";
   // edge facing the panel flattens then rounds; the far edge stays rounded.
   // All four corners are specified so none gets stranded when placement flips.
@@ -212,20 +305,24 @@ export function SelectTrigger({ className, children }: SelectTriggerProps) {
       : { duration: 0.42, times: [0, 0.5, 1], ease: EASE_OUT };
   return (
     <motion.button
+      {...props}
       type="button"
-      id={ctx.triggerId}
-      data-slot="animated-select-trigger"
-      disabled={ctx.disabled}
+      id={actualId}
+      data-slot="select-trigger"
+      disabled={ctx.disabled || disabled}
       aria-haspopup="listbox"
       aria-expanded={ctx.open}
       aria-controls={ctx.listId}
-      onClick={() => ctx.setOpen(!ctx.open)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) ctx.setOpen(!ctx.open);
+      }}
       onKeyDown={(event) => {
+        onKeyDown?.(event);
         if (
+          !event.defaultPrevented &&
           !ctx.open &&
-          (event.key === "ArrowDown" ||
-            event.key === "ArrowUp" ||
-            (event.altKey && event.key === "ArrowDown"))
+          (event.key === "ArrowDown" || event.key === "ArrowUp")
         ) {
           event.preventDefault();
           ctx.setOpen(true);
@@ -247,9 +344,10 @@ export function SelectTrigger({ className, children }: SelectTriggerProps) {
         borderBottomRightRadius: isTop ? INSTANT_TRANSITION : kfT,
       }}
       className={cn(
-        "relative z-10 flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors",
+        "relative z-10 flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2 text-left text-sm whitespace-nowrap text-foreground outline-none transition-colors",
         "hover:border-(--color-border-strong) focus-visible:ring-2 focus-visible:ring-foreground/20",
         "disabled:pointer-events-none disabled:opacity-50",
+        size === "sm" && "h-9 py-1.5",
         className,
       )}
     >
@@ -269,16 +367,27 @@ export function SelectTrigger({ className, children }: SelectTriggerProps) {
 export interface SelectValueProps {
   placeholder?: string;
   className?: string;
+  children?: ReactNode | ((value: string) => ReactNode);
 }
 
-export function SelectValue({ placeholder, className }: SelectValueProps) {
+export function SelectValue({
+  placeholder,
+  className,
+  children,
+}: SelectValueProps) {
   const ctx = useSelectContext("SelectValue");
   const label = ctx.labelFor(ctx.value);
+  const content =
+    typeof children === "function"
+      ? ctx.value === undefined
+        ? placeholder ?? "Select"
+        : children(ctx.value)
+      : children ?? label ?? placeholder ?? "Select";
   return (
     <span
       className={cn(label ? "text-foreground" : "text-muted-foreground", className)}
     >
-      {label ?? placeholder ?? "Select"}
+      {content}
     </span>
   );
 }
@@ -291,33 +400,11 @@ export interface SelectContentProps {
 export function SelectContent({ className, children }: SelectContentProps) {
   const ctx = useSelectContext("SelectContent");
   const innerRef = useRef<HTMLDivElement>(null);
-  const typeaheadRef = useRef("");
-  const typeaheadTimerRef = useRef<number | null>(null);
   const [height, setHeight] = useState(0);
+  const typeaheadRef = useRef("");
+  const typeaheadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const open = ctx.open;
   const { setPlacement } = ctx;
-
-  useEffect(
-    () => () => {
-      if (typeaheadTimerRef.current !== null)
-        window.clearTimeout(typeaheadTimerRef.current);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    const frame = window.requestAnimationFrame(() => {
-      const options = innerRef.current?.querySelectorAll<HTMLButtonElement>(
-        '[role="option"]:not(:disabled)',
-      );
-      const selected = innerRef.current?.querySelector<HTMLButtonElement>(
-        '[role="option"][aria-selected="true"]:not(:disabled)',
-      );
-      (selected ?? options?.[0])?.focus({ preventScroll: true });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [open]);
 
   useLayoutEffect(() => {
     const node = innerRef.current;
@@ -327,7 +414,7 @@ export function SelectContent({ className, children }: SelectContentProps) {
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  });
 
   // On open, flip upward when there isn't room below and there's more above.
   useLayoutEffect(() => {
@@ -350,6 +437,65 @@ export function SelectContent({ className, children }: SelectContentProps) {
   const nearGap = open ? 8 : 0;
   const nearRadius = open ? 12 : 0;
 
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Tab") {
+      requestAnimationFrame(() => ctx.setOpen(false));
+      return;
+    }
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const options = Array.from(
+        innerRef.current?.querySelectorAll<HTMLButtonElement>(
+          '[role="option"]:not(:disabled)',
+        ) ?? [],
+      );
+      if (!options.length) return;
+      const activeIndex = options.indexOf(document.activeElement as HTMLButtonElement);
+      const nextIndex =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? options.length - 1
+            : activeIndex < 0
+              ? 0
+              : (activeIndex + (event.key === "ArrowDown" ? 1 : -1) + options.length) %
+                options.length;
+      options[nextIndex]?.focus();
+      options[nextIndex]?.scrollIntoView({ block: "nearest" });
+      return;
+    }
+
+    if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      typeaheadRef.current += event.key.toLocaleLowerCase();
+      if (typeaheadTimerRef.current) clearTimeout(typeaheadTimerRef.current);
+      typeaheadTimerRef.current = setTimeout(() => {
+        typeaheadRef.current = "";
+      }, 500);
+      const options = Array.from(
+        innerRef.current?.querySelectorAll<HTMLButtonElement>(
+          '[role="option"]:not(:disabled)',
+        ) ?? [],
+      );
+      const start = Math.max(0, options.indexOf(document.activeElement as HTMLButtonElement) + 1);
+      const ordered = [...options.slice(start), ...options.slice(0, start)];
+      const match = ordered.find((option) =>
+        option.textContent?.trim().toLocaleLowerCase().startsWith(typeaheadRef.current),
+      );
+      if (match) {
+        event.preventDefault();
+        match.focus();
+        match.scrollIntoView({ block: "nearest" });
+      }
+    }
+  };
+
+  useEffect(
+    () => () => {
+      if (typeaheadTimerRef.current) clearTimeout(typeaheadTimerRef.current);
+    },
+    [],
+  );
+
   // 0.5 bounce over 0.6s used to make a dropdown that opened on a click
   // overshoot like something thrown. Overshoot belongs to motion a gesture
   // carried; nothing carried this one.
@@ -367,62 +513,11 @@ export function SelectContent({ className, children }: SelectContentProps) {
     <motion.div
       id={ctx.listId}
       role="listbox"
+      aria-multiselectable={ctx.multiple || undefined}
+      onKeyDown={onKeyDown}
       aria-labelledby={ctx.triggerId}
       aria-hidden={!open}
       inert={!open}
-      onBlurCapture={(event) => {
-        const next = event.relatedTarget;
-        if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
-          ctx.setOpen(false);
-        }
-      }}
-      onKeyDown={(event) => {
-        if (event.defaultPrevented) return;
-        const options = Array.from(
-          innerRef.current?.querySelectorAll<HTMLButtonElement>(
-            '[role="option"]:not(:disabled)',
-          ) ?? [],
-        );
-        const activeIndex = options.indexOf(
-          document.activeElement as HTMLButtonElement,
-        );
-        let nextIndex: number | undefined;
-        if (event.key === "ArrowDown")
-          nextIndex = activeIndex < options.length - 1 ? activeIndex + 1 : 0;
-        else if (event.key === "ArrowUp")
-          nextIndex = activeIndex > 0 ? activeIndex - 1 : options.length - 1;
-        else if (event.key === "Home") nextIndex = 0;
-        else if (event.key === "End") nextIndex = options.length - 1;
-        if (nextIndex !== undefined && options[nextIndex]) {
-          event.preventDefault();
-          options[nextIndex].focus({ preventScroll: true });
-          return;
-        }
-        if (
-          event.key.length === 1 &&
-          !event.altKey &&
-          !event.ctrlKey &&
-          !event.metaKey
-        ) {
-          typeaheadRef.current += event.key.toLocaleLowerCase();
-          if (typeaheadTimerRef.current !== null)
-            window.clearTimeout(typeaheadTimerRef.current);
-          typeaheadTimerRef.current = window.setTimeout(() => {
-            typeaheadRef.current = "";
-            typeaheadTimerRef.current = null;
-          }, 700);
-          const match = options.find((option) =>
-            (option.textContent ?? "")
-              .trim()
-              .toLocaleLowerCase()
-              .startsWith(typeaheadRef.current),
-          );
-          if (match) {
-            event.preventDefault();
-            match.focus({ preventScroll: true });
-          }
-        }
-      }}
       initial={false}
       animate={
         ctx.reduce
@@ -442,7 +537,7 @@ export function SelectContent({ className, children }: SelectContentProps) {
       }
       transition={
         ctx.reduce
-          ? { duration: 0 }
+          ? { duration: 0.12 }
           : {
               opacity: open
                 ? { duration: 0.18 }
@@ -476,7 +571,7 @@ export function SelectContent({ className, children }: SelectContentProps) {
         variants={ctx.reduce ? undefined : LIST_VARIANTS}
         initial={false}
         animate={open ? "show" : "hidden"}
-        className="p-1"
+        className="max-h-[min(20rem,calc(100vh-2rem))] overflow-y-auto p-1"
       >
         {children}
       </motion.div>
@@ -498,28 +593,26 @@ export function SelectItem({
   children,
 }: SelectItemProps) {
   const ctx = useSelectContext("SelectItem");
-  const { value: selectedValue, reduce, register, unregister, select } = ctx;
-  const selected = selectedValue === value;
-  const label = typeof children === "string" ? children : value;
+  const register = ctx.register;
+  const unregister = ctx.unregister;
+  const selected = ctx.selectedValues.includes(value);
+  const optionRef = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
-    register(value, label);
+    register(value, optionRef.current?.textContent?.trim() || value);
     return () => unregister(value);
-  }, [register, unregister, value, label]);
+  }, [register, unregister, value, children]);
 
   return (
-    <motion.div
-      role="presentation"
-      variants={reduce ? undefined : ITEM_VARIANTS}
-    >
+    <motion.li role="presentation" variants={ctx.reduce ? undefined : ITEM_VARIANTS}>
       <button
+        ref={optionRef}
         type="button"
-        data-slot="animated-select-item"
         role="option"
         aria-selected={selected}
         tabIndex={-1}
         disabled={disabled}
-        onClick={() => select(value)}
+        onClick={() => ctx.select(value)}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm outline-none transition-colors",
           selected
@@ -532,6 +625,67 @@ export function SelectItem({
         {children}
         {selected ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
       </button>
-    </motion.div>
+    </motion.li>
+  );
+}
+
+export function SelectGroup({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div data-slot="select-group" role="group" className={className} {...props}>
+      {children}
+    </div>
+  );
+}
+
+export function SelectGroupLabel({
+  children,
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      data-slot="select-group-label"
+      className={cn("px-2 py-1.5 text-xs font-medium text-muted-foreground", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function SelectSeparator({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      data-slot="select-separator"
+      role="separator"
+      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      {...props}
+    />
+  );
+}
+
+export function SelectScrollUpArrow({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      data-slot="select-scroll-up-arrow"
+      aria-hidden="true"
+      className={cn("flex h-5 items-center justify-center text-muted-foreground", className)}
+      {...props}
+    >
+      <ChevronUp className="size-4" />
+    </div>
+  );
+}
+
+export function SelectScrollDownArrow({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      data-slot="select-scroll-down-arrow"
+      aria-hidden="true"
+      className={cn("flex h-5 items-center justify-center text-muted-foreground", className)}
+      {...props}
+    >
+      <ChevronDown className="size-4" />
+    </div>
   );
 }

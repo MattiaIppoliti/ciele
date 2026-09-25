@@ -68,7 +68,7 @@ const FEATURES: Feature[] = [
     body: "Track resolution rate, answer ratings and conversation trends, see how your assistants perform and where to improve.",
     visual: () => <InsightsVisual />,
     details: [
-      "One live dashboard shows AI resolution rate, thumbs-up/down ratings, escalations, unique users and CSAT, all filterable by assistant, channel and date range.",
+      "One live dashboard shows AI resolution rate, emoji feedback, escalations, unique users and CSAT, all filterable by assistant, channel and date range.",
       "Generate AI trend reports over any window and export the underlying data, so you know which answers to improve next.",
     ],
   },

@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setActiveFeedbackRuntime, type FeedbackRuntime } from "@agent-hub/ui/feedback";
-import { setNotificationListener } from "@/lib/notification-bus";
 import { feedbackForStatus, toast } from "./toast";
 
 describe("feedbackForStatus", () => {
@@ -19,12 +18,10 @@ describe("toast", () => {
   afterEach(() => {
     play.mockClear();
     setActiveFeedbackRuntime(null);
-    setNotificationListener(null);
   });
 
   it("sounds the outcome without any call site knowing", () => {
     setActiveFeedbackRuntime(runtime);
-    setNotificationListener(() => {});
     toast.success("Published");
     toast.error("Upload failed");
     toast.info("Syncing");
@@ -32,8 +29,7 @@ describe("toast", () => {
     expect(play.mock.calls.map((c) => c[0])).toEqual(["success", "error"]);
   });
 
-  it("is silent where no provider is mounted", () => {
-    setNotificationListener(() => {});
+  it("does not require a mounted feedback provider or browser window", () => {
     expect(() => toast.success("Published")).not.toThrow();
     expect(play).not.toHaveBeenCalled();
   });

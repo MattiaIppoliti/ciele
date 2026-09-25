@@ -1,36 +1,5 @@
-import {
-  BellRing,
-  Braces,
-  ChartLine,
-  CircleCheck,
-  ClipboardList,
-  Clock,
-  Code2,
-  Download,
-  Eye,
-  FileText,
-  Filter,
-  Flag,
-  Globe,
-  Layers,
-  Link2,
-  Lock,
-  MessageCircle,
-  MessagesSquare,
-  Monitor,
-  Palette,
-  PanelsTopLeft,
-  Phone,
-  Scale,
-  ShieldCheck,
-  Sparkles,
-  SquareKanban,
-  Table2,
-  Users,
-  Workflow,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { Braces, ChartLine, CircleCheck, Clock, Download, FileText, Lock, MessageCircle, MessagesSquare, Monitor, PanelsTopLeft, Phone, ShieldCheck, Sparkles, Table2, Users, Workflow, type LucideIcon } from "lucide-react";
+import { BellRing, ClipboardList, Code2, Eye, Filter, Flag, Globe, Layers, Link2, Palette, Scale, SquareKanban, Zap } from "lucide-react";
 import type { FeatureEntry } from "@/components/marketing/feature-catalog";
 import { SpotlightCard } from "@/components/marketing/spotlight-card";
 

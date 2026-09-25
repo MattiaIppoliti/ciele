@@ -1,17 +1,8 @@
 "use client";
 // beui.dev/components/agents/tool-result
 
-import {
-  Ban,
-  Braces,
-  ChevronDown,
-  CircleCheck,
-  CircleX,
-  LoaderCircle,
-  RotateCcw,
-  SquareTerminal,
-  Wrench,
-} from "lucide-react";
+import { Braces, CircleCheck, RotateCcw, Wrench } from "lucide-react";
+import { Ban, ChevronDown, CircleX, LoaderCircle, SquareTerminal } from "lucide-react";
 // Icon data for the copy mark, which reshapes into the check on click.
 import { Check as CheckData, Copy as CopyData } from "lucide";
 import { MorphIcon } from "morphicons/react";

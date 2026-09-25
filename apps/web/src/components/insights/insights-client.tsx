@@ -1,16 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Activity,
-  BellRing,
-  Calendar as CalendarIcon,
-  Download,
-  Info,
-  ListFilter,
-  UserRound,
-  X,
-} from "lucide-react";
+import { Activity, Download, UserRound, X } from "lucide-react";
+import { BellRing, Calendar as CalendarIcon, Info, ListFilter } from "lucide-react";
 import { escapeCsvField } from "@ciele/ops/csv";
 import { Button } from "@agent-hub/ui";
 import { CalendarRange } from "@/components/ui/calendar";
@@ -389,7 +381,7 @@ export function InsightsClient({
                 >
                   <SelectTrigger>
                     <SelectValue>
-                      {(v: Aggregate) => AGGREGATE_LABELS[v]}
+                      {(value: string) => AGGREGATE_LABELS[value as Aggregate]}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -411,8 +403,8 @@ export function InsightsClient({
                 value={filters.feedback}
                 placeholder="All Feedbacks"
                 options={[
-                  { value: "up", label: "Positive 👍" },
-                  { value: "down", label: "Negative 👎" },
+                  { value: "up", label: "Positive 🙂" },
+                  { value: "down", label: "Negative 🙁" },
                 ]}
                 onChange={(feedback) =>
                   setFilters({

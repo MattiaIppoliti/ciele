@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { playFeedback } from "@agent-hub/ui/feedback";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   cloneElement,
@@ -50,7 +51,7 @@ interface ContextMenuContextValue {
   openAt: (
     point: MenuPoint,
     modality: OpenModality,
-    returnFocusElement?: HTMLElement | null
+    options?: { feedback?: boolean; returnFocusElement?: HTMLElement | null }
   ) => void;
   point: MenuPoint;
   modality: OpenModality;
@@ -278,7 +279,7 @@ export function ContextMenu({
     (
       nextPoint: MenuPoint,
       nextModality: OpenModality,
-      returnFocusElement?: HTMLElement | null
+      { feedback = true, returnFocusElement }: { feedback?: boolean; returnFocusElement?: HTMLElement | null } = {}
     ) => {
       returnFocusRef.current = returnFocusElement ?? null;
       setPoint(nextPoint);
@@ -286,6 +287,7 @@ export function ContextMenu({
       setInvocation((current) => current + 1);
       setActiveId(null);
       setOpen(true);
+      if (feedback) playFeedback("open");
     },
     [setOpen]
   );
@@ -415,7 +417,7 @@ export function ContextMenuTrigger({
         y: rect.top + rect.height / 2,
       },
       "keyboard",
-      focusableWithinTrigger(event.currentTarget, event.target)
+      { returnFocusElement: focusableWithinTrigger(event.currentTarget, event.target) }
     );
   };
 
@@ -433,7 +435,7 @@ export function ContextMenuTrigger({
       context.openAt(
         { x: event.clientX, y: event.clientY },
         "pointer",
-        focusableWithinTrigger(event.currentTarget, event.target)
+        { returnFocusElement: focusableWithinTrigger(event.currentTarget, event.target) }
       );
     },
     onKeyDown,

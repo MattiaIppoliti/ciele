@@ -8,8 +8,9 @@ import { googleFontHref, resolveWidgetStyle } from "@/lib/widget-style";
 import { reviewStatusSentence } from "@/lib/review-status";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
+import { feedbackReactionScore, type FeedbackReactionId } from "@agent-hub/core";
 import { playFeedback } from "@agent-hub/ui/feedback";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { ProgressLine } from "@/components/chat/progress-line";
@@ -30,6 +31,7 @@ import {
   MessageScroller,
 } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
+import { SpeechPlayback } from "@/components/chat/speech-playback";
 import { toPromptModels, useChatModels } from "@/components/chat/use-chat-models";
 import { useComposerTrigger, replaceToken } from "@/components/chat/use-composer-trigger";
 import { useHelpDesks } from "@/components/chat/use-help-desks";
@@ -56,18 +58,9 @@ import {
   type TriggerReport,
 } from "@/lib/widget-triggers";
 import type { WidgetConversationSummary, WidgetMemory } from "./widget-history";
-import {
-  ArrowRight,
-  ExternalLink,
-  Headphones,
-  HelpCircle,
-  Maximize2,
-  Paperclip,
-  Sparkles,
-  ThumbsDown,
-  ThumbsUp,
-  X,
-} from "lucide-react";
+import { ArrowRight, ExternalLink, Sparkles, X } from "lucide-react";
+import { Headphones, HelpCircle, Maximize2, Paperclip } from "lucide-react";
+import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 
 const LazyChatMarkdown = lazy(async () => {
   const chatMarkdownModule = await import("@/components/chat/chat-markdown");
@@ -198,6 +191,8 @@ function BotMessageView({
   onSend,
   onOpenSupport,
   onVote,
+  voiceEnabled,
+  conversationId,
 }: {
   msg: BotMsg;
   active: boolean;
@@ -206,7 +201,9 @@ function BotMessageView({
   assistantId: string;
   onSend: (text: string, options?: { faq?: boolean }) => void;
   onOpenSupport: (helpDeskId?: string) => void;
-  onVote: (value: -1 | 1) => void;
+  onVote: (reaction: FeedbackReactionId | null) => void;
+  voiceEnabled?: boolean;
+  conversationId: string | null;
 }) {
   const parts = visibleReplyParts(msg.parts, !hideEscalation);
   const lastTextIndex = parts.reduce(
@@ -217,8 +214,7 @@ function BotMessageView({
     parts.flatMap((part) => (part.type === "sources" ? part.sources : [])),
     assistantId
   );
-  const feedback =
-    msg.feedback === 1 ? "up" : msg.feedback === -1 ? "down" : null;
+  const feedback = msg.feedbackReaction ?? null;
 
   return (
     <Message from="assistant">
@@ -238,13 +234,13 @@ function BotMessageView({
                 status="complete"
                 copyText={part.text}
                 showActions={isLast && Boolean(msg.id)}
+                extraActions={isLast && voiceEnabled && conversationId && msg.id && !active ? (
+                  <SpeechPlayback endpoint={`/api/widget/${assistantId}/voice/speech`} visitorId={visitorId} conversationId={conversationId} messageId={msg.id} text={parts.filter((item) => item.type === "text").map((item) => item.text).join("\n\n")} />
+                ) : null}
                 sources={isLast ? citationItems : []}
                 feedback={isLast ? feedback : null}
                 onFeedbackChange={(next) => {
-                  if (next === "up") onVote(1);
-                  else if (next === "down") onVote(-1);
-                  // Clearing = re-voting the active value; the server toggles.
-                  else onVote(msg.feedback === 1 ? 1 : -1);
+                  onVote(next);
                 }}
               >
                 <DeferredChatMarkdown text={part.text} />
@@ -413,24 +409,10 @@ function BotMessageView({
           </StreamingResponse>
         )}
         {lastTextIndex === -1 && msg.id && parts.length > 0 && (
-          <div className="flex gap-1">
-            <button
-              type="button"
-              aria-label="Vote up"
-              onClick={() => onVote(1)}
-              className={`press-control rounded p-1 transition-colors ${msg.feedback === 1 ? "bg-muted" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <ThumbsUp className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Vote down"
-              onClick={() => onVote(-1)}
-              className={`press-control rounded p-1 transition-colors ${msg.feedback === -1 ? "bg-muted" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <ThumbsDown className="size-3.5" />
-            </button>
-          </div>
+          <EmojiFeedback
+            value={msg.feedbackReaction ?? null}
+            onChange={onVote}
+          />
         )}
       </MessageContent>
     </Message>
@@ -448,6 +430,7 @@ interface BotMsg extends TurnView {
   role: "bot";
   id: string | null;
   feedback: -1 | 0 | 1;
+  feedbackReaction?: FeedbackReactionId | null;
 }
 
 type Msg = { role: "user"; text: string; sentAt: string | null } | BotMsg;
@@ -511,9 +494,11 @@ export function WidgetChat({
   modelChoice = false,
   skills = [],
   attachmentsEnabled = false,
+  voiceEnabled = false,
   studyMode,
 }: {
   assistantId: string;
+  voiceEnabled?: boolean;
   nickname: string;
   avatarUrl?: string | null;
   welcomeMessage: string;
@@ -755,10 +740,6 @@ export function WidgetChat({
   const [fullscreen, setFullscreen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  // Dia-style border pulse on the composer: plays every time the chat input
-  // gains focus (ignored while a pulse is already running).
-  const [composerPulse, setComposerPulse] = useState(false);
-
   // Widget SSO gate. `null` while we don't yet know (avoids flashing the gate);
   // resolved from the per-visitor /session endpoint.
   const [gate, setGate] = useState<{
@@ -837,12 +818,6 @@ export function WidgetChat({
   }
 
   const gated = requireSignIn && (gate === null || !gate.authenticated);
-
-  function fireComposerPulse() {
-    if (composerPulse) return;
-    setComposerPulse(true);
-    window.setTimeout(() => setComposerPulse(false), 1100);
-  }
 
   function updateLastBot(update: (bot: BotMsg) => BotMsg) {
     setMessages((prev) => {
@@ -1049,7 +1024,7 @@ export function WidgetChat({
     setConversationId(id);
     setHistoryOpen(false);
     setMessages(
-      (data.messages ?? []).map((m: { id: string; role: string; content: unknown[]; feedback: -1 | 0 | 1; createdAt?: string }): Msg => {
+      (data.messages ?? []).map((m: { id: string; role: string; content: unknown[]; feedback: -1 | 0 | 1; feedbackReaction?: FeedbackReactionId | null; createdAt?: string }): Msg => {
         if (m.role === "user") {
           const first = m.content[0] as { text?: string } | undefined;
           return { role: "user", text: first?.text ?? "", sentAt: m.createdAt ?? null };
@@ -1060,21 +1035,23 @@ export function WidgetChat({
           parts: m.content as ChatReplyPart[],
           phase: "done",
           feedback: m.feedback,
+          feedbackReaction: m.feedbackReaction ?? null,
         };
       })
     );
   }
 
-  async function vote(bot: BotMsg, value: -1 | 1) {
+  async function vote(bot: BotMsg, reaction: FeedbackReactionId | null) {
     if (!bot.id) return;
-    const feedback = bot.feedback === value ? 0 : value;
+    const nextReaction = bot.feedbackReaction === reaction ? null : reaction;
+    const feedback = feedbackReactionScore(nextReaction);
     setMessages((prev) =>
-      prev.map((m) => (m.role === "bot" && m.id === bot.id ? { ...m, feedback } : m))
+      prev.map((m) => (m.role === "bot" && m.id === bot.id ? { ...m, feedback, feedbackReaction: nextReaction } : m))
     );
     await fetch(`/api/widget/${assistantId}/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messageId: bot.id, feedback }),
+      body: JSON.stringify({ messageId: bot.id, reaction: nextReaction }),
     });
   }
 
@@ -1283,6 +1260,8 @@ export function WidgetChat({
             </Message>
           ) : (
             <BotMessageView
+              voiceEnabled={voiceEnabled}
+              conversationId={conversationId}
               key={i}
               msg={msg}
               active={pending && i === messages.length - 1}
@@ -1369,72 +1348,71 @@ export function WidgetChat({
             )}
           />
         )}
-        {(composerPulse || pending) && (
-          <ComposerPulse color={ws.buttonColor} focus={composerPulse} loading={pending} />
-        )}
-        <PromptInput
-          value={draft}
-          onValueChange={(value) => {
-            setDraft(value);
-            if (!deskTriggerSeen && value.includes("@")) setDeskTriggerSeen(true);
-            deskTrigger.sync(value);
-            skillTrigger.sync(value);
-          }}
-          models={toPromptModels(models)}
-          model={model ?? models[0]?.selector}
-          onModelChange={setModel}
-          onSubmit={(value) => {
-            // A file still being read would be dropped from this message
-            // without saying so; the chip says "reading…" while it is.
-            if (attachments.busy) return;
-            // The sent message took its `@` with it, so the dismissal keyed to
-            // that index has to go too, or the next message starting with `@`
-            // is silently treated as the one already dismissed.
-            deskTrigger.reset();
-            skillTrigger.reset();
-            if (!composerClosed) send(value);
-          }}
-          onSelect={(event) => {
-            deskTrigger.sync(event.currentTarget.value);
-            skillTrigger.sync(event.currentTarget.value);
-          }}
-          onKeyDown={(event) => {
-            deskTrigger.handleKeyDown(event);
-            skillTrigger.handleKeyDown(event);
-          }}
-          onBlur={() => {
-            deskTrigger.close();
-            skillTrigger.close();
-          }}
-          leadingAction={<StudyMenu settings={studyMode} disabled={pending || composerClosed} onSelect={prefix => { setDraft(prefix + draft.replace(/^@(quiz|dwords|truefalse|flashcards|study)\s*/i, "")); composerTextarea()?.focus(); }} />}
-          actions={composerActions}
-          onAction={(action) => {
-            if (action === "attach") {
-              fileInputRef.current?.click();
-            } else if (action === "skill") {
-              skillTrigger.openFromButton(draft, setDraft);
-            } else if (action === "desk") {
+        <ComposerPulse loading={pending}>
+          <PromptInput
+            leadingAction={<StudyMenu settings={studyMode} disabled={pending || composerClosed} onSelect={prefix => { setDraft(prefix + draft.replace(/^@(quiz|dwords|truefalse|flashcards|study)\s*/i, "")); composerTextarea()?.focus(); }} />}
+            voiceInput={voiceEnabled ? { endpoint: `/api/widget/${assistantId}/voice/transcribe`, visitorId } : undefined}
+            value={draft}
+            onValueChange={(value) => {
+              setDraft(value);
+              if (!deskTriggerSeen && value.includes("@")) setDeskTriggerSeen(true);
+              deskTrigger.sync(value);
+              skillTrigger.sync(value);
+            }}
+            models={toPromptModels(models)}
+            model={model ?? models[0]?.selector}
+            onModelChange={setModel}
+            onSubmit={(value) => {
+              // A file still being read would be dropped from this message
+              // without saying so; the chip says "reading…" while it is.
+              if (attachments.busy) return;
+              // The sent message took its `@` with it, so the dismissal keyed to
+              // that index has to go too, or the next message starting with `@`
+              // is silently treated as the one already dismissed.
+              deskTrigger.reset();
+              skillTrigger.reset();
+              if (!composerClosed) send(value);
+            }}
+            onSelect={(event) => {
+              deskTrigger.sync(event.currentTarget.value);
+              skillTrigger.sync(event.currentTarget.value);
+            }}
+            onKeyDown={(event) => {
+              deskTrigger.handleKeyDown(event);
+              skillTrigger.handleKeyDown(event);
+            }}
+            onBlur={() => {
+              deskTrigger.close();
+              skillTrigger.close();
+            }}
+            actions={composerActions}
+            onAction={(action) => {
+              if (action === "attach") {
+                fileInputRef.current?.click();
+              } else if (action === "skill") {
+                skillTrigger.openFromButton(draft, setDraft);
+              } else if (action === "desk") {
+                setDeskTriggerSeen(true);
+                deskTrigger.openFromButton(draft, setDraft);
+              }
+            }}
+            loading={pending}
+            onStop={() => abortRef.current?.abort()}
+            disabled={composerClosed}
+            minRows={1}
+            maxRows={6}
+            onFocus={() => {
               setDeskTriggerSeen(true);
-              deskTrigger.openFromButton(draft, setDraft);
+            }}
+            onPaste={attachmentsEnabled ? attachments.onPaste : undefined}
+            placeholder={
+              composerClosed
+                ? "This message doesn't take replies"
+                : `Ask ${nickname}...`
             }
-          }}
-          loading={pending}
-          onStop={() => abortRef.current?.abort()}
-          disabled={composerClosed}
-          minRows={1}
-          maxRows={6}
-          onFocus={() => {
-            fireComposerPulse();
-            setDeskTriggerSeen(true);
-          }}
-          onPaste={attachmentsEnabled ? attachments.onPaste : undefined}
-          placeholder={
-            composerClosed
-              ? "This message doesn't take replies"
-              : `Ask ${nickname}...`
-          }
-          aria-label={`Ask ${nickname}`}
-        />
+            aria-label={`Ask ${nickname}`}
+          />
+        </ComposerPulse>
         </div>
         {aiDisclaimer && (
           <p className="text-muted-foreground mt-3 text-xs leading-snug">

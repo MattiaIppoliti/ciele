@@ -9,7 +9,7 @@ import { RIGHT_RAIL_TRANSITION_VAR } from "@/components/shell/right-rail";
 /**
  * The bottom-right corner, and everything that floats in it.
  *
- * Two occupants now: the notification banner (alerts, mentions, toasts) above
+ * Two occupants now: the notification banner (alerts and mentions) above
  * the ingestion activity card (a crawl or an Import in flight). They share one
  * container so neither has to know the other's height, and so the corner has
  * one owner of its inset rather than two that drift apart.

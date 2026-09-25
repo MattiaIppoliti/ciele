@@ -2,6 +2,21 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@keyframes skeleton-reveal-pulse {
+  0%, 100% { opacity: 0.58; }
+  50% { opacity: 1; }
+}
+
+.skeleton-reveal-pulse {
+  animation-name: skeleton-reveal-pulse;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-reveal-pulse { animation: none; }
+}
+
 /* Generate utilities used by the shared UI primitives (workspace source). */
 @source "../../../../packages/ui/src";
 
@@ -411,40 +426,40 @@
 .dark[data-color-palette="mist-blue"] {
   --background: #151b23;
   --content: #151b23;
-  --foreground: #f5f7fa;
+  --foreground: oklch(0.985 0 0);
   --card: #202830;
   --table-frame: #18212b;
-  --card-foreground: #f5f7fa;
-  --card-sheen-line: rgba(255, 255, 255, 0.12);
-  --card-sheen-glow: rgba(255, 255, 255, 0.045);
+  --card-foreground: oklch(0.985 0 0);
+  --card-sheen-line: rgba(255, 255, 255, 0.035);
+  --card-sheen-glow: rgba(255, 255, 255, 0.02);
   --card-sheen-shade: transparent;
   --popover: #202830;
-  --popover-foreground: #f5f7fa;
-  --primary: #151b23;
-  --primary-foreground: #fff;
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
   --secondary: #202830;
-  --secondary-foreground: #f5f7fa;
+  --secondary-foreground: oklch(0.985 0 0);
   --muted: #202830;
-  --muted-foreground: #c2c9d1;
+  --muted-foreground: oklch(0.708 0 0);
   --accent: #202830;
-  --accent-foreground: #f5f7fa;
-  --border: #75818d;
-  --input: #8a96a2;
-  --ring: #f5f7fa;
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
   --sidebar: #202830;
-  --sidebar-foreground: #f5f7fa;
-  --sidebar-primary: #151b23;
-  --sidebar-primary-foreground: #fff;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.922 0 0);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
   --sidebar-accent: #28323d;
-  --sidebar-accent-foreground: #f5f7fa;
-  --sidebar-border: #75818d;
-  --sidebar-ring: #f5f7fa;
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* The shared button primitive has explicit neutral dark-mode paint for the
-   Midnight palette. Reassert Mist Blue's action color after those utilities. */
-html[data-app-surface="admin"][data-color-palette="mist-blue"] .bg-primary {
-  background-color: #151b23;
+/* Keep primary links and labels on the same readable light ink as Midnight
+   while Mist Blue changes the surrounding surfaces. */
+html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] .text-primary {
+  color: var(--foreground);
 }
 
 /* The console's 92% density matches the reference admin UI while keeping the
@@ -516,12 +531,6 @@ html[data-app-surface="admin"] {
   html[data-app-surface="admin"] [data-slot="animated-select-item"] {
     min-height: 44px;
   }
-}
-
-html[data-app-surface="admin"][data-color-palette="mist-blue"].dark button[data-slot="button"].bg-primary {
-  background-color: #151b23;
-  background-image: none;
-  color: #fff;
 }
 
 /* Keep admin pop-up selectors visually aligned with the animated model
@@ -661,32 +670,8 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
     linear-gradient(180deg, oklch(0.32 0.006 270), oklch(0.23 0.006 270));
 }
 
-/* Dia-style composer pulse: two blurred glow dots start at the bottom-center
-   of the chat input, race along the left/right halves of its border, and meet
-   at the top-center before fading out. Coordinates live in the SVG's
-   604x108 viewBox (preserveAspectRatio="none" stretches it to the composer). */
-.composer-pulse-left {
-  offset-path: path(
-    "M 302 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 L 302 2"
-  );
-  animation:
-    composer-pulse-path 0.7s ease-out 0.2s forwards,
-    composer-pulse-fade 0.7s ease-out 0.2s forwards;
-  opacity: 0;
-}
-
-.composer-pulse-right {
-  offset-path: path(
-    "M 302 106 L 570 106 A 32 32 0 0 0 602 74 L 602 34 A 32 32 0 0 0 570 2 L 302 2"
-  );
-  animation:
-    composer-pulse-path 0.7s ease-out 0.2s forwards,
-    composer-pulse-fade 0.7s ease-out 0.2s forwards;
-  opacity: 0;
-}
-
-/* Auth page loop variant: same border-race path but alternates forever
-   instead of firing once, so it never sits idle between focus events. */
+/* The auth preview keeps its own two-sided glow around a non-interactive
+   search field; chat composers use the vendored BorderBeam styles. */
 .auth-composer-pulse-left {
   offset-path: path(
     "M 302 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 L 302 2"
@@ -703,22 +688,6 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
   animation:
     composer-pulse-path 2.2s ease-in-out infinite alternate,
     composer-pulse-fade 2.2s ease-in-out infinite alternate;
-}
-
-/* Loading variant: a single glow dot circles the whole composer border
-   clockwise, looping continuously while a response streams in. */
-.composer-pulse-loading {
-  offset-path: path(
-    "M 302 2 L 570 2 A 32 32 0 0 1 602 34 L 602 74 A 32 32 0 0 1 570 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 Z"
-  );
-  animation: composer-pulse-loop 1.6s linear infinite;
-  opacity: 0.6;
-}
-
-@keyframes composer-pulse-loop {
-  to {
-    offset-distance: 100%;
-  }
 }
 
 @keyframes composer-pulse-path {
@@ -794,27 +763,10 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
 @media (prefers-reduced-motion: reduce) {
   .thinking-label-glow,
   .auth-grid-layer,
-  /* The composer border-race was the one family of keyframes left out of this
-     block. `composer-pulse-loading` matters most: it loops for the whole
-     duration of every streamed response, so on a long answer it is the only
-     thing moving on screen, indefinitely. */
-  .composer-pulse-left,
-  .composer-pulse-right,
   .auth-composer-pulse-left,
-  .auth-composer-pulse-right,
-  .composer-pulse-loading {
+  .auth-composer-pulse-right {
     animation: none;
   }
-  /* The one-shot pulses exist only to acknowledge focus; with the travel
-     removed, a dot parked at the start of the path reads as a stuck artifact,
-     so they are hidden outright.
-
-     `composer-pulse-loading` is deliberately NOT in that list. It is the
-     streaming indicator, and hiding it would take the *signal* away rather than
-     the motion: a reduced-motion reader would lose the only sign that an answer
-     is still coming. It keeps its glow, parked, and stops travelling. */
-  .composer-pulse-left,
-  .composer-pulse-right,
   .auth-composer-pulse-left,
   .auth-composer-pulse-right {
     opacity: 0;

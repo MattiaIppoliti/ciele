@@ -100,7 +100,7 @@
   query += "&u=" + encodeURIComponent(pageUrl);
   src += query;
   frame.title = "Chat assistant";
-  frame.allow = "clipboard-write";
+  frame.allow = "clipboard-write; microphone";
 
   // The chat iframe is the whole app: don't make every host-page view pay
   // for it up front. It loads when the browser is idle after the host page

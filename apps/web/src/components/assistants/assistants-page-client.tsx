@@ -2,14 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { Assistant } from "@agent-hub/core";
-import {
-  ArrowDownAZ,
-  Clock,
-  GalleryVerticalEnd,
-  LayoutGrid,
-  ListFilter,
-  Search,
-} from "lucide-react";
+import { Clock, GalleryVerticalEnd, LayoutGrid, Search } from "lucide-react";
+import { ArrowDownAZ, ListFilter } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import {
   DropdownMenu,

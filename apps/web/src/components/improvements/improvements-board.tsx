@@ -9,16 +9,8 @@ import type {
   ImprovementPriority,
   ImprovementStatus,
 } from "@agent-hub/core";
-import {
-  ChevronDown,
-  ChevronRight,
-  Columns3,
-  Download,
-  GalleryVerticalEnd,
-  ListFilter,
-  MessageSquare,
-  Search,
-} from "lucide-react";
+import { Columns3, Download, GalleryVerticalEnd, MessageSquare, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, ListFilter } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import { listImprovementsPageAction } from "@/app/actions";
 import { toast } from "@/lib/toast";

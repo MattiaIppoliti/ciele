@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { MessageCircle, Pencil, RotateCcw, UploadCloud, X } from "lucide-react";
+import { MessageCircle, RotateCcw, X } from "lucide-react";
+import { Pencil, UploadCloud } from "lucide-react";
 import type { Assistant, WidgetCorner, WidgetStyle } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
 import { updateAssistantAction } from "@/app/actions";

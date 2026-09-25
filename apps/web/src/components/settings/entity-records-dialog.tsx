@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Entity, EntityRecord } from "@agent-hub/core";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Dialog,
   DialogContent,

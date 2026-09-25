@@ -1,14 +1,6 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  DatabaseZap,
-  FileSearch,
-  KeyRound,
-  Lock,
-  Plug,
-  ShieldCheck,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, DatabaseZap, Lock, ShieldCheck, type LucideIcon } from "lucide-react";
+import { FileSearch, KeyRound, Plug } from "lucide-react";
 import { BouncyAccordion, type BouncyAccordionItem } from "@/components/motion/bouncy-accordion";
 import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { CtaSection } from "@/components/marketing/cta-section";

@@ -1,44 +1,166 @@
 ---
 title: Ajustes generales
-description: Configura la identidad del Asistente, el modelo, el motor de conocimiento y el contenido predeterminado del chat.
+description: Configura la identidad del asistente, el modelo, el motor de conocimiento y el contenido predeterminado del chat.
 ---
 
-Abre un Asistente y selecciona **General**.
+Abre un asistente y selecciona **General**.
 
-## Selección del tiempo de ejecución
+## Selección del entorno de ejecución
 
-Selecciona la conexión del proveedor y el modelo para el Asistente. Selecciona
+Selecciona la conexión del proveedor y el modelo para el asistente. Selecciona
 **Graph** o **Vector** como motor de conocimiento principal.
 
-La recuperación de grafos utiliza el grafo de conocimiento cuando hay servicios
-de grafos disponibles. La recuperación vectorial utiliza incrustaciones de
-conceptos indexadas y reserva léxica.
+La recuperación de grafos utiliza el Knowledge graph cuando los servicios de
+grafos están disponibles. La recuperación vectorial utiliza embeddings de
+documentos indexados y un recurso léxico alternativo.
+
+## Elección del modelo para visitantes
+
+Selecciona los modelos que la ventana de chat mostrará a los visitantes. El
+modelo Assistant siempre está disponible. Cada modelo adicional que selecciones
+se convierte en una opción en la ventana de chat.
+
+Si no seleccionas ningún modelo adicional, la ventana de chat no mostrará ningún
+control de modelos. Todas las conversaciones utilizan el modelo Assistant.
+
+La ventana de chat solo muestra un modelo si tu organización tiene una conexión
+con un proveedor para ese modelo. Si eliminas la conexión con el proveedor, la
+ventana de chat deja de mostrar el modelo. Las conversaciones continúan con el
+modelo Assistant.
+
+La lista muestra **no credential yet** junto a un proveedor sin conexión. La
+línea situada debajo de la lista solo cuenta los modelos que la ventana de chat
+puede mostrar.
+
+La vista previa muestra la nueva lista de inmediato. Selecciona **Publish** para
+asignárselo al widget, que utiliza la última versión publicada.
+
+Tu propia suscripción de IA tiene prioridad en Preview. Si estableces un modelo
+predeterminado en **Settings** y luego en **AI**, ese modelo responde a los
+turnos de Preview y el modelo de la ventana de chat no se aplica.
+
+## Archivos adjuntos
+
+Establece **Let visitors attach files** para dotar a la ventana de chat de un
+control de adjuntos. Está desactivado de forma predeterminada.
+
+Hay tres formas de adjuntar un archivo:
+
+- selecciona **+** en el cuadro de mensaje y, a continuación, **Attach a file**
+- arrastra el archivo al cuadro de mensaje
+- copia una imagen y, a continuación, pégala en el cuadro de mensaje
+
+La ventana de chat admite estos tipos:
+
+- PDF, Word y PowerPoint
+- Excel y CSV
+- texto y Markdown
+- imágenes (PNG, JPEG, GIF y WebP)
+
+El tamaño máximo es de 8 MB.
+
+No se admiten los archivos de Office antiguos (.doc, .xls y .ppt). Guarda el
+archivo como .docx, .xlsx o .pptx.
+
+Ciele lee el archivo y lo convierte en texto, y responde a partir de ese texto.
+**Ciele does not keep the file.** Los bytes se leen una sola vez y luego se
+descartan. No hay ninguna copia que puedas descargar, conservar ni eliminar.
+
+Una imagen no tiene un paso independiente de extracción de texto. Ciele envía la
+imagen al proveedor de IA de tu organización y le pide que la lea. Esto supone
+una llamada a la IA por cada imagen. El resultado incluye el texto de la imagen
+y una breve descripción de esta.
+
+Un archivo adjunto permanece disponible durante el resto de la conversación. La
+ventana de chat muestra cada archivo adjunto hasta que tú lo elimines.
+
+La vista previa refleja esta configuración en cuanto guardas los cambios.
+Muestra el cuadro de mensaje que ve un visitante, antes de que lo publiques. Los
+chats de compañeros de equipo aceptan archivos adjuntos en todo momento, porque
+no tienen ningún visitante.
+
+Selecciona **Publish** después de cambiar este ajuste.
+
+## Modo de voz
+
+Habilita **Voice mode** para añadir la entrada del micrófono y la reproducción
+de audio. Está desactivado de forma predeterminada.
+
+1. Conecta una clave de API de Google AI Studio, OpenAI o ElevenLabs en
+   **Settings** y, a continuación, **AI**.
+2. En **Voice input**, selecciona la transcripción **Model** y **Language**. La
+   opción predeterminada, **Auto**, detecta el idioma hablado sin traducir la
+   transcripción.
+3. En **Voice output**, selecciona la reproducción **Model**, **Language** y una
+   de las tres opciones de **Voice**. La opción predeterminada, **Auto**, sigue
+   el idioma de la última entrada.
+4. Selecciona el botón de reproducción de una voz para escuchar una vista previa
+   en el idioma de salida. Las vistas previas automáticas utilizan texto de
+   ejemplo en inglés.
+5. Selecciona **Save changes**. Publica el asistente para actualizar el widget.
+
+Las listas de modelos utilizan los catálogos de los proveedores conectados.
+**Refresh** vuelve a cargar las listas. Las opciones de voz se rigen por el
+modelo de reproducción. El acceso a los modelos también depende de los permisos
+del proveedor, de la facturación y de la cuota. La lista muestra tres voces
+compatibles, o menos si el proveedor tiene menos disponibles. Una voz ya
+seleccionada permanece en la lista.
+
+Los idiomas de entrada y de salida son independientes y ambos tienen como valor
+predeterminado **Auto**. Para grabaciones cortas, selecciona un idioma de
+entrada conocido para mejorar el reconocimiento. También puedes corregir la
+transcripción antes de enviarla. Un idioma de salida explícito orienta las
+nuevas respuestas generadas por IA y su reproducción de audio. Las respuestas
+automáticas se basan en el último mensaje, incluida una transcripción editada.
+Los mensajes de Flow configurados y las respuestas guardadas conservan sus
+palabras originales. La reproducción de audio lee ese texto sin traducirlo.
+
+Selecciona el micrófono situado junto a **Send** para grabar una pregunta. La
+grabación se detiene al cabo de 60 segundos y admite hasta 4 MB. Selecciona el
+control de parada para transcribir la grabación o **Cancel recording** para
+descartarla. El texto aparece en el cuadro de mensaje. Puedes editarlo antes de
+seleccionar **Send**.
+
+Selecciona **Read response aloud** junto a una respuesta completada para
+escucharla. Selecciona el mismo control para pausar la reproducción. La
+reproducción de audio admite respuestas de hasta 4000 caracteres. Las voces
+están generadas por IA.
+
+Tu navegador debe permitir el acceso al micrófono. Los widgets integrados
+también necesitan el permiso de micrófono en su iframe. Actualiza los fragmentos
+de iframe más antiguos de **Publish** si el acceso al micrófono está bloqueado.
+Tu sistema operativo también debe permitir que el navegador o la aplicación host
+usen el micrófono. En macOS, abre **System Settings → Privacy & Security →
+Microphone** y habilita esa aplicación. Si macOS te pide que reinicies la
+aplicación, hazlo antes de volver a grabar. Dar permiso solo al sitio no anula
+este ajuste del sistema. Ciele envía las grabaciones al proveedor seleccionado
+para su transcripción. Ciele no almacena la grabación.
 
 ## Identidad
 
 Configura estos campos:
 
-- **Title** identifica al Asistente en la consola.
+- **Title** identifica al asistente en la consola.
 - **Nickname** aparece en el widget.
-- **Description** registra el propósito del Asistente.
-- **Avatar** proporciona la imagen del Asistente.
+- **Description** registra la finalidad del asistente.
+- **Avatar** proporciona la imagen del asistente.
 
 ## Valores predeterminados de la conversación
 
 - **Welcome message** aparece al inicio de un chat.
-- **AI disclaimer** añade el texto de divulgación configurado.
-- **Answering style** proporciona instrucciones para respuestas estándar.
+- **AI disclaimer** añade el texto de aviso legal configurado.
+- **Answering style** proporciona instrucciones de respuesta estándar.
 - **Simplified thinking** convierte el progreso en tiempo de ejecución en pasos
-  más cortos para el visitante.
+  más breves orientados al visitante.
 - **Suggested questions** controla las sugerencias de seguimiento generadas.
-- **Quick replies** añade acciones de inicio configuradas.
+- **Quick replies** añade las acciones iniciales configuradas.
 
 ## Guardar y publicar
 
 1. Cambia un grupo de ajustes.
 2. Guarda el borrador.
-3. Prueba el borrador en Vista previa.
-4. Publica el Asistente cuando el resultado sea correcto.
+3. Prueba el borrador en Preview.
+4. Publica el asistente cuando el resultado sea correcto.
 
-El widget activo sigue usando la publicación anterior hasta que se complete el
-paso 4.
+El widget en producción sigue utilizando la Publicación anterior hasta que se
+complete el paso 4.

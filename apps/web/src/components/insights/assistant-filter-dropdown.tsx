@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, LayoutGrid, Search } from "lucide-react";
+import { LayoutGrid, Search } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 

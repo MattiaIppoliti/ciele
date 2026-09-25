@@ -9,7 +9,7 @@
  * to hand over yet, and a caller that guessed one would have to be kept
  * correct forever. The signal means "look now", nothing more.
  *
- * React-free, like `notification-bus`, so a component that only starts work
+ * React-free, like `toast-events`, so a component that only starts work
  * never pulls the card into its bundle.
  */
 

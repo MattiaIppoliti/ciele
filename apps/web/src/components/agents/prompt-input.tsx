@@ -1,8 +1,10 @@
 "use client";
 // beui.dev/components/agents/prompt-input
 
-import { ArrowUp, Plus, Square } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Plus } from "lucide-react";
+import { MorphIcon } from "morphicons/react";
+import { motion, useReducedMotion } from "motion/react";
+import { VoiceBeam } from "voice-glow";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -15,6 +17,8 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/motion/button";
+import { VoiceInputButton, type VoiceEndpoint } from "@/components/chat/voice-input-button";
+import { useRenderedTheme } from "@/components/chat/use-rendered-theme";
 import {
   MorphPopover,
   MorphPopoverContent,
@@ -28,6 +32,15 @@ import {
 } from "@/components/motion/select";
 import { SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
+
+// Stable Lucide icon data lets MorphIcon reshape one SVG path in place.
+const ArrowUpData = [
+  ["path", { d: "m5 12 7-7 7 7" }],
+  ["path", { d: "M12 19V5" }],
+] as const;
+const StopData = [
+  ["rect", { x: "3", y: "3", width: "18", height: "18", rx: "2" }],
+] as const;
 
 export interface PromptModel {
   value: string;
@@ -60,9 +73,14 @@ export interface PromptInputProps extends Omit<
   onSubmit?: (value: string, model?: string) => void | Promise<void>;
   loading?: boolean;
   onStop?: () => void;
+  stopLabel?: string;
+  /** Keep keyboard follow-ups available while the main button becomes Stop. */
+  allowSubmitWhileLoading?: boolean;
   minRows?: number;
   maxRows?: number;
   leadingAction?: ReactNode;
+  /** Dictation records audio and appends a transcript to the editable draft. */
+  voiceInput?: VoiceEndpoint;
   /**
    * The typed text, re-rendered as nodes, painted exactly under the textarea's
    * own glyphs. Use it to tint a run of characters, and only that.
@@ -101,9 +119,12 @@ export function PromptInput({
   onSubmit,
   loading = false,
   onStop,
+  stopLabel = "Stop generating",
+  allowSubmitWhileLoading = false,
   minRows = 2,
   maxRows = 8,
   leadingAction,
+  voiceInput,
   highlight,
   className,
   disabled,
@@ -121,12 +142,16 @@ export function PromptInput({
     defaultModel ?? models[0]?.value,
   );
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
+  const renderedTheme = useRenderedTheme();
   const currentValue = value ?? internalValue;
   const currentModelValue = model ?? internalModel;
   const currentModel = models.find(
     (option) => option.value === currentModelValue,
   );
-  const canSubmit = Boolean(currentValue.trim()) && !disabled && !loading;
+  const inputBusy = loading && !allowSubmitWhileLoading;
+  const canSubmit = Boolean(currentValue.trim()) && !disabled && !inputBusy && !voiceBusy;
 
   const resizeTextarea = useCallback(() => {
     const textarea = textareaRef.current;
@@ -183,7 +208,7 @@ export function PromptInput({
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     const prompt = currentValue.trim();
-    if (!prompt || disabled || loading) return;
+    if (!canSubmit) return;
 
     onSubmit?.(prompt, currentModelValue);
     if (value === undefined) setInternalValue("");
@@ -204,7 +229,7 @@ export function PromptInput({
     submit();
   };
 
-  return (
+  const form = (
     <form
       onSubmit={submit}
       className={cn(
@@ -276,7 +301,7 @@ export function PromptInput({
                 type="button"
                 variant="ghost"
                 size="icon"
-                disabled={disabled || loading}
+                disabled={disabled || inputBusy}
                 aria-label="Add to prompt"
                 className="size-8 rounded-full"
               >
@@ -333,7 +358,7 @@ export function PromptInput({
           <Select
             value={currentModelValue}
             onValueChange={setModel}
-            disabled={disabled || loading}
+            disabled={disabled || inputBusy}
             className="min-w-0"
           >
             <SelectTrigger className="h-8 w-auto max-w-52 rounded-xl border-0 bg-transparent px-2 py-0 text-xs hover:bg-muted focus-visible:ring-2">
@@ -372,32 +397,42 @@ export function PromptInput({
           </Select>
         ) : null}
 
+        <div className="ml-auto flex items-center gap-1">
+        {voiceInput ? (
+          <VoiceInputButton
+            {...voiceInput}
+            disabled={disabled || inputBusy}
+            onBusyChange={setVoiceBusy}
+            onStreamChange={setVoiceStream}
+            onTranscript={(text) => {
+              setValue(`${currentValue}${currentValue && !/\s$/.test(currentValue) ? " " : ""}${text}`);
+              textareaRef.current?.focus({ preventScroll: true });
+            }}
+          />
+        ) : null}
         <Button
           type={loading ? "button" : "submit"}
           size="icon"
           disabled={loading ? !onStop : !canSubmit}
-          aria-label={loading ? "Stop generating" : "Send prompt"}
+          aria-label={loading ? stopLabel : "Send prompt"}
+          title={loading ? stopLabel : undefined}
           onClick={loading ? onStop : undefined}
-          className="ml-auto size-8 rounded-full"
+          className="size-8 rounded-full"
         >
-          <AnimatePresence initial={false} mode="popLayout">
-            <motion.span
-              key={loading ? "stop" : "send"}
-              initial={reduce ? { opacity: 1 } : { opacity: 0, y: 3, scale: 0.8 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -3, scale: 0.8 }}
-              transition={reduce ? { duration: 0 } : SPRING_SWAP}
-              className="grid place-items-center"
-            >
-              {loading ? (
-                <Square className="size-3 fill-current" />
-              ) : (
-                <ArrowUp className="size-4" />
-              )}
-            </motion.span>
-          </AnimatePresence>
+          <MorphIcon
+            icon={loading ? StopData : ArrowUpData}
+            size={16}
+            fill={loading ? "currentColor" : "none"}
+          />
         </Button>
+        </div>
       </div>
     </form>
   );
+
+  return voiceInput ? (
+    <VoiceBeam stream={voiceStream} active={voiceStream !== null} theme={renderedTheme} className="w-full">
+      {form}
+    </VoiceBeam>
+  ) : form;
 }

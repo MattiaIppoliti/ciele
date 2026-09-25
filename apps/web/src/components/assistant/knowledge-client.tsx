@@ -26,37 +26,8 @@ import {
 
 import { conceptProvenanceView } from "@/lib/okf-provenance";
 import { assistantDocumentsHref } from "@/lib/source-documents";
-import {
-  Bold,
-  ChevronDown,
-  CloudUpload,
-  Code,
-  Download,
-  Copy,
-  ExternalLink,
-  FileUp,
-  Globe,
-  Heading1,
-  Heading2,
-  Heading3,
-  Heading4,
-  Info,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Maximize2,
-  Minus,
-  Pencil,
-  Plus,
-  Redo2,
-  RefreshCw,
-  RemoveFormatting,
-  TextQuote,
-  Trash2,
-  Undo2,
-  Unlink,
-} from "lucide-react";
+import { Bold, CloudUpload, Download, Copy, ExternalLink, Heading1, Heading2, Heading3, Heading4, Italic, Plus, RefreshCw, RemoveFormatting, TextQuote, Trash2, Unlink } from "lucide-react";
+import { ChevronDown, Code, FileUp, Globe, Info, Link2, List, ListOrdered, Maximize2, Minus, Pencil, Redo2, Undo2 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import {
   useConfirmDelete,

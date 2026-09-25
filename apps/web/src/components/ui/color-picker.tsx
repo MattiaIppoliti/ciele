@@ -110,7 +110,7 @@ export function ColorPicker({
             className="h-8 w-[4.5rem] shrink-0 px-2 text-xs"
           >
             <SelectValue>
-              {(v: ColorFormat) => v.toUpperCase()}
+              {(value: string) => value.toUpperCase()}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>

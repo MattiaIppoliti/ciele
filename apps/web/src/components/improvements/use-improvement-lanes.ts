@@ -6,7 +6,7 @@ import type {
   ImprovementListItem,
   ImprovementStatus,
 } from "@agent-hub/core";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updateImprovementAction } from "@/app/actions";
 import { improvementKey, statusLabel } from "@/lib/improvements";
 

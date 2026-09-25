@@ -265,7 +265,7 @@ export const createProviderApiKeyOp = defineOperation({
   name: "providers.createApiKey",
   capability: "manageMembers",
   input: z.object({
-    provider: z.enum(["anthropic", "openai", "google"]),
+    provider: z.enum(["anthropic", "openai", "google", "elevenlabs"]),
     apiKey: z.string().trim().min(1),
     displayName: z.string().trim().max(200).optional(),
   }),
@@ -277,15 +277,29 @@ export const createProviderApiKeyOp = defineOperation({
     );
     if (!validation) return { error: "Provider validation is not configured" };
     if (!validation.ok) return { error: validation.error };
-    const connection = await ctx.db.createProviderConnection(ctx.organizationId, {
-      type: "api_key",
-      provider: input.provider,
-      displayName: input.displayName ?? "",
-      encryptedKey: sealSecret(input.apiKey),
-      keyHint: keyHintOf(input.apiKey),
-      createdBy: ctx.userId || null,
-    });
-    return { connection: providerView(connection) };
+    try {
+      const connection = await ctx.db.createProviderConnection(ctx.organizationId, {
+        type: "api_key",
+        provider: input.provider,
+        displayName: input.displayName ?? "",
+        encryptedKey: sealSecret(input.apiKey),
+        keyHint: keyHintOf(input.apiKey),
+        createdBy: ctx.userId || null,
+      });
+      return { connection: providerView(connection) };
+    } catch (error) {
+      // Deploys can precede the additive constraint migration.
+      if (
+        input.provider === "elevenlabs" &&
+        typeof error === "object" && error !== null &&
+        "code" in error && error.code === "23514" &&
+        "message" in error && typeof error.message === "string" &&
+        error.message.includes("provider_connections_provider_check")
+      ) {
+        return { error: "ElevenLabs connections are not ready yet. Apply the latest database migration and try again." };
+      }
+      throw error;
+    }
   },
 });
 

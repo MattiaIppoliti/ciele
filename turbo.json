@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
       "env": [
         "APP_ENCRYPTION_KEY",
         "APPLICATION_IMPORT_MAX_REMOTE_ITEMS",

@@ -1,4 +1,5 @@
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 /**
  * The Sources citation list rendered under a grounded AI answer. RAG

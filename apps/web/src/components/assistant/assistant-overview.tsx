@@ -4,14 +4,8 @@
 // which a Server Component cannot serialize across the RSC boundary.
 import Link from "next/link";
 import type { Assistant, Flow, KnowledgeCollection, Publication } from "@agent-hub/core";
-import {
-  BookOpen,
-  CircleCheck,
-  Circle,
-  MessageCircle,
-  Rocket,
-  Workflow,
-} from "lucide-react";
+import { CircleCheck, Circle, MessageCircle, Rocket, Workflow } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
 import { Badge } from "@agent-hub/ui";

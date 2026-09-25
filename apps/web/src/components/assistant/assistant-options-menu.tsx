@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { CopyPlus, Ellipsis, Trash2 } from "lucide-react";
+import { CopyPlus, Trash2 } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { duplicateAssistantAction } from "@/app/actions";

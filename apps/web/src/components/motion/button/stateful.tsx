@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import {
   AnimatePresence,
   motion,

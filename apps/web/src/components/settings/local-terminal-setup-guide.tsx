@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { RotateCw, ShieldCheck, SquareTerminal } from "lucide-react";
+import { RotateCw, ShieldCheck } from "lucide-react";
+import { SquareTerminal } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Button, CopyFeedbackIcon, useCopyFeedback } from "@agent-hub/ui";
 import { BottomSheet } from "@/components/motion/bottom-sheet";

@@ -43,6 +43,7 @@ export function ConfirmDeleteModal({
   return (
     <MorphingModal
       viewId={open ? "warning" : null}
+      title={title}
       onClose={close}
       placement="bottom"
     >

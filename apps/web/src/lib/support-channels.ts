@@ -7,27 +7,8 @@ import type {
   WeekDay,
 } from "@agent-hub/core";
 import { findCountry } from "./countries";
-import {
-  AlignLeft,
-  AtSign,
-  Calendar,
-  ChevronDown,
-  FileText,
-  Hash,
-  Link2,
-  List,
-  Mail,
-  MessageCircle,
-  Phone,
-  Share2,
-  SquareArrowOutUpRight,
-  SquareCheck,
-  Ticket,
-  Upload,
-  UserRound,
-  Webhook,
-  type LucideIcon,
-} from "lucide-react";
+import { AlignLeft, AtSign, FileText, Mail, MessageCircle, Phone, SquareCheck, Upload, UserRound, Webhook, type LucideIcon } from "lucide-react";
+import { Calendar, ChevronDown, Hash, Link2, List, Share2, SquareArrowOutUpRight, Ticket } from "lucide-react";
 
 export interface ChannelKindMeta {
   label: string;

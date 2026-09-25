@@ -14,6 +14,7 @@ import type {
   FlowActionSettings,
   FlowInput,
   FlowPatch,
+  FeedbackReactionId,
   GoalExpectations,
   GoalStatus,
   Improvement,
@@ -34,6 +35,7 @@ import type {
   Project,
   ProjectPatch,
   Provider,
+  ProviderConnectionProvider,
   RecrawlSchedule,
   Role,
   Skill,
@@ -545,6 +547,13 @@ export async function createAssistantAction(input: {
 }
 
 export async function updateAssistantAction(id: string, patch: AssistantPatch) {
+  if (patch.voice?.enabled) {
+    const { db, organizationId } = await requireMember("edit");
+    const assistant = await db.getAssistant(id);
+    if (!assistant || assistant.organizationId !== organizationId) throw new Error("Assistant not found");
+    const { validateVoiceSelection } = await import("@/lib/voice-http");
+    await validateVoiceSelection(await db.listProviderConnections(organizationId), patch.voice);
+  }
   await runOperation(updateAssistantOp, { id, patch });
 }
 
@@ -1226,12 +1235,12 @@ export async function deleteCrawlerConnectionAction() {
  * instead of throwing for expected failures, so the client can toast it.
  */
 export async function createProviderConnectionAction(
-  provider: Provider,
+  provider: Exclude<ProviderConnectionProvider, "azure_openai" | "openai_compatible">,
   apiKey: string,
   displayName?: string,
 ): Promise<{ error?: string }> {
   const result = await runOperation(createProviderApiKeyOp, {
-    provider: provider as "anthropic" | "openai" | "google",
+    provider,
     apiKey,
     displayName,
   });
@@ -2272,8 +2281,9 @@ export async function sendConversationFeedbackAction(
 export async function setMessageFeedbackAction(
   messageId: string,
   feedback: -1 | 0 | 1,
+  reaction?: FeedbackReactionId | null,
 ) {
-  await runOperation(setMessageFeedbackOp, { messageId, feedback });
+  await runOperation(setMessageFeedbackOp, { messageId, feedback, reaction });
 }
 
 // --- Improvements -----------------------------------------------------------

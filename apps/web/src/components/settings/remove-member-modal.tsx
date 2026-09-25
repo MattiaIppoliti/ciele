@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, TriangleAlert } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { removeMemberAction, revokeInviteAction } from "@/app/actions";
@@ -70,6 +71,11 @@ export function RemoveMemberModal({
   return (
     <MorphingModal
       viewId={open && row ? view : null}
+      title={
+        view === "warning"
+          ? `${isInvite ? "Revoke" : "Remove"} “${subject}”?`
+          : `Confirm ${isInvite ? "revocation" : "removal"}`
+      }
       onClose={close}
       placement="bottom"
     >

@@ -9,7 +9,7 @@
   "info": {
     "title": "API Ciele",
     "version": "1.0.0",
-    "description": "L'API publique de l'organisation pour Ciele. Les requêtes et les réponses utilisent JSON. Créez une clé API dans Paramètres → Clés API et envoyez-la sous la forme `Authorization: Bearer ciele_sk_…`. Les opérations protégées indiquent la capacité requise. Les listes utilisent les paramètres de pagination indiqués pour chaque opération. Ce contrat décrit la surface publique `/api/v1` ; les routes internes de la console et des widgets ne sont pas des points de terminaison accessibles par clé API.",
+    "description": "L'API publique de l'organisation pour Ciele. Les requêtes et les réponses utilisent JSON. Créez une clé API dans Paramètres → Clés API et envoyez-la sous la forme `Authorization: Bearer ciele_sk_…`. Les opérations protégées indiquent la capacité requise. Les listes utilisent les paramètres de pagination indiqués pour chaque opération. Ce contrat décrit la surface publique `/api/v1` ; les routes internes de la console et des widgets ne sont pas des points de terminaison nécessitant une clé API.",
     "license": {
       "name": "AGPL-3.0-only",
       "url": "https://spdx.org/licenses/AGPL-3.0-only.html"
@@ -104,7 +104,7 @@
     {
       "name": "organization",
       "x-displayName": "Organisation",
-      "description": "Points de terminaison publics relatifs aux organisations."
+      "description": "Points de terminaison publics de l'organisation."
     },
     {
       "name": "members",
@@ -114,7 +114,7 @@
     {
       "name": "api-keys",
       "x-displayName": "Clés API",
-      "description": "Points de terminaison publics des clés API."
+      "description": "Points de terminaison publics pour les clés API."
     },
     {
       "name": "api-integrations",
@@ -139,7 +139,7 @@
     {
       "name": "usage",
       "x-displayName": "Utilisation",
-      "description": "Points de terminaison d'utilisation publique."
+      "description": "Points de terminaison d'utilisation publics."
     }
   ],
   "components": {
@@ -758,7 +758,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -822,7 +822,7 @@
       "post": {
         "operationId": "postAssistants",
         "summary": "Créer un Assistant",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "assistants"
         ],
@@ -1382,7 +1382,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -1659,7 +1659,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -1796,6 +1796,112 @@
                   },
                   "attachmentsEnabled": {
                     "type": "boolean"
+                  },
+                  "voice": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "transcription": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "speech": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "voiceId": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "pattern": "^[a-zA-Z0-9._-]*$"
+                      },
+                      "inputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "outputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "voiceLanguages": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^(google|openai|elevenlabs):[a-zA-Z0-9._-]{1,200}$"
+                        },
+                        "additionalProperties": {
+                          "type": "string",
+                          "enum": [
+                            "auto",
+                            "en",
+                            "it",
+                            "es",
+                            "fr",
+                            "de",
+                            "pt"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "transcription",
+                      "speech",
+                      "voiceId"
+                    ]
                   },
                   "style": {},
                   "allowedDomains": {
@@ -1965,7 +2071,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -2030,8 +2136,8 @@
     "/api/v1/assistants/{id}/duplicate": {
       "post": {
         "operationId": "postAssistantsByIdDuplicate",
-        "summary": "Dupliquer : configuration + Flux ; la base de connaissances est conservée",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "summary": "Dupliquer : configuration + flux ; la base de connaissances est conservée",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "assistants"
         ],
@@ -2519,7 +2625,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -2745,7 +2851,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -3554,7 +3660,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -3618,7 +3724,7 @@
       "post": {
         "operationId": "postAssistantsByIdFlows",
         "summary": "Créer un flux",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "flows"
         ],
@@ -7119,7 +7225,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -7206,7 +7312,7 @@
     "/api/v1/flows/catalog": {
       "get": {
         "operationId": "getFlowsCatalog",
-        "summary": "Ce qu'un Flow peut contenir : des déclencheurs, des actions, des types de conditions, des règles d'appariement",
+        "summary": "Ce qu'un Flow peut contenir : déclencheurs, actions, types de conditions, règles d'appariement",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "flows"
@@ -7570,7 +7676,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -7635,7 +7741,7 @@
     "/api/v1/flows/draft": {
       "post": {
         "operationId": "postFlowsDraft",
-        "summary": "Vérifiez un correctif de Flow sans l'enregistrer (affiche le point de contrôle de vérification humaine inséré)",
+        "summary": "Vérifiez un patch de Flow sans l'enregistrer (affiche le point de contrôle de vérification humaine inséré)",
         "description": "Nécessite une clé API d'organisation disposant de la capacité edit.",
         "tags": [
           "flows"
@@ -8712,7 +8818,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -11098,7 +11204,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -12669,7 +12775,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -12734,7 +12840,7 @@
     "/api/v1/assistants/{id}/flows-agent/thread": {
       "get": {
         "operationId": "getAssistantsByIdFlowsAgentThread",
-        "summary": "Vos propres conversations avec Flows Agent concernant un Flow (?flowId=)",
+        "summary": "Vos propres conversations avec l'agent Flows concernant un Flow (?flowId=)",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "flows"
@@ -13183,7 +13289,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -13675,6 +13781,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "trace": {
                             "oneOf": [
                               {
@@ -13862,7 +13987,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -15296,7 +15421,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -16758,7 +16883,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -18030,7 +18155,7 @@
       },
       "delete": {
         "operationId": "deleteFlowsById",
-        "summary": "Supprimer un Flow (le comportement par défaut refuse : 409)",
+        "summary": "Supprimer un Flow (le comportement par défaut refuse, 409)",
         "description": "Nécessite une clé API d'organisation disposant de la capacité edit.",
         "tags": [
           "flows"
@@ -18175,7 +18300,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -18240,7 +18365,7 @@
     "/api/v1/assistants/{id}/collections": {
       "get": {
         "operationId": "getAssistantsByIdCollections",
-        "summary": "Les collections de connaissances d'un assistant",
+        "summary": "Collections de connaissances d'un Assistant",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "knowledge"
@@ -18397,7 +18522,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -18661,7 +18786,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -18725,7 +18850,7 @@
       "post": {
         "operationId": "postCollectionsByIdSources",
         "summary": "Ajouter une source : texte/URL JSON, ou fichier multipart",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "knowledge"
         ],
@@ -19019,7 +19144,7 @@
             }
           },
           "429": {
-            "description": "La limite de débit d'ingestion des sources a été dépassée",
+            "description": "La limite de taux d'ingestion des sources a été dépassée",
             "content": {
               "application/json": {
                 "schema": {
@@ -19188,7 +19313,7 @@
       "post": {
         "operationId": "postCollectionsByIdFaqs",
         "summary": "Ajouter une FAQ",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "knowledge"
         ],
@@ -19734,7 +19859,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -20010,7 +20135,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -20218,7 +20343,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -20283,7 +20408,7 @@
     "/api/v1/sources/{id}/recrawl": {
       "post": {
         "operationId": "postSourcesByIdRecrawl",
-        "summary": "Relancer le crawl d'une source de type site web",
+        "summary": "Relancer l'exploration d'une source de type site web",
         "description": "Nécessite une clé API d'organisation disposant de la capacité edit.",
         "tags": [
           "knowledge"
@@ -20443,7 +20568,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -20527,7 +20652,7 @@
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "Filtrer par statut de la Source.",
+            "description": "Filtrer par statut de la source.",
             "schema": {
               "type": "string"
             }
@@ -20536,7 +20661,7 @@
             "name": "assistantId",
             "in": "query",
             "required": false,
-            "description": "Filtrez par Assistant associé.",
+            "description": "Filtrer par Assistant associé.",
             "schema": {
               "type": "string"
             }
@@ -20823,7 +20948,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -20887,7 +21012,7 @@
       "post": {
         "operationId": "postKnowledgeSources",
         "summary": "Ajouter une source à la Knowledge Library (aucun ID de collection requis)",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "knowledge"
         ],
@@ -21173,7 +21298,7 @@
             }
           },
           "429": {
-            "description": "La limite de débit d'ingestion des sources a été dépassée",
+            "description": "La limite de taux d'ingestion des sources a été dépassée",
             "content": {
               "application/json": {
                 "schema": {
@@ -21540,7 +21665,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -21808,7 +21933,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -21898,7 +22023,7 @@
       "post": {
         "operationId": "postKnowledgeFaqs",
         "summary": "Ajouter une FAQ au niveau de l'organisation (Bibliothèque de connaissances)",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "knowledge"
         ],
@@ -22409,7 +22534,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -22610,7 +22735,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -22842,7 +22967,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -22906,7 +23031,7 @@
       "post": {
         "operationId": "postProjects",
         "summary": "Créer un projet",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "projects"
         ],
@@ -23259,7 +23384,7 @@
     "/api/v1/projects/{id}": {
       "get": {
         "operationId": "getProjectsById",
-        "summary": "Un projet avec son document mémoire et l'historique de ce document",
+        "summary": "Un projet avec son document de mémoire et l'historique de ce document",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "projects"
@@ -23585,7 +23710,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -23843,7 +23968,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -23931,7 +24056,7 @@
       },
       "delete": {
         "operationId": "deleteProjectsById",
-        "summary": "Supprimer un projet (les décisions se propagent en cascade, les coéquipiers sont détachés ; archivez plutôt pour conserver l'historique)",
+        "summary": "Supprimer un projet (les décisions se propagent en cascade, les coéquipiers sont détachés ; privilégiez l'archivage pour conserver l'historique)",
         "description": "Nécessite une clé API d'organisation disposant de la capacité edit.",
         "tags": [
           "projects"
@@ -24076,7 +24201,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -24367,7 +24492,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -24619,7 +24744,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -25131,7 +25256,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -25521,7 +25646,7 @@
     "/api/v1/conversations": {
       "get": {
         "operationId": "getConversations",
-        "summary": "Liste des conversations (filtre ?assistantId=)",
+        "summary": "Afficher la liste des conversations (filtre ?assistantId=)",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "inbox"
@@ -25611,6 +25736,18 @@
                               {
                                 "type": "number",
                                 "const": -1
+                              }
+                            ]
+                          },
+                          "hasNeutralFeedback": {
+                            "oneOf": [
+                              {
+                                "type": "boolean",
+                                "const": false
+                              },
+                              {
+                                "type": "boolean",
+                                "const": true
                               }
                             ]
                           },
@@ -26029,7 +26166,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -26094,7 +26231,7 @@
     "/api/v1/conversations/{id}": {
       "get": {
         "operationId": "getConversationsById",
-        "summary": "Une seule transcription (trace filtrée par rôle)",
+        "summary": "Une transcription (trace filtrée par rôle)",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "inbox"
@@ -26580,6 +26717,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "createdAt": {
                             "type": "string"
                           }
@@ -26591,6 +26747,7 @@
                           "flowId",
                           "flowName",
                           "feedback",
+                          "feedbackReaction",
                           "createdAt"
                         ]
                       }
@@ -26695,7 +26852,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -27205,7 +27362,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -27402,7 +27559,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -27914,7 +28071,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -28290,7 +28447,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -28423,11 +28580,31 @@
                           "const": -1
                         }
                       ]
+                    },
+                    "reaction": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "const": "positive"
+                        },
+                        {
+                          "type": "string",
+                          "const": "neutral"
+                        },
+                        {
+                          "type": "string",
+                          "const": "negative"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "messageId",
-                    "feedback"
+                    "feedback",
+                    "reaction"
                   ]
                 }
               }
@@ -28524,7 +28701,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -28621,7 +28798,7 @@
     "/api/v1/improvements": {
       "get": {
         "operationId": "getImprovements",
-        "summary": "Le kanban des Améliorations",
+        "summary": "Le kanban des améliorations",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "improvements"
@@ -28908,7 +29085,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -29208,6 +29385,25 @@
                                   }
                                 ]
                               },
+                              "feedbackReaction": {
+                                "oneOf": [
+                                  {
+                                    "type": "null"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "positive"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "neutral"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "negative"
+                                  }
+                                ]
+                              },
                               "trace": {
                                 "oneOf": [
                                   {
@@ -29287,6 +29483,14 @@
                                     {}
                                   ]
                                 },
+                                "feedbackReaction": {
+                                  "oneOf": [
+                                    {},
+                                    {},
+                                    {},
+                                    {}
+                                  ]
+                                },
                                 "trace": {
                                   "oneOf": [
                                     {},
@@ -29351,6 +29555,18 @@
                                   {
                                     "type": "number",
                                     "const": -1
+                                  }
+                                ]
+                              },
+                              "hasNeutralFeedback": {
+                                "oneOf": [
+                                  {
+                                    "type": "boolean",
+                                    "const": false
+                                  },
+                                  {
+                                    "type": "boolean",
+                                    "const": true
                                   }
                                 ]
                               },
@@ -29835,7 +30051,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -30179,7 +30395,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -30306,7 +30522,7 @@
     "/api/v1/entities": {
       "get": {
         "operationId": "getEntities",
-        "summary": "Liste des entités de l'organisation",
+        "summary": "Lister les entités de l'organisation",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "entities"
@@ -30544,7 +30760,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -30846,7 +31062,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -31214,7 +31430,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -31525,7 +31741,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -31755,7 +31971,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -32024,7 +32240,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -32271,7 +32487,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -32547,7 +32763,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -32752,7 +32968,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -32966,7 +33182,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -33231,7 +33447,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -33296,7 +33512,7 @@
     "/api/v1/memories/subjects/{subjectId}": {
       "get": {
         "operationId": "getMemoriesSubjectsBySubjectId",
-        "summary": "Lister les Souvenirs d'un sujet",
+        "summary": "Lister les Memories d'un sujet",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "memories"
@@ -33464,7 +33680,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -33672,7 +33888,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -33882,7 +34098,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -33947,7 +34163,7 @@
     "/api/v1/sso/identity": {
       "get": {
         "operationId": "getSsoIdentity",
-        "summary": "Lire la configuration de la revendication d'identité SSO",
+        "summary": "Lisez la configuration de la revendication d'identité SSO",
         "description": "Nécessite une clé API d'organisation dotée de la capacité manageMembers.",
         "tags": [
           "sso"
@@ -34163,7 +34379,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -34226,7 +34442,7 @@
       },
       "patch": {
         "operationId": "patchSsoIdentity",
-        "summary": "Définir ou effacer la revendication d'identité SSO",
+        "summary": "Définir ou supprimer la revendication d'identité SSO",
         "description": "Nécessite une clé API d'organisation dotée de la capacité manageMembers.",
         "tags": [
           "sso"
@@ -34384,7 +34600,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -34475,7 +34691,7 @@
     "/api/v1/sso/identity/validate": {
       "post": {
         "operationId": "postSsoIdentityValidate",
-        "summary": "Validez la connexion SSO enregistrée",
+        "summary": "Valider la connexion SSO enregistrée",
         "description": "Nécessite une clé API d'organisation dotée de la capacité manageMembers.",
         "tags": [
           "sso"
@@ -34647,7 +34863,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -35020,7 +35236,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -35083,7 +35299,7 @@
       },
       "post": {
         "operationId": "postTeammates",
-        "summary": "Créer un Teammate IA",
+        "summary": "Créer un Teammate IA",
         "description": "Nécessite une clé API d'organisation disposant de la capacité edit.",
         "tags": [
           "teammates"
@@ -35422,7 +35638,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -35544,7 +35760,7 @@
       "post": {
         "operationId": "postTeammatesProvision",
         "summary": "Créez un Teammate opérationnel en un seul appel : persona, autorisations, routines",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "teammates"
         ],
@@ -36651,7 +36867,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -37062,7 +37278,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -37216,7 +37432,7 @@
       },
       "delete": {
         "operationId": "deleteTeammatesById",
-        "summary": "Retirer un Teammate IA (suppression temporaire ; ses Conversations restent lisibles)",
+        "summary": "Retirer un Teammate IA (suppression « soft » ; ses Conversations restent lisibles)",
         "description": "Nécessite une clé API d'organisation disposant de la capacité edit.",
         "tags": [
           "teammates"
@@ -37361,7 +37577,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -37426,7 +37642,7 @@
     "/api/v1/teammates/{id}/conversations": {
       "get": {
         "operationId": "getTeammatesByIdConversations",
-        "summary": "Fil de discussion propre au détenteur de la clé, avec un seul Teammate",
+        "summary": "Le fil de discussion propre au détenteur de la clé avec un Teammate",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "teammates"
@@ -37866,7 +38082,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -38358,6 +38574,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "trace": {
                             "oneOf": [
                               {
@@ -38545,7 +38780,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -38781,7 +39016,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -39045,7 +39280,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -39416,7 +39651,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -39705,7 +39940,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -39795,7 +40030,7 @@
     "/api/v1/teammates/{id}/routines": {
       "get": {
         "operationId": "getTeammatesByIdRoutines",
-        "summary": "Les routines d'un Teammate (exécutions récurrentes sans supervision)",
+        "summary": "Routines d'un Teammate (exécutions récurrentes sans supervision)",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "teammates"
@@ -40023,7 +40258,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -40086,8 +40321,8 @@
       },
       "post": {
         "operationId": "postTeammatesByIdRoutines",
-        "summary": "Ajouter une Routine (max. 5 par Teammate)",
-        "description": "Nécessite une clé API d'organisation disposant de l'autorisation edit. Fournissez une Idempotency-Key lorsque vous renouvelez la même requête.",
+        "summary": "Ajouter une Routine (max. 5 par Teammate)",
+        "description": "Nécessite une clé API d'organisation disposant de la capacité d'édition. Fournissez une Idempotency-Key lorsque vous réessayez la même requête.",
         "tags": [
           "teammates"
         ],
@@ -40757,7 +40992,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -40999,7 +41234,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -41287,7 +41522,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -41509,7 +41744,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -41622,7 +41857,7 @@
     "/api/v1/channels/oversight": {
       "get": {
         "operationId": "getChannelsOversight",
-        "summary": "Tous les canaux de l'organisation, indépendamment de l'appartenance (Owner/Admin)",
+        "summary": "Tous les canaux de l'Organisation, indépendamment de l'appartenance (Propriétaire/Administrateur)",
         "description": "Nécessite une clé API d'organisation dotée de la capacité manageMembers.",
         "tags": [
           "channels"
@@ -41875,7 +42110,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -41940,7 +42175,7 @@
     "/api/v1/channels/oversight/{id}": {
       "get": {
         "operationId": "getChannelsOversightById",
-        "summary": "Transcription d'un canal sans y être présent (Owner/Admin)",
+        "summary": "Transcription d'un canal sans y être affecté (Owner/Admin)",
         "description": "Nécessite une clé API d'organisation dotée de la capacité manageMembers.",
         "tags": [
           "channels"
@@ -42604,7 +42839,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -43303,7 +43538,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -43534,7 +43769,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -43741,7 +43976,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -43921,7 +44156,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -44133,7 +44368,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -44313,7 +44548,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -44525,7 +44760,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -44782,7 +45017,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -44845,7 +45080,7 @@
       },
       "post": {
         "operationId": "postHelpDesks",
-        "summary": "Créer un Help Desk",
+        "summary": "Créer un centre d'assistance",
         "description": "Nécessite une clé API d'organisation disposant de la capacité edit.",
         "tags": [
           "help-desks"
@@ -45067,7 +45302,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -45583,7 +45818,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -45877,7 +46112,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -46110,7 +46345,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -46175,7 +46410,7 @@
     "/api/v1/help-desks/{id}/channels": {
       "post": {
         "operationId": "postHelpDesksByIdChannels",
-        "summary": "Ajouter un canal d'escalade",
+        "summary": "Ajouter un canal de remontée",
         "description": "Nécessite une clé API d'organisation disposant de la capacité edit.",
         "tags": [
           "help-desks"
@@ -46845,7 +47080,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -47634,7 +47869,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -47883,7 +48118,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -48321,7 +48556,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -48553,7 +48788,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -48849,7 +49084,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -49125,7 +49360,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -49367,7 +49602,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -49655,7 +49890,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -49894,7 +50129,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -50128,7 +50363,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -50390,7 +50625,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -50712,7 +50947,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -51029,7 +51264,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -51396,7 +51631,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -51655,7 +51890,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -51943,7 +52178,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -52259,7 +52494,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -52483,7 +52718,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -52735,7 +52970,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -53088,7 +53323,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -53386,7 +53621,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -53619,7 +53854,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -53883,7 +54118,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -54134,7 +54369,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -54374,7 +54609,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -54664,7 +54899,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -54727,7 +54962,7 @@
       },
       "post": {
         "operationId": "postApiKeys",
-        "summary": "Générez une clé API ; le secret n'est renvoyé qu'une seule fois",
+        "summary": "Générer une clé API ; le secret n'est renvoyé qu'une seule fois",
         "description": "Nécessite une clé API d'organisation dotée de la capacité manageApiKeys.",
         "tags": [
           "api-keys"
@@ -54953,7 +55188,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -55192,7 +55427,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -55524,7 +55759,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -55906,7 +56141,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -56273,7 +56508,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -56579,7 +56814,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -56883,7 +57118,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -57125,7 +57360,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -57257,6 +57492,10 @@
                               {
                                 "type": "string",
                                 "const": "openai_compatible"
+                              },
+                              {
+                                "type": "string",
+                                "const": "elevenlabs"
                               },
                               {
                                 "type": "string",
@@ -57544,7 +57783,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -57677,6 +57916,10 @@
                             },
                             {
                               "type": "string",
+                              "const": "elevenlabs"
+                            },
+                            {
+                              "type": "string",
                               "const": "azure_openai"
                             }
                           ]
@@ -57892,6 +58135,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58178,7 +58425,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -58251,7 +58498,8 @@
                     "enum": [
                       "anthropic",
                       "openai",
-                      "google"
+                      "google",
+                      "elevenlabs"
                     ]
                   },
                   "apiKey": {
@@ -58344,6 +58592,10 @@
                             },
                             {
                               "type": "string",
+                              "const": "elevenlabs"
+                            },
+                            {
+                              "type": "string",
                               "const": "azure_openai"
                             }
                           ]
@@ -58559,6 +58811,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58845,7 +59101,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -59007,6 +59263,10 @@
                         {
                           "type": "string",
                           "const": "openai_compatible"
+                        },
+                        {
+                          "type": "string",
+                          "const": "elevenlabs"
                         },
                         {
                           "type": "string",
@@ -59288,7 +59548,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -59608,7 +59868,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -59831,7 +60091,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -59922,7 +60182,7 @@
     "/api/v1/applications/connections": {
       "get": {
         "operationId": "getApplicationsConnections",
-        "summary": "Affichez la liste des connexions d'applications de l'organisation (sans identifiants)",
+        "summary": "Affichez la liste des connexions d'applications de l'organisation (sans informations d'identification)",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "applications"
@@ -60183,7 +60443,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -60498,7 +60758,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -60774,7 +61034,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -60864,7 +61124,7 @@
     "/api/v1/reviews": {
       "get": {
         "operationId": "getReviews",
-        "summary": "Demandes de vérification humaine, les plus récentes en premier (filtre par statut, conversation ou assistant)",
+        "summary": "Demandes d'examen humain, les plus récentes en premier (filtre par statut, conversation ou assistant)",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "reviews"
@@ -60874,7 +61134,7 @@
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "Filtrer par statut de vérification.",
+            "description": "Filtrer par statut de la vérification.",
             "schema": {
               "type": "string"
             }
@@ -61216,7 +61476,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -61623,7 +61883,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -61688,7 +61948,7 @@
     "/api/v1/reviews/{id}/decide": {
       "post": {
         "operationId": "postReviewsByIdDecide",
-        "summary": "Approuvez ou rejetez une vérification humaine (un·e assigné·e, ou une clé Owner/Admin) ; la première décision prévaut.",
+        "summary": "Approuver ou rejeter une vérification humaine (un·e assigné·e, ou une clé Owner/Admin) ; la première décision prévaut",
         "description": "Nécessite une clé API d'organisation dotée de la capacité member.",
         "tags": [
           "reviews"
@@ -62030,7 +62290,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -62372,7 +62632,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {
@@ -62682,7 +62942,7 @@
             }
           },
           "409": {
-            "description": "La requête est en conflit avec l'état actuel de la ressource",
+            "description": "La requête entre en conflit avec l'état actuel de la ressource",
             "content": {
               "application/json": {
                 "schema": {

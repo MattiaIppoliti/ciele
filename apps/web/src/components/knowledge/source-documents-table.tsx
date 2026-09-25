@@ -3,7 +3,8 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, EyeOff, Maximize2, RotateCcw } from "lucide-react";
+import { Copy, RotateCcw } from "lucide-react";
+import { EyeOff, Maximize2 } from "lucide-react";
 import type { SourceDocumentListItem } from "@agent-hub/core";
 import { sourceDocumentStatus, sourceDocumentStatusLabel } from "@agent-hub/core";
 import { Badge, Button } from "@agent-hub/ui";

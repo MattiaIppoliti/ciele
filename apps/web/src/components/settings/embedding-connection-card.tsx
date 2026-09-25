@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Boxes } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { ProviderConnection } from "@agent-hub/core";
 import { updateEmbeddingConnectionAction } from "@/app/actions";
 import { AnimatedIcon } from "@/components/ui/animated-icon";

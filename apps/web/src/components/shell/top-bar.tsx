@@ -2,7 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, PanelLeftOpen } from "lucide-react";
+import { PanelLeftOpen } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Badge } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { AnimatedIcon } from "@/components/ui/animated-icon";

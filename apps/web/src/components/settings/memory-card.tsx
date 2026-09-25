@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updateMemoryEnabledAction } from "@/app/actions";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { ScanTextIcon } from "@/components/ui/icons/scan-text";

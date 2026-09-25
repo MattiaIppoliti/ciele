@@ -1,3 +1,5 @@
+import { SkeletonReveal } from "@/components/spectrumui/skeleton-reveal";
+
 const PROVIDER_LABELS: Record<string, string> = {
   entra: "Microsoft Entra ID",
   clerk: "Clerk",
@@ -33,22 +35,28 @@ export function IdentityGate({
           Access requires authentication to continue. Signing in helps us
           personalize your experience and keep your data secure.
         </p>
-        {loading ? (
-          <div className="bg-muted mt-6 h-11 animate-pulse rounded-lg" />
-        ) : provider ? (
-          <button
-            type="button"
-            onClick={() => onLogin(provider)}
-            className="border-border text-foreground mt-6 flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition hover:bg-muted"
-            style={{ ["--brand" as string]: brandColor }}
-          >
-            Log in with {label}
-          </button>
-        ) : (
-          <p className="text-muted-foreground mt-6 text-sm">
-            Sign-in isn&apos;t available yet, please check back soon.
-          </p>
-        )}
+        <SkeletonReveal
+          loading={loading}
+          pulseCount={2}
+          pulseDuration={900}
+          className="mt-6"
+          skeleton={<div className="bg-muted h-11 rounded-lg" />}
+        >
+          {provider ? (
+            <button
+              type="button"
+              onClick={() => onLogin(provider)}
+              className="border-border text-foreground flex h-11 w-full items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition hover:bg-muted"
+              style={{ ["--brand" as string]: brandColor }}
+            >
+              Log in with {label}
+            </button>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Sign-in isn&apos;t available yet, please check back soon.
+            </p>
+          )}
+        </SkeletonReveal>
       </div>
     </div>
   );

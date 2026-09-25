@@ -14,32 +14,19 @@ import type {
   ReviewRequest,
   StoredMessage,
 } from "@agent-hub/core";
-import { isoDay, messageText } from "@agent-hub/core";
+import {
+  feedbackReactionById,
+  feedbackReactionScore,
+  isoDay,
+  messageText,
+  type FeedbackReactionId,
+} from "@agent-hub/core";
 import { useExitTransition } from "@/components/motion/use-exit-transition";
 
 import type { ChatReplyPart } from "@agent-hub/agent/client";
-import {
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  CirclePlay,
-  Download,
-  ExternalLink,
-  Headphones,
-  HelpCircle,
-  Info,
-  ListFilter,
-  MessageSquareDashed,
-  Radio,
-  Search,
-  ShieldAlert,
-  ShieldCheck,
-  SquareCheck,
-  ThumbsDown,
-  ThumbsUp,
-  WandSparkles,
-  Wrench,
-  X,
-} from "lucide-react";
+import { CirclePlay, Download, ExternalLink, MessageSquareDashed, Search, ShieldCheck, SquareCheck, WandSparkles, Wrench, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, Headphones, HelpCircle, Info, ListFilter, Radio, ShieldAlert } from "lucide-react";
+import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 import { toast } from "@/lib/toast";
 import {
   exportInboxConversationsAction,
@@ -782,13 +769,16 @@ export function InboxClient({
     }
   }
 
-  async function setFeedback(messageId: string, feedback: -1 | 0 | 1) {
+  async function setFeedback(messageId: string, reaction: FeedbackReactionId | null) {
+    const feedback = feedbackReactionScore(reaction);
     setMessages(
       (prev) =>
-        prev?.map((m) => (m.id === messageId ? { ...m, feedback } : m)) ?? prev
+        prev?.map((m) =>
+          m.id === messageId ? { ...m, feedback, feedbackReaction: reaction } : m
+        ) ?? prev
     );
     try {
-      await setMessageFeedbackAction(messageId, feedback);
+      await setMessageFeedbackAction(messageId, feedback, reaction);
     } catch {
       /* optimistic update stands; refresh on next select */
     }
@@ -1115,8 +1105,9 @@ export function InboxClient({
                 value={filters.feedback}
                 placeholder="All Feedbacks"
                 options={[
-                  { value: "up", label: "Positive 👍" },
-                  { value: "down", label: "Negative 👎" },
+                  { value: "up", label: "Positive 🙂" },
+                  { value: "neutral", label: "Neutral 😐" },
+                  { value: "down", label: "Negative 🙁" },
                 ]}
                 onChange={(feedback) =>
                   setFilters({ ...filters, feedback: feedback as InboxFilters["feedback"] })
@@ -1430,31 +1421,21 @@ export function InboxClient({
                             <ExternalLink className="text-muted-foreground size-3" />
                           </Link>
                         ))}
-                      <div className="ml-auto flex items-center gap-1">
-                        <button
-                          type="button"
-                          aria-label="Mark helpful"
-                          onClick={() => setFeedback(m.id, m.feedback === 1 ? 0 : 1)}
-                          className={`hover:bg-muted flex size-7 items-center justify-center rounded-md transition-colors ${
-                            m.feedback === 1 ? "text-primary" : "text-muted-foreground"
-                          }`}
-                        >
-                          <ThumbsUp className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Mark not helpful"
-                          onClick={() =>
-                            setFeedback(m.id, m.feedback === -1 ? 0 : -1)
-                          }
-                          className={`hover:bg-muted flex size-7 items-center justify-center rounded-md transition-colors ${
-                            m.feedback === -1
-                              ? "text-destructive"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          <ThumbsDown className="size-3.5" />
-                        </button>
+                      <div className="ml-auto flex items-center gap-2">
+                        {m.feedbackReaction ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs">
+                            <span aria-hidden>{feedbackReactionById(m.feedbackReaction)?.emoji}</span>
+                            <span>{feedbackReactionById(m.feedbackReaction)?.label}</span>
+                          </span>
+                        ) : m.feedback !== 0 ? (
+                          <span className="text-muted-foreground text-xs">
+                            {m.feedback === 1 ? "Positive feedback" : "Negative feedback"}
+                          </span>
+                        ) : null}
+                        <EmojiFeedback
+                          value={m.feedbackReaction ?? null}
+                          onChange={(reaction) => setFeedback(m.id, reaction)}
+                        />
                       </div>
                     </div>
                     <MessageTime iso={m.createdAt} />

@@ -2,18 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import type { Assistant, Conversation } from "@agent-hub/core";
+import { feedbackReactionScore, type Assistant, type Conversation, type FeedbackReactionId } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
-import {
-  ChevronDown,
-  Headphones,
-  Paperclip,
-  Pin,
-  Sparkles,
-  Square,
-  SquarePen,
-  Trash2,
-} from "lucide-react";
+import { Sparkles, SquarePen, Trash2 } from "lucide-react";
+import { ChevronDown, Headphones, Paperclip, Pin } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { decideReviewAction } from "@/app/(admin)/reviews/actions";
@@ -257,9 +249,6 @@ export function PreviewPanel({
   // chat, mirroring the published widget's support view.
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportHelpDeskId, setSupportHelpDeskId] = useState<string>();
-  // Dia-style border pulse on the composer: plays every time the chat input
-  // gains focus (ignored while a pulse is already running).
-  const [composerPulse, setComposerPulse] = useState(false);
   /**
    * What the composer can offer: the model picker, the `/` Skills menu and the
    * `@` help desks. Read live rather than from a Publication, which is the
@@ -401,11 +390,6 @@ export function PreviewPanel({
       : []),
   ];
 
-  function fireComposerPulse() {
-    if (composerPulse) return;
-    setComposerPulse(true);
-    window.setTimeout(() => setComposerPulse(false), 1100);
-  }
   // The aside, its drag handle, the collapsed rail and the width the shell's
   // furniture moves aside for are `RailPanel`'s (#837). PreviewPanelLauncher is
   // this component's only docked mount point and owns both the persisted
@@ -759,18 +743,20 @@ export function PreviewPanel({
           iterationLimit: null,
           terminal: null,
           feedback: m.feedback,
+          feedbackReaction: m.feedbackReaction ?? null,
         };
       })
     );
   }
 
-  async function vote(bot: BotMsg, value: -1 | 1) {
+  async function vote(bot: BotMsg, reaction: FeedbackReactionId | null) {
     if (!bot.id) return;
-    const feedback = bot.feedback === value ? 0 : value;
+    const nextReaction = bot.feedbackReaction === reaction ? null : reaction;
+    const feedback = feedbackReactionScore(nextReaction);
     setMessages((prev) =>
-      prev.map((m) => (m.role === "bot" && m.id === bot.id ? { ...m, feedback } : m))
+      prev.map((m) => (m.role === "bot" && m.id === bot.id ? { ...m, feedback, feedbackReaction: nextReaction } : m))
     );
-    await setMessageFeedbackAction(bot.id, feedback);
+    await setMessageFeedbackAction(bot.id, feedback, nextReaction);
   }
 
   const nickname = assistant.nickname || assistant.title;
@@ -1008,6 +994,7 @@ export function PreviewPanel({
           )}
 
           <ChatThread
+            speechPlayback={assistant.voice?.enabled ? { endpoint: "/api/preview/voice/speech", assistantId: assistant.id } : undefined}
             messages={messages}
             pending={pending}
             onSend={send}
@@ -1101,74 +1088,61 @@ export function PreviewPanel({
               )}
             />
           )}
-          {(composerPulse || pending) && (
-            <ComposerPulse color="var(--primary)" focus={composerPulse} loading={pending} />
-          )}
-          {/* Sending stays enabled while a reply streams, the preview's
-              follow-up scheduler queues or steers it, so the composer never
-              enters PromptInput's own `loading` mode; a Stop control rides in
-              the actions row instead. */}
-          <PromptInput
-            value={draft}
-            onValueChange={(value) => {
-              setDraft(value);
-              skillTrigger.sync(value);
-              deskTrigger.sync(value);
-            }}
-            onSubmit={(value) => {
-              // See the widget: a file mid-read would vanish from the message.
-              if (attachments.busy) return;
-              skillTrigger.reset();
-              deskTrigger.reset();
-              send(value);
-            }}
-            onFocus={fireComposerPulse}
-            onPaste={attachmentsEnabled ? attachments.onPaste : undefined}
-            onSelect={(event) => {
-              skillTrigger.sync(event.currentTarget.value);
-              deskTrigger.sync(event.currentTarget.value);
-            }}
-            onKeyDown={(event) => {
-              skillTrigger.handleKeyDown(event);
-              deskTrigger.handleKeyDown(event);
-            }}
-            onBlur={() => {
-              skillTrigger.close();
-              deskTrigger.close();
-            }}
-            models={toPromptModels(models)}
-            model={model ?? models[0]?.selector}
-            onModelChange={setModel}
-            actions={composerActions}
-            onAction={(action) => {
-              if (action === "attach") {
-                fileInputRef.current?.click();
-              } else if (action === "skill") {
-                skillTrigger.openFromButton(draft, setDraft);
-              } else if (action === "desk") {
-                deskTrigger.openFromButton(draft, setDraft);
-              }
-            }}
-            minRows={1}
-            maxRows={6}
-            placeholder={`Ask ${nickname}...`}
-            aria-label={`Ask ${nickname}`}
-            leadingAction={<>
-              <StudyMenu settings={assistant.tools?.studyMode} disabled={pending} onSelect={prefix => { setDraft(prefix + draft.replace(/^@(quiz|dwords|truefalse|flashcards|study)\s*/i, "")); composerTextarea()?.focus(); }} />
-              {pending ? (
-                <Hint label="Stop generating and clear follow-ups" side="top">
-                  <button
-                    type="button"
-                    aria-label="Stop generating and clear follow-ups"
-                    onClick={stop}
-                    className="border-input hover:bg-muted flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors"
-                  >
-                    <Square className="size-3 fill-current" />
-                  </button>
-                </Hint>
-              ) : undefined}
-            </>}
-          />
+          {/* Enter still queues or steers follow-ups while the main button
+              becomes Stop for the current response. */}
+          <ComposerPulse loading={pending}>
+            <PromptInput
+              leadingAction={<StudyMenu settings={assistant.tools?.studyMode} disabled={pending} onSelect={prefix => { setDraft(prefix + draft.replace(/^@(quiz|dwords|truefalse|flashcards|study)\s*/i, "")); composerTextarea()?.focus(); }} />}
+              voiceInput={assistant.voice?.enabled ? { endpoint: "/api/preview/voice/transcribe", assistantId: assistant.id } : undefined}
+              value={draft}
+              onValueChange={(value) => {
+                setDraft(value);
+                skillTrigger.sync(value);
+                deskTrigger.sync(value);
+              }}
+              onSubmit={(value) => {
+                // See the widget: a file mid-read would vanish from the message.
+                if (attachments.busy) return;
+                skillTrigger.reset();
+                deskTrigger.reset();
+                send(value);
+              }}
+              onPaste={attachmentsEnabled ? attachments.onPaste : undefined}
+              onSelect={(event) => {
+                skillTrigger.sync(event.currentTarget.value);
+                deskTrigger.sync(event.currentTarget.value);
+              }}
+              onKeyDown={(event) => {
+                skillTrigger.handleKeyDown(event);
+                deskTrigger.handleKeyDown(event);
+              }}
+              onBlur={() => {
+                skillTrigger.close();
+                deskTrigger.close();
+              }}
+              models={toPromptModels(models)}
+              model={model ?? models[0]?.selector}
+              onModelChange={setModel}
+              actions={composerActions}
+              onAction={(action) => {
+                if (action === "attach") {
+                  fileInputRef.current?.click();
+                } else if (action === "skill") {
+                  skillTrigger.openFromButton(draft, setDraft);
+                } else if (action === "desk") {
+                  deskTrigger.openFromButton(draft, setDraft);
+                }
+              }}
+              minRows={1}
+              maxRows={6}
+              placeholder={`Ask ${nickname}...`}
+              aria-label={`Ask ${nickname}`}
+              loading={pending}
+              onStop={stop}
+              stopLabel="Stop generating and clear follow-ups"
+              allowSubmitWhileLoading
+            />
+          </ComposerPulse>
           {models.length > 0 &&
           parseLocalModelSelector(aiPreferences.defaultModel) ? (
             // The picker would otherwise be a control that silently does

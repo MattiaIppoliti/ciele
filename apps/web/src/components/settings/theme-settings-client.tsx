@@ -25,7 +25,7 @@ const PALETTE_OPTIONS = [
     value: "mist-blue",
     label: "Mist Blue",
     description:
-      "Blue-grey dark surfaces, a white light canvas, and navy actions.",
+      "Blue-grey dark surfaces with Midnight contrast and action colors.",
     colors: ["#151B23", "#202830"],
   },
 ] as const;
@@ -132,7 +132,7 @@ export function ThemeSettingsClient() {
         <CardHeader className="px-0">
           <CardTitle>Color palette</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Mist Blue uses navy action buttons in both modes, blue-grey dark surfaces, and a white light canvas.
+            Mist Blue keeps Midnight text and action contrast over blue-grey dark surfaces.
           </p>
         </CardHeader>
         <CardContent className="px-0">

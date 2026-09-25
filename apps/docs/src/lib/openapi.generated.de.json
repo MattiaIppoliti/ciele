@@ -9,7 +9,7 @@
   "info": {
     "title": "Ciele-API",
     "version": "1.0.0",
-    "description": "Die öffentliche Organisations-API für Ciele. Anfragen und Antworten verwenden JSON. Erstellen Sie einen API-Schlüssel unter Einstellungen → API-Schlüssel und senden Sie ihn als `Authorization: Bearer ciele_sk_…`. Geschützte Operationen geben die von ihnen benötigte Berechtigung an. Listen verwenden die bei jeder Operation angegebenen Paginierungsparameter. Dieser Vertrag beschreibt die öffentliche `/api/v1`-Oberfläche; interne Konsolen- und Widget-Routen sind keine API-Schlüssel-Endpunkte.",
+    "description": "Die öffentliche Organisations-API für Ciele. Anfragen und Antworten verwenden JSON. Erstellen Sie einen API-Schlüssel unter Einstellungen → API-Schlüssel und senden Sie ihn als `Authorization: Bearer ciele_sk_…`. Geschützte Operationen geben die von ihnen benötigte Berechtigung an. Listen verwenden die bei jeder Operation angegebenen Paginierungsparameter. Dieser Vertrag beschreibt die öffentliche `/api/v1`-Oberfläche. Interne Konsolen- und Widget-Routen sind keine API-Schlüssel-Endpunkte.",
     "license": {
       "name": "AGPL-3.0-only",
       "url": "https://spdx.org/licenses/AGPL-3.0-only.html"
@@ -24,7 +24,7 @@
     {
       "name": "assistants",
       "x-displayName": "Assistenten",
-      "description": "Öffentliche Endpunkte für Assistenten."
+      "description": "Endpunkte für öffentliche Assistenten."
     },
     {
       "name": "flows",
@@ -84,7 +84,7 @@
     {
       "name": "channels",
       "x-displayName": "Kanäle",
-      "description": "Endpunkte für öffentliche Channels."
+      "description": "Endpunkte für öffentliche Kanäle."
     },
     {
       "name": "skills",
@@ -94,7 +94,7 @@
     {
       "name": "goals",
       "x-displayName": "Ziele",
-      "description": "Endpunkte für öffentliche Ziele."
+      "description": "Öffentliche Endpunkte für Ziele."
     },
     {
       "name": "alerts",
@@ -507,7 +507,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -698,7 +698,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -831,7 +831,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -946,7 +946,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -1066,7 +1066,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -1322,7 +1322,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -1569,7 +1569,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -1797,6 +1797,112 @@
                   "attachmentsEnabled": {
                     "type": "boolean"
                   },
+                  "voice": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "transcription": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "speech": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "google",
+                              "openai",
+                              "elevenlabs"
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "pattern": "^[a-zA-Z0-9._-]*$"
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      },
+                      "voiceId": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "pattern": "^[a-zA-Z0-9._-]*$"
+                      },
+                      "inputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "outputLanguage": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "en",
+                          "it",
+                          "es",
+                          "fr",
+                          "de",
+                          "pt"
+                        ]
+                      },
+                      "voiceLanguages": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^(google|openai|elevenlabs):[a-zA-Z0-9._-]{1,200}$"
+                        },
+                        "additionalProperties": {
+                          "type": "string",
+                          "enum": [
+                            "auto",
+                            "en",
+                            "it",
+                            "es",
+                            "fr",
+                            "de",
+                            "pt"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "transcription",
+                      "speech",
+                      "voiceId"
+                    ]
+                  },
                   "style": {},
                   "allowedDomains": {
                     "maxItems": 100,
@@ -1875,7 +1981,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -2048,7 +2154,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -2163,7 +2269,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -2283,7 +2389,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -2386,7 +2492,7 @@
     "/api/v1/assistants/{id}/entities": {
       "get": {
         "operationId": "getAssistantsByIdEntities",
-        "summary": "Die vom Assistenten ausgewählten Entitäten abrufen",
+        "summary": "Abrufen der vom Assistenten ausgewählten Entitäten",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "assistants"
@@ -2459,7 +2565,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -2655,7 +2761,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -3494,7 +3600,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -3635,7 +3741,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -4935,7 +5041,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -5055,7 +5161,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -7029,7 +7135,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -7206,7 +7312,7 @@
     "/api/v1/flows/catalog": {
       "get": {
         "operationId": "getFlowsCatalog",
-        "summary": "Was ein Flow enthalten kann: Trigger, Aktionen, Bedingungsarten, Pairing-Regeln",
+        "summary": "Mögliche Bestandteile eines Flows: Trigger, Aktionen, Bedingungsarten, Pairing-Regeln",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "flows"
@@ -7510,7 +7616,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -8622,7 +8728,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -10010,7 +10116,7 @@
     "/api/v1/assistants/{id}/flows/validate": {
       "post": {
         "operationId": "postAssistantsByIdFlowsValidate",
-        "summary": "Einen gesamten Flow prüfen, ohne ihn zu erstellen (zeigt, was gespeichert würde)",
+        "summary": "Einen gesamten Flow prüfen, ohne ihn zu erstellen (zeigt an, was gespeichert würde)",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "flows"
@@ -11008,7 +11114,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -12609,7 +12715,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -13123,7 +13229,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -13675,6 +13781,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "trace": {
                             "oneOf": [
                               {
@@ -13802,7 +13927,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -15236,7 +15361,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -16668,7 +16793,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -18085,7 +18210,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -18337,7 +18462,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -18601,7 +18726,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -18742,7 +18867,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -18861,7 +18986,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -18981,7 +19106,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -19172,7 +19297,7 @@
                   },
                   "assistantIds": {
                     "type": "string",
-                    "description": "Optionales, JSON-codiertes Array von Assistant-IDs, um sie mit den importierten Elementen zu verknüpfen."
+                    "description": "Optionales JSON-codiertes Array von Assistant-IDs, um sie mit den importierten Elementen zu verknüpfen."
                   }
                 },
                 "required": [
@@ -19205,7 +19330,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -19278,7 +19403,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -19398,7 +19523,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -19644,7 +19769,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -19807,7 +19932,7 @@
                   },
                   "assistantIds": {
                     "type": "string",
-                    "description": "Optionales, JSON-codiertes Array von Assistant-IDs, um sie mit den importierten Elementen zu verknüpfen."
+                    "description": "Optionales JSON-codiertes Array von Assistant-IDs, um sie mit den importierten Elementen zu verknüpfen."
                   }
                 },
                 "required": [
@@ -19950,7 +20075,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -20128,7 +20253,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -20353,7 +20478,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -20527,7 +20652,7 @@
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "Filtern nach Status der Quelle.",
+            "description": "Filtern Sie nach dem Status der Quelle.",
             "schema": {
               "type": "string"
             }
@@ -20536,7 +20661,7 @@
             "name": "assistantId",
             "in": "query",
             "required": false,
-            "description": "Filtern Sie nach verknüpftem Assistant.",
+            "description": "Filtern nach verknüpftem Assistant.",
             "schema": {
               "type": "string"
             }
@@ -20763,7 +20888,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -20896,7 +21021,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -21015,7 +21140,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -21135,7 +21260,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -21346,7 +21471,7 @@
                   },
                   "assistantIds": {
                     "type": "string",
-                    "description": "Optionales, JSON-codiertes Array von Assistant-IDs, um sie mit den importierten Elementen zu verknüpfen."
+                    "description": "Optionales JSON-codiertes Array von Assistant-IDs, um sie mit den importierten Elementen zu verknüpfen."
                   }
                 },
                 "required": [
@@ -21450,7 +21575,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -21718,7 +21843,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -21907,7 +22032,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -21991,7 +22116,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -22111,7 +22236,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -22319,7 +22444,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -22482,7 +22607,7 @@
                   },
                   "assistantIds": {
                     "type": "string",
-                    "description": "Optionales, JSON-codiertes Array von Assistant-IDs, um sie mit den importierten Elementen zu verknüpfen."
+                    "description": "Optionales JSON-codiertes Array von Assistant-IDs, um sie mit den importierten Elementen zu verknüpfen."
                   }
                 },
                 "required": [
@@ -22497,7 +22622,7 @@
     "/api/v1/knowledge/faqs/export": {
       "get": {
         "operationId": "getKnowledgeFaqsExport",
-        "summary": "Organisationsweiter CSV-Export von FAQs",
+        "summary": "Organisationsweiter FAQ-Export als CSV",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "knowledge"
@@ -22550,7 +22675,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -22782,7 +22907,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -22915,7 +23040,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -23011,7 +23136,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -23131,7 +23256,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -23525,7 +23650,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -23753,7 +23878,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -23931,7 +24056,7 @@
       },
       "delete": {
         "operationId": "deleteProjectsById",
-        "summary": "Ein Projekt löschen (Entscheidungen werden kaskadiert, Teammitglieder werden abgetrennt; stattdessen archivieren, um den Datensatz zu erhalten)",
+        "summary": "Ein Projekt löschen (Entscheidungen wirken sich kaskadierend aus, Teammitglieder werden abgetrennt; stattdessen archivieren, um den Datensatz zu erhalten)",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "projects"
@@ -23986,7 +24111,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -24277,7 +24402,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -24437,7 +24562,7 @@
                 "properties": {
                   "body": {
                     "type": "string",
-                    "description": "Das gesamte Dokument; der vorherige Text wird im Verlauf gespeichert"
+                    "description": "Das gesamte Dokument; der vorherige Text wird im Verlauf aufbewahrt."
                   },
                   "note": {
                     "description": "Warum es geändert wurde, wird im Verlauf angezeigt",
@@ -24559,7 +24684,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -24700,7 +24825,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -24765,7 +24890,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -24885,7 +25010,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -25041,7 +25166,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -25214,7 +25339,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -25279,7 +25404,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -25399,7 +25524,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -25521,7 +25646,7 @@
     "/api/v1/conversations": {
       "get": {
         "operationId": "getConversations",
-        "summary": "Konversationen auflisten (?assistantId= filter)",
+        "summary": "Konversationen auflisten (?assistantId= Filter)",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "inbox"
@@ -25611,6 +25736,18 @@
                               {
                                 "type": "number",
                                 "const": -1
+                              }
+                            ]
+                          },
+                          "hasNeutralFeedback": {
+                            "oneOf": [
+                              {
+                                "type": "boolean",
+                                "const": false
+                              },
+                              {
+                                "type": "boolean",
+                                "const": true
                               }
                             ]
                           },
@@ -25969,7 +26106,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -26580,6 +26717,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "createdAt": {
                             "type": "string"
                           }
@@ -26591,6 +26747,7 @@
                           "flowId",
                           "flowName",
                           "feedback",
+                          "feedbackReaction",
                           "createdAt"
                         ]
                       }
@@ -26635,7 +26792,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -27145,7 +27302,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -27342,7 +27499,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -27854,7 +28011,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -28230,7 +28387,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -28423,11 +28580,31 @@
                           "const": -1
                         }
                       ]
+                    },
+                    "reaction": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "const": "positive"
+                        },
+                        {
+                          "type": "string",
+                          "const": "neutral"
+                        },
+                        {
+                          "type": "string",
+                          "const": "negative"
+                        }
+                      ]
                     }
                   },
                   "required": [
                     "messageId",
-                    "feedback"
+                    "feedback",
+                    "reaction"
                   ]
                 }
               }
@@ -28464,7 +28641,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -28848,7 +29025,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -29208,6 +29385,25 @@
                                   }
                                 ]
                               },
+                              "feedbackReaction": {
+                                "oneOf": [
+                                  {
+                                    "type": "null"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "positive"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "neutral"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "const": "negative"
+                                  }
+                                ]
+                              },
                               "trace": {
                                 "oneOf": [
                                   {
@@ -29287,6 +29483,14 @@
                                     {}
                                   ]
                                 },
+                                "feedbackReaction": {
+                                  "oneOf": [
+                                    {},
+                                    {},
+                                    {},
+                                    {}
+                                  ]
+                                },
                                 "trace": {
                                   "oneOf": [
                                     {},
@@ -29351,6 +29555,18 @@
                                   {
                                     "type": "number",
                                     "const": -1
+                                  }
+                                ]
+                              },
+                              "hasNeutralFeedback": {
+                                "oneOf": [
+                                  {
+                                    "type": "boolean",
+                                    "const": false
+                                  },
+                                  {
+                                    "type": "boolean",
+                                    "const": true
                                   }
                                 ]
                               },
@@ -29775,7 +29991,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -30089,7 +30305,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -30484,7 +30700,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -30756,7 +30972,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -31154,7 +31370,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -31435,7 +31651,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -31665,7 +31881,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -31820,7 +32036,7 @@
     "/api/v1/entities/{id}/records": {
       "get": {
         "operationId": "getEntitiesByIdRecords",
-        "summary": "Die Datensätze einer Entität durchsuchen",
+        "summary": "Datensätze einer Entität durchsuchen",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "entities"
@@ -31964,7 +32180,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -32211,7 +32427,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -32380,7 +32596,7 @@
     "/api/v1/entities/{id}/records/import": {
       "post": {
         "operationId": "postEntitiesByIdRecordsImport",
-        "summary": "Importieren und idempotentes Upsert von Datensätzen aus einer CSV-Datei",
+        "summary": "Datensätze aus einer CSV-Datei importieren und idempotent upserten",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "entities"
@@ -32457,7 +32673,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -32692,7 +32908,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -32816,7 +33032,7 @@
       "patch": {
         "operationId": "patchMemoriesSettings",
         "summary": "Langzeitspeicher aktivieren oder deaktivieren",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "memories"
         ],
@@ -32876,7 +33092,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -33050,7 +33266,7 @@
     "/api/v1/memories/subjects": {
       "get": {
         "operationId": "getMemoriesSubjects",
-        "summary": "Liste der Subjects, die Memories enthalten",
+        "summary": "Subjekte auflisten, die Erinnerungen enthalten",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "memories"
@@ -33171,7 +33387,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -33404,7 +33620,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -33527,7 +33743,7 @@
       },
       "delete": {
         "operationId": "deleteMemoriesSubjectsBySubjectId",
-        "summary": "Alle Erinnerungen für ein Subject löschen",
+        "summary": "Alle Erinnerungen für ein Subjekt löschen",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "memories"
@@ -33582,7 +33798,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -33792,7 +34008,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -33948,7 +34164,7 @@
       "get": {
         "operationId": "getSsoIdentity",
         "summary": "Lesen Sie die Konfiguration des SSO-Identity-Claims",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "sso"
         ],
@@ -34073,7 +34289,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -34227,7 +34443,7 @@
       "patch": {
         "operationId": "patchSsoIdentity",
         "summary": "SSO-Identitätsanspruch festlegen oder löschen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "sso"
         ],
@@ -34294,7 +34510,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -34475,8 +34691,8 @@
     "/api/v1/sso/identity/validate": {
       "post": {
         "operationId": "postSsoIdentityValidate",
-        "summary": "Überprüfen Sie die gespeicherte SSO-Verbindung",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "summary": "Überprüfen Sie die gespeicherte SSO-Verbindung.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "sso"
         ],
@@ -34557,7 +34773,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -34712,7 +34928,7 @@
     "/api/v1/teammates": {
       "get": {
         "operationId": "getTeammates",
-        "summary": "Listen Sie die KI-Teammitglieder auf, für die dieser Schlüssel sichtbar sein darf.",
+        "summary": "Listen Sie die KI-Teammitglieder auf, die diesen Schlüssel möglicherweise sehen können",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "teammates"
@@ -34960,7 +35176,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -35332,7 +35548,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -35553,7 +35769,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -35999,7 +36215,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -36119,7 +36335,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -36333,7 +36549,7 @@
     "/api/v1/teammates/{id}": {
       "get": {
         "operationId": "getTeammatesById",
-        "summary": "Ein KI-Teammate",
+        "summary": "Ein KI-Teammitglied",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "teammates"
@@ -36591,7 +36807,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -36972,7 +37188,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -37271,7 +37487,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -37806,7 +38022,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -38358,6 +38574,25 @@
                               }
                             ]
                           },
+                          "feedbackReaction": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string",
+                                "const": "positive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "neutral"
+                              },
+                              {
+                                "type": "string",
+                                "const": "negative"
+                              }
+                            ]
+                          },
                           "trace": {
                             "oneOf": [
                               {
@@ -38485,7 +38720,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -38721,7 +38956,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -38845,7 +39080,7 @@
       "put": {
         "operationId": "putTeammatesByIdGrants",
         "summary": "Die einem Teammate zugewiesenen Domains (sowie dessen Limit/Bypass) ersetzen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "teammates"
         ],
@@ -38955,7 +39190,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -39356,7 +39591,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -39479,7 +39714,7 @@
       },
       "put": {
         "operationId": "putTeammatesByIdMemory",
-        "summary": "Das Agent-Speicherdokument ersetzen (der vorherige Text wird im Verlauf aufbewahrt)",
+        "summary": "Ersetzen Sie das Agent-Speicherdokument (der vorherige Text wird im Verlauf aufbewahrt)",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "teammates"
@@ -39615,7 +39850,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -39775,7 +40010,7 @@
                 "properties": {
                   "body": {
                     "type": "string",
-                    "description": "Das gesamte Dokument; der vorherige Text wird im Verlauf gespeichert"
+                    "description": "Das gesamte Dokument; der vorherige Text wird im Verlauf aufbewahrt."
                   },
                   "note": {
                     "description": "Warum es geändert wurde, wird im Verlauf angezeigt",
@@ -39963,7 +40198,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -40104,7 +40339,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Verwenden Sie denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation wiederholen.",
+            "description": "Verwenden Sie denselben Wert nur, wenn Sie dieselbe logische Operation erneut versuchen.",
             "schema": {
               "type": "string"
             }
@@ -40252,7 +40487,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -40372,7 +40607,7 @@
             },
             "headers": {
               "Retry-After": {
-                "description": "Wartezeit in Sekunden, bevor eine noch laufende Anfrage erneut versucht wird.",
+                "description": "Anzahl der Sekunden, die gewartet werden soll, bevor eine noch laufende Anfrage erneut versucht wird.",
                 "schema": {
                   "type": "integer"
                 }
@@ -40510,7 +40745,7 @@
     "/api/v1/routines/{id}": {
       "patch": {
         "operationId": "patchRoutinesById",
-        "summary": "Ändern Sie die Anweisung, die Häufigkeit, die Uhrzeit oder das Aktivierungs-Flag einer Routine.",
+        "summary": "Ändern Sie die Anweisung, die Häufigkeit, die Uhrzeit oder das Aktivierungs-Flag einer Routine",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "teammates"
@@ -40667,7 +40902,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -40909,7 +41144,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -41227,7 +41462,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -41449,7 +41684,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -41623,7 +41858,7 @@
       "get": {
         "operationId": "getChannelsOversight",
         "summary": "Jeder Kanal in der Organisation, Mitgliedschaft wird ignoriert (Owner/Admin)",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "channels"
         ],
@@ -41785,7 +42020,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -41941,7 +42176,7 @@
       "get": {
         "operationId": "getChannelsOversightById",
         "summary": "Transkript eines Kanals, ohne darin zugewiesen zu sein (Owner/Admin)",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "channels"
         ],
@@ -42514,7 +42749,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -42669,7 +42904,7 @@
     "/api/v1/channels/{id}": {
       "get": {
         "operationId": "getChannelsById",
-        "summary": "Ein Kanal: seine Teilnehmerliste und sein Transkript",
+        "summary": "Ein Kanal: seine Mitgliederliste und sein Transkript",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "channels"
@@ -43243,7 +43478,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -43474,7 +43709,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -43626,7 +43861,7 @@
       },
       "delete": {
         "operationId": "deleteChannelsById",
-        "summary": "Einen Kanal schließen (das Transkript wird mitgeschlossen)",
+        "summary": "Einen Kanal schließen (das zugehörige Transkript wird mitgeschlossen)",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "channels"
@@ -43681,7 +43916,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -43861,7 +44096,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -44010,7 +44245,7 @@
     "/api/v1/channels/{id}/members/{userId}": {
       "delete": {
         "operationId": "deleteChannelsByIdMembersByUserId",
-        "summary": "Entfernen Sie ein Mitglied aus einem Kanal, oder verlassen Sie ihn",
+        "summary": "Entfernen Sie ein Mitglied aus einem Kanal oder verlassen Sie ihn",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "channels"
@@ -44073,7 +44308,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -44253,7 +44488,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -44465,7 +44700,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -44722,7 +44957,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -44977,7 +45212,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -45523,7 +45758,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -45787,7 +46022,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -46020,7 +46255,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -46755,7 +46990,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -47544,7 +47779,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -47730,7 +47965,7 @@
       },
       "delete": {
         "operationId": "deleteHelpDesksByIdChannelsByChannelId",
-        "summary": "Eskalationskanal löschen",
+        "summary": "Einen Eskalationskanal löschen",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "help-desks"
@@ -47793,7 +48028,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -47948,7 +48183,7 @@
     "/api/v1/help-desks/{id}/channels/reorder": {
       "post": {
         "operationId": "postHelpDesksByIdChannelsReorder",
-        "summary": "Reihenfolge der Eskalationskanäle ändern",
+        "summary": "Eskalationskanäle neu anordnen",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "help-desks"
@@ -48231,7 +48466,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -48463,7 +48698,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -48759,7 +48994,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -49065,7 +49300,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -49277,7 +49512,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -49565,7 +49800,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -49804,7 +50039,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -50068,7 +50303,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -50191,7 +50426,7 @@
       },
       "patch": {
         "operationId": "patchAssistantsByIdSkills",
-        "summary": "Die einem Assistenten zugeordneten Skills ersetzen",
+        "summary": "Die einem Assistant zugeordneten Skills ersetzen",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "skills"
@@ -50300,7 +50535,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -50652,7 +50887,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -50775,7 +51010,7 @@
       },
       "post": {
         "operationId": "postAssistantsByIdGoals",
-        "summary": "Ein fortlaufendes Ziel erstellen",
+        "summary": "Ein dauerhaftes Ziel erstellen",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "goals"
@@ -50939,7 +51174,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -51306,7 +51541,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -51565,7 +51800,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -51883,7 +52118,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -52008,7 +52243,7 @@
     "/api/v1/alerts/{id}/resolve": {
       "post": {
         "operationId": "postAlertsByIdResolve",
-        "summary": "Einen Betriebswarnhinweis auflösen",
+        "summary": "Einen Betriebsalarm beheben",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „edit“.",
         "tags": [
           "alerts"
@@ -52169,7 +52404,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -52423,7 +52658,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -52547,7 +52782,7 @@
       "patch": {
         "operationId": "patchOrganization",
         "summary": "Organisationseinstellungen aktualisieren",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "organization"
         ],
@@ -52645,7 +52880,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -52998,7 +53233,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -53154,7 +53389,7 @@
       "patch": {
         "operationId": "patchMembersByUserId",
         "summary": "Rolle eines Mitglieds ändern",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "members"
         ],
@@ -53296,7 +53531,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -53475,7 +53710,7 @@
       "delete": {
         "operationId": "deleteMembersByUserId",
         "summary": "Ein Mitglied entfernen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "members"
         ],
@@ -53529,7 +53764,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -53685,7 +53920,7 @@
       "get": {
         "operationId": "getInvites",
         "summary": "Liste der ausstehenden Einladungen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "members"
         ],
@@ -53793,7 +54028,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -53947,7 +54182,7 @@
       "post": {
         "operationId": "postInvites",
         "summary": "Eine Einladung erstellen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "members"
         ],
@@ -54044,7 +54279,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -54230,7 +54465,7 @@
       "delete": {
         "operationId": "deleteInvitesById",
         "summary": "Eine Einladung widerrufen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "members"
         ],
@@ -54284,7 +54519,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -54440,7 +54675,7 @@
       "get": {
         "operationId": "getApiKeys",
         "summary": "API-Schlüssel der Organisation auflisten",
-        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung manageApiKeys.",
+        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageApiKeys“.",
         "tags": [
           "api-keys"
         ],
@@ -54574,7 +54809,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -54728,7 +54963,7 @@
       "post": {
         "operationId": "postApiKeys",
         "summary": "Einen API-Schlüssel erstellen; das Secret wird einmalig zurückgegeben",
-        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung manageApiKeys.",
+        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageApiKeys“.",
         "tags": [
           "api-keys"
         ],
@@ -54863,7 +55098,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -55048,7 +55283,7 @@
       "delete": {
         "operationId": "deleteApiKeysById",
         "summary": "Einen API-Schlüssel widerrufen",
-        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung manageApiKeys.",
+        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageApiKeys“.",
         "tags": [
           "api-keys"
         ],
@@ -55102,7 +55337,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -55257,7 +55492,7 @@
     "/api/v1/assistants/{id}/api-integration": {
       "get": {
         "operationId": "getAssistantsByIdApiIntegration",
-        "summary": "API-Integration eines Assistants auslesen (geheimnisgeschützt)",
+        "summary": "API-Integration eines Assistants auslesen (sicher für Geheimnisse)",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "api-integrations"
@@ -55464,7 +55699,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -55816,7 +56051,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -56183,7 +56418,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -56339,7 +56574,7 @@
       "get": {
         "operationId": "getSsoConnection",
         "summary": "Lesen Sie die vollständige, nicht geheime SSO-Konfiguration",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "sso"
         ],
@@ -56489,7 +56724,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -56643,7 +56878,7 @@
       "put": {
         "operationId": "putSsoConnection",
         "summary": "SSO-Verbindung erstellen oder ersetzen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "sso"
         ],
@@ -56793,7 +57028,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -56990,7 +57225,7 @@
       "delete": {
         "operationId": "deleteSsoConnection",
         "summary": "SSO-Verbindung trennen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "sso"
         ],
@@ -57035,7 +57270,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -57190,8 +57425,8 @@
     "/api/v1/providers": {
       "get": {
         "operationId": "getProviders",
-        "summary": "Liste der Verbindungen zu Modellanbietern (geheimnisgeschützt)",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "summary": "Liste der Verbindungen zu Modellanbietern (sicher für Geheimnisse)",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "providers"
         ],
@@ -57257,6 +57492,10 @@
                               {
                                 "type": "string",
                                 "const": "openai_compatible"
+                              },
+                              {
+                                "type": "string",
+                                "const": "elevenlabs"
                               },
                               {
                                 "type": "string",
@@ -57454,7 +57693,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -57610,7 +57849,7 @@
       "post": {
         "operationId": "postProvidersApiKey",
         "summary": "Erstellen und Validieren einer BYOK-Provider-Verbindung",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "providers"
         ],
@@ -57674,6 +57913,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -57895,6 +58138,10 @@
                             },
                             {
                               "type": "string",
+                              "const": "elevenlabs"
+                            },
+                            {
+                              "type": "string",
                               "const": "azure_openai"
                             }
                           ]
@@ -58088,7 +58335,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -58251,7 +58498,8 @@
                     "enum": [
                       "anthropic",
                       "openai",
-                      "google"
+                      "google",
+                      "elevenlabs"
                     ]
                   },
                   "apiKey": {
@@ -58277,7 +58525,7 @@
       "post": {
         "operationId": "postProvidersOpenaiCompatible",
         "summary": "Erstellen Sie eine OpenAI-kompatible Provider-Verbindung",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "providers"
         ],
@@ -58341,6 +58589,10 @@
                             {
                               "type": "string",
                               "const": "openai_compatible"
+                            },
+                            {
+                              "type": "string",
+                              "const": "elevenlabs"
                             },
                             {
                               "type": "string",
@@ -58562,6 +58814,10 @@
                             },
                             {
                               "type": "string",
+                              "const": "elevenlabs"
+                            },
+                            {
+                              "type": "string",
                               "const": "azure_openai"
                             }
                           ]
@@ -58755,7 +59011,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -58945,8 +59201,8 @@
     "/api/v1/providers/federated": {
       "post": {
         "operationId": "postProvidersFederated",
-        "summary": "Erstellen Sie eine Verbindung zu einem föderierten Cloud-Provider",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "summary": "Eine Verbindung zu einem föderierten Cloud-Provider erstellen",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "providers"
         ],
@@ -59007,6 +59263,10 @@
                         {
                           "type": "string",
                           "const": "openai_compatible"
+                        },
+                        {
+                          "type": "string",
+                          "const": "elevenlabs"
                         },
                         {
                           "type": "string",
@@ -59198,7 +59458,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -59464,7 +59724,7 @@
       "delete": {
         "operationId": "deleteProvidersById",
         "summary": "Eine Provider-Verbindung löschen",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "providers"
         ],
@@ -59518,7 +59778,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -59674,7 +59934,7 @@
       "patch": {
         "operationId": "patchProvidersEmbedding",
         "summary": "Wählen Sie die Embedding-Provider-Verbindung aus",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "providers"
         ],
@@ -59741,7 +60001,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -59932,7 +60192,7 @@
             "name": "provider",
             "in": "query",
             "required": false,
-            "description": "Filtern nach Anwendungsanbieter.",
+            "description": "Filtern Sie nach Anwendungsanbieter.",
             "schema": {
               "type": "string"
             }
@@ -60123,7 +60383,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -60258,7 +60518,7 @@
             "name": "provider",
             "in": "query",
             "required": false,
-            "description": "Filtern nach Anwendungsanbieter.",
+            "description": "Filtern Sie nach Anwendungsanbieter.",
             "schema": {
               "type": "string"
             }
@@ -60438,7 +60698,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -60563,7 +60823,7 @@
     "/api/v1/applications/connections/{id}/reconsent": {
       "post": {
         "operationId": "postApplicationsConnectionsByIdReconsent",
-        "summary": "Berechnen Sie die Scope-Vereinigung für benannte Connector-Aktionen und den OAuth-Startpfad zum Öffnen.",
+        "summary": "Berechnen Sie die Scope-Vereinigung für die benannten Connector-Aktionen und den OAuth-Startpfad, der geöffnet werden soll.",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „publish“.",
         "tags": [
           "applications"
@@ -60684,7 +60944,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -60864,7 +61124,7 @@
     "/api/v1/reviews": {
       "get": {
         "operationId": "getReviews",
-        "summary": "Anfragen zur menschlichen Überprüfung, zuerst die neuesten (Filtern nach Status, Konversation oder Assistent)",
+        "summary": "Anfragen zur menschlichen Überprüfung, neueste zuerst (Filter nach Status, Konversation oder Assistent)",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "reviews"
@@ -60883,7 +61143,7 @@
             "name": "conversationId",
             "in": "query",
             "required": false,
-            "description": "Nach Konversation filtern.",
+            "description": "Filtern nach Konversation.",
             "schema": {
               "type": "string"
             }
@@ -60892,7 +61152,7 @@
             "name": "assistantId",
             "in": "query",
             "required": false,
-            "description": "Nach Assistant filtern.",
+            "description": "Filtern Sie nach Assistant.",
             "schema": {
               "type": "string"
             }
@@ -61156,7 +61416,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -61281,7 +61541,7 @@
     "/api/v1/reviews/{id}": {
       "get": {
         "operationId": "getReviewsById",
-        "summary": "Eine Anfrage zur manuellen Überprüfung",
+        "summary": "Eine Anfrage für eine manuelle Überprüfung",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "reviews"
@@ -61563,7 +61823,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -61688,7 +61948,7 @@
     "/api/v1/reviews/{id}/decide": {
       "post": {
         "operationId": "postReviewsByIdDecide",
-        "summary": "Genehmigen oder ablehnen Sie eine manuelle Überprüfung (durch eine zugewiesene Person oder einen Owner-/Admin-Schlüssel); die erste Entscheidung zählt.",
+        "summary": "Genehmigen oder ablehnen Sie eine manuelle Überprüfung (durch eine verantwortliche Person oder einen Owner-/Admin-Schlüssel); die erste Entscheidung zählt.",
         "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „member“.",
         "tags": [
           "reviews"
@@ -61970,7 +62230,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -62127,8 +62387,8 @@
     "/api/v1/usage/meters": {
       "get": {
         "operationId": "getUsageMeters",
-        "summary": "Die Zähler des Plans: Obergrenze, verbrauchte Credits und Zeitfenster pro Ressource (eine nicht gemessene Bereitstellung gibt dies an)",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "summary": "Die Zähler des Plans: Obergrenze, verbrauchte Credits und Fenster pro Ressource (eine nicht gemessene Bereitstellung weist darauf hin)",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "usage"
         ],
@@ -62282,7 +62542,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {
@@ -62437,8 +62697,8 @@
     "/api/v1/usage/spenders": {
       "get": {
         "operationId": "getUsageSpenders",
-        "summary": "Wer die Credits eines Fensters verbraucht hat, gruppiert nach Dimension (ein Turn benennt zwei, daher addieren sich die Dimensionen nicht).",
-        "description": "Erfordert einen API-Schlüssel der Organisation mit der Berechtigung „manageMembers“.",
+        "summary": "Wer die Credits eines Fensters verbraucht hat, gruppiert nach Dimension (ein Turn benennt zwei, daher addieren sich die Dimensionen nicht)",
+        "description": "Erfordert einen Organisations-API-Schlüssel mit der Berechtigung „manageMembers“.",
         "tags": [
           "usage"
         ],
@@ -62592,7 +62852,7 @@
             }
           },
           "401": {
-            "description": "Fehlender, ungültiger oder widerrufener API-Schlüssel",
+            "description": "Fehlender, ungültiger oder gesperrter API-Schlüssel",
             "content": {
               "application/json": {
                 "schema": {

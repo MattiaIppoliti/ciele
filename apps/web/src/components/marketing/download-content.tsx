@@ -1,11 +1,6 @@
 import Link from "next/link";
-import {
-  AppWindowMac,
-  ArrowUpRight,
-  Container,
-  GitFork,
-  HardDriveDownload,
-} from "lucide-react";
+import { AppWindowMac, Container, GitFork, HardDriveDownload } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { Badge, Button, cn } from "@agent-hub/ui";
 import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { CtaSection } from "@/components/marketing/cta-section";

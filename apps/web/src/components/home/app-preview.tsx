@@ -1,13 +1,8 @@
 "use client";
 
 import { useContext, useEffect, useRef, useState } from "react";
-import {
-  ChevronsUpDown,
-  Ellipsis,
-  PanelLeft,
-  Search,
-  LifeBuoy,
-} from "lucide-react";
+import { ChevronsUpDown, PanelLeft, Search, LifeBuoy } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import type { AnimatedIcon } from "@/components/ui/animated-icon";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Globe, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { Globe } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
   deleteCrawlerConnectionAction,

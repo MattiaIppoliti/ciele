@@ -11,7 +11,7 @@ import { PanelRight, Search } from "lucide-react";
 import { Input } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { Maximize2Icon } from "@/components/ui/icons/maximize-2";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   ContextMenu,
   ContextMenuCheckboxItem,

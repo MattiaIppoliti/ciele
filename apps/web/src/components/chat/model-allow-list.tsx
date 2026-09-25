@@ -3,16 +3,25 @@
 import type { ModelRef, Provider } from "@agent-hub/core";
 import { sameModel } from "@agent-hub/core";
 import { MODEL_CATALOG, PROVIDER_NAMES } from "@agent-hub/agent/client";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 /**
  * Which models the chat window lets the asker switch to, beside the configured
  * one. Shared by the Assistant's General section and the Teammate's settings,
  * because it is the same decision about two entities.
  *
- * The configured model is shown checked and disabled rather than hidden: it is
- * always in the picker, and a list that silently omitted it would read as "this
- * model is not offered", which is the opposite of true.
+ * The configured model is shown selected and disabled rather than hidden: it
+ * is always in the picker, and a selector that silently omitted it would read
+ * as "this model is not offered", which is the opposite of true.
  *
  * Nothing here filters by Provider Connection. An admin configuring an
  * Assistant is choosing intent, and a list that hid a model because a
@@ -20,9 +29,8 @@ import { Checkbox } from "@/components/ui/checkbox";
  * Capability is applied where it belongs, at read time, by `chatModelOptions`.
  *
  * It is *said* here, though. A provider with no credential is labelled and its
- * models are marked, because the alternative is what shipped: three boxes
- * ticked, "the chat window offers 3 models" underneath, and a chat window with
- * no picker in it.
+ * models are marked, because a selected model whose provider has no credential
+ * is not offered in the chat window.
  */
 export function ModelAllowList({
   configured,
@@ -41,70 +49,95 @@ export function ModelAllowList({
   const providers = (Object.keys(PROVIDER_NAMES) as Provider[]).filter(
     (provider) => MODEL_CATALOG[provider].length > 0
   );
-
-  function toggle(ref: ModelRef, checked: boolean) {
-    onChange(
-      checked
-        ? [...value, ref]
-        : value.filter((entry) => !sameModel(entry, ref))
-    );
-  }
+  const optionKeys = new Set(
+    providers.flatMap((provider) =>
+      MODEL_CATALOG[provider].map((model) => modelKey({ provider, modelId: model.id }))
+    )
+  );
+  const configuredKey = modelKey(configured);
+  const selectedKeys = [
+    ...new Set([...value.map(modelKey), configuredKey]),
+  ];
+  const retainedUnknownModels = value.filter((ref) => !optionKeys.has(modelKey(ref)));
+  const additionalCount = value.filter((ref) => !sameModel(ref, configured)).length;
 
   return (
-    <div className="space-y-4">
-      {providers.map((provider) => (
-        <div key={provider} className="space-y-2">
-          <p className="text-muted-foreground text-xs font-medium">
-            {PROVIDER_NAMES[provider]}
-            {unavailable.includes(provider) && (
-              <span className="font-normal"> · no credential yet</span>
-            )}
-          </p>
-          <div className="space-y-2">
+    <Select
+      multiple
+      value={selectedKeys}
+      disabled={disabled}
+      onValueChange={(keys) => {
+        const selected = keys
+          .filter((key) => key !== configuredKey && optionKeys.has(key))
+          .map(modelFromKey);
+        onChange([...retainedUnknownModels, ...selected]);
+      }}
+    >
+      <SelectTrigger aria-label="Models visitors may choose" className="w-full max-w-xl">
+        <SelectValue>
+          {additionalCount === 0
+            ? "Choose models for visitors"
+            : `${additionalCount} additional ${additionalCount === 1 ? "model" : "models"} selected`}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {providers.map((provider) => (
+          <SelectGroup
+            key={provider}
+            aria-label={`${PROVIDER_NAMES[provider]}${unavailable.includes(provider) ? " · no credential yet" : ""}`}
+          >
+            <SelectGroupLabel>
+              {PROVIDER_NAMES[provider]}
+              {unavailable.includes(provider) && (
+                <span className="font-normal"> · no credential yet</span>
+              )}
+            </SelectGroupLabel>
             {MODEL_CATALOG[provider].map((model) => {
               const ref: ModelRef = { provider, modelId: model.id };
               const isConfigured = sameModel(ref, configured);
-              const checked =
-                isConfigured || value.some((entry) => sameModel(entry, ref));
               return (
-                <label
+                <SelectItem
                   key={model.id}
-                  className="flex items-center gap-2.5 text-sm"
+                  value={modelKey(ref)}
+                  disabled={isConfigured}
+                  className={cn(
+                    isConfigured || unavailable.includes(provider)
+                      ? "text-muted-foreground"
+                      : "",
+                  )}
                 >
-                  <Checkbox
-                    checked={checked}
-                    disabled={disabled || isConfigured}
-                    onCheckedChange={(next) => toggle(ref, next === true)}
-                  />
-                  <span
-                    className={
-                      isConfigured || unavailable.includes(provider)
-                        ? "text-muted-foreground"
-                        : ""
-                    }
-                  >
-                    {model.label}
-                    {isConfigured ? " (configured)" : ""}
-                  </span>
-                </label>
+                  {model.label}{isConfigured ? " (configured)" : ""}
+                </SelectItem>
               );
             })}
-          </div>
-        </div>
-      ))}
-    </div>
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
+function modelKey(ref: ModelRef): string {
+  return `${ref.provider}\u0000${ref.modelId}`;
+}
+
+function modelFromKey(key: string): ModelRef {
+  const separator = key.indexOf("\u0000");
+  return {
+    provider: key.slice(0, separator) as Provider,
+    modelId: key.slice(separator + 1),
+  };
+}
+
 /**
- * What the picker will actually do, in one sentence, under the list.
+ * What the picker will actually do, in one sentence, below the selector.
  *
  * Counts the configured model, because that is what the asker sees. One means
- * no picker at all, which is worth saying plainly: a checkbox list where every
- * box is clear looks like a broken control rather than a deliberate default.
+ * no picker at all, which is worth saying plainly: an empty selector otherwise
+ * looks like a broken control rather than a deliberate default.
  *
  * Counts only what the Organization can answer on, for the same reason: a
- * ticked model whose provider has no credential is dropped by
+ * selected model whose provider has no credential is dropped by
  * `chatModelOptions` and never reaches the composer, so counting it here would
  * promise a picker that does not appear.
  */

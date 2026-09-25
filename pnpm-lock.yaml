@@ -203,7 +203,7 @@ importers:
         version: 2.110.0
       '@vercel/analytics':
         specifier: ^2.0.1
-        version: 2.0.1(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+        version: 2.0.1(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@vercel/speed-insights':
         specifier: ^2.0.0
         version: 2.0.0(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -258,12 +258,12 @@ importers:
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
       shiki:
         specifier: ^4.4.1
         version: 4.4.1
-      sonner:
-        specifier: ^2.0.7
-        version: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       stripe:
         specifier: ^19.1.0
         version: 19.3.1(@types/node@20.19.43)
@@ -273,6 +273,9 @@ importers:
       vanilla-cookieconsent:
         specifier: ^3.1.0
         version: 3.1.0
+      voice-glow:
+        specifier: ^0.2.1
+        version: 0.2.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -307,6 +310,9 @@ importers:
       tailwindcss:
         specifier: ^4
         version: 4.3.2
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -626,6 +632,9 @@ importers:
       '@foleyjs/core':
         specifier: 2.8.1
         version: 2.8.1
+      '@web-kits/audio':
+        specifier: ^0.2.0
+        version: 0.2.0(react@19.2.4)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -947,6 +956,12 @@ packages:
 
   '@chevrotain/types@11.1.2':
     resolution: {integrity: sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw==}
+
+  '@clack/core@0.4.1':
+    resolution: {integrity: sha512-Pxhij4UXg8KSr7rPek6Zowm+5M22rbd2g1nfojHJkxp5YkFqiZ2+YLEM/XGVIzvGOcM0nqjIFxrpDwWRZYWYjA==}
+
+  '@clack/prompts@0.9.1':
+    resolution: {integrity: sha512-JIpyaboYZeWYlyP0H+OoPPxd6nqueG/CmN6ixBiNFsIDHREevjIf0n0Ohh5gr5C8pEDknzgvz+pIJ8dMhzWIeg==}
 
   '@date-fns/tz@1.5.0':
     resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
@@ -3587,6 +3602,16 @@ packages:
 
   '@vitest/utils@4.1.9':
     resolution: {integrity: sha512-A51o8ymO5PpqlWNnBP9ZHPXDIpuMtTLlGSjN7la4US+LJzoUMyhwjA5QXlm39JexgwHKW4Xjs8Z2d3dLCXOeuA==}
+
+  '@web-kits/audio@0.2.0':
+    resolution: {integrity: sha512-4naddQeSNBPsgQUEoCqes9jlNg3u+XDYu8x73I9YcxuWIdN1YhCSR+ANtOE61vllU55EY7e/eVKc48rsIRieSw==}
+    engines: {node: '>=20.0.0'}
+    hasBin: true
+    peerDependencies:
+      react: '>=18'
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   '@workflow/serde@4.1.0':
     resolution: {integrity: sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ==}
@@ -7119,12 +7144,6 @@ packages:
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
-  sonner@2.0.7:
-    resolution: {integrity: sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w==}
-    peerDependencies:
-      react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
-      react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
-
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -7716,6 +7735,12 @@ packages:
       jsdom:
         optional: true
 
+  voice-glow@0.2.1:
+    resolution: {integrity: sha512-Lpc+Ppd788kCDC88p9Hr8u3eFQh0X/hdISX76hqx1/x4BZiidrmCuQRLOE+jGOIkqB1BdaFBJ7F2rg1GsST6tw==}
+    peerDependencies:
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+
   web-haptics@0.0.6:
     resolution: {integrity: sha512-eCzcf1LDi20+Fr0x9V3OkX92k0gxEQXaHajmhXHitsnk6SxPeshv8TBtBRqxyst8HI1uf2FyFVE7QS3jo1gkrw==}
     peerDependencies:
@@ -8239,6 +8264,17 @@ snapshots:
   '@braintree/sanitize-url@7.1.2': {}
 
   '@chevrotain/types@11.1.2': {}
+
+  '@clack/core@0.4.1':
+    dependencies:
+      picocolors: 1.1.1
+      sisteransi: 1.0.5
+
+  '@clack/prompts@0.9.1':
+    dependencies:
+      '@clack/core': 0.4.1
+      picocolors: 1.1.1
+      sisteransi: 1.0.5
 
   '@date-fns/tz@1.5.0': {}
 
@@ -10439,7 +10475,7 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
-  '@vercel/analytics@2.0.1(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
+  '@vercel/analytics@2.0.1(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
     optionalDependencies:
       next: 16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react: 19.2.4
@@ -10542,6 +10578,13 @@ snapshots:
       '@vitest/pretty-format': 4.1.9
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
+
+  '@web-kits/audio@0.2.0(react@19.2.4)':
+    dependencies:
+      '@clack/prompts': 0.9.1
+      picocolors: 1.1.1
+    optionalDependencies:
+      react: 19.2.4
 
   '@workflow/serde@4.1.0': {}
 
@@ -14961,11 +15004,6 @@ snapshots:
 
   sisteransi@1.0.5: {}
 
-  sonner@2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
-    dependencies:
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-
   source-map-js@1.2.1: {}
 
   source-map-support@0.5.21:
@@ -15699,6 +15737,11 @@ snapshots:
       '@types/node': 24.13.3
     transitivePeerDependencies:
       - msw
+
+  voice-glow@0.2.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   web-haptics@0.0.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     optionalDependencies:

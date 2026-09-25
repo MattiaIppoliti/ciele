@@ -1,50 +1,57 @@
 ---
 title: KI-Anbieter
-description: Verbinden Sie einen Modellanbieter und wählen Sie für jeden Assistenten das Modell aus.
+description: Verbinden Sie einen Modellanbieter und wählen Sie für jeden Assistenten das entsprechende Modell aus.
 ---
 
 Ciele verwendet eine einzige Provider-Abstraktion für Modelle von Anthropic,
 OpenAI und Google. Ein Assistant wählt seine Provider-Verbindung und sein Modell
 aus.
 
-## Typen von Provider-Verbindungen
+## Verbindungstypen von Anbietern
 
-| Typ | Verwendung |
+| Type | Use |
 | --- | --- |
-| Plattformplan | Verwendet Modelle, die vom verwalteten Ciele-Plan bereitgestellt werden. |
-| Abonnement | Verwendet ein Mitgliederabonnement für die eigenen Chats dieses Mitglieds. |
-| API-Schlüssel | Verwendet einen von der Organisation verwalteten Provider-Schlüssel. |
+| Platform plan | Verwendet Modelle, die vom verwalteten Ciele-Plan bereitgestellt werden. |
+| Subscription | Verwendet ein Mitgliedsabonnement für die eigenen Chats dieses Mitglieds. |
+| API key | Verwendet einen von der Organisation verwalteten Provider-Schlüssel. |
 
-Ein Mitglieder-Abonnement führt nur die eigenen Chats dieses Mitglieds aus: die
-Assistant-Vorschau und seine Chats mit einem KI-Teamkollegen. Es bedient weder
-ein veröffentlichtes Widget noch führt es den Chat eines anderen Mitglieds aus.
-Wählen Sie für veröffentlichten Traffic einen Platform-Plan oder eine
-API-Schlüssel-Verbindung aus.
+Ein Mitgliedsabonnement führt nur die eigenen Chats dieses Mitglieds aus: die
+Assistant Preview und seine Chats mit einem KI-Teammate. Es bedient kein
+veröffentlichtes Widget und führt keinen Chat eines anderen Mitglieds aus.
+Wählen Sie für den veröffentlichten Traffic einen Platform-Plan oder eine
+API-Key-Verbindung aus.
 
-## Fügen Sie eine API-Schlüssel-Verbindung hinzu
+## Eine API-Schlüssel-Verbindung hinzufügen
 
 1. Öffnen Sie **Settings**.
-2. Wählen Sie **AI Provider**.
+2. Wählen Sie **AI Provider** aus.
 3. Fügen Sie eine Provider-Verbindung hinzu.
-4. Wählen Sie Anthropic, OpenAI oder Google aus.
-5. Geben Sie die erforderlichen Anmeldeinformationen des Anbieters ein.
+4. Wählen Sie Anthropic, OpenAI, Google oder ElevenLabs aus.
+5. Geben Sie die erforderlichen Anmeldeinformationen des Providers ein.
 6. Speichern Sie die Verbindung.
 
-Ciele verschlüsselt die Anmeldeinformationen vor der Speicherung. Verwenden Sie
-keinen persönlichen Schlüssel erneut, der über nicht zugehörige Berechtigungen
-verfügt.
+Ciele verschlüsselt die Anmeldeinformationen, bevor sie gespeichert werden.
+Verwenden Sie keinen persönlichen Schlüssel erneut, der über nicht relevante
+Berechtigungen verfügt.
+
+ElevenLabs-Verbindungen stellen Sprachmodelle bereit. Wählen Sie diese Modelle
+in den **General**-Einstellungen des Assistenten unter **Voice mode** aus. Auch
+Verbindungen zu Google und OpenAI können Sprachmodelle bereitstellen. Welche
+Modelle verfügbar sind, hängt vom verbundenen Konto und dessen
+API-Berechtigungen ab. ElevenLabs wird weder im Textmodell noch in den
+Auswahlfeldern für Knowledge Embedding angezeigt.
 
 ## Wählen Sie ein Assistant-Modell aus
 
-1. Öffnen Sie den Assistenten.
-2. Wählen Sie **General**.
+1. Öffnen Sie den Assistant.
+2. Wählen Sie **General** aus.
 3. Wählen Sie die Provider-Verbindung aus.
 4. Wählen Sie ein verfügbares Modell aus.
 5. Testen Sie den Assistenten in der Vorschau.
 6. Veröffentlichen Sie den Assistenten.
 
-Das veröffentlichte Widget verwendet den Provider und das Modell in seinem
-Veröffentlichungs-Snapshot. Spätere allgemeine Änderungen erfordern eine weitere
+Das veröffentlichte Widget verwendet den Provider und das Modell aus seinem
+Veröffentlichungs-Snapshot. Spätere allgemeine Änderungen erfordern eine erneute
 Veröffentlichung.
 
 <Callout title="Provider accounts are separate">

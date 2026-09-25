@@ -228,6 +228,7 @@ export function ApiKeysClient({
       {/* The one and only time the plaintext secret exists client-side. */}
       <MorphingModal
         viewId={mintedSecret ? "secret" : null}
+        title="Your new API key"
         onClose={() => setMintedSecret(null)}
         placement="bottom"
       >
@@ -267,6 +268,7 @@ export function ApiKeysClient({
 
       <MorphingModal
         viewId={pendingRevoke ? "revoke" : null}
+        title={pendingRevoke ? `Revoke “${pendingRevoke.name}”?` : "Revoke API key"}
         onClose={() => !isPending && setPendingRevoke(null)}
         placement="bottom"
       >

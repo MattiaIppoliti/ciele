@@ -64,6 +64,35 @@ before you publish. Teammate chats accept attachments at all times, because they
 
 Select **Publish** after you change this setting.
 
+## Voice mode
+
+Enable **Voice mode** to add microphone input and audio playback. It is off by default.
+
+1. Connect a Google AI Studio, OpenAI or ElevenLabs API key in **Settings**, then **AI**.
+2. In **Voice input**, select the transcription **Model** and **Language**. The default, **Auto**, detects the spoken language without translating the transcript.
+3. In **Voice output**, select the playback **Model**, **Language**, and one of the three **Voice** choices. The default, **Auto**, follows the language of the latest input.
+4. Select a voice's play button to hear a preview in the output language. Auto previews use English sample text.
+5. Select **Save changes**. Publish the Assistant to update the widget.
+
+The model lists use the connected providers' catalogues. **Refresh** reloads the lists.
+Voice choices follow the playback model. Model access also depends on provider permissions, billing and quota.
+The list shows three compatible voices, or fewer if the provider has fewer available. An existing selected voice stays in the list.
+
+Input and output languages are independent and both default to **Auto**. For short recordings, select a known input language to improve recognition. You can also correct the transcript before sending.
+An explicit output language guides new AI-generated replies and their audio playback. Auto replies follow the latest message, including an edited transcript. Configured Flow messages and saved answers keep their original words. Audio playback reads that text without translating it.
+
+Select the microphone beside **Send** to record a question. Recording stops after 60 seconds and accepts up to 4 MB.
+Select the stop control to transcribe the recording, or **Cancel recording** to discard it.
+The text appears in the message box. You can edit it before you select **Send**.
+
+Select **Read response aloud** beside a completed answer to hear it. Select the same control to pause playback.
+Audio playback supports answers up to 4,000 characters. Voices are AI-generated.
+
+Your browser must allow microphone access. Embedded widgets also need the microphone permission in their iframe.
+Update older iframe snippets from **Publish** if microphone access is blocked.
+Your operating system must also allow the browser or host app to use the microphone. On macOS, open **System Settings → Privacy & Security → Microphone** and enable that app. If macOS asks you to restart the app, do so before recording again. Allowing the site alone does not override this system setting.
+Ciele sends recordings to the selected provider for transcription. Ciele does not store the recording.
+
 ## Identity
 
 Configure these fields:

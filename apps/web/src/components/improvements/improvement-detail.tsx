@@ -13,18 +13,8 @@ import type {
 } from "@agent-hub/core";
 import { messageText } from "@agent-hub/core";
 
-import {
-  Calendar as CalendarIcon,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  Plus,
-  Search,
-  SquareArrowOutUpRight,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ExternalLink, Plus, Search, Trash2, X } from "lucide-react";
+import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, SquareArrowOutUpRight } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { FoldersIcon } from "@/components/ui/icons/folders";

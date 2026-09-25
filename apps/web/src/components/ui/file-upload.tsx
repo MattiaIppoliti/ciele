@@ -1,22 +1,8 @@
 "use client";
 // Adapted from beui.dev/components/blocks/file-upload
 
-import {
-  AlertCircle,
-  CheckCircle2,
-  FileArchive,
-  FileAudio,
-  FileCode2,
-  FileIcon,
-  FileImage,
-  FileSpreadsheet,
-  FileText,
-  FileVideo,
-  Loader2,
-  RotateCcw,
-  UploadCloud,
-  X,
-} from "lucide-react";
+import { FileArchive, FileAudio, FileImage, FileSpreadsheet, FileText, FileVideo, RotateCcw, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileCode2, FileIcon, Loader2, UploadCloud } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";

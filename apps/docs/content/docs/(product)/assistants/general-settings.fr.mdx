@@ -5,14 +5,142 @@ description: Configurez l'identité de l'Assistant, son modèle, son moteur de c
 
 Ouvrez un Assistant et sélectionnez **General**.
 
-## Sélection du runtime
+## Sélection de l'environnement d'exécution
 
 Sélectionnez la connexion au fournisseur et le modèle pour l'Assistant.
 Sélectionnez **Graph** ou **Vector** comme moteur de connaissances principal.
 
-La récupération de graphes utilise le graphe de connaissances lorsque des
-services de graphes sont disponibles. La recherche vectorielle utilise les
-plongements de concepts indexés et le repli lexical.
+La récupération par graphe utilise le graphe de connaissances lorsque les
+services de graphe sont disponibles. La récupération vectorielle utilise les
+embeddings de documents indexés et le fallback lexical.
+
+## Choix du modèle pour les visiteurs
+
+Sélectionnez les modèles que la fenêtre de chat affiche aux visiteurs. Le modèle
+Assistant est toujours disponible. Chaque modèle supplémentaire que vous
+sélectionnez devient une option dans la fenêtre de chat.
+
+Si vous ne sélectionnez aucun modèle supplémentaire, la fenêtre de chat
+n'affiche aucun contrôle de modèle. Toutes les conversations utilisent le modèle
+Assistant.
+
+La fenêtre de chat n'affiche un modèle que si votre organisation dispose d'une
+connexion à un fournisseur pour ce modèle. Si vous supprimez la connexion au
+fournisseur, la fenêtre de discussion cesse d'afficher le modèle. Les
+conversations se poursuivent avec le modèle Assistant.
+
+La liste indique **no credential yet** à côté d'un fournisseur sans connexion.
+La ligne située sous la liste ne compte que les modèles que la fenêtre de chat
+peut afficher.
+
+L'aperçu affiche immédiatement la nouvelle liste. Sélectionnez **Publish** pour
+l'attribuer au widget, qui utilise la dernière version publiée.
+
+Votre propre abonnement à l'IA a la priorité dans Preview. Si vous définissez un
+modèle par défaut dans **Settings**, puis dans **AI**, ce modèle répond aux
+tours de Preview et le modèle de la fenêtre de discussion ne s'applique pas.
+
+## Pièces jointes
+
+Définissez **Let visitors attach files** pour doter la fenêtre de chat d'un
+contrôle de pièce jointe. Cette option est désactivée par défaut.
+
+Il existe trois façons de joindre un fichier :
+
+- sélectionnez **+** dans la zone de message, puis **Attach a file**
+- faites glisser le fichier dans la zone de saisie du message
+- copiez une image, puis collez-la dans la zone de message
+
+La fenêtre de discussion accepte les types suivants :
+
+- PDF, Word et PowerPoint
+- Excel et CSV
+- texte et Markdown
+- images (PNG, JPEG, GIF et WebP)
+
+La taille maximale est de 8 Mo.
+
+Les anciens fichiers Office (.doc, .xls et .ppt) ne sont pas pris en charge.
+Enregistrez le fichier au format .docx, .xlsx ou .pptx.
+
+Ciele lit le fichier et le convertit en texte, puis fournit des réponses à
+partir de ce texte. **Ciele does not keep the file.** Les octets sont lus une
+seule fois, puis ignorés. Il n'y a pas de copie à télécharger, à conserver ou à
+supprimer.
+
+Une image ne comporte pas d'étape distincte d'extraction de texte. Ciele envoie
+l'image au fournisseur d'IA de votre organisation et lui demande de lire
+l'image. Cela coûte un appel à l'IA pour chaque image. Le résultat comprend le
+texte présent dans l'image ainsi qu'une brève description de celle-ci.
+
+Une pièce jointe reste disponible pendant le reste de la conversation. La
+fenêtre de chat affiche chaque pièce jointe jusqu'à ce que l'utilisateur la
+supprime.
+
+L'Aperçu reflète ce paramètre dès que vous enregistrez. Il affiche la zone de
+message que voit un visiteur, avant que vous ne publiiez. Les chats entre
+collègues acceptent les pièces jointes à tout moment, car ils n'ont pas de
+visiteur.
+
+Sélectionnez **Publish** après avoir modifié ce paramètre.
+
+## Mode vocal
+
+Activez **Voice mode** pour ajouter l'entrée microphone et la lecture audio. Il
+est désactivé par défaut.
+
+1. Associez une clé API Google AI Studio, OpenAI ou ElevenLabs dans
+   **Settings**, puis **AI**.
+2. Dans **Voice input**, sélectionnez la transcription **Model** et
+   **Language**. La valeur par défaut, **Auto**, détecte la langue parlée sans
+   traduire la transcription.
+3. Dans **Voice output**, sélectionnez la lecture **Model**, **Language**, puis
+   l'un des trois choix **Voice**. La valeur par défaut, **Auto**, suit la
+   langue de la dernière entrée.
+4. Sélectionnez le bouton de lecture d'une voix pour écouter un aperçu dans la
+   langue de sortie. Les aperçus automatiques utilisent un texte d'exemple en
+   anglais.
+5. Sélectionnez **Save changes**. Publiez l'Assistant pour mettre à jour le
+   widget.
+
+Les listes de modèles utilisent les catalogues des fournisseurs connectés.
+**Refresh** recharge les listes. Les choix de voix suivent le modèle de lecture.
+L'accès aux modèles dépend également des autorisations du fournisseur, de la
+facturation et des quotas. La liste affiche trois voix compatibles, ou moins si
+le fournisseur en propose moins. Une voix déjà sélectionnée reste dans la liste.
+
+Les langues d'entrée et de sortie sont indépendantes et, par défaut, toutes deux
+sont définies sur **Auto**. Pour les enregistrements courts, sélectionnez une
+langue d'entrée connue afin d'améliorer la reconnaissance. Vous pouvez également
+corriger la transcription avant de l'envoyer. Une langue de sortie explicitement
+définie oriente les nouvelles réponses générées par l'IA ainsi que leur lecture
+audio. Les réponses automatiques suivent le dernier message, y compris une
+transcription modifiée. Les messages Flow configurés et les réponses
+enregistrées conservent leurs termes d'origine. La lecture audio lit ce texte
+sans le traduire.
+
+Sélectionnez le microphone situé à côté de **Send** pour enregistrer une
+question. L'enregistrement s'arrête au bout de 60 secondes et accepte jusqu'à 4
+Mo. Sélectionnez la commande stop pour transcrire l'enregistrement, ou **Cancel
+recording** pour le supprimer. Le texte s'affiche dans la zone de message. Vous
+pouvez le modifier avant de sélectionner **Send**.
+
+Sélectionnez **Read response aloud** à côté d'une réponse terminée pour
+l'écouter. Sélectionnez le même contrôle pour mettre la lecture en pause. La
+lecture audio prend en charge les réponses jusqu'à 4 000 caractères. Les voix
+sont générées par l'IA.
+
+Votre navigateur doit autoriser l'accès au microphone. Les widgets intégrés ont
+également besoin de l'autorisation d'accès au microphone dans leur iframe.
+Mettez à jour les anciens extraits d'iframe provenant de **Publish** si l'accès
+au microphone est bloqué. Votre système d'exploitation doit également autoriser
+le navigateur ou l'application hôte à utiliser le microphone. Sur macOS, ouvrez
+**System Settings → Privacy & Security → Microphone** et activez cette
+application. Si macOS vous demande de redémarrer l'application, faites-le avant
+de procéder à un nouvel enregistrement. L'autorisation accordée au seul site ne
+suffit pas à outrepasser ce paramètre système. Ciele envoie les enregistrements
+au fournisseur sélectionné pour transcription. Ciele ne stocke pas
+l'enregistrement.
 
 ## Identité
 
@@ -25,20 +153,20 @@ Configurez ces champs :
 
 ## Paramètres par défaut de la conversation
 
-- **Welcome message** apparaît au début d'une discussion.
-- **AI disclaimer** ajoute le texte de divulgation configuré.
-- **Answering style** fournit des instructions de réponse standard.
-- **Simplified thinking** convertit la progression de l'exécution en étapes plus
-  courtes destinées au visiteur.
+- **Welcome message** apparaît au début d'une conversation.
+- **AI disclaimer** ajoute le texte d'information configuré.
+- **Answering style** fournit des instructions de réponse permanentes.
+- **Simplified thinking** convertit la progression en cours d'exécution en
+  étapes plus courtes destinées aux visiteurs.
 - **Suggested questions** contrôle les suggestions de suivi générées.
-- **Quick replies** ajoutez des actions de démarrage configurées.
+- **Quick replies** ajoute les actions de démarrage configurées.
 
 ## Enregistrer et publier
 
 1. Modifiez un groupe de paramètres.
 2. Enregistrez le brouillon.
-3. Testez le brouillon en mode Aperçu.
+3. Testez le brouillon dans Preview.
 4. Publiez l'Assistant lorsque le résultat est correct.
 
-Le widget actif continue d'utiliser la publication précédente jusqu'à ce que
+Le widget en ligne continue d'utiliser la Publication précédente jusqu'à ce que
 l'étape 4 soit terminée.

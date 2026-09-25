@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  Ellipsis,
-  History,
-  MessageSquareText,
-  Minimize2,
-  SquarePen,
-  X,
-} from "lucide-react";
+import { History, SquarePen, X } from "lucide-react";
+import { Ellipsis, MessageSquareText, Minimize2 } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { Maximize2Icon } from "@/components/ui/icons/maximize-2";

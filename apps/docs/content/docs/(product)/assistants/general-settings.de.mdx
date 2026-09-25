@@ -1,18 +1,144 @@
 ---
 title: Allgemeine Einstellungen
-description: Konfigurieren Sie die Identität des Assistenten, das Modell, die Wissens-Engine und den Standard-Chat-Inhalt.
+description: Konfigurieren Sie die Identität des Assistenten, das Modell, die Knowledge Engine und den Standard-Chat-Inhalt.
 ---
 
-Öffnen Sie einen Assistenten und wählen Sie **General**.
+Öffnen Sie einen Assistant und wählen Sie **General**.
 
-## Auswahl der Laufzeit
+## Auswahl der Runtime
 
-Wählen Sie die Provider-Verbindung und das Modell für den Assistant aus. Wählen
-Sie **Graph** oder **Vector** als primäre Wissens-Engine aus.
+Wählen Sie die Provider-Verbindung und das Modell für den Assistenten aus.
+Wählen Sie **Graph** oder **Vector** als primäre Knowledge Engine aus.
 
-Die Graph-Abruf-Funktion verwendet den Knowledge Graph, wenn Graph-Dienste
-verfügbar sind. Die Vektorabfrage verwendet indizierte Concept-Embeddings und
-einen lexikalischen Fallback.
+Graph Retrieval verwendet den Knowledge Graph, wenn Graph Services verfügbar
+sind. Vector retrieval verwendet indexierte Document embeddings und lexical
+fallback.
+
+## Auswahl des Besucher-Modells
+
+Wählen Sie die Modelle aus, die den Besuchern im Chat-Fenster angezeigt werden.
+Das Assistant-Modell ist immer verfügbar. Jedes weitere Modell, das Sie
+auswählen, wird im Chat-Fenster als Option angezeigt.
+
+Wenn Sie kein zusätzliches Modell auswählen, zeigt das Chat-Fenster keine
+Modellsteuerung an. Alle Konversationen verwenden das Assistant-Modell.
+
+Das Chat-Fenster zeigt ein Modell nur an, wenn Ihre Organisation über eine
+Provider-Verbindung für dieses Modell verfügt. Wenn Sie die Provider-Verbindung
+entfernen, wird das Modell im Chat-Fenster nicht mehr angezeigt. Die
+Konversationen werden mit dem Assistant-Modell fortgesetzt.
+
+Die Liste zeigt **no credential yet** neben einem Provider ohne Verbindung an.
+Die Zeile unter der Liste zählt nur die Modelle, die das Chat-Fenster anzeigen
+kann.
+
+Preview zeigt die neue Liste sofort an. Wählen Sie **Publish** aus, um es dem
+Widget zuzuweisen, das die zuletzt veröffentlichte Version verwendet.
+
+Ihr eigenes KI-Abonnement hat in der Vorschau Priorität. Wenn Sie in
+**Settings** ein Standardmodell festlegen und anschließend **AI**, antwortet
+dieses Modell in den Preview-Runden, und das Modell des Chat-Fensters kommt
+nicht zur Anwendung.
+
+## Anhänge
+
+Setzen Sie **Let visitors attach files**, um dem Chat-Fenster ein Steuerelement
+zum Anhängen von Dateien hinzuzufügen. Standardmäßig ist es deaktiviert.
+
+Es gibt drei Möglichkeiten, eine Datei anzuhängen:
+
+- Wählen Sie **+** im Nachrichtenfeld aus, dann **Attach a file**
+- Ziehen Sie die Datei in das Nachrichtenfeld
+- Kopieren Sie ein Bild und fügen Sie es anschließend in das Nachrichtenfeld ein
+
+Das Chat-Fenster akzeptiert folgende Dateitypen:
+
+- PDF, Word und PowerPoint
+- Excel und CSV
+- Text und Markdown
+- Bilder (PNG, JPEG, GIF und WebP)
+
+Die maximale Größe beträgt 8 MB.
+
+Alte Office-Dateien (.doc, .xls und .ppt) werden nicht unterstützt. Speichern
+Sie die Datei als .docx, .xlsx oder .pptx.
+
+Ciele liest die Datei als Text ein und beantwortet Fragen auf der Grundlage
+dieses Texts. **Ciele does not keep the file.** Die Bytes werden einmal gelesen
+und anschließend verworfen. Es gibt keine Kopie, die Sie herunterladen,
+aufbewahren oder löschen können.
+
+Bei einem Bild gibt es keinen separaten Schritt zur Textextraktion. Ciele sendet
+das Bild an den KI-Anbieter Ihrer Organisation und fordert ihn auf, das Bild zu
+lesen. Dies kostet einen AI-Aufruf pro Bild. Das Ergebnis umfasst den Text im
+Bild sowie eine kurze Beschreibung des Bildes.
+
+Ein Anhang bleibt für den Rest der Konversation verfügbar. Das Chat-Fenster
+zeigt jeden Anhang an, bis der Benutzer ihn entfernt.
+
+Die Vorschau übernimmt diese Einstellung, sobald Sie speichern. Es zeigt das
+Nachrichtenfeld an, das ein Besucher vor der Veröffentlichung sieht.
+Teammate-Chats akzeptieren jederzeit Anhänge, da sie keinen Visitor haben.
+
+Wählen Sie **Publish** aus, nachdem Sie diese Einstellung geändert haben.
+
+## Sprachmodus
+
+Aktivieren Sie **Voice mode**, um Mikrofon-Eingang und Audio-Wiedergabe
+hinzuzufügen. Standardmäßig ist es deaktiviert.
+
+1. Verbinden Sie einen API-Schlüssel von Google AI Studio, OpenAI oder
+   ElevenLabs in **Settings** und klicken Sie anschließend auf **AI**.
+2. Wählen Sie in **Voice input** die Transkription **Model** und **Language**
+   aus. Die Standardeinstellung, **Auto**, erkennt die gesprochene Sprache, ohne
+   das Transkript zu übersetzen.
+3. Wählen Sie in **Voice output** die Wiedergabe **Model**, **Language** und
+   eine der drei Optionen **Voice** aus. Die Standardeinstellung, **Auto**,
+   folgt der Sprache der letzten Eingabe.
+4. Wählen Sie die Play-Schaltfläche einer Stimme aus, um eine Vorschau in der
+   Zielsprache zu hören. Bei automatischen Vorschauen wird englischer
+   Beispieltext verwendet.
+5. Wählen Sie **Save changes** aus. Veröffentlichen Sie den Assistenten, um das
+   Widget zu aktualisieren.
+
+Die Modelllisten basieren auf den Katalogen der verbundenen Provider.
+**Refresh** lädt die Listen neu. Die Auswahl der Stimmen richtet sich nach dem
+Wiedergabemodell. Der Zugriff auf Modelle hängt außerdem von den Berechtigungen
+des Anbieters, der Abrechnung und dem Kontingent ab. Die Liste zeigt drei
+kompatible Stimmen an – oder weniger, falls beim Anbieter weniger verfügbar
+sind. Eine bereits ausgewählte Stimme bleibt in der Liste erhalten.
+
+Eingabe- und Ausgabesprachen sind unabhängig voneinander und haben beide
+standardmäßig den Wert **Auto**. Wählen Sie bei kurzen Aufnahmen eine bekannte
+Eingabesprache aus, um die Erkennung zu verbessern. Sie können das Transkript
+auch vor dem Senden korrigieren. Eine explizit festgelegte Ausgabesprache
+bestimmt neue, von der KI generierte Antworten sowie deren Audiowiedergabe.
+Automatische Antworten beziehen sich auf die letzte Nachricht, einschließlich
+eines bearbeiteten Transkripts. Konfigurierte Flow-Nachrichten und gespeicherte
+Antworten behalten ihre ursprüngliche Formulierung bei. Bei der Audiowiedergabe
+wird dieser Text ohne Übersetzung vorgelesen.
+
+Wählen Sie das Mikrofon neben **Send** aus, um eine Frage aufzunehmen. Die
+Aufnahme stoppt nach 60 Sekunden und akzeptiert bis zu 4 MB. Wählen Sie das
+Steuerelement „Stop“, um die Aufnahme zu transkribieren, oder **Cancel
+recording**, um sie zu verwerfen. Der Text wird im message box angezeigt. Sie
+können ihn bearbeiten, bevor Sie **Send** auswählen.
+
+Wählen Sie **Read response aloud** neben einer abgeschlossenen Antwort aus, um
+sie anzuhören. Wählen Sie dasselbe Steuerelement, um die Wiedergabe anzuhalten.
+Die Audiowiedergabe unterstützt Antworten mit bis zu 4.000 Zeichen. Die Stimmen
+werden von KI generiert.
+
+Ihr Browser muss den Zugriff auf das Mikrofon erlauben. Eingebettete Widgets
+benötigen ebenfalls die Mikrofonberechtigung in ihrem iframe. Aktualisieren Sie
+ältere iframe-Snippets von **Publish**, falls der Zugriff auf das Mikrofon
+blockiert ist. Ihr Betriebssystem muss dem Browser oder der Host-App ebenfalls
+die Nutzung des Mikrofons gestatten. Öffnen Sie unter macOS **System Settings →
+Privacy & Security → Microphone** und aktivieren Sie diese App. Wenn macOS Sie
+auffordert, die App neu zu starten, tun Sie dies, bevor Sie erneut aufnehmen.
+Das alleinige Zulassen der Website setzt diese Systemeinstellung nicht außer
+Kraft. Ciele sendet Aufnahmen an den ausgewählten Anbieter zur Transkription.
+Ciele speichert die Aufnahme nicht.
 
 ## Identität
 
@@ -20,25 +146,25 @@ Konfigurieren Sie diese Felder:
 
 - **Title** identifiziert den Assistenten in der Konsole.
 - **Nickname** wird im Widget angezeigt.
-- **Description** zeichnet den Zweck des Assistenten auf.
-- **Avatar** liefert das Bild des Assistenten.
+- **Description** erfasst den Zweck des Assistenten.
+- **Avatar** stellt das Bild des Assistenten bereit.
 
 ## Standardeinstellungen für Konversationen
 
-- **Welcome message** erscheint zu Beginn eines Chats.
-- **AI disclaimer** fügt den konfigurierten Offenlegungstext hinzu.
-- **Answering style** liefert Anweisungen für Standardantworten.
-- **Simplified thinking** wandelt den Laufzeitfortschritt in kürzere, für
-  Besucher sichtbare Schritte um.
-- **Suggested questions** steuert generierte Folgevorschläge.
+- **Welcome message** wird zu Beginn eines Chats angezeigt.
+- **AI disclaimer** fügt den konfigurierten Hinweistext hinzu.
+- **Answering style** stellt Anweisungen für Standardantworten bereit.
+- **Simplified thinking** wandelt den Fortschritt während der Laufzeit in
+  kürzere, für Besucher sichtbare Schritte um.
+- **Suggested questions** steuert die generierten Vorschläge für Folgemaßnahmen.
 - **Quick replies** fügt konfigurierte Starter-Aktionen hinzu.
 
 ## Speichern und veröffentlichen
 
 1. Ändern Sie eine Gruppe von Einstellungen.
 2. Speichern Sie den Entwurf.
-3. Testen Sie den Entwurf in der Vorschau.
-4. Veröffentlichen Sie den Assistenten, wenn das Ergebnis korrekt ist.
+3. Testen Sie den Entwurf in Preview.
+4. Veröffentlichen Sie den Assistant, wenn das Ergebnis korrekt ist.
 
-Das Live-Widget verwendet weiterhin die vorherige Veröffentlichung, bis Schritt
-4 abgeschlossen ist.
+Das Live-Widget verwendet weiterhin die vorherige Publication, bis Schritt 4
+abgeschlossen ist.

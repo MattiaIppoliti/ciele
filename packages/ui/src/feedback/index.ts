@@ -1,7 +1,7 @@
 /**
  * Interface sounds and haptics for Ciele's own surfaces (console, marketing
- * site, desktop). One seam: the only place `@foleyjs/core` and `web-haptics`
- * are imported, and both only through dynamic imports inside the runtime, so
+ * site, desktop). One seam: the only place `@foleyjs/core`, `@web-kits/audio`
+ * and `web-haptics` are imported, each through dynamic imports inside the runtime, so
  * this barrel is safe to evaluate on the server and costs a marketing Visitor
  * nothing until their first gesture.
  *

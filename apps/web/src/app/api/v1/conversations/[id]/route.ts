@@ -30,6 +30,7 @@ export async function GET(
       flowId: m.flowId,
       flowName: m.flowName,
       feedback: m.feedback,
+      feedbackReaction: m.feedbackReaction ?? null,
       createdAt: m.createdAt,
       ...(includeTrace ? { trace: m.trace } : {}),
     })),

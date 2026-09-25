@@ -2,7 +2,8 @@
 
 import type { ReactNode, RefObject } from "react";
 import { useState } from "react";
-import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronsRight } from "lucide-react";
+import { ChevronsLeft } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
 import { cn } from "@/lib/utils";
 import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";

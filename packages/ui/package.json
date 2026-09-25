@@ -16,6 +16,7 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@foleyjs/core": "2.8.1",
+    "@web-kits/audio": "^0.2.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.23.0",
     "morphicons": "^1.4.1",

@@ -48,6 +48,7 @@ export function buildPublicationConfig(
       modelId: assistant.modelId,
       allowedModels: assistant.allowedModels ?? [],
       attachmentsEnabled: assistant.attachmentsEnabled ?? false,
+      ...(assistant.voice ? { voice: structuredClone(assistant.voice) } : {}),
       style: assistant.style,
       allowedDomains: assistant.allowedDomains,
       helpDeskSettings: assistant.helpDeskSettings,

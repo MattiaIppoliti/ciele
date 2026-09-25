@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, ChevronLeft, LoaderCircle, X } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
+import { ChevronLeft, LoaderCircle } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { listEscalationDesksAction } from "@/app/actions";
 import type { EscalationChannel } from "@/lib/escalation-desks";

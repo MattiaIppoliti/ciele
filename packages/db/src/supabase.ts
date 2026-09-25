@@ -53,6 +53,7 @@ import type {
   FlowTriggerSettings,
   FlowTrust,
   FlowTrustEvent,
+  FeedbackReactionId,
   HelpDesk,
   HelpDeskSettings,
   Improvement,
@@ -229,6 +230,7 @@ interface AssistantRow {
   model_id: string;
   allowed_models: ModelRef[] | null;
   attachments_enabled: boolean | null;
+  voice: Assistant["voice"] | null;
   style: WidgetStyle | null;
   allowed_domains: string[] | null;
   help_desk_settings: HelpDeskSettings | null;
@@ -351,6 +353,7 @@ interface MessageRow {
   flow_id: string | null;
   flow_name: string | null;
   feedback: -1 | 0 | 1;
+  feedback_reaction?: FeedbackReactionId | null;
   trace: StoredTurnTrace | null;
   created_at: string;
 }
@@ -693,6 +696,7 @@ function toStoredMessage(row: MessageRow): StoredMessage {
     flowId: row.flow_id,
     flowName: row.flow_name,
     feedback: row.feedback,
+    feedbackReaction: row.feedback_reaction ?? null,
     // Null on every message written before traces were persisted, so the
     // transcript degrades to "no panel" rather than to an error.
     trace: row.trace ?? null,
@@ -1056,6 +1060,7 @@ function toAssistant(row: AssistantRow): Assistant {
     modelId: row.model_id ?? "claude-opus-4-8",
     allowedModels: row.allowed_models ?? [],
     attachmentsEnabled: row.attachments_enabled ?? false,
+    voice: row.voice ?? undefined,
     style: row.style ?? {},
     allowedDomains: row.allowed_domains ?? [],
     helpDeskSettings: row.help_desk_settings ?? {},
@@ -1320,6 +1325,7 @@ function assistantPatchToRow(patch: AssistantPatch): Record<string, unknown> {
     row.allowed_models = patch.allowedModels;
   if (patch.attachmentsEnabled !== undefined)
     row.attachments_enabled = patch.attachmentsEnabled;
+  if (patch.voice !== undefined) row.voice = patch.voice;
   if (patch.style !== undefined) row.style = patch.style;
   if (patch.allowedDomains !== undefined) row.allowed_domains = patch.allowedDomains;
   if (patch.helpDeskSettings !== undefined)
@@ -4936,10 +4942,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as ChannelMessageRow[]).map(toChannelMessage);
     },
 
-    async setMessageFeedback(messageId, feedback) {
+    async setMessageFeedback(messageId, feedback, reaction = null) {
       const { error } = await client
         .from("messages")
-        .update({ feedback })
+        .update({ feedback, feedback_reaction: reaction })
         .eq("id", messageId);
       if (error) throw error;
     },

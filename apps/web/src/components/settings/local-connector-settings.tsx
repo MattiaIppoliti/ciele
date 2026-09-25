@@ -1,15 +1,8 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  CheckCircle2,
-  Check,
-  ChevronDown,
-  LoaderCircle,
-  MonitorDown,
-  PlugZap,
-  RotateCw,
-} from "lucide-react";
+import { MonitorDown, PlugZap, RotateCw } from "lucide-react";
+import { CheckCircle2, LoaderCircle } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import {
@@ -21,13 +14,15 @@ import {
   PopoverTrigger,
 } from "@agent-hub/ui";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ProviderBrandIcon } from "@/components/settings/provider-brand-icon";
 import { LocalTerminalSetupGuide } from "@/components/settings/local-terminal-setup-guide";
 import {
@@ -135,48 +130,31 @@ function ModelPicker({
   const options = groups.flatMap((group) => group.options);
   const selected = options.find((option) => option.value === value);
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full justify-start sm:w-72"
-          />
-        }
-      >
-        {selected ? (
-          <ProviderBrandIcon provider={selected.provider} className="size-4" />
-        ) : null}
-        <span className="min-w-0 flex-1 truncate text-left">
-          {selected?.label ?? "Automatic"}
-        </span>
-        <ChevronDown className="text-muted-foreground size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuItem onClick={() => onChange("automatic")}>
-          <span className="flex-1">Automatic</span>
-          {value === "automatic" && <Check className="size-4" />}
-        </DropdownMenuItem>
+    <Select value={value} onValueChange={onChange} className="w-full sm:w-72">
+      <SelectTrigger size="sm" aria-label="Default model">
+        <SelectValue>
+          <span className="flex min-w-0 items-center gap-2">
+            {selected ? <ProviderBrandIcon provider={selected.provider} className="size-4 shrink-0" /> : null}
+            <span className="truncate">{selected?.label ?? "Automatic"}</span>
+          </span>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="automatic">Automatic</SelectItem>
         {groups.map((group) => (
-          <div key={group.source}>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+          <SelectGroup key={group.source} aria-label={group.label}>
+            <SelectSeparator />
+            <SelectGroupLabel>{group.label}</SelectGroupLabel>
             {group.options.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                onClick={() => onChange(option.value)}
-              >
+              <SelectItem key={option.value} value={option.value}>
                 <ProviderBrandIcon provider={option.provider} className="size-4" />
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                {value === option.value && <Check className="size-4" />}
-              </DropdownMenuItem>
+              </SelectItem>
             ))}
-          </div>
+          </SelectGroup>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -809,41 +787,25 @@ export function LocalConnectorSettings({
                     Queue follow-ups or use the newest message to steer the active reply
                   </p>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-between sm:w-72"
-                      />
-                    }
-                  >
-                    {status.preferences.followUpBehavior === "queue"
-                      ? "Queue"
-                      : "Steer"}
-                    <ChevronDown className="size-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-72">
+                <Select
+                  value={status.preferences.followUpBehavior}
+                  onValueChange={(behavior) => void updatePreferences({
+                    ...status.preferences,
+                    followUpBehavior: behavior as "queue" | "steer",
+                  })}
+                  className="w-full sm:w-72"
+                >
+                  <SelectTrigger size="sm" aria-label="Follow-up behavior">
+                    <SelectValue>{status.preferences.followUpBehavior === "queue" ? "Queue" : "Steer"}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
                     {(["queue", "steer"] as const).map((behavior) => (
-                      <DropdownMenuItem
-                        key={behavior}
-                        onClick={() =>
-                          void updatePreferences({
-                            ...status.preferences,
-                            followUpBehavior: behavior,
-                          })
-                        }
-                      >
-                        <span className="flex-1 capitalize">{behavior}</span>
-                        {status.preferences.followUpBehavior === behavior && (
-                          <Check className="size-4" />
-                        )}
-                      </DropdownMenuItem>
+                      <SelectItem key={behavior} value={behavior}>
+                        <span className="capitalize">{behavior}</span>
+                      </SelectItem>
                     ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </SelectContent>
+                </Select>
               </div>
             </Card>
           </section>

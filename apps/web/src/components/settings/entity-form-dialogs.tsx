@@ -6,7 +6,7 @@ import type {
   EntityAttributeType,
   EntityScope,
 } from "@agent-hub/core";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Button,
   Dialog,
@@ -159,10 +159,10 @@ export function CreateEntityDialog({ open, onClose }: DialogProps) {
             <Label>Attributes</Label>
             {attributes.map((attribute, index) => (
               <div key={index} className="flex items-center gap-2">
-                <Input value={attribute.key} onChange={(event) => setAttribute(index, { key: event.target.value })} placeholder="key (CSV header)" className="flex-1" />
-                <Input value={attribute.label} onChange={(event) => setAttribute(index, { label: event.target.value })} placeholder="Label" className="flex-1" />
+                <Input aria-label={`Attribute ${index + 1} key`} value={attribute.key} onChange={(event) => setAttribute(index, { key: event.target.value })} placeholder="key (CSV header)" className="flex-1" />
+                <Input aria-label={`Attribute ${index + 1} label`} value={attribute.label} onChange={(event) => setAttribute(index, { label: event.target.value })} placeholder="Label" className="flex-1" />
                 <Select value={attribute.type} onValueChange={(value) => setAttribute(index, { type: (value ?? "text") as EntityAttributeType })}>
-                  <SelectTrigger size="sm" className="w-28"><SelectValue /></SelectTrigger>
+                  <SelectTrigger size="sm" className="w-28" aria-label={`Attribute ${index + 1} type`}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {ATTRIBUTE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                   </SelectContent>
@@ -176,14 +176,14 @@ export function CreateEntityDialog({ open, onClose }: DialogProps) {
             <div className="space-y-1.5">
               <Label>Key attribute</Label>
               <Select value={keyAttribute || undefined} onValueChange={(value) => setKeyAttribute(value ?? "")}>
-                <SelectTrigger><SelectValue placeholder="Pick an attribute" /></SelectTrigger>
+                <SelectTrigger aria-label="Key attribute"><SelectValue placeholder="Pick an attribute" /></SelectTrigger>
                 <SelectContent>{keys.map((key) => <SelectItem key={key} value={key}>{key}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Scope</Label>
               <Select value={scope} onValueChange={(value) => setScope((value ?? "shared") as EntityScope)}>
-                <SelectTrigger><SelectValue>{(value: EntityScope) => value === "user" ? "User-scoped" : "Shared"}</SelectValue></SelectTrigger>
+                <SelectTrigger aria-label="Entity scope"><SelectValue>{(rawValue: string) => (rawValue as EntityScope) === "user" ? "User-scoped" : "Shared"}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="shared">Shared, anyone the assistant serves</SelectItem>
                   <SelectItem value="user">User-scoped, rows belong to one signed-in user</SelectItem>
@@ -195,7 +195,7 @@ export function CreateEntityDialog({ open, onClose }: DialogProps) {
             <div className="space-y-1.5">
               <Label>Identity attribute</Label>
               <Select value={identityAttribute || undefined} onValueChange={(value) => setIdentityAttribute(value ?? "")}>
-                <SelectTrigger><SelectValue placeholder="Which attribute identifies the user" /></SelectTrigger>
+                <SelectTrigger aria-label="Identity attribute"><SelectValue placeholder="Which attribute identifies the user" /></SelectTrigger>
                 <SelectContent>{keys.map((key) => <SelectItem key={key} value={key}>{key}</SelectItem>)}</SelectContent>
               </Select>
               <p className="text-muted-foreground text-xs">Matched against the verified sign-in identity, so each user only reads their own records.</p>

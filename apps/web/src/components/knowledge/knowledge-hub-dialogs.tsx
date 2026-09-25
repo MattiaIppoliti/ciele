@@ -65,6 +65,7 @@ export function AssistantMultiSelect({
         </span>
       </div>
       <Input
+        aria-label="Search assistants"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search assistant..."
@@ -214,6 +215,7 @@ export function ManageDirectAccessDialog({
               <Switch
                 checked={link.directAccess}
                 disabled={disabled || isPending}
+                aria-label={`Allow ${link.assistantName || link.assistantId} direct access`}
                 onCheckedChange={(next) => toggle(link.assistantId, next)}
               />
             </div>
@@ -332,6 +334,7 @@ export function AddWebsiteDialog({
             <div className="space-y-1.5">
               <Label>Positive search filters (one per line)</Label>
               <Textarea
+                aria-label="Positive search filters"
                 value={includeGlobs}
                 onChange={(e) => setIncludeGlobs(e.target.value.slice(0, 2000))}
                 rows={3}
@@ -340,6 +343,7 @@ export function AddWebsiteDialog({
             <div className="space-y-1.5">
               <Label>Negative search filters (one per line)</Label>
               <Textarea
+                aria-label="Negative search filters"
                 value={excludeGlobs}
                 onChange={(e) => setExcludeGlobs(e.target.value.slice(0, 2000))}
                 rows={3}
@@ -358,6 +362,7 @@ export function AddWebsiteDialog({
               <div className="space-y-1.5">
                 <Label>Page timeout (seconds)</Label>
                 <Input
+                  aria-label="Page timeout in seconds"
                   value={pageTimeoutSecs}
                   onChange={(e) => setPageTimeoutSecs(e.target.value)}
                   inputMode="numeric"
@@ -366,6 +371,7 @@ export function AddWebsiteDialog({
               <div className="space-y-1.5">
                 <Label>Wait before extraction (seconds)</Label>
                 <Input
+                  aria-label="Wait before content extraction in seconds"
                   value={waitSecs}
                   onChange={(e) => setWaitSecs(e.target.value)}
                   inputMode="numeric"
@@ -436,7 +442,7 @@ export function AddFileDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Input ref={fileRef} type="file" />
+          <Input ref={fileRef} type="file" aria-label="File to upload" />
           <AssistantMultiSelect
             assistants={assistants}
             selected={selected}
@@ -524,6 +530,7 @@ export function FaqDialog({
           <div className="space-y-1.5">
             <Label>Question</Label>
             <Input
+              aria-label="FAQ question"
               value={question}
               onChange={(e) =>
                 setQuestion(e.target.value.slice(0, FAQ_QUESTION_MAX))
@@ -533,6 +540,7 @@ export function FaqDialog({
           <div className="space-y-1.5">
             <Label>Answer</Label>
             <Textarea
+              aria-label="FAQ answer"
               value={answer}
               onChange={(e) =>
                 setAnswer(e.target.value.slice(0, FAQ_ANSWER_MAX))
@@ -620,7 +628,12 @@ export function ImportFaqsDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Input ref={fileRef} type="file" accept=".csv,text/csv" />
+          <Input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            aria-label="FAQ CSV file"
+          />
           <AssistantMultiSelect
             assistants={assistants}
             selected={selected}

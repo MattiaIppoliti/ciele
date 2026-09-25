@@ -8,7 +8,7 @@ import type {
   Improvement,
   ImprovementPatch,
   PriorityQuestionId,
-  Provider,
+  ProviderConnectionProvider,
   ReviewRequest,
   Role,
   SsoConnection,
@@ -192,7 +192,7 @@ export interface OperationPorts {
   decideReviewRequest?: Db["decideReviewRequest"];
   /** Probe a BYOK provider credential before it is persisted. */
   validateProviderApiKey?(
-    provider: Exclude<Provider, "openai_compatible">,
+    provider: Exclude<ProviderConnectionProvider, "openai_compatible" | "azure_openai">,
     apiKey: string
   ): Promise<{ ok: true } | { ok: false; error: string }>;
   /**

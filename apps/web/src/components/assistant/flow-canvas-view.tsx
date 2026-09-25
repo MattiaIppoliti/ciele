@@ -39,32 +39,8 @@ import {
   ContextMenuTrigger,
 } from "@/components/motion/context-menu";
 import "@xyflow/react/dist/style.css";
-import {
-  AlertCircle,
-  ArrowUp,
-  Brush,
-  Ellipsis,
-  ExternalLink,
-  Hand,
-  LayoutGrid,
-  ListFilter,
-  Maximize,
-  Maximize2,
-  Minimize2,
-  Minus,
-  MousePointer2,
-  MousePointerClick,
-  Plus,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-  Trash2,
-  Unplug,
-  Workflow,
-  X,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowUp, ExternalLink, LayoutGrid, MousePointer2, MousePointerClick, Plus, RotateCcw, Search, SlidersHorizontal, Trash2, Unplug, Workflow, X, type LucideIcon } from "lucide-react";
+import { AlertCircle, Brush, Ellipsis, Hand, ListFilter, Maximize, Maximize2, Minimize2, Minus, Zap } from "lucide-react";
 import { Badge, Button, Hint, Input } from "@agent-hub/ui";
 import {
   DropdownMenu,

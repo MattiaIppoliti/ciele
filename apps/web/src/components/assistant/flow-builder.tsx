@@ -17,22 +17,8 @@ import type {
   FlowTrigger,
   FlowTrust,
 } from "@agent-hub/core";
-import {
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  Info,
-  LayoutList,
-  ListFilter,
-  MessageSquareReply,
-  MousePointerClick,
-  Redo2,
-  Trash2,
-  Undo2,
-  Workflow,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { MousePointerClick, Trash2, Workflow, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, Info, LayoutList, ListFilter, MessageSquareReply, Redo2, Undo2, Zap } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import {

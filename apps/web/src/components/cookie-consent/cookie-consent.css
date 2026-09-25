@@ -18,7 +18,7 @@
 
 #cc-main {
   --cc-font-family: var(--font-sans);
-  /* Above page content, below the toaster (sonner sits near 1e9) so transient
+  /* Above page content, below the toast stack so transient
      feedback is never buried by the banner. */
   --cc-z-index: 100000;
   --cc-modal-margin: 1.25rem;

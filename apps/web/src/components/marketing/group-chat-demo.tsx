@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Hash, UserRoundPlus } from "lucide-react";
+import { UserRoundPlus } from "lucide-react";
+import { Hash } from "lucide-react";
 import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
 import {
   Message,

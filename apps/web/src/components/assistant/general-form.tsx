@@ -22,26 +22,14 @@ import {
   TimelineSection,
 } from "@/components/settings/section-timeline";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Bold,
-  GripVertical,
-  Heading1,
-  Heading2,
-  Heading3,
-  Heading4,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Minus,
-  Plus,
-  X,
-} from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Bold, GripVertical, Heading1, Heading2, Heading3, Heading4, Italic, Plus, X } from "lucide-react";
+import { Link2, List, ListOrdered, Minus } from "lucide-react";
 import { moveOrderedId, reorderItemsByIds } from "@/lib/list-order";
 import { toast } from "@/lib/toast";
 import { updateAssistantAction, uploadAssistantAvatarAction } from "@/app/actions";
@@ -57,6 +45,8 @@ import {
   SortableList,
 } from "@/components/ui/sortable-list";
 import { Textarea } from "@/components/ui/textarea";
+
+import { VoiceSettings, EMPTY_VOICE_SETTINGS } from "./voice-settings";
 
 const DESCRIPTION_MAX = 500;
 const AI_DISCLAIMER_MAX = 1000;
@@ -148,6 +138,7 @@ export function GeneralForm({
   const [allowedModels, setAllowedModels] = useState<ModelRef[]>(
     assistant.allowedModels ?? []
   );
+  const [voice, setVoice] = useState(assistant.voice ?? EMPTY_VOICE_SETTINGS);
   const [attachmentsEnabled, setAttachmentsEnabled] = useState(
     assistant.attachmentsEnabled ?? false
   );
@@ -161,6 +152,7 @@ export function GeneralForm({
   const [reorderAnnouncement, setReorderAnnouncement] = useState("");
 
   const dirty =
+    JSON.stringify(voice) !== JSON.stringify(assistant.voice ?? EMPTY_VOICE_SETTINGS) ||
     launcherEnabled !== assistant.chatLauncherEnabled ||
     title !== assistant.title ||
     nickname !== assistant.nickname ||
@@ -216,6 +208,7 @@ export function GeneralForm({
       return;
     }
     startTransition(async () => {
+      try {
       await updateAssistantAction(assistant.id, {
         chatLauncherEnabled: launcherEnabled,
         title: title.trim(),
@@ -238,9 +231,13 @@ export function GeneralForm({
             !(ref.provider === modelProvider && ref.modelId === modelId)
         ),
         attachmentsEnabled,
+        ...(JSON.stringify(voice) !== JSON.stringify(assistant.voice ?? EMPTY_VOICE_SETTINGS) ? { voice } : {}),
         knowledgeEngine,
       });
       toast.success("Settings saved");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not save settings");
+      }
     });
   }
 
@@ -321,46 +318,40 @@ export function GeneralForm({
           hint="Provider and model for published widget traffic (requires an organization credential in Settings → AI). Preview conversations use your connected local subscription and its default model from Settings → AI → Chat settings instead."
         />
         <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button type="button" variant="outline" className="h-11 w-40 justify-start" />}
-            >
-              {PROVIDER_NAMES[modelProvider]}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
+          <Select value={modelProvider} onValueChange={(provider) => {
+            const next = provider as Provider;
+            setModelProvider(next);
+            setModelId(MODEL_CATALOG[next][0].id);
+          }} className="w-40">
+            <SelectTrigger className="h-11" aria-label="Model provider">
+              <SelectValue>{PROVIDER_NAMES[modelProvider]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
               {/* Providers without a static catalog (openai_compatible) are
                   not offered per-assistant: the runtime reaches them through
                   cross-provider fallback with the connection's chat model. */}
               {(Object.keys(PROVIDER_NAMES) as Provider[])
                 .filter((p) => MODEL_CATALOG[p].length > 0)
                 .map((p) => (
-                  <DropdownMenuItem
-                    key={p}
-                    onClick={() => {
-                      setModelProvider(p);
-                      setModelId(MODEL_CATALOG[p][0].id);
-                    }}
-                  >
+                  <SelectItem key={p} value={p}>
                     {PROVIDER_NAMES[p]}
-                  </DropdownMenuItem>
+                  </SelectItem>
                 ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button type="button" variant="outline" className="h-11 flex-1 justify-start" />}
-            >
-              {MODEL_CATALOG[modelProvider].find((m) => m.id === modelId)?.label ?? modelId}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64">
+            </SelectContent>
+          </Select>
+          <Select value={modelId} onValueChange={setModelId} className="min-w-0 flex-1">
+            <SelectTrigger className="h-11" aria-label="Model">
+              <SelectValue>{MODEL_CATALOG[modelProvider].find((m) => m.id === modelId)?.label ?? modelId}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
               {MODEL_CATALOG[modelProvider].map((m) => (
-                <DropdownMenuItem key={m.id} onClick={() => setModelId(m.id)}>
+                <SelectItem key={m.id} value={m.id}>
                   {m.label}
                   <span className="text-muted-foreground ml-auto font-mono text-xs">{m.id}</span>
-                </DropdownMenuItem>
+                </SelectItem>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -413,23 +404,25 @@ export function GeneralForm({
           title="Knowledge engine"
           hint="How knowledge searches are answered. Graph (primary) retrieves from the connected knowledge graph and learns from feedback; it falls back to Vector automatically when the graph service is unavailable. Vector uses classic embedding search only. Graph makes richer, connected answers at a higher per-answer cost. Either way, answers stay cited to their source."
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button type="button" variant="outline" className="h-11 w-56 justify-start" />}
-          >
-            {knowledgeEngine === "graph" ? "Graph (primary)" : "Vector"}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setKnowledgeEngine("graph")}>
+        <Select value={knowledgeEngine} onValueChange={(value) => setKnowledgeEngine(value as KnowledgeEngine)} className="w-56">
+          <SelectTrigger className="h-11" aria-label="Knowledge engine">
+            <SelectValue>{knowledgeEngine === "graph" ? "Graph (primary)" : "Vector"}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="graph">
               Graph (primary)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setKnowledgeEngine("vector")}>
+            </SelectItem>
+            <SelectItem value="vector">
               Vector
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       </div>
+      </TimelineSection>
+
+      <TimelineSection title="Voice mode">
+        <VoiceSettings assistantId={assistant.id} value={voice} onChange={setVoice} />
       </TimelineSection>
 
       <TimelineSection title="Identity" boxed>
@@ -748,29 +741,18 @@ export function GeneralForm({
                     placeholder="Button name"
                     className="flex-1"
                   />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-48 justify-start"
-                        />
-                      }
-                    >
-                      {quickReplyTypeLabel(button.type)}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
+                  <Select value={button.type} onValueChange={(type) => patchButton({ type: type as QuickReplyType })} className="w-48">
+                    <SelectTrigger aria-label="Quick reply type">
+                      <SelectValue>{quickReplyTypeLabel(button.type)}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
                       {QUICK_REPLY_TYPES.map((t) => (
-                        <DropdownMenuItem
-                          key={t.value}
-                          onClick={() => patchButton({ type: t.value })}
-                        >
+                        <SelectItem key={t.value} value={t.value}>
                           {t.label}
-                        </DropdownMenuItem>
+                        </SelectItem>
                       ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </SelectContent>
+                  </Select>
                   <Hint label="Remove button">
                     <Button
                       type="button"

@@ -1311,7 +1311,7 @@ export type Provider = "anthropic" | "openai" | "google" | "openai_compatible";
  * classifier tables and a database check constraint, all of which assume one).
  */
 export type UsageProvider = Provider | "typesafe";
-export type ProviderConnectionProvider = Provider | "azure_openai";
+export type ProviderConnectionProvider = Provider | "azure_openai" | "elevenlabs";
 export type ProviderConnectionType =
   | "platform"
   | "subscription"
@@ -1720,6 +1720,27 @@ export interface QuickReplyButton {
  */
 export type KnowledgeEngine = "graph" | "vector";
 
+export type VoiceProvider = "google" | "openai" | "elevenlabs";
+export type VoiceLanguage = "auto" | "en" | "it" | "es" | "fr" | "de" | "pt";
+
+export interface VoiceModelRef {
+  provider: VoiceProvider;
+  modelId: string;
+}
+
+export interface AssistantVoiceSettings {
+  enabled: boolean;
+  transcription: VoiceModelRef;
+  speech: VoiceModelRef;
+  voiceId: string;
+  /** Omitted/auto detects the language spoken in the recording. */
+  inputLanguage?: VoiceLanguage;
+  /** Omitted/auto follows the latest input for generative replies and playback. */
+  outputLanguage?: VoiceLanguage;
+  /** Legacy per-voice preview preferences; superseded by outputLanguage. */
+  voiceLanguages?: Record<string, VoiceLanguage>;
+}
+
 export interface Assistant {
   id: string;
   organizationId: string;
@@ -1786,6 +1807,8 @@ export interface Assistant {
    * the bytes are dropped.
    */
   attachmentsEnabled?: boolean;
+  /** Microphone dictation and on-demand answer playback. Absent means disabled. */
+  voice?: AssistantVoiceSettings;
   style: WidgetStyle;
   allowedDomains: string[];
   helpDeskSettings: HelpDeskSettings;
@@ -1833,6 +1856,7 @@ export interface PublicationConfig {
     | "modelId"
     | "allowedModels"
     | "attachmentsEnabled"
+    | "voice"
     | "style"
     | "allowedDomains"
     | "helpDeskSettings"
@@ -3200,6 +3224,8 @@ export interface InboxConversation
   notificationOnly: boolean;
   /** 1 if any reply was voted up, -1 if any down, 0 otherwise (up wins). */
   feedback: -1 | 0 | 1;
+  /** True when any answer in this conversation received an explicit neutral reaction. */
+  hasNeutralFeedback?: boolean;
 }
 
 /** Server-owned filters for one bounded Inbox window. */
@@ -3217,7 +3243,7 @@ export interface InboxQuery {
   language?: string;
   workflow?: string;
   conversationIds?: string[];
-  feedback?: "" | "up" | "down";
+  feedback?: "" | "up" | "down" | "neutral";
   escalation?: "" | "escalated" | "not_escalated";
   staff?: "" | "include" | "only";
 }
@@ -3392,6 +3418,8 @@ export interface StoredMessage {
   flowId: string | null;
   flowName: string | null;
   feedback: -1 | 0 | 1;
+  /** Exact emoji reaction behind the signed feedback score, when present. */
+  feedbackReaction?: FeedbackReactionId | null;
   /**
    * How this answer was reached: Thinking Steps captured as the turn streamed.
    * Null for user messages, for verbatim turns that did no agentic work
@@ -3401,6 +3429,12 @@ export interface StoredMessage {
   trace: StoredTurnTrace | null;
   createdAt: string;
 }
+
+/** Stable IDs for the Visitor's answer-reaction menu. */
+export type FeedbackReactionId =
+  | "positive"
+  | "neutral"
+  | "negative";
 
 /** Message trimmed to what org-wide analytics (Insights) needs. */
 export interface InsightsMessage {
@@ -4361,6 +4395,7 @@ export type AssistantPatch = Partial<
     | "modelId"
     | "allowedModels"
     | "attachmentsEnabled"
+    | "voice"
     | "style"
     | "allowedDomains"
     | "helpDeskSettings"

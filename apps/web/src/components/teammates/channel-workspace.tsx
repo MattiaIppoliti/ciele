@@ -13,7 +13,8 @@ import { CHANNEL_CHAIN_TURN_CAP } from "@agent-hub/core";
 import { EMPTY_TURN_TRACE, consumeChannelStream } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
-import { ArrowLeft, Hash, Settings2, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { ArrowLeft, Hash, Settings2 } from "lucide-react";
 import {
   Button,
   Dialog,

@@ -9,6 +9,13 @@ export function ProviderBrandIcon({
   provider: ConnectorProvider | ProviderConnectionProvider;
   className?: string;
 }) {
+  if (provider === "elevenlabs") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={cn("size-5", className)}>
+        <path fill="currentColor" d="M6 3h4v18H6zm8 0h4v18h-4z" />
+      </svg>
+    );
+  }
   if (provider === "anthropic") {
     return (
       <svg

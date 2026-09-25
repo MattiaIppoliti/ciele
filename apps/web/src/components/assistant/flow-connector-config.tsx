@@ -25,7 +25,8 @@ import {
   type ConnectorConnectionOption,
 } from "@/lib/connector-options";
 import { useApplicationConnectedToast } from "@/components/knowledge/use-application-connected";
-import { AlertCircle, ExternalLink, KeyRound, Plug, RefreshCw } from "lucide-react";
+import { ExternalLink, RefreshCw } from "lucide-react";
+import { AlertCircle, KeyRound, Plug } from "lucide-react";
 import {
   Badge,
   Button,

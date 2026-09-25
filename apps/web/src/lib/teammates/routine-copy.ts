@@ -80,7 +80,7 @@ export function formatWhen(moment: Date, now: Date): string {
 
 /** The empty state. Names the flagship template, because a blank box is a wall. */
 export const ROUTINES_EMPTY_HINT =
-  "No routines yet. A routine is a standing instruction this teammate carries out on its own, like \"every morning, triage yesterday's thumbs-down and file what is new\".";
+  "No routines yet. A routine is a standing instruction this teammate carries out on its own, like \"every morning, triage yesterday's negative feedback and file what is new\".";
 
 /**
  * Why the panel is refusing to add another.

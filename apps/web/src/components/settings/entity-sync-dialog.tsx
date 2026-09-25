@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import type { Entity } from "@agent-hub/core";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Button,
   Dialog,

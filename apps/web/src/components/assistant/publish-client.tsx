@@ -94,7 +94,7 @@ export function PublishClient({
 
   const scriptSnippet = `<script src="${origin}/widget.js"\n        data-assistant="${assistant.id}"\n        async></script>`;
   const drawerSnippet = `<script src="${origin}/widget.js"\n        data-assistant="${assistant.id}"\n        data-mode="drawer"\n        async></script>`;
-  const iframeSnippet = `<iframe src="${origin}/widget/${assistant.id}"\n        width="380" height="640"\n        style="border:none;border-radius:16px"></iframe>`;
+  const iframeSnippet = `<iframe src="${origin}/widget/${assistant.id}"\n        width="380" height="640"\n        allow="clipboard-write; microphone"\n        style="border:none;border-radius:16px"></iframe>`;
 
   function saveDomains() {
     startTransition(async () => {
@@ -287,6 +287,13 @@ export function PublishClient({
 
       <MorphingModal
         viewId={confirmView}
+        title={
+          confirmView === "publish"
+            ? latest
+              ? "Publish new version?"
+              : "Publish this assistant?"
+            : "Unpublish this assistant?"
+        }
         onClose={() => setConfirmView(null)}
         placement="bottom"
       >

@@ -74,6 +74,7 @@ export default async function WidgetPage({
         modelChoice={(assistant.allowedModels ?? []).length > 0}
         skills={skills}
         attachmentsEnabled={assistant.attachmentsEnabled ?? false}
+        voiceEnabled={assistant.voice?.enabled ?? false}
         studyMode={assistant.tools?.studyMode}
       />
     </Suspense>

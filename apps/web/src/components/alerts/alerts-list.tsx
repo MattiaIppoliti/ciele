@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type { Alert, AlertType } from "@agent-hub/core";
-import { CircleCheck, TriangleAlert } from "lucide-react";
+import { CircleCheck } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { resolveAlertAction } from "@/app/actions";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";

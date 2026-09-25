@@ -9,7 +9,8 @@ import {
   newReviewInputField,
   reviewRequestText,
 } from "@agent-hub/core";
-import { KeyRound, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { Button, Input, Label } from "@agent-hub/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ListInput } from "@/components/ui/list-input";

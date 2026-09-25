@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import type { Memory, MemorySubjectSummary } from "@agent-hub/core";
 import { Trash2, UserRound } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Button,
   Card,

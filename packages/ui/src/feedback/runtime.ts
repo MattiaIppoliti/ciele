@@ -1,6 +1,8 @@
 import type { CueName } from "@foleyjs/core";
+import type { AudioPatch } from "@web-kits/audio";
 
 import { HAPTIC_PATTERNS, haptic, setHapticTransport } from "./haptics";
+import { minimal } from "./sounds";
 import {
   FOLEY_SETTINGS,
   SUCCESS_COALESCE_MS,
@@ -15,8 +17,8 @@ import {
 
 /**
  * The browser half of the feedback module: one delegated listener set on the
- * document, the lazy loading of both libraries, and the bridge from an
- * interaction to Foley's `play()` and WebHaptics' `trigger()`.
+ * document, the lazy loading of the sound engines and haptics, and the bridge
+ * from an interaction to Minimal/Foley playback and WebHaptics' `trigger()`.
  *
  * Why not Foley's own `bind()`: it decides a toggle's state from `aria-pressed`
  * only (Base UI switches and checkboxes speak `aria-checked`), it has no way to
@@ -25,9 +27,9 @@ import {
  * attribute names are Foley's, the binder is ours, and `bind()` is never
  * called: calling it too would double every cue.
  *
- * Both libraries are imported dynamically inside the first user gesture. A
- * page nobody touches downloads neither, and a server bundle can never
- * evaluate a module that reaches for `AudioContext`.
+ * Both sound engines and WebHaptics are imported dynamically inside the first
+ * user gesture. A page nobody touches downloads none, and a server bundle can
+ * never evaluate a module that reaches for `AudioContext`.
  */
 
 export const PRESS_ATTR = "data-foley-press";
@@ -71,6 +73,40 @@ const INTERACTIVE_SELECTOR = [
 ].join(",");
 
 type FoleyModule = typeof import("@foleyjs/core");
+type WebKitsAudioModule = typeof import("@web-kits/audio");
+
+/** The Minimal patch covers the shared platform UI; chat keeps its Foley identity. */
+const MINIMAL_CUES: Partial<Record<Interaction, string>> = {
+  press: "key-press",
+  tap: "tap",
+  on: "toggle-on",
+  off: "toggle-off",
+  switch: "select",
+  sweep: "swoosh",
+  copy: "copy",
+  tick: "tab-switch",
+  click: "click",
+  open: "expand",
+  close: "collapse",
+  success: "success",
+  error: "error",
+  warning: "warning",
+  arrive: "notification",
+  complete: "key-press",
+};
+
+function performMinimalCue(
+  patch: AudioPatch,
+  cue: string,
+  options: CueOptions | undefined,
+): void {
+  const playOptions: { volume: number; detune?: number } = {
+    // The patch's definitions already carry their quiet gain levels.
+    volume: options?.volume ?? 1,
+  };
+  if (options?.pitch !== undefined) playOptions.detune = options.pitch * 100;
+  patch.play(cue, playOptions);
+}
 
 export interface FeedbackRuntime {
   /** Play an interaction from code (toasts, stream lifecycle, snaps). */
@@ -84,6 +120,8 @@ export interface AttachOptions {
   isMuted: () => boolean;
   /** Test seam: replaces the dynamic imports. */
   loadFoley?: () => Promise<Pick<FoleyModule, "play" | "set">>;
+  /** Test seam: replaces the dynamic Minimal-patch import. */
+  loadWebKitsAudio?: () => Promise<Pick<WebKitsAudioModule, "createPatchInstance">>;
   loadHaptics?: () => Promise<{ trigger: (input: unknown) => Promise<void> } | null>;
 }
 
@@ -186,9 +224,13 @@ export function playFeedback(interaction: Interaction): void {
 export function attachFeedback(doc: Document, options: AttachOptions): FeedbackRuntime {
   const win = doc.defaultView;
   let foley: Pick<FoleyModule, "play" | "set"> | null = null;
+  let minimalPatch: AudioPatch | null = null;
+  let foleySettled = false;
+  let minimalSettled = false;
   let unlocked = false;
   let destroyed = false;
   let pendingCue: {
+    interaction: Interaction;
     cue: CueName;
     options: CueOptions | undefined;
     theme: FoleyTheme | undefined;
@@ -197,6 +239,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   const successCoalescer = createCoalescer(SUCCESS_COALESCE_MS);
 
   const loadFoley = options.loadFoley ?? (() => import("@foleyjs/core"));
+  const loadWebKitsAudio = options.loadWebKitsAudio ?? (() => import("@web-kits/audio"));
   const loadHaptics =
     options.loadHaptics ??
     (async () => {
@@ -228,13 +271,18 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
     if (interaction === "copy") successCoalescer.allow("success");
     const decision = decide(interaction, environment(), { muted: options.isMuted() });
     if (decision.cue) {
-      if (foley) {
+      const minimalCue = MINIMAL_CUES[interaction];
+      if (minimalCue && minimalPatch) {
+        performMinimalCue(minimalPatch, minimalCue, decision.options);
+      } else if (!minimalCue && foley) {
         performCue(foley, decision.cue, decision.options, decision.theme);
+      } else if ((minimalCue && minimalSettled && foley) || (!minimalCue && foleySettled && foley)) {
+        // If the patch could not load, retain the established Foley fallback.
+        performCue(foley!, decision.cue, decision.options, decision.theme);
       } else {
-        // The gesture that unlocks audio is usually also the one that should
-        // sound. Keep the last cue until Foley arrives; a queue would replay a
-        // whole burst late, which is worse than one cue slightly late.
+        // Keep only the latest interaction while audio modules are unlocking.
         pendingCue = {
+          interaction,
           cue: decision.cue,
           options: decision.options,
           theme: decision.theme,
@@ -242,6 +290,24 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
       }
     }
     if (decision.haptic) haptic(decision.haptic);
+  }
+
+  function flushPendingCue(): void {
+    if (!pendingCue || options.isMuted() || doc.hidden) {
+      pendingCue = null;
+      return;
+    }
+    const queued = pendingCue;
+    const minimalCue = MINIMAL_CUES[queued.interaction];
+    if (minimalCue && minimalPatch) {
+      performMinimalCue(minimalPatch, minimalCue, queued.options);
+      pendingCue = null;
+    } else if ((!minimalCue || minimalSettled) && foley) {
+      performCue(foley, queued.cue, queued.options, queued.theme);
+      pendingCue = null;
+    } else if ((!minimalCue || minimalSettled) && foleySettled) {
+      pendingCue = null;
+    }
   }
 
   function unlock(): void {
@@ -252,13 +318,24 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
         if (destroyed) return;
         foley = mod;
         mod.set({ ...FOLEY_SETTINGS });
-        if (pendingCue && !options.isMuted() && !doc.hidden) {
-          performCue(mod, pendingCue.cue, pendingCue.options, pendingCue.theme);
-        }
-        pendingCue = null;
+        foleySettled = true;
+        flushPendingCue();
       })
       .catch(() => {
         // No audio is a degraded state, not an error worth a console line.
+        foleySettled = true;
+        flushPendingCue();
+      });
+    void loadWebKitsAudio()
+      .then((mod) => {
+        if (destroyed) return;
+        minimalPatch = mod.createPatchInstance(minimal._patch);
+        minimalSettled = true;
+        flushPendingCue();
+      })
+      .catch(() => {
+        minimalSettled = true;
+        flushPendingCue();
       });
     void loadHaptics()
       .then((instance) => {
@@ -283,6 +360,10 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
 
   const onPointerDown = (e: Event) => {
     unlock();
+    // Secondary-button presses open a context menu; they are not button presses.
+    // The menu itself emits the shared `open` cue when it actually appears.
+    const pointer = e as PointerEvent;
+    if (pointer.pointerType === "mouse" && pointer.button !== 0) return;
     const el = closestAttr(e.target, PRESS_ATTR);
     if (!el || silenced(el) || disabled(el)) return;
     play("press");

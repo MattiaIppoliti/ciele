@@ -17,7 +17,8 @@ import {
   type EscalationNav,
 } from "@/lib/escalation-navigation";
 import { channelAvailabilityNow } from "@/lib/channel-availability";
-import { ArrowRight, ChevronLeft, LoaderCircle, X } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
+import { ChevronLeft, LoaderCircle } from "lucide-react";
 
 /**
  * What the widget shows once a channel form is submitted: the confirmation

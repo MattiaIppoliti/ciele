@@ -18,6 +18,7 @@ export function chatMessagesFromStored(messages: StoredMessage[]): ChatMsg[] {
           parts,
           streamingText: null,
           feedback: message.feedback,
+          feedbackReaction: message.feedbackReaction ?? null,
         };
   });
 }

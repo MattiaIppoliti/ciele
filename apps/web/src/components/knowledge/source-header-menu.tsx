@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Ellipsis, RefreshCw, Trash2, Unlink } from "lucide-react";
+import { RefreshCw, Trash2, Unlink } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import type { Source } from "@agent-hub/core";
 import { Button } from "@agent-hub/ui";
 import {

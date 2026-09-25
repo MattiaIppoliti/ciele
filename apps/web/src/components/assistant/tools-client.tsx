@@ -2,7 +2,8 @@
 
 import { useRef, useState, useTransition } from "react";
 import type { AssistantTools, BuiltInToolName, Entity, Skill } from "@agent-hub/core";
-import { Database, Globe, Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { Database, Globe, Pencil } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
   createSkillAction,

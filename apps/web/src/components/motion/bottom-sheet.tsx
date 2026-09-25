@@ -8,6 +8,7 @@ import {
   useDragControls,
   useReducedMotion,
 } from "motion/react";
+import { X } from "lucide-react";
 import {
   type ReactNode,
   useCallback,
@@ -309,15 +310,24 @@ export function BottomSheet({
               className="flex cursor-grab touch-none flex-col items-center px-4 pb-2 pt-3 active:cursor-grabbing"
             >
               <div className="h-1.5 w-10 rounded-full bg-muted-foreground/40" />
+              <button
+                type="button"
+                aria-label="Close sheet"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={closeSheet}
+                className="absolute top-2 right-2 z-10 flex size-11 cursor-pointer items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
               {title || description ? (
                 <div className="mt-3 w-full">
                   {title ? (
-                    <h2 id={titleId} className="text-base font-semibold text-foreground">
+                    <h2 id={titleId} className="pr-12 text-base font-semibold text-foreground">
                       {title}
                     </h2>
                   ) : null}
                   {description ? (
-                    <p id={descriptionId} className="mt-0.5 text-sm text-muted-foreground">
+                    <p id={descriptionId} className="mt-0.5 pr-12 text-sm text-muted-foreground">
                       {description}
                     </p>
                   ) : null}

@@ -4,22 +4,8 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
-import {
-  BookOpen,
-  Check,
-  ChevronsUpDown,
-  Ellipsis,
-  Fingerprint,
-  LifeBuoy,
-  LogOut,
-  Map as MapIcon,
-  MessageCircle,
-  MessageCircleQuestion,
-  Search,
-  Settings,
-  Ticket,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronsUpDown, Fingerprint, LifeBuoy, MessageCircle, Search, Settings, type LucideIcon } from "lucide-react";
+import { BookOpen, Check, Ellipsis, LogOut, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
 // Icon data, not components: the collapse arrow reshapes between the two.
 import {
   PanelLeftClose as PanelLeftCloseData,

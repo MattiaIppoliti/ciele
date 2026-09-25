@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { Entity } from "@agent-hub/core";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Badge, Button, Card } from "@agent-hub/ui";
 import { deleteEntityAction } from "@/app/actions";
 import {

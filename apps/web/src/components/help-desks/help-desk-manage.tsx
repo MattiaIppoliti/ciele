@@ -4,16 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ChannelKind, HelpDesk, SupportChannel } from "@agent-hub/core";
-import {
-  CircleCheck,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Move,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { CircleCheck, Move, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import {

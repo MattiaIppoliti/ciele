@@ -45,7 +45,6 @@ export function GroupComposer({
   const [highlighted, setHighlighted] = useState(0);
   // Escape closes the picker for this token only; typing on re-opens it.
   const dismissed = useRef<number | null>(null);
-  const [focusPulse, setFocusPulse] = useState(false);
 
   const textarea = () =>
     containerRef.current?.querySelector("textarea") ?? null;
@@ -124,12 +123,6 @@ export function GroupComposer({
     }
   }
 
-  function fireFocusPulse() {
-    if (focusPulse) return;
-    setFocusPulse(true);
-    window.setTimeout(() => setFocusPulse(false), 1100);
-  }
-
   return (
     <div ref={containerRef} className="relative">
       {open && (
@@ -182,75 +175,69 @@ export function GroupComposer({
           </ul>
         </div>
       )}
-      {(focusPulse || pending) && (
-        <ComposerPulse
-          color="var(--primary)"
-          focus={focusPulse}
-          loading={pending}
+      <ComposerPulse loading={pending}>
+        <PromptInput
+          // A resolved name is tinted where it stands, and wears the face of
+          // whoever it names.
+          //
+          // Nothing here may change a glyph's advance: this layer has to wrap
+          // exactly like the textarea under it, or the caret drifts off the
+          // character it is editing. So the chip gets no padding, and the face is
+          // drawn *over* the `@` rather than in front of it, on an absolute box
+          // that takes no space. The `@` itself goes `invisible` rather than being
+          // dropped, because `visibility: hidden` keeps its width and a removed
+          // character would not. The posted message has no caret to keep honest,
+          // so there the chip is a real padded pill (see `MentionText`).
+          highlight={splitMentions(draft, targets).map((segment, index) =>
+            segment.kind === "mention" ? (
+              <span
+                key={index}
+                className="bg-primary/20 text-primary relative rounded-[4px] font-medium"
+              >
+                <span className="invisible">@</span>
+                <GeneratedAvatar
+                  seed={segment.target.avatarSeed}
+                  size="size-3.5"
+                  // 14px over an `@` that is about 8px wide, pulled left so the
+                  // overhang lands on the space before the name rather than on
+                  // its first letter.
+                  className="absolute top-1/2 left-0 -translate-x-[4px] -translate-y-1/2"
+                />
+                {segment.text.slice(1)}
+              </span>
+            ) : (
+              <span key={index}>{segment.text}</span>
+            )
+          )}
+          value={draft}
+          onValueChange={(value) => {
+            setDraft(value);
+            sync(value);
+          }}
+          onSubmit={(value) => {
+            setDraft("");
+            setMention(null);
+            // The sent message took its `@` with it, so the dismissal keyed to
+            // that `@`'s index has to go too. Without this, picking a name and
+            // sending left `dismissed` pointing at index 0, and the next message
+            // starting with `@` was silently treated as the one already
+            // dismissed: the picker never opened again for the rest of the
+            // session.
+            dismissed.current = null;
+            onSubmit(value);
+          }}
+          minRows={1}
+          maxRows={6}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          // Caret moves without an edit (click, arrows) re-read the token too.
+          onSelect={(event: SyntheticEvent<HTMLTextAreaElement>) =>
+            sync(event.currentTarget.value)
+          }
+          onKeyDown={handleKeyDown}
+          onBlur={() => setMention(null)}
         />
-      )}
-      <PromptInput
-        // A resolved name is tinted where it stands, and wears the face of
-        // whoever it names.
-        //
-        // Nothing here may change a glyph's advance: this layer has to wrap
-        // exactly like the textarea under it, or the caret drifts off the
-        // character it is editing. So the chip gets no padding, and the face is
-        // drawn *over* the `@` rather than in front of it, on an absolute box
-        // that takes no space. The `@` itself goes `invisible` rather than being
-        // dropped, because `visibility: hidden` keeps its width and a removed
-        // character would not. The posted message has no caret to keep honest,
-        // so there the chip is a real padded pill (see `MentionText`).
-        highlight={splitMentions(draft, targets).map((segment, index) =>
-          segment.kind === "mention" ? (
-            <span
-              key={index}
-              className="bg-primary/20 text-primary relative rounded-[4px] font-medium"
-            >
-              <span className="invisible">@</span>
-              <GeneratedAvatar
-                seed={segment.target.avatarSeed}
-                size="size-3.5"
-                // 14px over an `@` that is about 8px wide, pulled left so the
-                // overhang lands on the space before the name rather than on
-                // its first letter.
-                className="absolute top-1/2 left-0 -translate-x-[4px] -translate-y-1/2"
-              />
-              {segment.text.slice(1)}
-            </span>
-          ) : (
-            <span key={index}>{segment.text}</span>
-          )
-        )}
-        value={draft}
-        onValueChange={(value) => {
-          setDraft(value);
-          sync(value);
-        }}
-        onSubmit={(value) => {
-          setDraft("");
-          setMention(null);
-          // The sent message took its `@` with it, so the dismissal keyed to
-          // that `@`'s index has to go too. Without this, picking a name and
-          // sending left `dismissed` pointing at index 0, and the next message
-          // starting with `@` was silently treated as the one already
-          // dismissed: the picker never opened again for the rest of the
-          // session.
-          dismissed.current = null;
-          onSubmit(value);
-        }}
-        minRows={1}
-        maxRows={6}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        onFocus={fireFocusPulse}
-        // Caret moves without an edit (click, arrows) re-read the token too.
-        onSelect={(event: SyntheticEvent<HTMLTextAreaElement>) =>
-          sync(event.currentTarget.value)
-        }
-        onKeyDown={handleKeyDown}
-        onBlur={() => setMention(null)}
-      />
+      </ComposerPulse>
     </div>
   );
 }

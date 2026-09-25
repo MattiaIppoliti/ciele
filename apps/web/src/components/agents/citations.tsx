@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  BookOpen,
-  BookOpenText,
-  ChevronDown,
-  ExternalLink,
-  Globe2,
-} from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { BookOpen, BookOpenText, ChevronDown, Globe2 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,

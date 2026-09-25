@@ -1,31 +1,37 @@
 ---
-title: Organisationseinstellungen
-description: Verwalten Sie Mitglieder, Anbieterverbindungen, API-Schlüssel, Nutzung und Abrechnung.
+title: Einstellungen der Organisation
+description: Verwalten Sie Mitglieder, Provider-Verbindungen, API-Schlüssel, Nutzung und Abrechnung.
 ---
 
-Eine Organisation ist die Mandantengrenze für Ciele-Daten und -Berechtigungen.
+Eine Organisation ist die Tenant-Grenze für Ciele-Daten und -Berechtigungen.
 
 Verwenden Sie **Settings** für diese aktuellen Bereiche:
 
-- **General** für Organisationsinformationen.
-- **Members** für Mitgliedschaft, Einladungen und Rollen.
+- **General** für Informationen zur Organisation.
+- **Members** für Mitgliedschaften, Einladungen und Rollen.
 - **AI Providers** für Provider-Verbindungen.
-- **Data** für Entitätsschemata und importierte Datensätze.
+- **Data** für Entity-Schemas und importierte Records.
 - **API Keys** für programmgesteuerte Anmeldeinformationen.
-- **Usage** für die aktuelle Ressourcennutzung und -limits.
-- **Billing** für den verwalteten Plan und das Abrechnungskonto.
+- **Usage** für die jüngste Ressourcennutzung und -limits.
+- **Billing** für den Managed Plan und das Abrechnungskonto.
 
-In der selbst gehosteten Edition wird kein Katalog für verwaltete Abonnements
-angezeigt.
+Die Self-Hosted Edition zeigt keinen Katalog für verwaltete Abonnements an.
 
-Mitgliederrollen und API-Schlüsselrollen verwenden dieselbe
-Berechtigungsstaffel. Ein API-Schlüssel kann keine Rolle erhalten, die über der
-seines Erstellers liegt.
+Member Roles und API-key Roles verwenden dieselbe Berechtigungshierarchie. Ein
+API-Schlüssel kann keine Role erhalten, die über der seines Erstellers liegt.
 
-Der Bereich **AI Providers** steuert auch das
-[Langzeitgedächtnis](/data/long-term-memory). Es enthält Tools, mit denen die
-gespeicherten Erinnerungen eines Besuchers gelöscht werden können.
+Der Bereich **AI Providers** steuert auch den
+[long-term memory](/data/long-term-memory). Es enthält Tools, um die
+gespeicherten Erinnerungen eines Visitors zu löschen.
 
-Die Registerkarte **General** enthält auch die beiden
-[Datenaufbewahrungsfenster](/organization/data-retention): eines für
-Reasoning-Traces, eines für ganze Konversationen.
+Die Registerkarte **General** verfügt über zwei Aufbewahrungseinstellungen: eine
+für Reasoning Traces und eine für ganze Konversationen. Siehe
+[Data retention](/organization/data-retention).
+
+## Persönliches Erscheinungsbild
+
+Öffnen Sie das Account-Menü, wählen Sie **Personal settings** und anschließend
+**Theme**. Wählen Sie **Light**, **Dark** oder **System** und wählen Sie die
+Palette **Midnight** oder **Mist Blue** aus. Diese Einstellungen wirken sich auf
+Ihre Konsole aus und werden in diesem Browser gespeichert. Das veröffentlichte
+Widget behält seinen Assistant-Stil bei.

@@ -11,16 +11,8 @@ import type {
   SupportChannel,
   SupportChannelConfig,
 } from "@agent-hub/core";
-import {
-  Calendar,
-  CalendarClock,
-  ChevronLeft,
-  ClipboardList,
-  Settings,
-  Ticket,
-  Trash2,
-  X,
-} from "lucide-react";
+import { CalendarClock, Settings, Trash2, X } from "lucide-react";
+import { Calendar, ChevronLeft, ClipboardList, Ticket } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import {
@@ -519,12 +511,13 @@ function FieldEditor({
         >
           <SelectTrigger className="mt-2">
             <SelectValue>
-              {(value: ChannelFormField["type"]) => {
-                const Icon = FIELD_TYPES[value].icon;
+              {(value: string) => {
+                const fieldType = value as ChannelFormField["type"];
+                const Icon = FIELD_TYPES[fieldType].icon;
                 return (
                   <>
                     <Icon className="text-muted-foreground size-4" />
-                    {FIELD_TYPES[value].label}
+                    {FIELD_TYPES[fieldType].label}
                   </>
                 );
               }}

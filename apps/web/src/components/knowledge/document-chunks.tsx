@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Maximize2, Search } from "lucide-react";
+import { Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import type { DocumentChunkListItem } from "@agent-hub/core";
 import {
   Button,
