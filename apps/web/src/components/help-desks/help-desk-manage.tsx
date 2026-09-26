@@ -407,9 +407,7 @@ export function HelpDeskManage({
             <div>
               <h2 className="font-semibold">Answer Improvements</h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Auto-generate improvements: when a conversation escalates
-                through this desk, flag the last AI answer as an Improvement
-                item for review.
+                Auto-generate improvements: flag the last AI answer for review when a chat escalates here.
               </p>
             </div>
             <Switch

@@ -41,7 +41,6 @@ describe("GET /api/cron/finalize-crawls", () => {
     mocks.finalizeDueCrawls.mockReset();
     mocks.finalizeDueCrawls.mockResolvedValue({
       jobs: NO_JOBS,
-      graphSync: NO_JOBS,
       proposals: NO_JOBS,
       crawls: { swept: 0, settled: 0, results: [] },
     });
@@ -68,7 +67,6 @@ describe("GET /api/cron/finalize-crawls", () => {
         retried: 0,
         superseded: 0,
       },
-      graphSync: NO_JOBS,
       proposals: NO_JOBS,
       crawls: {
         swept: 2,

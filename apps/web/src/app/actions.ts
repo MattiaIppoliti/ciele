@@ -6,7 +6,6 @@ import type {
   Assistant,
   AssistantPatch,
   ApplicationConnection,
-  ApplicationProvider,
   SlackBotConfig,
   Conversation,
   ConnectorActionSettings,
@@ -55,7 +54,6 @@ import type {
 } from "@agent-hub/core";
 import { connectorAction } from "@agent-hub/core";
 import {
-  okfActor,
   sealSecret,
   thrownMessage,
 } from "@agent-hub/core";
@@ -78,16 +76,11 @@ import {
 import {
   beginWebsiteCrawl,
   embedConcept,
-  enqueueApplicationSyncJob,
-  discoverApplicationConnectionScopes,
   revokeApplicationConnectionCredentials,
   enqueueDraftProposalJob,
-  enqueueGraphSyncJob,
   enqueueEntitySyncJob,
   enqueueIngestJob,
   extractSourceText,
-  feedbackScore,
-  forwardGraphFeedback,
   finalizeWebsiteCrawl,
   testApiRequest,
   connectorAlertKey,
@@ -104,7 +97,6 @@ import {
   testOpenAiCompatibleConnection,
   updateWebsiteSourceConfiguration,
   type ApiRequestTestResult,
-  type ApplicationCredentials,
   type OpenAiCompatibleTestResult,
 } from "@agent-hub/agent";
 import { cookies } from "next/headers";
@@ -132,13 +124,18 @@ import {
   getDocumentSummaryOp,
   extractSourceMemoriesOp,
   forgetKnowledgeMemoryOp,
-  getSourceOp,
   listDocumentMemoriesOp,
   restoreKnowledgeMemoryOp,
   getSourceDocumentOp,
   listDocumentChunksOp,
   importOrgFaqsOp,
   updateOrgFaqOp,
+  createApplicationImportOp,
+  deleteApplicationImportOp,
+  setApplicationImportAssistantsOp,
+  setApplicationImportEnabledOp,
+  syncApplicationImportNowOp,
+  updateApplicationImportConfigurationOp,
   createFlowOp,
   createEntityOp,
   createHelpDeskOp,
@@ -229,13 +226,10 @@ import {
 } from "@ciele/ops";
 import type { InboxConversationDetail } from "@ciele/ops";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv, serializeFaqCsv } from "@/lib/faq-csv";
-import {
-  normalizeApplicationImportConfig,
-  validateApplicationImportScopes,
-} from "@/lib/application-import-config";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { getWidgetDb } from "@/lib/widget-db";
+import { discoverScopesKeepingCredentials } from "@/lib/application-discovery";
 import { saveSlackBotSettings } from "@/lib/slack/settings";
 import { canViewReasoning } from "@/lib/rbac";
 import { canDeleteApplicationConnection } from "@/lib/application-connections";
@@ -251,7 +245,6 @@ import {
   isSupabaseServiceConfigured,
 } from "@/lib/supabase/service";
 import {
-  KNOWLEDGE_ORIGINALS_BUCKET,
   downloadKnowledgeOriginal,
   uploadKnowledgeOriginal,
   uploadPublicImageAsset,
@@ -677,12 +670,7 @@ export async function deleteAssistantAction(id: string) {
   await runOperation(deleteAssistantOp, { id });
 }
 
-/**
- * Deletes a Knowledge Collection (cascade-deletes its Sources and Concepts) and
- * reclaims its derived graph dataset with a single purge, the Collection-level
- * counterpart to `deleteAssistantAction`'s per-Collection purge. Inert on the
- * graph side without a worker.
- */
+/** Deletes a Knowledge Collection (cascade-deletes its Sources and Concepts). */
 export async function deleteCollectionAction(
   assistantId: string,
   collectionId: string,
@@ -697,11 +685,6 @@ export async function deleteCollectionAction(
       // Collection disappeared, and after the delete nobody can look it up.
       const collection = await db.getCollection(collectionId);
       await db.deleteCollection(collectionId);
-      await enqueueGraphSyncJob(
-        { op: "purge", collectionId },
-        { db },
-        { organizationId },
-      );
       // A Teammate's Knowledge Scope is a list of ids, not a foreign key, so
       // this delete can leave one searching something that is gone (#769).
       // Deleting a Collection has no operation yet, so this is the only path;
@@ -1442,7 +1425,7 @@ export async function reprocessSourceAction(
   collectionId: string,
   sourceId: string,
 ) {
-  const { db } = await requireMember("edit");
+  const { db, organizationId } = await requireMember("edit");
   const source = await db.getSource(sourceId);
   if (!source || source.collectionId !== collectionId)
     throw new Error("Source not found");
@@ -1478,7 +1461,7 @@ export async function reprocessSourceAction(
     },
     { db },
   );
-  revalidatePath(`/assistants/${assistantId}`);
+  revalidateEntities([{ kind: "assistantEditor", assistantId }], organizationId);
 }
 
 export async function retrySourceIngestAction(
@@ -1486,7 +1469,7 @@ export async function retrySourceIngestAction(
   collectionId: string,
   sourceId: string,
 ) {
-  const { db } = await requireMember("edit");
+  const { db, organizationId } = await requireMember("edit");
   const source = await db.getSource(sourceId);
   if (!source || source.collectionId !== collectionId)
     throw new Error("Source not found");
@@ -1526,7 +1509,7 @@ export async function retrySourceIngestAction(
     },
     { db },
   );
-  revalidatePath(`/assistants/${assistantId}`);
+  revalidateEntities([{ kind: "assistantEditor", assistantId }], organizationId);
 }
 
 // Websites mode: crawl through the selected adapter and store one Concept per
@@ -1996,64 +1979,13 @@ export async function importFaqsAction(formData: FormData): Promise<{
   return { imported, skipped };
 }
 
-export async function updateFaqAction(
-  assistantId: string,
-  conceptId: string,
-  question: string,
-  answer: string,
-) {
-  const { db, session } = await requireMember("edit");
-  const connections = await db.listProviderConnections(session.organization.id);
-  const existing = await db.getConcept(conceptId);
-  const concept = await db.updateConcept(conceptId, {
-    frontmatter: {
-      // Carry the prior frontmatter forward: an accepted Suggested Fix holds
-      // `sources` and a `verified` stamp that a wholesale rewrite would erase.
-      // The old `verified.at` deliberately stays put, content changing without
-      // re-confirmation is exactly the signal §5.2 keeps `generated` and
-      // `verified` separate to express (edited-since-last-reviewed).
-      ...existing?.frontmatter,
-      type: "FAQ",
-      title: question.trim(),
-      description: answer.slice(0, 140),
-      generated: {
-        by: okfActor.human(session.userId),
-        at: new Date().toISOString(),
-      },
-    },
-    body: answer,
-  });
-  // The FAQ's Source carries the question as its name (PRD #726), keep it
-  // in step so the hub's FAQs tab shows the edited question.
-  if (existing?.sourceId) {
-    const faqSource = await db.getSource(existing.sourceId);
-    if (faqSource?.kind === "faq") {
-      await db.updateSource(faqSource.id, {
-        name: question.trim().slice(0, 500),
-      });
-    }
-  }
-  await db.deleteChunksByConcept(conceptId);
-  await embedConcept({
-    db,
-    assistantId,
-    collectionId: concept.collectionId,
-    conceptId,
-    title: question.trim(),
-    body: answer,
-    connections,
-  });
-  revalidatePath(`/assistants/${assistantId}`);
-  revalidatePath("/library/faqs");
-}
-
 /**
  * Re-embed backfill (#312): re-indexes every Concept that still has
  * null-embedding chunks (content ingested with no embedding provider, or
  * during a provider outage). Run after adding/fixing an embedding provider.
  */
 export async function reembedKnowledgeAction(assistantId: string) {
-  const { db, session } = await requireMember("edit");
+  const { db, session, organizationId } = await requireMember("edit");
   const connections = await db.listProviderConnections(session.organization.id);
   const conceptIds = await db.listNullEmbeddingConceptIds(assistantId);
   let reembedded = 0;
@@ -2072,9 +2004,7 @@ export async function reembedKnowledgeAction(assistantId: string) {
     });
     reembedded += 1;
   }
-  // "layout": the Knowledge section is the nested /assistants/{id}/knowledge
-  // route, which a bare page revalidation of the editor root never reaches.
-  revalidatePath(`/assistants/${assistantId}`, "layout");
+  revalidateEntities([{ kind: "assistantEditor", assistantId }], organizationId);
   return { pending: conceptIds.length, reembedded };
 }
 
@@ -2082,7 +2012,7 @@ export async function deleteSourceAction(
   assistantId: string,
   sourceId: string,
 ) {
-  // Cascade capture + graph retirement live in deleteSourceOp (#622). This
+  // Cascade capture lives in deleteSourceOp (#622). This
   // destroys the Source for every Assistant linked to it, the editor offers
   // it only as the explicit second choice, next to unlinkSourceAction.
   await runOperation(deleteSourceOp, { id: sourceId });
@@ -2113,8 +2043,8 @@ export async function deleteConceptAction(
   conceptId: string,
 ) {
   // A FAQ Concept owns a `faq` Source (PRD #726): deleting the FAQ retires
-  // the whole Source so no orphaned hub row survives (cascade + graph
-  // retirement live in deleteSourceOp).
+  // the whole Source so no orphaned hub row survives (the cascade lives in
+  // deleteSourceOp).
   {
     const { db } = await requireMember("edit");
     const concept = await db.getConcept(conceptId);
@@ -2131,18 +2061,8 @@ export async function deleteConceptAction(
       capability: "edit",
       entities: [{ kind: "assistantEditor", assistantId }],
     },
-    async ({ db, organizationId }) => {
-      // Capture the Collection before the delete so the graph document can be
-      // retired too (ADR-0017). Inert without a graph worker.
-      const concept = await db.getConcept(conceptId);
+    async ({ db }) => {
       await db.deleteConcept(conceptId);
-      if (concept) {
-        await enqueueGraphSyncJob(
-          { op: "remove", collectionId: concept.collectionId, conceptId },
-          { db },
-          { organizationId },
-        );
-      }
     },
   );
 }
@@ -2406,16 +2326,6 @@ export async function createImprovementFromMessageAction(
       });
       // Null only under swallowErrors, which this call does not pass.
       if (!improvement) throw new Error("Failed to raise the Improvement");
-      // Flagging an answer for improvement is a thumbs-down: if it was
-      // graph-served, score it 1 with the flag text so the graph demotes its
-      // material (#389). Fail-soft / inert without a worker.
-      await forwardGraphFeedback({
-        db,
-        organizationId: session.organization.id,
-        messageId,
-        score: feedbackScore(-1),
-        text: title,
-      });
       // Draft a Suggested Fix for the flagged answer (#390).
       await enqueueDraftProposalJob(
         { improvementId: improvement.id, messageId },
@@ -2775,62 +2685,16 @@ export async function writeProjectDocumentAction(
 // actions cover Salesforce / ServiceNow credential grants and shared lifecycle.
 // ---------------------------------------------------------------------------
 
-function revalidateApplicationKnowledge(assistantIds: string[] = []): void {
-  revalidatePath("/library/applications");
-  for (const assistantId of new Set(assistantIds)) {
-    revalidatePath(`/assistants/${assistantId}/knowledge`);
-  }
-}
-
-function requiredApplicationField(value: string, label: string): string {
-  const normalized = value.trim();
-  if (!normalized) throw new Error(`${label} is required`);
-  if (normalized.length > 2000) throw new Error(`${label} is too long`);
-  return normalized;
-}
-
-async function requireOwnedAssistantIds(
-  db: Db,
+function revalidateApplicationKnowledge(
   organizationId: string,
-  requestedIds: string[]
-): Promise<string[]> {
-  const assistantIds = [...new Set(requestedIds)];
-  const allowed = new Set(
-    (await db.listAssistants(organizationId)).map((assistant) => assistant.id)
-  );
-  if (assistantIds.length === 0) throw new Error("Select at least one Assistant");
-  if (assistantIds.some((id) => !allowed.has(id))) {
-    throw new Error("One or more Assistants do not belong to this Organization");
-  }
-  return assistantIds;
-}
-
-async function discoverAndValidateApplicationConfig(
-  db: Db,
-  connection: NonNullable<Awaited<ReturnType<Db["getApplicationConnection"]>>>,
-  rawConfig: Record<string, unknown>
-): Promise<Record<string, unknown>> {
-  const persistRefresh = async (credentials: ApplicationCredentials) => {
-    await db.updateApplicationConnection(connection.id, {
-      sealedCredentials: sealSecret(JSON.stringify(credentials)),
-      status: "connected",
-      error: "",
-      lastConnectedAt: new Date().toISOString(),
-    });
-  };
-  const discovery = await discoverApplicationConnectionScopes(
-    connection,
-    undefined,
-    persistRefresh
-  );
-  const normalized = normalizeApplicationImportConfig(
-    connection.provider,
-    rawConfig
-  );
-  return validateApplicationImportScopes(
-    connection.provider,
-    normalized,
-    discovery.scopes
+  assistantIds: string[] = [],
+): void {
+  revalidateEntities(
+    [
+      { kind: "knowledgeHub" },
+      ...[...new Set(assistantIds)].map((assistantId) => ({ kind: "assistantEditor" as const, assistantId })),
+    ],
+    organizationId,
   );
 }
 
@@ -2857,38 +2721,8 @@ export async function createApplicationImportAction(input: {
   cadence: "manual" | "daily";
   config: Record<string, unknown>;
 }): Promise<{ id: string }> {
-  const { db, organizationId } = await requireMember("edit");
-  const connection = await requireApplicationConnectionForImport(
-    db,
-    organizationId,
-    input.connectionId
-  );
-  const assistantIds = await requireOwnedAssistantIds(
-    db,
-    organizationId,
-    input.assistantIds
-  );
-  const config = await discoverAndValidateApplicationConfig(
-    getWidgetDb(),
-    connection,
-    input.config
-  );
-  const collection = await db.getOrCreateOrgLibraryCollection(organizationId);
-  const applicationImport = await db.createApplicationImport({
-    organizationId,
-    connectionId: connection.id,
-    collectionId: collection.id,
-    name: requiredApplicationField(input.name, "Name"),
-    config,
-    cadence: input.cadence,
-    assistantIds,
-  });
-  await enqueueApplicationSyncJob(
-    { importId: applicationImport.id, organizationId },
-    { db: getWidgetDb() }
-  );
-  revalidateApplicationKnowledge(assistantIds);
-  return { id: applicationImport.id };
+  const { id } = await runOperation(createApplicationImportOp, input);
+  return { id };
 }
 
 export async function discoverApplicationScopesAction(connectionId: string) {
@@ -2905,23 +2739,7 @@ async function discoverScopesForConnection(connection: ApplicationConnection) {
   if (connection.status !== "connected") {
     throw new Error("Reconnect this Application before browsing its content");
   }
-  const persistRefresh = async (refreshedCredentials: ApplicationCredentials) => {
-    await getWidgetDb().updateApplicationConnection(connection.id, {
-      sealedCredentials: sealSecret(JSON.stringify(refreshedCredentials)),
-      status: "connected",
-      error: "",
-      lastConnectedAt: new Date().toISOString(),
-    });
-  };
-  const discovery = await discoverApplicationConnectionScopes(
-    connection,
-    undefined,
-    persistRefresh
-  );
-  if (discovery.refreshedCredentials) {
-    await persistRefresh(discovery.refreshedCredentials);
-  }
-  return discovery.scopes;
+  return discoverScopesKeepingCredentials(connection);
 }
 
 /**
@@ -2964,53 +2782,7 @@ export async function configureSlackBotAction(
 }
 
 export async function syncApplicationImportNowAction(importId: string): Promise<void> {
-  const { db, organizationId } = await requireMember("edit");
-  const applicationImport = await db.getApplicationImport(importId);
-  if (!applicationImport || applicationImport.organizationId !== organizationId) {
-    throw new Error("Application Import not found");
-  }
-  if (!applicationImport.enabled) {
-    throw new Error("Resume this Application Import before synchronizing");
-  }
-  await enqueueApplicationSyncJob(
-    { importId: applicationImport.id, organizationId },
-    { db: getWidgetDb() }
-  );
-  revalidateApplicationKnowledge(applicationImport.assistantIds);
-}
-
-async function ownedApplicationImportForEdit(importId: string) {
-  const { db, organizationId } = await requireMember("edit");
-  const applicationImport = await db.getApplicationImport(importId);
-  if (!applicationImport || applicationImport.organizationId !== organizationId) {
-    throw new Error("Application Import not found");
-  }
-  return { db, organizationId, applicationImport };
-}
-
-function applicationScopeSignature(
-  provider: ApplicationProvider,
-  config: Record<string, unknown>
-): string {
-  const ids = (key: string) =>
-    (Array.isArray(config[key]) ? config[key] : [])
-      .map(String)
-      .sort();
-  if (provider === "slack") return JSON.stringify(ids("channelIds"));
-  if (provider === "servicenow") {
-    return JSON.stringify(ids("knowledgeBaseIds"));
-  }
-  if (provider === "salesforce") {
-    return JSON.stringify({
-      language: String(config.language ?? "en_US"),
-      categories: ids("dataCategories"),
-    });
-  }
-  return JSON.stringify({
-    scopeId: String(config.scopeId ?? ""),
-    driveId: String(config.driveId ?? ""),
-    folderId: String(config.folderId ?? ""),
-  });
+  await runOperation(syncApplicationImportNowOp, { importId });
 }
 
 export async function updateApplicationImportConfigurationAction(input: {
@@ -3020,51 +2792,7 @@ export async function updateApplicationImportConfigurationAction(input: {
   cadence: "manual" | "daily";
   config: Record<string, unknown>;
 }): Promise<void> {
-  const { db, organizationId, applicationImport } =
-    await ownedApplicationImportForEdit(input.importId);
-  if (applicationImport.status === "syncing") {
-    throw new Error(
-      "Wait for the current synchronization before editing this Import"
-    );
-  }
-  const connection = await requireApplicationConnectionForImport(
-    db,
-    organizationId,
-    applicationImport.connectionId
-  );
-  const assistantIds = await requireOwnedAssistantIds(
-    db,
-    organizationId,
-    input.assistantIds
-  );
-  const config = await discoverAndValidateApplicationConfig(
-    getWidgetDb(),
-    connection,
-    input.config
-  );
-  await db.updateApplicationImport(input.importId, {
-    name: requiredApplicationField(input.name, "Name"),
-    assistantIds,
-    cadence: input.cadence,
-    config,
-    resetSources:
-      applicationScopeSignature(connection.provider, applicationImport.config) !==
-      applicationScopeSignature(connection.provider, config),
-    checkpoint: {},
-    status: "idle",
-    error: "",
-    nextSyncAt: applicationImport.enabled ? new Date().toISOString() : null,
-  });
-  if (applicationImport.enabled) {
-    await enqueueApplicationSyncJob(
-      { importId: input.importId, organizationId },
-      { db: getWidgetDb() }
-    );
-  }
-  revalidateApplicationKnowledge([
-    ...applicationImport.assistantIds,
-    ...assistantIds,
-  ]);
+  await runOperation(updateApplicationImportConfigurationOp, input);
 }
 
 /**
@@ -3074,49 +2802,16 @@ export async function updateApplicationImportConfigurationAction(input: {
  */
 export async function setApplicationImportAssistantsAction(
   importId: string,
-  requestedAssistantIds: string[]
+  assistantIds: string[]
 ): Promise<void> {
-  const { db, organizationId, applicationImport } =
-    await ownedApplicationImportForEdit(importId);
-  const assistantIds = await requireOwnedAssistantIds(
-    db,
-    organizationId,
-    requestedAssistantIds
-  );
-  await db.updateApplicationImport(importId, { assistantIds });
-  revalidateApplicationKnowledge([
-    ...applicationImport.assistantIds,
-    ...assistantIds,
-  ]);
+  await runOperation(setApplicationImportAssistantsOp, { importId, assistantIds });
 }
 
 export async function setApplicationImportEnabledAction(
   importId: string,
   enabled: boolean
 ): Promise<void> {
-  const { db, organizationId, applicationImport } =
-    await ownedApplicationImportForEdit(importId);
-  await db.updateApplicationImport(importId, {
-    enabled,
-    ...(enabled ? {} : { status: "idle" as const, error: "" }),
-    nextSyncAt:
-      enabled && applicationImport.cadence === "daily"
-        ? new Date().toISOString()
-        : null,
-  });
-  if (!enabled) {
-    await getWidgetDb().cancelApplicationSyncJobs(
-      importId,
-      "Application Import paused"
-    );
-  }
-  if (enabled) {
-    await enqueueApplicationSyncJob(
-      { importId, organizationId },
-      { db: getWidgetDb() }
-    );
-  }
-  revalidateApplicationKnowledge(applicationImport.assistantIds);
+  await runOperation(setApplicationImportEnabledOp, { importId, enabled });
 }
 
 export async function getApplicationConnectionDeleteImpactAction(
@@ -3154,17 +2849,7 @@ export async function getApplicationConnectionDeleteImpactAction(
 }
 
 export async function deleteApplicationImportAction(importId: string): Promise<void> {
-  const { db, organizationId } = await requireMember("edit");
-  const applicationImport = await db.getApplicationImport(importId);
-  if (!applicationImport || applicationImport.organizationId !== organizationId) {
-    throw new Error("Application Import not found");
-  }
-  await getWidgetDb().cancelApplicationSyncJobs(
-    importId,
-    "Application Import deleted"
-  );
-  await db.deleteApplicationImport(importId);
-  revalidateApplicationKnowledge(applicationImport.assistantIds);
+  await runOperation(deleteApplicationImportOp, { importId });
 }
 
 export async function deleteApplicationConnectionAction(
@@ -3204,7 +2889,7 @@ export async function deleteApplicationConnectionAction(
   // Alerts page and the sidebar badge render that row: revalidate them too.
   await mutationDb.resolveAlertsByKey(organizationId, connectorAlertKey(connectionId));
   revalidateEntities([{ kind: "alerts" }], organizationId);
-  revalidateApplicationKnowledge(imports.flatMap((item) => item.assistantIds));
+  revalidateApplicationKnowledge(organizationId, imports.flatMap((item) => item.assistantIds));
 }
 
 /**

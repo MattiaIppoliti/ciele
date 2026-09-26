@@ -13,9 +13,9 @@
 # and this one stays off until you ask for it:
 #   studio    the database admin UI, a standing privileged surface
 #
-# The heavy workers (graph + crawler, ~8 GiB RAM) are not a profile here: they
-# live in docker-compose.workers.yml, an overlay, because their credential
-# guards would abort a default `up` from inside this file. See that file.
+# The heavy worker (the crawler, ~4 GiB RAM) is not a profile here: it lives
+# in docker-compose.workers.yml, an overlay, because its credential guards
+# would abort a default `up` from inside this file. See that file.
 #
 # The database layer is the Supabase OSS stack trimmed to what Ciele uses:
 # Postgres (with pgvector), GoTrue for auth, PostgREST for the data API, and
@@ -271,10 +271,12 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
-      # The heavy workers, if the workers overlay is on. Empty means the
-      # app uses its built-in retrieval and crawler instead.
-      GRAPH_WORKER_BASE_URL: ${GRAPH_WORKER_BASE_URL:-}
-      GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:-}
+      # The knowledge search's reranker and the decision model (ADR-0025,
+      # #950). Empty means search keeps the hybrid order and decisions run on
+      # the Organization's own classifier model.
+      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY:-}
+      # The crawler, if the workers overlay is on. Empty means the app uses
+      # its built-in crawler instead.
       CRAWL4AI_BASE_URL: ${CRAWL4AI_BASE_URL:-}
       CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:-}
     ports:
@@ -355,8 +357,8 @@ volumes:
 #            and the gateway. The app, cron and studio are deliberately NOT
 #            on `data`: a compromised app container cannot open a socket to
 #            Postgres, it still has to go through the gateway's API surface.
-#   workers  the app and the heavy workers the overlay adds (graph, crawler).
-#            Only the app shares it, so a worker that renders untrusted web
+#   workers  the app and the crawler the overlay adds. Only the app shares
+#            it, so a worker that renders untrusted web
 #            pages can reach neither Postgres nor the gateway.
 #
 # Host egress (AI providers, crawls) is unchanged: these zones police

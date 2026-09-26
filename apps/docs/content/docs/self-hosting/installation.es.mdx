@@ -1,6 +1,6 @@
 ---
 title: Instalación
-description: Inicia la implementación actual de Docker Compose de un solo host.
+description: Inicia la implementación actual de Docker Compose en un solo host.
 ---
 
 <Callout title="No terminal? Use the desktop app">
@@ -15,9 +15,9 @@ Desktop. This page is the server path.
 - Instala Docker con Docker Compose.
 - Reserva suficiente espacio en disco para las imágenes, Postgres y los archivos
   subidos.
-- Reserva más memoria cuando habilites los trabajadores opcionales.
+- Reserva más memoria cuando habilites los workers opcionales.
 
-## Un comando
+## Un solo comando
 
 El instalador realiza todos los pasos de la siguiente sección: verifica los
 requisitos previos, descarga el código fuente en `./ciele` y ejecuta
@@ -27,25 +27,25 @@ requisitos previos, descarga el código fuente en `./ciele` y ejecuta
 curl -fsSL https://ciele.app/install.sh | sh
 ```
 
-Pasa los indicadores de Bootstrap a través de la canalización con `-s --` y
-configura `CIELE_DIR` para elegir el directorio de descarga o `CIELE_REF` para
-instalar una etiqueta de versión:
+Pasa las «bootstrap flags» a través de la tubería con `-s --` y establece
+`CIELE_DIR` para elegir el directorio de «checkout» o `CIELE_REF` para instalar
+una etiqueta de versión:
 
 ```bash
 curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 ```
 
-El instalador nunca elimina nada: si el directorio de destino existe y no es una
-copia de Ciele, se detiene y te lo indica.
+El instalador nunca elimina nada: si el directorio de destino existe y no es un
+«checkout» de Ciele, se detiene y te lo indica.
 
 En un Mac sin Docker, el instalador no se detiene ante un error. Abre
-[Ciele Desktop](/self-hosting/desktop) y, si la aplicación no está presente,
-primero descarga la versión. La configuración guiada que aparece allí vincula
-Docker Desktop e inicia la misma pila que se describe en esta página. En Linux,
-el instalador se niega, porque no hay ninguna aplicación de escritorio a la que
-pasarle el trabajo.
+[Ciele Desktop](/self-hosting/desktop) y, si la aplicación no está instalada,
+primero descarga la versión correspondiente. La configuración guiada que se
+ofrece allí vincula Docker Desktop e inicia la misma pila que se describe en
+esta página. En Linux, el instalador se niega, porque no hay ninguna aplicación
+de escritorio a la que delegar la tarea.
 
-## Arranca la pila
+## Inicializa la pila
 
 Para realizar los mismos pasos manualmente:
 
@@ -58,24 +58,24 @@ cd ciele
 El script genera los secretos necesarios en `deploy/.env`. A continuación,
 compila e inicia los perfiles predeterminados.
 
-Abre [http://localhost:3000](http://localhost:3000) cuando los servicios estén
-en buen estado. La primera cuenta se convierte en la propietaria de la
+Abre [http://localhost:3000](http://localhost:3000) una vez que los servicios
+estén operativos. La primera cuenta se convierte en la propietaria de la
 organización.
 
-Utiliza `./deploy/bootstrap.sh --seed` para añadir contenido de demostración
+Usa `./deploy/bootstrap.sh --seed` para añadir contenido de demostración
 depurado.
 
 ## Ejecuta imágenes publicadas en lugar de compilar
 
-Compilar `app`, `migrate` y `cron` desde el «checkout» lleva bastante tiempo y
-requiere el repositorio completo. Cada versión también publica esas tres como
-imágenes de contenedor:
+Compilar `app`, `migrate` y `cron` desde el checkout lleva mucho tiempo y
+requiere el repositorio completo. Cada versión también publica esos tres
+elementos como imágenes de contenedor:
 
 ```bash
 ./deploy/bootstrap.sh --images v0.4.0
 ```
 
-El comando escribe dos configuraciones en `deploy/.env` y extrae en lugar de
+El comando escribe dos ajustes en `deploy/.env` y realiza un «pull» en lugar de
 compilar:
 
 ```bash
@@ -84,9 +84,9 @@ CIELE_IMAGE_TAG=v0.4.0
 ```
 
 Dado que ambos se encuentran en `deploy/.env`, un `docker compose up -d`
-posterior en ese directorio permanece en modo de imagen. Borra ambos ajustes
-para volver a compilar desde el código fuente. Configura `CIELE_IMAGE_REGISTRY`
-para que use una réplica o tu propia recompilación.
+posterior en ese directorio permanece en modo imagen. Borra ambos ajustes para
+volver a compilar desde el código fuente. Configura `CIELE_IMAGE_REGISTRY` para
+usar un espejo o tu propia recompilación.
 
 Los perfiles, el orden de los servicios y la capa de base de datos son idénticos
 en ambos modos. Solo cambia el origen de esos tres servicios.
@@ -100,13 +100,13 @@ restart alone keeps the previous value.
 
 ## Perfiles predeterminados
 
-| Perfil | Predeterminado | Servicios |
+| Profile | Default | Services |
 | --- | :---: | --- |
 | `db` | Sí | Postgres, pgvector, autenticación, API de datos, almacenamiento y puerta de enlace. |
 | `migrate` | Sí | Migraciones pendientes y buckets de almacenamiento necesarios. |
-| `app` | Sí | Consola de administración, entorno de ejecución de widgets y API v1. |
+| `app` | Sí | Administrator console, widget runtime y API v1. |
 | `cron` | Sí | Tareas programadas de la aplicación. |
-| `workers` | No | Servicios de recuperación de grafos y de rastreo con renderización en JavaScript. |
+| `workers` | No | Servicio de rastreo con renderizado en JavaScript. |
 | `studio` | No | Interfaz de administración de la base de datos. |
 
 ## Inspecciona la pila
@@ -117,18 +117,26 @@ docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
 La configuración predeterminada publica la aplicación en el puerto `3000` y la
-puerta de enlace de la base de datos en el puerto `8000`. Ambos se vinculan a
+pasarela de la base de datos en el puerto `8000`. Ambos se enlazan a
 `127.0.0.1`, por lo que no se puede acceder a nada desde otra máquina hasta que
-pongas un proxy inverso delante. En su lugar, configura `BIND_ADDRESS=0.0.0.0`
-en `deploy/.env` para publicarlos en todas las interfaces. Postgres nunca se
-publica. La consola de la base de datos (Studio) siempre permanece en loopback.
-Accede a ella a través de un túnel SSH.
+coloques un proxy inverso delante. Establece `BIND_ADDRESS=0.0.0.0` en
+`deploy/.env` para publicarlos en todas las interfaces en su lugar. Postgres
+nunca se publica. La consola de la base de datos (Studio) siempre permanece en
+loopback. Accede a ella a través de un túnel SSH.
 
 <Callout type="warn" title="Add TLS before public use">
 The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
 
-Una vez que exista un origen público, establece `CIELE_PUBLIC_ORIGIN` en
+La aplicación comprueba esto al iniciar. Lee `PUBLIC_URL`, `CIELE_PUBLIC_ORIGIN`
+y `NEXT_PUBLIC_APP_URL`. Cuando cualquiera de ellos empieza por `http://` y no
+apunta a la máquina local, la aplicación no se inicia. El registro del
+contenedor indica el nombre de la variable. El valor predeterminado
+`PUBLIC_URL=http://localhost:3000` supera la comprobación. Para ejecutar
+deliberadamente sobre HTTP sin cifrar, por ejemplo en una red privada, establece
+`CIELE_ALLOW_INSECURE_HTTP=1` en `deploy/.env`.
+
+Cuando exista un origen público, establece `CIELE_PUBLIC_ORIGIN` en
 `deploy/.env` con esa URL HTTPS. Los enlaces que se incluyen en un correo
 electrónico, como la confirmación del boletín, se generan a partir de este
 valor. Sin él, la aplicación se niega a enviar esos correos electrónicos. No

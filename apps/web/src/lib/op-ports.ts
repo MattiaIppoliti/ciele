@@ -9,7 +9,6 @@ import type { Db } from "@agent-hub/db";
 import type { OperationPorts } from "@ciele/ops";
 import {
   embedConcept,
-  enqueueGraphSyncJob,
   enqueueIngestJob,
   enqueueStaleDocumentMemoryExtractions,
   persistConcept,
@@ -23,10 +22,12 @@ import {
   resumeReviewedConversation,
   unsubscribePendingWebhooks,
   getEnterpriseCapabilities,
+  enqueueApplicationSyncJob,
 } from "@agent-hub/agent";
 import { improvementAssignedEmail, improvementClosedEmail } from "@/lib/notify";
 import { getWidgetDb, invalidatePublication } from "@/lib/widget-db";
 import { getSsoProvider } from "@/lib/sso";
+import { discoverScopesKeepingCredentials } from "@/lib/application-discovery";
 
 /**
  * The one implementation of the operations layer's host ports (#621–#625),
@@ -53,6 +54,24 @@ export function webOperationPorts(
   }
 ): OperationPorts {
   return {
+    /**
+     * The Application Import lifecycle's host work, on the system Db: the
+     * sealed credential discovery needs is hidden from the Member's RLS, and
+     * the sync queue lives on the job ledger.
+     */
+    applicationImports: {
+      discoverScopes: async (connectionId) => {
+        const connection = await getWidgetDb().getApplicationConnection(connectionId);
+        if (!connection || connection.organizationId !== opts.organizationId) {
+          throw new Error("Application Connection not found");
+        }
+        return discoverScopesKeepingCredentials(connection);
+      },
+      enqueueSync: async (input) => {
+        await enqueueApplicationSyncJob(input, { db: getWidgetDb() });
+      },
+      cancelSync: (importId, reason) => getWidgetDb().cancelApplicationSyncJobs(importId, reason),
+    },
     listPublicationEntities: (organizationId) =>
       db.table("entities").list({ organizationId }),
     /**
@@ -195,12 +214,6 @@ export function webOperationPorts(
           : null,
       });
     },
-    removeConceptGraph: (collectionId, conceptId) =>
-      enqueueGraphSyncJob(
-        { op: "remove", collectionId, conceptId },
-        { db },
-        { organizationId: opts.organizationId },
-      ),
     enqueueIngest: (job) =>
       enqueueIngestJob({ kind: "ingest_source", ...job }, { db }),
     persistFaq: (args) =>

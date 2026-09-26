@@ -8,8 +8,8 @@ import {
 } from "@agent-hub/db";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
-// after() is the enqueue accelerator; a no-op keeps graph-sync jobs on the
-// ledger for assertion instead of running them against a live worker.
+// after() is the enqueue accelerator; a no-op keeps queued jobs on the ledger
+// instead of running them inside the test.
 vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@/lib/authz", () => ({
   requireMember: vi.fn(),
@@ -64,7 +64,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     ]);
   });
 
-  it("createFlowAction creates and revalidates the assistant editor page", async () => {
+  it("createFlowAction creates and revalidates the assistant editor subtree", async () => {
     const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
     const before = (await db.listFlows(assistant.id)).length;
     revalidatePathMock.mockClear();
@@ -76,8 +76,10 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     });
 
     expect(await db.listFlows(assistant.id)).toHaveLength(before + 1);
+    // The layout, not the page: the Flows list is the nested
+    // /assistants/{id}/flows route, which a page revalidation never reached.
     expect(revalidatePathMock.mock.calls).toEqual([
-      [`/assistants/${assistant.id}`, undefined],
+      [`/assistants/${assistant.id}`, "layout"],
     ]);
   });
 
@@ -231,47 +233,25 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     });
   });
 
-  it("deleteSourceAction retires the source's Concepts from the graph when configured", async () => {
-    process.env.GRAPH_WORKER_BASE_URL = "https://graph.internal";
-    process.env.GRAPH_WORKER_API_TOKEN = "tok";
-    try {
-      const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
-      const collection = await db.createCollection(assistant.id, { name: "C" });
-      const source = await db.createSource({
-        collectionId: collection.id,
-        name: "Doc",
-        kind: "text",
-      });
-      const concept = await db.createConcept({
-        collectionId: collection.id,
-        sourceId: source.id,
-        path: "doc.md",
-        frontmatter: { type: "Document", title: "Doc" },
-        body: "body",
-      });
+  it("deleteSourceAction cascades to the source's Concepts", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
+    const collection = await db.createCollection(assistant.id, { name: "C" });
+    const source = await db.createSource({
+      collectionId: collection.id,
+      name: "Doc",
+      kind: "text",
+    });
+    const concept = await db.createConcept({
+      collectionId: collection.id,
+      sourceId: source.id,
+      path: "doc.md",
+      frontmatter: { type: "Document", title: "Doc" },
+      body: "body",
+    });
 
-      await deleteSourceAction(assistant.id, source.id);
+    await deleteSourceAction(assistant.id, source.id);
 
-      // The Concept is cascade-gone, and a graph-remove was enqueued for it.
-      expect(await db.getConcept(concept.id)).toBeNull();
-      const queued = await db.claimBackgroundJobs({
-        kind: "graph_sync_concept",
-        // Far-future "now" so the freshly-queued job is unambiguously due.
-        workerId: "test",
-        now: new Date("2100-01-01T00:00:00Z").toISOString(),
-        staleBefore: new Date("2000-01-01T00:00:00Z").toISOString(),
-        limit: 10,
-      });
-      expect(queued.map((j) => j.payload)).toContainEqual({
-        kind: "graph_sync_concept",
-        op: "remove",
-        collectionId: collection.id,
-        conceptId: concept.id,
-      });
-    } finally {
-      delete process.env.GRAPH_WORKER_BASE_URL;
-      delete process.env.GRAPH_WORKER_API_TOKEN;
-    }
+    expect(await db.getConcept(concept.id)).toBeNull();
   });
 
   it("acceptImprovementProposalAction creates a FAQ Concept and advances the improvement", async () => {
@@ -345,48 +325,18 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     expect(revalidatePathMock.mock.calls).toEqual([["/", undefined]]);
   });
 
-  /** Far-future "now" so freshly-queued graph-sync jobs are unambiguously due. */
-  async function claimGraphSyncJobs() {
-    return db.claimBackgroundJobs({
-      kind: "graph_sync_concept",
-      workerId: "test",
-      now: new Date("2100-01-01T00:00:00Z").toISOString(),
-      staleBefore: new Date("2000-01-01T00:00:00Z").toISOString(),
-      limit: 10,
-    });
-  }
-
-  it("deleteAssistantAction leaves org-owned Collections and their graphs intact (PRD #726)", async () => {
-    process.env.GRAPH_WORKER_BASE_URL = "https://graph.internal";
-    process.env.GRAPH_WORKER_API_TOKEN = "tok";
-    try {
-      const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
-      const c1 = await db.createCollection(assistant.id, { name: "C1" });
-      const c2 = await db.createCollection(assistant.id, { name: "C2" });
-
-      await deleteAssistantAction(assistant.id);
-
-      expect(await db.getAssistant(assistant.id)).toBeNull();
-      // Knowledge is org-owned and possibly shared: deleting an assistant
-      // drops only its links, never a Collection's graph dataset.
-      const payloads = (await claimGraphSyncJobs()).map((j) => j.payload);
-      expect(payloads).toHaveLength(0);
-      expect(await db.getCollection(c1.id)).not.toBeNull();
-      expect(await db.getCollection(c2.id)).not.toBeNull();
-    } finally {
-      delete process.env.GRAPH_WORKER_BASE_URL;
-      delete process.env.GRAPH_WORKER_API_TOKEN;
-    }
-  });
-
-  it("deleteAssistantAction enqueues no graph jobs when the worker is unconfigured", async () => {
+  it("deleteAssistantAction leaves org-owned Collections intact (PRD #726)", async () => {
     const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
-    await db.createCollection(assistant.id, { name: "C1" });
+    const c1 = await db.createCollection(assistant.id, { name: "C1" });
+    const c2 = await db.createCollection(assistant.id, { name: "C2" });
 
     await deleteAssistantAction(assistant.id);
 
     expect(await db.getAssistant(assistant.id)).toBeNull();
-    expect(await claimGraphSyncJobs()).toHaveLength(0);
+    // Knowledge is org-owned and possibly shared: deleting an assistant
+    // drops only its links.
+    expect(await db.getCollection(c1.id)).not.toBeNull();
+    expect(await db.getCollection(c2.id)).not.toBeNull();
   });
 
   it("deleteCollectionAction raises the dangling-Collection Alert for a Teammate still searching it (#769)", async () => {
@@ -423,24 +373,13 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     expect(stillActive).not.toContain(danglingScopeAlertKey(collection.id));
   });
 
-  it("deleteCollectionAction deletes the Collection and purges its graph dataset when configured", async () => {
-    process.env.GRAPH_WORKER_BASE_URL = "https://graph.internal";
-    process.env.GRAPH_WORKER_API_TOKEN = "tok";
-    try {
-      const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
-      const collection = await db.createCollection(assistant.id, { name: "C" });
+  it("deleteCollectionAction deletes the Collection", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
+    const collection = await db.createCollection(assistant.id, { name: "C" });
 
-      await deleteCollectionAction(assistant.id, collection.id);
+    await deleteCollectionAction(assistant.id, collection.id);
 
-      expect(requireMemberMock).toHaveBeenCalledWith("edit");
-      expect(await db.getCollection(collection.id)).toBeNull();
-      const payloads = (await claimGraphSyncJobs()).map((j) => j.payload);
-      expect(payloads).toEqual([
-        { kind: "graph_sync_concept", op: "purge", collectionId: collection.id },
-      ]);
-    } finally {
-      delete process.env.GRAPH_WORKER_BASE_URL;
-      delete process.env.GRAPH_WORKER_API_TOKEN;
-    }
+    expect(requireMemberMock).toHaveBeenCalledWith("edit");
+    expect(await db.getCollection(collection.id)).toBeNull();
   });
 });

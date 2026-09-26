@@ -1,16 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { trustTier } from "@agent-hub/core";
 import { getMockDb, DEMO_ORG, type Db } from "@agent-hub/db";
 
 /**
- * OKF v0.2 conformance of what ingestion *writes* (ADR-0002 / SPEC §5).
+ * OKF v0.2 conformance of what ingestion *writes* (ADR-0002 / SPEC §5), and
+ * the rule ADR-0025 added: a file or text Source is stored as its own words.
  *
  * Every producer must stamp `generated` (who wrote this) and, where a real
  * material exists, `sources` (what it derives from), otherwise a reader
  * cannot tell machine-drafted knowledge from hand-authored knowledge, which
  * is the whole point of the v0.2 trust families. Asserted at the public
  * ingestion seams (`ingestSource`, `finalizeWebsiteCrawl`) against the mock
- * Db, so the real enrich → persist → embed path runs; only the two calls that
+ * Db, so the real draft → persist → embed path runs; only the calls that
  * would leave the machine are faked.
  */
 
@@ -38,21 +38,29 @@ vi.mock("./apify", async (importOriginal) => ({
 
 import { fetchCrawledPages, getRunState } from "./apify";
 import {
-  ENRICH_MAX_OUTPUT_TOKENS,
-  ENRICH_MAX_WINDOWS,
-  ENRICH_SOURCE_MAX_CHARS,
-  ENRICH_WINDOW_CHARS,
   MAX_CONCEPT_BODY_CHARS,
-  SOURCE_TEXT_CONCEPT_TYPE,
-  enrichmentWindows,
   finalizeWebsiteCrawl,
   ingestSource,
 } from "./ingest";
+
+/** Longer than the old enrichment prompt window, which used to truncate bodies. */
+const LONG_SOURCE_CHARS = 100_000;
 
 async function seed(db: Db, name: string) {
   const assistant = await db.createAssistant(DEMO_ORG.id, { title: name });
   const collection = await db.createCollection(assistant.id, { name });
   return { assistantId: assistant.id, collectionId: collection.id };
+}
+
+/** A classifier that ingestion must no longer call (ADR-0025). */
+function classifierAvailable() {
+  mocks.getClassifierModel.mockReturnValue({
+    model: {},
+    provider: "anthropic",
+    modelId: "claude-opus-5",
+    credentialKind: "platform",
+  });
+  mocks.generateObject.mockRejectedValue(new Error("ingestion must not call a model"));
 }
 
 beforeEach(() => {
@@ -66,37 +74,17 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("ingestSource, enriched Concepts (§5.1, §5.2)", () => {
-  it("attributes the drafting model and the Source it derives from", async () => {
+describe("ingestSource, verbatim Concepts (§5.1, ADR-0025)", () => {
+  it("attributes the ingest process and the Source it derives from", async () => {
     const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-enriched");
+    const { assistantId, collectionId } = await seed(db, "okf-verbatim");
     const source = await db.createSource({
       collectionId,
       name: "Fees 2026",
       kind: "url",
       config: { url: "https://x.edu/fees" },
     });
-    mocks.getClassifierModel.mockReturnValue({
-      model: {},
-      provider: "anthropic",
-      modelId: "claude-opus-5",
-      credentialKind: "platform",
-    });
-    mocks.generateObject.mockResolvedValue({
-      object: {
-        concepts: [
-          {
-            path: "fees.md",
-            type: "Policy",
-            title: "Tuition fees",
-            description: "Fee schedule for 2026.",
-            tags: ["fees"],
-            body: "Tuition is due in two instalments.",
-          },
-        ],
-      },
-      usage: {},
-    });
+    classifierAvailable();
 
     await ingestSource({
       db,
@@ -107,21 +95,49 @@ describe("ingestSource, enriched Concepts (§5.1, §5.2)", () => {
       connections: [],
     });
 
-    // The Source also gets a verbatim companion; this assertion is about the
-    // enriched Concept, so pick it by type rather than by list position.
     const concepts = await db.listConcepts(collectionId);
-    const concept = concepts.find((c) => c.frontmatter.type === "Policy")!;
-    // `<producer>/<version>` (§7): the actor form, not a bare model id.
-    expect(concept.frontmatter.generated?.by).toBe("okf-enricher/claude-opus-5");
+    expect(concepts).toHaveLength(1);
+    const [concept] = concepts;
+    expect(concept.frontmatter.type).toBe("Document");
+    expect(concept.body).toBe("Tuition is due in two instalments.");
+    expect(concept.frontmatter.generated?.by).toBe("process:okf-ingest-passthrough");
     expect(concept.frontmatter.generated?.at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     // The URL Source keeps a followable artifact, not just its page title.
     expect(concept.frontmatter.sources).toEqual([
       { id: "fees-2026", resource: "https://x.edu/fees", title: "Fees 2026" },
     ]);
-    // Machine-drafted and unconfirmed, the tier must say so.
-    expect(trustTier(concept.frontmatter)).toBe("unverified");
     // v0.1's `timestamp` is superseded by `generated.at` (§13.1).
     expect(concept.frontmatter.timestamp).toBeUndefined();
+  });
+
+  it("stores a file Source as its own words even when a model is configured", async () => {
+    const db = getMockDb();
+    const { assistantId, collectionId } = await seed(db, "okf-verbatim-file");
+    const source = await db.createSource({
+      collectionId,
+      name: "Handbook",
+      kind: "file",
+    });
+    await db.setSourceAssistantLinks(source.id, [assistantId]);
+    classifierAvailable();
+    const clause = "Bereavement leave is five consecutive working days.";
+    const rawText = `Leave policy.\n\n${clause}\n\nExpenses policy.`;
+
+    await ingestSource({ db, assistantId, collectionId, source, rawText, connections: [] });
+
+    expect(mocks.generateObject).not.toHaveBeenCalled();
+    const concepts = await db.listConcepts(collectionId);
+    // One Concept, the text itself: no curated rewrite, no "Source Text" twin.
+    expect(concepts.map((c) => [c.path, c.frontmatter.type])).toEqual([
+      ["handbook.md", "Document"],
+    ]);
+    expect(concepts[0].body).toBe(rawText);
+    expect((await db.getSource(source.id))?.status).toBe("ready");
+    const hits = await db.searchChunks(assistantId, collectionId, {
+      embedding: null,
+      text: "bereavement leave days",
+    });
+    expect(hits.some((hit) => hit.content.includes(clause))).toBe(true);
   });
 
   it("falls back to a scope descriptor when the Source has no followable artifact", async () => {
@@ -132,7 +148,6 @@ describe("ingestSource, enriched Concepts (§5.1, §5.2)", () => {
       name: "Pasted notes",
       kind: "text",
     });
-    mocks.getClassifierModel.mockReturnValue(null);
 
     await ingestSource({
       db,
@@ -147,332 +162,6 @@ describe("ingestSource, enriched Concepts (§5.1, §5.2)", () => {
     // §5.1 allows a descriptor for material a consumer cannot follow.
     expect(concept.frontmatter.sources?.[0]?.resource).toBe('text source "Pasted notes"');
   });
-});
-
-describe("enrichmentWindows", () => {
-  it("keeps a short source as a single window", () => {
-    expect(enrichmentWindows("One paragraph.")).toEqual(["One paragraph."]);
-  });
-
-  it("splits on paragraph boundaries without exceeding the window budget", () => {
-    const paragraph = `${"x".repeat(10_000)}`;
-    const windows = enrichmentWindows(Array(5).fill(paragraph).join("\n\n"));
-    expect(windows.length).toBeGreaterThan(1);
-    for (const window of windows) expect(window.length).toBeLessThanOrEqual(ENRICH_WINDOW_CHARS);
-  });
-
-  it("hard-splits a single oversized paragraph", () => {
-    // Extracted PDFs routinely have no blank lines at all; keeping such a
-    // "paragraph" whole would blow the very budget windowing exists to respect.
-    const windows = enrichmentWindows("y".repeat(ENRICH_WINDOW_CHARS * 2 + 500));
-    expect(windows.length).toBeGreaterThan(1);
-    for (const window of windows) expect(window.length).toBeLessThanOrEqual(ENRICH_WINDOW_CHARS);
-  });
-
-  it("caps the number of windows", () => {
-    const windows = enrichmentWindows("z".repeat(ENRICH_WINDOW_CHARS * (ENRICH_MAX_WINDOWS + 6)));
-    expect(windows).toHaveLength(ENRICH_MAX_WINDOWS);
-  });
-
-  it("drops nothing for a source that fits the curated span", () => {
-    const source = Array(4).fill("p".repeat(20_000)).join("\n\n");
-    expect(source.length).toBeLessThanOrEqual(ENRICH_SOURCE_MAX_CHARS);
-    const rejoined = enrichmentWindows(source).join("");
-    expect(rejoined.replace(/\s/g, "")).toHaveLength(source.replace(/\s/g, "").length);
-  });
-});
-
-describe("ingestSource, windowed enrichment", () => {
-  /** A classifier whose every call returns one concept named after its window. */
-  function windowedEnrichment() {
-    mocks.getClassifierModel.mockReturnValue({
-      model: {},
-      provider: "anthropic",
-      modelId: "claude-opus-5",
-      credentialKind: "platform",
-    });
-    let call = 0;
-    mocks.generateObject.mockImplementation(async () => {
-      call += 1;
-      return {
-        object: {
-          concepts: [
-            {
-              path: "part.md",
-              type: "Policy",
-              title: `Part ${call}`,
-              description: `Concepts drafted from window ${call}.`,
-              tags: [],
-              body: `Body of window ${call}.`,
-            },
-          ],
-        },
-        usage: {},
-      };
-    });
-  }
-
-  it("spends one call per window instead of truncating to a single call", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-windows");
-    const source = await db.createSource({ collectionId, name: "Big", kind: "file" });
-    windowedEnrichment();
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      // Three windows' worth, on clean paragraph boundaries.
-      rawText: Array(3).fill("q".repeat(ENRICH_WINDOW_CHARS - 10)).join("\n\n"),
-      connections: [],
-    });
-
-    expect(mocks.generateObject).toHaveBeenCalledTimes(3);
-    const concepts = await db.listConcepts(collectionId);
-    expect(concepts.filter((c) => c.frontmatter.type === "Policy")).toHaveLength(3);
-  });
-
-  it("sets an explicit output budget on every call", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-output-budget");
-    const source = await db.createSource({ collectionId, name: "Doc", kind: "file" });
-    windowedEnrichment();
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText: "Short body.",
-      connections: [],
-    });
-
-    // Left to a provider default, the compression ratio would be invisible and
-    // vary by provider, the whole point of pinning it.
-    expect(mocks.generateObject).toHaveBeenCalledWith(
-      expect.objectContaining({ maxOutputTokens: ENRICH_MAX_OUTPUT_TOKENS })
-    );
-  });
-
-  it("suffixes colliding paths so independent windows never write twin Concepts", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-window-paths");
-    const source = await db.createSource({ collectionId, name: "Big", kind: "file" });
-    // Every window returns the same `part.md`.
-    windowedEnrichment();
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText: Array(3).fill("q".repeat(ENRICH_WINDOW_CHARS - 10)).join("\n\n"),
-      connections: [],
-    });
-
-    const paths = (await db.listConcepts(collectionId))
-      .filter((c) => c.frontmatter.type === "Policy")
-      .map((c) => c.path)
-      .sort();
-    expect(paths).toEqual(["part-2.md", "part-3.md", "part.md"]);
-  });
-
-  it("keeps the windows that succeeded when one fails", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-window-partial");
-    const source = await db.createSource({ collectionId, name: "Big", kind: "file" });
-    mocks.getClassifierModel.mockReturnValue({
-      model: {},
-      provider: "anthropic",
-      modelId: "claude-opus-5",
-      credentialKind: "platform",
-    });
-    let call = 0;
-    mocks.generateObject.mockImplementation(async () => {
-      call += 1;
-      if (call === 2) throw new Error("provider blip");
-      return {
-        object: {
-          concepts: [
-            {
-              path: `part-${call}.md`,
-              type: "Policy",
-              title: `Part ${call}`,
-              description: "d",
-              tags: [],
-              body: `Body ${call}.`,
-            },
-          ],
-        },
-        usage: {},
-      };
-    });
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText: Array(3).fill("q".repeat(ENRICH_WINDOW_CHARS - 10)).join("\n\n"),
-      connections: [],
-    });
-
-    // Two of three windows survived: a blip must not discard their work.
-    const concepts = await db.listConcepts(collectionId);
-    expect(concepts.filter((c) => c.frontmatter.type === "Policy")).toHaveLength(2);
-    expect((await db.getSource(source.id))?.status).toBe("ready");
-  });
-
-  it("falls back to the full-text pass-through when every window fails", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-window-total-failure");
-    const source = await db.createSource({ collectionId, name: "Big", kind: "file" });
-    mocks.getClassifierModel.mockReturnValue({
-      model: {},
-      provider: "anthropic",
-      modelId: "claude-opus-5",
-      credentialKind: "platform",
-    });
-    mocks.generateObject.mockRejectedValue(new Error("provider down"));
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText: "Body that must survive a total enrichment failure.",
-      connections: [],
-    });
-
-    // The pass-through IS the verbatim text, so there is no companion beside it.
-    const concepts = await db.listConcepts(collectionId);
-    expect(concepts).toHaveLength(1);
-    expect(concepts[0].frontmatter.generated?.by).toBe("process:okf-ingest-passthrough");
-    expect(concepts[0].body).toBe("Body that must survive a total enrichment failure.");
-  });
-});
-
-describe("ingestSource, the verbatim companion Concept", () => {
-  /** Enrichment that keeps only a fraction of the source, the lossy case. */
-  function summarizingEnrichment() {
-    mocks.getClassifierModel.mockReturnValue({
-      model: {},
-      provider: "anthropic",
-      modelId: "claude-opus-5",
-      credentialKind: "platform",
-    });
-    mocks.generateObject.mockResolvedValue({
-      object: {
-        concepts: [
-          {
-            path: "handbook.md",
-            type: "Policy",
-            title: "Handbook",
-            description: "Summary of the handbook.",
-            tags: [],
-            body: "The handbook covers leave, expenses and travel.",
-          },
-        ],
-      },
-      usage: {},
-    });
-  }
-
-  it("makes detail the enrichment dropped retrievable again", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-verbatim-recovers");
-    const source = await db.createSource({
-      collectionId,
-      name: "Handbook",
-      kind: "file",
-    });
-    await db.setSourceAssistantLinks(source.id, [assistantId]);
-    summarizingEnrichment();
-    // A specific clause the one-line summary above does not carry.
-    const clause = "Bereavement leave is five consecutive working days.";
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText: `Leave policy.\n\n${clause}\n\nExpenses policy.`,
-      connections: [],
-    });
-
-    // Before the verbatim companion existed, the summary was the only thing
-    // chunked, so this query could not match anything however good ranking was.
-    const hits = await db.searchChunks(assistantId, collectionId, {
-      embedding: null,
-      text: "bereavement leave days",
-    });
-    expect(hits.some((hit) => hit.content.includes(clause))).toBe(true);
-  });
-
-  it("indexes the whole source, including past the enrichment prompt cap", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-verbatim-length");
-    const source = await db.createSource({
-      collectionId,
-      name: "Handbook",
-      kind: "file",
-    });
-    await db.setSourceAssistantLinks(source.id, [assistantId]);
-    summarizingEnrichment();
-    // The model only ever sees the first ENRICH_SOURCE_MAX_CHARS. What matters
-    // is that the *index* is not bounded by that same cap.
-    const tail = "TAIL-MARKER";
-    const rawText = `${"a".repeat(ENRICH_SOURCE_MAX_CHARS)}\n\n${tail}`;
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText,
-      connections: [],
-    });
-
-    const verbatim = (await db.listConcepts(collectionId)).find(
-      (c) => c.frontmatter.type === SOURCE_TEXT_CONCEPT_TYPE
-    )!;
-    expect(verbatim.body).toHaveLength(rawText.length);
-    const hits = await db.searchChunks(assistantId, collectionId, {
-      embedding: null,
-      text: tail,
-    });
-    expect(hits.some((hit) => hit.content.includes(tail))).toBe(true);
-  });
-
-  it("carries its own provenance and derives from the same Source", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-verbatim-provenance");
-    const source = await db.createSource({
-      collectionId,
-      name: "Handbook",
-      kind: "file",
-    });
-    summarizingEnrichment();
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText: "Handbook body.",
-      connections: [],
-    });
-
-    const verbatim = (await db.listConcepts(collectionId)).find(
-      (c) => c.frontmatter.type === SOURCE_TEXT_CONCEPT_TYPE
-    )!;
-    expect(verbatim.path).toBe("originals/handbook.md");
-    expect(verbatim.sourceId).toBe(source.id);
-    // Copied by the extractor, not written by a model, the actor must say so.
-    expect(verbatim.frontmatter.generated?.by).toBe("process:okf-verbatim-index");
-    expect(verbatim.frontmatter.sources?.[0]?.title).toBe("Handbook");
-  });
 
   it("is replaced, not duplicated, when the Source is re-ingested", async () => {
     const db = getMockDb();
@@ -482,43 +171,15 @@ describe("ingestSource, the verbatim companion Concept", () => {
       name: "Handbook",
       kind: "file",
     });
-    summarizingEnrichment();
     const ingest = (rawText: string) =>
       ingestSource({ db, assistantId, collectionId, source, rawText, connections: [] });
 
     await ingest("First revision.");
     await ingest("Second revision.");
 
-    const verbatim = (await db.listConcepts(collectionId)).filter(
-      (c) => c.frontmatter.type === SOURCE_TEXT_CONCEPT_TYPE
-    );
-    expect(verbatim).toHaveLength(1);
-    expect(verbatim[0].body).toBe("Second revision.");
-  });
-
-  it("is not written when no model ran, the pass-through IS the verbatim text", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-verbatim-no-dupe");
-    const source = await db.createSource({
-      collectionId,
-      name: "Handbook",
-      kind: "file",
-    });
-    mocks.getClassifierModel.mockReturnValue(null);
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText: "Handbook body.",
-      connections: [],
-    });
-
-    // One concept, not the pass-through plus an identical copy of itself.
     const concepts = await db.listConcepts(collectionId);
     expect(concepts).toHaveLength(1);
-    expect(concepts[0].frontmatter.type).toBe("Document");
+    expect(concepts[0].body).toBe("Second revision.");
   });
 
   it("leaves crawled pages alone; they are already verbatim", async () => {
@@ -544,32 +205,8 @@ describe("ingestSource, the verbatim companion Concept", () => {
   });
 });
 
-describe("ingestSource, the no-model pass-through Concept", () => {
-  it("is attributed to the process, not to a nonexistent agent", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId } = await seed(db, "okf-passthrough-actor");
-    const source = await db.createSource({
-      collectionId,
-      name: "Handbook",
-      kind: "file",
-    });
-    mocks.getClassifierModel.mockReturnValue(null);
-
-    await ingestSource({
-      db,
-      assistantId,
-      collectionId,
-      source,
-      rawText: "Handbook body.",
-      connections: [],
-    });
-
-    const [concept] = await db.listConcepts(collectionId);
-    expect(concept.frontmatter.generated?.by).toBe("process:okf-ingest-passthrough");
-    expect(mocks.generateObject).not.toHaveBeenCalled();
-  });
-
-  it("keeps the whole document past the enrichment prompt cap", async () => {
+describe("ingestSource, long documents", () => {
+  it("keeps the whole document, tail included", async () => {
     const db = getMockDb();
     const { assistantId, collectionId } = await seed(db, "okf-passthrough-length");
     const source = await db.createSource({
@@ -578,12 +215,10 @@ describe("ingestSource, the no-model pass-through Concept", () => {
       kind: "file",
     });
     await db.setSourceAssistantLinks(source.id, [assistantId]);
-    mocks.getClassifierModel.mockReturnValue(null);
-    // ENRICH_SOURCE_MAX_CHARS bounds the enrichment *prompt*. No model runs on
-    // this path, so reusing that slice for the body silently dropped the tail
-    // of every long upload, the pass-through concept IS the source text.
+    // The old enrichment prompt window once truncated bodies to its own
+    // size, silently dropping the tail of every long upload.
     const tail = "TAIL-MARKER";
-    const rawText = `${"a".repeat(ENRICH_SOURCE_MAX_CHARS)}\n\n${tail}`;
+    const rawText = `${"a".repeat(LONG_SOURCE_CHARS)}\n\n${tail}`;
 
     await ingestSource({
       db,
@@ -614,7 +249,6 @@ describe("ingestSource, the no-model pass-through Concept", () => {
       kind: "file",
     });
     await db.setSourceAssistantLinks(source.id, [assistantId]);
-    mocks.getClassifierModel.mockReturnValue(null);
     const tail = "CORPORATE-TAIL-MARKER";
     const rawText = `${"a".repeat(MAX_CONCEPT_BODY_CHARS)}\n\n${tail}`;
 

@@ -284,8 +284,7 @@ export function ToolsClient({
       <TimelineSection title="Data" boxed>
       <section>
         <p className="text-muted-foreground text-sm">
-          Selected Entity schemas generate Record lookup tools. The schema set
-          freezes when published while Record values stay live.
+          Each selected Entity adds a Record lookup tool. Values stay live after publishing.
         </p>
         <div className="mt-4 space-y-2">
           {entities.length === 0 && (
@@ -321,8 +320,7 @@ export function ToolsClient({
       <section>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-muted-foreground text-sm">
-            Reusable prompt templates owned by your organization. Attached
-            skills are layered into this assistant&apos;s system prompt.
+            Reusable prompts. Attached skills are added to this assistant&apos;s instructions.
           </p>
           {canEdit && (
             <Button variant="outline" size="sm" onClick={() => setSkillDraft(EMPTY_SKILL)}>
@@ -450,10 +448,7 @@ export function ToolsClient({
                 />
                 <p className="text-muted-foreground text-xs">
                   What the chat window writes into the message box when someone
-                  picks this skill from the <code>/</code> menu. Write it as the
-                  asker, not as the assistant. Leave it empty and the skill
-                  stays out of that menu; the prompt above still applies to
-                  every answer.
+                  picks this skill from the <code>/</code> menu. Write it as the asker. Leave empty to keep the skill out of the menu.
                 </p>
               </div>
             </div>

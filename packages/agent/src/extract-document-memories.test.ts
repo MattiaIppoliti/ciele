@@ -25,7 +25,7 @@ vi.mock("./models", async (importOriginal) => ({
 
 const classifier = {
   model: {} as never,
-  modelId: "claude-haiku-4-5",
+  modelId: "claude-sonnet-5",
   provider: "anthropic" as const,
   credentialKind: "platform" as const,
 };
@@ -120,7 +120,7 @@ describe("extractDocumentMemories", () => {
       quote: "Unused leave expires on 31 March.",
       sourceCount: 1,
       conceptId: fixture.document.id,
-      generatedBy: "knowledge-memory-extractor/claude-haiku-4-5",
+      generatedBy: "knowledge-memory-extractor/claude-sonnet-5",
     });
     // The quote was matched into its chunk, which is what makes "open the
     // chunk this came from" possible later.
@@ -164,7 +164,7 @@ describe("extractDocumentMemories", () => {
         assistantId: null,
         stage: "memory_extract",
         provider: "anthropic",
-        modelId: "claude-haiku-4-5",
+        modelId: "claude-sonnet-5",
         credentialKind: "platform",
         inputTokens: 700,
         outputTokens: 10,

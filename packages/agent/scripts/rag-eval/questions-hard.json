@@ -1,0 +1,902 @@
+[
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "Balance_of_payments"
+  ],
+  "question": "What nickname have economists given to the modern arrangement in which emerging economies, especially China, keep their currency's value fixed against the US dollar instead of letting it float freely?",
+  "answer": "Bretton Woods II",
+  "facts": [
+   {
+    "fact": "The practice of emerging economies pegging their currency to the dollar has been called Bretton Woods II.",
+    "evidence": "The resulting state of affairs has been referred to as Bretton Woods II."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Comparative_advantage"
+  ],
+  "question": "Raga, nell'esempio di Ricardo tra Inghilterra e Portogallo, quale dei due paesi riesce a produrre di più in entrambi i settori (sia il tessuto che la bevanda) con lo stesso sforzo lavorativo?",
+  "answer": "Portugal",
+  "facts": [
+   {
+    "fact": "Portugal produces more of both cloth and wine per unit of labor than England, giving it an edge in both goods.",
+    "evidence": "Portugal possesses an absolute advantage in producing both cloth and wine due to more produced per hour"
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "European_Central_Bank"
+  ],
+  "question": "Back in autumn 2010, how many confidential written warnings did the head of the euro area's central monetary authority send to Ireland's top finance official, hinting that emergency funding support might be cut off unless the government took action?",
+  "answer": "Two",
+  "facts": [
+   {
+    "fact": "The ECB President sent two secret letters to the Irish finance Minister on 15 October and 6 November 2010 warning about possible suspension of emergency lending.",
+    "evidence": "On 15 October and 6 November 2010, the ECB President Jean-Claude Trichet sent two secret letters to the Irish finance Minister which essentially informed the Irish government of the possible suspension of ELA's credit lines"
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Fiscal_policy"
+  ],
+  "question": "Raga, secondo la teoria keynesiana qual è il range percentuale considerato \"sano\" per l'aumento generale dei prezzi in un'economia moderna?",
+  "answer": "2%–3%",
+  "facts": [
+   {
+    "fact": "In modern economies, a healthy range for inflation is conventionally 2%-3%.",
+    "evidence": "In modern economies, inflation is conventionally considered \"healthy\" in the range of 2%–3%."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "Game_theory"
+  ],
+  "question": "What theorem, which guarantees that a certain kind of transformation applied to a solid, boundaryless, convex shape must leave at least one point exactly where it started, did John von Neumann rely on in his early research that later became a common technique in economics and this field of study?",
+  "answer": "The Brouwer fixed-point theorem",
+  "facts": [
+   {
+    "fact": "Von Neumann's earlier work used the Brouwer fixed-point theorem on continuous mappings into compact convex sets, which later became standard in game theory and mathematical economics.",
+    "evidence": "The book built upon von Neumann's earlier work, which used the Brouwer fixed-point theorem on continuous mappings into compact convex sets, a method that later became standard in game theory and mathematical economics."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Gross_domestic_product"
+  ],
+  "question": "Raga scusate una domanda: se io personalmente compro dei pezzi di ricambio per riparare la mia macchina, questa spesa entra nel calcolo del valore totale di beni e servizi prodotti in un paese in un anno, tipo quello che si usa per misurare l'economia?",
+  "answer": "Yes, it counts because it's a purchase of a final good by a consumer, not an intermediate good used in production.",
+  "facts": [
+   {
+    "fact": "When a person buys replacement auto parts for their own car, this purchase counts toward GDP since it's a final good, unlike parts bought by a manufacturer to build a car.",
+    "evidence": "if a person buys replacement auto parts to install them on their car, those are counted towards the GDP"
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "Inflation"
+  ],
+  "question": "Back when a country's money was tied to a certain precious metal, what would happen to the cost of everything else if huge new deposits of that metal were suddenly discovered?",
+  "answer": "The metal's value—and the money's value—would fall, so the cost of all other goods would rise.",
+  "facts": [
+   {
+    "fact": "When currency was linked to gold, discovering new gold deposits would lower gold's price and the currency's value, raising the prices of other goods.",
+    "evidence": "if new gold deposits were found, the price of gold and the value of currency would fall, and consequently, the prices of all other goods would become higher"
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Keynesian_economics"
+  ],
+  "question": "Raga, come si chiama quella vecchia teoria economica pre-Keynes secondo cui tutto ciò che le aziende fabbricano finisce sempre per essere acquistato dai clienti, magari abbassando il costo finché non si smaltiscono le scorte?",
+  "answer": "Say's Law",
+  "facts": [
+   {
+    "fact": "Say's law and Ricardo's writing hold that individuals make goods either to use themselves or to sell in order to buy others' output, assuming excess goods would fall in price until fully bought.",
+    "evidence": "This perception is reflected in Say's law and in the writing of David Ricardo, which states that individuals produce so that they can either consume what they have manufactured or sell their output so that they can buy someone else's output."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "Monetary_policy"
+  ],
+  "question": "What tool lets banks earn a set return by parking their extra cash with the central bank, and how does this stop the overnight lending rate from dropping too far?",
+  "answer": "The interest paid on reserve balances held at the central bank, which sets a floor under the overnight rate since banks won't lend for less than they can earn by depositing with the Fed.",
+  "facts": [
+   {
+    "fact": "The rate paid on reserves held at the central bank creates a floor for the overnight lending rate because banks can earn that rate by holding reserves instead of lending for less.",
+    "evidence": "The interest on reserve balances (IORB) rate helps set a floor because banks can earn that rate by holding reserves at the Fed."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Unemployment"
+  ],
+  "question": "Raga, come si chiama quel tipo di disoccupazione che nasce quando le capacità dei lavoratori non corrispondono a quello che le aziende richiedono sul mercato del lavoro?",
+  "answer": "Structural unemployment",
+  "facts": [
+   {
+    "fact": "Structural unemployment is caused by a mismatch between the skills workers have and what employers demand in the labor market",
+    "evidence": "Structural unemployment focuses on foundational problems in the economy and inefficiencies inherent in labor markets, including a mismatch between the supply and demand of laborers with necessary skill sets."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "Balance_of_payments"
+  ],
+  "question": "If a country's overall balance from trade and income flows with the rest of the world shows a shortfall, what does its balance from cross-border asset purchases and sales look like?",
+  "answer": "It shows an equal-sized excess in the opposite direction (a matching surplus in asset transactions).",
+  "facts": [
+   {
+    "fact": "A shortfall in the current account is matched by an equally sized surplus in the capital account, and vice versa.",
+    "evidence": "any current account surplus will be balanced by a capital account deficit of equal size – or alternatively a current account deficit will be balanced by a corresponding capital account surplus"
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Comparative_advantage"
+  ],
+  "question": "Ragazzi, sapete chi ha elaborato per primo, con tanto di formule ed equazioni, la teoria economica secondo cui i paesi scambiano beni in base a quanto sono più o meno efficienti nel produrli?",
+  "answer": "William Whewell, in 1833",
+  "facts": [
+   {
+    "fact": "William Whewell published the first mathematical version of the Ricardian trade model in 1833.",
+    "evidence": "the first mathematical Ricardian model was published by William Whewell in 1833"
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "European_Central_Bank"
+  ],
+  "question": "Which international agreement created the institution that sets monetary policy for the countries using the euro, and in what month and year did that happen?",
+  "answer": "The Treaty of Amsterdam, in May 1999",
+  "facts": [
+   {
+    "fact": "The ECB was created by the Treaty of Amsterdam in May 1999.",
+    "evidence": "The ECB was established by the Treaty of Amsterdam in May 1999 with the purpose of guaranteeing and maintaining price stability."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Fiscal_policy"
+  ],
+  "question": "Raga, come si chiama quella situazione in cui anche abbassando tantissimo il costo del denaro le banche non vogliono erogare prestiti e le persone hanno troppa paura del futuro per spendere di più?",
+  "answer": "A liquidity trap",
+  "facts": [
+   {
+    "fact": "A liquidity trap happens when interest rate cuts fail to boost demand because banks won't lend and consumers won't spend due to negative expectations.",
+    "evidence": "A liquidity trap occurs when interest rate cuts are insufficient as a demand booster as banks do not want to lend and the consumers are reluctant to increase spending due to negative expectations for the economy."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "Game_theory"
+  ],
+  "question": "In game theory, what do we call a game where the players choose their actions at the same time, so nobody is aware of what the others have already decided before making their own choice?",
+  "answer": "An imperfect information game",
+  "facts": [
+   {
+    "fact": "A game is called imperfect information when players do not know all prior actions of opponents, as happens in simultaneous move games.",
+    "evidence": "An imperfect information game is played when the players do not know all moves already made by the opponent, which is the case in a simultaneous move game."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Gross_domestic_product"
+  ],
+  "question": "Raga, qual è la formula che somma le spese delle famiglie, gli acquisti di beni durevoli da parte delle imprese, la spesa pubblica e la differenza tra vendite all'estero e acquisti dall'estero, per ottenere il valore totale prodotto da un paese in un anno?",
+  "answer": "Y = C + I + G + (X − M)",
+  "facts": [
+   {
+    "fact": "The formula sums consumption, investment, government expenditures and net exports to get GDP",
+    "evidence": "Y = C + I + G + (X − M)"
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "Inflation"
+  ],
+  "question": "Back when a country's money was tied to a certain precious metal, what would happen to the cost of everything else if huge new deposits of that metal were suddenly discovered?",
+  "answer": "The metal's value—and the money's value—would fall, so the cost of all other goods would rise.",
+  "facts": [
+   {
+    "fact": "When currency was linked to gold, discovering new gold deposits would lower gold's price and the currency's value, raising the prices of other goods.",
+    "evidence": "if new gold deposits were found, the price of gold and the value of currency would fall, and consequently, the prices of all other goods would become higher"
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Keynesian_economics"
+  ],
+  "question": "Ragazzi, sapete chi ha proposto per primo, nel 1892, quell'idea un po' contro-intuitiva secondo cui se tutti cercano di metter via più soldi risparmiando, alla fine l'economia nel suo complesso ci perde?",
+  "answer": "J. M. Robertson",
+  "facts": [
+   {
+    "fact": "J. M. Robertson raised the paradox of thrift in 1892",
+    "evidence": "E.g. J. M. Robertson raised the paradox of thrift in 1892."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "en",
+  "docs": [
+   "Monetary_policy"
+  ],
+  "question": "What was the earliest known technique rulers used to quietly lower the value of their currency by blending in less valuable materials?",
+  "answer": "Debasement — melting down coins and mixing them with cheaper metals",
+  "facts": [
+   {
+    "fact": "Debasement, where the government would melt coins down and mix them with cheaper metals, was the earliest predecessor to monetary policy.",
+    "evidence": "The earliest predecessors to monetary policy seem to be those of debasement, where the government would melt coins down and mix them with cheaper metals."
+   }
+  ]
+ },
+ {
+  "kind": "indirect",
+  "lang": "it",
+  "docs": [
+   "Unemployment"
+  ],
+  "question": "Ragazzi, ma se una persona ha un impiego però fa meno ore di quante vorrebbe, oppure svolge un ruolo che non sfrutta le sue competenze, viene inclusa nei numeri ufficiali di chi è senza lavoro?",
+  "answer": "No, these underemployed people are not counted as jobless in official figures.",
+  "facts": [
+   {
+    "fact": "People working fewer hours than desired or in jobs not matching their skills are not counted in the official jobless figures.",
+    "evidence": "The statistic also does not count the \"underemployed\", those working fewer hours than they would prefer or in a job that fails to make good use of their capabilities."
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "Balance_of_payments",
+   "Balance_of_payments"
+  ],
+  "question": "How many years after the US ended the dollar's convertibility into gold (which collapsed the Bretton Woods system) did emerging economies start running a net current account surplus that coincided with faster growth in the US current account deficit?",
+  "answer": "About 28 years (1971 to 1999)",
+  "facts": [
+   {
+    "fact": "The US ended convertibility of the dollar into gold in 1971, ending the Bretton Woods system",
+    "evidence": "causing the US to end the convertibility of the US dollar into gold, thus ending the Bretton Woods system"
+   },
+   {
+    "fact": "Emerging economies began running a net current account surplus only after 1999, mirrored by faster growth in the US current account deficit",
+    "evidence": "they only began running a net current account surplus after 1999. This was mirrored in the faster growth for the US current account deficit from the same year"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Inflation",
+   "Inflation"
+  ],
+  "question": "Ciao! Domanda veloce: l'inflazione \"core\" di cui parla la Fed esclude alcune componenti di prezzo... sapendo questo, quale tipo specifico di inflazione settoriale, legato soprattutto ai costi di petrolio e gas, rimane automaticamente fuori dal calcolo dell'inflazione core?",
+  "answer": "Energy inflation (inflazione energetica)",
+  "facts": [
+   {
+    "fact": "Energy inflation is dominated by the costs of oil and gas.",
+    "evidence": "\"energy inflation\" is dominated by the costs of oil and gas"
+   },
+   {
+    "fact": "Core inflation excludes food and energy prices.",
+    "evidence": "that excludes food and energy prices, which rise and fall more than other prices in the short term"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "European_Central_Bank",
+   "European_Central_Bank"
+  ],
+  "question": "How many years passed between the ECB's first president taking office and Christine Lagarde becoming president?",
+  "answer": "21 years (1998 to 2019)",
+  "facts": [
+   {
+    "fact": "The ECB was established on 1 June 1998 with Wim Duisenberg as its first President.",
+    "evidence": "It was established on 1 June 1998 The first President of the Bank was Wim Duisenberg"
+   },
+   {
+    "fact": "Christine Lagarde formally became ECB President on 1 November 2019.",
+    "evidence": "formally took over the ECB's presidency on 1 November 2019"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Fiscal_policy",
+   "Fiscal_policy"
+  ],
+  "question": "Ragazzi, secondo la teoria economica su cui si basa la politica fiscale, qual è il range di inflazione considerato \"sano\" per un'economia, e perché uno stimolo fiscale che assume lavoratori già occupati rischia di farlo superare?",
+  "answer": "Il range considerato sano è il 2%-3% di inflazione (basato sulla teoria keynesiana); uno stimolo fiscale che impiega lavoratori già occupati aumenta la domanda di lavoro senza aumentare l'offerta, causando inflazione salariale che può spingere l'inflazione oltre quel range.",
+  "facts": [
+   {
+    "fact": "Fiscal policy is based on Keynesian economics and aims to keep inflation in the 'healthy' range of 2%-3%",
+    "evidence": "inflation is conventionally considered \"healthy\" in the range of 2%–3%"
+   },
+   {
+    "fact": "If fiscal stimulus employs a worker who already had a job, it increases labor demand while supply stays fixed, causing wage inflation",
+    "evidence": "if the stimulus employs a worker who otherwise would have had a job, the stimulus is increasing labor demand while labor supply remains fixed, leading to wage inflation"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "Game_theory",
+   "Game_theory"
+  ],
+  "question": "In game theory, what was the professional background of the scientist who developed the equilibrium concept that relies on mixed strategies defined by the formula xλy = λx + (1−λ)y?",
+  "answer": "He was a mathematician (John Nash).",
+  "facts": [
+   {
+    "fact": "John Nash, a mathematician, was awarded the Nobel Prize in economics for his pioneering work in game theory.",
+    "evidence": "the mathematician John Nash, the philosopher John Harsanyi, and the economist Reinhard Selten for their pioneering work in game theory"
+   },
+   {
+    "fact": "The mixture of two strategies x and y is defined by the formula xλy = λx + (1−λ)y.",
+    "evidence": "x\\lambda y=\\lambda x+(1-\\lambda )y"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Gross_domestic_product",
+   "Gross_domestic_product"
+  ],
+  "question": "Ragazzi, so che il PIL viene spesso usato per fare paragoni tra paesi, ma perché questo confronto rischia di essere particolarmente inaffidabile quando si tratta di stati autoritari?",
+  "answer": "Because GDP is commonly used as a metric to compare countries internationally, but a 2022 study found that authoritarian/semi-authoritarian states tend to falsify their reported GDP growth (reporting higher growth than satellite night-light data would suggest), making such comparisons unreliable for those countries.",
+  "facts": [
+   {
+    "fact": "GDP is often used as a metric for international comparison of countries.",
+    "evidence": "GDP is often used as a metric for international c"
+   },
+   {
+    "fact": "Authoritarian states consistently reported higher GDP growth than night-light satellite data would suggest, indicating manipulation.",
+    "evidence": "Authoritarian states consistently reported higher growth in GDP than the growth in night lights would suggest"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "Inflation",
+   "Inflation"
+  ],
+  "question": "If new gold supplies caused currency to lose value against gold, would that kind of price change show up as a shift measured by an index that tracks costs of raw materials paid to manufacturers?",
+  "answer": "Yes, because that value change affects the general price level (inflation), and producer price indices measure exactly that kind of broad price change producers receive for output.",
+  "facts": [
+   {
+    "fact": "When currency was tied to gold, discovering new gold deposits lowered gold's price and currency's value, raising prices of all other goods.",
+    "evidence": "if new gold deposits were found, the price of gold and the value of currency would fall, and consequently, the prices of all other goods would become higher"
+   },
+   {
+    "fact": "Producer price indices measure average changes in prices received by domestic producers for their output.",
+    "evidence": "Producer price indices (PPIs) which measures average changes in prices received by domestic producers for their output."
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Keynesian_economics",
+   "Keynesian_economics"
+  ],
+  "question": "Ciao! Sto confrontando due date storiche legate ai precursori di Keynes: quanti anni sono passati tra l'anno in cui J. M. Robertson formulò per la prima volta il paradosso del risparmio e l'anno in cui Hawtrey propose l'idea del moltiplicatore in un memorandum del Tesoro?",
+  "answer": "36 years (1892 to 1928)",
+  "facts": [
+   {
+    "fact": "J. M. Robertson raised the paradox of thrift in 1892",
+    "evidence": "J. M. Robertson raised the paradox of thrift in 1892."
+   },
+   {
+    "fact": "Hawtrey proposed a respending multiplier in a 1928 Treasury memorandum",
+    "evidence": "A respending multiplier had been proposed earlier by Hawtrey in a 1928 Treasury memorandum"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "Monetary_policy",
+   "Monetary_policy"
+  ],
+  "question": "After the Federal Reserve's attempt at targeting the money supply in the early 1980s turned out to be impractical, what type of tool do most central banks in advanced economies now rely on as their primary monetary policy instrument?",
+  "answer": "A short-term interest rate",
+  "facts": [
+   {
+    "fact": "Volcker's money supply targeting policy, started in October 1979, was found impractical due to unstable relationships between monetary aggregates and macroeconomic variables.",
+    "evidence": "when U.S. Federal Reserve Chairman Paul Volcker tried this policy, starting in October 1979, it was found to be impractical, because of the unstable relationship between monetary aggregates and other macroeconomic variables"
+   },
+   {
+    "fact": "The main monetary policy instrument for most central banks in advanced economies is a short-term interest rate.",
+    "evidence": "For most central banks in advanced economies, their main monetary policy instrument is a short-term interest rate."
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Unemployment",
+   "Unemployment"
+  ],
+  "question": "Ciao! Ho una domanda: se una persona perde il lavoro perché manca la domanda aggregata nell'economia (quindi per motivi ciclici) e resta disoccupata per più di un anno, secondo le definizioni ufficiali questa situazione rientra nella disoccupazione strutturale o resta puramente ciclica?",
+  "answer": "Anche se la causa iniziale è ciclica (calo della domanda aggregata), una volta che la disoccupazione supera un anno viene classificata come disoccupazione di lungo periodo, che è considerata una componente della disoccupazione strutturale, non ciclica.",
+  "facts": [
+   {
+    "fact": "Cyclical unemployment is caused by insufficient aggregate demand in the economy, leading to fewer jobs and unemployment due to sticky wages.",
+    "evidence": "Cyclical, deficient-demand, or Keynesian unemployment occurs when there is not enough aggregate demand in the economy to provide jobs for everyone who wants to work."
+   },
+   {
+    "fact": "Long-term unemployment, defined as lasting longer than one year, is a component of structural unemployment.",
+    "evidence": "Long-term unemployment is a component of structural unemployment, which results in long-term unemployment existing in every social group, industry, occupation, and all levels of education."
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "Balance_of_payments",
+   "Balance_of_payments"
+  ],
+  "question": "After the Bretton Woods system collapsed, European countries intervened in currency markets to keep their exchange rates stable under the arrangement known as the Snake. In balance of payments terminology, under which account would this central bank foreign exchange market activity be recorded?",
+  "answer": "The capital account (specifically its reserve account component)",
+  "facts": [
+   {
+    "fact": "After Bretton Woods ended, European countries intervened in the foreign exchange market as a regional bloc called the Snake to keep stable exchange rates with each other.",
+    "evidence": "or by intervening in the foreign exchange market as part of a regional bloc, such as the Snake which formed in 1971."
+   },
+   {
+    "fact": "The capital account includes the reserve account, which covers a nation's central bank foreign exchange market operations.",
+    "evidence": "It includes the reserve account (the foreign exchange market operations of a nation's central bank), along with loans and investments between the country and the re"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Comparative_advantage",
+   "Comparative_advantage"
+  ],
+  "question": "Nel modello che Ricardo ha sviluppato nell'anno in cui ha teorizzato il vantaggio comparato, tra quali due rapporti di coefficienti di lavoro è compreso il prezzo relativo P_C/P_W?",
+  "answer": "1817; il prezzo relativo è compreso tra a_LC/a_LW e a'_LC/a'_LW",
+  "facts": [
+   {
+    "fact": "Ricardo developed the classical theory of comparative advantage in 1817",
+    "evidence": "David Ricardo developed the classical theory of comparative advantage in 1817 to explain why countries engage in international trade"
+   },
+   {
+    "fact": "The relative price is bounded between aLC/aLW and a'LC/a'LW",
+    "evidence": "a_{LC}/a_{LW}\\leq {P_{C}/P_{W}}\\leq {a'_{LC}/a'_{LW}}"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "European_Central_Bank",
+   "European_Central_Bank"
+  ],
+  "question": "How many years passed between the ECB's launch of its emergency sovereign bond-buying program to fight the debt crisis and Christine Lagarde officially becoming ECB president?",
+  "answer": "About 9 years (2010 to 2019)",
+  "facts": [
+   {
+    "fact": "The ECB launched its Securities Market Programme, buying sovereign bonds, on 10 May 2010.",
+    "evidence": "the ECB announced on 10 May 2010, the launch of a \"Securities Market Programme\" (SMP) which involved the discretionary purchase of sovereign bonds in secondary markets"
+   },
+   {
+    "fact": "Christine Lagarde formally became ECB president on 1 November 2019.",
+    "evidence": "formally took over the ECB's presidency on 1 November 2019"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Fiscal_policy",
+   "Fiscal_policy"
+  ],
+  "question": "Ragazzi, se durante una liquidity trap il governo decide di aumentare la spesa pubblica per far ripartire la domanda, quale meccanismo legato al modo in cui finanzia questo deficit potrebbe ridurre l'efficacia di questa spesa?",
+  "answer": "Il crowding out: se il deficit viene finanziato con l'emissione di titoli di stato, questo può far salire i tassi d'interesse nel mercato finanziario, riducendo la domanda aggregata e compensando parzialmente lo stimolo della spesa pubblica.",
+  "facts": [
+   {
+    "fact": "In a liquidity trap, monetary policy is ineffective and government spending is needed to kick-start the economy out of recession.",
+    "evidence": "Government spending is responsible for creating the demand in the economy and can provide a kick-start to get the economy out of the recession."
+   },
+   {
+    "fact": "Financing a deficit through government bonds can raise interest rates and offset the stimulative effect of spending (crowding out).",
+    "evidence": "When governments fund a deficit with the issuing of government bonds, interest rates can increase across the market, because government borrowing creates higher demand for credit in the financial markets."
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "Unemployment",
+   "Unemployment"
+  ],
+  "question": "If a worker voluntarily quits a low-wage job to search for something better, but eventually gives up looking altogether, would official unemployment statistics still count them as unemployed?",
+  "answer": "No, once they stop looking for work they become part of the hidden unemployed and are no longer counted in official statistics, even though their initial unemployment was voluntary.",
+  "facts": [
+   {
+    "fact": "Rejecting a low-wage job is considered voluntary unemployment.",
+    "evidence": "Voluntary unemployment includes workers who reject low-wage jobs"
+   },
+   {
+    "fact": "People who have given up looking for work are not counted as unemployed in official statistics.",
+    "evidence": "Those who have given up looking for work and sometimes those who are on government \"retraining\" programs are not officially counted among the unemployed"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Gross_domestic_product",
+   "Gross_domestic_product"
+  ],
+  "question": "Ragazzi, so che il PIL viene spesso usato per fare paragoni tra paesi, ma perché questo confronto rischia di essere particolarmente inaffidabile quando si tratta di stati autoritari?",
+  "answer": "Because GDP is commonly used as a metric to compare countries internationally, but a 2022 study found that authoritarian/semi-authoritarian states tend to falsify their reported GDP growth (reporting higher growth than satellite night-light data would suggest), making such comparisons unreliable for those countries.",
+  "facts": [
+   {
+    "fact": "GDP is often used as a metric for international comparison of countries.",
+    "evidence": "GDP is often used as a metric for international c"
+   },
+   {
+    "fact": "Authoritarian states consistently reported higher GDP growth than night-light satellite data would suggest, indicating manipulation.",
+    "evidence": "Authoritarian states consistently reported higher growth in GDP than the growth in night lights would suggest"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "Inflation",
+   "Inflation"
+  ],
+  "question": "If someone tracked the annual percentage change in the cost of ingredients needed for Jollof rice, what economic term would describe that measurement?",
+  "answer": "Inflation rate",
+  "facts": [
+   {
+    "fact": "The inflation rate is defined as the annualized percentage change in a general price index.",
+    "evidence": "The common measure of inflation is the inflation rate, the annualized percentage change in a general price index."
+   },
+   {
+    "fact": "The Jollof index calculates the price of the food needed to make Jollof rice.",
+    "evidence": "The Jollof index, which calculates the price of food needed to make a Jollof rice, a popular African dish."
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Keynesian_economics",
+   "Keynesian_economics"
+  ],
+  "question": "Ciao! Volevo chiedere: l'economista che nel 1930 mise in difficoltà il Tesoriere britannico sostenendo che i lavori pubblici potessero ridurre la disoccupazione ha dato il nome a una scuola di pensiero che poi, secondo alcuni critici, avrebbe causato malinvestimenti e inflazione tramite espansione artificiale del credito. Che scuola/economisti hanno fatto questa critica?",
+  "answer": "Keynes (Keynesian economics), criticized by the Austrian school (Hayek, Mises) and monetarists (Friedman)",
+  "facts": [
+   {
+    "fact": "Austrian school and monetarist critics argued Keynesian policies distort markets via artificial credit expansion, causing malinvestment and inflation",
+    "evidence": "Keynesian policies distort market price signals through artificial credit expansion and deficit spending, leading to malinvestment, inflation"
+   },
+   {
+    "fact": "Keynes cross-examined a Treasury official in 1930 to challenge the view that public works/state borrowing couldn't reduce unemployment",
+    "evidence": "Cross-examining Sir Richard Hopkins, a Second Secretary in the Treasury, before the Macmillan Committee on Finance and Industry in 1930"
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "en",
+  "docs": [
+   "Monetary_policy",
+   "Monetary_policy"
+  ],
+  "question": "The country that pioneered official inflation targeting in monetary policy started doing so in what year, and what tool do central banks generally use to adjust the monetary base in pursuit of such targets?",
+  "answer": "New Zealand adopted inflation targeting in 1990; central banks use open market operations (buying/selling securities) to adjust the monetary base.",
+  "facts": [
+   {
+    "fact": "New Zealand was the first country to adopt an official inflation target, in 1990.",
+    "evidence": "In 1990, New Zealand became the first country ever to adopt an official inflation target as the basis of its monetary policy."
+   },
+   {
+    "fact": "Central banks use open market operations to influence interest rates by expanding or contracting the monetary base.",
+    "evidence": "Open market operations can influence interest rates by expanding or contracting the monetary base, which consists of currency in circulation and banks' reserves on deposit at the central bank."
+   }
+  ]
+ },
+ {
+  "kind": "multihop",
+  "lang": "it",
+  "docs": [
+   "Unemployment",
+   "Unemployment"
+  ],
+  "question": "Ciao! Domanda veloce: secondo il testo sulla disoccupazione, se il salario minimo fissato dal governo fa salire il costo del lavoro sopra il livello di equilibrio del mercato (causando disoccupazione), dopo quante settimane negli USA una persona rimasta senza lavoro per questo motivo verrebbe classificata come disoccupata di lungo periodo?",
+  "answer": "27 weeks (as defined by the US Bureau of Labor Statistics)",
+  "facts": [
+   {
+    "fact": "Minimum wage laws raise the cost of employment, causing real-wage/classical unemployment",
+    "evidence": "minimum wage laws raise the cost of"
+   },
+   {
+    "fact": "US BLS defines long-term unemployment as lasting 27 weeks or longer",
+    "evidence": "defines this as unemployment lasting 27 weeks or longer"
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "en",
+  "docs": [
+   "Keynesian_economics",
+   "Unemployment"
+  ],
+  "question": "According to Keynes's critique of classical economics and the concept of cyclical unemployment, why doesn't a lack of demand for goods during a downturn like the Great Depression automatically fix itself and prevent high joblessness?",
+  "answer": "Because effective demand isn't guaranteed to match production (so surpluses can persist) and wages are sticky, not falling to the equilibrium level, so the labor market doesn't self-correct and unemployment results.",
+  "facts": [
+   {
+    "fact": "Keynes argued there was no guarantee that produced goods would be met with sufficient demand, causing high unemployment during downturns like the Great Depression.",
+    "evidence": "Keynes argued that there was no guarantee that the goods that individuals produce would be met with adequate effective demand, and periods of high unemployment could be expected"
+   },
+   {
+    "fact": "Cyclical (Keynesian) unemployment happens because demand falls and wages are sticky, not adjusting down to equilibrium level.",
+    "evidence": "wages are sticky and do not fall to meet the equilibrium level, and unemployment results"
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "it",
+  "docs": [
+   "Fiscal_policy",
+   "European_Central_Bank"
+  ],
+  "question": "Ragazzi, giusto per capire: quando la BCE ha iniziato a esercitare pienamente i suoi poteri, nel 1999, qual era la soglia di disoccupazione considerata \"sana\" secondo la teoria della politica fiscale, sopra la quale si giustificherebbe una politica espansiva?",
+  "answer": "3%–4% unemployment",
+  "facts": [
+   {
+    "fact": "Unemployment above the healthy level of 3%-4% justifies expansionary (non-contractionary) fiscal policy",
+    "evidence": "recession and unemployment above the \"healthy\" level of 3%–4%"
+   },
+   {
+    "fact": "The ECB began exercising its full powers on 1 January 1999",
+    "evidence": "it did not exercise its full powers until the introduction of the euro on 1 January 1999"
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "en",
+  "docs": [
+   "Fiscal_policy",
+   "European_Central_Bank"
+  ],
+  "question": "Given that interest rate cuts stop working once an economy falls into a liquidity trap, what unconventional step did the ECB take in May 2010 to try to fix market conditions instead of just cutting rates?",
+  "answer": "The ECB launched the Securities Market Programme, directly buying sovereign bonds (initially Greek, Irish, Portuguese, later Spanish and Italian) to ease financial market tensions, since ordinary rate cuts alone are ineffective in a liquidity trap.",
+  "facts": [
+   {
+    "fact": "In a liquidity trap, cutting interest rates fails to boost demand because banks won't lend and consumers stay cautious.",
+    "evidence": "A liquidity trap occurs when interest rate cuts are insufficient as a demand booster as banks do not want to lend and the consumers are reluctant to increase spending due to negative expectations for the economy."
+   },
+   {
+    "fact": "The ECB responded to financial market tensions by launching a program to buy sovereign bonds directly.",
+    "evidence": "the ECB announced on 10 May 2010, the launch of a \"Securities Market Programme\" (SMP) which involved the discretionary purchase of sovereign bonds in secondary markets."
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "it",
+  "docs": [
+   "Gross_domestic_product",
+   "Keynesian_economics"
+  ],
+  "question": "Raga, se il moltiplicatore keynesiano si basa sull'idea che i soldi passano di mano in mano all'infinito nell'economia, che relazione ha questo con il modo in cui si arriva al GDP a prezzi di produttore partendo dal valore aggiunto a costo dei fattori?",
+  "answer": "The multiplier theory describes money continuously circulating through spending, which drives the economic activity (output) that is measured as value added; to get GDP at producer prices, you take that value added at factor cost and add indirect taxes minus subsidies.",
+  "facts": [
+   {
+    "fact": "GDP at producer prices is obtained by adding indirect taxes minus subsidies to GVA (GDP) at factor cost.",
+    "evidence": "Adding indirect tax minus subsidies to GVA (GDP) at factor cost gives the \"GVA (GDP) at producer prices\"."
+   },
+   {
+    "fact": "The multiplier concept holds that money passing from person to person can sustain economic activity indefinitely.",
+    "evidence": "For if money itself is \"consumed\", this simply means that it passes into someone else's possession, and this process may continue indefinitely."
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "en",
+  "docs": [
+   "Comparative_advantage",
+   "Unemployment"
+  ],
+  "question": "If a country ends up specializing completely in wine production due to comparative advantage while its workers' skills are suited for cloth-making, what type of unemployment would this skills mismatch create?",
+  "answer": "Structural unemployment",
+  "facts": [
+   {
+    "fact": "When comparative advantage ratios favor wine, a country specializes entirely in wine and produces no cloth.",
+    "evidence": "then both Home and Foreign specialize in wine, for similar reasons as above, and so the quantity of cloth supplied is zero"
+   },
+   {
+    "fact": "Structural unemployment arises when there's a mismatch between workers' skills and the skills required by available jobs.",
+    "evidence": "there is a mismatch between the skills of the unemployed workers and the skills needed for the available jobs"
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "it",
+  "docs": [
+   "European_Central_Bank",
+   "Gross_domestic_product"
+  ],
+  "question": "Ciao! Nel periodo in cui la BCE riuscì a tenere l'inflazione vicina ma sotto il 2%, chi era il presidente in carica, e in quale componente del PIL rientrerebbe l'acquisto di una casa nuova da parte di una famiglia?",
+  "answer": "Jean-Claude Trichet was president; the purchase of a new house by a household falls under Investment (I) in GDP.",
+  "facts": [
+   {
+    "fact": "Trichet became ECB president in November 2003, and until 2007 the ECB kept inflation close to but below 2%.",
+    "evidence": "Trichet replaced Duisenberg as president in November 2003. Until 2007, the ECB had very successfully managed to maintain inflation close but below 2%."
+   },
+   {
+    "fact": "Household spending on new housing is counted as investment (I), not consumption, in GDP.",
+    "evidence": "Spending by households (not the government) on new houses is also included in investment."
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "en",
+  "docs": [
+   "Monetary_policy",
+   "Comparative_advantage"
+  ],
+  "question": "In the Fed's system, which two administered rates form the floor and ceiling around the target federal funds rate, and in the comparative advantage example, which good does the Foreign country end up specializing in when its price/labor ratio condition holds?",
+  "answer": "The IORB rate acts as the floor and the discount rate acts as the ceiling for the federal funds rate; Foreign specializes in wine production.",
+  "facts": [
+   {
+    "fact": "The IORB rate sets a floor and the discount rate sets a ceiling around the Fed's target range for the federal funds rate.",
+    "evidence": "The interest on reserve balances (IORB) rate helps set a floor because banks can earn that rate by holding reserves at the Fed. The Fed's discount rate helps set a ceiling because banks can borrow from the Fed instead of paying a higher rate in the federal funds market."
+   },
+   {
+    "fact": "When the price ratio condition holds, Foreign specializes in wine production.",
+    "evidence": "then Foreign specializes in wine, for the wage"
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "it",
+  "docs": [
+   "Monetary_policy",
+   "Gross_domestic_product"
+  ],
+  "question": "Ragazzi rapida: qual è stato il primo paese ad adottare ufficialmente un target di inflazione, e nel metodo del reddito per calcolare il GDP le cinque categorie di reddito USA a cosa si somma per ottenere?",
+  "answer": "New Zealand was first to adopt inflation targeting (1990); the five income categories sum to net domestic income at factor cost.",
+  "facts": [
+   {
+    "fact": "New Zealand was the first country to adopt an official inflation target for monetary policy, in 1990.",
+    "evidence": "In 1990, New Zealand became the first country ever to adopt an official inflation target as the basis of its monetary policy."
+   },
+   {
+    "fact": "The five income components in the US National Income and Product Accounts sum to net domestic income at factor cost.",
+    "evidence": "These five income components sum to net domestic income at factor cost."
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "en",
+  "docs": [
+   "Unemployment",
+   "Keynesian_economics"
+  ],
+  "question": "In the example about hiring unemployed carpenters and lumber producers to build a $1000 woodshed, how many weeks would those workers need to have been jobless beforehand to count as long-term unemployed under the U.S. Bureau of Labor Statistics definition?",
+  "answer": "27 weeks or longer",
+  "facts": [
+   {
+    "fact": "The US BLS defines long-term unemployment as lasting 27 weeks or longer.",
+    "evidence": "defines this as unemployment lasting 27 weeks or longer"
+   },
+   {
+    "fact": "The example involves hiring unemployed carpenters and lumber producers to build a $1000 woodshed.",
+    "evidence": "Let's suppose that I hire unemployed resources to build a $1000 woodshed. My carpenters and lumber producers will get an extra $1000 of income"
+   }
+  ]
+ },
+ {
+  "kind": "crossdoc",
+  "lang": "it",
+  "docs": [
+   "Fiscal_policy",
+   "Inflation"
+  ],
+  "question": "Ragazzi, secondo voi che tipo di politica fiscale si dovrebbe usare oggi per contrastare un'inflazione alta come quella causata dai romani quando svalutavano il denario aumentando l'offerta di moneta?",
+  "answer": "Contractionary fiscal policy would be used to fight the high inflation.",
+  "facts": [
+   {
+    "fact": "Contractionary fiscal policy is used to fight inflation caused by unsustainable growth.",
+    "evidence": "contractionary fiscal policy measures are employed when unsustainable growth takes place, leading to inflation"
+   },
+   {
+    "fact": "Romans debased the denarius by mixing in less valuable metals, increasing the money supply and causing inflation.",
+    "evidence": "the denarius contained more than 90% silver, but by the 270s hardly any silver was left"
+   }
+  ]
+ }
+]

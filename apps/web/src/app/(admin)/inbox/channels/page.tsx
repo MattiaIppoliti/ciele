@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Hash } from "lucide-react";
 import { listOrgChannelsOp } from "@ciele/ops";
 import { runOperation } from "@/lib/operations";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function InboxChannelsPage() {
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-5 pb-3">
-        <h1 className="text-2xl font-bold tracking-tight">Groups</h1>
+        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Groups" /></h1>
         <Link
           href="/inbox"
           className="text-muted-foreground hover:text-foreground ml-auto text-sm"
@@ -34,9 +35,7 @@ export default async function InboxChannelsPage() {
         </Link>
       </header>
       <p className="text-muted-foreground px-6 pb-4 text-sm">
-        Every teammate group in this organization, newest activity first.
-        Groups are internal: nothing here reaches a website visitor, and none
-        of it counts in Insights.
+        Every teammate group, newest first. Groups are internal and never reach visitors or Insights.
       </p>
 
       {channels.length === 0 ? (
@@ -44,9 +43,7 @@ export default async function InboxChannelsPage() {
           <Hash className="text-muted-foreground size-8" />
           <p className="text-lg font-semibold">No groups yet</p>
           <p className="text-muted-foreground max-w-md text-sm">
-            A group is a thread where several colleagues and several teammates
-            work on one thing. Anybody in the organization can open one from the
-            Teammates page.
+            A group is a shared thread for colleagues and teammates. Start one from the Teammates page.
           </p>
         </div>
       ) : (

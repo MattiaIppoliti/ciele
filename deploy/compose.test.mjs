@@ -33,7 +33,6 @@ const imagesOverlay = read("docker-compose.images.yml");
 const workersOverlay = read("docker-compose.workers.yml");
 const standaloneWorkers = {
   "services/crawl4ai-worker/docker-compose.yml": read("../services/crawl4ai-worker/docker-compose.yml"),
-  "services/graph-worker/docker-compose.yml": read("../services/graph-worker/docker-compose.yml"),
 };
 const tlsOverlay = read("docker-compose.tls.yml");
 const envExample = read(".env.example");
@@ -109,7 +108,7 @@ check("the base file names no worker, the overlay is the only way in", () => {
   // they lived in docker-compose.yml, aborted a plain `docker compose up`
   // over a credential for a container that was never going to start. A
   // `workers` profile cannot be made safe. A separate file is never parsed.
-  for (const worker of ["graph-worker", "crawl4ai"]) {
+  for (const worker of ["crawl4ai"]) {
     assert.doesNotMatch(
       compose,
       new RegExp(`^ {2}${worker}:$`, "m"),
@@ -118,8 +117,8 @@ check("the base file names no worker, the overlay is the only way in", () => {
   }
   assert.deepEqual(
     Object.keys(serviceProfiles(workersOverlay)).sort(),
-    ["crawl4ai", "graph-worker"],
-    "the workers overlay must hold exactly the two workers"
+    ["crawl4ai"],
+    "the workers overlay must hold exactly the crawler"
   );
   // A profile inside the overlay would keep them off even with the file on,
   // which is the one thing adding the overlay is supposed to mean.
@@ -128,10 +127,8 @@ check("the base file names no worker, the overlay is the only way in", () => {
     /^ {4}profiles:/m,
     "the overlay's presence in COMPOSE_FILE is the switch; a profile would be a second one"
   );
-  // The graph worker's volume came along with it: a named volume used by a
-  // file that does not declare it is a compose error, not a fallback.
-  assert.match(workersOverlay, /^volumes:\n {2}graph-data:$/m);
-  assert.doesNotMatch(compose, /^ {2}graph-data:$/m);
+  // The graph worker is gone (ADR-0025), and its volume with it.
+  assert.doesNotMatch(workersOverlay, /graph-worker|graph-data/);
 });
 
 // --- network exposure (#801, CYB-06 / CYB-16) -------------------------------
@@ -246,7 +243,6 @@ check("the workers zone holds only the app and the workers (#801, CYB-16)", () =
   // the gateway. The overlay places both workers on `workers` alone, and the
   // only base service sharing that zone is the app that calls them.
   assert.deepEqual(serviceNetworks(workersOverlay), {
-    "graph-worker": ["workers"],
     crawl4ai: ["workers"],
   });
   const base = serviceNetworks(compose);
@@ -317,8 +313,6 @@ check("a worker cannot start without its credential", () => {
   // do the opposite, silently. Living in an overlay is what makes the strict
   // form affordable: nothing interpolates this file until an operator asks.
   for (const variable of [
-    "GRAPH_WORKER_API_TOKEN",
-    "GRAPH_LLM_API_KEY",
     "CRAWL4AI_API_TOKEN",
     "CRAWL4AI_SECRET_KEY",
   ]) {
@@ -683,14 +677,12 @@ check("bootstrap fills in every generated secret the compose files require", () 
   const bootstrap = read("bootstrap.sh");
   const generated = [...bootstrap.matchAll(/set_var ([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]);
   // Anything a compose file refuses to start without must be generated, or
-  // the operator meets a `:?` error with no way to satisfy it. The one
-  // exception is an account credential nothing can mint locally: the graph
-  // worker's LLM key. Everything else, including the workers' own shared
-  // secrets, is a random string this stack invents for itself.
-  // …and the coordinates of a database the operator already owns, which
-  // `--database-url` copies in rather than invents.
+  // the operator meets a `:?` error with no way to satisfy it. The exceptions
+  // are the release tag an operator picks and the coordinates of a database
+  // the operator already owns, which `--database-url` copies in rather than
+  // invents. Everything else, including the crawler's own shared secrets, is a
+  // random string this stack invents for itself.
   const cannotBeMinted = [
-    "GRAPH_LLM_API_KEY",
     "CIELE_IMAGE_TAG",
     "EXTERNAL_DB_HOST",
     "EXTERNAL_DB_NAME",
@@ -826,19 +818,13 @@ try {
     assert.equal(envNow().COMPOSE_FILE, "", "no flags must leave every overlay off");
   });
 
-  check("--workers turns the overlay on and mints the three shared secrets", () => {
+  check("--workers turns the overlay on and mints the crawler's two secrets", () => {
     run("--workers");
     const env = envNow();
     assert.equal(env.COMPOSE_FILE, "docker-compose.yml:docker-compose.workers.yml");
-    const minted = [
-      env.GRAPH_WORKER_API_TOKEN,
-      env.CRAWL4AI_API_TOKEN,
-      env.CRAWL4AI_SECRET_KEY,
-    ];
+    const minted = [env.CRAWL4AI_API_TOKEN, env.CRAWL4AI_SECRET_KEY];
     for (const secret of minted) assert.match(secret, /^[0-9a-f]{64}$/);
-    assert.equal(new Set(minted).size, 3, "each worker credential must be its own secret");
-    // The fourth is an account key; bootstrap says so instead of inventing one.
-    assert.equal(env.GRAPH_LLM_API_KEY, "");
+    assert.equal(new Set(minted).size, 2, "each worker credential must be its own secret");
   });
 
   check("adding --images later keeps the workers overlay on", () => {

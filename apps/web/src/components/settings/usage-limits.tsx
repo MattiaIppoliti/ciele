@@ -159,9 +159,7 @@ export function UsageLimitsBlock({
         </p>
       </div>
       <p className="text-muted-foreground mt-1 text-sm">
-        Each meter is capped for the billing period and, more tightly, for each
-        week of it, so a busy few days cannot spend the whole period. Only
-        platform-funded work counts.
+        Each meter has a period cap and a weekly cap. Only work on platform keys counts.
       </p>
 
       {ownCredentialsOnly ? (
@@ -254,16 +252,11 @@ export function UnmeteredNotice({ plan }: { plan?: string }) {
       <CardContent className="text-muted-foreground space-y-2 text-sm">
         {plan ? (
           <p>
-            Every meter is currently uncapped, so assistants answer, index and
-            crawl without a ceiling. That is either a deliberate exemption on
-            your organization or a temporary state while billing details catch
-            up, your billing page has the plan itself.
+            Every meter is uncapped right now. Check your billing page for your plan.
           </p>
         ) : (
           <p>
-            Usage limits apply to organizations on a managed plan, where the
-            platform funds the model credentials. This deployment has no plan,
-            so assistants answer, index and crawl without a ceiling.
+            This deployment has no plan, so usage is unlimited.
           </p>
         )}
         <p>

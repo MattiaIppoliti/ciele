@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseAgenticTrace } from "@agent-hub/core";
 import type { InboxConversation, StoredMessage } from "@agent-hub/core";
+import { parseCsv } from "@ciele/ops/csv";
 import {
   conversationExportRows,
+  conversationSummaryCsv,
   messageContent,
   type ConversationExportRow,
 } from "./conversation-export";
@@ -369,5 +371,41 @@ describe("messageContent", () => {
         { type: "button", action: "show_button", label: "Open", buttonType: "external_link" },
       ])
     ).toBe("");
+  });
+});
+
+/**
+ * The flat conversation-list CSV behind the Inbox's Export CSV button: one
+ * row per Conversation and no transcripts. It is opened in a spreadsheet, so
+ * text somebody else typed must never run there as a formula.
+ */
+describe("conversationSummaryCsv", () => {
+  const SUMMARY_COLUMNS = [
+    "id", "assistant", "user", "role", "title", "collection", "messages",
+    "notificationOnly", "workflows", "feedback", "escalated", "language",
+    "location", "city", "os", "browser", "ip", "createdAt",
+  ];
+
+  it("writes the summary columns in order, one row per Conversation", () => {
+    const [header, row] = parseCsv(conversationSummaryCsv([conversation()]));
+    expect(header).toEqual(SUMMARY_COLUMNS);
+    expect(row[0]).toBe("c-1");
+    expect(row[header.indexOf("title")]).toBe("Where are the videos?");
+  });
+
+  it("still writes the header for an empty export", () => {
+    expect(parseCsv(conversationSummaryCsv([]))).toEqual([SUMMARY_COLUMNS]);
+  });
+
+  it("neutralises a Conversation title that a spreadsheet would run", () => {
+    const csv = conversationSummaryCsv([conversation({ title: '=HYPERLINK("http://evil","x")' })]);
+    const [header, row] = parseCsv(csv);
+    expect(row[header.indexOf("title")]).toBe(`'=HYPERLINK("http://evil","x")`);
+  });
+
+  it("keeps a comma and a quote in a value inside its own cell", () => {
+    const [header, row] = parseCsv(conversationSummaryCsv([conversation({ title: 'Refund, "urgent"' })]));
+    expect(row).toHaveLength(header.length);
+    expect(row[header.indexOf("title")]).toBe('Refund, "urgent"');
   });
 });

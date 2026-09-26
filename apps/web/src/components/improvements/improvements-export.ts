@@ -5,6 +5,7 @@ import {
   matchesImprovementFilters,
   type ImprovementFilters,
 } from "@/lib/improvements";
+import { recordsToCsv } from "@ciele/ops/csv";
 
 /**
  * The export path of the Improvements board, loaded with `import()` from the
@@ -46,13 +47,11 @@ function download(
       type: "application/json",
     });
   } else {
-    const headers = Object.keys(rows[0] ?? { key: "" });
-    const escape = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-    const csv = [
-      headers.join(","),
-      ...rows.map((r) => headers.map((h) => escape(r[h])).join(",")),
-    ].join("\n");
-    blob = new Blob([csv], { type: "text/csv" });
+    // Titles and tags are text other people typed, and the file is opened
+    // in a spreadsheet: `recordsToCsv` neutralises what would run there.
+    blob = new Blob([recordsToCsv(rows, rows.length ? undefined : ["key"])], {
+      type: "text/csv",
+    });
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

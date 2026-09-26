@@ -849,6 +849,15 @@ export interface Db {
     generationId: string;
   }): Promise<boolean>;
   listConcepts(collectionId: string): Promise<Concept[]>;
+  /**
+   * Sources whose active generation still holds a model-rewritten Concept
+   * (`generated.by` = `okf-enricher/...`), the input to the one-off verbatim
+   * re-ingest (ADR-0025). Cross-org, service role; at most `limit` Sources,
+   * in source id order, starting after the `after` cursor when given.
+   */
+  listEnrichedSources(limit: number, after?: string): Promise<
+    Array<{ sourceId: string; collectionId: string }>
+  >;
   /** Active, non-excluded FAQ titles reachable through Assistant Knowledge Links; no bodies. */
   listAssistantFaqOptions(assistantId: string): Promise<{ id: string; question: string }[]>;
   /** Stable id-cursor page of active Concepts for bounded inventory scans. */
@@ -1204,7 +1213,7 @@ export interface Db {
     conversationId: string
   ): Promise<InboxConversationReview>;
   getConversation(id: string): Promise<Conversation | null>;
-  /** The Conversation a message belongs to (for resolving a message's graph
+  /** The Conversation a message belongs to (for resolving a message's
    * Retrieval Trace + Collection); null if the message is unknown. */
   getConversationForMessage(messageId: string): Promise<Conversation | null>;
   setConversationPinned(id: string, pinned: boolean): Promise<void>;
@@ -1657,16 +1666,6 @@ export interface Db {
     from: string,
     to: string
   ): Promise<UsageSpenderRow[]>;
-  /** Cross-org: every Knowledge Collection whose assistant uses the graph
-   * engine, the datasets the nightly graph-learning cron sweeps. Service-role
-   * (spans orgs), like the other cron-claim reads. */
-  listActiveGraphDatasets(): Promise<
-    Array<{ organizationId: string; collectionId: string }>
-  >;
-  /** Atomically rotates through one bounded cron batch of active graph datasets. */
-  claimActiveGraphDatasets(limit: number): Promise<
-    Array<{ organizationId: string; collectionId: string }>
-  >;
   /** The org's daily budget, or null when none is configured. */
   getOrgBudget(organizationId: string): Promise<OrgBudget | null>;
   /** Create or update the org's budget (admins only via RLS). */

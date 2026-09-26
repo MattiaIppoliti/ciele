@@ -1,73 +1,72 @@
 ---
 title: File e testo
-description: Carica un file o aggiungi del testo e scegli quali Assistenti risponderanno in base a ciò.
+description: Carica un file o aggiungi del testo e scegli quali Assistenti rispondono sulla base di esso.
 ---
 
 ## Carica un file
 
-1. Apri l'Assistente.
+1. Apri l'Assistant.
 2. Seleziona **Knowledge**.
-3. Aggiungi una fonte di file.
+3. Aggiungi una Source di tipo file.
 4. Seleziona il file.
-5. Avvia l'acquisizione.
-6. Attendi che lo stato della Sorgente sia **Ready**.
-7. Prova una risposta e la sua citazione.
+5. Avvia l'ingestione.
+6. Attendi fino a quando lo stato di Source è **Ready**.
+7. Verifica una risposta e la sua citazione.
 
 Ciele memorizza il file originale ed estrae il testo supportato per
-l'ingestione. Lo stato Source mostra se l'estrazione e l'indicizzazione sono
+l'ingestione. Lo stato Source indica se l'estrazione e l'indicizzazione sono
 state completate.
 
-## File rifiutati da Ciele
+## File che Ciele rifiuta
 
-Prima di leggere un documento, Ciele controlla il contenuto del file, non solo
-il nome. Rifiuta:
+Ciele verifica il contenuto del file, non solo il nome del file, prima di
+leggere un documento. Rifiuta:
 
 - un file il cui contenuto non corrisponde alla sua estensione, ad esempio una
   pagina HTML denominata `.pdf`
-- un programma, qualunque sia il nome del file
-- un file Office che contiene un progetto macro o un oggetto incorporato
+- un programma, indipendentemente dal nome del file
+- un file di Office che contiene un progetto macro o un oggetto incorporato
 - un PDF con più di 2000 pagine
 
-Salva il documento senza macro o oggetti incorporati, oppure suddividi un PDF
-lungo e caricalo di nuovo.
+Salva il documento senza macro o oggetti incorporati, oppure dividi un PDF lungo
+e caricalo di nuovo.
 
-## Aggiungi testo incollato
+## Aggiungi il testo incollato
 
-Utilizza una Fonte di testo per contenuti brevi che non richiedono un file
+Utilizza una Source di tipo testo per contenuti brevi che non richiedono un file
 separato.
 
-1. Aggiungi una fonte di testo.
-2. Inserisci un nome opzionale per la fonte.
+1. Aggiungi una Source di tipo testo.
+2. Inserisci un nome della Source facoltativo.
 3. Incolla il testo.
-4. Avvia l'importazione.
+4. Avvia l'ingestione.
 
-Usa un nome di origine stabile. Il nome può apparire nelle citazioni dei
-visitatori.
+Usa un nome Source stabile. Il nome può comparire nelle citazioni dei Visitor.
 
 ## Sostituisci i contenuti obsoleti
 
-Elimina la vecchia Fonte prima di fare affidamento su una sostituzione. Quindi
-conferma che la nuova Fonte sia **Ready** e produca citazioni corrette.
+Elimina la vecchia Source prima di affidarti a una sostituzione. Quindi verifica
+che la nuova Source sia **Ready** e produca citazioni corrette.
 
-L'eliminazione della fonte rimuove i suoi concetti dal grafo della conoscenza
-attivo e dall'indice di ricerca.
+L'eliminazione di una Source rimuove i relativi Documents dall'indice di ricerca
+attivo.
 
-## Rimuovere rispetto a eliminare
+## Rimuovi rispetto a Elimina
 
-Una Source di file può rispondere per più di un Assistente. L'editor Assistant
-offre quindi due operazioni.
+Una Source di tipo file può rispondere per più di un Assistant. L'editor
+dell'Assistente offre quindi due operazioni.
 
-- **Remove from this Assistant** elimina un collegamento. Gli altri Assistenti
+- **Remove from this Assistant** elimina un link. Gli altri Assistenti
   conservano il file.
-- **Delete** rimuove la Sorgente per ogni Assistente collegato. La conferma
-  indica il nome di ciascuno.
+- **Delete** rimuove la Source per ogni Assistant collegato. La conferma indica
+  il nome di ciascuno.
 
 Quando solo questo Assistente risponde dal file, l'editor lo elimina
 direttamente.
 
-## Consegna il file originale al Visitatore
+## Fornisci al Visitor il file originale
 
-Attiva **Direct access** nella [Libreria](/knowledge/library) per consentire
+Attiva **Direct access** nella [Library](/knowledge/library) per consentire
 all'Assistente di allegare il file originale alla sua citazione. L'impostazione
-si applica a un collegamento all'Assistente ed è disattivata per impostazione
+si applica a un singolo link dell'Assistente ed è disattivata per impostazione
 predefinita.

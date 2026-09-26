@@ -932,8 +932,7 @@ export function ChannelPanel({
                 <div>
                   <p className="font-semibold">Channel name</p>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Displayed as a button in the escalation menu. Users click
-                    this as a button name to select this method.
+                    The button label in the escalation menu.
                   </p>
                   <Input
                     value={name}
@@ -1038,8 +1037,7 @@ export function ChannelPanel({
                   <div>
                     <p className="font-semibold">Channel name</p>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Displayed as a button in the escalation menu. Users click
-                      this as a button name to select this method.
+                      The button label in the escalation menu.
                     </p>
                     <Input
                       value={channel.name}

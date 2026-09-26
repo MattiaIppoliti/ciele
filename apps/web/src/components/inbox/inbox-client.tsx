@@ -78,6 +78,8 @@ import {
 import { formatDateTime } from "@/lib/format";
 import { reviewDecisionLabel } from "@/lib/review-status";
 import { EmptyState } from "@/components/ui/empty-state";
+import { conversationSummaryCsv } from "@/lib/inbox/conversation-export";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 // Transcript-only UI stays out of the Inbox list's initial bundle. In
 // particular ChatMarkdown owns syntax highlighting, which is wasted until a
@@ -829,34 +831,7 @@ export function InboxClient({
       const result = await exportInboxSummariesAction(
         inboxQueryFromFilters({ ...filters, search }),
       );
-      const rows = result.conversations.map((c) => ({
-        id: c.id,
-        assistant: c.assistantTitle,
-        user: c.metadata.userEmail ?? c.subjectId,
-        role: c.metadata.userRole ?? "",
-        title: c.title,
-        collection: c.collectionName ?? "",
-        messages: c.messageCount,
-        notificationOnly: c.notificationOnly ? "yes" : "no",
-        workflows: c.flowNames.join("; "),
-        feedback: c.feedback === 1 ? "up" : c.feedback === -1 ? "down" : "",
-        escalated: c.metadata.escalated ? "yes" : "no",
-        language: c.metadata.language ?? "",
-        location: c.metadata.location ?? "",
-        city: c.metadata.city ?? "",
-        os: c.metadata.os ?? "",
-        browser: c.metadata.browser ?? "",
-        ip: c.metadata.ip ?? "",
-        createdAt: c.createdAt,
-      }));
-      const headers = Object.keys(rows[0] ?? { id: "" });
-      const escape = (v: unknown) => `"${String(v).replaceAll('"', '""')}"`;
-      const csv = [
-        headers.join(","),
-        ...rows.map((r) =>
-          headers.map((h) => escape(r[h as keyof typeof r])).join(","),
-        ),
-      ].join("\n");
+      const csv = conversationSummaryCsv(result.conversations);
       download(csv, "text/csv", "conversations.csv");
       if (result.truncated) {
         toast.warning(
@@ -909,7 +884,7 @@ export function InboxClient({
           className="text-2xl font-bold tracking-tight"
           data-testid="inbox-heading"
         >
-          Inbox
+          <RollInText text="Inbox" />
         </h1>
         {canOverseeChannels && (
           <Link
@@ -1105,9 +1080,9 @@ export function InboxClient({
                 value={filters.feedback}
                 placeholder="All Feedbacks"
                 options={[
-                  { value: "up", label: "Positive 🙂" },
-                  { value: "neutral", label: "Neutral 😐" },
-                  { value: "down", label: "Negative 🙁" },
+                  { value: "up", label: "Positive 🥰" },
+                  { value: "neutral", label: "Neutral 😶‍🌫️" },
+                  { value: "down", label: "Negative 🤬" },
                 ]}
                 onChange={(feedback) =>
                   setFilters({ ...filters, feedback: feedback as InboxFilters["feedback"] })

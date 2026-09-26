@@ -5,8 +5,8 @@ description: Verwenden Sie einen einzigen API-Schlüssel für die Ciele API, die
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
-Ciele bietet drei Schnittstellen für die programmatische Administration. Jede
-Schnittstelle verwendet dieselben Operationen und Rollenprüfungen wie die
+Ciele stellt drei Schnittstellen für die programmatische Administration bereit.
+Jede Schnittstelle verwendet dieselben Operationen und Rollenprüfungen wie die
 Administrator-Konsole.
 
 Um die Operation hinter einem Steuerelement der Konsole zu ermitteln, öffnen Sie
@@ -22,8 +22,8 @@ auf der entsprechenden Seite das [Developer Panel](/developers/developer-panel).
 
 ## Gemeinsames Verbindungsmodell
 
-Alle drei Schnittstellen erfordern einen Organization API Key. Die zugewiesene
-Rolle bestimmt die Operationen, die mit dem Schlüssel ausgeführt werden dürfen.
+Alle drei Schnittstellen erfordern einen Organization API key. Die zugewiesene
+Role steuert die Operationen, die der Schlüssel verwenden kann.
 
 <Mermaid
   title="Drei Clients, eine API, ein Satz von Operationen"
@@ -56,5 +56,5 @@ Die [API reference](/api-reference) listet alle verfügbaren
 `/api/v1`-Operationen nach Domain auf.
 
 Die API stellt nicht alle Funktionen der Konsole bereit. Beispielsweise sind das
-Hochladen von Avataren und das Erstellen von Verbesserungen weiterhin nur in der
-Konsole möglich.
+Hochladen von Avataren und das Erstellen von Verbesserungen weiterhin
+ausschließlich über die Konsole möglich.

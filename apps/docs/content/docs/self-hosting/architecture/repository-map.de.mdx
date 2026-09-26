@@ -5,40 +5,39 @@ description: Suchen Sie die aktuelle Open-Source-Anwendung, die Pakete, die Work
 
 ## Anwendungen
 
-| Pfad | Verantwortung |
+| Pfad | Zuständigkeit |
 | --- | --- |
-| `apps/web` | Administratorkonsole, Widget-Laufzeit, öffentliche Seiten, Serveraktionen und API v1. |
-| `apps/docs` | Fumadocs-Dokumentationsanwendung und Übersetzungs-Pipeline. |
+| `apps/web` | Administrator Console, Widget Runtime, Public Pages, Server Actions und API v1. |
+| `apps/docs` | Fumadocs-Dokumentationsanwendung und Übersetzungspipeline. |
 
 ## Gemeinsam genutzte Pakete
 
-| Pfad | Verantwortung |
+| Path | Verantwortlichkeit |
 | --- | --- |
-| `packages/core` | Domänentypen, reine Flow-Regeln, Standardeinstellungen, Bedingungen und Analyselogik. |
-| `packages/db` | Persistenz-Schnittstellen, Mock-Speicher und Supabase-Implementierung. |
-| `packages/agent` | Turn-Ausführung, Modell-Provider, Wissens-Tools, Aufnahme und Auswertung. |
-| `packages/ops` | Vorgänge der gemeinsamen Organisation, die von Konsolenaktionen und API v1 verwendet werden. |
-| `packages/client` | Typisierter Client für API v1. |
-| `packages/cli` | Terminalschnittstelle über den typisierten Client. |
-| `packages/mcp` | Lokaler MCP-Adapter mit 14 Tools über den typisierten Client. |
+| `packages/core` | Domain-Typen, reine Flow-Regeln, Standardwerte, Bedingungen und Analytiklogik. |
+| `packages/db` | Persistenzschnittstellen, Mock-Speicher und Supabase-Implementierung. |
+| `packages/agent` | Ausführung von Turns, Modellanbieter, Knowledge-Tools, Ingestion und Evaluation. |
+| `packages/ops` | Von Console-Aktionen und API v1 verwendete gemeinsame Organisation-Operationen. |
+| `packages/client` | Typed client für API v1. |
+| `packages/cli` | Terminal-Schnittstelle über den Typed Client. |
+| `packages/mcp` | Lokaler MCP-Adapter mit vierzehn Tools über den Typed Client. |
 | `packages/ui` | Gemeinsam genutzte Komponenten der Benutzeroberfläche. |
-| `packages/charts` | Gemeinsam genutzte Analysevisualisierungen. |
+| `packages/charts` | Gemeinsam genutzte Analytics-Visualisierungen. |
 
-## Dienste und Infrastruktur
+## Services und Infrastruktur
 
-| Pfad | Verantwortlichkeit |
+| Path | Zuständigkeit |
 | --- | --- |
-| `services/graph-worker` | Optionaler Dienst zur Extraktion und zum Abruf von Graphen. |
-| `services/crawl4ai` | Optionale Konfiguration des JavaScript-Rendering-Crawlers. |
+| `services/crawl4ai` | Optionale Konfiguration des Crawlers für das JavaScript-Rendering. |
 | `supabase/migrations` | Geordnete Änderungen am Datenbankschema. |
-| `deploy` | Docker-Compose-Bereitstellung auf einem einzelnen Host und Bootstrap-Skripte. |
+| `deploy` | Single-Host-Docker-Compose-Bereitstellung und Bootstrap-Skripte. |
 
-## Abhängigkeitsrichtung
+## Richtung der Abhängigkeiten
 
-Reine Regeln gehören in `packages/core`. Das Persistenzverhalten gehört in
+Pure Rules gehören in `packages/core`. Das Persistenzverhalten gehört in
 `packages/db`.
 
-Wiederverwendbare Mutationen gehören in `packages/ops`. Modell- und
+Wiederverwendbare Mutationen gehören in `packages/ops`. Das Modell- und
 Abrufverhalten gehört in `packages/agent`.
 
 Surface-Adapter in `apps/web`, `packages/cli` und `packages/mcp` dürfen kein

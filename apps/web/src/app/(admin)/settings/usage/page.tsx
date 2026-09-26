@@ -249,8 +249,7 @@ export default async function UsageSettingsPage() {
             <CardHeader>
               <CardTitle>Other work</CardTitle>
               <CardDescription>
-                Outbound calls, emails and inbound runs your Flows performed.
-                These cost no credits, so they are counted rather than priced.
+                Calls, emails and runs your Flows made. They cost no credits.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -333,9 +332,7 @@ export default async function UsageSettingsPage() {
           <CardHeader>
             <CardTitle>Platform vs your own credentials</CardTitle>
             <CardDescription>
-              Platform-funded work runs on the platform&apos;s keys and counts
-              against your plan; work on your own API keys or federated
-              credentials is yours end to end and is never counted.
+              Only work on platform keys counts against your plan. Your own keys are never counted.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
@@ -365,9 +362,7 @@ export default async function UsageSettingsPage() {
           <CardContent>
             {rows.length === 0 ? (
               <p className="text-muted-foreground py-4 text-sm">
-                No usage recorded yet. Usage appears here as soon as an
-                assistant answers a message, indexes knowledge, or crawls a
-                website.
+                No usage yet. It appears once an assistant answers, indexes or crawls.
               </p>
             ) : (
               <TableCard

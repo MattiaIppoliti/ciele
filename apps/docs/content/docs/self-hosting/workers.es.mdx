@@ -1,78 +1,84 @@
 ---
-title: Procesos de fondo
-description: Habilita los servicios opcionales de rastreo para la recuperación de grafos y la renderización de JavaScript.
+title: Procesos en segundo plano
+description: Habilita el servicio opcional de rastreo con renderizado de JavaScript.
 ---
 
-La pila predeterminada no inicia los trabajadores. La búsqueda y la ingesta de
-sitios web continúan con capacidades reducidas.
+La pila predeterminada no inicia los workers. La ingesta del sitio web continúa
+con capacidades reducidas.
 
-Sin el trabajador de grafos, Knowledge utiliza la recuperación vectorial y
-léxica. Sin Crawl4AI, Ciele utiliza su rastreador de búsqueda integrado.
+Sin Crawl4AI, Ciele utiliza su rastreador de recuperación integrado. El
+rastreador integrado lee bien las páginas renderizadas en el servidor. Es menos
+eficaz en páginas que requieren JavaScript.
 
-Los trabajadores son un archivo Compose independiente,
+Los workers están en un archivo Compose independiente,
 `deploy/docker-compose.workers.yml`. La pila lee ese archivo solo cuando
-`COMPOSE_FILE` lo enumera.
+`COMPOSE_FILE` lo incluye en su lista.
 
-## Habilita los trabajadores
+## Habilita los workers
 
-Ejecuta el script de arranque con la opción `--workers`:
+Ejecuta el script de bootstrap con la opción `--workers`:
 
 ```bash
 ./deploy/bootstrap.sh --workers
 ```
 
-El script añade el archivo a `COMPOSE_FILE` en `deploy/.env`. También genera
-tres de las cuatro credenciales:
+El script añade el archivo a `COMPOSE_FILE` en `deploy/.env`. También genera las
+dos credenciales del rastreador:
 
 ```dotenv
 COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
-GRAPH_WORKER_API_TOKEN=<generated>
 CRAWL4AI_API_TOKEN=<generated>
 CRAWL4AI_SECRET_KEY=<generated>
 ```
 
-El trabajador de grafos también necesita una clave para su propio proveedor de
-modelos. El script no puede generar esta clave. Establece `GRAPH_LLM_API_KEY` en
-`deploy/.env` y, a continuación, vuelve a ejecutar el comando.
-
 La opción `--workers` y la opción `--images` son independientes. Ninguna de las
 opciones desactiva a la otra.
 
-Los dos trabajadores pueden requerir aproximadamente 8 GiB de memoria. Mide el
-uso real en el host que hayas seleccionado.
+El rastreador puede necesitar aproximadamente 4 GiB de memoria. Mide el uso real
+en el host que hayas seleccionado.
 
-## Comprueba el estado del proceso de trabajo
+## Comprueba el estado del worker
 
 Incluye el archivo workers en cada comando:
 
 ```bash
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml ps
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml logs -f graph-worker crawl4ai
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml logs -f crawl4ai
 ```
 
-No expongas los puertos ni los tokens de los trabajadores a la red pública.
+No expongas los puertos ni los tokens de los workers a la red pública.
 
-## Desactiva los trabajadores
+## Deshabilita los workers
 
 Elimina `docker-compose.workers.yml` de `COMPOSE_FILE` en `deploy/.env`. A
-continuación, elimina los dos contenedores:
+continuación, elimina el contenedor:
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d --remove-orphans
 ```
 
-## Trabajos de memoria a largo plazo
+## Actualiza desde una versión con el worker de grafos
 
-La memoria a largo plazo utiliza el registro de trabajos duradero integrado. No
-requiere los trabajadores opcionales.
+Las versiones anteriores también iniciaban un worker de grafo a partir de este
+archivo. Se elimina el motor de grafos. La búsqueda de conocimiento ahora
+utiliza el índice de la base de datos y un paso de reordenación.
 
-Cada turno conectado programa un trabajo `promote_memories` después de una
-ventana de inactividad de 15 minutos. El perfil `cron` drena estos trabajos a
+Después de actualizar, ejecuta el comando `--remove-orphans` que aparece arriba
+una sola vez. Detiene el contenedor antiguo `graph-worker`. También puedes
+eliminar las variables antiguas `GRAPH_*` de `deploy/.env`.
+
+## Tareas de memoria a largo plazo
+
+La memoria a largo plazo utiliza el registro de trabajos duraderos integrado. No
+requiere los workers opcionales.
+
+Cada turno con sesión iniciada programa una tarea `promote_memories` tras un
+período de inactividad de 15 minutos. El perfil `cron` procesa estas tareas a
 través de la ruta programada existente.
 
 Mantén `cron` en `COMPOSE_PROFILES` cuando la memoria a largo plazo esté
 habilitada. La configuración predeterminada de autoalojamiento ya lo incluye.
 
-El trabajo omite la extracción cuando la memoria está desactivada o cuando se
-agota el presupuesto diario de tokens. También se omite cuando no existe una
+La tarea omite la extracción cuando la memoria está deshabilitada o cuando se
+agota el presupuesto diario de tokens. También lo omite cuando no existe ninguna
 conexión de modelo adecuada.

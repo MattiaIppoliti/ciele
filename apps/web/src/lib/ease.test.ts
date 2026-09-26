@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  SPRING_CARET,
   SPRING_LAYOUT,
   SPRING_MOUSE,
   SPRING_PANEL,
@@ -42,6 +43,7 @@ const ALL = {
   SPRING_PANEL,
   SPRING_LAYOUT,
   SPRING_MOUSE,
+  SPRING_CARET,
   SPRING_THROW,
 };
 

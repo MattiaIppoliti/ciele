@@ -1,19 +1,20 @@
 ---
-title: Hintergrund-Worker
-description: Aktivieren Sie die optionalen Crawl-Dienste für Graph-Abruf und JavaScript-Rendering.
+title: Hintergrundprozesse
+description: Aktivieren Sie den optionalen Crawl-Dienst für das JavaScript-Rendering.
 ---
 
-Der Standard-Stack startet die Worker nicht. Die Suche und die Website-Erfassung
-werden mit eingeschränkten Funktionen fortgesetzt.
+Der Standard-Stack startet die Worker nicht. Die Website-Erfassung wird mit
+eingeschränkten Funktionen fortgesetzt.
 
-Ohne den Graph-Worker verwendet Knowledge Vektor- und lexikalische Abfrage. Ohne
-Crawl4AI verwendet Ciele seinen integrierten Fetch-Crawler.
+Ohne Crawl4AI verwendet Ciele seinen integrierten Fetch-Crawler. Der integrierte
+Crawler liest servergerenderte Seiten gut aus. Er ist schwächer bei Seiten, die
+JavaScript benötigen.
 
 Die Worker sind eine separate Compose-Datei,
 `deploy/docker-compose.workers.yml`. Der Stack liest diese Datei nur, wenn
 `COMPOSE_FILE` sie auflistet.
 
-## Aktivieren Sie die Worker
+## Worker aktivieren
 
 Führen Sie das Bootstrap-Skript mit der Option `--workers` aus:
 
@@ -22,59 +23,62 @@ Führen Sie das Bootstrap-Skript mit der Option `--workers` aus:
 ```
 
 Das Skript fügt die Datei zu `COMPOSE_FILE` in `deploy/.env` hinzu. Es generiert
-auch drei der vier Anmeldeinformationen:
+außerdem die beiden Crawler-Anmeldeinformationen:
 
 ```dotenv
 COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
-GRAPH_WORKER_API_TOKEN=<generated>
 CRAWL4AI_API_TOKEN=<generated>
 CRAWL4AI_SECRET_KEY=<generated>
 ```
 
-Der Graph-Worker benötigt außerdem einen Schlüssel für seinen eigenen
-Modell-Provider. Das Skript kann diesen Schlüssel nicht generieren. Legen Sie
-`GRAPH_LLM_API_KEY` in `deploy/.env` fest und führen Sie den Befehl dann erneut
-aus.
-
-Die Option `--workers` und die Option `--images` sind unabhängig voneinander.
+Die Option `--workers` und die Option `--images` sind voneinander unabhängig.
 Keine der beiden Optionen deaktiviert die andere.
 
-Die beiden Worker benötigen möglicherweise etwa 8 GiB Speicher. Messen Sie die
+Der Crawler kann etwa 4 GiB Arbeitsspeicher benötigen. Messen Sie die
 tatsächliche Nutzung auf Ihrem ausgewählten Host.
 
-## Überprüfen Sie den Status des Workers
+## Worker-Status prüfen
 
 Fügen Sie die Datei „workers“ in jeden Befehl ein:
 
 ```bash
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml ps
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml logs -f graph-worker crawl4ai
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml logs -f crawl4ai
 ```
 
-Stellen Sie Worker-Ports oder -Token nicht dem öffentlichen Netzwerk zur
-Verfügung.
+Stellen Sie Worker-Ports oder -Token nicht im öffentlichen Netzwerk bereit.
 
-## Deaktivieren Sie die Worker
+## Worker deaktivieren
 
 Entfernen Sie `docker-compose.workers.yml` aus `COMPOSE_FILE` in `deploy/.env`.
-Entfernen Sie anschließend die beiden Container:
+Entfernen Sie anschließend den Container:
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d --remove-orphans
 ```
 
+## Upgrade von einer Version mit dem Graph Worker durchführen
+
+In früheren Versionen wurde ebenfalls ein Graph-Worker aus dieser Datei
+gestartet. Die Graph-Engine wird entfernt. Die Knowledge Search verwendet jetzt
+den Datenbankindex und einen Reranking-Schritt.
+
+Führen Sie nach dem Upgrade den oben genannten Befehl `--remove-orphans` einmal
+aus. Es stoppt den alten `graph-worker`-Container. Sie können auch die alten
+`GRAPH_*`-Variablen aus `deploy/.env` löschen.
+
 ## Langzeitspeicher-Jobs
 
-Der Langzeitspeicher verwendet das integrierte dauerhafte Job-Ledger. Es sind
+Der Langzeitspeicher verwendet das integrierte, dauerhafte Job-Ledger. Es sind
 keine optionalen Worker erforderlich.
 
-Jeder angemeldete Turn plant nach einem 15-minütigen Ruhefenster einen
-`promote_memories`-Job. Das Profil `cron` leitet diese Jobs über die bestehende
-geplante Route ab.
+Jede angemeldete Runde plant einen `promote_memories`-Job nach einem
+15-minütigen Ruhefenster ein. Das `cron`-Profil verarbeitet diese Jobs über die
+vorhandene geplante Route.
 
-Behalten Sie `cron` in `COMPOSE_PROFILES` bei, wenn der Langzeitspeicher
-aktiviert ist. Die standardmäßige Self-Host-Konfiguration enthält dies bereits.
+Lassen Sie `cron` in `COMPOSE_PROFILES` aktiviert, wenn der Langzeitspeicher
+aktiviert ist. Die Standardkonfiguration für Self-Hosting enthält dies bereits.
 
 Der Job überspringt die Extraktion, wenn der Speicher deaktiviert ist oder das
-tägliche Token-Budget aufgebraucht ist. Er wird auch übersprungen, wenn keine
+tägliche Token-Budget aufgebraucht ist. Es wird auch übersprungen, wenn keine
 geeignete Modellverbindung vorhanden ist.

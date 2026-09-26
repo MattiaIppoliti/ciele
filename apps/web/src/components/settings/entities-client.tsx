@@ -12,6 +12,7 @@ import {
 import { EntityImportDialog } from "./entity-import-dialog";
 import { EntityRecordsDialog } from "./entity-records-dialog";
 import { EntitySyncDialog } from "./entity-sync-dialog";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 type EntityWithCount = Entity & { recordCount: number };
 
@@ -28,10 +29,9 @@ export function EntitiesClient({
     <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Data</h1>
+          <h1 className="text-xl font-semibold"><RollInText text="Data" /></h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Entities describe structured business data through typed attributes
-            over records imported from CSV or synchronized from REST/JSON.
+            Structured business data, imported from CSV or synced from a REST API.
           </p>
         </div>
         {canEdit && <Button onClick={() => setCreateOpen(true)}>New entity</Button>}

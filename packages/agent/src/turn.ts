@@ -910,12 +910,9 @@ export async function streamConversationTurn(
   const turnLeaseToken = turnClaim.leaseToken;
 
   const collectionId = input.collectionId ?? conversation.collectionId ?? null;
-  // The one retrieval port: embedding + vector + the Knowledge Engine choice
-  // (ADR-0017, Graph primary, vector same-call fallback) live behind
-  // buildKnowledgeSearcher, the same factory every other retrieval caller
-  // uses. The graph QA id for this turn is captured for the feedback
-  // substrate (#389).
-  let graphQaId: string | null = null;
+  // The one retrieval port: embedding, hybrid search and the rerank stage
+  // (ADR-0025) live behind buildKnowledgeSearcher, the same factory every
+  // other retrieval caller uses.
   /**
    * A Teammate with an empty Knowledge Scope gets NO searcher, which is what
    * leaves the tool unregistered downstream (`buildToolset`): a pure-persona
@@ -931,9 +928,6 @@ export async function streamConversationTurn(
         collectionId,
         conversationId: conversation.id,
         waitForIndexing: assistant.tools.studyMode?.enabled === true,
-        onTrace: (qaId) => {
-          graphQaId = qaId;
-        },
         usage: { spenders: usageSpenders, surface: usageSurface },
       });
 
@@ -1649,14 +1643,6 @@ export async function streamConversationTurn(
             toolCalls: teammateExecution?.toolCalls ?? observer.toolCalls,
           },
           afterPersist: async (messageId) => {
-            // Record the graph Retrieval Trace's QA id against this answer's
-            // message id, so the feedback loop (#389) can score exactly the
-            // graph elements that produced it. Persisted via the session bag
-            // below (no schema change); only set when a graph search ran.
-            if (graphQaId) {
-              const existing = (session.get("graphQa") as Record<string, string>) ?? {};
-              session.set("graphQa", { ...existing, [messageId]: graphQaId });
-            }
             // AI usage ledger, written post-commit and isolated like session
             // state: losing accounting must never break the chat.
             // A gate decision is spend of the turn that made it (#848), so it

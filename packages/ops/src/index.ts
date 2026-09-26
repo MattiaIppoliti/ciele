@@ -10,7 +10,7 @@
  */
 
 export type { MutatedEntity } from "./entities";
-export { escapeCsvField, parseCsv } from "./csv";
+export { escapeCsvField, parseCsv, recordsToCsv, tableToCsv } from "./csv";
 export {
   OperationError,
   defineOperation,
@@ -125,6 +125,14 @@ export {
   requestApplicationReconsentOp,
 } from "./applications";
 export type { ApplicationConnectionView } from "./applications";
+export {
+  createApplicationImportOp,
+  deleteApplicationImportOp,
+  setApplicationImportAssistantsOp,
+  setApplicationImportEnabledOp,
+  syncApplicationImportNowOp,
+  updateApplicationImportConfigurationOp,
+} from "./application-imports";
 
 // Teammates domain (#768): the org's internal AI colleagues. Ownership and
 // visibility are enforced here, over the domain package's pure rules.

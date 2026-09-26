@@ -92,7 +92,7 @@ describe("pre-flight fixtures through the SDK", () => {
       }),
       backend: "adapter",
       provider: "anthropic",
-      modelId: "claude-haiku-4-5",
+      modelId: "claude-sonnet-5",
       credentialKind: "api_key",
       calibrated: false,
     };

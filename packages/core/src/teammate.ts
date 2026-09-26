@@ -212,10 +212,6 @@ export function rosterTeammates<
  * The `id` is the Teammate's, which makes it wrong to write into any column
  * that references an Assistant. The runtime attributes a Teammate turn's
  * telemetry and usage to no Assistant at all (#768).
- *
- * `knowledgeEngine` is vector because the Knowledge Graph is derived per
- * Assistant (ADR-0017) and a Teammate is not one; its retrieval is the
- * pgvector search over the Collections in its scope.
  */
 export function teammateRuntimeAssistant(teammate: Teammate): Assistant {
   return {
@@ -244,7 +240,6 @@ export function teammateRuntimeAssistant(teammate: Teammate): Assistant {
     helpDeskSettings: {},
     tools: {},
     requireSignIn: false,
-    knowledgeEngine: "vector",
     createdAt: teammate.createdAt,
     updatedAt: teammate.updatedAt,
   };

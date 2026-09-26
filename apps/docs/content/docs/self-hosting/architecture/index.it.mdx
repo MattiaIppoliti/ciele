@@ -1,12 +1,12 @@
 ---
 title: Architettura
-description: Comprendere i componenti open source attuali e i loro limiti di runtime.
+description: Comprendi gli attuali componenti open-source e i loro confini di runtime.
 ---
 
-Ciele è un monorepo TypeScript con un'applicazione prodotto Next.js, pacchetti
-condivisi, Postgres e worker opzionali.
+Ciele è un monorepo TypeScript con una singola applicazione prodotto Next.js,
+pacchetti condivisi, Postgres e worker opzionali.
 
-## Limiti principali
+## Confini principali
 
 <Mermaid
   title="Ogni richiesta raggiunge Postgres attraverso lo stesso livello di accesso ai dati"
@@ -27,28 +27,28 @@ flowchart TB
 `}
 />
 
-I worker opzionali vengono eseguiti parallelamente al runtime per il crawling e
-la creazione di grafi. Leggono lo stesso database e rimangono disattivati per
-impostazione predefinita. Vedi [Background workers](/self-hosting/workers).
+Un worker opzionale viene eseguito accanto al runtime per il crawling. Per
+impostazione predefinita, rimane disattivato. Consulta
+[Background workers](/self-hosting/workers).
 
-Il router Flow rimane autorevole. Un modello può classificare l'intento,
-generare azioni selezionate e chiamare strumenti registrati.
+Il Flow router rimane l'elemento autorevole. Un modello può classificare
+l'intento, generare azioni selezionate e richiamare strumenti registrati.
 
-Il modello non può sostituire l'ordine di Flow, le condizioni oggettive, la
-configurazione delle azioni, l'autorizzazione dell'organizzazione o i controlli
-di uscita dalla rete.
+Il modello non può sostituire l'ordine del Flow, le condizioni degli obiettivi,
+la configurazione delle azioni, l'autorizzazione dell'organizzazione o i
+controlli di egress di rete.
 
 ## Leggi l'architettura
 
-- La [mappa del repository](/self-hosting/architecture/repository-map) individua
-  la proprietà del codice.
-- [Request flows](/self-hosting/architecture/request-flows) tiene traccia delle
-  richieste di console, API e widget.
-- [Chat runtime](/self-hosting/architecture/chat-runtime) spiega i trigger, il
-  routing e le azioni.
-- Il [modello agentico](/self-hosting/architecture/agentic-model) spiega
-  l'esecuzione del modello e dello strumento.
+- [Repository map](/self-hosting/architecture/repository-map) indica la
+  titolarità del codice.
+- [Request flows](/self-hosting/architecture/request-flows) traccia le richieste
+  provenienti dalla console, dall'API e dai widget.
+- [Chat runtime](/self-hosting/architecture/chat-runtime) spiega trigger,
+  routing e azioni.
+- [Agentic model](/self-hosting/architecture/agentic-model) spiega l'esecuzione
+  del modello e degli strumenti.
 - [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) spiega
-  l'acquisizione e il recupero.
+  l'ingestione e il recupero.
 - [Data model](/self-hosting/architecture/data-model) spiega le relazioni tra
   tenant e Conversation.

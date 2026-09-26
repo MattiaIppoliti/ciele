@@ -187,8 +187,7 @@ export function ApiKeysClient({
       <div>
         <h2 className="text-lg font-semibold">Create key</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          The secret is shown once, right after creation. Store it somewhere
-          safe, it cannot be retrieved later.
+          The secret is shown only once. Store it somewhere safe.
         </p>
         <form onSubmit={handleCreate} className="mt-3 flex flex-wrap gap-2">
           <Input

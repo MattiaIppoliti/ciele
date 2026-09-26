@@ -58,7 +58,6 @@ describe("runtime public interface", () => {
       // Alert sourceKey registry: a deliberate widening so EE capability
       // implementations mint keys through the one namespace registry (#442).
       "alertKeys",
-      "backfillCollectionToGraph",
       "beginWebsiteCrawl",
       // The models a chat window may offer: the admin's allow-list intersected
       // with what the Organization's Provider Connections can actually run.
@@ -85,7 +84,6 @@ describe("runtime public interface", () => {
       "enqueueApplicationSyncJob",
       "enqueueDraftProposalJob",
       "enqueueEntitySyncJob",
-      "enqueueGraphSyncJob",
       "enqueueIngestJob",
       "enqueueReviewResumptionJob",
       // Slack mention replies (#857): enqueue from the signed route, the
@@ -94,15 +92,15 @@ describe("runtime public interface", () => {
       // The memories backfill (#933): the console's only way to ask for
       // extraction over knowledge that predates the layer.
       "enqueueStaleDocumentMemoryExtractions",
+      // The one-off verbatim re-ingest (ADR-0025), behind a manual cron route.
+      "enqueueVerbatimReingests",
       "expireDueReviews",
       "expireDueWebhooks",
       "extractSourceText",
-      "feedbackScore",
       // The two scheduled drains. The cron endpoints in apps/web are auth-and-
       // serialize adapters over these, so the tick's policy is tested here.
       "finalizeDueCrawls",
       "finalizeWebsiteCrawl",
-      "forwardGraphFeedback",
       "getEnterpriseCapabilities",
       "loadConnectorOptions",
       "persistConcept",
@@ -124,7 +122,7 @@ describe("runtime public interface", () => {
       "runDetectionRules",
       "runDueAgenticOps",
       // The one per-kind drain still public: apps/web's reingest test drives
-      // it directly. Its siblings (graph-sync / proposals / memories /
+      // it directly. Its siblings (proposals / memories /
       // entity-sync) are composed only by finalizeDueCrawls and stay internal.
       "runDueIngestJobs",
       // The unattended Routine drain (#772): its own schedule, so it is not a
@@ -133,7 +131,6 @@ describe("runtime public interface", () => {
       "runDueRoutines",
       "runDueSlackMentionJobs",
       "runDueWebhookJobs",
-      "runGraphLearning",
       "runHttpFlow",
       "runPreflightDriftReplay",
       "runSecurityDetections",
@@ -192,6 +189,8 @@ describe("runtime public interface", () => {
       // The channel chain's consumer (#778), over the same fold.
       "consumeChannelStream",
       "consumeTurnStream",
+      // A retired model id's successor (Haiku, gpt-5.1-mini), for the picker.
+      "currentModelId",
       "decodeRuntimeEvents",
       "foldTraceEvent",
       // The Reply Component shape rules, shared with the chat clients.

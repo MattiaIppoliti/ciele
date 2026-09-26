@@ -15,7 +15,7 @@ const GPT: ModelRef = { provider: "openai", modelId: "gpt-5.1" };
 describe("sameModel", () => {
   it("compares both halves", () => {
     expect(sameModel(SONNET, { ...SONNET })).toBe(true);
-    expect(sameModel(SONNET, { ...SONNET, modelId: "claude-haiku-4-5" })).toBe(
+    expect(sameModel(SONNET, { ...SONNET, modelId: "claude-opus-4-8" })).toBe(
       false
     );
     expect(sameModel(SONNET, { ...SONNET, provider: "openai" })).toBe(false);

@@ -5,7 +5,6 @@ import type {
   AssistantPatch,
   FlowPatch,
   HelpDeskSettings,
-  KnowledgeEngine,
   Provider,
   QuickReplyButton,
 } from "@agent-hub/core";
@@ -95,7 +94,6 @@ export const assistantPatchSchema = z
       if (!parsed.success) ctx.addIssue({ code: "custom", message: "Study Mode needs at least one distinct supported format and instructions up to 10000 characters.", path: ["studyMode"] });
     }),
     requireSignIn: z.boolean(),
-    knowledgeEngine: z.custom<KnowledgeEngine>((v) => typeof v === "string"),
   })
   .partial() satisfies z.ZodType<AssistantPatch, AssistantPatch>;
 
@@ -180,9 +178,8 @@ export const deleteAssistantOp = defineOperation({
     await requireAssistant(ctx, id);
     // PRD #726 contract: knowledge is org-owned and shared through
     // assistant↔source links, so deleting an Assistant only drops its links
-    // (FK cascade), Collections, Concepts, and their derived graph datasets
-    // survive for every other linked Assistant. Dataset purging moved to
-    // Collection deletion.
+    // (FK cascade), Collections and Concepts survive for every other linked
+    // Assistant.
     await ctx.db.deleteAssistant(id);
   },
 });

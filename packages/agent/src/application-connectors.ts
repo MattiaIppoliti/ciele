@@ -2,6 +2,7 @@ import type {
   ApplicationConnection,
   ApplicationImport,
   ApplicationProvider,
+  ApplicationScopeOption,
 } from "@agent-hub/core";
 
 /** Provider-neutral content unit returned by every read-only Connector. */
@@ -50,13 +51,9 @@ export interface ApplicationCredentials {
   password?: string;
 }
 
-export interface ApplicationScopeOption {
-  id: string;
-  label: string;
-  kind: "language" | "category" | "knowledge_base" | "channel" | "drive" | "folder";
-  parentId: string | null;
-  metadata: Record<string, unknown>;
-}
+// The domain owns the scope shape (ADR-0019); re-exported so the runtime's
+// callers keep their import.
+export type { ApplicationScopeOption } from "@agent-hub/core";
 
 export interface ApplicationScopeDiscoveryResult {
   scopes: ApplicationScopeOption[];

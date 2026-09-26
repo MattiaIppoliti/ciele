@@ -33,7 +33,6 @@ function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
     helpDeskSettings: { contactButtonLabel: "Get help" },
     tools: { builtIns: { remember: true } },
     requireSignIn: false,
-    knowledgeEngine: "graph",
     // Deliberately-excluded live fields:
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-06-01T00:00:00Z",
@@ -64,7 +63,6 @@ const EXPECTED_ASSISTANT_KEYS = [
   "helpDeskSettings",
   "tools",
   "requireSignIn",
-  "knowledgeEngine",
 ].sort();
 
 describe("buildPublicationConfig", () => {

@@ -75,12 +75,16 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
     ],
     insights: true,
   },
+  // Both editor kinds expire the whole editor subtree: every SETUP section is
+  // a nested route (`/assistants/{id}/knowledge`, `/flows`, …) that a page
+  // revalidation of the editor root never reaches, which is how a Knowledge
+  // write once left its own tab stale until an action routed around this table.
   flows: {
-    paths: (entity) => [{ path: `/assistants/${entity.assistantId}` }],
+    paths: (entity) => [{ path: `/assistants/${entity.assistantId}`, scope: "layout" }],
     insights: false,
   },
   assistantEditor: {
-    paths: (entity) => [{ path: `/assistants/${entity.assistantId}` }],
+    paths: (entity) => [{ path: `/assistants/${entity.assistantId}`, scope: "layout" }],
     insights: false,
   },
   helpDeskList: { paths: () => [{ path: "/help-desks" }], insights: false },

@@ -6,7 +6,7 @@
 #   ./deploy/bootstrap.sh --env-only   just write deploy/.env, start nothing
 #   ./deploy/bootstrap.sh --images vX.Y.Z
 #                                      run published images, no source build
-#   ./deploy/bootstrap.sh --workers    …and the heavy graph + crawler workers
+#   ./deploy/bootstrap.sh --workers    …and the heavy crawler worker
 #   ./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/db
 #                                      run on a managed Postgres you already own
 #                                      (Azure, RDS/Aurora, Cloud SQL/AlloyDB, Neon);
@@ -196,17 +196,11 @@ fi
 if [ "$WORKERS" = "1" ]; then
   listed "$overlays" docker-compose.workers.yml ||
     overlays="$overlays:docker-compose.workers.yml"
-  # Three of the four worker credentials are shared secrets this stack invents
-  # for itself, so generate them the same way as the rest. The fourth, the
-  # graph worker's LLM key, is an account of yours and cannot be minted here.
-  set_var GRAPH_WORKER_API_TOKEN "$(random_secret)"
+  # Both crawler credentials are shared secrets this stack invents for itself,
+  # so generate them the same way as the rest.
   set_var CRAWL4AI_API_TOKEN "$(random_secret)"
   set_var CRAWL4AI_SECRET_KEY "$(random_secret)"
-  echo "Workers: the graph worker and the crawler are on (budget ~8 GiB of RAM)."
-  if ! grep -q '^GRAPH_LLM_API_KEY=.' "$ENV_FILE"; then
-    echo "GRAPH_LLM_API_KEY is empty in $PWD/$ENV_FILE; the graph worker cannot start without it." >&2
-    [ "$ENV_ONLY" = "1" ] || exit 2
-  fi
+  echo "Workers: the crawler is on (budget ~4 GiB of RAM)."
 fi
 
 if [ "$TLS" = "1" ]; then

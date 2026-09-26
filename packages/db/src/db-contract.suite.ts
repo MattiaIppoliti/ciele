@@ -394,20 +394,6 @@ export function describeDbContract(
         expect(off.requireSignIn).toBe(false);
       });
 
-      it("defaults the Knowledge Engine to graph and round-trips a switch to vector", async () => {
-        const assistant = await newAssistant();
-        expect(assistant.knowledgeEngine).toBe("graph");
-        const toVector = await db.updateAssistant(assistant.id, {
-          knowledgeEngine: "vector",
-        });
-        expect(toVector.knowledgeEngine).toBe("vector");
-        expect((await db.getAssistant(assistant.id))?.knowledgeEngine).toBe("vector");
-        const back = await db.updateAssistant(assistant.id, {
-          knowledgeEngine: "graph",
-        });
-        expect(back.knowledgeEngine).toBe("graph");
-      });
-
       it("defaults Simplified thinking off and round-trips the toggle", async () => {
         // Off is load-bearing: turning it on changes what a Visitor sees, so an
         // assistant created before the toggle existed must read as off (#560).
@@ -2028,61 +2014,61 @@ export function describeDbContract(
       });
     });
 
-    describe("graph learning support", () => {
+    describe("verbatim re-ingest input (ADR-0025)", () => {
+      it("lists Sources that still hold a rewritten Concept, and only those", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name: "Rewritten KB" });
+        const concept = async (name: string, by: string) => {
+          const source = await db.createSource({
+            collectionId: collection.id,
+            name,
+            kind: "text",
+          });
+          await db.createConcept({
+            collectionId: collection.id,
+            sourceId: source.id,
+            path: `${name}.md`,
+            frontmatter: {
+              type: "Document",
+              title: name,
+              generated: { by, at: "2026-09-01T00:00:00.000Z" },
+            },
+            body: `${name} body`,
+          });
+          return source;
+        };
+        const rewritten = await concept("rewritten", "okf-enricher/claude-sonnet-5");
+        const verbatim = await concept("verbatim", "process:okf-ingest-passthrough");
+
+        const listed = await systemDb.listEnrichedSources(1_000);
+
+        expect(listed).toContainEqual({
+          sourceId: rewritten.id,
+          collectionId: collection.id,
+        });
+        expect(listed.map((row) => row.sourceId)).not.toContain(verbatim.id);
+        expect(await systemDb.listEnrichedSources(0)).toEqual([]);
+      });
+    });
+
+    describe("message ownership", () => {
       it("resolves the conversation a message belongs to", async () => {
         const assistant = await newAssistant();
         const conversation = await db.createConversation({
           assistantId: assistant.id,
           subjectType: "visitor",
-          subjectId: "visitor-graph",
+          subjectId: "visitor-owner",
         });
         const message = await db.appendMessage({
           conversationId: conversation.id,
           role: "assistant",
-          content: [{ type: "text", text: "graph answer" }],
+          content: [{ type: "text", text: "an answer" }],
         });
         const resolved = await db.getConversationForMessage(message.id);
         expect(resolved?.id).toBe(conversation.id);
         expect(await db.getConversationForMessage("missing")).toBeNull();
       });
 
-      it("lists graph-engine collections and excludes vector-engine ones", async () => {
-        // Post-contract (#733) a Collection has no owning assistant: a
-        // Collection is an active graph dataset when any Assistant LINKED to
-        // one of its Sources runs the graph engine.
-        const seed = async (name: string) => {
-          const assistant = await newAssistant();
-          const collection = await db.createCollection(assistant.id, { name });
-          const source = await db.createSource({
-            collectionId: collection.id,
-            name: `${name} Source`,
-            kind: "text",
-          });
-          await db.setSourceAssistantLinks(source.id, [assistant.id]);
-          return { assistant, collection };
-        };
-        const graph = await seed("Graph KB");
-        const vector = await seed("Vector KB");
-        await db.updateAssistant(vector.assistant.id, {
-          knowledgeEngine: "vector",
-        });
-
-        const datasets = await db.listActiveGraphDatasets();
-        expect(
-          datasets.some(
-            (d) =>
-              d.collectionId === graph.collection.id &&
-              d.organizationId === ctx.organizationId
-          )
-        ).toBe(true);
-        expect(
-          datasets.some((d) => d.collectionId === vector.collection.id)
-        ).toBe(false);
-        const claimed = await systemDb.claimActiveGraphDatasets(1);
-        expect(claimed).toHaveLength(1);
-        expect(datasets).toContainEqual(claimed[0]);
-        expect(claimed[0]?.collectionId).not.toBe(vector.collection.id);
-      });
     });
 
     describe("conversations & messages", () => {
@@ -2359,14 +2345,14 @@ export function describeDbContract(
           db.mergeConversationSessionState({
             id: conversation.id,
             expectedVersion: 0,
-            patch: { graphQa: { answerA: "qa-a" } },
+            patch: { lastRoute: { answerA: "qa-a" } },
           }),
         ]);
         expect(firstWave.filter(Boolean)).toHaveLength(1);
 
         const afterFirst = (await db.getConversation(conversation.id))!;
         const missingPatch = firstWave[0]
-          ? { graphQa: { answerA: "qa-a" } }
+          ? { lastRoute: { answerA: "qa-a" } }
           : { proactive: { welcome: 1 } };
         await expect(
           db.mergeConversationSessionState({
@@ -2380,7 +2366,7 @@ export function describeDbContract(
         expect(settled.sessionVersion).toBe(2);
         expect(settled.sessionState).toMatchObject({
           proactive: { welcome: 1 },
-          graphQa: { answerA: "qa-a" },
+          lastRoute: { answerA: "qa-a" },
         });
       });
 
@@ -5404,10 +5390,9 @@ export function describeDbContract(
         });
         const input = {
           id: `reconcile-${shortId()}`,
-          kind: "graph_sync_concept" as const,
+          kind: "sync_entity_records" as const,
           payload: {
-            kind: "graph_sync_concept",
-            op: "purge",
+            kind: "sync_entity_records",
             collectionId: collection.id,
           },
         };
@@ -5424,10 +5409,9 @@ export function describeDbContract(
           name: "Source-less Job Collection",
         });
         const job = await db.createBackgroundJob({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           payload: {
-            kind: "graph_sync_concept",
-            op: "purge",
+            kind: "sync_entity_records",
             collectionId: collection.id,
           },
         });
@@ -5444,10 +5428,9 @@ export function describeDbContract(
         await expect(
           db.createBackgroundJob({
             organizationId: ctx.foreignOrganizationId,
-            kind: "graph_sync_concept",
+            kind: "sync_entity_records",
             payload: {
-              kind: "graph_sync_concept",
-              op: "purge",
+              kind: "sync_entity_records",
               collectionId: collection.id,
             },
           })
@@ -5491,10 +5474,9 @@ export function describeDbContract(
 
         await expect(db.createBackgroundJob({
           organizationId: ctx.organizationId,
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           payload: {
-            kind: "graph_sync_concept",
-            op: "ingest",
+            kind: "sync_entity_records",
             collectionId: second.id,
             conceptId: concept.id,
           },
@@ -5560,13 +5542,13 @@ export function describeDbContract(
           kind: "text",
         });
         const job = await db.createBackgroundJob({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           sourceId: source.id,
-          payload: { kind: "graph_sync_concept" },
+          payload: { kind: "sync_entity_records" },
           nextRunAt: "2026-07-09T10:00:00.000Z",
         });
         const [expiredLease] = await systemDb.claimBackgroundJobs({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           workerId: "expired-worker",
           now: "2026-07-09T10:01:00.000Z",
           staleBefore: "2026-07-09T09:45:00.000Z",
@@ -5574,7 +5556,7 @@ export function describeDbContract(
         });
         expect(expiredLease?.leaseToken).toBeTruthy();
         const reclaimed = await systemDb.claimBackgroundJobs({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           workerId: "current-worker",
           now: "2026-07-09T10:20:00.000Z",
           staleBefore: "2026-07-09T10:05:00.000Z",
@@ -5619,9 +5601,9 @@ export function describeDbContract(
           kind: "text",
         });
         const job = await db.createBackgroundJob({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           sourceId: source.id,
-          payload: { kind: "graph_sync_concept" },
+          payload: { kind: "sync_entity_records" },
           maxAttempts: 3,
           nextRunAt: "2026-07-09T10:00:00.000Z",
         });
@@ -5631,7 +5613,7 @@ export function describeDbContract(
           ["worker-3", "2026-07-09T10:40:00.000Z", "2026-07-09T10:25:00.000Z"],
         ]) {
           await expect(systemDb.claimBackgroundJobs({
-            kind: "graph_sync_concept",
+            kind: "sync_entity_records",
             workerId: workerId!,
             now: now!,
             staleBefore: staleBefore!,
@@ -5640,7 +5622,7 @@ export function describeDbContract(
         }
 
         const terminal = await systemDb.claimTerminalBackgroundJobs({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           workerId: "worker-4",
           now: "2026-07-09T11:00:00.000Z",
           staleBefore: "2026-07-09T10:45:00.000Z",
@@ -5981,27 +5963,25 @@ export function describeDbContract(
           kind: "text",
         });
         const oldJob = await db.createBackgroundJob({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           sourceId: source.id,
           payload: {
-            kind: "graph_sync_concept",
-            op: "purge",
+            kind: "sync_entity_records",
             collectionId: collection.id,
           },
           nextRunAt: "1990-01-01T00:00:00.000Z",
         });
         const activeJob = await db.createBackgroundJob({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           sourceId: source.id,
           payload: {
-            kind: "graph_sync_concept",
-            op: "purge",
+            kind: "sync_entity_records",
             collectionId: collection.id,
           },
           nextRunAt: "1991-01-01T00:00:00.000Z",
         });
         const [claimedJob] = await systemDb.claimBackgroundJobs({
-          kind: "graph_sync_concept",
+          kind: "sync_entity_records",
           workerId: "retention-job",
           now: "2000-01-01T00:00:00.000Z",
           staleBefore: "1999-01-01T00:00:00.000Z",
@@ -6552,7 +6532,7 @@ export function describeDbContract(
             messageId: "msg-usage-1",
             stage: "classify",
             provider: "anthropic",
-            modelId: "claude-haiku-4-5",
+            modelId: "claude-sonnet-5",
             inputTokens: 100,
             outputTokens: 10,
           },
@@ -6592,6 +6572,7 @@ export function describeDbContract(
           improvement_proposal: true,
           graph_search: true,
           graph_cognify: true,
+          rerank: true,
           memory_extract: true,
           agent_memory: true,
           decide: true,
@@ -6985,7 +6966,7 @@ export function describeDbContract(
             assistantId: null,
             stage: "generate",
             provider: "openai",
-            modelId: "gpt-5.1-mini",
+            modelId: "gpt-5.4-mini",
             inputTokens: 50,
             outputTokens: 5,
           },
@@ -7037,7 +7018,7 @@ export function describeDbContract(
             assistantId: null,
             stage: "classify",
             provider: "anthropic",
-            modelId: "claude-haiku-4-5",
+            modelId: "claude-sonnet-5",
             credentialKind: "platform",
             inputTokens: 100,
             outputTokens: 10,
@@ -7097,7 +7078,7 @@ export function describeDbContract(
             assistantId: null,
             stage: "enrich",
             provider: "google",
-            modelId: "gemini-3.1-flash-lite",
+            modelId: "gemini-3.5-flash-lite",
             inputTokens: 7,
             outputTokens: 3,
           },
@@ -7145,7 +7126,7 @@ export function describeDbContract(
             assistantId: null,
             stage: "generate",
             provider: "openai",
-            modelId: "gpt-5.1-mini",
+            modelId: "gpt-5.4-mini",
             credentialKind: "platform",
             inputTokens: 999,
             outputTokens: 999,
@@ -7514,7 +7495,7 @@ export function describeDbContract(
             assistantId: null,
             stage: "generate",
             provider: "google",
-            modelId: "gemini-3.1-flash-lite",
+            modelId: "gemini-3.5-flash-lite",
             credentialKind: "platform",
             inputTokens: 300,
             outputTokens: 30,
@@ -8119,7 +8100,7 @@ export function describeDbContract(
             flowId: null,
             verdict: "pass",
             reason: "grounded",
-            modelId: "claude-haiku-4-5",
+            modelId: "claude-sonnet-5",
           })
         ).toBe(true);
         const claimed = await db.claimUnverifiedAnswers({

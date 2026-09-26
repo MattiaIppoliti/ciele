@@ -61,6 +61,7 @@ import {
   removeChannelTeammateAction,
   updateChannelAction,
 } from "@/app/(admin)/teammates/channels/actions";
+import { patchLastBot } from "@/components/chat/turn-session";
 
 /**
  * A Teammate group (#778, "channel" in the code): the 1:1 chat's transcript
@@ -140,17 +141,7 @@ export function ChannelWorkspace({
   }, [channel.id]);
 
   const updateLastBot = (fn: (bot: ChatBotMsg) => ChatBotMsg) =>
-    setMessages((prev) => {
-      const next = [...prev];
-      for (let i = next.length - 1; i >= 0; i -= 1) {
-        const candidate = next[i];
-        if (candidate.role === "bot") {
-          next[i] = fn(candidate);
-          break;
-        }
-      }
-      return next;
-    });
+    setMessages((prev) => patchLastBot(prev, fn));
 
   async function send(text: string) {
     const message = text.trim();

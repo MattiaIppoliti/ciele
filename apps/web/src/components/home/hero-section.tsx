@@ -23,7 +23,9 @@ export function HeroSection() {
   const installCommand = resolveSelfHostInstallCommand();
 
   return (
-    <section id="overview" className="relative isolate overflow-hidden scroll-mt-24">
+    // The home page choreographs its own entrance (`home-reveal-*`, `Reveal`),
+    // so the route-level PageReveal stands aside here.
+    <section id="overview" data-own-entrance="" className="relative isolate overflow-hidden scroll-mt-24">
       {/* Day sky / dusk / starry night backdrops, all mounted so a theme
           toggle can crossfade through sunset colors (see home.css,
           data-sky-transition). isolate keeps the -z-10 layers inside this

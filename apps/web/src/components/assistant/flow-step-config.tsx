@@ -818,8 +818,7 @@ function TemplateVariablesDialog() {
           <DialogTitle>Using template variables</DialogTitle>
         </DialogHeader>
         <p className="text-muted-foreground text-sm">
-          Insert template variables into any field below. They are replaced with
-          the matching value when the request is sent.
+          Template variables in any field below are filled in when the request is sent.
         </p>
         <ul className="space-y-1 text-sm">
           {TEMPLATE_VARIABLES.map((v) => (
@@ -924,8 +923,7 @@ function JsonPathRows({
     <div className="space-y-2">
       <Label>Response mapping (optional)</Label>
       <p className="text-muted-foreground text-xs">
-        Extract values from the JSON response into variables later actions can
-        use. Leave the path blank to bind the whole response.
+        Save response values as variables for later actions. Leave the path blank for the whole response.
       </p>
       {rows.map((row) => (
         <div key={row.id} className="flex items-center gap-2">
@@ -1265,8 +1263,7 @@ function HttpWebhookConfig({
       <div className="space-y-3 rounded-lg border p-3">
         <h4 className="text-sm font-semibold">Unsubscribe</h4>
         <p className="text-muted-foreground text-xs">
-          Sent when the wait ends, however it ends. Optional, but without it the other
-          system keeps calling an address that no longer leads anywhere.
+          Sent when the wait ends. Optional, but recommended so the other system stops calling.
         </p>
         <WebhookCallFields
           call={settings?.unsubscribe}
@@ -1349,8 +1346,7 @@ function RespondConfig({
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
-        Send a response to the HTTP request that started this flow. Nothing after this
-        step runs: what the caller was told cannot be changed afterwards.
+        Answer the HTTP request that started this flow. Steps after this one don&apos;t run.
       </p>
       <div className="space-y-1.5">
         <Label>
@@ -1544,8 +1540,7 @@ function ApiRequestConfig({
             spellCheck={false}
           />
           <p className="text-muted-foreground text-xs">
-            Raw JSON. Template variables inside string values are escaped
-            automatically. Leave empty to send the triggering message.
+            Raw JSON. Leave empty to send the triggering message.
           </p>
         </div>
       )}
@@ -2020,8 +2015,7 @@ function HttpFlowRunHistory({ flowId }: { flowId: string }) {
         <p className="text-muted-foreground text-xs">Loading&hellip;</p>
       ) : runs.length === 0 ? (
         <p className="text-muted-foreground text-xs">
-          No calls yet. Runs appear here once another system calls the endpoint of the published
-          assistant.
+          No calls yet. Runs appear once the published endpoint is called.
         </p>
       ) : (
         <ul className="divide-y rounded-md border text-xs">
@@ -2174,8 +2168,7 @@ export function FlowTriggerConfig({
       )}
       {proactive && (
         <p className="text-muted-foreground text-sm">
-          This flow starts on its own, without the user asking anything, so it
-          has no conditions, and its response is a single notification.
+          This flow starts on its own, so it has no conditions and replies with one notification.
         </p>
       )}
     </div>
@@ -2210,9 +2203,7 @@ export function FlowConditionsConfig({
   if (proactive) {
     return (
       <p className="text-muted-foreground text-sm">
-        A conversation-context condition needs a conversation to read, and this
-        flow runs before the user has said anything, so there are no conditions
-        to set.
+        This flow runs before the user says anything, so it has no conditions.
       </p>
     );
   }
@@ -2354,7 +2345,7 @@ export function FlowActionConfig({
         <div className="space-y-3">
           <SettingToggle
             title="Prompt user to escalate to for unresolved queries"
-            description="When the AI Assistant does not know the answer to a question, it will present the escalation 'contact support' button to the user."
+            description="Show a Contact support button when the assistant doesn't know the answer."
             checked={settings.search_knowledge?.escalatePrompt ?? false}
             onCheckedChange={(escalatePrompt) =>
               patchSettings("search_knowledge", { escalatePrompt })
@@ -2362,7 +2353,7 @@ export function FlowActionConfig({
           />
           <SettingToggle
             title="Create Knowledge Improvement Items for unresolved queries"
-            description="When the AI Assistant does not know the answer to a question, it will automatically add new item to your knowledge improvement task list."
+            description="Add an Improvement item when the assistant doesn't know the answer."
             checked={settings.search_knowledge?.improvementItems ?? false}
             onCheckedChange={(improvementItems) =>
               patchSettings("search_knowledge", { improvementItems })
@@ -2590,7 +2581,7 @@ export function FlowActionConfig({
           </div>
           <SettingToggle
             title="Allow users to reply"
-            description="Let the user answer this notification in the chat. Turn it off for a one-way announcement, the composer closes and says so."
+            description="Let the user reply in the chat. Off makes it a one-way announcement."
             checked={settings.notification?.allowReplies ?? true}
             onCheckedChange={(allowReplies) =>
               patchSettings("notification", { allowReplies })

@@ -1,72 +1,73 @@
 ---
 title: Dateien und Text
-description: Laden Sie eine Datei hoch oder fügen Sie Text hinzu und wählen Sie aus, welche Assistenten darauf antworten sollen.
+description: Laden Sie eine Datei hoch oder fügen Sie Text hinzu, und wählen Sie aus, welche Assistenten daraus antworten sollen.
 ---
 
 ## Datei hochladen
 
-1. Öffnen Sie den Assistenten.
-2. Wählen Sie **Knowledge**.
+1. Öffnen Sie den Assistant.
+2. Wählen Sie **Knowledge** aus.
 3. Fügen Sie eine Datei-Quelle hinzu.
 4. Wählen Sie die Datei aus.
-5. Starten Sie die Aufnahme.
-6. Warten Sie, bis der Status der Quelle **Ready** lautet.
-7. Testen Sie eine Antwort und deren Zitat.
+5. Starten Sie die Ingestion.
+6. Warten Sie, bis der Status von Source **Ready** lautet.
+7. Testen Sie eine Antwort und ihre Citation.
 
 Ciele speichert die Originaldatei und extrahiert unterstützten Text für die
-Aufnahme. Der Status „Source“ zeigt an, ob Extraktion und Indizierung
+Ingestion. Der Status „Source“ zeigt an, ob die Extraktion und die Indizierung
 abgeschlossen sind.
 
 ## Dateien, die Ciele ablehnt
 
-Ciele prüft den Dateiinhalt, nicht nur den Dateinamen, bevor es ein Dokument
-einliest. Es lehnt Folgendes ab:
+Ciele überprüft vor dem Lesen eines Dokuments den Inhalt der Datei, nicht nur
+den Dateinamen. Es wird abgelehnt:
 
-- eine Datei, deren Inhalt nicht mit ihrer Erweiterung übereinstimmt, zum
-  Beispiel eine HTML-Seite mit dem Namen `.pdf`
-- ein Programm, wie auch immer die Datei heißt
+- eine Datei, deren Inhalt nicht mit ihrer Dateierweiterung übereinstimmt,
+  beispielsweise eine HTML-Seite mit dem Namen `.pdf`
+- ein Programm, unabhängig davon, wie die Datei heißt
 - eine Office-Datei, die ein Makroprojekt oder ein eingebettetes Objekt enthält
-- eine PDF-Datei mit mehr als 2.000 Seiten
+- eine PDF-Datei mit mehr als 2000 Seiten
 
-Speichern Sie das Dokument ohne Makros oder eingebettete Objekte oder teilen Sie
-eine lange PDF-Datei auf und laden Sie sie erneut hoch.
+Speichern Sie das Dokument ohne Makros oder eingebettete Objekte, oder teilen
+Sie eine lange PDF-Datei auf und laden Sie sie erneut hoch.
 
-## Fügen Sie eingefügten Text hinzu
+## Eingefügten Text hinzufügen
 
-Verwenden Sie eine Textquelle für kurze Inhalte, für die keine separate Datei
-erforderlich ist.
+Verwenden Sie eine Textquelle für kurze Inhalte, die keine separate Datei
+erfordern.
 
 1. Fügen Sie eine Textquelle hinzu.
-2. Geben Sie optional einen Quellennamen ein.
+2. Geben Sie einen optionalen Namen für die Quelle ein.
 3. Fügen Sie den Text ein.
-4. Starten Sie die Erfassung.
+4. Starten Sie die Ingestion.
 
-Verwenden Sie einen stabilen Quellennamen. Der Name kann in Zitaten von
-Besuchern erscheinen.
+Verwenden Sie einen stabilen Source-Namen. Der Name kann in Visitor-Zitaten
+erscheinen.
 
-## Ersetzen Sie veraltete Inhalte
+## Veralteten Inhalt ersetzen
 
-Löschen Sie die alte Quelle, bevor Sie sich auf einen Ersatz verlassen.
-Bestätigen Sie dann, dass die neue Quelle **Ready** ist und korrekte Zitate
-erzeugt.
+Löschen Sie die alte Source, bevor Sie sich auf einen Ersatz verlassen.
+Bestätigen Sie anschließend, dass die neue Source **Ready** ist und korrekte
+Zitationen liefert.
 
-Durch das Löschen einer Quelle werden ihre Konzepte aus dem aktiven
-Wissensgraphen und dem Suchindex entfernt.
+Durch das Löschen einer Source werden deren Documents aus dem aktiven Suchindex
+entfernt.
 
-## Entfernen im Vergleich zu Löschen
+## Remove im Vergleich zu Delete
 
 Eine Datei-Quelle kann für mehr als einen Assistenten antworten. Der
-Assistant-Editor bietet daher zwei Aktionen an.
+Assistant-Editor bietet daher zwei Operationen an.
 
-- **Remove from this Assistant** löscht einen Link. Die anderen Assistenten
+- **Remove from this Assistant** löscht einen Link. Die anderen Assistants
   behalten die Datei.
-- **Delete** entfernt die Quelle für jeden verknüpften Assistenten. In der
-  Bestätigung wird jeder einzeln benannt.
+- **Delete** entfernt die Source für jeden verknüpften Assistant. Die
+  Bestätigung nennt jeden einzelnen.
 
 Wenn nur dieser Assistant aus der Datei antwortet, löscht der Editor sie direkt.
 
-## Geben Sie dem Besucher die Originaldatei
+## Geben Sie dem Visitor die Originaldatei
 
-Aktivieren Sie **Direct access** in der [Bibliothek](/knowledge/library), damit
-der Assistent die Originaldatei an seine Zitierung anhängen kann. Die
-Einstellung gilt für einen Assistant-Link und ist standardmäßig deaktiviert.
+Aktivieren Sie **Direct access** in der [Library](/knowledge/library), damit der
+Assistent die Originaldatei an seine Quellenangabe anhängen kann. Die
+Einstellung gilt für einen einzelnen Assistant-Link und ist standardmäßig
+deaktiviert.

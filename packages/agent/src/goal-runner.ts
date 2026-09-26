@@ -87,8 +87,7 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalRun> {
     assistant.organizationId
   );
   // The same retrieval port a widget Visitor gets, goals verify the
-  // production path, Knowledge Engine choice included, not a bespoke
-  // vector-only copy. No Conversation row exists for synthetic traffic.
+  // production path, rerank stage included, not a bespoke copy. No Conversation row exists for synthetic traffic.
   const searchKnowledge = buildKnowledgeSearcher({
     db,
     connections,

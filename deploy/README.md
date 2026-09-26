@@ -155,37 +155,35 @@ providers work too, set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or
 
 **Without an embedding model, knowledge search degrades to keyword/lexical
 matching.** Answers still work; retrieval is just less able to match meaning.
-The same applies to the workers: without the graph worker there is no
-derived-graph retrieval, and without Crawl4AI the built-in fetch-based crawler
-handles websites (fine for server-rendered pages, weaker on JavaScript-heavy
-ones).
+Without `AI_GATEWAY_API_KEY` the knowledge search skips its rerank step and keeps
+the index's order (ADR-0025). The same applies to the worker: without Crawl4AI
+the built-in fetch-based crawler handles websites (fine for server-rendered
+pages, weaker on JavaScript-heavy ones).
 
-## Turning on the heavy workers
+## Turning on the crawler worker
 
 ```sh
 ./deploy/bootstrap.sh --workers
 ```
 
-That adds the second overlay to `deploy/.env` and generates the three shared
-secrets the pair needs:
+That adds the second overlay to `deploy/.env` and generates the two shared
+secrets the crawler needs:
 
 ```sh
 COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
-GRAPH_WORKER_API_TOKEN=<generated>
 CRAWL4AI_API_TOKEN=<generated>
 CRAWL4AI_SECRET_KEY=<generated>
 ```
 
-The fourth credential is yours to supply: set `GRAPH_LLM_API_KEY` to a key for
-the graph worker's LLM (Gemini by default, `GRAPH_LLM_PROVIDER` and
-`GRAPH_LLM_MODEL` change that), then run the command again. Budget ~8 GiB of
-RAM for the pair.
+Budget ~4 GiB of RAM. The overlay used to start a graph worker as well; it was
+removed with ADR-0025. After upgrading, `docker compose up -d --remove-orphans`
+stops the old container, and the `GRAPH_*` lines in `deploy/.env` can go.
 
 `--workers` and `--images` compose, in either order, and neither turns the
 other off. To stop running the workers, drop `docker-compose.workers.yml` from
 `COMPOSE_FILE` and `docker compose up -d --remove-orphans`.
 
-The workers are an overlay rather than a `workers` profile for one reason:
+The worker is an overlay rather than a `workers` profile for one reason:
 Compose interpolates every service in a file before it filters by profile, so
 the `:?` guards that stop a worker from starting without its token used to
 abort a plain `docker compose up` on a stack that was never going to run them.

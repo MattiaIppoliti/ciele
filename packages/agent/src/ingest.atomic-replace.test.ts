@@ -9,10 +9,6 @@ vi.mock("./apify", async (importOriginal) => ({
   fetchCrawledPages: vi.fn(),
   fetchCrawledPageBatch: vi.fn(),
 }));
-vi.mock("./graph-worker", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./graph-worker")>()),
-  isGraphWorkerConfigured: () => true,
-}));
 
 import {
   getRunState,
@@ -163,64 +159,6 @@ describe("finalizeWebsiteCrawl, atomic knowledge replacement", () => {
     });
     expect(afterCutover.map((hit) => hit.conceptId)).not.toContain(prior.id);
     expect(afterCutover).toHaveLength(2);
-  });
-
-  it("projects only the generation that won the retrieval cutover", async () => {
-    const db = getMockDb();
-    const { assistantId, collectionId, source } = await seed(
-      db,
-      "atomic-graph-generation"
-    );
-    const prior = await seedPriorConcept(
-      db,
-      collectionId,
-      source.id,
-      "web/previous.md"
-    );
-    getRunStateMock.mockResolvedValue({ status: "SUCCEEDED", datasetId: "ds_1" });
-    fetchPagesMock.mockResolvedValue([page("a"), page("b")]);
-
-    let releaseSecondPage!: () => void;
-    let secondPageStarted!: () => void;
-    const blocked = new Promise<void>((resolve) => {
-      secondPageStarted = resolve;
-    });
-    const release = new Promise<void>((resolve) => {
-      releaseSecondPage = resolve;
-    });
-    const realSaveChunks = db.saveChunks.bind(db);
-    let saves = 0;
-    vi.spyOn(db, "saveChunks").mockImplementation(async (chunks) => {
-      saves += 1;
-      if (saves === 2) {
-        secondPageStarted();
-        await release;
-      }
-      return realSaveChunks(chunks);
-    });
-    const enqueue = vi.spyOn(db, "createBackgroundJob");
-
-    const finalizing = finalizeWebsiteCrawl({
-      db,
-      assistantId,
-      collectionId,
-      sourceId: source.id,
-    });
-    await blocked;
-    expect(enqueue).not.toHaveBeenCalled();
-
-    releaseSecondPage();
-    await expect(finalizing).resolves.toBe("ready");
-    const activeIds = (await db.listConcepts(collectionId)).map(({ id }) => id);
-    const graphPayloads = enqueue.mock.calls.map(([input]) => input.payload);
-    expect(graphPayloads).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ op: "remove", conceptId: prior.id }),
-        ...activeIds.map((conceptId) =>
-          expect.objectContaining({ op: "ingest", conceptId })
-        ),
-      ])
-    );
   });
 
   it("resumes a large crawl in bounded dataset batches before cutover", async () => {

@@ -79,8 +79,7 @@ export function LocalTerminalSetupGuide({
             <div>
               <p className="text-sm font-medium">Ciele Connector is required</p>
               <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                Connect the Ciele Connector with the one terminal command below.
-                The provider sign-in commands further down only authorize the CLIs.
+                Run the command below to connect the Ciele Connector.
               </p>
             </div>
           </div>
@@ -91,9 +90,7 @@ export function LocalTerminalSetupGuide({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Connect with one command</p>
                 <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                  Paste the command for your OS. Requires Node.js 18+. Keep the
-                  window open, this page detects the connector and pairs
-                  automatically. No administrator rights needed.
+                  Paste the command for your OS (Node.js 18+) and keep the window open. Pairing is automatic.
                 </p>
               </div>
             </div>
@@ -129,9 +126,7 @@ export function LocalTerminalSetupGuide({
               <div>
                 <p className="text-sm font-medium">1. Open Terminal on this device</p>
                 <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                  The provider CLIs must already be installed. Each login opens the
-                  provider&apos;s official authentication flow; Ciele never receives the
-                  resulting credentials.
+                  Needs the provider CLIs installed. Ciele never sees your credentials.
                 </p>
               </div>
             </div>
@@ -185,10 +180,7 @@ export function LocalTerminalSetupGuide({
             <div>
               <p className="text-sm font-medium">Credentials remain on your device</p>
               <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                These commands only authorize the Codex and Claude CLIs. Hosted Preview
-                still requires the Ciele Connector. The connector does not upload
-                provider tokens and never enables personal subscriptions for published
-                widget traffic.
+                These commands only sign in the Codex and Claude CLIs. The Preview still needs the Ciele Connector.
               </p>
             </div>
           </div>

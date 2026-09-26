@@ -1,66 +1,70 @@
 ---
 title: Pipeline de connaissances
-description: Suivez une Source depuis son ingestion jusqu'à une réponse citée de l'Assistant.
+description: Suivez une Source, de son ingestion jusqu'à une réponse citée de l'Assistant.
 ---
 
 ## Ingestion
 
 <Mermaid
-  title="Une Source devient un Concept consultable avant d'indiquer qu'elle est prête"
+  title="Une Source devient des Documents consultables avant d'indiquer son statut Ready"
   chart={`
 flowchart TB
   SOURCE["Website, file, text, or FAQ"]
   EXTRACT["Extract the content"]
-  CONCEPT["Create OKF Concepts"]
+  DOCUMENT["Create Documents"]
   INDEX["Index for search"]
-  GRAPH["Update the graph"]
   READY["Status becomes Ready"]
   SOURCE --> EXTRACT
-  EXTRACT --> CONCEPT
-  CONCEPT --> INDEX
-  CONCEPT --> GRAPH
+  EXTRACT --> DOCUMENT
+  DOCUMENT --> INDEX
   INDEX --> READY
-  GRAPH --> READY
 `}
 />
 
-Knowledge utilise des Concepts au format Open Knowledge Format (OKF). Un Concept
-conserve une référence à sa Source d'origine.
+Ciele stocke les Knowledge sous forme de Documents au format Open Knowledge
+Format (OKF). Un Document conserve une référence à sa Source d'origine. OKF
+désigne le même enregistrement par le terme Concept, et les tables de la base de
+données conservent ce nom.
 
-L'ingestion de FAQ crée un Concept organisé dont la provenance est la question
-et la réponse. L'ingestion de fichiers et de sites Web préserve l'objet Source
-d'origine, le cas échéant.
+L'ingestion de fichiers, de textes et de sites web conserve le texte extrait tel
+quel, sans aucune modification. Ciele ne réécrit pas une Source à l'aide d'un
+modèle. L'ingestion de la FAQ crée un Document organisé, avec traçabilité de la
+provenance des questions et des réponses. L'ingestion de fichiers et de sites
+web conserve l'objet Source d'origine, le cas échéant.
 
 ## Récupération
 
-Le moteur d'exécution peut récupérer des Concepts via la recherche vectorielle
-et le repli lexical. Le mode graphe peut ajouter une navigation à travers les
-relations indexées entre Concepts.
+L'environnement d'exécution extrait 20 passages candidats par le biais de la
+recherche vectorielle et du recours lexical de secours. Un modèle de rerank
+sélectionne ensuite les 6 passages que l'Assistant lit.
 
-Chaque chemin est délimité par les liens Assistant-Source. Un résultat provenant
-d'une Source qui n'est pas liée à l'Assistant effectuant la requête est ignoré,
-aussi bien dans le chemin du graphe que dans le chemin vectoriel.
+L'étape de rerank utilise la plateforme `AI_GATEWAY_API_KEY`. Si la clé n'est
+pas définie, ou si le modèle de rerank ne répond pas à temps, la recherche
+conserve l'ordre de l'index. Dans les deux cas, les réponses se poursuivent.
 
-Un indice contextuel peut limiter la récupération à une collection pertinente ou
-à un contexte de type cours lorsque le moteur d'exécution en fournit un.
+Chaque recherche est délimitée par les liens Assistant-to-Source. Ciele ignore
+un résultat provenant d'une Source qui n'est pas liée à l'Assistant effectuant
+la requête.
 
-La recherche approfondie améliore la navigation dans les connaissances dans les
-limites du moteur d'exécution. Elle n'effectue pas de requêtes sur le Web
-public.
+Un Context Hint peut limiter la récupération à une Collection pertinente ou à un
+contexte de type cours lorsque l'environnement d'exécution en fournit un.
+
+Deep Search accroît le travail de navigation dans la Knowledge dans les limites
+de l'exécution. Il n'interroge pas le web public.
 
 ## Résolution des citations
 
-La réponse finale cite des Sources nommées, et non des fragments de recherche
-opaques. Les identifiants de citation sont résolus via le Concept jusqu'à sa
-Source d'origine.
+La réponse finale cite des Sources nommées, et non des segments de recherche
+opaques. Les identifiants de citation sont résolus à travers le Document jusqu'à
+sa Source originale.
 
-Le visiteur peut ouvrir l'affichage des sources après la réponse. La boîte de
-réception stocke les mêmes éléments de citation avec la conversation.
+Le Visitor peut ouvrir l'affichage Sources après la réponse. L'Inbox stocke les
+mêmes éléments de citation avec la Conversation.
 
-## Suppression et nouvelle analyse
+## Suppression et nouvel indexation par crawling
 
-La suppression d'une Source retire les Concepts associés du graphe actif et des
-données de recherche, pour chaque Assistant lié. La suppression d'un lien ne
+La suppression d'une Source retire les Documents associés des données de
+recherche actives, pour chaque Assistant lié. La suppression d'un seul lien ne
 retire rien. Cela empêche un Assistant d'accéder à la Source.
 
-La réanalyse du site Web relance l'extraction et l'indexation pour cette Source.
+Le recrawl du site web relance l'extraction et l'indexation pour cette Source.

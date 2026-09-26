@@ -156,9 +156,7 @@ function AuthBlock({
       <CodeBlock code={command} language="bash" />
       {auth.demo ? (
         <p className="text-muted-foreground text-xs">
-          This is the demo build with no Supabase configured, so no API key can
-          exist here. The ids below are the demo data&apos;s own, so the commands
-          are the real shape. They just have nothing to reach.
+          Demo build: no API keys exist here, so these commands have nothing to reach.
         </p>
       ) : auth.hasKeys === false ? (
         <p className="text-muted-foreground text-xs">

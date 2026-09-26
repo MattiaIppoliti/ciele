@@ -31,15 +31,26 @@ const PRICING: Record<UsageProvider, Record<string, ModelPriceEur>> = {
   anthropic: {
     "claude-opus-4-8": { inputPerMillion: 14, outputPerMillion: 70 },
     "claude-sonnet-5": { inputPerMillion: 2.8, outputPerMillion: 14 },
+    // Retired from Ciele (RETIRED_MODELS in packages/agent/src/catalog.ts).
+    // The row stays so usage already recorded against it keeps its real price
+    // instead of the fallback chat rate, roughly four times too much.
     "claude-haiku-4-5": { inputPerMillion: 0.75, outputPerMillion: 3.7 },
   },
   openai: {
     "gpt-5.1": { inputPerMillion: 4.5, outputPerMillion: 13.5 },
+    // OpenAI list $0.75 / $4.50 (developers.openai.com pricing, 2026-09),
+    // at ~0.86 EUR/USD rounded up.
+    "gpt-5.4-mini": { inputPerMillion: 0.66, outputPerMillion: 3.9 },
+    // Retired: kept for usage already recorded under this id.
     "gpt-5.1-mini": { inputPerMillion: 0.9, outputPerMillion: 3.6 },
     "text-embedding-3-small": { inputPerMillion: 0.019, outputPerMillion: 0 },
   },
   google: {
     "gemini-3.5-flash": { inputPerMillion: 0.3, outputPerMillion: 1.2 },
+    // Gemini API list $0.30 / $2.50 (ai.google.dev pricing, 2026-09), at
+    // ~0.86 EUR/USD rounded up.
+    "gemini-3.5-flash-lite": { inputPerMillion: 0.26, outputPerMillion: 2.2 },
+    // Retired: kept for usage already recorded under this id.
     "gemini-3.1-flash-lite": { inputPerMillion: 0.1, outputPerMillion: 0.4 },
     "gemini-2.5-flash-lite": { inputPerMillion: 0.1, outputPerMillion: 0.4 },
     // Vertex text embeddings (google_vertex_federated credentials).
@@ -59,6 +70,13 @@ const PRICING: Record<UsageProvider, Record<string, ModelPriceEur>> = {
   typesafe: {
     "typesafe-ai/jev": { inputPerMillion: 0.04, outputPerMillion: 0 },
     "jev-latest": { inputPerMillion: 0.04, outputPerMillion: 0 },
+  },
+  // The knowledge search's reranker (ADR-0025). The Gateway lists
+  // voyage/rerank-2.5 at $0.05 and the lite model at $0.02 per million tokens
+  // (query + documents), nothing for output. EUR at ~0.86 rounded up.
+  voyage: {
+    "voyage/rerank-2.5": { inputPerMillion: 0.05, outputPerMillion: 0 },
+    "voyage/rerank-2.5-lite": { inputPerMillion: 0.02, outputPerMillion: 0 },
   },
 };
 

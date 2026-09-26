@@ -12,6 +12,7 @@ import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { formatDateTime } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 export interface ExportRow {
   id: string;
@@ -54,7 +55,7 @@ export function ExportsClient({ rows }: { rows: ExportRow[] }) {
   return (
     <div className="flex h-full flex-col">
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Exports</h1>
+        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Exports" /></h1>
         <Button
           className="ml-auto h-10 rounded-lg px-4"
           onClick={requestExport}
@@ -64,9 +65,7 @@ export function ExportsClient({ rows }: { rows: ExportRow[] }) {
         </Button>
       </header>
       <p className="text-muted-foreground px-4 text-sm sm:px-6">
-        Report exports are generated in the background and appear here with a
-        download link. Large reports never block or time out, request one and
-        come back when it is ready.
+        Exports build in the background and appear here when ready.
       </p>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-6">

@@ -116,7 +116,7 @@ describe("assistants operations", () => {
     expect(await db.listCollections(copy.id)).toHaveLength(0);
   });
 
-  it("delete leaves org-owned knowledge and its graph datasets intact (PRD #726)", async () => {
+  it("delete leaves org-owned knowledge intact (PRD #726)", async () => {
     const withPort = ctx();
     const assistant = await createAssistantOp.run(withPort, { title: "Doomed" });
     const collection = await getMockDb().createCollection(assistant.id, {

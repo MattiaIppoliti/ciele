@@ -215,14 +215,14 @@ export function VoiceSettings({ assistantId, value, onChange }: {
                   </Select>
                 </div>
               </div>
-              {isInput && <p className="text-xs text-muted-foreground">The transcript stays editable before sending. For short phrases, select a language to improve recognition.</p>}
+              {isInput && <p className="text-xs text-muted-foreground">Pick a language to improve recognition of short phrases.</p>}
             </section>;
           })}
           <div className="flex items-start justify-between gap-3">
             <div><h3 className="text-sm font-semibold">Voice</h3><p className="text-muted-foreground mt-1 text-xs">{selectedVoice ? `Selected: ${selectedVoice.name}. Save changes to apply.` : "Choose a playback model and voice."}</p></div>
             <details className="max-w-56 text-xs text-muted-foreground"><summary className="cursor-pointer">Preview transcript</summary><p className="pt-2">{voiceSample(outputLanguage)}</p></details>
           </div>
-          <p className="text-muted-foreground text-xs">These three voices use the output language above. Language changes apply to new AI answers; saved messages keep their original text.</p>
+          <p className="text-muted-foreground text-xs">Voices speak the output language above. Changes apply to new answers only.</p>
           <div role="radiogroup" aria-label="Playback voice" className="space-y-2">
             {value.speech.modelId && voices.map((voice) => <div key={voice.id} className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 transition-colors ${value.voiceId === voice.id ? "border-foreground/50 bg-muted/30" : "border-border"}`}>
               <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">

@@ -102,15 +102,12 @@ export async function discardSourceGeneration(options: {
   db: Db;
   sourceId: string;
   generation: Pick<SourceGeneration, "generationId">;
-  onRetired?: (conceptIds: string[]) => Promise<void>;
 }): Promise<string[]> {
   try {
-    const retired = await options.db.deleteSourceKnowledgeGeneration(
+    return await options.db.deleteSourceKnowledgeGeneration(
       options.sourceId,
       options.generation.generationId,
     );
-    await options.onRetired?.(retired);
-    return retired;
   } catch {
     return [];
   }
@@ -130,13 +127,12 @@ export async function commitSourceGeneration(options: {
     generationId: string;
   }) => Promise<boolean>;
   preserveStagedOnFailure?: boolean;
-  onRetired?: (conceptIds: string[]) => Promise<void>;
 }): Promise<"committed" | "superseded"> {
-  const { db, sourceId, generation, onRetired } = options;
+  const { db, sourceId, generation } = options;
   const discard = () =>
     options.preserveStagedOnFailure
       ? Promise.resolve([])
-      : discardSourceGeneration({ db, sourceId, generation, onRetired });
+      : discardSourceGeneration({ db, sourceId, generation });
   if (!generation.alreadyCommitted) {
     let committed: boolean;
     try {
@@ -163,11 +159,10 @@ export async function commitSourceGeneration(options: {
   }
 
   try {
-    const retired = await db.deleteSourceKnowledgeGeneration(
+    await db.deleteSourceKnowledgeGeneration(
       sourceId,
       generation.expectedActiveGenerationId,
     );
-    await onRetired?.(retired);
   } catch {
     // The active generation is already correct; a later reaper can clean up.
   }
@@ -193,7 +188,6 @@ export async function replaceSourceGeneration(options: {
     generationId: string;
   }) => Promise<boolean>;
   preserveStagedOnAbort?: boolean;
-  onRetired?: (conceptIds: string[]) => Promise<void>;
   /** Runs once the cutover is visible, with the generation that just went live. */
   onCommitted?: (generationId: string) => Promise<void>;
 }): Promise<"committed" | "aborted"> {
@@ -213,7 +207,6 @@ export async function replaceSourceGeneration(options: {
           db: options.db,
           sourceId: options.sourceId,
           generation,
-          onRetired: options.onRetired,
         });
 
   try {
@@ -237,7 +230,6 @@ export async function replaceSourceGeneration(options: {
     generation,
     commitGeneration: options.commitGeneration,
     preserveStagedOnFailure: options.preserveStagedOnAbort,
-    onRetired: options.onRetired,
   });
   if (cutover !== "committed") return "aborted";
   await options.onCommitted?.(generation.generationId);

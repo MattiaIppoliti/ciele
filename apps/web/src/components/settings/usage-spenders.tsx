@@ -30,9 +30,7 @@ export function UsageSpendersBlock({
     <section className="mt-6">
       <h2 className="text-sm font-medium">Where the credits went</h2>
       <p className="text-muted-foreground mt-1 text-sm">
-        Who consumed the window&apos;s credits. Each card totals its own kind of
-        spender, so a Teammate answer appears under both the Teammate and the
-        colleague who asked; adding the cards together would count it twice.
+        Who used this window&apos;s credits. A Teammate answer counts for both the Teammate and the colleague, so don&apos;t add the cards up.
       </p>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         {sections.map((section) => (

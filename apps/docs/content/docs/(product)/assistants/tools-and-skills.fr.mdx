@@ -3,31 +3,30 @@ title: Outils et compétences
 description: Contrôlez les outils d'exécution et associez des instructions réutilisables à un Assistant.
 ---
 
-Ouvrez un Assistant et sélectionnez **Tools & Skills**. Cette section contrôle
-les capacités d'exécution et les instructions réutilisables.
+Ouvrez un Assistant et sélectionnez **Tools & Skills**. Cette section permet de
+contrôler les fonctionnalités d'exécution et les instructions réutilisables.
 
 ## Outils intégrés
 
-| Outil | Par défaut | Comportement actuel |
+| Tool | Default | Comportement actuel |
 | --- | :---: | --- |
-| Recherche de connaissances | Activée | Recherche les connaissances connectées et renvoie les réponses citées. |
-| Mémoire de session | Activée | Utilise les informations de la session de conversation en cours. |
-| Récupérer l'URL | Désactivé | Lit une URL lorsque le moteur d'exécution sélectionne l'outil. |
-| Afficher un tableau | Désactivé | Affiche les faits dans un tableau lorsque le moteur d'exécution sélectionne l'outil. |
+| Search knowledge | Activé | Effectue une recherche dans la Knowledge connectée et renvoie des réponses citées. |
+| Session memory | On | Utilise les informations de la session de conversation en cours. |
+| Fetch URL | Off | Lit une URL lorsque l'environnement d'exécution sélectionne l'outil. |
+| Show a table | Off | Affiche les faits dans un tableau lorsque l'environnement d'exécution sélectionne l'outil. |
 
-La recherche dans la base de connaissances est toujours disponible. Vous pouvez
-activer ou désactiver les autres outils intégrés.
+L'outil Search knowledge est toujours disponible. Vous pouvez activer ou
+désactiver les autres outils intégrés.
 
-L'option Afficher un tableau organise les faits que l'Assistant a trouvés dans
-cette réponse. Il ne calcule pas de valeurs. Le tableau apparaît au-dessus de la
-réponse écrite, et la transcription de la boîte de réception affiche le même
-tableau.
+Show a table organise les faits que l'Assistant a trouvés dans cette réponse. Il
+ne calcule pas de valeurs. Le tableau s'affiche au-dessus de la réponse écrite,
+et la transcription de l'Inbox présente le même tableau.
 
-L'Assistant peut ajouter une question de suivi à une ligne. Le visiteur
-sélectionne la ligne pour poser cette question. La transcription de la boîte de
-réception affiche ces lignes, mais un membre ne peut pas les sélectionner.
+L'Assistant peut ajouter une question complémentaire à une ligne. Le Visitor
+sélectionne la ligne pour poser cette question. La transcription de l'Inbox
+affiche ces lignes, mais un Member ne peut pas les sélectionner.
 
-## Activer le mode Étude
+## Activer le mode d'étude
 
 **Study Mode** est désactivé par défaut. Activez-le pour permettre aux Visiteurs
 de s'exercer sur la Knowledge de l'Assistant grâce à des exercices interactifs.
@@ -45,7 +44,7 @@ Lorsqu'il est activé, **Study Mode** apparaît également dans **Flows**. Son
 bouton Settings ouvre cette section. Désactivez le mode Étude dans **Tools &
 Skills**. Le Flow n'a pas de commutateur distinct. Les requêtes provenant du
 menu Study exercises sont directement acheminées vers ce Flow. Une icône
-représentant un chapeau de diplômé s'affiche dans Thinking.
+représentant un chapeau de diplômé apparaît dans Thinking.
 
 Les exercices nécessitent des ressources pertinentes dans la Knowledge de
 l'Assistant. Si aucun support n'est trouvé, l'Assistant vous demande un sujet
@@ -67,66 +66,122 @@ soumise ne peut pas être modifiée. Les flashcards acceptent les variantes
 orthographiques définies lors de la création de l'exercice.
 
 La Inbox affiche les questions, les réponses soumises, les bonnes réponses et le
-score. Les exercices non terminés indiquent le nombre de questions restées sans
-réponse. Les exercices s'exécutent dans le chat. Ils n'ont pas besoin d'un
+score. Les exercices non terminés indiquent le nombre de questions qui restent
+sans réponse. Les exercices s'exécutent dans le chat. Ils n'ont pas besoin d'un
 lecteur H5P externe.
 
-## Connectez des données structurées
+## Connecter des données structurées
 
 La section **Data** répertorie les Entités importées via **Settings → Data**.
 Sélectionnez chaque Entité que cet Assistant peut interroger.
 
-Chaque Entité sélectionnée fournit un outil de filtrage exact. Une entité avec
-des attributs de texte fournit également un outil de recherche par mot-clé.
+Chaque Entité sélectionnée fournit un outil de filtrage exact. Une entité dotée
+d'attributs texte fournit également un outil de recherche par mot-clé.
 
-Les Entités partagées sont disponibles pour chaque Visiteur pris en charge par
-l'Assistant. Les entités à portée utilisateur nécessitent une
+Les Shared Entities sont accessibles à chaque Visitor pris en charge par
+l'Assistant. Les Entités à portée utilisateur nécessitent une
 [revendication d'identité](/authentication/microsoft-entra-id#choose-an-identity-claim)
 vérifiée.
 
-La sélection d'entité et le schéma sont intégrés au prochain instantané de
-publication. Le contenu de l'enregistrement reste en ligne après la publication.
+La sélection de l'entité et le schéma sont intégrés au prochain instantané de
+publication. Le contenu des enregistrements reste actif après la Publication.
 
-Consultez [Entities and Records](/data/entities-and-records) pour les
-importations CSV, les choix de portée et le filtrage d'identité.
+Consultez [Entities and Records](/data/entities-and-records) pour en savoir plus
+sur les importations CSV, les choix de portée et le filtrage des identités.
 
-## Configurez une intégration d'API
+## Configurer une intégration d'API
 
 Un Assistant peut utiliser une intégration d'API enregistrée. L'intégration
 contient une URL de base, un identifiant protégé et des points de terminaison
 décrits.
 
-Pour chaque point de terminaison, définissez la méthode, le chemin, l'objectif,
-les paramètres et la forme de la réponse. Le moteur d'exécution valide chaque
-chemin demandé par rapport à ce catalogue.
+Pour chaque endpoint, définissez la méthode, le chemin, l'objectif, les
+paramètres et la structure de la réponse. L'environnement d'exécution valide
+chaque chemin demandé par rapport à ce catalogue.
 
-L'agent peut inspecter les détails du point de terminaison avant d'envoyer une
-requête. Les réponses volumineuses restent disponibles via des lectures
-fenêtrées.
+L'agent peut examiner les détails du point de terminaison avant d'envoyer une
+requête. Les réponses volumineuses restent disponibles via des lectures par
+fenêtres.
 
 <Callout title="Control the endpoint catalogue">
 Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
 </Callout>
 
-## Associer une compétence d'organisation
+### Empêcher une écriture en double
 
-Une compétence est un modèle d'instruction réutilisable. Une Organisation peut
-associer la même Compétence à plusieurs Assistants.
+Une requête peut être envoyée à nouveau après un délai d'expiration ou un échec.
+Si le point de terminaison écrit des données, la deuxième requête peut créer un
+deuxième enregistrement.
+
+Pour éviter cela, attribuez une clé d'idempotence au point de terminaison. Dans
+le formulaire de l'endpoint, indiquez où votre API lit la clé :
+
+- `header:Idempotency-Key` envoie la clé dans un en-tête de requête.
+- `body:request_id` envoie la clé dans le corps JSON.
+
+Utilisez le nom que votre API lit. Ciele ne devine pas ce nom. Différentes API
+lisent différents noms.
+
+Ciele crée une clé pour chaque appel. Une nouvelle tentative du même appel
+envoie la même clé. Un appel différent envoie une clé différente. Votre API peut
+alors considérer les deux requêtes comme une seule écriture.
+
+Votre API doit également jouer son rôle. Elle doit stocker la clé et renvoyer le
+premier résultat lorsqu'elle rencontre à nouveau cette clé.
+
+<Callout title="An endpoint with no key is not protected">
+If you give no key, a retry of the call can write two times. A `GET` endpoint does not need a key, because a read does not change data.
+</Callout>
+
+## Associer une Skill d'organisation
+
+Une Skill est un modèle d'instruction réutilisable. Une Organisation peut
+associer une même Skill à plusieurs Assistants.
 
 1. Ouvrez **Tools & Skills**.
-2. Recherchez la compétence d'organisation requise.
-3. Associez la compétence à l'assistant.
-4. Testez le résultat dans l'Aperçu.
+2. Recherchez la Skill d'organisation requise.
+3. Associez la Skill à l'Assistant.
+4. Testez le résultat dans Preview.
 5. Publiez l'Assistant lorsque le résultat est correct.
 
 Les modifications apportées aux compétences sont immédiatement disponibles dans
-l'aperçu. Le widget publié utilise le dernier instantané de publication.
+Preview. Le Widget publié utilise le dernier instantané de Publication.
 
-## Testez la configuration
+### Permettre aux utilisateurs de lancer une Skill depuis la fenêtre de chat
 
-Posez une question qui nécessite chacun des outils activés. Vérifiez le panneau
+Une Skill peut avoir un **Opening line**. Rédigez-le du point de vue de la
+personne qui pose la question, et non de celui de l'Assistant.
+
+La fenêtre de discussion affiche un menu **/** avec chaque Skill qui dispose
+d'une phrase d'ouverture. Lorsque l'utilisateur sélectionne une Skill, la
+fenêtre de discussion insère la phrase d'ouverture dans la zone de message. Vous
+pouvez modifier le texte avant de l'envoyer.
+
+Si la phrase d'ouverture est vide, la Skill n'apparaît pas dans le menu **/**.
+L'invite de la Skill continue de s'appliquer à chaque réponse.
+
+Publiez l'Assistant après avoir rédigé une phrase d'ouverture. Le Widget utilise
+le dernier instantané de Publication.
+
+## Les pièces jointes et la Connaissance ne sont pas la même chose
+
+Une pièce jointe et une Knowledge Source deviennent toutes deux du texte, et
+Ciele les lit avec le même extracteur. Ce qui se passe ensuite est différent.
+
+Une Knowledge Source est permanente. Ciele stocke son texte, l'indexe, et
+l'Assistant peut le citer dans toutes les conversations ultérieures.
+
+Une pièce jointe appartient à sa conversation. Ciele le lit une seule fois, en
+ignore les octets et ne l'ajoute jamais à la Library. Aucune autre conversation
+ne le voit.
+
+Pour rendre un fichier permanent, ajoutez-le plutôt dans **Library**.
+
+## Tester la configuration
+
+Posez une question qui nécessite chacun des outils activés. Inspectez le panneau
 Thinking et les Sources avant de publier.
 
-Pour les données structurées, testez une recherche exacte d'attribut et une
+Pour les données structurées, testez une recherche d'attribut exacte et une
 recherche textuelle. Testez l'accès au niveau de l'utilisateur avec deux comptes
 connectés différents.

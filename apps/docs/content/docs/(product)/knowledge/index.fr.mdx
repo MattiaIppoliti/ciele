@@ -1,29 +1,29 @@
 ---
 title: Connaissances
-description: Ajoutez des sources que l'assistant peut interroger et citer.
+description: Ajoutez des sources que l'assistant peut consulter et citer.
 ---
 
-Les sources appartiennent à l'organisation, et une collection de connaissances
-les stocke avec les concepts produits lors de l'ingestion. Un Assistant effectue
-une recherche dans une Source uniquement après que vous ayez associé cette
-Source à l'Assistant. Associez une source depuis la
-[Bibliothèque](/knowledge/library), ou ajoutez-la dans l'Assistant, qui
-l'associera pour vous.
+Les sources appartiennent à l'Organisation, et une Knowledge Collection les
+stocke avec les Documents produits lors de l'ingestion. Un Assistant ne
+recherche dans une Source qu'après que vous ayez associé cette Source à
+l'Assistant. Associez une Source depuis la [Library](/knowledge/library), ou
+ajoutez-la dans l'Assistant, qui l'associera pour vous.
 
 Étant donné qu'une Source peut répondre pour plusieurs Assistants, la retirer
 d'un Assistant et la supprimer pour l'Organisation sont deux opérations
-distinctes. La suppression d'un Assistant laisse les Sources de l'Organisation
-en place. Seuls les liens de cet Assistant sont supprimés.
+distinctes. La suppression d'un Assistant ne modifie pas les Sources de
+l'Organisation, qui restent en place. Cela supprime uniquement les liens de cet
+Assistant.
 
 ## Types de sources disponibles
 
-- URL du site Web
+- URL du site web
 - Fichier importé
 - Texte collé
 - Application connectée
-- FAQ organisée
+- FAQ sélectionnée
 
-Ciele extrait le contenu de la Source et crée des Concepts consultables.
+Ciele extrait le contenu des Sources et crée des Documents consultables.
 L'environnement d'exécution fait remonter les citations vers les Sources
 nommées.
 
@@ -31,23 +31,23 @@ nommées.
 
 | Status | Signification |
 | --- | --- |
-| En cours de traitement | Ciele extrait et indexe la Source. |
-| Prêt | La Source est disponible pour la recherche de connaissances. |
-| Failed | L'ingestion n'a pas été menée à terme. Vérifiez l'erreur et réessayez l'opération. |
+| Processing | Ciele extrait et indexe la Source. |
+| Ready | La Source est disponible pour la recherche dans la base de connaissances. |
+| Failed | L'ingestion n'a pas été menée à terme. Examinez l'erreur et réessayez l'opération. |
 
-Ne testez pas une nouvelle Source tant que son statut n'est pas **Ready**.
+Ne testez pas une nouvelle Source avant que son statut ne soit **Ready**.
 
 ## Accès direct
 
 Une Source de type fichier peut fournir au Visiteur le fichier original en plus
-de la citation. Il s'agit du paramètre **Direct access** sur un lien Assistant,
-et il est désactivé par défaut. Définissez-le dans la Bibliothèque.
+de la citation. Il s'agit du paramètre **Direct access** sur un lien
+d'Assistant, et il est désactivé par défaut. Définissez-le dans la Library.
 
 ## Récupération
 
-La recherche de connaissances peut utiliser la recherche vectorielle, le repli
-lexical et la navigation dans le graphe de connaissances. Le moteur Knowledge
-sélectionné contrôle le chemin principal.
+La recherche dans la base de connaissances utilise la recherche vectorielle et
+le recours lexical pour identifier les passages candidats. Une étape de
+reclassement sélectionne ensuite les passages que l'Assistant lit.
 
-La recherche approfondie permet davantage d'itérations basées uniquement sur les
-connaissances. Elle n'effectue pas de recherche sur le Web ouvert.
+Deep Search permet davantage d'itérations portant uniquement sur la Knowledge.
+Il n'effectue pas de recherche sur le web ouvert.

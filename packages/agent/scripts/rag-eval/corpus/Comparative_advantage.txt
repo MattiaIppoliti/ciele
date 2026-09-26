@@ -1,0 +1,898 @@
+Comparative advantage is an economic principle that explains why people, firms, and countries can often benefit from trade even when one party is more productive at producing every good or service. The principle states that greater gains from trade arise when each participant devotes a larger share of its labor and other productive resources to the activities with the lowest opportunity cost and obtains other goods and services through trade. Comparative advantage differs from absolute advantage, which concerns being more productive overall, and competitive advantage, which concerns outperforming rivals in a marketplace.
+A very early use of the term comparative advantage appears in An Essay on the External Corn Trade by Robert Torrens in 1815.
+David Ricardo developed the classical theory of comparative advantage in 1817 to explain why countries engage in international trade even when one country's workers are more efficient at producing every single good than workers in other countries. He demonstrated that if two countries capable of producing two commodities engage in the free market (albeit with the assumption that the capital and labour do not move internationally), then each country will increase its overall consumption by exporting the good for which it has a comparative advantage while importing the other good, provided that there exist differences in labor productivity between both countries. Widely regarded as one of the most powerful yet counter-intuitive insights in economics, Ricardo's theory implies that comparative advantage rather than absolute advantage is responsible for much of international trade.
+
+== Classical theory and David Ricardo's formulation ==
+
+Adam Smith first alluded to the concept of absolute advantage as the basis for international trade in 1776, in The Wealth of Nations:
+
+If a foreign country can supply us with a commodity cheaper than we ourselves can make it, better buy it off them with some part of the produce of our own industry employed in a way in which we have some advantage. The general industry of the country, being always in proportion to the capital which employs it, will not thereby be diminished [...] but only left to find out the way in which it can be employed with the greatest advantage.
+Writing two decades after Smith in 1808, Robert Torrens articulated a preliminary definition of comparative advantage as the loss from the closing of trade:
+
+[I]f I wish to know the extent of the advantage, which arises to England, from her giving France a hundred pounds of broadcloth, in exchange for a hundred pounds of lace, I take the quantity of lace which she has acquired by this transaction, and compare it with the quantity which she might, at the same expense of labour and capital, have acquired by manufacturing it at home. The lace that remains, beyond what the labour and capital employed on the cloth, might have fabricated at home, is the amount of the advantage which England derives from the exchange. In 1814 the anonymously published pamphlet Considerations on the Importation of Foreign Corn featured the earliest recorded formulation of the concept of comparative advantage. Torrens would later publish his work External Corn Trade in 1815 acknowledging this pamphlet author's priority.
+
+In 1817, David Ricardo published what has since become known as the theory of comparative advantage in his book On the Principles of Political Economy and Taxation.
+
+=== Ricardo's example ===
+
+In a famous example, Ricardo considers a world economy consisting of two countries, Portugal and England, each producing two goods of identical quality. In Portugal, the a priori more efficient country, it is possible to produce wine and cloth with less labor than it would take to produce the same quantities in England. However, the relative costs or ranking of cost of producing those two goods differ between the countries.
+
+In this illustration, England could commit 100 hours of labor to produce one unit of cloth, or produce ⁠5/6⁠ units of wine. Meanwhile, in comparison, Portugal could commit 100 hours of labor to produce ⁠10/9⁠ units of cloth, or produce ⁠10/8⁠ units of wine. Portugal possesses an absolute advantage in producing both cloth and wine due to more produced per hour (since ⁠10/9⁠ > 1). If the capital and labour were mobile, both wine and cloth should be made in Portugal, with the capital and labour of England removed there. If they were not mobile, as Ricardo believed them to be generally, then England's comparative advantage (due to lower opportunity cost) in producing cloth means that it has an incentive to produce more of that good which is relatively cheaper for them to produce than the other—assuming they have an advantageous opportunity to trade in the marketplace for the other more difficult to produce good.
+
+In the absence of trade, England requires 220 hours of work to both produce and consume one unit each of cloth and wine while Portugal requires 170 hours of work to produce and consume the same quantities. England is more efficient at producing cloth than wine, and Portugal is more efficient at producing wine than cloth. So, if each country specializes in the good for which it has a comparative advantage, then the global production of both goods increases, for England can spend 220 labor hours to produce 2.2 units of cloth while Portugal can spend 170 hours to produce 2.125 units of wine. Moreover, if both countries specialize in the above manner and England trades a unit of its cloth for ⁠5/6⁠ to ⁠9/8⁠ units of Portugal's wine, then both countries can consume at least a unit each of cloth and wine, with 0 to 0.2 units of cloth and 0 to 0.125 units of wine remaining in each respective country to be consumed or exported. Consequently, both England and Portugal can consume more wine and cloth under free trade than in autarky.
+
+=== Ricardian model ===
+The Ricardian model is a general equilibrium mathematical model of international trade. Although the idea of the Ricardian model was first presented in the Essay on Profits (a single-commodity version) and then in the Principles (a multi-commodity version) by David Ricardo, the first mathematical Ricardian model was published by William Whewell in 1833. The earliest test of the Ricardian model was performed by G. D. A. MacDougall, which was published in The Economic Journal of 1951 and 1952. In the Ricardian model, trade patterns depend on productivity differences.
+The following is a typical modern interpretation of the classical Ricardian model. In the interest of simplicity, it uses notation and definitions, such as opportunity cost, unavailable to Ricardo.
+The world economy consists of two countries, Home and Foreign, which produce wine and cloth. Labor, the only factor of production, is mobile domestically but not internationally; there may be migration between sectors but not between countries. We denote the labor force in Home by 
+  
+    
+      
+        
+          L
+        
+      
+    
+    {\displaystyle \textstyle L}
+  
+, the amount of labor required to produce one unit of wine in Home by 
+  
+    
+      
+        
+          
+            a
+            
+              L
+              W
+            
+          
+        
+      
+    
+    {\displaystyle \textstyle a_{LW}}
+  
+, and the amount of labor required to produce one unit of cloth in Home by 
+  
+    
+      
+        
+          
+            a
+            
+              L
+              C
+            
+          
+        
+      
+    
+    {\displaystyle \textstyle a_{LC}}
+  
+. The total amount of wine and cloth produced in Home are 
+  
+    
+      
+        
+          Q
+          
+            W
+          
+        
+      
+    
+    {\displaystyle Q_{W}}
+  
+ and 
+  
+    
+      
+        
+          Q
+          
+            C
+          
+        
+      
+    
+    {\displaystyle Q_{C}}
+  
+ respectively. We denote the same variables for Foreign by appending a prime. For instance, 
+  
+    
+      
+        
+          
+            a
+            
+              L
+              W
+            
+            ′
+          
+        
+      
+    
+    {\displaystyle \textstyle a'_{LW}}
+  
+ is the amount of labor needed to produce a unit of wine in Foreign.
+We do not know if Home can produce cloth using fewer hours of work than Foreign. That is, we do not know if 
+  
+    
+      
+        
+          a
+          
+            L
+            C
+          
+        
+        <
+        
+          a
+          
+            L
+            C
+          
+          ′
+        
+      
+    
+    {\displaystyle a_{LC}<a'_{LC}}
+  
+. Similarly, we do not know if Home can produce wine using fewer hours of work. However, we assume Home is relatively more productive than Foreign in making in cloth vs. wine:
+
+  
+    
+      
+        
+          a
+          
+            L
+            C
+          
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            C
+          
+          ′
+        
+        <
+        
+          a
+          
+            L
+            W
+          
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            W
+          
+          ′
+        
+        .
+      
+    
+    {\displaystyle a_{LC}/a'_{LC}<a_{LW}/a'_{LW}.}
+  
+
+Equivalently, we may assume that Home has a comparative advantage in cloth in the sense that it has a lower opportunity cost for cloth in terms of wine than Foreign:
+
+  
+    
+      
+        
+          a
+          
+            L
+            C
+          
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            W
+          
+        
+        <
+        
+          a
+          
+            L
+            C
+          
+          ′
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            W
+          
+          ′
+        
+        .
+      
+    
+    {\displaystyle a_{LC}/a_{LW}<a'_{LC}/a'_{LW}.}
+  
+
+In the absence of trade, the relative price of cloth and wine in each country is determined solely by the relative labor cost of the goods. Hence the relative autarky price of cloth is 
+  
+    
+      
+        
+          a
+          
+            L
+            C
+          
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            W
+          
+        
+      
+    
+    {\displaystyle a_{LC}/a_{LW}}
+  
+ in Home and 
+  
+    
+      
+        
+          a
+          
+            L
+            C
+          
+          ′
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            W
+          
+          ′
+        
+      
+    
+    {\displaystyle a'_{LC}/a'_{LW}}
+  
+ in Foreign. With free trade, the price of cloth or wine in either country is the world price 
+  
+    
+      
+        
+          P
+          
+            C
+          
+        
+      
+    
+    {\displaystyle P_{C}}
+  
+ or
+  
+    
+      
+        
+          P
+          
+            W
+          
+        
+      
+    
+    {\displaystyle P_{W}}
+  
+.
+Instead of considering the world demand (or supply) for cloth and wine, we are interested in the world relative demand (or relative supply) for cloth and wine, which we define as the ratio of the world demand (or supply) for cloth to the world demand (or supply) for wine. In general equilibrium, the world relative price 
+  
+    
+      
+        
+          
+            P
+            
+              C
+            
+          
+          
+            /
+          
+          
+            P
+            
+              W
+            
+          
+        
+      
+    
+    {\displaystyle \textstyle P_{C}/P_{W}}
+  
+ will be determined uniquely by the intersection of world relative demand 
+  
+    
+      
+        
+          R
+          D
+        
+      
+    
+    {\displaystyle \textstyle RD}
+  
+ and world relative supply 
+  
+    
+      
+        
+          R
+          S
+        
+      
+    
+    {\displaystyle \textstyle RS}
+  
+ curves.
+
+We assume that the relative demand curve reflects substitution effects and is decreasing with respect to relative price. The behavior of the relative supply curve, however, warrants closer study. Recalling our original assumption that Home has a comparative advantage in cloth, we consider five possibilities for the relative quantity of cloth supplied at a given price.
+
+If 
+  
+    
+      
+        
+          
+            P
+            
+              C
+            
+          
+          
+            /
+          
+          
+            P
+            
+              W
+            
+          
+          =
+          
+            a
+            
+              L
+              C
+            
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+          
+          <
+          
+            a
+            
+              L
+              C
+            
+            ′
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+            ′
+          
+        
+      
+    
+    {\displaystyle \textstyle P_{C}/P_{W}=a_{LC}/a_{LW}<a'_{LC}/a'_{LW}}
+  
+, then Foreign specializes in wine, for the wage 
+  
+    
+      
+        
+          P
+          
+            W
+          
+          ′
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            W
+          
+          ′
+        
+      
+    
+    {\displaystyle P'_{W}/a'_{LW}}
+  
+ in the wine sector is greater than the wage 
+  
+    
+      
+        
+          P
+          
+            C
+          
+          ′
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            C
+          
+          ′
+        
+      
+    
+    {\displaystyle P'_{C}/a'_{LC}}
+  
+ in the cloth sector. However, Home workers are indifferent between working in either sector. As a result, the quantity of cloth supplied can take any value.
+If 
+  
+    
+      
+        
+          
+            P
+            
+              C
+            
+          
+          
+            /
+          
+          
+            P
+            
+              W
+            
+          
+          <
+          
+            a
+            
+              L
+              C
+            
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+          
+          <
+          
+            a
+            
+              L
+              C
+            
+            ′
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+            ′
+          
+        
+      
+    
+    {\displaystyle \textstyle P_{C}/P_{W}<a_{LC}/a_{LW}<a'_{LC}/a'_{LW}}
+  
+, then both Home and Foreign specialize in wine, for similar reasons as above, and so the quantity of cloth supplied is zero.
+If 
+  
+    
+      
+        
+          
+            a
+            
+              L
+              C
+            
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+          
+          <
+          
+            P
+            
+              C
+            
+          
+          
+            /
+          
+          
+            P
+            
+              W
+            
+          
+          <
+          
+            a
+            
+              L
+              C
+            
+            ′
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+            ′
+          
+        
+      
+    
+    {\displaystyle \textstyle a_{LC}/a_{LW}<P_{C}/P_{W}<a'_{LC}/a'_{LW}}
+  
+, then Home specializes in cloth whereas Foreign specializes in wine. The quantity of cloth supplied is given by the ratio 
+  
+    
+      
+        
+          
+            
+              
+                L
+                
+                  /
+                
+                
+                  a
+                  
+                    L
+                    C
+                  
+                
+              
+              
+                
+                  L
+                  ′
+                
+                
+                  /
+                
+                
+                  a
+                  
+                    L
+                    W
+                  
+                  ′
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle \textstyle {\frac {L/a_{LC}}{L'/a'_{LW}}}}
+  
+ of the world production of cloth to the world production of wine.
+If 
+  
+    
+      
+        
+          
+            a
+            
+              L
+              C
+            
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+          
+          <
+          
+            a
+            
+              L
+              C
+            
+            ′
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+            ′
+          
+          <
+          
+            P
+            
+              C
+            
+          
+          
+            /
+          
+          
+            P
+            
+              W
+            
+          
+        
+      
+    
+    {\displaystyle \textstyle a_{LC}/a_{LW}<a'_{LC}/a'_{LW}<P_{C}/P_{W}}
+  
+, then both Home and Foreign specialize in cloth. The quantity of cloth supplied tends to infinity as the quantity of wine supplied approaches zero.
+If 
+  
+    
+      
+        
+          
+            a
+            
+              L
+              C
+            
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+          
+          <
+          
+            a
+            
+              L
+              C
+            
+            ′
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+            ′
+          
+          =
+          
+            P
+            
+              C
+            
+          
+          
+            /
+          
+          
+            P
+            
+              W
+            
+          
+        
+      
+    
+    {\displaystyle \textstyle a_{LC}/a_{LW}<a'_{LC}/a'_{LW}=P_{C}/P_{W}}
+  
+, then Home specializes in cloth while Foreign workers are indifferent between sectors. Again, the relative quantity of cloth supplied can take any value.
+
+As long as the relative demand is finite, the relative price is always bounded by the inequality
+
+  
+    
+      
+        
+          a
+          
+            L
+            C
+          
+        
+        
+          /
+        
+        
+          a
+          
+            L
+            W
+          
+        
+        ≤
+        
+          
+            P
+            
+              C
+            
+          
+          
+            /
+          
+          
+            P
+            
+              W
+            
+          
+        
+        ≤
+        
+          
+            a
+            
+              L
+              C
+            
+            ′
+          
+          
+            /
+          
+          
+            a
+            
+              L
+              W
+            
+            ′
+          
+        
+        .
+      
+    
+    {\displaystyle a_{LC}/a_{LW}\leq {P_{C}/P_{W}}\leq {a'_{LC}/a'_{LW}}.}
+  
+
+In autarky, Home faces a production constraint of the form
+
+  
+    
+      
+        
+          a
+          
+            L
+            C
+          
+        
+        
+          Q
+          
+            C
+          
+        
+        +
+        
+          a
+          
+            L
+            W
+          
+        
+        
+          Q
+          
+            W
+          
+        
+        ≤
+        L
+        ,
+      
+    
+    {\displaystyle a_{LC}Q_{C}+a_{LW}Q_{W}\leq L,}
+  
+
+from which it follows that Home's cloth consumption at the production possibilities frontier is

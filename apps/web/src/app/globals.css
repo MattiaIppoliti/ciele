@@ -17,6 +17,19 @@
   .skeleton-reveal-pulse { animation: none; }
 }
 
+/* PageReveal (components/motion/page-reveal.tsx): until hydration takes the
+   entrance over, the server-rendered page stays transparent, so it does not
+   paint, vanish and arrive again. The delayed animation is the fallback for a
+   script that never runs: the page appears after 0.9s regardless. */
+@keyframes page-reveal-fallback {
+  to { opacity: 1; }
+}
+
+[data-page-reveal="pending"] > * {
+  opacity: 0;
+  animation: page-reveal-fallback 0.2s ease-out 0.9s forwards;
+}
+
 /* Generate utilities used by the shared UI primitives (workspace source). */
 @source "../../../../packages/ui/src";
 

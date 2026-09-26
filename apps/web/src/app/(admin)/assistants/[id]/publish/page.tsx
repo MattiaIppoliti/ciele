@@ -22,7 +22,7 @@ export default async function PublishPage({
       <SectionHero
         icon={Plane}
         title="Publish"
-        description="Publish creates an immutable snapshot, the live widget always serves the latest one. Edits stay in Preview until you publish again."
+        description="The live widget serves your last publish. New edits stay in Preview until you publish again."
       />
       <PublishClient
         assistant={assistant}

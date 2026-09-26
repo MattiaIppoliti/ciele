@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Starten Sie die aktuelle Docker-Compose-Bereitstellung für einen einzelnen Host.
+description: Starten Sie die aktuelle Single-Host-Docker-Compose-Bereitstellung.
 ---
 
 <Callout title="No terminal? Use the desktop app">
@@ -9,26 +9,27 @@ including generating the secrets and starting the stack. It needs only Docker
 Desktop. This page is the server path.
 </Callout>
 
-## Anforderungen
+## Voraussetzungen
 
 - Installieren Sie Git.
 - Installieren Sie Docker mit Docker Compose.
-- Reservieren Sie ausreichend Speicherplatz für Bilder, Postgres und
+- Reservieren Sie ausreichend Speicherplatz für Images, Postgres und
   hochgeladene Dateien.
-- Reservieren Sie mehr Speicher, wenn Sie die optionalen Worker aktivieren.
+- Reservieren Sie mehr Arbeitsspeicher, wenn Sie die optionalen Worker
+  aktivieren.
 
-## Ein Befehl
+## Ein einziger Befehl
 
-Das Installationsprogramm führt jeden Schritt im nächsten Abschnitt aus: Es
-überprüft die Voraussetzungen, holt den Quellcode in `./ciele` und führt
-`bootstrap.sh` aus.
+Das Installationsprogramm führt alle im nächsten Abschnitt beschriebenen
+Schritte aus: Es überprüft die Voraussetzungen, lädt den Quellcode in `./ciele`
+herunter und führt `bootstrap.sh` aus.
 
 ```bash
 curl -fsSL https://ciele.app/install.sh | sh
 ```
 
-Geben Sie Bootstrap-Flags mit `-s --` über die Pipe weiter und setzen Sie
-`CIELE_DIR`, um das Checkout-Verzeichnis auszuwählen, oder `CIELE_REF`, um einen
+Übergeben Sie Bootstrap-Flags über die Pipe mit `-s --` und setzen Sie
+`CIELE_DIR`, um das Checkout-Verzeichnis auszuwählen, oder `CIELE_REF`, um ein
 Release-Tag zu installieren:
 
 ```bash
@@ -36,18 +37,18 @@ curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 ```
 
 Das Installationsprogramm löscht niemals etwas: Wenn das Zielverzeichnis
-existiert und kein Ciele-Checkout ist, stoppt es und informiert Sie darüber.
+existiert und kein Ciele-Checkout ist, bricht es ab und informiert Sie darüber.
 
-Auf einem Mac ohne Docker stoppt das Installationsprogramm nicht bei einem
-Fehler. Es öffnet [Ciele Desktop](/self-hosting/desktop) und lädt zuerst die
-Release-Version herunter, wenn die App nicht vorhanden ist. Die geführte
-Einrichtung dort verbindet Docker Desktop und startet denselben Stack, der auf
-dieser Seite beschrieben wird. Unter Linux lehnt das Installationsprogramm ab,
-da es keine Desktop-App gibt, an die die Arbeit übergeben werden kann.
+Auf einem Mac ohne Docker hält das Installationsprogramm bei einem Fehler nicht
+an. Es öffnet [Ciele Desktop](/self-hosting/desktop) und lädt zunächst die
+Release-Version herunter, wenn die App nicht vorhanden ist. Die dortige geführte
+Einrichtung verknüpft Docker Desktop und startet denselben Stack, der auf dieser
+Seite beschrieben wird. Unter Linux verweigert das Installationsprogramm den
+Vorgang, da es keine Desktop-App gibt, an die die Aufgabe übergeben werden kann.
 
-## Bootstrappen Sie den Stack
+## Den Stack bootstrappen
 
-So führen Sie dieselben Schritte manuell aus:
+Um die gleichen Schritte manuell auszuführen:
 
 ```bash
 git clone https://github.com/MattiaIppoliti/ciele.git
@@ -56,26 +57,27 @@ cd ciele
 ```
 
 Das Skript generiert die erforderlichen Secrets in `deploy/.env`. Anschließend
-erstellt und startet es die Standardprofile.
+werden die Standardprofile erstellt und gestartet.
 
-Öffnen Sie [http://localhost:3000](http://localhost:3000), sobald die Dienste
-fehlerfrei laufen. Das erste Konto wird zum Eigentümer der Organisation.
+Öffnen Sie [http://localhost:3000](http://localhost:3000), nachdem die Services
+den Status „healthy“ erreicht haben. Das erste Konto wird zum Organization
+Owner.
 
 Verwenden Sie `./deploy/bootstrap.sh --seed`, um bereinigte Demo-Inhalte
 hinzuzufügen.
 
-## Veröffentlichte Images ausführen, anstatt zu bauen
+## Veröffentlichte Images ausführen, statt sie zu bauen
 
-Das Erstellen von `app`, `migrate` und `cron` aus dem Checkout nimmt viel Zeit
-in Anspruch und erfordert das vollständige Repository. Jedes Release
-veröffentlicht diese drei auch als Container-Images:
+Das Builden von `app`, `migrate` und `cron` aus dem Checkout nimmt erheblich
+Zeit in Anspruch und erfordert das vollständige Repository. Jedes Release
+veröffentlicht diese drei Elemente auch als Container-Images:
 
 ```bash
 ./deploy/bootstrap.sh --images v0.4.0
 ```
 
 Der Befehl schreibt zwei Einstellungen in `deploy/.env` und führt einen Pull
-durch, anstatt zu bauen:
+statt eines Builds durch:
 
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
@@ -83,13 +85,13 @@ CIELE_IMAGE_TAG=v0.4.0
 ```
 
 Da sich beide in `deploy/.env` befinden, bleibt ein späterer
-`docker compose up -d` in diesem Verzeichnis im Image-Modus. Deaktivieren Sie
-beide Einstellungen, um wieder aus dem Quellcode zu bauen. Stellen Sie
-`CIELE_IMAGE_REGISTRY` so ein, dass ein Mirror oder Ihr eigener Rebuild
-verwendet wird.
+`docker compose up -d` in diesem Verzeichnis im Image-Modus. Löschen Sie beide
+Einstellungen, um wieder zum Builden aus dem Quellcode zurückzukehren. Setzen
+Sie `CIELE_IMAGE_REGISTRY`, um einen Mirror oder Ihren eigenen Rebuild zu
+verwenden.
 
-Profile, Service-Ordering und die Datenbankebene sind in beiden Modi identisch.
-Nur die Herkunft dieser drei Dienste ändert sich.
+Profiles, Service Ordering und die Database Layer sind in beiden Modi identisch.
+Es ändert sich lediglich die Herkunft dieser drei Services.
 
 <Callout title="Recreate the container after changing the public URL">
 The published application image resolves `SUPABASE_PUBLIC_URL` once, when the
@@ -100,36 +102,44 @@ restart alone keeps the previous value.
 
 ## Standardprofile
 
-| Profil | Standard | Dienste |
+| Profile | Default | Services |
 | --- | :---: | --- |
-| `db` | Ja | Postgres, pgvector, Authentifizierung, Daten-API, Speicher und Gateway. |
-| `migrate` | Ja | Ausstehende Migrationen und erforderliche Speicher-Buckets. |
-| `app` | Ja | Administratorkonsole, Widget-Runtime und API v1. |
+| `db` | Ja | Postgres, pgvector, Authentifizierung, Data API, Speicher und Gateway. |
+| `migrate` | Ja | Ausstehende Migrationen und erforderliche Storage Buckets. |
+| `app` | Ja | Administrator console, Widget-Runtime und API v1. |
 | `cron` | Ja | Geplante Anwendungsjobs. |
-| `workers` | Nein | Dienste zum Abrufen von Graphen und zum Crawlen mit JavaScript-Rendering. |
-| `studio` | Nein | Schnittstelle zur Datenbankverwaltung. |
+| `workers` | Nein | JavaScript-Rendering-Crawl-Dienst. |
+| `studio` | Nein | Database administration interface. |
 
-## Überprüfen Sie den Stack
+## Den Stack untersuchen
 
 ```bash
 docker compose -f deploy/docker-compose.yml ps
 docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
-In der Standardkonfiguration wird die Anwendung auf Port `3000` und das
-Datenbank-Gateway auf Port `8000` veröffentlicht. Beide binden an `127.0.0.1`,
-sodass von einem anderen Rechner nichts erreichbar ist, bis Sie einen
-Reverse-Proxy davor platzieren. Stellen Sie stattdessen `BIND_ADDRESS=0.0.0.0`
-in `deploy/.env` so ein, dass sie auf jeder Schnittstelle veröffentlicht werden.
-Postgres wird niemals veröffentlicht. Die Datenbankkonsole (Studio) bleibt immer
-auf Loopback. Greifen Sie über einen SSH-Tunnel darauf zu.
+Die Standardkonfiguration veröffentlicht die Anwendung auf Port `3000` und das
+Datenbank-Gateway auf Port `8000`. Beide binden an `127.0.0.1`, sodass von einem
+anderen Rechner aus nichts erreichbar ist, bis Sie einen Reverse Proxy
+vorgeschaltet haben. Setzen Sie `BIND_ADDRESS=0.0.0.0` in `deploy/.env`, um sie
+stattdessen auf jeder Schnittstelle zu veröffentlichen. Postgres wird niemals
+veröffentlicht. Die Datenbankkonsole (Studio) bleibt stets auf Loopback. Greifen
+Sie über einen SSH-Tunnel darauf zu.
 
 <Callout type="warn" title="Add TLS before public use">
 The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
 
+Die Anwendung überprüft dies beim Start. Es liest `PUBLIC_URL`,
+`CIELE_PUBLIC_ORIGIN` und `NEXT_PUBLIC_APP_URL`. Wenn eine dieser Variablen mit
+`http://` beginnt und nicht auf den lokalen Rechner verweist, startet die
+Anwendung nicht. Das Container-Protokoll nennt die Variable. Der Standardwert
+`PUBLIC_URL=http://localhost:3000` besteht die Prüfung. Um absichtlich über
+unverschlüsseltes HTTP zu arbeiten, beispielsweise in einem privaten Netzwerk,
+setzen Sie `CIELE_ALLOW_INSECURE_HTTP=1` in `deploy/.env`.
+
 Sobald ein öffentlicher Ursprung vorhanden ist, setzen Sie `CIELE_PUBLIC_ORIGIN`
 in `deploy/.env` auf diese HTTPS-URL. Links, die in eine E-Mail eingefügt
-werden, wie etwa die Bestätigung für den Newsletter, werden aus diesem Wert
-erstellt. Ohne diesen Wert lehnt die Anwendung das Versenden dieser E-Mails ab.
-Sie erstellt keinen Link aus dem `Host`-Header der Anfrage.
+werden, wie etwa die Newsletter-Bestätigung, werden aus diesem Wert generiert.
+Ohne diesen Wert verweigert die Anwendung das Versenden dieser E-Mails. Es wird
+kein Link aus dem `Host`-Header der Anfrage erstellt.

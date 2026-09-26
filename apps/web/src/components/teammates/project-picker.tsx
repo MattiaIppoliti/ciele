@@ -26,8 +26,7 @@ export function ProjectPicker({
       <Label>Project</Label>
       {projects.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No live projects yet. A project gives this teammate the decisions your
-          team has already made, so it stops asking.
+          No projects yet. A project shares your team&apos;s decisions with this teammate.
         </p>
       ) : (
         <div className="flex flex-wrap gap-2">

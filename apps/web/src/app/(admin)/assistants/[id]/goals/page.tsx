@@ -18,7 +18,7 @@ export default async function GoalsPage({ params }: { params: Promise<{ id: stri
       <SectionHero
         icon={Compass}
         title="Goals"
-        description="Standing golden questions, re-verified on a schedule. A goal that stops passing raises an Alert, nothing that worked once goes unwatched."
+        description="Key questions, re-checked on a schedule. A failing goal raises an Alert."
       />
       <GoalsClient
         assistantId={id}

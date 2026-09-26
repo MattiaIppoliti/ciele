@@ -4,14 +4,6 @@ import type { Db } from "@agent-hub/db";
 import { createHash } from "node:crypto";
 
 import { getRuntimeHost } from "./host";
-import { isGraphWorkerConfigured } from "./graph-worker";
-import {
-  GRAPH_SYNC_KIND,
-  type GraphSyncJob,
-  type GraphSyncJobInput,
-  graphSyncJobFromRecord,
-  performGraphSyncConcept,
-} from "./graph-sync";
 import {
   draftGoalProposal,
   draftImprovementProposal,
@@ -314,20 +306,6 @@ const ingestSourceHandler: JobHandler = {
       await deps.db.updateSource(sourceId, { status: "error", error: message });
     }
   },
-};
-
-// ---------------------------------------------------------------------------
-// graph_sync_concept, projects one OKF Concept onto its Collection's derived
-// Knowledge Graph (ADR-0017). Inert when the graph worker is unconfigured.
-// ---------------------------------------------------------------------------
-
-const graphSyncHandler: JobHandler = {
-  async perform(record, deps) {
-    await performGraphSyncConcept(graphSyncJobFromRecord(record), deps);
-  },
-  // No onTerminalFailure: the graph is a derived index, so a permanently failed
-  // sync leaves OKF (the record) intact and is recoverable by a backfill; the
-  // ledger row's `failed` status is the operational signal.
 };
 
 // ---------------------------------------------------------------------------
@@ -723,8 +701,8 @@ export function extractMemoriesJobId(input: {
 /**
  * One extraction job per Document of a Source's committed generation (#930).
  *
- * Called right after the cutover, beside the graph projection, and swallowing
- * its own failures for the same reason: memories are derived, and an ingest
+ * Called right after the cutover, swallowing its own failures: memories are
+ * derived, and an ingest
  * that succeeded must not be reported as failed because a queue write did not.
  * Pages through the whole Source: a site with ten thousand pages gets ten
  * thousand jobs, not the first page of them.
@@ -890,7 +868,6 @@ export async function drainMemoryExtractions(
 
 const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   ingest_source: ingestSourceHandler,
-  graph_sync_concept: graphSyncHandler,
   draft_improvement_proposal: draftProposalHandler,
   draft_goal_proposal: goalProposalHandler,
   promote_memories: promoteMemoriesHandler,
@@ -1077,6 +1054,88 @@ export async function enqueueIngestJob(
   );
 }
 
+/** What {@link enqueueVerbatimReingests} did with each Source it looked at. */
+export interface VerbatimReingestReport {
+  /**
+   * Pass as `after` on the next call; null once the listing is exhausted.
+   * Skipped Sources stay enriched, so without the cursor they would fill the
+   * same page on every call.
+   */
+  next: string | null;
+  enqueued: string[];
+  skipped: Array<{
+    sourceId: string;
+    reason: "missing" | "processing" | "no_source_text" | "unlinked";
+  }>;
+}
+
+/**
+ * The one-off step that retires model-rewritten Concepts (ADR-0025).
+ *
+ * Ingestion used to store a file or text Source twice: the model's rewrite and
+ * a "Source Text" companion holding the extracted text unedited. This rebuilds
+ * each such Source from its own companions, through the ordinary ingest job,
+ * so the swap is the same atomic generation replacement a re-upload gets: the
+ * old Concepts answer until the new set commits.
+ *
+ * No model runs and no original file is needed, because the companions already
+ * are the text. A Source without companions (ingested before they existed) is
+ * reported, not guessed at: its owner re-processes or re-uploads it.
+ *
+ * Bounded and idempotent: each call walks one page in source id order and
+ * returns the cursor for the next, so running it until `next` is null walks
+ * the whole platform even when a page holds only skipped Sources.
+ */
+export async function enqueueVerbatimReingests(
+  deps: JobDeps,
+  options: { limit?: number; after?: string } = {}
+): Promise<VerbatimReingestReport> {
+  const limit = options.limit ?? 25;
+  const listed = await deps.db.listEnrichedSources(limit, options.after);
+  const report: VerbatimReingestReport = {
+    next: listed.length > 0 && listed.length >= limit ? listed[listed.length - 1].sourceId : null,
+    enqueued: [],
+    skipped: [],
+  };
+  for (const { sourceId, collectionId } of listed) {
+    const source = await deps.db.getSource(sourceId);
+    if (!source) {
+      report.skipped.push({ sourceId, reason: "missing" });
+      continue;
+    }
+    if (source.status === "processing") {
+      report.skipped.push({ sourceId, reason: "processing" });
+      continue;
+    }
+    const companions = (await deps.db.listConcepts(collectionId))
+      .filter((c) => c.sourceId === sourceId && c.frontmatter.type === "Source Text")
+      // `…-part-2` before `…-part-10`.
+      .sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+    if (companions.length === 0) {
+      report.skipped.push({ sourceId, reason: "no_source_text" });
+      continue;
+    }
+    const [link] = await deps.db.listSourceAssistantLinks(sourceId);
+    if (!link) {
+      report.skipped.push({ sourceId, reason: "unlinked" });
+      continue;
+    }
+    await deps.db.updateSource(sourceId, { status: "processing", error: "" });
+    await enqueueIngestJob(
+      {
+        kind: "ingest_source",
+        assistantId: link.assistantId,
+        collectionId,
+        sourceId,
+        rawText: companions.map((c) => c.body).join("\n\n"),
+      },
+      deps
+    );
+    report.enqueued.push(sourceId);
+  }
+  return report;
+}
+
 /**
  * Enqueues a Suggested Fix drafting job for an Improvement raised from a flagged
  * message. Durable row first, host after-response accelerator, cron backstop. Best-effort
@@ -1249,60 +1308,4 @@ export async function runDueApplicationSyncJobs(
   options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
 ): Promise<RunDueJobsResult> {
   return runDueJobs(deps, { ...options, kinds: [APPLICATION_SYNC_KIND] });
-}
-
-/** Drains due graph-sync jobs, the cron backstop for the host after-response accelerator. */
-export async function runDueGraphSyncJobs(
-  deps: JobDeps,
-  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
-): Promise<RunDueJobsResult> {
-  return runDueJobs(deps, { ...options, kinds: [GRAPH_SYNC_KIND] });
-}
-
-/**
- * Backfills an existing Knowledge Collection into its graph: enqueues an ingest
- * sync for every Concept. Idempotent, re-running replaces each graph document
- * (the worker deletes-then-adds by conceptId), and excluded/deleted Concepts
- * resolve to removes in the handler. Inert (enqueues nothing) without a worker.
- */
-export async function backfillCollectionToGraph(
-  collectionId: string,
-  deps: JobDeps
-): Promise<{ enqueued: number }> {
-  if (!isGraphWorkerConfigured()) return { enqueued: 0 };
-  const concepts = await deps.db.listConcepts(collectionId);
-  for (const concept of concepts) {
-    await enqueueGraphSyncJob({ op: "ingest", collectionId, conceptId: concept.id }, deps);
-  }
-  return { enqueued: concepts.length };
-}
-
-/**
- * Enqueues a graph-sync job for one Concept. **Inert when the graph worker is
- * unconfigured**, it creates no ledger row and returns, so an environment
- * without a sidecar never accrues queued/failed graph jobs (an acceptance
- * criterion). Mirrors `enqueueIngestJob`: durable row first, the host after-response scheduler only as an accelerator, cron as the backstop.
- */
-export async function enqueueGraphSyncJob(
-  job: GraphSyncJobInput,
-  deps: JobDeps,
-  options: { organizationId?: string; jobId?: string } = {}
-): Promise<void> {
-  if (!isGraphWorkerConfigured()) return;
-  const collection = options.organizationId
-    ? null
-    : await deps.db.getCollection(job.collectionId);
-  const organizationId = options.organizationId ?? collection?.organizationId;
-  if (!organizationId) throw new Error("Graph job collection not found");
-  const payload = { kind: GRAPH_SYNC_KIND, ...job } as GraphSyncJob;
-  await deps.db.createBackgroundJob({
-    ...(options.jobId ? { id: options.jobId } : {}),
-    organizationId,
-    kind: GRAPH_SYNC_KIND,
-    sourceId: null,
-    payload,
-  });
-  getRuntimeHost().scheduleAfterResponse(() =>
-    runDueJobs(deps, { kinds: [GRAPH_SYNC_KIND], limit: 1 })
-  );
 }

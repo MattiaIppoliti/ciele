@@ -9,8 +9,8 @@
  * `remember`, and turn.ts writes it back after the assistant message is
  * persisted, only when something actually changed (`dirty`), so read-only
  * turns cost no extra write. The generic `get`/`set` pair exists for runtime
- * state that rides the same bag without being memory: the proactive
- * delivery-rule patches and the graph QA map (turn.ts) both use it.
+ * state that rides the same bag without being memory, such as the proactive
+ * delivery-rule patches (turn.ts).
  */
 
 const MEMORY_KEY = "memory";

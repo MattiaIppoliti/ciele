@@ -57,8 +57,9 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 │   │                    # 0008 durable jobs · 0009 object storage · 0010 analytics ·
 │   │                    # 0011 observability · 0012 scraping · 0013 costs/tiers ·
 │   │                    # 0014 backend migration · 0015 local CLI connections ·
-│   │                    # 0016 Db facade · 0017 graph knowledge layer ·
-│   │                    # 0018 runtime as a package · 0019 domain under the Db seam
+│   │                    # 0016 Db facade · 0017 Suggested Fix (graph half superseded) ·
+│   │                    # 0018 runtime as a package · 0019 domain under the Db seam ·
+│   │                    # 0025 verbatim chunks + rerank
 │   └── runbooks/        # operational procedures (crawler providers, OSS release, …)
 ├── apps/web/            # Next.js app (admin console + widget + API), ciele.app
 │   └── src/
@@ -79,7 +80,7 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 ├── packages/core/       # @agent-hub/core: the domain, ~150 types + pure derivations (OKF, flow
 │                        # router, Insights oracle, publication, recrawl). Zero dependencies.
 ├── packages/ui/ charts/ # shared primitives consumed by the apps
-├── services/            # worker containers: crawl4ai-worker, graph-worker (opt-in)
+├── services/            # worker containers: crawl4ai-worker (opt-in)
 ├── deploy/              # the self-host Docker Compose stack + bootstrap
 ├── ee/                  # enterprise-only tree: apps + its own migration chain. Excluded from
 │                        # the mirror in full, so an OSS checkout has no ee/ at all
@@ -305,8 +306,6 @@ only the OSS chain. Grouped:
 - **Identity & access**: `sso_connections` (per-org IdP config), `assistant_access` (per-assistant
   grants), `local_connector_devices` / `local_connector_pairings` / `local_inference_jobs`
   (the Preview-only local-CLI relay, ADR-0015).
-- **Retrieval engine selector**: `assistants.knowledge_engine` (`graph` default, `vector`
-  fallback, ADR-0017); the graph itself lives in the worker sidecar, not in Postgres.
 - **Enterprise chain** (`ee/migrations/`, not in an OSS checkout): `billing_subscriptions`,
   `plan_limits`.
 
@@ -594,31 +593,24 @@ Ingestion (server actions in `actions.ts` are thin adapters; runtime in `package
   hostname and resolve it in their own network; remote DNS pinning is therefore outside this
   process's boundary. Crawl4AI credentials are server-only and redacted from any Source error,
   Alert, or telemetry.
-- Each Source is enriched into **Concepts** (OKF markdown + YAML frontmatter), then chunked and
+- Each Source becomes **Concepts** (OKF markdown + YAML frontmatter), then chunked and
   **embedded**. `concepts.excluded` drops a page from retrieval without deleting it.
-- **Windowed enrichment**: `enrich` runs up to `ENRICH_MAX_WINDOWS = 4` sequential calls of
-  `ENRICH_WINDOW_CHARS = 24_000` each, with an explicit `ENRICH_MAX_OUTPUT_TOKENS = 8_000` per call,
-  the window is sized to the budget so a slice is *rendered* into concepts rather than compressed
-  to fit. Windows split on paragraph boundaries with a hard cap (extracted PDFs often have none),
-  a failing window is skipped rather than discarding the others, and colliding concept paths are
-  suffixed. Four windows is a wall-clock bound: the job route caps at `maxDuration = 300` and a
-  killed job is retried by cron.
-- **Verbatim companion Concept**: enrichment rewrites, and only Concept *bodies* are chunked, so an
-  enriched Source also gets `originals/<slug>.md` (`type: Source Text`) carrying the extracted text
-  unedited and uncapped, the curated Concepts stay the citable layer, the companion guarantees
-  nothing in the source is missing from the index. Written only when a model actually ran (the
-  no-model pass-through and crawled pages are already verbatim). See ADR-0002 and
-  [`docs/audits/okf-enrichment-information-loss.md`](audits/okf-enrichment-information-loss.md) for
-  the rejected alternative and the cognify-cost trade-off.
+- **Verbatim, not rewritten** (ADR-0025): a file or pasted-text Source is stored as its own words,
+  the pass-through `Document` Concept(s) from `sourceConceptDrafts`, split only at
+  `MAX_CONCEPT_BODY_CHARS`. No model runs at ingestion. Crawled pages and FAQs were already
+  verbatim or hand-written. The old model rewrite (`okf-enricher/...` Concepts plus a
+  `Source Text` companion) survives only on Sources not yet re-ingested;
+  `enqueueVerbatimReingests`, behind the manual `/api/cron/reingest-verbatim` route, rebuilds them
+  from their companions through the ordinary generation swap.
 - **OKF v0.2 frontmatter** (`packages/core/src/okf.ts`, exported by `@agent-hub/core`): every
   Concept we write stamps `generated: { by, at }` in the actor convention
-  (`okf-enricher/<modelId>`, `process:website-crawl`, `human:<userId>`, …) and `sources: [{ id,
+  (`process:okf-ingest-passthrough`, `process:website-crawl`, `human:<userId>`, …) and `sources: [{ id,
   resource, title }]` naming what it derives from; accepting a Suggested Fix stamps `verified`.
   Consumers derive trust tier / staleness / last-change only through `trustTier`,
   `conceptStatus`, `isStale`, `conceptGeneratedAt`, the last of which falls back to the legacy
   v0.1 `timestamp` on pre-upgrade rows (no backfill; see ADR-0002's v0.2 update for why).
 - **One write seam** (`packages/agent/src/ingest.ts`): every route that lands knowledge,
-  enriched source (`ingestSource`), crawled page (`crawlWebsiteSource`), FAQ (`createFaqAction`),
+  file or text source (`ingestSource`), crawled page (`crawlWebsiteSource`), FAQ (`createFaqAction`),
   goes through **`persistConcept`** (create Concept + `embedConcept` index, title-prefixed). The
   website route owns the whole Source status lifecycle, so a config/crawl/ingest failure lands in
   exactly one `error` update (no double-catch). `chunkMarkdown` + `persistConcept` are unit-tested.
@@ -631,12 +623,16 @@ Ingestion (server actions in `actions.ts` are thin adapters; runtime in `package
   Collections are org-owned, so membership says nothing about which Assistant answers from a
   Source); the lexical fallback narrows through the same link set in SQL. Results resolve to
   **Concept → Source** so replies cite named Sources, never opaque chunks.
-- **`KnowledgeSearchResult.engine`** says which engine produced a result, and therefore whether
-  `similarity` is a real cosine score. The graph engine has none to report, so it fills that field
-  with a rank placeholder whose first entry is always `1`; `scoreCoverage` branches on `engine` and
-  judges graph passes on count (`graphMinResults`) instead. Without that branch every non-empty
-  graph result scored `sufficient` and the reformulation/widen policy never fired, see
-  [`docs/audits/okf-enrichment-information-loss.md`](audits/okf-enrichment-information-loss.md) §4.1.
+- **Rerank** (`packages/agent/src/rerank.ts`, ADR-0025): `buildKnowledgeSearcher` and the
+  Teammate's `buildCollectionSearcher` ask the index for `RERANK_CANDIDATES = 20` and return the
+  `KNOWLEDGE_SEARCH_LIMIT = 6` that `voyage/rerank-2.5` ranks highest, through the AI Gateway on
+  the platform `AI_GATEWAY_API_KEY` only (never a Provider Connection). The stage reorders and
+  truncates the index's own results, so citations and every consumer see the same shape, and
+  `similarity` stays the retrieval score. It fails open to the index's order on a missing key, a
+  provider error or a 1.5 s timeout; five consecutive failures per Organization raise a `system`
+  Alert that the next reranked search clears. Each call meters a `rerank` usage row on the query
+  embedding's spenders. The 20 candidates come from `searchChunks`, so they carry its per-Source cap
+  (3) and cosine floor, which the offline bench did not have.
 
 > The 1536-dim padding is a deliberate trade-off (one shared index vs. cross-model similarity caveats
 > and a costly future dimension migration); rationale kept inline here rather than as its own ADR. The
@@ -674,10 +670,13 @@ differ in theming/interactivity for other reply parts but not for citations.
   Azure OpenAI is distinct from direct OpenAI because it has endpoint, deployment and Entra config.
   `getChatModel(provider, modelId, connections, resolution)` and
   `getClassifierModel(provider, connections, resolution)` return AI-SDK clients. Model catalog
-  (`packages/agent/src/catalog.ts`): Anthropic `claude-opus-4-8` / `claude-sonnet-5` / `claude-haiku-4-5`;
-  OpenAI `gpt-5.1` / `gpt-5.1-mini`; Google `gemini-3.5-flash` / `gemini-3.1-flash-lite` /
-  `gemini-2.5-flash-lite`. The **classifier** uses a cheap model tier (haiku / mini / flash-lite),
-  resolved separately from the answer model and metered separately in the usage ledger.
+  (`packages/agent/src/catalog.ts`): Anthropic `claude-opus-4-8` / `claude-sonnet-5`;
+  OpenAI `gpt-5.1` / `gpt-5.4-mini`; Google `gemini-3.5-flash` / `gemini-3.5-flash-lite` /
+  `gemini-2.5-flash-lite`. The **classifier** uses a cheap model tier per provider (Sonnet 5 /
+  `gpt-5.4-mini` / `gemini-3.5-flash-lite`), resolved separately from the answer model and metered
+  separately in the usage ledger. Retired ids (`claude-haiku-4-5`, `gpt-5.1-mini`,
+  `gemini-3.1-flash-lite`) live in `RETIRED_MODELS`: an Assistant still saved with one runs its
+  successor, and pricing keeps their rows so recorded usage keeps its price.
 - **The fourth provider family**: `openai_compatible` (#436), any server speaking the OpenAI API.
   It has **no static catalog**: the model ids live on the connection config (or the
   `OPENAI_COMPATIBLE_*` env fallback, so a self-host runs fully local with zero in-app config), and
@@ -761,7 +760,7 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
 - **Live**: multi-tenant admin (all ten SETUP sections, Preview/General/Knowledge/Flows/Tools &
   Skills/Goals/Help Desks/Style/Authentication/Publish), LLM widget runtime (classifier routing +
   Agentic Search + streaming), OKF knowledge (text/url/file/website/FAQ) with pgvector + lexical
-  fallback and a graph engine selector, Publications, Inbox, Insights overview, Improvements,
+  fallback and a rerank stage (ADR-0025), Publications, Inbox, Insights overview, Improvements,
   Alerts, provider connections (platform + BYOK + federated + OpenAI-compatible), 4-role RBAC + RLS.
 - **Agentic layer** (§5.4): per-turn tool registry (`searchKnowledge` on unless a Teammate has an
   empty Knowledge Scope, `remember` on, `fetchUrl` and `renderTable` opt-in,

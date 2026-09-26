@@ -417,8 +417,7 @@ export function AiSettingsClient({
           )}
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Bring your own provider API key. Your assistants run on your billing.
-          Keys are stored encrypted and used only server-side.
+          Use your own provider key and billing. Keys are stored encrypted.
         </p>
         <div className="mt-3 space-y-2">
           {byokConnections.length === 0 && (
@@ -471,9 +470,7 @@ export function AiSettingsClient({
           )}
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Point Ciele at any server speaking the OpenAI chat/embeddings API, 
-          Ollama, vLLM, LM Studio, or a gateway. Works with or without an API
-          key, including fully local models.
+          Any OpenAI-compatible server, like Ollama, vLLM or LM Studio. The API key is optional.
         </p>
         <div className="mt-3 space-y-2">
           {openAiCompatibleConnections.length === 0 && (
@@ -557,9 +554,7 @@ export function AiSettingsClient({
           )}
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Connect tenant-billed cloud identity federation for enterprise APIs.
-          This is not Claude Pro/Max or ChatGPT Plus/Pro subscription reuse;
-          API keys remain available above.
+          Keyless access to enterprise cloud APIs, billed to your cloud account. Not for personal subscriptions.
         </p>
         <div className="mt-3 space-y-2">
           {federatedConnections.length === 0 && (
@@ -642,9 +637,7 @@ export function AiSettingsClient({
               <h2 className="text-base font-semibold">Personal AI subscriptions</h2>
             </div>
             <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-              Allow Members to connect their own ChatGPT or Claude subscription
-              for Preview sessions on their device. Personal subscriptions never
-              serve published widgets or other Members.
+              Let Members use their own ChatGPT or Claude subscription in their Preview. It never serves visitors or other Members.
             </p>
             {!canEnablePersonalSubscriptions && !personalSubscriptionsOn && (
               <p className="text-muted-foreground mt-2 text-xs">
@@ -683,9 +676,7 @@ export function AiSettingsClient({
             <div>
               <h2 className="text-base font-semibold">Retired subscriptions</h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Hosted Claude and ChatGPT subscription tokens are no longer used
-                by Ciele. API keys remain supported; keyless enterprise auth is
-                configured separately.
+                Ciele no longer uses hosted Claude or ChatGPT subscription tokens. Use an API key instead.
               </p>
             </div>
           </div>
@@ -870,8 +861,7 @@ export function AiSettingsClient({
           <DialogHeader>
             <DialogTitle>Connect Anthropic WIF</DialogTitle>
             <DialogDescription>
-              Store non-secret Workload Identity Federation settings for
-              Anthropic API billing. This does not use a Claude consumer plan.
+              Workload Identity Federation settings for Anthropic API billing.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddAnthropicWif} className="space-y-4">
@@ -1030,8 +1020,7 @@ export function AiSettingsClient({
           <DialogHeader>
             <DialogTitle>Connect an OpenAI-compatible endpoint</DialogTitle>
             <DialogDescription>
-              Any server speaking the OpenAI chat/embeddings API: Ollama, vLLM,
-              LM Studio, or a gateway. The key is optional and stored encrypted.
+              Any OpenAI-compatible server. The key is optional and stored encrypted.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddOpenAiCompatible} className="space-y-4">

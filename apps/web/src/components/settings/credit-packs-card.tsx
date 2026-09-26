@@ -61,9 +61,7 @@ export function CreditPacksCard({
       <CardHeader>
         <CardTitle>Top-up credits</CardTitle>
         <CardDescription>
-          A buffer behind your plan, not a second wallet. Credits here are spent
-          only once a window&apos;s allowance is used up, so answering continues
-          instead of pausing until the window resets.
+          Credits are used only after your plan allowance runs out, so answering doesn&apos;t pause.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

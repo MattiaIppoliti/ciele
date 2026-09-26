@@ -50,6 +50,7 @@ import {
 } from "@/lib/improvements";
 import { ImprovementContextMenu } from "./improvement-context-menu";
 import { useImprovementLanes } from "./use-improvement-lanes";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 // Opened only after a click, so it never renders on the server anyway; the
 // dynamic import keeps the detail view out of the board's first bundle.
@@ -367,7 +368,7 @@ export function ImprovementsBoard({
           className="text-2xl font-bold tracking-tight"
           data-testid="improvements-heading"
         >
-          Improvements
+          <RollInText text="Improvements" />
         </h1>
         {/* Four controls do not fit a phone row beside the title: the search
             field claims its own full-width row and the icon buttons drop their

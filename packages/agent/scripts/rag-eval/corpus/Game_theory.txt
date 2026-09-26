@@ -1,0 +1,592 @@
+Game theory is the field of applied mathematics that models interactions between multiple agents as "games" of strategy between "players". It is a scientific method of describing, predicting, evaluating, and selecting choices (or "actions"), often with the view of maximising utility outcomes (or "payoffs") for one or more players.
+Game theory has applications in the natural, formal and social sciences, including biology, computer science, economics, law, logic, political science, systems science, and philosophy. Subfields of game theory include algorithmic game theory, behavioral game theory, combinatorial game theory, evolutionary game theory, and quantum game theory.
+In 1994, the Nobel Prize in economics was awarded to the mathematician John Nash, the philosopher John Harsanyi, and the economist Reinhard Selten for their pioneering work in game theory. Since then, game theorists who were awarded the Nobel include Thomas Schelling and Robert Aumann (2005), Leonid Hurwicz, Eric Maskin, and Roger Myerson (2007), Alvin E. Roth and Lloyd S. Shapley (2012), Jean Tirole (2014), and Paul Milgrom and Robert B. Wilson (2020).
+
+== Overview and terminology ==
+In game theory, a "game" is an abstract, mathematical representation of an interaction between agents ("players"), meant to capture the most basic properties of the game, namely: 
+
+the "players";
+the choices or actions available to each player;
+the value (or "payoff") that each player will receive for every possible strategy (i.e. a combination of actions of a given player in response to a given situation);
+the information each player has at the time of making their decisions;
+Eric Rasmusen refers to these four "essential elements" by the acronym "PAPI".
+
+=== History ===
+The significance of the work of the early game theorists in economics was its formalisation of strategic interaction, equilibrium concepts, and rational choice behavior, under the assumptions of perfect rationality, self-interest, complete information, and fixed game structure. Game theory as a field had its genesis in the 1944 book Theory of Games and Economic Behavior, written by mathematicians John von Neumann and Oskar Morgenstern. The book built upon von Neumann's earlier work, which used the Brouwer fixed-point theorem on continuous mappings into compact convex sets, a method that later became standard in game theory and mathematical economics. In 1994, the Nobel Prize in economics was awarded to the game theorists John Forbes Nash, Reinhard Selten, and John Harsanyi.
+Initially, as a field of applied mathematics, game theory was used in economics to describe and predict the behaviors of firms, markets, and consumers. The use of game theory in the social sciences has since expanded, with game theory later being widely applied in the analysis of political, sociological, psychological, and animal behaviours. Modern academic research finds applications of game theory in fields as broad as international relations, network science, voting systems, linguistics, law, distributed control, policy design, competition regulations, project management, and military technology.
+Game theory has also been used to develop theories of ethical or normative behavior and to prescribe such behavior. In economics and philosophy, scholars have applied game theory to help in the understanding of good or proper behavior. Game-theoretic approaches have also been suggested in the philosophy of language and philosophy of science.
+
+=== Theory and methodology ===
+The main branches of economic theory are game theory, decision theory, mechanism design theory, and general equilibrium theory. Unlike game theory, which analyses multi-agent interactions, decision theory focuses on preferences and the formation of beliefs within single-player scenarios. Decision theory is often used in the form of decision analysis, which shows how best to acquire information before making a decision. Mechanism design theory is closely related to game theory, although the former is more focused on about the consequences of different types of rules, whereas the latter often takes the rules of the game as given. Areas of focus within mechanism design include compensation, wages, risk, incentives, and auctions. Within game theory and mechanism design, a metagame refers to a game that aims to develop rules for the target or subject game, being applied in the contexts of metagame analysis, and confrontation analysis.
+Although game theory has broad application in general equilibrium theory, general equilibrium economists are usually concerned with macroeconomic issues of trade and production in scenarios with a very large number of individual consumers and producers. In particular, the theory of dynamic stochastic general equilibrium (DSGE) is applied, often in combination with game theoretic methods, to issues of investment management, political economy, industrial organisation, international trade, and monetary, fiscal, and tax policy. 
+As an economic methodology, game theory provides a framework for the analysis of decision-making processes involving multiple stakeholders, each with conflicting or cooperative objectives. Unlike traditional econometric models that are descriptive (in the sense of predicting future outcomes based on historical data and statistical trends between variables) and optimisation algorithms (which assume static environments and generally address single-objective problems within predefined constraints), game theory is inherently dynamic and accounts for the strategic interactions among participants. Game theory can further be applied in simulation-based approaches, such as agent-based modeling, in order to replicate market dynamics and policy outcomes under different scenarios by way of modelling reward-punishment mechanisms, competition for limited resources, and coalition formation.
+
+=== Games ===
+A game is cooperative if the players are able to form binding commitments externally enforced (e.g. through contract law). A game is non-cooperative if players cannot form alliances or if all agreements need to be self-enforcing (e.g. through credible threats).
+A symmetric game is a game where each player earns the same payoff when making the same choice. The identity of the player does not change the resulting game facing the other player, and the game looks the same to all players. Formally, a symmetric two-player game can be defined as one where the matrix of one player's payoffs is the transpose of the other player's payoffs.
+
+Zero-sum games (or constant-sum games) are games in which choices by players can neither increase nor decrease the available resources. More informally, in such a game, a player benefits only at the equal expense of others.
+Simultaneous games are games where both players move simultaneously, such that all players are unaware of the actions of other players. Sequential games are games where players do not make decisions simultaneously, and player's earlier actions affect the outcome and decisions of other players.
+Games typically are assumed to be finite and discrete, with a finite number of players, moves, events, and outcomes. Nonetheless, continuous games allow players to choose a strategy from a continuous strategy set. For example, Cournot competition is typically modeled with players' strategies being any non-negative quantities, including fractional quantities.
+
+==== Information ====
+A game of complete information is one where every player knows the rules, strategies and payoffs available to the other players but not necessarily the actions taken. A Bayesian game, in contrast, is a strategic game with incomplete information. 
+A game with perfect information is a game of complete information that also has all players, at every move in the game, know the previous history of the game and all moves previously made by all other players. An imperfect information game is played when the players do not know all moves already made by the opponent, which is the case in a simultaneous move game.
+Games will change significantly if they are repeated, that is, if the players will interact with each other again in the future with the information they obtained from previous games. In future games, players may act in response to the way in which other players had acted in the past; and in present games, these other players may choose their actions in such a way to prevent them from being punished in future games but instead to reward the players based on their reputation. For example, a potential strategy in repeated games, known as tit for tat, is to cooperate as long as one’s opponent cooperates, and then to defect for some number of rounds so as to "punish" the defector before cooperating again.
+Examples of perfect-information recreational games include tic-tac-toe, checkers, chess, and Go. Poker and bridge are examples of games of imperfect information.
+
+==== Rationality ====
+Players in game theory are generally assumed to be rational agents in a formal, mathematical sense. Rational agents act as if they have consistent preferences and unlimited computational capacity to achieve their well-defined objectives, and they behave in a manner in order to obtain the maximum possible payoff. Players are also assumed to be self-interested, with the structure of the game itself being fixed and closed, such that each player’s objective is to maximize expected utility, given the strategies chosen by others. In this regard, utility functions are exogenous, typically one-dimensional, and stable over time. Game theoretic models also generally assume common knowledge of rationality, such that players are rational; they also know that others are rational; and that this knowledge is shared recursively.
+
+==== Von Neumann–Morgenstern utility ====
+Formally, utility, in the von Neumann-Morgenstern framework, can be defined as follows. Let 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ be a non-empty set of alternatives, such that 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ is the set 
+  
+    
+      
+        Δ
+        (
+        Z
+        )
+      
+    
+    {\displaystyle \Delta (Z)}
+  
+ of simple lotteries (i.e. probability distributions with finite support) on some non-empty set 
+  
+    
+      
+        Z
+      
+    
+    {\displaystyle Z}
+  
+ of sure outcomes. Given two alternatives 
+  
+    
+      
+        x
+        ,
+        y
+        ∈
+        X
+      
+    
+    {\displaystyle x,y\in X}
+  
+, a utility function on 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ is a function 
+  
+    
+      
+        u
+        →
+        
+          R
+        
+      
+    
+    {\displaystyle u\to \mathbb {R} }
+  
+ associating to each alternative 
+  
+    
+      
+        x
+        ∈
+        X
+      
+    
+    {\displaystyle x\in X}
+  
+ a utility level 
+  
+    
+      
+        u
+        (
+        x
+        )
+        ∈
+        
+          R
+        
+      
+    
+    {\displaystyle u(x)\in \mathbb {R} }
+  
+. A utility function 
+  
+    
+      
+        u
+      
+    
+    {\displaystyle u}
+  
+ on 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ is said to be a von Neumann Morgenstern (vNM) utility function if: 
+
+  
+    
+      
+        u
+        (
+        x
+        )
+        =
+        
+          ∑
+          
+            z
+            ∈
+            Z
+          
+        
+        x
+        (
+        z
+        )
+        u
+        (
+        z
+        )
+        
+        ∀
+        x
+        ∈
+        X
+      
+    
+    {\displaystyle u(x)=\sum _{z\in Z}x(z)u(z)\qquad \forall x\in X}
+  
+. 
+Alternatively, consider 
+  
+    
+      
+        λ
+        ∈
+        [
+        0
+        ,
+        1
+        ]
+      
+    
+    {\displaystyle \lambda \in [0,1]}
+  
+, such that the 
+  
+    
+      
+        λ
+      
+    
+    {\displaystyle \lambda }
+  
+-mixture of 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ and 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+, denoted 
+  
+    
+      
+        x
+        λ
+        y
+      
+    
+    {\displaystyle x\lambda y}
+  
+, can be defined such that
+  
+    
+      
+        x
+        λ
+        y
+        =
+        λ
+        x
+        +
+        (
+        1
+        −
+        λ
+        )
+        y
+      
+    
+    {\displaystyle x\lambda y=\lambda x+(1-\lambda )y}
+  
+. (Note that 
+  
+    
+      
+        x
+        λ
+        y
+        ∈
+        X
+      
+    
+    {\displaystyle x\lambda y\in X}
+  
+.) Thus, the vNM utility function can be defined in the following way:
+
+  
+    
+      
+        u
+        (
+        x
+        λ
+        y
+        )
+        =
+        λ
+        u
+        (
+        x
+        )
+        +
+        (
+        1
+        −
+        λ
+        )
+        u
+        (
+        y
+        )
+        
+        ∀
+         
+         
+        x
+        ,
+        y
+        ∈
+        X
+        ,
+         
+        λ
+        ∈
+        [
+        0
+        ,
+        1
+        ]
+      
+    
+    {\displaystyle u(x\lambda y)=\lambda u(x)+(1-\lambda )u(y)\qquad \forall ~~x,y\in X,~\lambda \in [0,1]}
+  
+
+=== Strategies ===
+A pure strategy is a deterministic strategy, whereas a mixed strategy is probabilistic. Games can be divided into strictly and non-strictly determined games, such that a non-strictly determined game possesses only mixed strategies, whereas a strictly determined game possesses pure strategies as well. Only a strictly determined game possesses a saddle point, that is, an equilibrium that represents the best strategies for all players.  
+For a two-player game, a dominant strategy for a given player is a strategy that produces a better payoff than the other player; conversely, a dominated strategy is one that is always worse than the other player and therefore never rational to play.
+
+==== Domination ====
+Dominated strategies can be grouped into strictly and weakly dominated strategies. A strategy is strictly dominated if, no matter what the other players do, a player always receives a strictly higher payoff by playing another strategy. A weakly dominated strategy, on the other hand, is one that does at least as well as all other strategies, no matter what the other players do, and is strictly better than at least one other strategy.
+Formally, for the two-player game 
+  
+    
+      
+        (
+        A
+        ,
+        B
+        )
+        ∈
+        
+          
+            R
+          
+          
+            2
+          
+          
+            m
+            ×
+            n
+          
+        
+      
+    
+    {\displaystyle (A,B)\in \mathbb {R} _{2}^{m\times n}}
+  
+, a strategy 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ is strictly dominated by strategy 
+  
+    
+      
+        
+          
+            
+              s
+              ¯
+            
+          
+        
+      
+    
+    {\displaystyle {\bar {s}}}
+  
+ if, for all strategies of the other player 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+, 
+  
+    
+      
+        u
+        (
+        s
+        ,
+        t
+        )
+        <
+        u
+        (
+        
+          
+            
+              s
+              ¯
+            
+          
+        
+        ,
+        t
+        )
+      
+    
+    {\displaystyle u(s,t)<u({\bar {s}},t)}
+  
+,, where 
+  
+    
+      
+        u
+      
+    
+    {\displaystyle u}
+  
+ represents the utility function. A strategy may be weakly dominated if, instead, 
+  
+    
+      
+        u
+        (
+        s
+        ,
+        t
+        )
+        ≤
+        u
+        (
+        
+          
+            
+              s
+              ¯
+            
+          
+        
+        ,
+        t
+        )
+      
+    
+    {\displaystyle u(s,t)\leq u({\bar {s}},t)}
+  
+ and there exists some value of 
+  
+    
+      
+        
+          t
+          ′
+        
+      
+    
+    {\displaystyle t'}
+  
+ such that 
+  
+    
+      
+        u
+        (
+        s
+        ,
+        
+          t
+          ′
+        
+        )
+        <
+        u
+        (
+        
+          
+            
+              s
+              ¯
+            
+          
+        
+        ,
+        
+          t
+          ′
+        
+        )
+      
+    
+    {\displaystyle u(s,t')<u({\bar {s}},t')}
+  
+.
+
+==== Equilibria ====
+For any given game, a strategy profile (or strategy combination) is a combination of strategies, such that each player gets one strategy. For example, in a 3-player game where the action set 
+  
+    
+      
+        
+          
+            A
+          
+        
+      
+    
+    {\displaystyle {\mathcal {A}}}
+  
+ is such that 
+  
+    
+      
+        ∀
+        i
+        ,
+        
+          
+            
+              A
+            
+          
+          
+            i
+          
+        
+        =
+        {
+        A
+        ,
+        B
+        }
+      
+    
+    {\displaystyle \forall i,{\mathcal {A}}_{i}=\{A,B\}}
+  
+, a valid strategy profile might be 
+  
+    
+      
+        s
+        =
+        (
+        (
+        1
+        ,
+        0
+        )
+        ,
+        (
+        1
+        ,
+        0
+        )
+        ,
+        (
+        0
+        ,
+        1
+        )
+        )
+      
+    
+    {\displaystyle s=((1,0),(1,0),(0,1))}
+  
+, indicating that players 1 and 2 choose A, and player 3 chooses B. 
+An equilibrium is a stable state in which either one outcome occurs or a set of outcomes occur with known probability. A Nash equilibrium is a particular type of equilibrium strategy profile where every player is best responding to the strategies of the others. In such a setting, no player has an incentive to unilaterally deviate from their choice. John Forbes Nash proved that at least one such equilibrium exists in any finite non-cooperative game.
+
+== Representation of games ==
+Non-cooperative games can be broadly represented in two forms. Generally, normal form is used to represent non-cooperative simultaneous games, and extensive form is used to represent non-cooperative sequential ones. Alternative representations also exist, for example, characteristic function form is used to represent cooperative games.
+Every extensive-form game has an equivalent normal-form game, however, the transformation to normal form may result in an exponential blowup in the size of the representation, making it computationally impractical.
+
+=== Normal form ===
+The normal form (or strategic form) game is usually represented by a matrix which shows the players, strategies, and payoffs. In linear algebra notation, a two-player normal-form game can be mapped by a matrix. A general matrix mapping rows (actions of the first player) and columns (actions of the second player) to pairs of payoff values can be represented as follows:

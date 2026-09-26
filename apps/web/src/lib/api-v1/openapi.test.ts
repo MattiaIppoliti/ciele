@@ -162,8 +162,10 @@ describe("OpenAPI contract (#626)", () => {
       expect(responseSchemas).toEqual(deriveResponseSchemas());
     },
     // This builds a TypeScript program for every API route. It runs alongside
-    // the rest of the web and agent suites in CI, where 15 seconds is too tight.
-    60_000
+    // the rest of the web and agent suites in CI and in `pnpm verify`, where it
+    // has taken 67-92s on a loaded laptop (12s alone): a safety net, not a
+    // latency assertion, so it sits well above the slowest run seen.
+    180_000
   );
 
   it("documents 201 only for routes that actually return it", () => {

@@ -1,18 +1,13 @@
 ---
 title: Impostazioni generali
-description: Configura l'identità dell'Assistente, il modello, il motore di conoscenza e il contenuto predefinito della chat.
+description: Configura l'identità dell'Assistente, il modello e il contenuto predefinito della chat.
 ---
 
-Apri un Assistente e seleziona **General**.
+Apri un Assistant e seleziona **General**.
 
 ## Selezione del runtime
 
-Seleziona la connessione al provider e il modello per l'Assistente. Seleziona
-**Graph** o **Vector** come Knowledge engine principale.
-
-Il recupero tramite grafo utilizza il Knowledge graph quando i servizi grafo
-sono disponibili. Il Vector retrieval utilizza gli embedding dei documenti
-indicizzati e il fallback lessicale.
+Seleziona la connessione al provider e il modello per l'Assistente.
 
 ## Scelta del modello per i visitatori
 
@@ -20,10 +15,11 @@ Seleziona i modelli che la finestra di chat mostra ai visitatori. Il modello
 Assistant è sempre disponibile. Ogni modello aggiuntivo che selezioni diventa
 un'opzione nella finestra di chat.
 
-Se non selezioni alcun modello aggiuntivo, la finestra di chat non mostra alcun
-controllo dei modelli. Tutte le conversazioni utilizzano il modello Assistant.
+Se non selezioni alcun modello aggiuntivo, nella finestra di chat non viene
+visualizzato alcun controllo dei modelli. Tutte le conversazioni utilizzano il
+modello Assistant.
 
-La finestra di chat mostra un modello solo se la tua organizzazione dispone di
+La finestra di chat mostra un modello solo se la tua Organizzazione dispone di
 una connessione al provider per quel modello. Se rimuovi la connessione al
 provider, la finestra di chat smette di mostrare il modello. Le conversazioni
 proseguono con il modello Assistant.
@@ -60,7 +56,7 @@ La finestra di chat accetta i seguenti tipi di file:
 La dimensione massima è di 8 MB.
 
 I file Office di vecchia generazione (.doc, .xls e .ppt) non sono supportati.
-Salva il file come .docx, .xlsx o .pptx.
+Salva il file in formato .docx, .xlsx o .pptx.
 
 Ciele legge il file e lo converte in testo, quindi fornisce risposte basate su
 quel testo. **Ciele does not keep the file.** I byte vengono letti una sola
@@ -71,8 +67,8 @@ l'immagine al provider di IA della tua organizzazione e gli chiede di leggerla.
 Ciò comporta una chiamata all'IA per ogni immagine. Il risultato include il
 testo presente nell'immagine e una breve descrizione di quest'ultima.
 
-Un allegato rimane disponibile per il resto della conversazione. La finestra di
-chat mostra ogni allegato finché l'utente non lo rimuove.
+Un allegato rimane disponibile per il resto della conversazione. La finestra
+della chat mostra ogni allegato finché l'utente non lo rimuove.
 
 L'Anteprima rispecchia questa impostazione non appena salvi. Mostra la casella
 dei messaggi che un visitatore visualizza, prima della pubblicazione. Le chat
@@ -103,7 +99,7 @@ Gli elenchi dei modelli utilizzano i cataloghi dei provider connessi.
 **Refresh** ricarica gli elenchi. Le opzioni vocali seguono il modello di
 riproduzione. L'accesso ai modelli dipende anche dalle autorizzazioni del
 provider, dalla fatturazione e dalle quote. L'elenco mostra tre voci
-compatibili, o un numero inferiore se il provider ne ha meno disponibili. Una
+compatibili, o un numero inferiore se il provider ne ha meno a disposizione. Una
 voce già selezionata rimane nell'elenco.
 
 Le lingue di input e di output sono indipendenti e per entrambe il valore
@@ -152,7 +148,7 @@ Configura questi campi:
 - **AI disclaimer** aggiunge il testo di informativa configurato.
 - **Answering style** fornisce le istruzioni per le risposte standard.
 - **Simplified thinking** converte l'avanzamento dell'esecuzione in passaggi più
-  brevi rivolti ai Visitor.
+  brevi rivolti ai visitatori.
 - **Suggested questions** controlla i suggerimenti di follow-up generati.
 - **Quick replies** aggiungi le starter actions configurate.
 

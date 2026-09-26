@@ -2,6 +2,7 @@ import type { InboxConversation, StoredMessage } from "@agent-hub/core";
 import { serializeAgenticTrace } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { componentPartText } from "@agent-hub/agent/client";
+import { recordsToCsv } from "@ciele/ops/csv";
 
 /**
  * The Inbox JSON export, at reference parity (#561): one object per Conversation
@@ -255,4 +256,41 @@ export function conversationExportRows(
       "Ended At Frustration": str(meta.preflight?.endedAtFrustration),
     };
   });
+}
+
+/** The Inbox's flat conversation-list CSV, in the order its columns appear. */
+const SUMMARY_COLUMNS = [
+  "id", "assistant", "user", "role", "title", "collection", "messages",
+  "notificationOnly", "workflows", "feedback", "escalated", "language",
+  "location", "city", "os", "browser", "ip", "createdAt",
+] as const;
+
+/**
+ * One row per Conversation and no transcripts: the Inbox's Export CSV button.
+ * It is opened in a spreadsheet, so it is written by `recordsToCsv`, which
+ * neutralises any text cell that would run there as a formula (a title or an
+ * email is text a Visitor typed).
+ */
+export function conversationSummaryCsv(conversations: readonly InboxConversation[]): string {
+  const rows = conversations.map((c) => ({
+    id: c.id,
+    assistant: c.assistantTitle,
+    user: c.metadata.userEmail ?? c.subjectId,
+    role: c.metadata.userRole ?? "",
+    title: c.title,
+    collection: c.collectionName ?? "",
+    messages: c.messageCount,
+    notificationOnly: c.notificationOnly ? "yes" : "no",
+    workflows: c.flowNames.join("; "),
+    feedback: c.feedback === 1 ? "up" : c.feedback === -1 ? "down" : "",
+    escalated: c.metadata.escalated ? "yes" : "no",
+    language: c.metadata.language ?? "",
+    location: c.metadata.location ?? "",
+    city: c.metadata.city ?? "",
+    os: c.metadata.os ?? "",
+    browser: c.metadata.browser ?? "",
+    ip: c.metadata.ip ?? "",
+    createdAt: c.createdAt,
+  }));
+  return recordsToCsv(rows, SUMMARY_COLUMNS);
 }

@@ -2,8 +2,16 @@
 
 ## Status
 
-Accepted: **being implemented** (wayfinder map #379 → spec #385). This ADR is
-the decision record; the build lands across tickets #386–#390.
+**Superseded in part by [ADR-0025](0025-chunks-carry-source-text-retrieval-reranks-to-six.md)
+(2026-09-25).** Decisions #1 to #5, the Graph Knowledge Engine, its worker, the
+ingestion fan-out and the feedback loop, are removed: the graph cost a stateful
+sidecar and about three model calls per answer, and a reranker over the pgvector
+index answered better on the bench that measured both. Decision #6, the
+Suggested Fix a Member must accept, and its 2026-08-22 amendment stay in force;
+code that cites "the ADR-0017 amendment" means that part.
+
+Originally accepted (wayfinder map #379 → spec #385), built across tickets
+#386–#390.
 
 - #386 (this ticket): the graph worker sidecar + the runtime client adapter +
   this ADR + the domain terms.
@@ -20,8 +28,8 @@ invariant, citations never resolve to opaque chunks).
 Two product gaps motivated a change (map #379): the knowledge base is static
 (bad answers never demote their material; feedback and Improvement descriptions
 go nowhere) and cross-document questions are answered from isolated chunks. A
-research pass ([`docs/research/cognee-fit.md`](../research/cognee-fit.md)) and a
-live spike ([`docs/research/cognee-spike.md`](../research/cognee-spike.md))
+research pass and a live spike (`docs/research/cognee-fit.md` and
+`docs/research/cognee-spike.md`, removed with ADR-0025; see git history)
 established that the open-source **cognee** library (Apache-2.0, self-hostable,
 no paid SaaS) can build a per-collection knowledge graph whose feedback loop
 re-weights exactly the elements used to answer, and whose graph exports with an

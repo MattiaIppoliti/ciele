@@ -1916,8 +1916,7 @@
                   "tools": {},
                   "requireSignIn": {
                     "type": "boolean"
-                  },
-                  "knowledgeEngine": {}
+                  }
                 }
               }
             }

@@ -73,7 +73,6 @@ import type {
   Invite,
   KnowledgeCollection,
   KnowledgeMemoryExtraction,
-  KnowledgeEngine,
   KnowledgeSearchResult,
   LocalConnectorDevice,
   LocalConnectorPairing,
@@ -236,7 +235,6 @@ interface AssistantRow {
   help_desk_settings: HelpDeskSettings | null;
   tools: AssistantTools | null;
   require_sign_in: boolean | null;
-  knowledge_engine: KnowledgeEngine | null;
   created_at: string;
   updated_at: string;
 }
@@ -1066,7 +1064,6 @@ function toAssistant(row: AssistantRow): Assistant {
     helpDeskSettings: row.help_desk_settings ?? {},
     tools: row.tools ?? {},
     requireSignIn: row.require_sign_in ?? false,
-    knowledgeEngine: row.knowledge_engine ?? "graph",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -1333,8 +1330,6 @@ function assistantPatchToRow(patch: AssistantPatch): Record<string, unknown> {
   if (patch.tools !== undefined) row.tools = patch.tools;
   if (patch.requireSignIn !== undefined)
     row.require_sign_in = patch.requireSignIn;
-  if (patch.knowledgeEngine !== undefined)
-    row.knowledge_engine = patch.knowledgeEngine;
   if (patch.simplifiedThinking !== undefined)
     row.simplified_thinking = patch.simplifiedThinking;
   return row;
@@ -3786,6 +3781,32 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as Array<Record<string, unknown>>).map(toConcept);
     },
 
+    async listEnrichedSources(limit, after) {
+      // One Source has many rewritten Concepts, so a page of Concepts can name
+      // far fewer Sources than `limit`: walk pages until enough are found.
+      const found = new Map<string, string>();
+      const pageSize = 500;
+      for (let offset = 0; found.size < limit; offset += pageSize) {
+        let query = client
+          .from("concepts")
+          .select("source_id, collection_id")
+          .like("frontmatter->generated->>by", "okf-enricher/%")
+          .eq("is_active", true);
+        if (after) query = query.gt("source_id", after);
+        const { data, error } = await query
+          .order("source_id", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        const rows = data as Array<{ source_id: string | null; collection_id: string }>;
+        for (const row of rows) {
+          if (found.size >= limit) break;
+          if (row.source_id) found.set(row.source_id, row.collection_id);
+        }
+        if (rows.length < pageSize) break;
+      }
+      return [...found].map(([sourceId, collectionId]) => ({ sourceId, collectionId }));
+    },
+
     async listAssistantFaqOptions(assistantId) {
       // Page the compact links too: a large Library must not silently hide
       // FAQs after PostgREST's row cap. Batch ids to keep request URLs bounded.
@@ -4505,53 +4526,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .maybeSingle();
       if (error) throw error;
       return data ? toConversation(data as ConversationRow) : null;
-    },
-
-    async listActiveGraphDatasets() {
-      // Post-contract, Collections reach Assistants only through the link
-      // table: a Collection is an active graph dataset when any Assistant
-      // linked to one of its Sources runs the graph engine.
-      const { data, error } = await client
-        .from("assistant_sources")
-        .select(
-          "sources!inner(collection_id), assistants!inner(knowledge_engine, organization_id)"
-        )
-        .eq("assistants.knowledge_engine", "graph");
-      if (error) throw error;
-      type Row = {
-        sources: { collection_id: string } | null;
-        assistants: { organization_id: string } | null;
-      };
-      const byCollection = new Map<string, string>();
-      for (const row of data as unknown as Row[]) {
-        const collectionId = row.sources?.collection_id;
-        const organizationId = row.assistants?.organization_id;
-        if (collectionId && organizationId)
-          byCollection.set(collectionId, organizationId);
-      }
-      return [...byCollection].map(([collectionId, organizationId]) => ({
-        organizationId,
-        collectionId,
-      }));
-    },
-
-    async claimActiveGraphDatasets(limit) {
-      const { data, error } = await client.rpc("claim_active_graph_datasets", {
-        p_limit: limit,
-      });
-      if (error) {
-        if (isSchemaLagError(error)) {
-          return this.listActiveGraphDatasets();
-        }
-        throw error;
-      }
-      return ((data ?? []) as Array<{
-        organization_id: string;
-        collection_id: string;
-      }>).map((row) => ({
-        organizationId: row.organization_id,
-        collectionId: row.collection_id,
-      }));
     },
 
     async setConversationPinned(id, pinned) {

@@ -1,33 +1,99 @@
 ---
 title: Sitios web
-description: Añade la URL de un sitio web y supervisa su estado de ingestión.
+description: Añade la URL de un sitio web y supervisa su estado de ingesta.
 ---
 
-## Añade una fuente de sitio web
+## Añade una fuente de tipo sitio web
 
 1. Abre el Asistente.
 2. Selecciona **Knowledge**.
-3. Añade una fuente de sitio web.
+3. Añade una fuente de tipo sitio web.
 4. Introduce la URL de la página.
 5. Inicia la ingesta.
-6. Espera hasta que el estado de la Fuente sea **Ready**.
-7. Haz una pregunta que la página responda.
-8. Confirma la cita de la Fuente devuelta.
+6. Espera hasta que el estado de la fuente sea **Ready**.
+7. Haz una pregunta a la que la página responda.
+8. Confirma la cita de la fuente devuelta.
 
 El rastreador recupera el contenido del sitio web configurado. Se requiere un
-trabajador de renderización de JavaScript para las páginas que necesitan
-renderización del navegador.
+worker de renderizado de JavaScript para las páginas que necesitan renderizado
+en el navegador.
 
-## Vuelve a rastrear una fuente
+## Supervisa el rastreo
 
-Utiliza **Recrawl** cuando cambie el contenido del sitio web de origen. Ciele
-reinicia el rastreo y reemplaza el contenido indexado después de una ingesta
-correcta.
+Ciele muestra una tarjeta de actividad en la esquina inferior derecha de la
+consola cuando se inicia un rastreo. Permanece visible en todas las páginas de
+la consola hasta que finaliza la tarea.
 
-La API y la CLI solo admiten el reindexado para Fuentes de sitios web.
+La tarjeta cuenta las **páginas** que el rastreo añade a Ciele, por ejemplo,
+162/291. El total está disponible cuando el rastreador entrega su último grupo
+de páginas a Ciele. Antes de ese momento, la tarjeta solo muestra el número de
+páginas que están indexadas.
 
-## Acceso a la fuente
+Mientras Apify rastrea el sitio web, la fila de Source muestra el progreso que
+informa Apify; por ejemplo, **12 of 197 pages crawled**. El segundo número
+aumenta a medida que Apify va encontrando más enlaces.
 
-El rastreador debe llegar a la URL desde la red de implementación. El contenido
-protegido por autenticación no está disponible sin una ruta de acceso
-compatible.
+La Library cuenta **Documents** para la misma Source. Ciele crea un Document a
+partir de una página. La tarjeta cuenta lo que el rastreador recupera. La
+Library cuenta lo que Ciele conserva. Los dos números coinciden cuando finaliza
+el rastreo.
+
+1. Selecciona la flecha de la tarjeta para mostrar las Sources.
+2. Consulta el estado de cada Source. La tarjeta muestra un máximo de cuatro
+   Sources a la vez.
+3. Selecciona el control de cierre para ocultar la tarjeta. El rastreo continúa.
+
+Una Source que falla permanece en la tarjeta hasta que la cierres. Una Source
+que esté completada desaparece al cabo de unos segundos.
+
+## Volver a rastrear una fuente
+
+Usa **Recrawl** cuando cambie el contenido del sitio web de origen. Ciele
+reinicia el rastreo y, una vez completada la ingesta con éxito, sustituye el
+contenido indexado.
+
+La API y la CLI admiten el rastreo repetido únicamente para Sources de sitios
+web.
+
+## Acceso al origen
+
+El rastreador debe acceder a la URL desde la red de despliegue. El contenido
+protegido por autenticación no está disponible sin una ruta de acceso admitida.
+
+El rastreador integrado sigue una redirección al mismo sitio. Por ejemplo,
+`https://example.com` puede ir a `https://www.example.com`, y `http` puede ir a
+`https`. Una redirección a un dominio o subdominio diferente detiene el rastreo
+con un error.
+
+## Usa tu propia cuenta de Apify
+
+Apify es el rastreador gestionado para descargas de archivos, sitios protegidos
+por inicio de sesión y rastreos de gran escala. Puedes conectar la cuenta de
+Apify de tu organización. A continuación, los rastreos de Apify utilizan tu
+token y tu cuenta de Apify los paga.
+
+1. En Apify Console, abre **Settings** y, a continuación, **API &
+   Integrations**.
+2. Copia el token de la API.
+3. En Ciele, abre **Settings** y selecciona **Crawling**.
+4. Selecciona **Connect** en la tarjeta **Apify**.
+5. Pega el token en **API token**.
+6. Opcional: introduce tu ID de usuario de Apify en **User ID**. Ciele verifica
+   que el token pertenezca a esta cuenta.
+7. Selecciona **Save**.
+
+Cuando la cuenta está conectada, el rastreador **Automatic** utiliza Apify para
+todos los rastreos. Las nuevas Fuentes de sitios web también usan **No page
+limit** de forma predeterminada. A continuación, Apify continúa hasta que no
+encuentra más páginas en el sitio web. Para detenerte en un número específico de
+páginas, desactiva **No page limit** e introduce un valor en **Max pages to
+crawl**.
+
+Los demás rastreadores siempre se detienen cuando alcanzan su propio límite. El
+rastreador integrado se detiene en 30 páginas y Crawl4AI en 5000. Apify en la
+cuenta de la plataforma se detiene en 100 000.
+
+Ciele cifra el token y solo te muestra sus últimos cuatro caracteres. Solo los
+propietarios y los administradores pueden conectar o eliminar la cuenta. Si
+eliminas el token mientras un rastreo de Apify está en curso, ese rastreo se
+detiene con un error.

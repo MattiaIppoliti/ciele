@@ -1,26 +1,26 @@
 ---
 title: Fichiers et texte
-description: Importez un fichier ou ajoutez du texte, puis choisissez les Assistants qui répondront à partir de celui-ci.
+description: Importez un fichier ou ajoutez du texte, puis choisissez les Assistants qui y répondront.
 ---
 
-## Téléchargez un fichier
+## Importer un fichier
 
 1. Ouvrez l'Assistant.
 2. Sélectionnez **Knowledge**.
-3. Ajoutez une source de fichier.
+3. Ajoutez une source de type fichier.
 4. Sélectionnez le fichier.
-5. Lancez l'ingestion.
-6. Attendez que le statut de la Source soit **Ready**.
+5. Démarrez l'ingestion.
+6. Attendez que le statut de la source soit **Ready**.
 7. Testez une réponse et sa citation.
 
-Ciele stocke le fichier d'origine et en extrait le texte pris en charge pour
-l'ingestion. L'état Source indique si l'extraction et l'indexation sont
+Ciele stocke le fichier original et extrait le texte pris en charge pour
+l'ingestion. Le statut Source indique si l'extraction et l'indexation sont
 terminées.
 
 ## Fichiers refusés par Ciele
 
 Ciele vérifie le contenu du fichier, et pas seulement son nom, avant de lire un
-document. Elle refuse :
+document. Il refuse :
 
 - un fichier dont le contenu ne correspond pas à son extension, par exemple une
   page HTML nommée `.pdf`
@@ -28,46 +28,45 @@ document. Elle refuse :
 - un fichier Office qui contient un projet de macro ou un objet incorporé
 - un PDF de plus de 2 000 pages
 
-Enregistrez le document sans macros ni objets incorporés, ou scindez un long PDF
-et importez-le à nouveau.
+Enregistrez le document sans macros ni objets incorporés, ou fractionnez un long
+PDF, puis téléchargez-le à nouveau.
 
-## Ajoutez du texte collé
+## Ajouter du texte collé
 
-Utilisez une source de texte pour les contenus courts qui ne nécessitent pas de
-fichier séparé.
+Utilisez une Source de type texte pour les contenus courts qui ne nécessitent
+pas de fichier distinct.
 
-1. Ajoutez une source de texte.
-2. Saisissez un nom de source facultatif.
+1. Ajoutez une Source de type texte.
+2. Saisissez un nom de Source facultatif.
 3. Collez le texte.
-4. Lancez l'ingestion.
+4. Démarrer l'ingestion.
 
 Utilisez un nom de Source stable. Le nom peut apparaître dans les citations des
 visiteurs.
 
-## Remplacez le contenu obsolète
+## Remplacer le contenu obsolète
 
-Supprimez l'ancienne Source avant de vous fier à une solution de remplacement.
-Ensuite, confirmez que la nouvelle Source est **Ready** et qu'elle produit des
-citations correctes.
+Supprimez l'ancienne Source avant de vous fier à une source de remplacement.
+Confirmez ensuite que la nouvelle Source est **Ready** et produit des citations
+correctes.
 
-La suppression d'une Source supprime ses Concepts du graphe de connaissances
-actif et de l'index de recherche.
+La suppression d'une source retire ses Documents de l'index de recherche actif.
 
-## Supprimer par opposition à effacer
+## Supprimer par rapport à effacer
 
 Une Source de type fichier peut répondre pour plusieurs Assistants. L'éditeur
 d'Assistant propose donc deux opérations.
 
 - **Remove from this Assistant** supprime un lien. Les autres Assistants
   conservent le fichier.
-- **Delete** supprime la Source pour chaque Assistant lié. La confirmation nomme
-  chacun d'entre eux.
+- **Delete** supprime la Source pour chaque Assistant associé. La confirmation
+  indique le nom de chacun d'entre eux.
 
 Lorsque seul cet Assistant répond à partir du fichier, l'éditeur le supprime
 directement.
 
-## Donnez le fichier original au Visiteur
+## Donner au Visiteur le fichier original
 
-Activez **Direct access** dans la [Bibliothèque](/knowledge/library) pour
-permettre à l'Assistant de joindre le fichier original à sa citation. Le
-paramètre s'applique à un lien d'Assistant et est désactivé par défaut.
+Activez **Direct access** dans la [Library](/knowledge/library) pour permettre à
+l'Assistant de joindre le fichier original à sa citation. Ce paramètre
+s'applique à un seul lien d'Assistant et est désactivé par défaut.

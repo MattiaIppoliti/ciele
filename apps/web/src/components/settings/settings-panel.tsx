@@ -1,3 +1,5 @@
+import { RollInText } from "@/components/motion/roll-in-text";
+
 /**
  * One Settings tab's heading, at the dialog's scale.
  *
@@ -16,7 +18,7 @@ export function SettingsPanel({
 }) {
   return (
     <div className="mx-auto max-w-2xl pr-6">
-      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-xl font-semibold tracking-tight"><RollInText text={title} /></h1>
       {description && (
         <p className="text-muted-foreground mt-1 text-sm">{description}</p>
       )}

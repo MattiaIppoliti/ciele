@@ -17,6 +17,7 @@ import {
 } from "./local-subscription-model";
 import type { LocalSubscriptionProvider } from "./local-subscriptions";
 import { createGoogleVertexProvider } from "./google-vertex";
+import { currentModelId } from "./catalog";
 
 export { MODEL_CATALOG } from "./catalog";
 
@@ -33,9 +34,10 @@ export type CatalogProvider = Exclude<Provider, "openai_compatible">;
  * decision resolver (#950), whose adapter fallback wraps the same tier.
  */
 export const CLASSIFIER_MODEL: Record<CatalogProvider, string> = {
-  anthropic: "claude-haiku-4-5",
-  openai: "gpt-5.1-mini",
-  google: "gemini-3.1-flash-lite",
+  // No Claude model below Sonnet 5 remains in Ciele (Haiku 4.5 is retired).
+  anthropic: "claude-sonnet-5",
+  openai: "gpt-5.4-mini",
+  google: "gemini-3.5-flash-lite",
 };
 
 const PLATFORM_ENV: Record<CatalogProvider, string> = {
@@ -134,8 +136,8 @@ function configuredModelId(
  */
 const FALLBACK_MODEL: Record<CatalogProvider, string> = {
   anthropic: "claude-sonnet-5",
-  openai: "gpt-5.1-mini",
-  google: "gemini-3.1-flash-lite",
+  openai: "gpt-5.4-mini",
+  google: "gemini-3.5-flash-lite",
 };
 
 /** Reads the OPENAI_COMPATIBLE_* env fallback, or null when incomplete. */
@@ -420,7 +422,7 @@ export function resolveChatModel(
   // An EXPLICIT local-model selection must pick its own provider, not merely
   // the first connected one: with both CLIs connected, choosing a Claude model
   // while OpenAI happened to be `localSubscriptionProviders[0]` used to resolve
-  // to OpenAI's fallback tier (gpt-5.1-mini) and ignore the selection entirely.
+  // to OpenAI's fallback tier (gpt-5.4-mini) and ignore the selection entirely.
   // Absent a selection, `orderedLocalProviders` picks the cheapest CLI to spawn.
   const localProvider = orderedLocalProviders(resolution)[0];
   if (localProvider && localProvider !== preferredProvider) {
@@ -455,7 +457,7 @@ export function resolveChatModel(
     const modelId =
       preferredProvider === "openai_compatible"
         ? configuredModelId(preferredCredential, FALLBACK_MODEL)
-        : preferredModelId;
+        : currentModelId(preferredProvider, preferredModelId);
     return {
       model: buildModel(preferredProvider, modelId, preferredCredential),
       provider: preferredProvider,

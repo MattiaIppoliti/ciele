@@ -341,9 +341,7 @@ function providerConfigFields(
           </div>
         </div>
         <p className="text-muted-foreground text-xs">
-          Public channels are shown for discovery, but only channels that Ciele
-          has joined can be imported. Private channels appear after Ciele is
-          invited. Threads include replies.
+          Only channels Ciele has joined can be imported. Private channels appear once invited.
         </p>
       </div>
     );
@@ -683,9 +681,7 @@ function ImportDialog({
             </div>
           </fieldset>
           <div className="rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-400/30 dark:bg-amber-950/30 dark:text-amber-100">
-            Selected content is copied into Ciele. Access in answers is governed
-            by the Assistant links selected here; Ciele does not re-check each
-            visitor against the source application&apos;s ACL at query time.
+            Content is copied into Ciele. The linked Assistants can answer from it, without re-checking source permissions.
           </div>
         </div>
         <DialogFooter>

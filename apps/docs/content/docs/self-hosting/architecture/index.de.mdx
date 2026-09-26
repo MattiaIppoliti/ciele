@@ -1,15 +1,15 @@
 ---
 title: Architektur
-description: Verstehen Sie die aktuellen Open-Source-Komponenten und deren Laufzeitgrenzen.
+description: Verschaffen Sie sich einen Überblick über die aktuellen Open-Source-Komponenten und deren Laufzeitgrenzen.
 ---
 
 Ciele ist ein TypeScript-Monorepo mit einer Next.js-Produktanwendung, gemeinsam
 genutzten Paketen, Postgres und optionalen Workern.
 
-## Hauptgrenzen
+## Hauptabgrenzungen
 
 <Mermaid
-  title="Jede Anfrage erreicht Postgres über dieselbe Datenzugriffsschicht"
+  title="Jede Anfrage erreicht Postgres über dieselbe Data-Access-Schicht."
   chart={`
 flowchart TB
   UI["Console and widget"]
@@ -27,28 +27,27 @@ flowchart TB
 `}
 />
 
-Optionale Worker laufen neben der Laufzeit für Crawling und Graph-Builds. Sie
-lesen dieselbe Datenbank und bleiben standardmäßig deaktiviert. Siehe
-[Background-Worker](/self-hosting/workers).
+Ein optionaler Worker läuft neben der Runtime für das Crawling. Standardmäßig
+bleibt er deaktiviert. Siehe [Background workers](/self-hosting/workers).
 
-Der Flow-Router bleibt maßgebend. Ein Modell kann die Absicht klassifizieren,
+Der Flow-Router bleibt maßgebend. Ein Modell kann Absichten klassifizieren,
 ausgewählte Aktionen generieren und registrierte Tools aufrufen.
 
-Das Modell kann weder die Flow-Reihenfolge, die objektiven Bedingungen, die
-Aktionskonfiguration, die Organisationsautorisierung noch die
-Netzwerkausgangsprüfungen ersetzen.
+Das Modell kann weder die Flow-Reihenfolge, die Zielbedingungen, die
+Aktionseinstellungen, die Organisation-Autorisierung noch die
+Netzwerk-Egress-Prüfungen ersetzen.
 
 ## Lesen Sie die Architektur
 
-- Die [Repository-Karte](/self-hosting/architecture/repository-map) zeigt die
-  Code-Verantwortlichkeit an.
-- [Request flows](/self-hosting/architecture/request-flows) verfolgt Konsolen-,
-  API- und Widget-Anfragen.
-- [Chat-Runtime](/self-hosting/architecture/chat-runtime) erklärt Trigger,
-  Routing und Aktionen.
-- [Agentic model](/self-hosting/architecture/agentic-model) erklärt die
+- [Repository map](/self-hosting/architecture/repository-map) zeigt die
+  Verantwortlichkeiten für den Code an.
+- [Request flows](/self-hosting/architecture/request-flows) verfolgt Anfragen
+  von der Konsole, der API und den Widgets.
+- [Chat runtime](/self-hosting/architecture/chat-runtime) erläutert Trigger,
+  Routing und Actions.
+- [Agentic model](/self-hosting/architecture/agentic-model) erläutert die
   Ausführung von Modellen und Tools.
-- Die [Wissens-Pipeline](/self-hosting/architecture/knowledge-pipeline)
-  erläutert die Aufnahme und den Abruf.
-- [Datenmodell](/self-hosting/architecture/data-model) erläutert die Beziehungen
-  zwischen Mandanten und Konversationen.
+- [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) erläutert
+  die Aufnahme und den Abruf von Daten.
+- [Data model](/self-hosting/architecture/data-model) erläutert die Beziehungen
+  zwischen Tenants und Conversations.

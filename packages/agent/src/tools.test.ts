@@ -78,7 +78,6 @@ function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
     helpDeskSettings: {},
     tools: {},
     requireSignIn: false,
-    knowledgeEngine: "graph",
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     ...overrides,

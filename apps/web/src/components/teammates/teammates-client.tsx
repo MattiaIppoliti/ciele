@@ -23,6 +23,7 @@ import { ProjectSection } from "@/components/teammates/project-section";
 import { VisibilityPicker } from "@/components/teammates/visibility-picker";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
 import { GroupAvatarCluster } from "@/components/teammates/group-avatar-cluster";
+import { RollInText } from "@/components/motion/roll-in-text";
 export interface CollectionOption {
   id: string;
   name: string;
@@ -220,8 +221,7 @@ function CreateTeammateDialog({
             rows={6}
           />
           <p className="text-muted-foreground text-sm">
-            Editable at any time, and it applies to the next message. Teammates
-            are never published, so there is nothing to re-publish.
+            Changes apply from the next message. No publishing needed.
           </p>
         </div>
 
@@ -549,7 +549,7 @@ export function TeammatesShell({
   return (
     <div className="flex h-full flex-col">
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Teammates</h1>
+        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Teammates" /></h1>
         <div className="ml-auto flex items-center gap-2">
           {/* No capability gate: any Member may open a group (#776). */}
           <Button

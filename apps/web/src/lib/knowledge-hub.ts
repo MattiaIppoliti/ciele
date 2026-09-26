@@ -32,6 +32,27 @@ export const KNOWLEDGE_TAB_KINDS: Record<KnowledgeTabSlug, SourceKind[]> = {
   faqs: ["faq"],
 };
 
+/**
+ * A tab's rows from Sources already on the client: its kinds, a case-blind
+ * name match and an exact status. The Assistant's Knowledge tabs filter this
+ * way; the Library does the same on the server, so both read the kind bucket
+ * from `KNOWLEDGE_TAB_KINDS` rather than each spelling it out.
+ */
+export function tabSources<S extends { name: string; kind: SourceKind; status: string }>(
+  sources: readonly S[],
+  tab: KnowledgeTabSlug,
+  filter: { query?: string; status?: string },
+): S[] {
+  const kinds = KNOWLEDGE_TAB_KINDS[tab];
+  const query = (filter.query ?? "").toLowerCase();
+  return sources.filter(
+    (source) =>
+      kinds.includes(source.kind) &&
+      source.name.toLowerCase().includes(query) &&
+      (!filter.status || source.status === filter.status),
+  );
+}
+
 /** The hub tab that lists a given Source kind, the reverse of the map above. */
 export function knowledgeTabForKind(kind: SourceKind): KnowledgeTabSlug {
   const slug = KNOWLEDGE_TAB_SLUGS.find((tab) =>

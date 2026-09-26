@@ -1,39 +1,39 @@
 ---
 title: Conoscenza
-description: Aggiungi le Fonti che l'Assistente può cercare e citare.
+description: Aggiungi le fonti che l'Assistente può cercare e citare.
 ---
 
-Le fonti appartengono all'Organizzazione e una Raccolta di conoscenze le
-memorizza insieme ai Concetti prodotti durante l'importazione. Un Assistente
-cerca in una Fonte solo dopo che tu hai collegato quella Fonte all'Assistente.
-Collega una Fonte dalla [Libreria](/knowledge/library) oppure aggiungila
-all'interno dell'Assistente, che la collegherà per te.
+Le fonti appartengono all'Organization e una Knowledge Collection le memorizza
+insieme ai Documents prodotti durante l'ingestione. Un Assistente esegue
+ricerche in una Source solo dopo che hai collegato quella Source all'Assistente.
+Collega una Source dalla [Library](/knowledge/library) oppure aggiungila
+all'interno dell'Assistant, che la collegherà per te.
 
-Poiché una Fonte può rispondere per più Assistenti, rimuoverla da un Assistente
-ed eliminarla per l'Organizzazione sono operazioni diverse. Eliminando un
-Assistente, le Fonti dell'Organizzazione rimangono invariate. Rimuove solo i
-collegamenti di quell'Assistente.
+Poiché una Source può rispondere per conto di più Assistenti, rimuoverla da un
+Assistente e cancellarla per l'Organization sono due operazioni distinte.
+L'eliminazione di un Assistente lascia intatte le Source dell'Organization.
+Rimuove solo i collegamenti di quell'Assistente.
 
-## Tipi di sorgente disponibili
+## Tipi di Source disponibili
 
 - URL del sito web
 - File caricato
 - Testo incollato
 - Applicazione connessa
-- FAQ selezionate
+- FAQ curate
 
-Ciele estrae il contenuto della Fonte e crea Concetti ricercabili. Il runtime
-risolve le citazioni riportandole alle Fonti nominate.
+Ciele estrae il contenuto delle Source e crea Documenti ricercabili. Il runtime
+riconduce le citazioni alle Source denominate.
 
 ## Stato della fonte
 
 | Status | Significato |
 | --- | --- |
-| In elaborazione | Ciele sta estraendo e indicizzando la Fonte. |
-| Pronto | La Fonte è disponibile per la ricerca di conoscenze. |
-| Non riuscito | L'acquisizione non è stata completata. Controlla l'errore e riprova l'operazione. |
+| Processing | Ciele sta estraendo e indicizzando la Source. |
+| Ready | La Source è disponibile per la ricerca nella knowledge. |
+| Failed | L'ingestione non è stata completata. Esamina l'errore e riprova l'operazione. |
 
-Non testare una nuova Fonte prima che il suo stato sia **Ready**.
+Non testare una nuova Source prima che il suo stato sia **Ready**.
 
 ## Accesso diretto
 
@@ -43,9 +43,9 @@ ed è disattivata per impostazione predefinita. Impostalo nella Library.
 
 ## Recupero
 
-Search Knowledge può utilizzare la ricerca vettoriale, il fallback lessicale e
-la navigazione nel grafo della conoscenza. Il motore Knowledge selezionato
-controlla il percorso principale.
+La ricerca nella Knowledge utilizza la ricerca vettoriale e il fallback
+lessicale per individuare i passaggi candidati. Una fase di reranking seleziona
+quindi i passaggi che l'Assistente legge.
 
-Deep Search consente più iterazioni solo Knowledge. Non effettua ricerche sul
-web aperto.
+Deep Search consente un maggior numero di iterazioni limitate alla Knowledge.
+Non effettua ricerche sul web aperto.

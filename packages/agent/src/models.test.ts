@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Provider, ProviderConnection } from "@agent-hub/core";
+import { estimateCostEur } from "@agent-hub/core";
+import { MODEL_CATALOG, RETIRED_MODELS } from "./catalog";
 import {
+  CLASSIFIER_MODEL,
   getClassifierModel,
   providerAvailability,
   resolveChatModel,
@@ -269,7 +272,7 @@ describe("resolveChatModel (cross-provider fallback)", () => {
 
   it("honors an explicit local-model selection over the first connected local provider", () => {
     // Regression: with both CLIs connected and OpenAI listed first, selecting a
-    // Claude model resolved to OpenAI's fallback tier (gpt-5.1-mini) and the
+    // Claude model resolved to OpenAI's fallback tier (gpt-5.4-mini) and the
     // chosen Claude model was silently dropped.
     vi.stubEnv("ANTHROPIC_API_KEY", undefined);
     vi.stubEnv("OPENAI_API_KEY", undefined);
@@ -324,10 +327,32 @@ describe("resolveChatModel (cross-provider fallback)", () => {
     ]);
     expect(resolved).toMatchObject({
       provider: "google",
-      modelId: "gemini-3.1-flash-lite",
+      modelId: "gemini-3.5-flash-lite",
       usedFallback: true,
     });
   });
+
+  it.each([
+    ["anthropic", "claude-haiku-4-5", "claude-sonnet-5", "ANTHROPIC_API_KEY"],
+    ["openai", "gpt-5.1-mini", "gpt-5.4-mini", "OPENAI_API_KEY"],
+    ["google", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "GOOGLE_GENERATIVE_AI_API_KEY"],
+  ] as const)(
+    "runs an Assistant still configured on retired %s model %s on its successor",
+    (provider, retired, successor, env) => {
+      // Haiku is gone from Ciele, and gpt-5.1-mini was never an OpenAI model:
+      // an Assistant saved with either before the catalogue changed must not
+      // keep calling it just because the row still names it.
+      vi.stubEnv("ANTHROPIC_API_KEY", undefined);
+      vi.stubEnv("OPENAI_API_KEY", undefined);
+      vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", undefined);
+      vi.stubEnv(env, "sk-platform");
+      expect(resolveChatModel(provider, retired, [])).toMatchObject({
+        provider,
+        modelId: successor,
+        usedFallback: false,
+      });
+    }
+  );
 
   it("returns null only when no provider has any key", () => {
     vi.stubEnv("ANTHROPIC_API_KEY", undefined);
@@ -361,6 +386,16 @@ describe("getClassifierModel", () => {
     // Resolved metadata is what the usage ledger records.
     expect(resolved?.provider).toBe("openai");
     expect(resolved?.modelId).toBeTruthy();
+  });
+
+  it.each([
+    ["anthropic", "claude-sonnet-5"],
+    ["openai", "gpt-5.4-mini"],
+    ["google", "gemini-3.5-flash-lite"],
+  ] as const)("classifies %s traffic on %s", (provider, modelId) => {
+    // The cheap tier per provider. Anthropic has no model below Sonnet 5 in
+    // Ciele any more (Haiku 4.5 is retired), so its classifier is Sonnet 5.
+    expect(getClassifierModel(provider, [connection(provider, "api_key", "sk-key")])?.modelId).toBe(modelId);
   });
 
   it("falls back to another provider with an available key", () => {
@@ -464,5 +499,29 @@ describe("openai_compatible provider (#436)", () => {
       byok: false,
       federated: false,
     });
+  });
+});
+
+describe("the model tiers Ciele offers", () => {
+  const offered = [
+    ...Object.entries(MODEL_CATALOG).flatMap(([provider, models]) =>
+      models.map((model) => [provider, model.id] as const)
+    ),
+    ...Object.entries(CLASSIFIER_MODEL),
+  ] as ReadonlyArray<readonly [string, string]>;
+
+  it("never offers or classifies on a retired model", () => {
+    for (const [provider, modelId] of offered) {
+      expect(RETIRED_MODELS[provider as keyof typeof RETIRED_MODELS]?.[modelId], `${provider}/${modelId}`).toBeUndefined();
+    }
+  });
+
+  it("has a real price for every model it offers, not the fallback chat rate", () => {
+    // An unpriced model is metered at a mid-range chat rate, several times the
+    // real one for a cheap tier, and that is how a limit trips for nothing.
+    const fallbackInput = estimateCostEur("anthropic", "not-a-model", 1_000_000, 0);
+    for (const [provider, modelId] of offered) {
+      expect(estimateCostEur(provider as "anthropic", modelId, 1_000_000, 0), `${provider}/${modelId}`).not.toBe(fallbackInput);
+    }
   });
 });

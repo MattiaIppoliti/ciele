@@ -104,7 +104,7 @@ vi.mock("./models", async (importOriginal) => {
               },
             }),
             provider: "anthropic",
-            modelId: "claude-haiku-4-5-20251001",
+            modelId: "claude-sonnet-5",
             credentialKind: "platform",
           }
         : null,
@@ -250,7 +250,6 @@ function makeAssistant(): Assistant {
     helpDeskSettings: {},
     tools: {},
     requireSignIn: false,
-    knowledgeEngine: "graph",
     simplifiedThinking: false,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",

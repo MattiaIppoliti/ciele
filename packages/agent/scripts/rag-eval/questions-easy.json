@@ -1,0 +1,352 @@
+[
+ {
+  "doc": "Balance_of_payments",
+  "lang": "en",
+  "question": "Who wrote the 17th-century work arguing that a country's wealth depended on exporting more than it imported?",
+  "answer": "Thomas Mun",
+  "evidence": "This viewpoint prevails in England's Treasure by Foreign Trade (1664) by Thomas Mun."
+ },
+ {
+  "doc": "Balance_of_payments",
+  "lang": "it",
+  "question": "Quante crisi legate alla balanza dei pagamenti si verificarono circa nel periodo tra le due guerre mondiali, secondo il testo?",
+  "answer": "Approximately 16 balance of payments crises",
+  "evidence": "There were approximately 16 BoP crises and 15 twin crises"
+ },
+ {
+  "doc": "Balance_of_payments",
+  "lang": "en",
+  "question": "Between 1973 and 1997, how many balance-of-payments crises did emerging market economies experience?",
+  "answer": "57 BoP crises (along with 21 twin crises)",
+  "evidence": "from 1973 to 1997 emerging economies suffered 57 BoP crises and 21 twin crises"
+ },
+ {
+  "doc": "Balance_of_payments",
+  "lang": "en",
+  "question": "In a currency system where the central bank never steps in to buy or sell foreign currency, what happens to the balance of payments figure?",
+  "answer": "It is always zero.",
+  "evidence": "the central bank's foreign exchange reserves do not change, and the balance of payments is always zero"
+ },
+ {
+  "doc": "Balance_of_payments",
+  "lang": "it",
+  "question": "Se in un bilancio dei pagamenti sia il conto corrente che quello capitale mostrano un surplus, quale operazione viene più spesso trascurata nei dati?",
+  "answer": "The operations of the country's central bank",
+  "evidence": "most commonly, the operations of the country's central bank – and what has been missed is recorded in the statistical discrepancy term"
+ },
+ {
+  "doc": "Comparative_advantage",
+  "lang": "en",
+  "question": "Which economist introduced the idea of absolute advantage in international trade, and in what year?",
+  "answer": "Adam Smith, in 1776",
+  "evidence": "Adam Smith first alluded to the concept of absolute advantage as the basis for international trade in 1776, in The Wealth of Nations"
+ },
+ {
+  "doc": "Comparative_advantage",
+  "lang": "en",
+  "question": "Before engaging in trade, how many total hours of labor does England need to produce and consume one unit of cloth together with one unit of wine?",
+  "answer": "220 hours",
+  "evidence": "England requires 220 hours of work to both produce and consume one unit each of cloth and wine"
+ },
+ {
+  "doc": "Comparative_advantage",
+  "lang": "it",
+  "question": "In un'economia chiusa, senza scambi commerciali, da cosa dipende esclusivamente il prezzo relativo tra tessuto e vino in un paese?",
+  "answer": "It is determined solely by the relative labor cost of the goods (the ratio of labor input requirements for cloth and wine).",
+  "evidence": "In the absence of trade, the relative price of cloth and wine in each country is determined solely by the relative labor cost of the goods."
+ },
+ {
+  "doc": "Comparative_advantage",
+  "lang": "en",
+  "question": "In the Ricardian trade model, what happens to the amount of cloth a country produces when its workers see no advantage in choosing one industry over another?",
+  "answer": "The quantity of cloth supplied can be any value (it is indeterminate).",
+  "evidence": "Home workers are indifferent between working in either sector. As a result, the quantity of cloth supplied can take any value."
+ },
+ {
+  "doc": "Comparative_advantage",
+  "lang": "en",
+  "question": "What happens to the output levels of wine and cloth when both countries fully specialize in producing cloth due to relative labor cost ratios being lower than the price ratio?",
+  "answer": "Wine output approaches zero while cloth output tends toward infinity.",
+  "evidence": "The quantity of cloth supplied tends to infinity as the quantity of wine supplied approaches zero."
+ },
+ {
+  "doc": "European_Central_Bank",
+  "lang": "en",
+  "question": "Who is currently in charge of leading the European Central Bank?",
+  "answer": "Christine Lagarde",
+  "evidence": "The current president of the ECB is Christine Lagarde."
+ },
+ {
+  "doc": "European_Central_Bank",
+  "lang": "it",
+  "question": "Quale rating minimo stabilì la BCE nel 2005 per accettare i titoli di stato dell'Eurozona come garanzia nelle operazioni di mercato aperto?",
+  "answer": "BBB-",
+  "evidence": "a decision by the ECB made in 2005 introduced a minimum credit rating (BBB-) for all Eurozone sovereign bonds to be eligible as collateral"
+ },
+ {
+  "doc": "European_Central_Bank",
+  "lang": "en",
+  "question": "When did the ECB first raise interest rates after 2008, and by how much?",
+  "answer": "In April 2011, rates were raised from 1% to 1.25%.",
+  "evidence": "In April 2011, the ECB raised interest rates for the first time since 2008 from 1% to 1.25%"
+ },
+ {
+  "doc": "European_Central_Bank",
+  "lang": "en",
+  "question": "In which month and year did the ECB relocate to its new headquarters building?",
+  "answer": "November 2014",
+  "evidence": "In November 2014, the bank moved into its new premises, while the Eurotower building was dedicated to hosting the newly established supervisory activities"
+ },
+ {
+  "doc": "European_Central_Bank",
+  "lang": "it",
+  "question": "In che data è stata reso noto il terzo ciclo di operazioni mirate di rifinanziamento a lungo termine della BCE?",
+  "answer": "7 March 2019",
+  "evidence": "A third wave of TLTRO's was announced on 7 March 2019, namely the TLTRO III."
+ },
+ {
+  "doc": "Fiscal_policy",
+  "lang": "en",
+  "question": "What government body typically oversees the management of taxes and public spending decisions?",
+  "answer": "A government department",
+  "evidence": "fiscal policy deals with taxation and government spending and is often administered by a government department"
+ },
+ {
+  "doc": "Fiscal_policy",
+  "lang": "en",
+  "question": "What government budgetary actions are taken to slow down growth when inflation is running too high due to excessive money supply and demand?",
+  "answer": "Raising tax rates and cutting government spending (contractionary fiscal policy), which reduces deficit spending below its usual level.",
+  "evidence": "Contractionary fiscal policy, on the other hand, is a measure to increase tax rates and decrease government spending. It occurs when government deficit spending is lower than usual."
+ },
+ {
+  "doc": "Fiscal_policy",
+  "lang": "it",
+  "question": "Perché il tetto legale al debito del governo federale statunitense non rappresenta un vincolo efficace sulla spesa pubblica?",
+  "answer": "Because the debt cap can be raised as easily as new spending is authorized, and it is almost always increased before the debt reaches that limit.",
+  "evidence": "it is not a meaningful constraint because the cap can be raised as easily as spending can be authorized, and the cap is almost always raised before the debt gets that high"
+ },
+ {
+  "doc": "Fiscal_policy",
+  "lang": "en",
+  "question": "Which historical U.S. economic program was justified by the idea that expanded output during recovery would offset earlier budget deficits?",
+  "answer": "The New Deal",
+  "evidence": "this was the reasoning behind the New Deal"
+ },
+ {
+  "doc": "Fiscal_policy",
+  "lang": "en",
+  "question": "How does increased government borrowing during expansionary fiscal policy affect a country's currency value?",
+  "answer": "It causes the currency to appreciate, because higher interest rates attract foreign capital, increasing demand for the currency.",
+  "evidence": "The increased demand, in turn, causes the currency to appreciate, reducing the cost of imports"
+ },
+ {
+  "doc": "Game_theory",
+  "lang": "en",
+  "question": "What acronym did Eric Rasmusen use to describe the four essential elements of a game?",
+  "answer": "PAPI",
+  "evidence": "Eric Rasmusen refers to these four \"essential elements\" by the acronym \"PAPI\"."
+ },
+ {
+  "doc": "Game_theory",
+  "lang": "it",
+  "question": "In che modo la teoria dei giochi si differenzia dai modelli econometrici tradizionali e dagli algoritmi di ottimizzazione nell'analisi economica?",
+  "answer": "Game theory is inherently dynamic and captures strategic interactions among participants, unlike descriptive econometric models (based on historical data/statistical trends) and optimization algorithms (which assume static environments and address single-objective problems within fixed constraints).",
+  "evidence": "game theory is inherently dynamic and accounts for the strategic interactions among participants"
+ },
+ {
+  "doc": "Game_theory",
+  "lang": "en",
+  "question": "In classical game theory, what does it mean for players to have shared awareness that everyone is rational?",
+  "answer": "It means players are rational, know that others are rational, and know that this knowledge extends recursively to all players—known as common knowledge of rationality.",
+  "evidence": "players are rational; they also know that others are rational; and that this knowledge is shared recursively"
+ },
+ {
+  "doc": "Game_theory",
+  "lang": "en",
+  "question": "In expected utility theory, how is a decision-maker's utility of a probabilistic mixture of two outcomes related to the utilities of those individual outcomes?",
+  "answer": "It equals the probability-weighted sum of the utilities of the two outcomes: u(xλy) = λu(x) + (1−λ)u(y)",
+  "evidence": "u ( x λ y ) = λ u ( x ) + ( 1 − λ ) u ( y )"
+ },
+ {
+  "doc": "Game_theory",
+  "lang": "it",
+  "question": "Nell'esempio di gioco a 3 giocatori descritto, quali giocatori scelgono l'azione A e quale scelge l'azione B secondo il profilo di strategie indicato?",
+  "answer": "Players 1 and 2 choose A, while player 3 chooses B.",
+  "evidence": "indicating that players 1 and 2 choose A, and player 3 chooses B"
+ },
+ {
+  "doc": "Gross_domestic_product",
+  "lang": "en",
+  "question": "What method do economists use to adjust GDP figures when comparing living costs across different countries?",
+  "answer": "Purchasing power parity (PPP)",
+  "evidence": "GDP figures are often adjusted for differences in the cost of living using purchasing power parity (PPP)."
+ },
+ {
+  "doc": "Gross_domestic_product",
+  "lang": "en",
+  "question": "What is another name for the production approach to calculating a country's total economic output?",
+  "answer": "The Value Added Approach",
+  "evidence": "Also known as the Value Added Approach, it calculates how much value is contributed at each stage of production."
+ },
+ {
+  "doc": "Gross_domestic_product",
+  "lang": "it",
+  "question": "Come viene definita la misura del reddito d'impresa, analoga al surplus operativo lordo, ma calcolata per le imprese non costituite in società (come molte piccole attività)?",
+  "answer": "Gross mixed income (GMI)",
+  "evidence": "Gross mixed income (GMI) is the same measure as GOS, but for unincorporated businesses."
+ },
+ {
+  "doc": "Gross_domestic_product",
+  "lang": "en",
+  "question": "Why must the value of imported goods be subtracted when calculating GDP using the expenditure approach?",
+  "answer": "Because imported goods are already included in consumption, investment, and government spending totals, so they must be subtracted to avoid counting foreign production as domestic output.",
+  "evidence": "Imports are subtracted since imported goods will be included in the terms C, I, and G, and must be deducted to avoid counting foreign supply as domest"
+ },
+ {
+  "doc": "Gross_domestic_product",
+  "lang": "en",
+  "question": "Which five organizations collaborated to produce the 2008 guidebook that sets the global standard for calculating a country's economic output?",
+  "answer": "The International Monetary Fund, European Union, Organisation for Economic Co-operation and Development, United Nations, and World Bank.",
+  "evidence": "prepared by representatives of the International Monetary Fund, European Union, Organisation for Economic Co-operation and Development, United Nations and World Bank"
+ },
+ {
+  "doc": "Inflation",
+  "lang": "en",
+  "question": "How can moderate inflation help lower unemployment levels?",
+  "answer": "Because it counteracts nominal wage rigidity, making it easier for real wages to adjust downward without cutting nominal pay.",
+  "evidence": "reducing unemployment due to nominal wage rigidity"
+ },
+ {
+  "doc": "Inflation",
+  "lang": "it",
+  "question": "Qual è stato il tasso di inflazione annuo registrato in Venezuela nell'ottobre 2018, considerato il più alto al mondo?",
+  "answer": "833,997%",
+  "evidence": "The hyperinflation in Venezuela is the highest in the world, with an annual inflation rate of 833,997% as of October 2018."
+ },
+ {
+  "doc": "Inflation",
+  "lang": "en",
+  "question": "Why did the Ming dynasty initially avoid using paper currency and go back to copper coins?",
+  "answer": "Because they feared the inflation that had afflicted the preceding Yuan dynasty.",
+  "evidence": "Fearing the inflation that plagued the Yuan dynasty, the Ming dynasty initially rejected the use of paper money, and reverted to using copper coins."
+ },
+ {
+  "doc": "Inflation",
+  "lang": "en",
+  "question": "What term should be used instead of 'inflation' when describing a rise in the value of a capital asset like real estate?",
+  "answer": "Appreciation",
+  "evidence": "a more accurate description for an increase in the value of a capital asset is appreciation"
+ },
+ {
+  "doc": "Inflation",
+  "lang": "it",
+  "question": "Come si può definire l'inflazione dei prezzi degli asset, ad esempio nel settore immobiliare?",
+  "answer": "An excessive/undue increase in the prices of real assets, such as real estate.",
+  "evidence": "Asset price inflation is an undue increase in the prices of real assets, such as real estate."
+ },
+ {
+  "doc": "Keynesian_economics",
+  "lang": "en",
+  "question": "In what year did Keynes publish the book that laid the foundation for Keynesian economics?",
+  "answer": "1936",
+  "evidence": "Keynesian economics developed during and after the Great Depression from the ideas presented by Keynes in his 1936 book, The General Theory of Employment, Interest and Money."
+ },
+ {
+  "doc": "Keynesian_economics",
+  "lang": "en",
+  "question": "In which chapters and sections of Keynes's General Theory does he address the concept he termed 'under-consumption'?",
+  "answer": "Chapter 22, Section IV and Chapter 23, Section VII",
+  "evidence": "Keynes specifically discussed underconsumption (which he wrote \"under-consumption\") in the General Theory, in Chapter 22, Section IV and Chapter 23, Section VII."
+ },
+ {
+  "doc": "Keynesian_economics",
+  "lang": "it",
+  "question": "Come venivano chiamate dagli economisti classici le situazioni in cui la domanda complessiva di beni e servizi risultava inferiore all'offerta?",
+  "answer": "A \"general glut\"",
+  "evidence": "a situation in which aggregate demand for goods and services did not meet supply was referred to by classical economists as a general glut"
+ },
+ {
+  "doc": "Keynesian_economics",
+  "lang": "en",
+  "question": "Who first pointed out that individual savings should be treated as a leakage in the multiplier process?",
+  "answer": "Jens Warming",
+  "evidence": "Jens Warming recognised that personal saving had to be considered, treating it as a \"leakage\""
+ },
+ {
+  "doc": "Keynesian_economics",
+  "lang": "en",
+  "question": "According to his 1913 book on joblessness, what did this Cambridge economist believe was the root cause of unemployment?",
+  "answer": "A mismatch between wage rates and demand",
+  "evidence": "it was caused by \"maladjustment between wage-rates and demand\""
+ },
+ {
+  "doc": "Monetary_policy",
+  "lang": "en",
+  "question": "What is the collective name for the various channels through which changes in interest rates influence economic activity, employment, and inflation?",
+  "answer": "The monetary transmission mechanism",
+  "evidence": "Interest rates affect general economic activity and consequently employment and inflation via a number of different channels, known collectively as the monetary transmission mechanism"
+ },
+ {
+  "doc": "Monetary_policy",
+  "lang": "it",
+  "question": "In che anno fu istituito il sistema che dà vita al Fondo Monetario Internazionale e a un regime di cambi fissi legati al dollaro statunitense?",
+  "answer": "1944",
+  "evidence": "In 1944, the Bretton Woods system was established, which created the International Monetary Fund and introduced a fixed exchange rate system linking the currencies of most industrialized nations to the US dollar"
+ },
+ {
+  "doc": "Monetary_policy",
+  "lang": "en",
+  "question": "Which international organization sets the standards for bank capital adequacy that central banks typically follow?",
+  "answer": "The Bank for International Settlements",
+  "evidence": "capital adequacy is important, it is defined and regulated by the Bank for International Settlements"
+ },
+ {
+  "doc": "Monetary_policy",
+  "lang": "en",
+  "question": "How wide is the range around Canada's target overnight rate within which banks lend to each other?",
+  "answer": "Plus or minus 0.25%",
+  "evidence": "the Bank of Canada sets a target overnight rate, and a band of plus or minus 0.25%"
+ },
+ {
+  "doc": "Monetary_policy",
+  "lang": "it",
+  "question": "In che secolo sono stati introdotti i requisiti legali di riserva per le banche e con quale scopo principale?",
+  "answer": "In the 19th century, to reduce the risk of banks overextending themselves and suffering bank runs.",
+  "evidence": "Such legal reserve requirements were introduced in the 19th century as an attempt to reduce the risk of banks overextending themselves and suffering from bank runs"
+ },
+ {
+  "doc": "Unemployment",
+  "lang": "en",
+  "question": "According to the UN's International Labour Organization, what percentage of the world's workforce was jobless in 2018?",
+  "answer": "5%",
+  "evidence": "there were 172 million people worldwide (or 5% of the reported global workforce) without work in 2018"
+ },
+ {
+  "doc": "Unemployment",
+  "lang": "en",
+  "question": "Which economists co-wrote a book arguing that historical U.S. data supports the classical theory linking wage levels to joblessness?",
+  "answer": "Richard Vedder and Lowell Gallaway",
+  "evidence": "economists Richard Vedder and Lowell Gallaway argue that the empirical record of wages rates, productivity, and unemployment in America validates classical unemployment theory"
+ },
+ {
+  "doc": "Unemployment",
+  "lang": "it",
+  "question": "Perché non si può raggiungere il tasso di disoccupazione ideale usando solo politiche di stimolo della domanda in stile keynesiano?",
+  "answer": "Because doing so would push unemployment below the NAIRU, causing accelerating inflation (unless incomes policies are used).",
+  "evidence": "it would be impossible to attain this full-employment target using only demand-side Keynesian stimulus without getting below the NAIRU and causing accelerating inflation"
+ },
+ {
+  "doc": "Unemployment",
+  "lang": "en",
+  "question": "What term describes joblessness that occurs while a person is in the process of moving from one job to another?",
+  "answer": "Frictional unemployment (also called search unemployment)",
+  "evidence": "Frictional unemployment is the time period between jobs in which a worker searches for or transitions from one job to another."
+ },
+ {
+  "doc": "Unemployment",
+  "lang": "en",
+  "question": "According to Marx, what role does the pool of unemployed and underemployed workers play in a capitalist economy?",
+  "answer": "It acts as a 'reserve army of labour' that pushes wages down by making workers compete against each other for limited jobs.",
+  "evidence": "The function of the proletariat within the capitalist system is to provide a \"reserve army of labour\" that creates downward pressure on wages."
+ }
+]

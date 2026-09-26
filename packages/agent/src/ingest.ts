@@ -1,6 +1,4 @@
-import { generateObject } from "ai";
 import { createHash } from "node:crypto";
-import { z } from "zod";
 import type {
   Concept,
   ConceptFrontmatter,
@@ -44,11 +42,8 @@ import {
   embeddingSpaceId,
   embedTextsWithStatus,
   embeddingConnectionKind,
-  type EmbeddingUsageContext,
 } from "./embeddings";
 import { getEnterpriseCapabilities } from "./ee";
-import { getClassifierModel } from "./models";
-import { meterUsage, usageTotals } from "./usage";
 import { validateEgressTarget } from "./egress";
 import { redactCrawl4aiSecrets } from "./crawl4ai";
 import { errorClassOf, recordRuntimeEvent } from "./telemetry";
@@ -74,66 +69,6 @@ const CRAWL_PROGRESS_STRIDE = 10;
  * old 60k slice silently dropped the tail of normal doc pages; this does not.
  */
 export const MAX_CONCEPT_BODY_CHARS = 1_000_000;
-
-/**
- * Output budget for one enrichment call. Set explicitly rather than inheriting
- * a provider default, because this number *is* the compression ratio: whatever
- * the model cannot say within it gets dropped from the curated layer, and an
- * invisible default made that a silent, provider-dependent decision.
- *
- * 8k is deliberately conservative, `getClassifierModel` can resolve to any
- * provider, including a user-configured `openai_compatible` model with a modest
- * cap, and exceeding a model's own limit is a hard error that would cost us the
- * whole enrichment. The window below is sized to this, not the other way round.
- */
-export const ENRICH_MAX_OUTPUT_TOKENS = 8_000;
-
-/**
- * How much source text one enrichment call sees. Sized so its window can be
- * rendered into concepts *within* {@link ENRICH_MAX_OUTPUT_TOKENS} rather than
- * compressed to fit it: ~24k chars is ~6k input tokens, leaving real headroom
- * in an 8k output budget. The old single 60k-char call had no such relationship
- * to its (unset) output cap, so long sources were compressed by arithmetic.
- */
-export const ENRICH_WINDOW_CHARS = 24_000;
-
-/**
- * How many windows one Source may spend. Bounded by wall clock, not by cost:
- * enrichment runs inside a job whose route caps at `maxDuration = 300`, and a
- * job killed mid-flight is retried by cron, burning tokens on every attempt
- * without ever finishing. Four sequential calls stay well inside that.
- *
- * Past this the curated layer stops, but nothing is lost from retrieval: the
- * verbatim companion Concept ({@link verbatimDraft}) carries the whole document
- * up to `MAX_CONCEPT_BODY_CHARS`.
- */
-export const ENRICH_MAX_WINDOWS = 4;
-
-/**
- * Total span enrichment curates. Everything past it is still stored, indexed
- * and retrievable through the verbatim companion, only un-curated.
- */
-export const ENRICH_SOURCE_MAX_CHARS = ENRICH_WINDOW_CHARS * ENRICH_MAX_WINDOWS;
-
-const CONCEPT_SCHEMA = z.object({
-  concepts: z
-    .array(
-      z.object({
-        path: z
-          .string()
-          .describe("Kebab-case file path ending in .md, e.g. exam-rules.md"),
-        type: z.string().describe("Concept type, e.g. Policy, Guide, FAQ, Course Material"),
-        title: z.string(),
-        description: z.string().describe("One-sentence summary"),
-        tags: z.array(z.string()).max(5),
-        body: z
-          .string()
-          .describe("The concept content as markdown, preserving all facts from the source"),
-      })
-    )
-    .min(1)
-    .max(12),
-});
 
 function slugify(name: string): string {
   return (
@@ -186,15 +121,6 @@ function packParagraphs(
   return pieces.filter(Boolean);
 }
 
-/**
- * Splits source text into enrichment windows on paragraph boundaries, each at
- * most {@link ENRICH_WINDOW_CHARS} (a window is a prompt budget, so the cap is
- * hard), capped at {@link ENRICH_MAX_WINDOWS}.
- */
-export function enrichmentWindows(text: string): string[] {
-  return packParagraphs(text, ENRICH_WINDOW_CHARS, true).slice(0, ENRICH_MAX_WINDOWS);
-}
-
 /** Splits markdown into ~1200-char chunks on paragraph boundaries. */
 export function chunkMarkdown(body: string): string[] {
   return packParagraphs(body, 1200, true);
@@ -217,64 +143,38 @@ function sourceProvenance(source: Source): OkfSource {
 }
 
 /**
- * OKF `type` of the verbatim companion Concept (see {@link verbatimDraft}).
- * Its own type so the Knowledge browser's type filter can separate curated
- * knowledge from the raw index, and so a consumer can tell the two apart.
+ * A file or pasted-text Source becomes its own words (ADR-0025): one
+ * `Document` Concept per `MAX_CONCEPT_BODY_CHARS` part, the extracted text
+ * unedited. `chunkMarkdown` then splits each body into the passages the index
+ * holds.
+ *
+ * Ingestion used to ask a model to rewrite the text into curated Concepts
+ * first. On a 100-question bench the rewrites kept 16% of the characters they
+ * were given and never found an answer the verbatim text missed, while taking
+ * one of the six result slots in six. OKF stays the envelope (type, title,
+ * `generated`, `sources`); it is not a rewrite.
+ *
+ * Every Concept carries OKF v0.2 provenance: `generated` names the process that
+ * wrote it and `sources` names the Source it derives from.
  */
-export const SOURCE_TEXT_CONCEPT_TYPE = "Source Text";
-
-/**
- * The **verbatim companion Concept**: the source text exactly as extracted,
- * stored and indexed alongside the enriched Concepts.
- *
- * Why it exists: enrichment rewrites. `chunkMarkdown` chunks the Concept body,
- * so before this, the *only* thing the vector index ever saw for a file / URL /
- * pasted-text Source was the model's rewrite, and any detail the rewrite
- * dropped was unreachable no matter how good retrieval was. The enriched
- * Concepts stay the curated, citable layer; this one guarantees nothing in the
- * source is missing from the index.
- *
- * It carries the FULL text, not the `ENRICH_SOURCE_MAX_CHARS` slice: that cap
- * bounds the enrichment *prompt*, so a long document was previously indexed
- * only up to 60k characters. The model still sees just the first 60k, but
- * everything past it is now retrievable, which is the part that decides whether
- * a visitor's question can be answered at all.
- *
- * Written only when enrichment actually ran. With no classifier the
- * pass-through Concept already *is* the verbatim text, and a companion would be
- * an exact duplicate competing with it for the same top-k slots.
- */
-function sourceTextDrafts(
+export function sourceConceptDrafts(
   source: Source,
   rawText: string,
-  at: string,
-  provenance: OkfSource,
-  kind: "verbatim" | "passthrough"
-): Array<{ path: string; frontmatter: ConceptFrontmatter; body: string }> {
+  at: string = new Date().toISOString()
+): SourceConceptDraft[] {
+  const provenance = sourceProvenance(source);
   const parts = packParagraphs(rawText, MAX_CONCEPT_BODY_CHARS, true);
   const base = slugify(source.name);
   return parts.map((body, index) => {
     const suffix = parts.length === 1 ? "" : `-part-${index + 1}`;
     const partLabel = parts.length === 1 ? "" : `, part ${index + 1} of ${parts.length}`;
-    const verbatim = kind === "verbatim";
     return {
-      path: verbatim
-        ? `originals/${base}${suffix}.md`
-        : `${base}${suffix}.md`,
+      path: `${base}${suffix}.md`,
       frontmatter: {
-        type: verbatim ? SOURCE_TEXT_CONCEPT_TYPE : "Document",
-        title: verbatim
-          ? `${source.name}, full text${partLabel}`
-          : `${source.name}${partLabel}`,
-        description: verbatim
-          ? `Unedited text of ${source.kind} source "${source.name}", indexed so detail the enrichment did not carry is still retrievable.`
-          : `Imported from ${source.kind} source "${source.name}"${partLabel}`,
-        generated: {
-          by: okfActor.process(
-            verbatim ? "okf-verbatim-index" : "okf-ingest-passthrough"
-          ),
-          at,
-        },
+        type: "Document",
+        title: `${source.name}${partLabel}`,
+        description: `Imported from ${source.kind} source "${source.name}"${partLabel}`,
+        generated: { by: okfActor.process("okf-ingest-passthrough"), at },
         sources: [provenance],
       },
       body,
@@ -283,175 +183,9 @@ function sourceTextDrafts(
 }
 
 /**
- * OKF enrichment (ADR-0002): drafts one Concept per meaningful unit of the
- * source via LLM, **plus a verbatim companion Concept** carrying the source
- * text unedited ({@link verbatimDraft}), curated knowledge and the raw index
- * side by side. With no classifier it falls back to a single pass-through
- * concept wrapping the raw text, which needs no companion because it already
- * is one. The enrichment call is a billable model call, so it meters under its
- * own `enrich` stage when the caller supplies attribution (#438).
- *
- * Every drafted Concept carries OKF v0.2 provenance: `generated` names the
- * actor that wrote it (the enrichment model, the verbatim indexer, or the
- * pass-through process) and `sources` names the Source it derives from, so a
- * reader can tell machine-drafted knowledge from a verbatim copy without
- * leaving the frontmatter.
- */
-async function enrich(
-  source: Source,
-  rawText: string,
-  connections: ProviderConnection[],
-  attribution: EmbeddingUsageContext | null
-): Promise<SourceConceptDraft[]> {
-  const at = new Date().toISOString();
-  const provenance = sourceProvenance(source);
-  const classifier = getClassifierModel("anthropic", connections);
-  const text = rawText.slice(0, ENRICH_SOURCE_MAX_CHARS);
-
-  if (classifier) {
-    const windows = enrichmentWindows(text);
-    if (rawText.length > ENRICH_SOURCE_MAX_CHARS) {
-      // Not an Alert: the verbatim companion below still indexes the whole
-      // document, so this degrades curation, not answerability.
-      console.warn(
-        `[ingest] source "${source.name}" is ${rawText.length} chars; ` +
-          `enrichment curates the first ${ENRICH_SOURCE_MAX_CHARS}. The remainder ` +
-          `stays retrievable through its verbatim Concept.`
-      );
-    }
-    const drafts: Array<{
-      path: string;
-      frontmatter: ConceptFrontmatter;
-      body: string;
-    }> = [];
-    const seenPaths = new Set<string>();
-
-    // Sequential, not parallel: bursting four structured-output calls at a
-    // provider is the shape that trips rate limits, and the job has the wall
-    // clock to spare (see ENRICH_MAX_WINDOWS).
-    for (const [index, window] of windows.entries()) {
-      try {
-        const { object, usage } = await generateObject({
-          model: classifier.model,
-          schema: CONCEPT_SCHEMA,
-          maxOutputTokens: ENRICH_MAX_OUTPUT_TOKENS,
-          system:
-            "You convert source documents into Open Knowledge Format (OKF) concept documents: one markdown file per coherent concept (a policy, a topic, a procedure). Preserve every fact; do not invent content. Keep concept bodies self-contained.",
-          // The model is told which slice it holds so it drafts concepts for
-          // *this* part instead of writing a whole-document overview from one.
-          prompt:
-            windows.length > 1
-              ? `Source document "${source.name}" (part ${index + 1} of ${windows.length}). Draft concepts for this part only:\n\n${window}`
-              : `Source document "${source.name}":\n\n${window}`,
-        });
-        if (attribution) {
-          await meterUsage(attribution.db, [
-            {
-              organizationId: attribution.organizationId,
-              assistantId: attribution.assistantId ?? null,
-              stage: "enrich",
-              provider: classifier.provider,
-              modelId: classifier.modelId,
-              credentialKind: classifier.credentialKind,
-              ...usageTotals(usage),
-              // Indexing, not a turn: attributable to the job, never to whoever
-              // happens to be chatting while it runs (#849).
-              surface: "ingestion",
-            },
-          ]);
-        }
-        for (const concept of object.concepts) {
-          // Windows are drafted independently, so two of them can land on the
-          // same filename; suffix rather than silently writing twin Concepts.
-          const base = concept.path.endsWith(".md")
-            ? concept.path.slice(0, -3)
-            : concept.path;
-          let path = `${base}.md`;
-          let suffix = 1;
-          while (seenPaths.has(path)) path = `${base}-${++suffix}.md`;
-          seenPaths.add(path);
-          drafts.push({
-            path,
-            frontmatter: {
-              type: concept.type,
-              title: concept.title,
-              description: concept.description,
-              tags: concept.tags,
-              generated: { by: okfActor.agent("okf-enricher", classifier.modelId), at },
-              sources: [provenance],
-            },
-            body: concept.body,
-          });
-        }
-      } catch {
-        // One window failing (a provider blip, a schema violation) must not
-        // discard the windows that succeeded, skip it and keep going.
-      }
-    }
-
-    if (drafts.length > 0) {
-      // The rewrite is lossy by construction (a bounded output budget, at most
-      // 12 concepts per window, a bounded number of windows); index the
-      // source's own words next to it so nothing it dropped is unreachable.
-      return [
-        ...drafts,
-        ...sourceTextDrafts(source, rawText, at, provenance, "verbatim"),
-      ];
-    }
-    // Every window failed: fall through to the naive conversion, which keeps
-    // the full text and so needs no companion.
-  }
-
-  return sourceTextDrafts(source, rawText, at, provenance, "passthrough");
-}
-
-/**
- * Enqueues graph-remove syncs for deleted Concepts (best-effort, inert without
- * a graph worker). Dynamic import breaks the cycle with the job ledger, which
- * imports this module.
- */
-async function enqueueGraphConceptRemovals(
-  db: Db,
-  collectionId: string,
-  conceptIds: string[]
-): Promise<void> {
-  if (conceptIds.length === 0) return;
-  try {
-    const { enqueueGraphSyncJob } = await import("./jobs");
-    for (const conceptId of conceptIds) {
-      await enqueueGraphSyncJob({ op: "remove", collectionId, conceptId }, { db });
-    }
-  } catch {
-    // Swallow: the graph is derived; the backfill reconciles orphans.
-  }
-}
-
-/** Project only the Source generation that retrieval can currently see. */
-async function enqueueActiveSourceGraph(
-  db: Db,
-  collectionId: string,
-  sourceId: string
-): Promise<void> {
-  try {
-    const { enqueueGraphSyncJob } = await import("./jobs");
-    const concepts = (await db.listConcepts(collectionId)).filter(
-      (concept) => concept.sourceId === sourceId
-    );
-    for (const concept of concepts) {
-      await enqueueGraphSyncJob(
-        { op: "ingest", collectionId, conceptId: concept.id },
-        { db }
-      );
-    }
-  } catch {
-    // The graph is derived; manual backfill remains the reconciliation path.
-  }
-}
-
-/**
  * One memory-extraction job per Document the committed generation stores
- * (#930), beside the graph projection and for the same reasons: after the
- * cutover, never inside the page loop, and never able to fail the ingest.
+ * (#930): after the cutover, never inside the page loop, and never able to
+ * fail the ingest.
  *
  * Called from the one place every ingestion route converges on, the
  * generation commit, so a website crawl, a file upload, pasted text and a FAQ
@@ -488,8 +222,6 @@ export async function embedConcept(options: {
   title: string;
   body: string;
   connections: ProviderConnection[];
-  /** A staged generation is projected only after its visibility CAS commits. */
-  deferGraphSync?: boolean;
   /**
    * Who asked for this indexing (#849). Absent on the ingestion pipeline's own
    * jobs, which nobody asked for in particular; set when an edit through a
@@ -585,29 +317,6 @@ export async function embedConcept(options: {
       embeddingSpace: embeddings[i] ? embeddingSpace : null,
     }))
   );
-  // Project this Concept onto its Collection's derived Knowledge Graph too
-  // (ADR-0017). This is the single index-write path, so every create / update /
-  // re-embed keeps the graph in step without admin action. Inert when the graph
-  // worker is unconfigured; best-effort so a graph hiccup never breaks OKF
-  // ingestion. Dynamic import avoids an import cycle with the job ledger (which
-  // imports this module).
-  if (!options.deferGraphSync) {
-    try {
-      const { enqueueGraphSyncJob } = await import("./jobs");
-      await enqueueGraphSyncJob(
-        {
-          op: "ingest",
-          collectionId: options.collectionId,
-          conceptId: options.conceptId,
-        },
-        { db: options.db }
-      );
-    } catch {
-      // Swallow: the graph is derived, and OKF (the record) is already written.
-      // NOTE: a failure here means no ledger row was created, so the cron backstop
-      // cannot recover it; only a manual graph backfill reconciles the miss.
-    }
-  }
   // An embedding *failure* (provider outage, not mere absence of a provider)
   // silently downgrades the content to lexical-only retrieval, raise an
   // ingestion Alert so it's operationally visible, and auto-resolve it on the
@@ -640,7 +349,7 @@ export async function embedConcept(options: {
 
 /**
  * Persists one drafted Concept into a Collection and indexes it for
- * retrieval, the single write path every ingestion route (enriched source,
+ * retrieval, the single write path every ingestion route (file or text source,
  * crawled page, FAQ) goes through. The retrieval title is the frontmatter
  * title, falling back to the path.
  */
@@ -679,7 +388,6 @@ export async function persistConcept(options: {
     title: options.frontmatter.title ?? options.path,
     body: options.body,
     connections: options.connections,
-    deferGraphSync: Boolean(options.generationId),
     usage: options.usage,
   });
   return concept;
@@ -1323,13 +1031,10 @@ export async function finalizeWebsiteCrawl(options: {
       db,
       sourceId,
       generation,
-      onRetired: (conceptIds) =>
-        enqueueGraphConceptRemovals(db, collectionId, conceptIds),
     });
     if (cutover === "superseded") {
       throw new Error("Source knowledge changed while crawl ingestion was running");
     }
-    await enqueueActiveSourceGraph(db, collectionId, sourceId);
     await enqueueActiveSourceMemories(db, {
       collectionId,
       sourceId,
@@ -1419,17 +1124,14 @@ export async function replaceSourceKnowledge(options: {
     },
     commitGeneration: options.commitGeneration,
     preserveStagedOnAbort: options.preserveStagedOnAbort,
-    onRetired: (conceptIds) =>
-      enqueueGraphConceptRemovals(db, collectionId, conceptIds),
     onCommitted: async (generationId) => {
-      await enqueueActiveSourceGraph(db, collectionId, sourceId);
       await enqueueActiveSourceMemories(db, { collectionId, sourceId, generationId });
     },
   });
 }
 
 /**
- * Full ingestion pipeline: enrich → persist Concepts → mark Source ready.
+ * Full ingestion pipeline: draft verbatim Concepts → persist → mark Source ready.
  * Knowledge replacement is atomic: a re-ingest keeps the Source's last-good
  * Concepts live until the full new set commits, and a failure never destroys
  * them (see `replaceSourceKnowledge`); callers must not pre-delete.
@@ -1447,7 +1149,7 @@ export async function ingestSource(options: {
   connections: ProviderConnection[];
   /** Durable-job fence, renewed between bounded Concept writes. */
   renewLease?: () => boolean | Promise<boolean>;
-  /** Frozen with the durable payload after the first enrichment pass. */
+  /** Frozen with the durable payload after the first drafting pass. */
   drafts?: SourceConceptDraft[] | null;
   initializeAttempt?: (drafts: SourceConceptDraft[]) => Promise<{
     drafts: SourceConceptDraft[];
@@ -1467,26 +1169,10 @@ export async function ingestSource(options: {
   // come from the current row or the next replacement can never commit.
   const source = (await db.getSource(options.source.id)) ?? options.source;
   const sourceKey = alertKeys.ingestSource(source.id);
-  // Resolved up-front so the enrichment call can be attributed to the org;
-  // reused by the health signals below.
+  // Resolved up-front for the health signals below.
   const assistant = await db.getAssistant(assistantId).catch(() => null);
-  if (!assistant) {
-    // The enrichment call still runs but meters zero, keep that loud.
-    console.warn(
-      `[ingest] enriching without usage attribution: assistant ${assistantId} not resolvable`
-    );
-  }
   try {
-    let concepts =
-      options.drafts ??
-      (await enrich(
-        source,
-        rawText,
-        connections,
-        assistant
-          ? { db, organizationId: assistant.organizationId, assistantId }
-          : null
-      ));
+    let concepts = options.drafts ?? sourceConceptDrafts(source, rawText);
     const attempt = options.initializeAttempt
       ? await options.initializeAttempt(concepts)
       : null;

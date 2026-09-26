@@ -1,0 +1,122 @@
+In economics, inflation is an increase in the average price of goods and services in terms of money, though it originally referred to the increase of the money supply (monetary inflation) that can cause such a universal shift. This increase is measured using a price index, typically a consumer price index (CPI). When the general price level rises, each unit of currency buys fewer goods and services; consequently, inflation corresponds to a reduction in the purchasing power of money. The opposite of inflation is deflation, a decrease in the general price level of goods and services. The common measure of inflation is the inflation rate, the annualized percentage change in a general price index.
+Changes in inflation are widely attributed to increases in the money supply, fluctuations in real demand for goods and services (also known as demand shocks, including changes in fiscal or monetary policy), changes in available supplies such as during energy crises (also known as supply shocks), significant decreases in interest rates set by the central bank, or changes in inflation expectations, which may be self-fulfilling. 
+Moderate inflation affects economies in both positive and negative ways. The negative effects would include an increase in the opportunity cost of holding money; incentivizing workers to switch jobs unnecessarily, making labor markets appear tight while average real wages fall; forcing workers into risky wage negotiations to keep pace, as purchasing power erodes between contracts; uncertainty over future inflation, which may discourage investment and savings; and, if inflation were rapid enough, shortages of goods as consumers begin hoarding out of concern that prices will increase in the future. Positive effects include reducing unemployment due to nominal wage rigidity,allowing the central bank greater freedom in carrying out monetary policy, encouraging loans and investment instead of money hoarding, and avoiding the inefficiencies associated with deflation.
+Today, most economists favour a low and steady rate of inflation. Low (as opposed to zero or negative) inflation reduces the likelihood of economic recessions by enabling the labor market to adjust more quickly and reduces the risk that a liquidity trap prevents monetary policy from stabilizing the economy, while also avoiding the costs associated with high inflation. The task of keeping the rate of inflation low and stable is usually given to central banks that control monetary policy, normally through the setting of interest rates and by carrying out open market operations.
+
+== Terminology ==
+The term originates from the Latin inflare (to blow into or inflate). Conceptually, inflation refers to the general trend of prices, not changes in any specific price. For example, if people choose to buy more cucumbers than tomatoes, cucumbers consequently become more expensive and tomatoes less expensive. These changes are not related to inflation; they reflect a shift in tastes. Inflation is related to the value of currency itself. When currency was linked with gold, if new gold deposits were found, the price of gold and the value of currency would fall, and consequently, the prices of all other goods would become higher.
+
+=== Classical economics ===
+By the nineteenth century, economists categorised three separate factors that cause a rise or fall in the price of goods: a change in the value or production costs of the good, a change in the price of money which then was usually a fluctuation in the commodity price of the metallic content in the currency, and currency depreciation resulting from an increased supply of currency relative to the quantity of redeemable metal backing the currency. Following the proliferation of private banknote currency printed during the American Civil War, the term "inflation" started to appear as a direct reference to the currency depreciation that occurred as the quantity of redeemable banknotes outstripped the quantity of metal available for their redemption. At that time, the term inflation referred to the devaluation of the currency, and not to a rise in the price of goods. This relationship between the over-supply of banknotes and a resulting depreciation in their value was noted by earlier classical economists such as David Hume and David Ricardo, who would go on to examine and debate what effect a currency devaluation has on the price of goods.
+
+=== Related concepts ===
+Other economic concepts related to inflation include: deflation – a fall in the general price level; disinflation – a decrease in the rate of inflation; hyperinflation – an out-of-control inflationary spiral; stagflation – a combination of inflation, slow economic growth and high unemployment; reflation – an attempt to raise the general level of prices to counteract deflationary pressures; asset price inflation – a general rise in the prices of financial assets without a corresponding increase in the prices of goods or services; and agflation – an advanced increase in the price for food and industrial agricultural crops when compared with the general rise in prices.
+More specific forms of inflation refer to sectors whose prices vary semi-independently from the general trend. "House price inflation" applies to changes in the house price index while "energy inflation" is dominated by the costs of oil and gas.
+
+== History ==
+
+=== Overview ===
+Inflation has been a feature of history during the entire period when money has been used as a means of payment. One of the earliest documented inflations occurred in Alexander the Great's empire 330 BC. Historically, when commodity money was used, periods of inflation and deflation would alternate depending on the condition of the economy. However, when large, prolonged infusions of gold or silver into an economy occurred, this could lead to long periods of inflation.
+The adoption of fiat currency by many countries, from the 18th century onwards, made much larger variations in the supply of money possible. Rapid increases in the money supply have taken place a number of times in countries experiencing political crises, producing hyperinflations – episodes of extreme inflation rates much higher than those observed in earlier periods of commodity money. The hyperinflation in the Weimar Republic of Germany is a notable example. The hyperinflation in Venezuela is the highest in the world, with an annual inflation rate of 833,997% as of October 2018.
+Historically, inflations of varying magnitudes have occurred, interspersed with corresponding deflationary periods, from the price revolution of the 16th century, which was driven by the flood of gold and particularly silver seized and mined by the Spaniards in Latin America, to the largest paper money inflation of all time in Hungary after World War II.
+However, since the 1980s, inflation has been held low and stable in countries with independent central banks. This has led to a moderation of the business cycle and a reduction in variation in most macroeconomic indicators – an event known as the Great Moderation.
+
+=== Ancient Europe ===
+Alexander the Great's conquest of the Persian Empire in 330 BC was followed by one of the earliest documented inflation periods in the ancient world. Rapid increases in the quantity of money or in the overall money supply have occurred in many different societies throughout history, changing with different forms of money used. For instance, when silver was used as currency, the government could collect silver coins, melt them down, mix them with other, less valuable metals such as copper or lead and reissue them at the same nominal value, a process known as debasement. At the ascent of Nero as Roman emperor in AD 54, the denarius contained more than 90% silver, but by the 270s hardly any silver was left. By diluting the silver with other metals, the government could issue more coins without increasing the amount of silver used to make them. When the cost of each coin is lowered in this way, the government profits from an increase in seigniorage. This practice would increase the money supply but at the same time the relative value of each coin would be lowered. As the relative value of the coins becomes lower, consumers would need to give more coins in exchange for the same goods and services as before. These goods and services would experience a price increase as the value of each coin is reduced. Again at the end of the third century AD during the reign of Diocletian, the Roman Empire experienced rapid inflation.
+
+=== Ancient China ===
+Song dynasty China introduced the practice of printing paper money to create fiat currency. During the Mongol Yuan dynasty, the government spent a great deal of money fighting costly wars, and reacted by printing more money, leading to inflation. Fearing the inflation that plagued the Yuan dynasty, the Ming dynasty initially rejected the use of paper money, and reverted to using copper coins.
+
+=== Medieval Egypt ===
+During the Malian king Mansa Musa's hajj to Mecca in 1324, he was reportedly accompanied by a camel train that included thousands of people and nearly a hundred camels. When he passed through Cairo, he spent or gave away so much gold that it depressed its price in Egypt for over a decade, reducing its purchasing power. A contemporary Arab historian remarked about Mansa Musa's visit:
+
+Gold was at a high price in Egypt until they came in that year. The mithqal did not go below 25 dirhams and was generally above, but from that time its value fell and it cheapened in price and has remained cheap till now. The mithqal does not exceed 22 dirhams or less. This has been the state of affairs for about twelve years until this day by reason of the large amount of gold which they brought into Egypt and spent there [...].
+
+=== Medieval age and "price revolution" in Western Europe ===
+There is no reliable evidence of inflation in Europe for the thousand years that followed the fall of the Roman Empire, but from the Middle Ages onwards reliable data do exist. Mostly, the medieval inflation episodes were modest, and there was a tendency for inflationary periods to be followed by deflationary periods.
+From the second half of the 15th century to the first half of the 17th, Western Europe experienced a major inflationary cycle referred to as the "price revolution", with prices on average rising perhaps sixfold over 150 years. This is often attributed to the influx of gold and silver from the New World into Habsburg Spain, with wider availability of silver in previously cash-starved Europe causing widespread inflation. European population rebound from the Black Death began before the arrival of New World metal, and may have begun a process of inflation that New World silver compounded later in the 16th century.
+
+=== After 1700 ===
+
+A pattern of intermittent inflation and deflation periods persisted for centuries until the Great Depression in the 1930s, which was characterized by major deflation. Since the Great Depression, however, there has been a general tendency for prices to rise every year. In the 1970s and early 1980s, annual inflation in most industrialized countries reached two digits (ten percent or more). The double-digit inflation era was of short duration, however, inflation by the mid-1980s returned to more modest levels. Amid this, general trends there have been spectacular high-inflation episodes in individual countries in interwar Europe, towards the end of the Nationalist Chinese government in 1948–1949, and later in some Latin American countries, in Israel, and in Zimbabwe. Some of these episodes are considered hyperinflation periods, normally designating inflation rates that surpass 50 percent monthly.
+
+== Measures ==
+
+Given that there are many possible measures of the price level, there are many possible measures of price inflation. Most frequently, the term "inflation" refers to a rise in a broad price index representing the overall price level for goods and services in the economy. The consumer price index (CPI), the personal consumption expenditures price index (PCEPI) and the GDP deflator are some examples of broad price indices. However, "inflation" may also be used to describe a rising price level within a narrower set of assets, goods or services within the economy, such as commodities (including food, fuel, metals), tangible assets (such as real estate), services (such as entertainment and health care), or labor. Although the values of capital assets are often casually said to "inflate," this should not be confused with inflation as a defined term; a more accurate description for an increase in the value of a capital asset is appreciation. The FBI (CCI), the producer price index, and employment cost index (ECI) are examples of narrow price indices used to measure price inflation in particular sectors of the economy. Core inflation is a measure of inflation for a subset of consumer prices that excludes food and energy prices, which rise and fall more than other prices in the short term. The Federal Reserve Board pays particular attention to the core inflation rate to get a better estimate of long-term future inflation trends overall.
+The inflation rate is most widely calculated by determining the movement or change in a price index, typically the consumer price index.  
+The inflation rate is the percentage change of a price index over time. The Retail Prices Index is also a measure of inflation that is commonly used in the United Kingdom. It is broader than the CPI and contains a larger basket of goods and services. Inflation is politically driven, and policy can directly influence the trend of inflation.
+The RPI is indicative of the experiences of a wide range of household types, particularly low-income households.
+To illustrate the method of calculation, in January 2007, the U.S. Consumer Price Index was 202.416, and in January 2008 it was 211.080. The formula for calculating the annual percentage rate inflation in the CPI over the course of the year is: 
+  
+    
+      
+        
+          (
+          
+            
+              
+                211.080
+                −
+                202.416
+              
+              202.416
+            
+          
+          )
+        
+        ×
+        100
+        %
+        =
+        4.28
+        %
+      
+    
+    {\displaystyle \left({\frac {211.080-202.416}{202.416}}\right)\times 100\%=4.28\%}
+  
+
+The resulting inflation rate for the CPI in this one-year period is 4.28%, meaning the general level of prices for typical U.S. consumers rose by approximately four percent in 2007.
+Other widely used price indices for calculating price inflation include the following:
+
+Producer price indices (PPIs) which measures average changes in prices received by domestic producers for their output. This differs from the CPI in that price subsidization, profits, and taxes may cause the amount received by the producer to differ from what the consumer paid. There is also typically a delay between an increase in the PPI and any eventual increase in the CPI. Producer price index measures the pressure being put on producers by the costs of their raw materials. This could be "passed on" to consumers, or it could be absorbed by profits, or offset by increasing productivity. In India and the United States, an earlier version of the PPI was called the Wholesale price index.
+Commodity price indices, which measure the price of a selection of commodities. In the present commodity price indices are weighted by the relative importance of the components to the "all in" cost of an employee.
+Core price indices: because food and oil prices can change quickly due to changes in supply and demand conditions in the food and oil markets, it can be difficult to detect the long run trend in price levels when those prices are included. Therefore, most statistical agencies also report a measure of 'core inflation', which removes the most volatile components (such as food and oil) from a broad price index like the CPI. Because core inflation is less affected by short run supply and demand conditions in specific markets, central banks rely on it to better measure the inflationary effect of current monetary policy.
+Other common measures of inflation are:
+
+GDP deflator is a measure of the price of all the goods and services included in gross domestic product (GDP). The US Commerce Department publishes a deflator series for US GDP, defined as its nominal GDP measure divided by its real GDP measure.
+∴ 
+  
+    
+      
+        
+          
+            GDP Deflator
+          
+        
+        =
+        
+          
+            
+              Nominal GDP
+            
+            
+              Real GDP
+            
+          
+        
+      
+    
+    {\displaystyle {\mbox{GDP Deflator}}={\frac {\mbox{Nominal GDP}}{\mbox{Real GDP}}}}
+  
+
+Regional inflation The Bureau of Labor Statistics breaks down CPI-U calculations down to different regions of the US.
+Historical inflation Before collecting consistent econometric data became standard for governments, and for the purpose of comparing absolute, rather than relative standards of living, various economists have calculated imputed inflation figures. Most inflation data before the early 20th century is imputed based on the known costs of goods, rather than compiled at the time. It is also used to adjust for the differences in real standard of living for the presence of technology.
+Asset price inflation is an undue increase in the prices of real assets, such as real estate.
+In some cases, the measures are meant to be more humorous or to reflect a single place. This includes:
+
+The Christmas Price Index, which calculates the cost of the items mentioned in a song, "The Twelve Days of Christmas".
+The Big Mac Index, which compares prices across countries.
+The Jollof index, which calculates the price of food needed to make a Jollof rice, a popular African dish.
+The Two Dishes One Soup Index, which calculates the price of food needed to cook one soup and two other dishes for a small family in Hong Kong.
+The Herengracht index, which calculates the price of housing in a fashionable neighborhood of Amsterdam.
+The Lipstick index, which claimed that when the economy got worse, small luxury sales, such as lipstick, would go up.

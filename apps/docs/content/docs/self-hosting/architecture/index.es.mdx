@@ -3,13 +3,13 @@ title: Arquitectura
 description: Comprende los componentes de código abierto actuales y sus límites de tiempo de ejecución.
 ---
 
-Ciele es un monorepositorio de TypeScript con una aplicación de producto
-Next.js, paquetes compartidos, Postgres y trabajadores opcionales.
+Ciele es un monorepo de TypeScript con una aplicación de producto Next.js,
+paquetes compartidos, Postgres y workers opcionales.
 
 ## Límites principales
 
 <Mermaid
-  title="Todas las solicitudes llegan a Postgres a través de la misma capa de acceso a datos"
+  title="Cada solicitud llega a Postgres a través de la misma capa de acceso a datos"
   chart={`
 flowchart TB
   UI["Console and widget"]
@@ -27,29 +27,29 @@ flowchart TB
 `}
 />
 
-Los trabajadores opcionales se ejecutan junto al tiempo de ejecución para el
-rastreo y la creación de grafos. Leen la misma base de datos y permanecen
-desactivados de forma predeterminada. Consulta
-[Procesos en segundo plano](/self-hosting/workers).
+Un worker opcional se ejecuta junto al entorno de ejecución para realizar el
+rastreo. De forma predeterminada, permanece desactivado. Consulta
+[Background workers](/self-hosting/workers).
 
-El enrutador Flow sigue siendo la autoridad. Un modelo puede clasificar la
-intención, generar acciones seleccionadas y llamar a herramientas registradas.
+El enrutador de Flow sigue siendo el elemento con autoridad. Un modelo puede
+clasificar la intención, generar acciones seleccionadas y llamar a herramientas
+registradas.
 
-El modelo no puede reemplazar el orden de Flow, las condiciones de los
+El modelo no puede sustituir el orden del Flow, las condiciones de los
 objetivos, la configuración de las acciones, la autorización de la organización
-ni las comprobaciones de salida de la red.
+ni las comprobaciones de salida de red.
 
-## Lee la arquitectura
+## Consulta la arquitectura
 
-- [Repository map](/self-hosting/architecture/repository-map) localiza la
-  propiedad del código.
+- [Repository map](/self-hosting/architecture/repository-map) indica quién es el
+  propietario del código.
 - [Request flows](/self-hosting/architecture/request-flows) rastrea las
-  solicitudes de la consola, la API y los widgets.
+  solicitudes de la consola, de la API y de los widgets.
 - [Chat runtime](/self-hosting/architecture/chat-runtime) explica los
   desencadenantes, el enrutamiento y las acciones.
 - [Agentic model](/self-hosting/architecture/agentic-model) explica la ejecución
-  del modelo y de la herramienta.
+  del modelo y de las herramientas.
 - [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) explica la
   ingesta y la recuperación.
 - [Data model](/self-hosting/architecture/data-model) explica las relaciones
-  entre el inquilino y la conversación.
+  entre tenants y Conversations.

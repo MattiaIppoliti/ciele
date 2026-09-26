@@ -166,7 +166,7 @@ export function AssistantsPageClient({
           (assistants.length === 0 ? (
             <EmptyState
               title="No assistants yet"
-              description="An assistant is the chat your website visitors talk to. Create one, give it knowledge, and publish it when it answers the way you want."
+              description="The chat your visitors talk to. Give it knowledge, then publish."
             />
           ) : (
             <p className="text-muted-foreground mt-16 text-center text-sm">

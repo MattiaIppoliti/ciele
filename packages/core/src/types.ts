@@ -1310,7 +1310,12 @@ export type Provider = "anthropic" | "openai" | "google" | "openai_compatible";
  * deliberately not a `Provider` (that union keys the model catalogue, the
  * classifier tables and a database check constraint, all of which assume one).
  */
-export type UsageProvider = Provider | "typesafe";
+/**
+ * Who ran a metered call. Wider than `Provider`: `typesafe` (the decision
+ * model) and `voyage` (the knowledge search's reranker, ADR-0025) are reached
+ * only through a platform key and are never a Provider Connection.
+ */
+export type UsageProvider = Provider | "typesafe" | "voyage";
 export type ProviderConnectionProvider = Provider | "azure_openai" | "elevenlabs";
 export type ProviderConnectionType =
   | "platform"
@@ -1712,14 +1717,6 @@ export interface QuickReplyButton {
   url?: string;
 }
 
-/**
- * Which retrieval engine answers `search_knowledge` for an assistant. `graph`
- * (the default) retrieves from the derived Knowledge Graph (ADR-0017), falling
- * back to `vector` when the graph worker is unreachable; `vector` is the
- * pgvector RAG. OKF stays the record and citation anchor for both.
- */
-export type KnowledgeEngine = "graph" | "vector";
-
 export type VoiceProvider = "google" | "openai" | "elevenlabs";
 export type VoiceLanguage = "auto" | "en" | "it" | "es" | "fr" | "de" | "pt";
 
@@ -1820,8 +1817,6 @@ export interface Assistant {
    * per org (see {@link SsoConnection}).
    */
   requireSignIn: boolean;
-  /** Which retrieval engine answers this assistant's knowledge searches. */
-  knowledgeEngine: KnowledgeEngine;
   createdAt: string;
   updatedAt: string;
 }
@@ -1862,7 +1857,6 @@ export interface PublicationConfig {
     | "helpDeskSettings"
     | "tools"
     | "requireSignIn"
-    | "knowledgeEngine"
   >;
   flows: Flow[];
   collections: Array<{ id: string; name: string }>;
@@ -2361,7 +2355,6 @@ export type SourceKind =
 export type SourceStatus = "processing" | "ready" | "error";
 export type BackgroundJobKind =
   | "ingest_source"
-  | "graph_sync_concept"
   | "draft_improvement_proposal"
   /**
    * The same draft, for a failing standing Goal (#903). A separate kind
@@ -2588,6 +2581,19 @@ export interface Source {
 }
 
 // --- Application knowledge connectors --------------------------------------
+
+/**
+ * One thing an Application Connection can import from (a Slack channel, a
+ * ServiceNow knowledge base, a drive folder), as the provider's discovery
+ * lists it. The Import's configuration may name only scopes discovered here.
+ */
+export interface ApplicationScopeOption {
+  id: string;
+  label: string;
+  kind: "language" | "category" | "knowledge_base" | "channel" | "drive" | "folder";
+  parentId: string | null;
+  metadata: Record<string, unknown>;
+}
 
 export type ApplicationProvider =
   | "salesforce"
@@ -3011,19 +3017,10 @@ export interface KnowledgeSearchResult {
   resourceUrl: string | null;
   content: string;
   /**
-   * Cosine similarity in [0,1]: but ONLY when `engine` is `vector`. The graph
-   * engine has no relevance score to report, so it fills this with a
-   * rank-descending placeholder purely to keep ordering stable. Anything that
-   * compares this against a threshold must check `engine` first.
+   * The hybrid search's score in [0,1]. After the rerank stage the order is
+   * the reranker's, and this stays the retrieval score it was fetched with.
    */
   similarity: number;
-  /**
-   * Which retrieval engine produced this result. Absent is read as `vector`
-   * (the pgvector path never had to say so). Carried on the result rather than
-   * threaded through call sites so that `similarity` is never interpreted
-   * without the context that makes it meaningful.
-   */
-  engine?: KnowledgeEngine;
 }
 
 export type ConversationSubject = "member" | "visitor" | "sso";
@@ -3753,11 +3750,13 @@ export interface Alert {
 /**
  * Which runtime stage a metered model call belongs to: `classify` (intent
  * router), `generate` (agent loop), `embed` (query + ingestion embeddings),
- * `enrich` (OKF enrichment during ingestion), and the scheduled loops
- * (verify / goal_eval / compost / improvement_proposal). `graph_search` and
- * `graph_cognify` are the graph worker's internal LLM calls (search-time
- * completion/guidance vs. graph-building cognify/distillation), reported by
- * the worker and metered by the runtime (ADR-0017).
+ * `enrich` (Document summaries; before ADR-0025 also the OKF rewrite at
+ * ingestion), `rerank` (the knowledge search's rerank stage, ADR-0025), and the
+ * scheduled loops (verify / goal_eval / compost / improvement_proposal).
+ *
+ * `graph_search` and `graph_cognify` are retired with the graph engine
+ * (ADR-0025): nothing meters under them any more, but recorded usage rows
+ * still carry them, so they stay readable.
  */
 export type AiUsageStage =
   | "classify"
@@ -3770,6 +3769,7 @@ export type AiUsageStage =
   | "improvement_proposal"
   | "graph_search"
   | "graph_cognify"
+  | "rerank"
   | "memory_extract"
   /** Distilling one Teammate turn into its Agent memory layer (#771). */
   | "agent_memory"
@@ -4401,7 +4401,6 @@ export type AssistantPatch = Partial<
     | "helpDeskSettings"
     | "tools"
     | "requireSignIn"
-    | "knowledgeEngine"
   >
 >;
 

@@ -161,10 +161,7 @@ export function SlackBotDialog({
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Everyone in the selected channels can receive answers from this
-            Assistant’s linked knowledge. Choose knowledge suitable for that
-            audience. Invite Ciele to each channel. Shared Slack Connect
-            channels are not supported.
+            Everyone in these channels can get answers from this Assistant’s knowledge. Invite Ciele to each one. Slack Connect channels aren’t supported.
           </p>
           {!hasScopes && (
             <Button disabled={pending} onClick={reconnect}>
@@ -253,9 +250,7 @@ export function SlackBotDialog({
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              Public channels are listed automatically. Invite Ciele to every
-              selected channel before mentioning it; private channels appear
-              only after it is invited. Replies stay in the mention’s thread.
+              Invite Ciele to each channel first. Private channels appear once invited. Replies stay in the thread.
             </p>
           </div>
         </div>

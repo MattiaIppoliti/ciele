@@ -1,15 +1,15 @@
 ---
 title: Architecture
-description: Comprendre les composants open source actuels et leurs limites d'exécution.
+description: Comprenez les composants open source actuels et leurs limites d'exécution.
 ---
 
-Ciele est un monorepo TypeScript avec une application produit Next.js, des
-paquets partagés, Postgres et des workers optionnels.
+Ciele est un monorepo TypeScript comprenant une application produit Next.js, des
+packages partagés, Postgres et des workers optionnels.
 
-## Limites principales
+## Principales limites
 
 <Mermaid
-  title="Chaque requête parvient à Postgres via la même couche d'accès aux données"
+  title="Chaque requête atteint Postgres via la même couche d'accès aux données"
   chart={`
 flowchart TB
   UI["Console and widget"]
@@ -27,29 +27,28 @@ flowchart TB
 `}
 />
 
-Des processus de travail optionnels s'exécutent en parallèle de l'environnement
-d'exécution pour l'indexation et la construction de graphes. Ils lisent la même
-base de données et restent désactivés par défaut. Voir
-[Processus d'arrière-plan](/self-hosting/workers).
+Un worker optionnel s'exécute parallèlement au runtime pour le crawling. Il
+reste désactivé par défaut. Voir [Background workers](/self-hosting/workers).
 
-Le routeur Flow reste l'autorité. Un modèle peut classer l'intention, générer
-des actions sélectionnées et appeler des outils enregistrés.
+Le routeur Flow reste l'autorité de référence. Un modèle peut classer
+l'intention, générer des actions sélectionnées et appeler des outils
+enregistrés.
 
-Le modèle ne peut pas remplacer l'ordre Flow, les conditions objectives, la
-configuration des actions, l'autorisation de l'organisation ou les vérifications
-de sortie du réseau.
+Le modèle ne peut pas remplacer l'ordre du Flow, les conditions d'objectif, la
+configuration des actions, l'autorisation de l'organisation ni les contrôles de
+sortie réseau.
 
-## Lisez l'architecture
+## Consulter l'architecture
 
-- La [carte du dépôt](/self-hosting/architecture/repository-map) permet de
-  localiser la propriété du code.
-- [Request flows](/self-hosting/architecture/request-flows) suit les requêtes de
-  la console, de l'API et des widgets.
+- [Repository map](/self-hosting/architecture/repository-map) indique la
+  propriété du code.
+- [Request flows](/self-hosting/architecture/request-flows) trace les requêtes
+  provenant de la console, de l'API et des widgets.
 - [Chat runtime](/self-hosting/architecture/chat-runtime) explique les
   déclencheurs, le routage et les actions.
-- Le [modèle agentique](/self-hosting/architecture/agentic-model) explique
-  l'exécution du modèle et de l'outil.
+- [Agentic model](/self-hosting/architecture/agentic-model) explique l'exécution
+  du modèle et des outils.
 - [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) explique
   l'ingestion et la récupération.
 - [Data model](/self-hosting/architecture/data-model) explique les relations
-  entre le locataire et la conversation.
+  entre les tenants et les Conversations.

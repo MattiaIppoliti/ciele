@@ -102,12 +102,11 @@ describe("orgMutation", () => {
       },
       async () => null
     );
-    // "/" appears in two entities but revalidates once; the flows page and
-    // the assistant layout are distinct scopes of distinct paths.
+    // "/" appears in two entities but revalidates once, and so does the
+    // assistant's layout, which both the assistant and its flows expire.
     expect(revalidatePathMock.mock.calls).toEqual([
       ["/", undefined],
       ["/assistants/as_1", "layout"],
-      ["/assistants/as_1", undefined],
     ]);
   });
 
@@ -160,7 +159,11 @@ describe("orgMutation", () => {
     [{ kind: "improvementList" }, [["/improvements", undefined]]],
     [{ kind: "improvement", id: "IMP_1" }, [["/improvements/IMP_1", undefined]]],
     [{ kind: "inbox" }, [["/inbox", undefined]]],
-    [{ kind: "assistantEditor", assistantId: "as_1" }, [["/assistants/as_1", undefined]]],
+    // Every SETUP section is a nested route (/assistants/as_1/knowledge, …),
+    // which a page revalidation of the editor root never reaches, so both
+    // editor kinds expire the whole subtree.
+    [{ kind: "assistantEditor", assistantId: "as_1" }, [["/assistants/as_1", "layout"]]],
+    [{ kind: "flows", assistantId: "as_1" }, [["/assistants/as_1", "layout"]]],
     // A channel change reaches the rail it shares with the Teammates, and one
     // channel's own page. The rail lives in `/teammates`'s layout, so that one
     // is scoped to the layout; the channel page is a concrete path (#778).

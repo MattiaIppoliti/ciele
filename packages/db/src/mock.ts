@@ -316,7 +316,6 @@ interface MockStore {
     durationMs: number;
   }[];
   backgroundJobs: Map<string, BackgroundJob>;
-  graphLearningCursor: string | null;
   apiIdempotency: Map<string, {
     requestHash: string;
     status: "running" | "completed";
@@ -425,7 +424,6 @@ function seedAssistant(
     | "aiDisclaimer"
     | "tools"
     | "requireSignIn"
-    | "knowledgeEngine"
   > &
     Partial<
       Pick<
@@ -443,7 +441,6 @@ function seedAssistant(
         | "aiDisclaimer"
         | "tools"
         | "requireSignIn"
-        | "knowledgeEngine"
       >
     >,
   flows?: Array<
@@ -467,7 +464,6 @@ function seedAssistant(
     aiDisclaimer: DEFAULT_AI_DISCLAIMER,
     tools: {},
     requireSignIn: false,
-    knowledgeEngine: "graph",
     createdAt: now,
     updatedAt: now,
     ...a,
@@ -637,7 +633,6 @@ function emptyStore(): MockStore {
     personalAiSubscriptionsAllowed: new Set(),
     compostClaims: new Map(),
     backgroundJobs: new Map(),
-    graphLearningCursor: null,
     apiIdempotency: new Map(),
     sourceIngestPayloads: new Map(),
     exportJobs: new Map(),
@@ -966,33 +961,17 @@ function seedKnowledgeDemo(store: MockStore) {
   };
   store.sources.set(cvSource.id, cvSource);
   linkSource(cvSource.id);
+  // A file Source is stored as its own words (ADR-0025): one Document holding
+  // the extracted text, no model rewrite beside it.
   addConcept({
     id: "concept-alex-cv",
     sourceId: cvSource.id,
-    path: "documents/alex-bianchi-cv.md",
+    path: "alex-bianchi-cv-pdf.md",
     frontmatter: {
       type: "Document",
-      title: "Alex Bianchi, CV",
-      description: "Imported from file source \"Alex_Bianchi_CV.pdf\"",
-      // Machine-drafted from the upload and never confirmed: unverified.
-      generated: { by: okfActor.agent("okf-enricher", "demo"), at },
-      sources: [{ id: "alex-bianchi-cv", resource: "file source \"Alex_Bianchi_CV.pdf\"", title: cvSource.name }],
-    },
-    body: "Alex Bianchi, Ingegnere.\n\nPercorso: Software Engineering e progetti di prodotto digitale.\n\nEsperienza: lavora su piattaforme legate all'intelligenza artificiale (AI), automazione e assistenti digitali.\n\nPortfolio personale: https://alexbianchi.example",
-  });
-
-  // The enriched CV's verbatim companion (ADR-0002): the extracted text as-is,
-  // indexed so detail the rewrite above did not carry is still retrievable.
-  addConcept({
-    id: "concept-alex-cv-original",
-    sourceId: cvSource.id,
-    path: "originals/alex-bianchi-cv-pdf.md",
-    frontmatter: {
-      type: "Source Text",
-      title: "Alex_Bianchi_CV.pdf, full text",
-      description:
-        'Unedited text of file source "Alex_Bianchi_CV.pdf", indexed so detail the enrichment did not carry is still retrievable.',
-      generated: { by: okfActor.process("okf-verbatim-index"), at },
+      title: "Alex_Bianchi_CV.pdf",
+      description: 'Imported from file source "Alex_Bianchi_CV.pdf"',
+      generated: { by: okfActor.process("okf-ingest-passthrough"), at },
       sources: [{ id: "alex-bianchi-cv", resource: "file source \"Alex_Bianchi_CV.pdf\"", title: cvSource.name }],
     },
     body: "ALEX BIANCHI\nIngegnere, Software Engineering & prodotto digitale\n\nESPERIENZA\nPiattaforme di intelligenza artificiale, automazione e assistenti digitali.\nManifold Drone Synchronization, Singapore, 2019.\nArdupilot Failure, Development, 2020/2021.\n\nFORMAZIONE\nSoftware Engineering.\n\nCONTATTI\nPortfolio: https://alexbianchi.example",
@@ -2641,7 +2620,6 @@ export const mockDb: Db = {
       helpDeskSettings: {},
       tools: {},
       requireSignIn: false,
-      knowledgeEngine: "graph",
       createdAt: now,
       updatedAt: now,
     };
@@ -3586,15 +3564,8 @@ export const mockDb: Db = {
           : undefined;
     if (input.sourceId && !source)
       throw new Error("Background job Source not found");
-    if (
-      typeof payload.collectionId === "string" &&
-      !payloadCollection &&
-      !(
-        input.organizationId &&
-        payload.kind === "graph_sync_concept" &&
-        payload.op === "purge"
-      )
-    ) throw new Error("Background job Collection not found");
+    if (typeof payload.collectionId === "string" && !payloadCollection)
+      throw new Error("Background job Collection not found");
     if (typeof payload.improvementId === "string" && !improvement)
       throw new Error("Background job Improvement not found");
     if (typeof payload.entityId === "string" && !entity)
@@ -3605,11 +3576,7 @@ export const mockDb: Db = {
       throw new Error("Background job payload Source not found");
     if (typeof payload.assistantId === "string" && !payloadAssistant)
       throw new Error("Background job Assistant not found");
-    if (
-      typeof payload.conceptId === "string" &&
-      !payloadConcept &&
-      !(payload.kind === "graph_sync_concept" && payload.op === "remove")
-    )
+    if (typeof payload.conceptId === "string" && !payloadConcept)
       throw new Error("Background job Concept not found");
     if (typeof payload.messageId === "string" && !message)
       throw new Error("Background job Message not found");
@@ -4619,6 +4586,24 @@ export const mockDb: Db = {
       .sort((a, b) => (a.path < b.path ? -1 : 1));
   },
 
+  async listEnrichedSources(limit, after) {
+    const store = getStore();
+    const found = new Map<string, string>();
+    for (const concept of store.concepts.values()) {
+      if (!concept.sourceId || found.has(concept.sourceId)) continue;
+      if (after !== undefined && concept.sourceId <= after) continue;
+      const by = concept.frontmatter.generated?.by;
+      if (typeof by !== "string" || !by.startsWith("okf-enricher/")) continue;
+      if (concept.generationId !== store.sources.get(concept.sourceId)?.activeGenerationId)
+        continue;
+      found.set(concept.sourceId, concept.collectionId);
+    }
+    return [...found]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .slice(0, Math.max(limit, 0))
+      .map(([sourceId, collectionId]) => ({ sourceId, collectionId }));
+  },
+
   async listAssistantFaqOptions(assistantId) {
     const store = getStore();
     return [...store.concepts.values()]
@@ -5127,44 +5112,6 @@ export const mockDb: Db = {
     const message = store.messages.get(messageId);
     if (!message) return null;
     return store.conversations.get(message.conversationId) ?? null;
-  },
-
-  async listActiveGraphDatasets() {
-    // Post-contract, Collections reach Assistants only through the link
-    // table: a Collection is an active graph dataset when any Assistant
-    // linked to one of its Sources runs the graph engine.
-    const store = getStore();
-    const byCollection = new Map<string, string>();
-    for (const link of store.assistantSources.values()) {
-      const assistant = store.assistants.get(link.assistantId);
-      if (!assistant || (assistant.knowledgeEngine ?? "graph") !== "graph")
-        continue;
-      const source = store.sources.get(link.sourceId);
-      if (source)
-        byCollection.set(source.collectionId, assistant.organizationId);
-    }
-    return [...byCollection].map(([collectionId, organizationId]) => ({
-      organizationId,
-      collectionId,
-    }));
-  },
-
-  async claimActiveGraphDatasets(limit) {
-    const store = getStore();
-    const datasets = (await this.listActiveGraphDatasets()).sort((a, b) =>
-      a.collectionId.localeCompare(b.collectionId)
-    );
-    if (datasets.length === 0 || limit <= 0) return [];
-    const start = store.graphLearningCursor
-      ? Math.max(
-          datasets.findIndex((item) => item.collectionId > store.graphLearningCursor!),
-          0,
-        )
-      : 0;
-    const rotated = [...datasets.slice(start), ...datasets.slice(0, start)];
-    const claimed = rotated.slice(0, Math.min(limit, datasets.length));
-    store.graphLearningCursor = claimed.at(-1)?.collectionId ?? null;
-    return claimed;
   },
 
   async setConversationPinned(id, pinned) {

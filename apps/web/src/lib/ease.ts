@@ -97,6 +97,18 @@ export const SPRING_UNFOLD_FLAT = {
   bounce: 0,
 } as const;
 
+/**
+ * The composer's painted text caret gliding to its next position as you type.
+ * `useSpring` config (no `type`). Critically damped (ζ = 1.0) at a ~0.16s
+ * response: quick enough that the caret never trails the letter it follows,
+ * and with no overshoot, so a fast typing run reads as one glide.
+ */
+export const SPRING_CARET = {
+  stiffness: 800,
+  damping: 40,
+  mass: 0.5,
+} as const;
+
 /** Cursor-follow physics for decorative mouse tracking (magnetic, tilt, dock). */
 export const SPRING_MOUSE = {
   stiffness: 200,

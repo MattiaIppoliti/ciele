@@ -30,7 +30,6 @@
 15 * * * *  /usr/local/bin/run-job.sh /api/cron/run-reviews
 35 * * * *  /usr/local/bin/run-job.sh /api/cron/run-webhooks
 0 4 * * *   /usr/local/bin/run-job.sh /api/cron/verify-goals
-30 4 * * *  /usr/local/bin/run-job.sh /api/cron/learn-graph
 0 5 * * *   /usr/local/bin/run-job.sh /api/cron/run-exports
 0 6 * * *   /usr/local/bin/run-job.sh /api/cron/sweep-recrawls
 # REPLAY_PREFLIGHT (#953): the labelled baseline against the live decision

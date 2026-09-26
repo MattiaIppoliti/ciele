@@ -188,27 +188,19 @@ pattern as Flow Action handlers).
 _Avoid_: parser (an implementation detail), converter
 
 **Ingestion Job**:
-A JSON-serializable unit of deferred knowledge-ingestion work (enrich → persist Documents → embed,
+A JSON-serializable unit of deferred knowledge-ingestion work (draft verbatim Documents → persist → embed,
 or a website crawl) executed off the request path (`packages/agent/src/jobs.ts`); progress and failures are
 tracked by the Source status lifecycle (`processing` → `ready`/`error`), which the Knowledge UI polls.
 _Avoid_: background task, queue item (adapter detail)
 
-**Knowledge Graph**:
-A *derived* retrieval + learning index over a Knowledge Collection's Documents, built by the graph
-worker (cognee) as entities + typed relationships. Never the system of record, OKF stays
-authoritative, and every result resolves back to a Document → Source citation (ADR-0017, preserving
-the ADR-0002 invariant).
-_Avoid_: knowledge base (that's OKF), memory, vector store (that's the pgvector layer)
+**Rerank stage**:
+The step between the index and the model in every knowledge search: the hybrid index returns 20
+candidate passages and a reranking model picks the 6 the model reads (ADR-0025). It only reorders;
+a failure leaves the index's order.
+_Avoid_: re-ranking engine, second search
 
-**Knowledge Engine**:
-The per-Assistant choice of how `search_knowledge` retrieves: **Vector** (the pgvector RAG, default
-and fallback) or **Graph** (answers composed from the Knowledge Graph, with the feedback loop live).
-_Avoid_: retriever, backend, mode (alone)
-
-**Retrieval Trace**:
-The record of which Knowledge Graph elements produced a given answer, captured when a Graph-engine
-search runs with the conversation as its session, the substrate feedback later re-weights.
-_Avoid_: history, log, trace (alone)
+(Retired with ADR-0025: **Knowledge Graph**, **Knowledge Engine** and **Retrieval Trace**, the
+Graph engine's terms. Every Assistant retrieves the same way.)
 
 **Suggested Fix**:
 A drafted, human-approved knowledge-improvement proposal attached to an Improvement (a draft FAQ

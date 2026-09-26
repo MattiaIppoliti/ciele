@@ -1,66 +1,70 @@
 ---
-title: Canal de conocimiento
-description: Rastrea una Fuente desde la ingesta hasta una respuesta citada del Asistente.
+title: Proceso de conocimiento
+description: Rastrea una Fuente desde su ingesta hasta una respuesta citada del Asistente.
 ---
 
-## Ingestión
+## Ingesta
 
 <Mermaid
-  title="Una Fuente se convierte en Conceptos que se pueden buscar antes de que indique que está Lista"
+  title="Una Source se convierte en Documents que se pueden buscar antes de que indique Ready"
   chart={`
 flowchart TB
   SOURCE["Website, file, text, or FAQ"]
   EXTRACT["Extract the content"]
-  CONCEPT["Create OKF Concepts"]
+  DOCUMENT["Create Documents"]
   INDEX["Index for search"]
-  GRAPH["Update the graph"]
   READY["Status becomes Ready"]
   SOURCE --> EXTRACT
-  EXTRACT --> CONCEPT
-  CONCEPT --> INDEX
-  CONCEPT --> GRAPH
+  EXTRACT --> DOCUMENT
+  DOCUMENT --> INDEX
   INDEX --> READY
-  GRAPH --> READY
 `}
 />
 
-Knowledge utiliza Concepts en Open Knowledge Format (OKF). Un Concepto mantiene
-una referencia a su Source original.
+Ciele almacena el Conocimiento como Documentos en Open Knowledge Format (OKF).
+Un Document conserva una referencia a su Source original. OKF denomina Concept a
+ese mismo registro, y las tablas de la base de datos mantienen ese nombre.
 
-La ingesta de preguntas frecuentes crea un Concepto seleccionado con procedencia
-de preguntas y respuestas. La ingesta de archivos y sitios web conserva el
-objeto Source original cuando corresponde.
+La ingesta de archivos, texto y sitios web almacena el texto extraído sin
+cambios. Ciele no reescribe un Source con un modelo. La ingesta de preguntas
+frecuentes crea un Documento depurado con la procedencia de las preguntas y
+respuestas. La ingesta de archivos y sitios web conserva el objeto Source
+original cuando procede.
 
 ## Recuperación
 
-El motor de ejecución puede recuperar Conceptos mediante búsqueda vectorial y
-reserva léxica. El modo de grafo puede añadir navegación a través de relaciones
-de Conceptos indexados.
+El tiempo de ejecución recupera 20 pasajes candidatos mediante búsqueda
+vectorial y fallback léxico. A continuación, un modelo de reordenación
+selecciona los 6 pasajes que lee el asistente.
 
-Cada ruta se limita por los enlaces de Asistente a Fuente. Se descarta cualquier
-coincidencia de una Fuente que no esté vinculada al Asistente que realiza la
-consulta, tanto en la ruta del grafo como en la ruta del vector.
+El paso de reranking utiliza la plataforma `AI_GATEWAY_API_KEY`. Si no se ha
+establecido la clave o el modelo de reordenación no responde a tiempo, la
+búsqueda mantiene el orden del índice. En ambos casos, las respuestas continúan.
 
-Una pista de contexto puede limitar la recuperación a una colección relevante o
-a un contexto similar a un curso cuando el tiempo de ejecución proporciona uno.
+Cada búsqueda se delimita según los enlaces de asistente a fuente. Ciele
+descarta un resultado de una Source que no está vinculada al Assistant que
+realiza la consulta.
 
-Deep Search aumenta el trabajo de navegación por el conocimiento dentro de los
-límites del tiempo de ejecución. No realiza consultas en la web pública.
+Un Context Hint puede limitar la recuperación a una Collection relevante o a un
+contexto de tipo curso cuando el entorno de ejecución proporciona uno.
+
+Deep Search aumenta el trabajo de navegación por Knowledge dentro de los límites
+del tiempo de ejecución. No realiza consultas en la web pública.
 
 ## Resolución de citas
 
-La respuesta final cita Fuentes con nombre, no fragmentos de búsqueda opacos.
-Los identificadores de citas se resuelven a través del Concepto hasta su Fuente
+La respuesta final cita Sources con nombre, no fragmentos de búsqueda opacos.
+Los identificadores de citas se resuelven a través del Document hasta su Source
 original.
 
-El visitante puede abrir la pantalla de Fuentes después de la respuesta. La
-Bandeja de entrada almacena las mismas partes de la cita junto con la
-Conversación.
+Puedes abrir la pantalla Sources después de la respuesta. La Inbox almacena las
+mismas partes de las citas junto con la Conversation.
 
 ## Eliminación y nuevo rastreo
 
-Al eliminar una fuente, se retiran los Conceptos relacionados del grafo activo y
-de los datos de búsqueda para cada Asistente vinculado. Al eliminar un enlace,
-no se retira nada. Impide que un Asistente acceda a la Fuente.
+La eliminación de una fuente retira los Documentos relacionados de los datos de
+búsqueda activos, para cada Asistente vinculado. Eliminar un enlace no retira
+nada. Impide que un asistente acceda a la fuente.
 
-El rastreo de sitios web reinicia la extracción y la indexación para esa Fuente.
+El recrawleo del sitio web reinicia la extracción y la indexación para esa
+Fuente.

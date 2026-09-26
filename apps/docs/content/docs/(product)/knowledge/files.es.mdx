@@ -1,72 +1,72 @@
 ---
 title: Archivos y texto
-description: Sube un archivo o añade texto y elige qué Asistentes responden a partir de él.
+description: Sube un archivo o añade texto y elige qué asistentes responden a partir de él.
 ---
 
 ## Sube un archivo
 
-1. Abre el Asistente.
+1. Abre el asistente.
 2. Selecciona **Knowledge**.
-3. Añade un archivo de origen.
+3. Añade una fuente de tipo archivo.
 4. Selecciona el archivo.
 5. Inicia la ingesta.
-6. Espera hasta que el estado de la Fuente sea **Ready**.
+6. Espera hasta que el estado de la fuente sea **Ready**.
 7. Prueba una respuesta y su cita.
 
 Ciele almacena el archivo original y extrae el texto compatible para su ingesta.
-El estado de la fuente indica si la extracción y la indexación se han
-completado.
+El estado Source indica si se han completado la extracción y la indexación.
 
 ## Archivos que Ciele rechaza
 
-Ciele comprueba el contenido del archivo, no solo el nombre del archivo, antes
-de leer un documento. Rechaza:
+Ciele comprueba el contenido del archivo, no solo su nombre, antes de leer un
+documento. Rechaza:
 
 - un archivo cuyo contenido no coincide con su extensión, por ejemplo, una
   página HTML llamada `.pdf`
-- un programa, sea cual sea el nombre del archivo
-- un archivo de Office que contenga un proyecto de macros o un objeto incrustado
+- un programa, independientemente del nombre del archivo
+- un archivo de Office que contiene un proyecto de macros o un objeto incrustado
 - un PDF con más de 2000 páginas
 
-Guarda el documento sin macros ni objetos incrustados, o divide un PDF largo y
-vuelve a subirlo.
+Guarda el documento sin macros ni objetos incrustados, o bien divide un PDF
+extenso, y vuelve a cargarlo.
 
-## Añade texto pegado
+## Añade el texto pegado
 
-Utiliza una fuente de texto para contenido breve que no requiera un archivo
-separado.
+Utiliza un Source de texto para contenidos breves que no requieran un archivo
+aparte.
 
-1. Añade una fuente de texto.
-2. Introduce un nombre de fuente opcional.
+1. Añade un origen de tipo texto.
+2. Introduce un nombre de Source opcional.
 3. Pega el texto.
 4. Inicia la ingesta.
 
-Utiliza un nombre de origen estable. El nombre puede aparecer en las citas de
-los visitantes.
+Utiliza un nombre de fuente estable. El nombre puede aparecer en las citas de
+Visitor.
 
-## Sustituye el contenido obsoleto
+## Sustituir contenido obsoleto
 
-Elimina la Fuente antigua antes de confiar en una sustituta. A continuación,
-confirma que la nueva Fuente esté **Ready** y genere citas correctas.
+Elimina la Fuente antigua antes de basarte en una Fuente de reemplazo. A
+continuación, confirma que la nueva Source es **Ready** y genera citas
+correctas.
 
-Al eliminar una fuente, sus conceptos se eliminan del grafo de conocimiento
-activo y del índice de búsqueda.
+Al eliminar una fuente, sus documentos se eliminan del índice de búsqueda
+activo.
 
 ## Eliminar frente a borrar
 
-Una fuente de archivo puede responder por más de un asistente. Por lo tanto, el
-editor de Asistentes ofrece dos operaciones.
+Una Source de tipo archivo puede responder para más de un Assistant. Por lo
+tanto, el editor del asistente ofrece dos operaciones.
 
-- **Remove from this Assistant** elimina un enlace. Los demás Asistentes
+- **Remove from this Assistant** elimina un enlace. Los otros asistentes
   conservan el archivo.
-- **Delete** elimina la Fuente para cada Asistente vinculado. La confirmación
-  nombra a cada uno.
+- **Delete** elimina la Fuente de todos los Asistentes vinculados. La
+  confirmación indica el nombre de cada uno.
 
-Cuando solo este Asistente responde desde el archivo, el editor lo elimina
+Cuando solo este asistente responde a partir del archivo, el editor lo elimina
 directamente.
 
-## Entrega el archivo original al visitante
+## Proporciona al Visitor el archivo original
 
-Activa **Direct access** en la [Biblioteca](/knowledge/library) para que el
-Asistente adjunte el archivo original a su cita. La configuración se aplica a un
-enlace de Asistente y está desactivada de forma predeterminada.
+Activa **Direct access** en la [Library](/knowledge/library) para que el
+asistente pueda adjuntar el archivo original a su cita. El ajuste se aplica a un
+único enlace de asistente y está desactivado de forma predeterminada.

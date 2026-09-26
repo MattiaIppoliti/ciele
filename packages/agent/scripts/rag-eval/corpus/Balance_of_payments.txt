@@ -1,0 +1,106 @@
+In international economics, the balance of payments (also known as balance of international payments and abbreviated BOP or BoP) of a country is the difference between all money flowing into the country in a particular period of time (e.g., a quarter or a year) and the outflow of money to the rest of the world.  These financial transactions are made by individuals, firms and government bodies.  BoP compares receipts and payments arising out of trade of goods and services as well as international investment.
+The balance of payments consists of two primary components: the current account and the capital and financial account. The current account reflects a country's net income, while the financial account reflects the net change in ownership of national assets. The capital account reflects a part that has little effect on the total, and represents the sum of unilateral capital account transfers, and the acquisitions and sales of non-financial and non-produced assets.
+
+== History ==
+Until the early 19th century, international trade was heavily regulated and accounted for a relatively small portion compared with national output. In the Middle Ages, European trade was typically regulated at municipal level in the interests of security for local industry and for established merchants. (Annual fairs would sometimes allow exceptions to the standard regulations.)
+
+=== Mercantilism ===
+Beginning in the 16th century, mercantilism became the dominant economic theory influencing European rulers. Local trade regulations were replaced by national rules aiming to harness the economic output of each country. Measures to promote a trade surplus (such as tariffs) were generally favored.
+The prevailing orthodoxy of the mercantilist age was the (now discredited) notion that the accumulation of foreign exchange or, at that time, precious metals, made countries wealthier, and so countries favored exporting their own goods to run balance of payments surpluses. This viewpoint prevails in England's Treasure by Foreign Trade (1664) by Thomas Mun.
+Economic growth remained at low levels in the mercantilist era; average global per capita income is not considered to have significantly risen in the whole 800 years leading up to 1820, and is estimated to have increased on average by less than 0.1% per year between 1700 and 1820. With very low levels of financial integration between nations and with international trade generally making up a low proportion of individual nations' GDP, BOP crises were very rare.
+
+=== 1820–1914: Classical economics ===
+
+The mercantilist dogma was attacked first by David Hume, then Adam Smith and David Ricardo.
+In his 1752 essays Of Money and Of the Balance of Trade, Hume argued that the accumulation of precious metals would create monetary inflation without any real effect on interest rates. It is the foundation of what is known in modern economic studies as the quantity theory of money, the neutrality of money and the consideration of interest rates not as a monetary phenomenon, but a real one. Adam Smith built on this foundation. He accused mercantilists of being anti-free trade and confusing money with wealth.
+David Ricardo based his arguments on Say's law, developing the theory of comparative advantage, which remains the dominant theory of growth and trade in modern economics.
+After victory in the Napoleonic Wars Great Britain began promoting free trade, unilaterally reducing its trade tariffs.  Hoarding of gold was no longer encouraged, and in fact Britain exported more capital as a percentage of its national income than any other creditor nation has since. Great Britain's capital exports further helped to correct global imbalances as they tended to be counter cyclical, rising when Britain's economy went into recession, thus compensating other states for income lost from export of goods.
+According to historian Carroll Quigley, Great Britain could afford to act benevolently in the 19th century due to the advantages of her geographical location, naval power, and economic ascendancy as the first nation to enjoy an Industrial Revolution. However, some, like Otto von Bismarck, viewed Great Britain's promotion of free trade as a way to maintain its dominant position.
+A view advanced by economists such as Barry Eichengreen is that the first age of Globalization began with the laying of transatlantic telegraph cables in the 1860s, which facilitated a rapid increase in the already growing trade between Britain and America.
+Though Current Account controls were still widely used (in fact all industrial nations apart from Great Britain and the Netherlands actually increased their tariffs and quotas in the decades leading up to 1914, though this was motivated more by a desire to protect "infant industries" than to encourage a trade surplus), capital controls were largely absent.
+A gold standard enjoyed wide international participation especially from 1870, further contributing to close economic integration between nations.  The period saw substantial global growth, in particular for the volume of international trade which grew tenfold between 1820 and 1870 and then by about 4% annually from 1870 to 1914. BoP crises began to occur, though less frequently than was to be the case for the remainder of the 20th century. From 1880 to 1914, there were approximately eight BoP crises and eight twin crises  – a twin crisis being a BoP crisis that coincides with a banking crisis.
+
+=== 1914–1945: Deglobalization ===
+
+The favorable economic conditions that had prevailed up until 1914 were shattered by the first world war, and efforts to re-establish them in the 1920s were not successful. Several countries rejoined the gold standard around 1925. But surplus countries didn't "play by the rules", sterilising gold inflows to a much greater degree than had been the case in the pre-war period. Deficit nations such as Great Britain found it harder to adjust by deflation as workers were more enfranchised and unions in particular were able to resist downwards pressure on wages. During the Great Depression most countries abandoned the gold standard, but imbalances remained an issue and international trade declined sharply.  There was a return to mercantilist type "beggar thy neighbour" policies, with countries competitively devaluing their exchange rates, thus effectively competing to export unemployment.  There were approximately 16 BoP crises and 15 twin crises (and a comparatively very high level of banking crises).
+
+=== 1945–1971: Bretton Woods ===
+
+Following World War II, the Bretton Woods institutions (the International Monetary Fund and World Bank) were set up to support an international monetary system, among capitalist economies, designed to encourage free trade while also offering states options to correct imbalances without having to deflate their economies. Fixed but flexible exchange rates were established, with the system anchored by the US dollar which alone remained convertible into gold.  The Bretton Woods system ushered in a period of high global growth, known as the Golden Age of Capitalism. However, it came under pressure due to the inability or unwillingness of governments to maintain effective capital controls and due to instabilities related to the central role of the US dollar.
+Imbalances caused gold to flow out of the US and a loss of confidence in the United States' ability to supply gold for all future claims by US dollar holders resulted in escalating demands to convert US dollars, ultimately causing the US to end the convertibility of the US dollar into gold, thus ending the Bretton Woods system. The 1945–71 era saw approximately 24 BoP crises and no twin crisis for advanced economies, with emerging economies seeing 16 BoP crises and just one twin crisis.
+
+=== 1971–2009: Transition, Washington Consensus, Bretton Woods II ===
+
+The Bretton Woods system came to an end between 1971 and 1973.  There were attempts to repair the system of fixed exchanged rates over the next few years, but these were soon abandoned, as were determined efforts for the U.S. to avoid BoP imbalances.  Part of the reason was displacement of the previous dominant economic paradigm – Keynesianism – by the Washington Consensus, with economists and economics writers such as Murray Rothbard and Milton Friedman arguing that there was no great need to be concerned about BoP issues.
+In the immediate aftermath of the Bretton Woods collapse, countries generally tried to retain some control over their exchange rate by independently managing it, or by intervening in the foreign exchange market as part of a regional bloc, such as the Snake which formed in 1971. The Snake was a group of European countries who tried to retain stable rates at least with each other; the group eventually evolved into the European Exchange Rate Mechanism (ERM) by 1979.  From the mid-1970s however, and especially in the 1980s and early 1990s, many other countries followed the US in liberalizing controls on both their capital and current accounts, in adopting a somewhat relaxed attitude to their balance of payments and in allowing the value of their currency to float relatively freely with exchange rates determined mostly by the market.
+Developing countries who chose to allow the market to determine their exchange rates would often develop sizable current account deficits, financed by capital account inflows such as loans and investments, though this often ended in crises when investors lost confidence. The frequency of crises was especially high for developing economies in this era – from 1973 to 1997 emerging economies suffered 57 BoP crises and 21 twin crises. Typically but not always the panic among foreign creditors and investors that preceded the crises in this period was triggered by concerns over excess borrowing by the private sector, rather than by a government deficit. For advanced economies, there were 30 BoP crises and 6 banking crises.
+A turning point was the 1997 Asian financial crisis, where unsympathetic responses by western powers caused policy makers in emerging economies to re-assess the wisdom of relying on the free market; by 1999 the developing world as a whole stopped running current account deficits while the U.S. current account deficit began to rise sharply.
+This new form of imbalance began to develop in part due to the increasing practice of emerging economies, principally China, in pegging their currency against the dollar, rather than allowing the value to freely float. The resulting state of affairs has been referred to as Bretton Woods II. According to Alaistair Chan, "At the heart of the imbalance is China's desire to keep the value of the yuan stable against the dollar.  Usually, a rising trade surplus leads to a rising value of the currency. A rising currency would make exports more expensive, imports less so, and push the trade surplus towards balance. China circumvents the process by intervening in exchange markets and keeping the value of the yuan depressed."
+According to economics writer Martin Wolf, in the eight years leading up to 2007, "three-quarters of the foreign currency reserves accumulated since the beginning of time have been piled up".
+In contrast to the changed approach within the emerging economies, US policy makers and economists remained relatively unconcerned about BOP imbalances. In the early to mid-1990s, many free market economists and policy makers such as U.S. Treasury secretary Paul O'Neill and Fed Chairman Alan Greenspan went on record suggesting the growing US deficit was not a major concern. While several emerging economies had intervened to boost their reserves and assist their exporters from the late 1980s, they only began running a net current account surplus after 1999. This was mirrored in the faster growth for the US current account deficit from the same year, with surpluses, deficits and the associated buildup of reserves by the surplus countries reaching record levels by the early 2000s and growing year by year. Some economists such as Kenneth Rogoff and Maurice Obstfeld began warning that the record imbalances would soon need to be addressed from as early as 2001, but it was not until about 2007 that their concerns began to be accepted by the majority of economists.
+
+== Exchange rate regime ==
+
+Under a fixed exchange rate system, a central bank accommodates those flows by buying up any net inflow of funds into the country or by providing foreign currency funds to the foreign exchange market to match any international outflow of funds, thus preventing the funds flows from affecting the exchange rate between the country's currency and other currencies. Then the net change per year in the central bank's foreign exchange reserves is sometimes called the balance of payments surplus or deficit. Alternatives to a fixed exchange rate system include a managed float where some changes of exchange rates are allowed, or at the other extreme a purely floating exchange rate (also known as a purely flexible exchange rate). With a pure float the central bank does not intervene at all to protect or devalue its currency, allowing the rate to be set by the market, the central bank's foreign exchange reserves do not change, and the balance of payments is always zero.
+
+== Components ==
+The current account shows the net amount of a country's income if it is in surplus, or spending if it is in deficit. It is the sum of the balance of trade (net earnings on exports minus payments for imports), factor income (earnings on foreign investments minus payments made to foreign investors) and unilateral transfers. These items include transfers of goods and services or financial assets between the home country and the rest of the world. Private transfer payments refer to gifts made by individuals and nongovernmental institutions to foreigners. Governmental transfers refer to gifts or grants made by one government to foreign residents or foreign governments. When investment income and unilateral transfers are combined with the balance on goods and services, we arrive at the current account balance. It is called the current account as it covers transactions in the "here and now" – those that don't give rise to future claims.
+The capital account records the net change in ownership of foreign assets. It includes the reserve account (the foreign exchange market operations of a nation's central bank), along with loans and investments between the country and the rest of world (but not the future interest payments and dividends that the loans and investments yield; those are earnings and will be recorded in the current account).  If a country purchases more foreign assets for cash than the assets it sells for cash to other countries, the capital account is said to be negative or in deficit.
+The term "capital account" is also used in the narrower sense that excludes central bank foreign exchange market operations: Sometimes the reserve account is classified as "below the line" and so not reported as part of the capital account.
+Expressed with the broader meaning for the capital account, the BoP identity states that any current account surplus will be balanced by a capital account deficit of equal size – or alternatively a current account deficit will be balanced by a corresponding capital account surplus:
+
+  
+    
+      
+        
+          current account
+        
+        +
+        
+           broadly defined capital account
+        
+        +
+        
+          balancing item
+        
+        =
+        0.
+        
+      
+    
+    {\displaystyle {\text{current account}}+{\text{ broadly defined capital account}}+{\text{balancing item}}=0.\,}
+  
+
+The balancing item, which may be positive or negative, is simply an amount that accounts for any statistical errors and assures that the current and capital accounts sum to zero.  By the principles of double entry accounting, an entry in the current account gives rise to an entry in the capital account, and in aggregate the two accounts automatically balance. A balance isn't always reflected in reported figures for the current and capital accounts, which might, for example, report a surplus for both accounts, but when this happens it always means something has been missed – most commonly, the operations of the country's central bank – and what has been missed is recorded in the statistical discrepancy term (the balancing item).
+An actual balance sheet will typically have numerous sub headings under the principal divisions. For example, entries under the current account might include:
+
+Trade – buying and selling of goods and services
+Exports – a credit entry
+Imports – a debit entry
+Trade balance – the sum of Exports and Imports
+Factor income – repayments and dividends from loans and investments
+Factor earnings – a credit entry
+Factor payments – a debit entry
+Factor income balance – the sum of earnings and payments.
+Especially in older balance sheets, a common division was between visible and invisible entries.  Visible trade recorded imports and exports of physical goods (entries for trade in physical goods excluding services is now often called the merchandise balance). Invisible trade would record international buying and selling of services, and sometimes would be grouped with transfer and factor income as invisible earnings.
+The term "balance of payments surplus" (or deficit – a deficit is simply a negative surplus) refers to the sum of the surpluses in the current account and the narrowly defined capital account (excluding changes in central bank reserves). Denoting the balance of payments surplus as BoP surplus, the relevant identity is
+
+  
+    
+      
+        
+          BOP surplus
+        
+        =
+        
+          current account surplus
+        
+        +
+        
+          narrowly defined capital account surplus
+        
+        .
+        
+      
+    
+    {\displaystyle {\text{BOP surplus}}={\text{current account surplus}}+{\text{narrowly defined capital account surplus}}.\,}

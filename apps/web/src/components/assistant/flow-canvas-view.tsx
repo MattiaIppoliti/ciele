@@ -1941,8 +1941,7 @@ function RunNode({
     return (
       <div className="space-y-3">
         <p className="text-muted-foreground text-sm">
-          A knowledge search runs inside a conversation. Open the Preview and ask the
-          question this flow should answer; the Thinking panel shows the search.
+          Test it in the Preview: ask the question this flow should answer and watch the Thinking panel.
         </p>
         <Button type="button" variant="outline" size="sm" onClick={onOpenPreview}>
           <ExternalLink className="size-4" /> Open Preview

@@ -339,7 +339,6 @@ describe("finalizeDueCrawls", () => {
     expect(report).toMatchObject({
       effects: NO_EFFECTS,
       jobs: NO_JOBS,
-      graphSync: NO_JOBS,
       proposals: NO_JOBS,
       memories: NO_JOBS,
       entitySyncs: { ...NO_JOBS, enqueued: 0 },

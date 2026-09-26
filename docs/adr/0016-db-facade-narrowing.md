@@ -126,3 +126,30 @@ Supabase drift is asserted for none of the surface today.
   table stops meaning three edits.
 - mock↔Supabase parity becomes a real, enforced check.
 - The behavioural semantics (leases, insights, dedup) stay explicit and pinned.
+
+## Amendment (2026-09): exposure is decided where a table joins `DbTableMap`
+
+The `PINNED_TABLES` Set became `TABLE_EXPOSURE` in `packages/db/src/org-pinned.ts`: a mapped type
+with one entry per `DbTableMap` table, either `"pinned"` or `{ hidden: reason }`. A table added to
+the map does not compile until it has an entry, and `"pinned"` is only allowed where the row type
+carries `organizationId`, the column the pinning filters, stamps and owner-checks on. Fail-closed
+is unchanged: a table still earns `"pinned"` from a route or the api-surface gate. What changed is
+that forgetting to decide is a build failure instead of a `not_exposed` throw found by traffic,
+which is how `teammates` shipped. `org-pinned-exposure.test.ts` pins the current exposed set.
+
+**Flows are not the next tranche, and why.** The flow CRUD (`getFlow` / `updateFlow` /
+`deleteFlow`) looks mechanical but does not fit the generic accessor as it stands. Two reasons,
+the second one load-bearing:
+
+1. The domain renames a column (`Flow.trigger` is `flows.trigger_kind`) and `toFlow` defaults
+   nullable JSON columns on read, where the accessor maps snake_case to camelCase and nothing more.
+   A per-table mapping hook would cover this.
+2. A `flows` row carries no `organizationId`: a Flow belongs to its Organization through its
+   Assistant. The flow operations also run over `/api/v1` on the org-pinned Db, so moving them onto
+   `table("flows")` would make every flow endpoint throw `not_exposed`, and `TABLE_EXPOSURE` cannot
+   pin the table because there is no column to pin on. Migrating flows first needs a pinning mode
+   that resolves ownership through a parent row (the Assistant), which the named `GUARDED_METHODS`
+   resolvers already do one method at a time.
+
+Until that mode exists, `createFlow` (position on insert), `reorderFlows` (RPC) and the three CRUD
+methods stay named. The same applies to any table owned through a parent rather than stamped.

@@ -54,7 +54,6 @@ export function buildPublicationConfig(
       helpDeskSettings: assistant.helpDeskSettings,
       tools: assistant.tools,
       requireSignIn: assistant.requireSignIn,
-      knowledgeEngine: assistant.knowledgeEngine,
     },
     flows,
     collections: collections.map((c) => ({ id: c.id, name: c.name })),

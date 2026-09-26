@@ -508,17 +508,15 @@ describe("flows operations (#621)", () => {
 });
 
 describe("knowledge operations (#622)", () => {
-  it("adds a text Source through the ingest port and deletes with graph retirement", async () => {
+  it("adds a text Source through the ingest port and deletes it", async () => {
     const assistant = await newAssistant("Knowledge fixture");
     const collection = await getMockDb().createCollection(assistant.id, {
       name: "docs",
     });
     const enqueued: string[] = [];
-    const removed: string[] = [];
     const withPorts = ctx({
       ports: {
         enqueueIngest: async (job) => void enqueued.push(job.sourceId),
-        removeConceptGraph: async (_c, conceptId) => void removed.push(conceptId),
       },
     });
 

@@ -28,7 +28,7 @@ const db = {
 
 const classifier = {
   model: {} as never,
-  modelId: "claude-haiku-4-5",
+  modelId: "claude-sonnet-5",
   provider: "anthropic" as const,
   credentialKind: "platform" as const,
 };
@@ -56,7 +56,7 @@ describe("summariseDocument", () => {
 
     expect(result).toEqual({
       text: "How leave accrues.",
-      by: "document-summariser/claude-haiku-4-5",
+      by: "document-summariser/claude-sonnet-5",
     });
   });
 
@@ -79,7 +79,7 @@ describe("summariseDocument", () => {
         assistantId: null,
         stage: "enrich",
         provider: "anthropic",
-        modelId: "claude-haiku-4-5",
+        modelId: "claude-sonnet-5",
         credentialKind: "platform",
         inputTokens: 900,
         outputTokens: 40,

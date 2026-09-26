@@ -86,7 +86,7 @@ describe("resolveDecisionModel", () => {
     expect(resolved).toMatchObject({
       backend: "adapter",
       provider: "anthropic",
-      modelId: "claude-haiku-4-5",
+      modelId: "claude-sonnet-5",
       credentialKind: "api_key",
       calibrated: false,
     });
@@ -98,7 +98,7 @@ describe("resolveDecisionModel", () => {
     expect(resolveDecisionModel("anthropic", [])).toMatchObject({
       backend: "adapter",
       provider: "google",
-      modelId: "gemini-3.1-flash-lite",
+      modelId: "gemini-3.5-flash-lite",
       credentialKind: "platform",
     });
   });
@@ -198,7 +198,7 @@ describe("decide", () => {
       resolvedOn(model, {
         backend: "adapter",
         provider: "anthropic",
-        modelId: "claude-haiku-4-5",
+        modelId: "claude-sonnet-5",
         credentialKind: "api_key",
         calibrated: false,
       }),
@@ -207,8 +207,9 @@ describe("decide", () => {
     expect(decision.confidence).toEqual({});
     expect(decision.calibrated).toBe(false);
     expect(decision.usage.provider).toBe("anthropic");
-    // Haiku's input rate, not Jev's: €0.75 per million → 75 credits.
-    expect(creditsFor([{ kind: "model", ...decision.usage }])).toBeCloseTo(75, 6);
+    // Sonnet 5's input rate (Anthropic's classifier tier), not Jev's:
+    // €2.80 per million → 280 credits.
+    expect(creditsFor([{ kind: "model", ...decision.usage }])).toBeCloseTo(280, 6);
   });
 
   it("a provider failure propagates to the caller, which owns the fallback", async () => {

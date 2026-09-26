@@ -6,9 +6,9 @@ description: Appelez l'API d'administration actuelle de Ciele à l'aide d'une cl
 L'API Ciele utilise JSON sur HTTP. Toutes les routes de la version 1 commencent
 par `/api/v1`.
 
-[Ouvrez la référence API interactive](/api-reference) pour parcourir toutes les
-opérations publiques par domaine. Téléchargez le contrat OpenAPI actuel à cet
-endroit au format JSON ou YAML.
+[Ouvrez la référence interactive de l'API](/api-reference) pour parcourir toutes
+les opérations publiques par domaine. Téléchargez le contrat OpenAPI actuel à
+cet endroit au format JSON ou YAML.
 
 ## Découvrir le déploiement
 
@@ -47,16 +47,16 @@ Les erreurs utilisent une seule enveloppe JSON :
 }
 ```
 
-Les codes d'état courants sont :
+Les codes de statut courants sont :
 
 | Status | Signification |
 | --- | --- |
-| `400` | Le corps de la requête est mal formé ou un fichier requis manque. |
-| `401` | La clé est manquante, non valide ou révoquée. |
+| `400` | Le corps de la requête est mal formé ou un fichier requis est manquant. |
+| `401` | La clé est manquante, invalide ou révoquée. |
 | `403` | Le rôle de la clé n'autorise pas l'opération. |
 | `404` | La ressource n'existe pas dans l'organisation. |
 | `409` | La requête est en conflit avec l'état actuel. |
-| `422` | Les données analysées ne passent pas la validation. |
+| `422` | L'entrée analysée échoue à la validation. |
 
 ## Pagination
 
@@ -77,15 +77,15 @@ l'ensemble complet et actuel des opérations.
 
 - Assistants : list, read, create, update, duplicate et delete.
 - Flows : list, read, create, update, reorder et delete.
-- Knowledge : gérez les Collections, les Sources, les FAQ et les liens de
-  l'Assistant sur chaque Source.
+- Knowledge : gérez les Collections, les Sources, les FAQ et les liens Assistant
+  sur chaque Source.
 - Publication : consulter le statut, publier, annuler la publication et
   restaurer une publication.
 - Inbox : consulter, exporter, épingler, annoter, évaluer et supprimer des
   Conversations.
 - Améliorations : lister, lire et mettre à jour les éléments.
 - Entities and Memories : gérez les données typées de l'organisation et
-  l'effacement des mémoires selon leur champ d'application.
+  l'effacement des mémoires selon le périmètre défini.
 - SSO : gérez les revendications d'identité, les paramètres de connexion, la
   validation et la déconnexion.
 - Help Desks : gérez les desks, les canaux d'escalade, l'ordonnancement et
@@ -93,9 +93,9 @@ l'ensemble complet et actuel des opérations.
 - Teammates : gérez les Teammates IA et lisez vos propres conversations de
   Teammate.
 - Channels : consultez et configurez les canaux des Teammates auxquels vous
-  appartenez, ainsi que leurs rosters. Il n'existe pas de point de terminaison
+  appartenez, ainsi que leurs rosters. Il n'existe aucun point de terminaison
   pour envoyer un message : un message déclenche une chaîne de réponses des
-  coéquipiers, qui s'exécute dans la console.
+  Teammates, qui s'exécute dans la console.
 - Configuration : gérez les Skills, les Assistant Goals et les Alertes
   opérationnelles.
 - Organisation : gérez les paramètres, les Members, les Invites et les clés API.
@@ -110,4 +110,4 @@ l'ensemble complet et actuel des opérations.
   personne confirme un montant.
 
 Utilisez le document OpenAPI pour les champs de requête, l'authentification et
-les codes de statut de réponse documentés.
+les codes d'état de réponse documentés.

@@ -159,9 +159,7 @@ export function GoalsClient({
     <div className="mt-6 grid gap-4">
       {goals.length === 0 && !adding && (
         <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-sm">
-          No standing goals yet. Add the questions your business depends on, 
-          pricing, availability, policies, and they&apos;ll be re-verified on a
-          schedule. A failing goal raises an Alert.
+          No goals yet. Add the questions that matter most, like pricing or policies, and they&apos;ll be re-checked on a schedule.
         </p>
       )}
 

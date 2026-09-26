@@ -131,9 +131,7 @@ export function KnowledgeScopePicker({
         {tab === "collections" ? (
           collections.length === 0 ? (
             <p className="text-muted-foreground px-2 py-1.5 text-sm">
-              Your Library has no collections yet. Pick individual websites,
-              files or FAQs instead, or leave this empty and let it answer from
-              its role alone.
+              No collections yet. Pick websites, files or FAQs, or leave empty.
             </p>
           ) : visibleCollections.length === 0 ? (
             <p className="text-muted-foreground px-2 py-1.5 text-sm">
@@ -206,8 +204,7 @@ export function KnowledgeScopePicker({
       </p>
       {sourcesTruncated && (
         <p className="text-muted-foreground text-xs">
-          Only the most recent library items are listed here. Add the rest to a
-          collection and pick the collection instead.
+          Only recent items are listed. For the rest, pick a collection.
         </p>
       )}
     </div>

@@ -48,7 +48,7 @@ interface ParsedSelect {
 }
 
 interface Filter {
-  kind: "eq" | "is" | "in" | "gt" | "lt" | "gte" | "lte" | "or";
+  kind: "eq" | "is" | "in" | "gt" | "lt" | "gte" | "lte" | "like" | "or";
   /** For dotted paths ("assistants.organization_id") the embed table. */
   embed?: string;
   column: string;
@@ -72,11 +72,19 @@ function quoteIdent(name: string): string {
 
 /**
  * A filter column: a plain identifier, or a PostgREST JSON-path filter
- * (`jsonb_col->>key`), which PostgREST accepts in `.eq()` and friends.
+ * (`jsonb_col->>key`, or nested: `jsonb_col->a->>b`), which PostgREST accepts
+ * in `.eq()` and friends.
  */
 function quoteColumn(name: string): string {
-  const jsonPath = /^([a-z_][a-z0-9_]*)->>([A-Za-z0-9_-]+)$/.exec(name);
-  if (jsonPath) return `${quoteIdent(jsonPath[1])}->>'${jsonPath[2]}'`;
+  const jsonPath = /^([a-z_][a-z0-9_]*)((?:->[A-Za-z0-9_-]+)*)->>([A-Za-z0-9_-]+)$/.exec(name);
+  if (jsonPath) {
+    const hops = jsonPath[2]
+      .split("->")
+      .filter(Boolean)
+      .map((key) => `->'${key}'`)
+      .join("");
+    return `${quoteIdent(jsonPath[1])}${hops}->>'${jsonPath[3]}'`;
+  }
   return quoteIdent(name);
 }
 
@@ -465,6 +473,9 @@ class ShimQueryBuilder implements PromiseLike<{
   lte(column: string, value: unknown): this {
     return this.pushFilter("lte", column, value);
   }
+  like(column: string, pattern: string): this {
+    return this.pushFilter("like", column, pattern);
+  }
   /** PostgREST or-string: "col.op.value,col.op.value" (op: is/eq/lte/gte/ilike). */
   or(conditions: string): this {
     return this.pushFilter("or", "", conditions);
@@ -566,6 +577,11 @@ class ShimQueryBuilder implements PromiseLike<{
           const expr = this.rest.encodeValue(f.value, cols.get(f.column), params);
           const op = { gt: ">", lt: "<", gte: ">=", lte: "<=" }[f.kind];
           clauses.push(`${col} ${op} ${expr}`);
+          break;
+        }
+        case "like": {
+          const expr = this.rest.encodeValue(f.value, cols.get(f.column), params);
+          clauses.push(`${col} like ${expr}`);
           break;
         }
         case "or": {

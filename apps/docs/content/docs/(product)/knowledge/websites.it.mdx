@@ -1,34 +1,94 @@
 ---
 title: Siti web
-description: Aggiungi l'URL di un sito web e monitora lo stato di inserimento.
+description: Aggiungi l'URL di un sito web e monitora lo stato di ingestione.
 ---
 
-## Aggiungi una fonte del sito web
+## Aggiungi una Source di tipo sito web
 
-1. Apri l'Assistente.
+1. Apri l'Assistant.
 2. Seleziona **Knowledge**.
-3. Aggiungi una fonte del sito web.
+3. Aggiungi una Source di tipo sito web.
 4. Inserisci l'URL della pagina.
-5. Avvia l'acquisizione.
-6. Attendi che lo stato della Fonte sia **Ready**.
-7. Poni una domanda a cui la pagina risponda.
-8. Conferma la citazione della Fonte restituita.
+5. Avvia l'ingestione.
+6. Attendi finché lo stato della Source non è **Ready**.
+7. Poni una domanda a cui la pagina fornisce una risposta.
+8. Conferma la citazione della Source restituita.
 
 Il crawler recupera il contenuto del sito web configurato. Per le pagine che
-richiedono il rendering del browser, è necessario un worker di rendering
+richiedono il rendering del browser è necessario un worker di rendering
 JavaScript.
 
-## Esegui nuovamente la scansione di una fonte
+## Monitora il crawl
+
+Ciele mostra una scheda attività nell'angolo in basso a destra della console
+quando inizia un crawl. Rimane visibile su ogni pagina della console fino al
+termine dell'operazione.
+
+La scheda conta le **pagine** che il crawler aggiunge a Ciele, ad esempio
+162/291. Il totale è disponibile quando il crawler consegna a Ciele l'ultimo
+gruppo di pagine. Prima di quel momento, la scheda mostra solo il numero di
+pagine indicizzate.
+
+Mentre Apify esegue il crawling del sito web, la riga relativa alla Source
+mostra l'avanzamento segnalato da Apify, ad esempio **12 of 197 pages crawled**.
+Il secondo numero aumenta man mano che Apify trova altri link.
+
+La Library conta **Documents** per la stessa Source. Ciele crea un Document da
+una pagina. La scheda conta ciò che il crawler recupera. La Library conta ciò
+che Ciele conserva. I due numeri coincidono al termine del crawl.
+
+1. Seleziona la freccia sulla scheda per visualizzare le Sources.
+2. Leggi lo stato di ciascuna Source. La scheda mostra al massimo quattro
+   Sources contemporaneamente.
+3. Seleziona il controllo close per nascondere la scheda. Il crawl prosegue.
+
+Una Source che fallisce rimane sulla scheda finché non la chiudi. Una Source
+completata scompare dopo alcuni secondi.
+
+## Esegui nuovamente il crawling di una Source
 
 Usa **Recrawl** quando il contenuto del sito web di origine cambia. Ciele
-riavvia la scansione e sostituisce il contenuto indicizzato dopo che
-l'acquisizione è andata a buon fine.
+riavvia il crawling e sostituisce il contenuto indicizzato dopo l'ingestione
+completata con successo.
 
-L'API e la CLI supportano la nuova scansione solo per le Sorgenti di tipo sito
-web.
+L'API e la CLI supportano il recrawling solo per le Source di tipo sito web.
 
 ## Accesso alla fonte
 
-Il crawler deve raggiungere l'URL dalla rete di distribuzione. I contenuti
-protetti da autenticazione non sono disponibili senza un percorso di accesso
-supportato.
+Il crawler deve raggiungere l'URL dalla rete di deployment. I contenuti protetti
+da autenticazione non sono disponibili senza un percorso di accesso supportato.
+
+Il crawler integrato segue un redirect verso lo stesso sito. Ad esempio,
+`https://example.com` può andare a `https://www.example.com` e `http` può andare
+a `https`. Un redirect verso un dominio o un sottodominio diverso interrompe il
+crawling con un errore.
+
+## Usa il tuo account Apify
+
+Apify è il crawler gestito per i download di file, i siti protetti da accesso e
+i crawl su larga scala. Puoi collegare l'account Apify della tua Organization.
+Quindi i crawl di Apify utilizzano il tuo token e il tuo account Apify li paga.
+
+1. In Apify Console, apri **Settings** e quindi **API & Integrations**.
+2. Copia il token API.
+3. In Ciele, apri **Settings** e seleziona **Crawling**.
+4. Seleziona **Connect** sulla scheda **Apify**.
+5. Incolla il token in **API token**.
+6. Facoltativo: inserisci il tuo ID utente Apify in **User ID**. Ciele verifica
+   che il token appartenga a questo account.
+7. Seleziona **Save**.
+
+Quando l'account è connesso, il crawler **Automatic** utilizza Apify per tutti i
+crawl. Anche le nuove Sources di siti web utilizzano **No page limit** per
+impostazione predefinita. Apify prosegue quindi finché non trova più pagine sul
+sito web. Per interrompere l'esecuzione dopo un numero specifico di pagine,
+disattiva **No page limit** e inserisci un valore in **Max pages to crawl**.
+
+Gli altri crawler si fermano sempre al raggiungimento del proprio limite. Il
+crawler integrato si ferma a 30 pagine e Crawl4AI a 5.000. Apify sull'account
+della piattaforma si ferma a 100.000.
+
+Ciele crittografa il token e ne mostra solo gli ultimi quattro caratteri. Solo
+gli owner e gli admin possono collegare o rimuovere l'account. Se rimuovi il
+token mentre è in corso un crawl di Apify, tale crawl si interrompe con un
+errore.

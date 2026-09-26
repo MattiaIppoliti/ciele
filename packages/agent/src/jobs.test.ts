@@ -510,7 +510,6 @@ describe("runDueJobs (generic ledger)", () => {
       // Knowledge memories, one job per Document of a committed generation
       // (#930). Like every other kind, the cron drain claims it unasked.
       "extract_document_memories",
-      "graph_sync_concept",
       "ingest_source",
       "promote_memories",
       "resume_reviewed_conversation",

@@ -1,46 +1,44 @@
 ---
-title: Carte du dépôt
-description: Localisez l'application open source actuelle, les paquets, les workers, le schéma et les fichiers de déploiement.
+title: Carte des dépôts
+description: Localisez l'application open source actuelle, les packages, les workers, le schéma et les fichiers de déploiement.
 ---
 
 ## Applications
 
 | Chemin | Responsabilité |
 | --- | --- |
-| `apps/web` | Console d'administration, moteur d'exécution de widget, pages publiques, actions serveur et API v1. |
+| `apps/web` | Administrator console, widget runtime, pages publiques, actions serveur et API v1. |
 | `apps/docs` | Application de documentation Fumadocs et pipeline de traduction. |
 
-## Paquets partagés
+## Packages partagés
 
 | Chemin | Responsabilité |
 | --- | --- |
-| `packages/core` | Types de domaine, règles Pure Flow, valeurs par défaut, conditions et logique d'analyse. |
-| `packages/db` | Interfaces de persistance, stockage fictif et implémentation de Supabase. |
-| `packages/agent` | Exécution de tours, fournisseurs de modèles, outils de connaissances, ingestion et évaluation. |
-| `packages/ops` | Opérations de l'organisation partagée utilisées par les actions de la console et l'API v1. |
+| `packages/core` | Types de domaine, règles Flow pures, valeurs par défaut, conditions et logique d'analyse. |
+| `packages/db` | Interfaces de persistance, stockage simulé et implémentation Supabase. |
+| `packages/agent` | Exécution des tours, fournisseurs de modèles, outils de connaissances, ingestion et évaluation. |
+| `packages/ops` | Opérations d'organisation partagée utilisées par les actions de la console et l'API v1. |
 | `packages/client` | Client typé pour l'API v1. |
-| `packages/cli` | Interface terminale via le client typé. |
-| `packages/mcp` | Adaptateur MCP local à quatorze outils sur le client typé. |
-| `packages/ui` | Composants partagés de l'interface utilisateur. |
-| `packages/charts` | Visualisations analytiques partagées. |
+| `packages/cli` | Interface de terminal au-dessus du client typé. |
+| `packages/mcp` | Adaptateur MCP local à quatorze outils, basé sur le client typé. |
+| `packages/ui` | Composants d'interface utilisateur partagés. |
+| `packages/charts` | Visualisations d'analyses partagées. |
 
 ## Services et infrastructure
 
-| Chemin | Responsabilité |
+| Path | Responsibility |
 | --- | --- |
-| `services/graph-worker` | Service optionnel d'extraction et de récupération de graphes. |
-| `services/crawl4ai` | Configuration optionnelle du robot d'indexation avec rendu JavaScript. |
-| `supabase/migrations` | Modifications ordonnées du schéma de base de données. |
-| `deploy` | Scripts de déploiement et d'amorçage Docker Compose sur un hôte unique. |
+| `services/crawl4ai` | Configuration optionnelle du crawler avec rendu JavaScript. |
+| `supabase/migrations` | Modifications du schéma de base de données, dans l'ordre. |
+| `deploy` | Déploiement Docker Compose sur un seul hôte et scripts de bootstrap. |
 
-## Direction de la dépendance
+## Sens des dépendances
 
 Les règles pures appartiennent à `packages/core`. Le comportement de persistance
-appartient à `packages/db`.
+relève de `packages/db`.
 
-Les mutations réutilisables doivent être placées dans `packages/ops`. Le
-comportement de modèle et de récupération doit être défini dans
-`packages/agent`.
+Les mutations réutilisables ont leur place dans `packages/ops`. Le comportement
+du modèle et de la récupération relève de `packages/agent`.
 
 Les adaptateurs de surface dans `apps/web`, `packages/cli` et `packages/mcp` ne
-doivent pas créer de comportement de domaine distinct.
+doivent pas créer de comportements de domaine distincts.

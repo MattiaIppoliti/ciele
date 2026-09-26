@@ -118,7 +118,7 @@ export default async function KnowledgePage({
       <SectionHero
         icon={BookText}
         title="Knowledge"
-        description="The knowledge this assistant answers from. Sources belong to the organization and reach this assistant through a link, managed here or in the Library; each one is indexed into concepts an answer can cite."
+        description="What this assistant answers from. Sources are shared with the Library and cited in answers."
       />
       {/* The selected Collection lives in a query parameter, so the Developer
           Panel cannot read it from the route the way it reads the Assistant. */}

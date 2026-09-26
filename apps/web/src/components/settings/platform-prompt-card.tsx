@@ -47,10 +47,7 @@ export function PlatformPromptCard({
             Platform system prompt
           </h2>
           <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-            The immutable Ciele layer applied to every assistant of every
-            organization, above their own answering style. Only you can see
-            and edit this. Leave empty to use the built-in default shown as
-            placeholder.
+            Applied to every assistant above its own style. Only you can see it. Leave empty for the default.
           </p>
         </div>
         <Badge variant="outline" className="shrink-0 rounded-full">

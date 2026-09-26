@@ -33,7 +33,7 @@ import {
   useConfirmDelete,
   type ConfirmDeleteRequest,
 } from "@/components/ui/confirm-delete-modal";
-import { bulkRemovalChoice, sourceRemovalChoice } from "@/lib/knowledge-hub";
+import { bulkRemovalChoice, sourceRemovalChoice, tabSources } from "@/lib/knowledge-hub";
 import { ingestionStarted } from "@/lib/ingestion-bus";
 import { toast } from "@/lib/toast";
 import {
@@ -52,7 +52,7 @@ import {
   reprocessSourceAction,
   retrySourceIngestAction,
   setRecrawlScheduleAction,
-  updateFaqAction,
+  updateOrgFaqAction,
   updateWebsiteSourceAction,
   uploadFileSourceAction,
   type WebsiteFormInput,
@@ -246,10 +246,7 @@ function WebsiteConfigFields({
       <div className="space-y-2">
         <Label>Web crawler</Label>
         <p className="text-muted-foreground text-xs">
-          Automatic picks the crawler each crawl: the built-in crawler for small
-          static sites, Crawl4AI for JavaScript-rendered or larger crawls, and
-          Apify for file downloads or login-protected sites. You can force a
-          specific crawler for the next crawl.
+          Automatic picks the right crawler for each site. Choose one to force it for the next crawl.
         </p>
         <Select
           value={form.crawlerProvider ?? "auto"}
@@ -326,9 +323,7 @@ function WebsiteConfigFields({
           <span>
             <span className="font-semibold">Throttle requests</span>
             <span className="text-muted-foreground block text-xs">
-              Insert a delay before each request so consecutive page fetches
-              don&apos;t burst against the site. Use this only if the target
-              site rate-limits or blocks bursts of requests.
+              Wait between requests. Use it only if the site rate-limits crawlers.
             </span>
           </span>
         </label>
@@ -352,8 +347,7 @@ function WebsiteConfigFields({
         <div className="space-y-2">
           <Label>Wait before content extraction</Label>
           <p className="text-muted-foreground text-xs">
-            Extra wait (in seconds) after load, for pages rendered by
-            JavaScript. Setting this switches to a real-browser crawler.
+            Extra seconds to wait for JavaScript pages. Uses a real-browser crawler.
           </p>
           <Input
             type="number"
@@ -370,10 +364,7 @@ function WebsiteConfigFields({
         <div className="space-y-2">
           <Label>Max pages to crawl</Label>
           <p className="text-muted-foreground text-xs">
-            Up to 30 runs locally, up to 5,000 can use Crawl4AI, and larger
-            corpora require the managed Apify crawler. With no limit, Apify on
-            your organization&apos;s own account crawls until the site runs out
-            of pages; any other crawler stops at its own ceiling.
+            Up to 30 pages run locally, up to 5,000 on Crawl4AI, more on Apify. No limit crawls the whole site on your own Apify account.
           </p>
           <div className="flex items-center gap-4">
             <Input
@@ -654,10 +645,7 @@ function WebsitesTab({
   const [statusFilter, setStatusFilter] = useState("");
   const order = useClientSort();
   const websiteSources = order.sorted(
-    sources
-      .filter((s) => s.kind === "website" || s.kind === "url")
-      .filter((s) => s.name.toLowerCase().includes(query.toLowerCase()))
-      .filter((s) => !statusFilter || s.status === statusFilter),
+    tabSources(sources, "websites", { query, status: statusFilter }),
     {
       name: (s) => s.name,
       status: (s) => s.status,
@@ -1131,10 +1119,7 @@ function DocumentsTab({
   const [statusFilter, setStatusFilter] = useState("");
   const order = useClientSort();
   const documents = order.sorted(
-    sources
-      .filter((s) => s.kind === "file" || s.kind === "text")
-      .filter((s) => s.name.toLowerCase().includes(query.toLowerCase()))
-      .filter((s) => !statusFilter || s.status === statusFilter),
+    tabSources(sources, "files", { query, status: statusFilter }),
     { name: (s) => s.name, status: (s) => s.status }
   );
   const paged = useClientPage(documents);
@@ -1197,8 +1182,7 @@ function DocumentsTab({
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
-        Upload files to add to your assistant&apos;s knowledge base. The
-        assistant will use these to answer questions.
+        Upload files for the assistant to answer from.
       </p>
       <FileUpload
         variant="centered"
@@ -1618,7 +1602,18 @@ function FaqDialog({
     }
     startTransition(async () => {
       if (faq) {
-        await updateFaqAction(assistantId, faq.id, question, answer);
+        // A FAQ is a Source in the Library, so the per-Assistant tab edits it
+        // through the same operation the Library does.
+        if (!faq.sourceId) {
+          toast.error("This FAQ has no Library entry to update.");
+          return;
+        }
+        try {
+          await updateOrgFaqAction(faq.sourceId, question, answer);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Could not update the FAQ");
+          return;
+        }
         toast.success("FAQ updated");
       } else {
         await createFaqAction(assistantId, collectionId, question, answer);
@@ -2426,8 +2421,14 @@ export function KnowledgeClient({
     return () => clearInterval(timer);
   }, [hasProcessing, router]);
 
-  const faqs = concepts.filter((c) => c.frontmatter.type === "FAQ");
-  const nonFaqConcepts = concepts.filter((c) => c.frontmatter.type !== "FAQ");
+  // A FAQ here is one the Library owns: a `faq` Source. The FAQ dialog edits
+  // through that Source, so a FAQ-typed Concept under a file or text Source
+  // (the retired enricher drafted those) lists with the other Concepts.
+  const faqSourceIds = new Set(sources.filter((s) => s.kind === "faq").map((s) => s.id));
+  const isFaq = (c: Concept) =>
+    c.frontmatter.type === "FAQ" && c.sourceId !== null && faqSourceIds.has(c.sourceId);
+  const faqs = concepts.filter(isFaq);
+  const nonFaqConcepts = concepts.filter((c) => !isFaq(c));
 
   return (
     <div className="mt-6 space-y-6 pb-16">
@@ -2531,8 +2532,7 @@ export function KnowledgeClient({
         </>
       ) : (
         <p className="text-muted-foreground text-sm">
-          This assistant&apos;s knowledge area is being prepared. Refresh in a
-          moment, or ask an editor to add knowledge sources.
+          Knowledge is being prepared. Refresh in a moment.
         </p>
       )}
     </div>

@@ -194,8 +194,7 @@ export function ManageDirectAccessDialog({
         </DialogHeader>
         {disabled && (
           <p className="text-muted-foreground rounded-md border p-3 text-sm">
-            This file was uploaded before originals were stored, so direct
-            access is unavailable. Re-upload the file to enable it.
+            The original isn&apos;t stored for this file. Re-upload it to open it.
           </p>
         )}
         <div className="space-y-1 rounded-md border p-2">

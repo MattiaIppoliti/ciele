@@ -39,7 +39,7 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
   caps and the mention resolver themselves are pure functions in `@agent-hub/core`, so "the eleventh
   turn never runs" is asserted with an injected `runTurn` and no provider.
 - `engine.ts`: flow routing + action execution; `actions.ts`, the action handler registry.
-- `agentic-search/`, `graph-search.ts`, `embeddings.ts`, retrieval.
+- `agentic-search/`, `retrieval.ts` (the one searcher factory), `rerank.ts`, `embeddings.ts`, retrieval.
 - `ingest.ts` / `extract.ts` / `jobs.ts`, knowledge ingestion and the durable job layer.
 - `scheduled.ts`: one function per cron tick (`sweepDueRecrawls`, `finalizeDueCrawls`); the cron
   endpoints in apps/web are auth-and-serialize adapters over these.
@@ -110,4 +110,4 @@ pnpm --filter @agent-hub/agent test
 
 `docs/agentic-chat-runtime.md`, `agents.md`, ADR-0003 (two engines), ADR-0005 (deep module +
 package boundary), ADR-0006 (tools/sessions/skills), ADR-0015 (local CLI connections),
-ADR-0017 (graph layer).
+ADR-0017 (Suggested Fix; its graph half is superseded), ADR-0025 (verbatim chunks, rerank).

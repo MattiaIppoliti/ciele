@@ -51,7 +51,7 @@ export type { NormalizedTable } from "./reply-components";
 export { canEmbedWithConnection } from "./embedding-capability";
 
 // Static model catalog for editor UI (provider labels + model lists).
-export { MODEL_CATALOG, PROVIDER_NAMES } from "./catalog";
+export { MODEL_CATALOG, PROVIDER_NAMES, currentModelId } from "./catalog";
 export type { ChatModelOption } from "./catalog";
 
 // The agent loop's iteration budget: the number the model is TOLD about (#558).

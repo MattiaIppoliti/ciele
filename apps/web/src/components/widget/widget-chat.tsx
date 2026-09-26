@@ -32,6 +32,7 @@ import {
 } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
 import { SpeechPlayback } from "@/components/chat/speech-playback";
+import { patchLastBot, runTurn } from "@/components/chat/turn-session";
 import { toPromptModels, useChatModels } from "@/components/chat/use-chat-models";
 import { useComposerTrigger, replaceToken } from "@/components/chat/use-composer-trigger";
 import { useHelpDesks } from "@/components/chat/use-help-desks";
@@ -820,16 +821,7 @@ export function WidgetChat({
   const gated = requireSignIn && (gate === null || !gate.authenticated);
 
   function updateLastBot(update: (bot: BotMsg) => BotMsg) {
-    setMessages((prev) => {
-      const next = [...prev];
-      for (let i = next.length - 1; i >= 0; i--) {
-        if (next[i].role === "bot") {
-          next[i] = update(next[i] as BotMsg);
-          break;
-        }
-      }
-      return next;
-    });
+    setMessages((prev) => patchLastBot(prev, update));
   }
 
   async function send(text: string, options?: { faq?: boolean }) {
@@ -849,44 +841,43 @@ export function WidgetChat({
 
     const controller = new AbortController();
     abortRef.current = controller;
-    const turnId = crypto.randomUUID();
 
     try {
-      const response = await fetch(`/api/widget/${assistantId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visitorId: visitorId(),
-          conversationId,
-          collectionId: anchored?.id ?? null,
-          message,
-          turnId,
-          // Advisory: the Publication's allow-list decides, and a selector it
-          // does not name runs the configured model rather than failing.
-          model: model ?? null,
-          // Sealed at intake; the route opens them. Re-sent every turn, which
-          // is why the chips stay on screen.
-          attachments: attachments.tokens,
-          // The embedding page, forwarded by the launcher as `?u=` â€” the
-          // request's own referer is this iframe, not the host page. Gates URL
-          // Flow Conditions server-side (spec #550).
-          pageUrl: searchParams.get("u"),
-          ...(options?.faq ? { faq: true } : {}),
-        }),
+      // The Visitor sees no toast either way: an abort is theirs, and a
+      // network failure leaves the bubble with nothing more to say.
+      await runTurn<BotMsg>({
         signal: controller.signal,
-      });
-      if (!response.ok || !response.body) throw new Error("Chat unavailable");
-
-      await consumeTurnStream<BotMsg>(response.body, {
+        request: (signal, turnId) =>
+          fetch(`/api/widget/${assistantId}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              visitorId: visitorId(),
+              conversationId,
+              collectionId: anchored?.id ?? null,
+              message,
+              turnId,
+              // Advisory: the Publication's allow-list decides, and a selector it
+              // does not name runs the configured model rather than failing.
+              model: model ?? null,
+              // Sealed at intake; the route opens them. Re-sent every turn, which
+              // is why the chips stay on screen.
+              attachments: attachments.tokens,
+              // The embedding page, forwarded by the launcher as `?u=`, since the
+              // request's own referer is this iframe, not the host page. Gates URL
+              // Flow Conditions server-side (spec #550).
+              pageUrl: searchParams.get("u"),
+              ...(options?.faq ? { faq: true } : {}),
+            }),
+            signal,
+          }),
         update: updateLastBot,
-        onDone: ({ conversationId, messageId }) => {
+        failure: () => "Chat unavailable",
+        onDone: ({ conversationId }) => {
           setConversationId(conversationId);
-          updateLastBot((bot) => ({ ...bot, id: messageId }));
           playFeedback("reply");
         },
       });
-    } catch {
-      /* aborted or network error */
     } finally {
       abortRef.current = null;
       setPending(false);

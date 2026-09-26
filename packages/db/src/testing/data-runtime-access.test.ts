@@ -99,7 +99,6 @@ const workerFunctions = [
   "public.commit_conversation_turn(text,text,text,uuid,jsonb,text,text,jsonb,jsonb,timestamp with time zone)",
   "public.claim_background_jobs(text,text,timestamp with time zone,timestamp with time zone,integer)",
   "public.claim_terminal_background_jobs(text,text,timestamp with time zone,timestamp with time zone,integer)",
-  "public.claim_active_graph_datasets(integer)",
   "public.settle_background_job(text,uuid,timestamp with time zone,text,text,timestamp with time zone)",
   "public.renew_background_job_lease(text,uuid,timestamp with time zone)",
   "public.claim_turn_effects(text,text,timestamp with time zone,timestamp with time zone,integer)",

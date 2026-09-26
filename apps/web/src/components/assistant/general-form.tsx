@@ -3,7 +3,6 @@
 import { useRef, useState, useTransition } from "react";
 import type {
   Assistant,
-  KnowledgeEngine,
   ModelRef,
   Provider,
   QuickReplyButton,
@@ -11,7 +10,7 @@ import type {
 } from "@agent-hub/core";
 import { shortId } from "@agent-hub/core";
 
-import { MODEL_CATALOG, PROVIDER_NAMES } from "@agent-hub/agent/client";
+import { MODEL_CATALOG, PROVIDER_NAMES, currentModelId } from "@agent-hub/agent/client";
 import {
   ModelAllowList,
   modelAllowListSummary,
@@ -134,16 +133,17 @@ export function GeneralForm({
   const [modelProvider, setModelProvider] = useState<Provider>(
     assistant.modelProvider
   );
-  const [modelId, setModelId] = useState(assistant.modelId);
+  // A retired model (Haiku 4.5, gpt-5.1-mini) opens on the model that now
+  // answers in its place, which is also what the runtime already runs.
+  const [modelId, setModelId] = useState(() =>
+    currentModelId(assistant.modelProvider, assistant.modelId)
+  );
   const [allowedModels, setAllowedModels] = useState<ModelRef[]>(
     assistant.allowedModels ?? []
   );
   const [voice, setVoice] = useState(assistant.voice ?? EMPTY_VOICE_SETTINGS);
   const [attachmentsEnabled, setAttachmentsEnabled] = useState(
     assistant.attachmentsEnabled ?? false
-  );
-  const [knowledgeEngine, setKnowledgeEngine] = useState<KnowledgeEngine>(
-    assistant.knowledgeEngine ?? "graph"
   );
   const welcomeRef = useRef<HTMLTextAreaElement>(null);
   // The shared sortable primitive makes the complete quick-reply card follow
@@ -166,7 +166,6 @@ export function GeneralForm({
     JSON.stringify(allowedModels) !==
       JSON.stringify(assistant.allowedModels ?? []) ||
     attachmentsEnabled !== (assistant.attachmentsEnabled ?? false) ||
-    knowledgeEngine !== (assistant.knowledgeEngine ?? "graph") ||
     JSON.stringify(questions) !== JSON.stringify(assistant.suggestedQuestions) ||
     JSON.stringify(quickReplies) !==
       JSON.stringify(assistant.quickReplies ?? []);
@@ -232,7 +231,6 @@ export function GeneralForm({
         ),
         attachmentsEnabled,
         ...(JSON.stringify(voice) !== JSON.stringify(assistant.voice ?? EMPTY_VOICE_SETTINGS) ? { voice } : {}),
-        knowledgeEngine,
       });
       toast.success("Settings saved");
       } catch (error) {
@@ -277,10 +275,7 @@ export function GeneralForm({
           <div className="min-w-0">
             <h2 className="text-base font-semibold">Enable chat launcher</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-              When enabled, shows the chat button. If AI Feedback is also
-              enabled, feedback can be accessed from within the chat window on
-              grading pages. When disabled, feedback (if enabled) appears as a
-              standalone launcher.
+              Shows the chat button on your pages.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
@@ -315,7 +310,7 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Model"
-          hint="Provider and model for published widget traffic (requires an organization credential in Settings → AI). Preview conversations use your connected local subscription and its default model from Settings → AI → Chat settings instead."
+          hint="Answers published chats. Needs an organization credential in Settings → AI. The Preview uses your own default model."
         />
         <div className="flex gap-2">
           <Select value={modelProvider} onValueChange={(provider) => {
@@ -359,7 +354,7 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Let visitors choose the model"
-          hint="Tick the models the chat window offers beside the configured one. Leave every box clear (the default) and there is no picker: everyone runs the configured model. A ticked model whose provider has no organization credential is not offered until one exists."
+          hint="Extra models visitors can switch to. Leave empty to hide the picker."
         />
         <ModelAllowList
           configured={{ provider: modelProvider, modelId }}
@@ -382,7 +377,7 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Let visitors attach files"
-          hint="Off by default. With it on, the chat window accepts a PDF, Word, Excel, PowerPoint, text file or image, reads it into text and answers from it. Nothing is stored: the file is read once and the bytes are discarded, so there is no copy to keep or delete. Reading an image costs one model call. The Preview follows this switch as soon as you save, so it shows the composer a visitor will get; a Teammate chat accepts files either way, because it has no visitor."
+          hint="Visitors can attach a PDF, Office file, text file or image. Files are read once and never stored."
         />
         <div className="flex items-center gap-3">
           <Switch
@@ -396,27 +391,6 @@ export function GeneralForm({
               : "Visitors cannot attach files."}
           </span>
         </div>
-      </div>
-
-      {/* Knowledge Engine */}
-      <div className="space-y-3">
-        <FieldHeader
-          title="Knowledge engine"
-          hint="How knowledge searches are answered. Graph (primary) retrieves from the connected knowledge graph and learns from feedback; it falls back to Vector automatically when the graph service is unavailable. Vector uses classic embedding search only. Graph makes richer, connected answers at a higher per-answer cost. Either way, answers stay cited to their source."
-        />
-        <Select value={knowledgeEngine} onValueChange={(value) => setKnowledgeEngine(value as KnowledgeEngine)} className="w-56">
-          <SelectTrigger className="h-11" aria-label="Knowledge engine">
-            <SelectValue>{knowledgeEngine === "graph" ? "Graph (primary)" : "Vector"}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="graph">
-              Graph (primary)
-            </SelectItem>
-            <SelectItem value="vector">
-              Vector
-            </SelectItem>
-          </SelectContent>
-        </Select>
       </div>
       </div>
       </TimelineSection>
@@ -452,7 +426,7 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Assistant title"
-          hint="This will be how you see it on your assistants page."
+          hint="Shown on your assistants page."
         />
         <Input
           value={title}
@@ -560,7 +534,7 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Answering style"
-          hint="System instructions for this assistant: persona, tone, format, and behavior. Applied on top of the platform rules, it cannot override them."
+          hint="Persona, tone and format. Platform rules still apply."
         />
         <div>
           <Textarea
@@ -585,11 +559,7 @@ export function GeneralForm({
           <div>
             <h2 className="text-base font-semibold">Simplified thinking</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-              While the assistant works, narrate each step to the visitor in one
-              short line in their own language, &ldquo;Looking for the course
-              videos…&rdquo;. The lines appear as they happen and stay in the
-              transcript, so the Inbox shows what the visitor watched. Off, the
-              assistant works silently and only the answer is saved.
+              Show visitors one short line per step while the assistant works, like &ldquo;Checking the return policy…&rdquo;. The Inbox keeps the lines too.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
@@ -669,7 +639,7 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Quick reply buttons"
-          hint="Typed starter buttons shown above the suggested questions, pre-fill a message, escalate to support, or open a link."
+          hint="Buttons above the suggested questions: send a message, contact support or open a link."
         />
         <SortableList
           values={quickReplies.map((button) => button.id)}

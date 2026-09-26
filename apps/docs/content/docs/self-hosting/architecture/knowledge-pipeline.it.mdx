@@ -1,68 +1,70 @@
 ---
 title: Pipeline della conoscenza
-description: Traccia una Fonte dall'ingestione a una risposta citata dell'Assistente.
+description: Traccia una Source dall'ingestione fino a una risposta citata dell'Assistente.
 ---
 
 ## Acquisizione
 
 <Mermaid
-  title="Una Fonte diventa un Concept ricercabile prima di segnalarsi come Pronta"
+  title="Una Source diventa un insieme di Documents indicizzabili prima di segnalare lo stato Ready"
   chart={`
 flowchart TB
   SOURCE["Website, file, text, or FAQ"]
   EXTRACT["Extract the content"]
-  CONCEPT["Create OKF Concepts"]
+  DOCUMENT["Create Documents"]
   INDEX["Index for search"]
-  GRAPH["Update the graph"]
   READY["Status becomes Ready"]
   SOURCE --> EXTRACT
-  EXTRACT --> CONCEPT
-  CONCEPT --> INDEX
-  CONCEPT --> GRAPH
+  EXTRACT --> DOCUMENT
+  DOCUMENT --> INDEX
   INDEX --> READY
-  GRAPH --> READY
 `}
 />
 
-Knowledge utilizza Concepts in Open Knowledge Format (OKF). Un Concept mantiene
-un riferimento alla sua Source originale.
+Ciele memorizza la Knowledge come Documents in Open Knowledge Format (OKF). Un
+Document mantiene un riferimento alla sua Source originale. OKF chiama lo stesso
+record Concept, e le tabelle del database mantengono quel nome.
 
-L'ingestione delle FAQ crea un Concept curato con provenienza da domanda e
-risposta. L'ingestione di file e siti web conserva l'oggetto Source originale,
-ove applicabile.
+L'ingestione di file, testo e siti web memorizza il testo estratto senza
+modifiche. Ciele non riscrive una Source con un modello. L'ingestione delle FAQ
+crea un Document curato con provenienza di domande e risposte. L'ingestione di
+file e siti web preserva l'oggetto Source originale, ove applicabile.
 
 ## Recupero
 
-Il runtime può recuperare i Concept tramite ricerca vettoriale e fallback
-lessicale. La modalità grafo può aggiungere la navigazione attraverso le
-relazioni dei Concept indicizzati.
+Il runtime recupera 20 passaggi candidati tramite ricerca vettoriale e fallback
+lessicale. Un modello di reranking seleziona quindi i 6 passaggi che
+l'Assistente legge.
 
-Ogni percorso è delimitato dai collegamenti tra Assistente e Sorgente. Un
-risultato proveniente da una Fonte che non è collegata all'Assistente che
-effettua la query viene scartato, sia nel percorso del grafo che in quello
-vettoriale.
+La fase di reranking utilizza la piattaforma `AI_GATEWAY_API_KEY`. Se la chiave
+non è impostata o il modello di reranking non risponde in tempo, la ricerca
+mantiene l'ordine dell'indice. In entrambi i casi, le risposte proseguono.
 
-Un Suggerimento di contesto può limitare il recupero a una Raccolta pertinente o
-a un contesto simile a un corso quando il runtime ne fornisce uno.
+Ogni ricerca viene delimitata dai collegamenti Assistant-to-Source. Ciele scarta
+un risultato proveniente da una Source che non è collegata all'Assistant che
+effettua la query.
 
-Deep Search aumenta il lavoro di navigazione della Conoscenza entro i limiti del
+Un Context Hint può limitare il recupero a una Collection pertinente o a un
+contesto di tipo corso quando il runtime ne fornisce uno.
+
+Deep Search aumenta il lavoro di navigazione nella Knowledge entro i limiti del
 runtime. Non esegue query sul web pubblico.
 
 ## Risoluzione delle citazioni
 
-La risposta finale cita fonti nominate, non frammenti di ricerca opachi. Gli
-identificatori di citazione rimandano, attraverso il Concetto, alla sua Fonte
-originale.
+La risposta finale cita Sources denominate, non frammenti di ricerca opachi. Gli
+identificatori delle citazioni vengono risolti attraverso il Document fino alla
+Source originale.
 
-Il Visitatore può aprire la schermata delle Fonti dopo la risposta. La Posta in
-arrivo memorizza le stesse parti della citazione insieme alla Conversazione.
+Puoi aprire la visualizzazione Sources dopo la risposta. L'Inbox memorizza le
+stesse parti di citazione insieme alla Conversation.
 
-## Eliminazione e nuova scansione
+## Eliminazione e nuovo crawling
 
-L'eliminazione della fonte rimuove i Concept correlati dal grafo attivo e dai
-dati di ricerca per ogni Assistente collegato. La rimozione di un collegamento
-non comporta la rimozione di alcun elemento. Impedisce a un Assistente di
-raggiungere la Sorgente.
+L'eliminazione di una Source ritira i Document correlati dai dati di ricerca
+attivi, per ogni Assistant collegato. La rimozione di un singolo link non
+comporta l'archiviazione di nulla. Impedisce a un Assistente di accedere alla
+Source.
 
-La nuova scansione del sito web riavvia l'estrazione e l'indicizzazione per
-quella Fonte.
+Il recrawling del sito web riavvia l'estrazione e l'indicizzazione per quella
+Source.

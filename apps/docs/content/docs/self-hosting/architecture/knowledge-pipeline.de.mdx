@@ -1,68 +1,73 @@
 ---
-title: Wissens-Pipeline
-description: Verfolgen Sie eine Quelle von der Aufnahme bis zu einer zitierten Antwort des Assistenten.
+title: Knowledge Pipeline
+description: Verfolgen Sie eine Quelle vom Einlesen bis zu einer zitierten Antwort des Assistenten.
 ---
 
-## Aufnahme
+## Erfassung
 
 <Mermaid
-  title="Eine Quelle wird zu durchsuchbaren Concepts, bevor sie als Ready gemeldet wird"
+  title="Eine Source wird zu durchsuchbaren Documents, bevor sie den Status Ready meldet."
   chart={`
 flowchart TB
   SOURCE["Website, file, text, or FAQ"]
   EXTRACT["Extract the content"]
-  CONCEPT["Create OKF Concepts"]
+  DOCUMENT["Create Documents"]
   INDEX["Index for search"]
-  GRAPH["Update the graph"]
   READY["Status becomes Ready"]
   SOURCE --> EXTRACT
-  EXTRACT --> CONCEPT
-  CONCEPT --> INDEX
-  CONCEPT --> GRAPH
+  EXTRACT --> DOCUMENT
+  DOCUMENT --> INDEX
   INDEX --> READY
-  GRAPH --> READY
 `}
 />
 
-Knowledge verwendet Concepts im Open Knowledge Format (OKF). Ein Concept enthält
-einen Verweis auf seine ursprüngliche Source.
+Ciele speichert Wissen als Dokumente im Open Knowledge Format (OKF). Ein
+Document behält eine Referenz auf seine ursprüngliche Source. OKF bezeichnet
+denselben Datensatz als Concept, und die Datenbanktabellen behalten diesen Namen
+bei.
 
-Durch die Aufnahme von FAQs wird ein kuratiertes Concept mit Frage- und
-Antwort-Herkunft erstellt. Bei der Aufnahme von Dateien und Websites bleibt das
-ursprüngliche Source-Objekt gegebenenfalls erhalten.
+Bei der Erfassung von Dateien, Texten und Websites wird der extrahierte Text
+unverändert gespeichert. Ciele schreibt eine Source nicht mit einem Modell um.
+Die FAQ-Erfassung erstellt ein kuratiertes Dokument mit Herkunftsnachweis für
+Fragen und Antworten. Bei der Erfassung von Dateien und Websites bleibt das
+ursprüngliche Source-Objekt, soweit zutreffend, erhalten.
 
 ## Abruf
 
-Die Laufzeitumgebung kann Concepts über Vektorsuche und lexikalisches Fallback
-abrufen. Im Graph-Modus kann die Navigation über indizierte Concept-Beziehungen
-hinzugefügt werden.
+Die Runtime ruft 20 Kandidat-Passagen über die Vektorsuche und den lexikalischen
+Fallback ab. Anschließend wählt ein Reranking-Modell die 6 Passagen aus, die der
+Assistant liest.
 
-Jeder Pfad wird durch die Links vom Assistenten zur Quelle begrenzt. Ein Treffer
-von einer Quelle, die nicht mit dem anfragenden Assistenten verknüpft ist, wird
-sowohl im Graph-Pfad als auch im Vektor-Pfad verworfen.
+Der Schritt „Rerank“ verwendet die Plattform `AI_GATEWAY_API_KEY`. Wenn der
+Schlüssel nicht gesetzt ist oder das Reranking-Modell nicht rechtzeitig
+antwortet, behält die Suche die Reihenfolge des Index bei. In beiden Fällen
+werden die Antworten fortgesetzt.
 
-Ein Kontexthinweis kann den Abruf auf eine relevante Sammlung oder einen
-kursähnlichen Kontext beschränken, wenn die Laufzeitumgebung einen solchen
-bereitstellt.
+Jede Suche wird durch die Verknüpfungen vom Assistenten zur Quelle eingegrenzt.
+Ciele lässt einen Treffer aus einer Source weg, die nicht mit dem abfragenden
+Assistant verknüpft ist.
 
-Deep Search verbessert die Wissensnavigation innerhalb der Grenzen der
-Laufzeitumgebung. Es werden keine Abfragen im öffentlichen Web durchgeführt.
+Ein Context Hint kann die Abfrage auf eine relevante Collection oder einen
+kursähnlichen Kontext einschränken, wenn die Runtime einen solchen bereitstellt.
 
-## Zitatauflösung
+Deep Search verbessert die Navigation im Knowledge innerhalb der
+Laufzeitgrenzen. Es werden keine Abfragen im öffentlichen Web durchgeführt.
 
-Die endgültige Antwort zitiert benannte Quellen, nicht undurchsichtige
-Suchblöcke. Zitierkennungen verweisen über das Konzept auf die ursprüngliche
-Quelle.
+## Auflösung von Quellenangaben
 
-Der Besucher kann nach der Antwort die Quellen-Ansicht öffnen. Der Posteingang
-speichert dieselben Zitierteile zusammen mit der Konversation.
+Die endgültige Antwort zitiert benannte Sources, keine undurchsichtigen
+Suchchunks. Citation identifiers werden über das Document bis zu ihrer
+ursprünglichen Source aufgelöst.
 
-## Löschen und erneutes Durchforsten
+Der Visitor kann nach der Antwort die Anzeige „Sources“ öffnen. Die Inbox
+speichert dieselben Zitatteile zusammen mit der Conversation.
 
-Durch das Löschen einer Quelle werden zugehörige Konzepte für jeden verknüpften
-Assistenten aus dem aktiven Graphen und den Suchdaten entfernt. Durch das
-Entfernen eines Links wird nichts zurückgezogen. Es verhindert, dass ein
-Assistent die Quelle erreicht.
+## Löschen und erneutes Crawlen
 
-Ein erneutes Durchforsten der Website startet die Extraktion und Indizierung für
+Das Löschen einer Quelle entfernt die zugehörigen Documents aus den aktiven
+Suchdaten für jeden verknüpften Assistant. Das Entfernen eines einzelnen Links
+führt zu keiner Deaktivierung. Dadurch wird verhindert, dass ein Assistant auf
+die Source zugreifen kann.
+
+Ein erneutes Crawlen der Website startet die Extraktion und Indizierung für
 diese Quelle neu.

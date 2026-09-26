@@ -1,27 +1,22 @@
 ---
 title: Ajustes generales
-description: Configura la identidad del asistente, el modelo, el motor de conocimiento y el contenido predeterminado del chat.
+description: Configura la identidad del asistente, el modelo y el contenido predeterminado del chat.
 ---
 
 Abre un asistente y selecciona **General**.
 
 ## Selección del entorno de ejecución
 
-Selecciona la conexión del proveedor y el modelo para el asistente. Selecciona
-**Graph** o **Vector** como motor de conocimiento principal.
+Selecciona la conexión del proveedor y el modelo para el asistente.
 
-La recuperación de grafos utiliza el Knowledge graph cuando los servicios de
-grafos están disponibles. La recuperación vectorial utiliza embeddings de
-documentos indexados y un recurso léxico alternativo.
-
-## Elección del modelo para visitantes
+## Selección del modelo para visitantes
 
 Selecciona los modelos que la ventana de chat mostrará a los visitantes. El
 modelo Assistant siempre está disponible. Cada modelo adicional que selecciones
 se convierte en una opción en la ventana de chat.
 
 Si no seleccionas ningún modelo adicional, la ventana de chat no mostrará ningún
-control de modelos. Todas las conversaciones utilizan el modelo Assistant.
+control de modelo. Todas las conversaciones utilizan el modelo Assistant.
 
 La ventana de chat solo muestra un modelo si tu organización tiene una conexión
 con un proveedor para ese modelo. Si eliminas la conexión con el proveedor, la
@@ -74,10 +69,10 @@ y una breve descripción de esta.
 Un archivo adjunto permanece disponible durante el resto de la conversación. La
 ventana de chat muestra cada archivo adjunto hasta que tú lo elimines.
 
-La vista previa refleja esta configuración en cuanto guardas los cambios.
-Muestra el cuadro de mensaje que ve un visitante, antes de que lo publiques. Los
-chats de compañeros de equipo aceptan archivos adjuntos en todo momento, porque
-no tienen ningún visitante.
+La vista previa aplica esta configuración en cuanto guardas los cambios. Muestra
+el cuadro de mensaje que ve un visitante, antes de que lo publiques. Los chats
+de compañeros de equipo aceptan archivos adjuntos en todo momento, ya que no
+tienen ningún visitante.
 
 Selecciona **Publish** después de cambiar este ajuste.
 
@@ -100,26 +95,27 @@ de audio. Está desactivado de forma predeterminada.
 5. Selecciona **Save changes**. Publica el asistente para actualizar el widget.
 
 Las listas de modelos utilizan los catálogos de los proveedores conectados.
-**Refresh** vuelve a cargar las listas. Las opciones de voz se rigen por el
-modelo de reproducción. El acceso a los modelos también depende de los permisos
-del proveedor, de la facturación y de la cuota. La lista muestra tres voces
+**Refresh** vuelve a cargar las listas. Las opciones de voz se ajustan al modelo
+de reproducción. El acceso a los modelos también depende de los permisos del
+proveedor, de la facturación y de las cuotas. La lista muestra tres voces
 compatibles, o menos si el proveedor tiene menos disponibles. Una voz ya
 seleccionada permanece en la lista.
 
-Los idiomas de entrada y de salida son independientes y ambos tienen como valor
-predeterminado **Auto**. Para grabaciones cortas, selecciona un idioma de
-entrada conocido para mejorar el reconocimiento. También puedes corregir la
-transcripción antes de enviarla. Un idioma de salida explícito orienta las
-nuevas respuestas generadas por IA y su reproducción de audio. Las respuestas
-automáticas se basan en el último mensaje, incluida una transcripción editada.
-Los mensajes de Flow configurados y las respuestas guardadas conservan sus
-palabras originales. La reproducción de audio lee ese texto sin traducirlo.
+Los idiomas de entrada y de salida son independientes y, de forma
+predeterminada, ambos están configurados como **Auto**. Para grabaciones cortas,
+selecciona un idioma de entrada conocido para mejorar el reconocimiento. También
+puedes corregir la transcripción antes de enviarla. Un idioma de salida
+explícito orienta las nuevas respuestas generadas por IA y su reproducción de
+audio. Las respuestas automáticas se basan en el último mensaje, incluida una
+transcripción editada. Los mensajes de Flow configurados y las respuestas
+guardadas conservan sus palabras originales. La reproducción de audio lee ese
+texto sin traducirlo.
 
-Selecciona el micrófono situado junto a **Send** para grabar una pregunta. La
-grabación se detiene al cabo de 60 segundos y admite hasta 4 MB. Selecciona el
-control de parada para transcribir la grabación o **Cancel recording** para
-descartarla. El texto aparece en el cuadro de mensaje. Puedes editarlo antes de
-seleccionar **Send**.
+Selecciona el micrófono junto a **Send** para grabar una pregunta. La grabación
+se detiene al cabo de 60 segundos y admite hasta 4 MB. Selecciona el control de
+parada para transcribir la grabación o **Cancel recording** para descartarla. El
+texto aparece en el cuadro de mensaje. Puedes editarlo antes de seleccionar
+**Send**.
 
 Selecciona **Read response aloud** junto a una respuesta completada para
 escucharla. Selecciona el mismo control para pausar la reproducción. La
@@ -149,7 +145,7 @@ Configura estos campos:
 
 - **Welcome message** aparece al inicio de un chat.
 - **AI disclaimer** añade el texto de aviso legal configurado.
-- **Answering style** proporciona instrucciones de respuesta estándar.
+- **Answering style** proporciona instrucciones de respuesta permanentes.
 - **Simplified thinking** convierte el progreso en tiempo de ejecución en pasos
   más breves orientados al visitante.
 - **Suggested questions** controla las sugerencias de seguimiento generadas.

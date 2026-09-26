@@ -218,8 +218,7 @@ export function AuthenticationClient({
                   : "Off, subject only"}
               </code>
               <p className="text-muted-foreground text-xs">
-                When on, the verified claim identifies the signed-in user to
-                per-user features. Reconnect to change it.
+                The verified claim identifies the signed-in user. Reconnect to change it.
               </p>
             </div>
             <p className="text-muted-foreground text-xs">
@@ -287,9 +286,7 @@ export function AuthenticationClient({
                 </SelectContent>
               </Select>
               <p className="text-muted-foreground text-xs">
-                Optional. Verifies a claim at sign-in so per-user features can
-                match the signed-in user to your data. Off keeps sign-in
-                anonymous beyond the opaque subject.
+                Optional. Matches signed-in users to your data. Off keeps them anonymous.
               </p>
             </div>
             <Button
@@ -325,9 +322,7 @@ export function AuthenticationClient({
         </div>
         {enforceableWithoutValid && (
           <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-            Sign-in is required but there is no validated connection yet, 
-            visitors won&apos;t be able to get past the gate until you connect
-            and validate a provider.
+            Sign-in is required but no provider is validated yet, so visitors can&apos;t get in.
           </p>
         )}
       </Card>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { FlowPatch } from "@agent-hub/core";
-import { EMPTY_TURN_TRACE, consumeTurnStream } from "@agent-hub/agent/client";
+import { EMPTY_TURN_TRACE } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { Button } from "@agent-hub/ui";
 import { SquarePen } from "lucide-react";
@@ -25,6 +25,7 @@ import {
   flowsAgentConversationAction,
   flowsAgentThreadAction,
 } from "@/app/(admin)/assistants/[id]/flows/flows-agent-actions";
+import { patchLastBot, runTurn } from "@/components/chat/turn-session";
 
 /**
  * The Flows Agent panel (#838): the Teammate chat, docked in the workspace's
@@ -125,19 +126,13 @@ export function FlowsAgentPanel({
   };
 
   const updateLastBot = (fn: (bot: ChatBotMsg) => ChatBotMsg) =>
-    setMessages((prev) => {
-      const next = [...prev];
-      const last = next[next.length - 1];
-      if (last?.role === "bot") next[next.length - 1] = fn(last);
-      return next;
-    });
+    setMessages((prev) => patchLastBot(prev, fn));
 
   async function send(text: string) {
     const message = text.trim();
     if (!message || pending || !providerReady) return;
     setPending(true);
     playFeedback("send");
-    const turnId = crypto.randomUUID();
     setMessages((prev) => [
       ...prev,
       { role: "user", text: message, sentAt: new Date().toISOString() },
@@ -146,33 +141,29 @@ export function FlowsAgentPanel({
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      const response = await fetch(`/api/assistants/${assistantId}/flows-agent/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversationId: conversationRef.current,
-          flowId,
-          draft,
-          message,
-          turnId,
-        }),
+      const outcome = await runTurn<ChatBotMsg>({
         signal: controller.signal,
-      });
-      if (!response.ok || !response.body) {
-        throw new Error(
-          response.status === 403
-            ? "Only editors can use the Flows Agent"
-            : `Chat failed (${response.status})`
-        );
-      }
-      await consumeTurnStream<ChatBotMsg>(response.body, {
+        request: (signal, turnId) =>
+          fetch(`/api/assistants/${assistantId}/flows-agent/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              conversationId: conversationRef.current,
+              flowId,
+              draft,
+              message,
+              turnId,
+            }),
+            signal,
+          }),
+        failure: (status) =>
+          status === 403 ? "Only editors can use the Flows Agent" : `Chat failed (${status})`,
         update: updateLastBot,
         onStart: ({ conversationId }) => {
           holdConversation(conversationId);
         },
-        onDone: ({ conversationId, messageId }) => {
+        onDone: ({ conversationId }) => {
           holdConversation(conversationId);
-          updateLastBot((bot) => ({ ...bot, id: messageId }));
         },
         onEvent: (event) => {
           const cue = chatFeedbackForEvent(event);
@@ -187,11 +178,8 @@ export function FlowsAgentPanel({
         },
         errorText: (text) => `⚠️ ${text}`,
       });
-    } catch (error) {
       // An aborted turn is the Editor pressing Stop or leaving, not a failure.
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
-        toast.error(error instanceof Error ? error.message : "Chat failed");
-      }
+      if (outcome.status === "failed") toast.error(outcome.error.message);
     } finally {
       abortRef.current = null;
       setPending(false);
@@ -374,8 +362,7 @@ export function FlowsAgentPanel({
             >
               {messages.length === 0 && !providerReady && (
                 <p className="text-muted-foreground text-sm">
-                  No AI provider is connected for this organization, so the Flows Agent has
-                  nothing to answer with. An Owner connects one under Settings → AI.
+                  No AI provider is connected. An Owner can add one in Settings → AI.
                 </p>
               )}
               {messages.length === 0 && providerReady && (

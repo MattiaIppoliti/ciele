@@ -81,9 +81,8 @@ system, decisions included, because the log is also the postmortem's evidence.
 - **Hosted MCP / API surface**: unset the affected keys; the internal origin is
   environment-pinned, so host-header manipulation is not a lever an attacker
   holds.
-- **Workers**: stop the container (both bind loopback-only by default; the
-  graph worker verifies its model manifest at start, so a restart is also an
-  integrity re-check).
+- **Workers**: stop the crawler container (it binds loopback-only by
+  default).
 
 ## Eradication and recovery
 

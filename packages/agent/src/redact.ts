@@ -1,7 +1,7 @@
 /**
  * Scrubs bearer credentials out of any text destined for an error, an Alert, a
  * client response, or telemetry. Shared by the private-worker adapters
- * (crawler, graph) so the redaction rules live in exactly one place.
+ * (crawlers) so the redaction rules live in exactly one place.
  *
  * A worker token only ever travels in the `Authorization` header, but a
  * misconfigured or verbose worker could echo it (or the raw header) back in an

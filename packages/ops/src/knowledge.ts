@@ -24,7 +24,7 @@ import { OperationError, defineOperation } from "./operation";
  * - **Operations** own the guards (assistant → collection → source chains)
  *   and the Db writes.
  * - **Ports** carry the pipeline effects (ingestion job, OKF FAQ persist,
- *   graph retirement, crawl restart), each wired over the surface's own Db.
+ *   crawl restart), each wired over the surface's own Db.
  */
 
 async function requireAssistant(
@@ -364,16 +364,7 @@ async function removeSource(
   // Every linked Assistant's editor needs revalidating, capture the links
   // before the delete cascades them away.
   const links = await ctx.db.listSourceAssistantLinks(id);
-  // Deleting a Source cascade-deletes its Concepts; capture their ids first
-  // and retire their graph documents, the Collection survives, so orphaned
-  // docs would otherwise pollute its live retrieval (ADR-0017).
-  const conceptIds = (await ctx.db.listConcepts(source.collectionId))
-    .filter((c) => c.sourceId === id)
-    .map((c) => c.id);
   await ctx.db.deleteSource(id);
-  for (const conceptId of conceptIds) {
-    await ctx.ports?.removeConceptGraph?.(source.collectionId, conceptId);
-  }
   // A Teammate can name this Source directly in its Knowledge Scope, and that
   // is not a foreign key: the delete leaves it pointed at nothing, so the
   // operational surface says so rather than letting the scope go quiet (#769).
@@ -766,7 +757,15 @@ export const updateOrgFaqOp = defineOperation({
     question: z.string().min(1).max(1000),
     answer: z.string().min(1).max(20000),
   }),
-  entities: () => [{ kind: "knowledgeHub" as const }],
+  // The FAQ renders in the Library and in the Knowledge tab of every
+  // Assistant it is linked to, so the edit touches all of them.
+  entities: (_input, result: Concept & { linkedAssistantIds: string[] }) => [
+    { kind: "knowledgeHub" as const },
+    ...result.linkedAssistantIds.map((assistantId) => ({
+      kind: "assistantEditor" as const,
+      assistantId,
+    })),
+  ],
   run: async (ctx, input) => {
     const { source } = await requireSource(ctx, input.sourceId);
     if (source.kind !== "faq") {
@@ -792,6 +791,8 @@ export const updateOrgFaqOp = defineOperation({
     await ctx.db.deleteChunksByConcept(concept.id);
     const links = await ctx.db.listSourceAssistantLinks(input.sourceId);
     if (links[0]) {
+      // The Assistant only attributes the embedding's usage, so the first
+      // link is as good as any.
       await ctx.ports?.reembedConcept?.({
         assistantId: links[0].assistantId,
         collectionId: concept.collectionId,
@@ -800,7 +801,7 @@ export const updateOrgFaqOp = defineOperation({
         body: input.answer,
       });
     }
-    return concept;
+    return { ...concept, linkedAssistantIds: links.map((link) => link.assistantId) };
   },
 });
 

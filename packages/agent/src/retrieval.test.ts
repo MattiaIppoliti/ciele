@@ -146,7 +146,7 @@ describe("Study Mode during ingestion", () => {
     const listAssistantSourceIds = vi.fn(async () => ["src-1"]);
     const search = buildKnowledgeSearcher({
       db: { searchChunks, getSource, listAssistantSourceIds } as unknown as Db,
-      connections: [], assistant: { id: "assistant-1", organizationId: "org-1", knowledgeEngine: "vector" },
+      connections: [], assistant: { id: "assistant-1", organizationId: "org-1" },
       collectionId, conversationId: null, waitForIndexing: true,
     });
     return { search, searchChunks, getSource, listAssistantSourceIds, finish: () => { ready = true; } };

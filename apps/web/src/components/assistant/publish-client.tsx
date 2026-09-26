@@ -258,9 +258,7 @@ export function PublishClient({
       <TimelineSection title="Website & embed">
       <Card size="sm" className="gap-0 p-4">
         <p className="text-muted-foreground text-sm">
-          Add the floating chat button to any page, opening as a floating
-          rounded card or as a flush full-height side drawer, or embed the
-          chat inline.
+          Add a chat button to any page, or embed the chat inline.
         </p>
         <div className="mt-4 space-y-5">
           <CopyBlock

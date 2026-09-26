@@ -69,9 +69,7 @@ export function ContactSales() {
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         <MarketingHero eyebrow="Contact sales" title="Learn about Ciele">
           <p className="text-muted-foreground mt-6 text-lg leading-relaxed">
-            Talk to the people who build Ciele. Tell us what you want your
-            assistant to handle and we will come back with a time, usually
-            within one working day.
+            Tell us what your assistant should handle. We usually reply within one working day.
           </p>
         </MarketingHero>
 

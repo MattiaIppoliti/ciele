@@ -37,7 +37,7 @@ prompt's 60k characters. Website crawls were unaffected (their bodies are verbat
 `enrich` therefore emits one **verbatim companion** per Source alongside the enriched Concepts:
 `originals/<slug>.md`, `type: Source Text`, `generated: process:okf-verbatim-index`, body = the
 extracted text unedited and uncapped. It is an ordinary Concept on the ordinary `persistConcept`
-seam, so it chunks, embeds, graph-syncs and atomically replaces like any other, and citations still
+seam, so it chunks, embeds and atomically replaces like any other, and citations still
 resolve Concept → Source. Written **only when enrichment ran**, the no-model pass-through Concept
 already is the verbatim text, and crawled pages already are too, so a companion there would be a
 duplicate competing for the same top-*k* slots.
@@ -60,6 +60,26 @@ drops a Concept from both indexes. Full reasoning:
 
 Sources ingested before this change have no companion until re-ingested; file Sources with a
 retained original can be re-processed from the Knowledge UI, pasted text and URLs cannot.
+
+## Amendment: OKF is the envelope, not a rewrite (2026-09-25, ADR-0025)
+
+The enrichment step above is gone. A file or pasted-text Source is stored as its own words: the
+pass-through `Document` Concept(s), `generated: process:okf-ingest-passthrough`, with `sources`
+naming the Source. No model drafts Concepts at ingestion, and the verbatim companion has nothing to
+accompany, so new Sources carry neither `okf-enricher/...` Concepts nor `Source Text` ones.
+
+What survives is everything this ADR was for: the OKF frontmatter on every Concept, the bundle's
+portability, and the citation invariant (a citation resolves to a Concept and then its Source,
+never to an opaque chunk). pgvector is the index; OKF is the record.
+
+The reason is measured, not taste: on the ADR-0025 bench the rewrite kept 16% of the source
+characters and never found an answer the verbatim text missed, while it took one of the six result
+slots in six. The rejected alternative at the top of this ADR ("raw files + embedding chunks")
+stays rejected in the sense it meant: chunks still belong to a Concept with provenance, and a
+curated FAQ is still a hand-written Concept.
+
+Existing enriched Concepts are rebuilt from their own `Source Text` companions by
+`enqueueVerbatimReingests` (ADR-0025, Consequences).
 
 ## Amendment: Document is the domain noun, Concept stays the format's (2026-09-20)
 

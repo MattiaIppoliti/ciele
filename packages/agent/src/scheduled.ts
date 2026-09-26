@@ -32,7 +32,6 @@ import {
   type RunDueJobsResult,
   runDueEntitySyncJobs,
   runDueApplicationSyncJobs,
-  runDueGraphSyncJobs,
   runDueIngestJobs,
   runDueAgentMemoryJobs,
   runDueMemoryPromotionJobs,
@@ -131,7 +130,6 @@ export type FinalizedCrawlResult =
 export interface FinalizeDueCrawlsReport {
   effects: Awaited<ReturnType<typeof drainTurnEffects>>;
   jobs: RunDueJobsResult;
-  graphSync: RunDueJobsResult;
   proposals: RunDueJobsResult;
   memories: RunDueJobsResult;
   /** Teammate Agent-layer distillation (#771). */
@@ -183,7 +181,7 @@ function alertOnOldQueueWork(
  *
  * The Knowledge UI polls in-flight crawls while it is open; an admin who closes
  * the tab mid-crawl would otherwise leave the Source on `processing`. This drains
- * the ledger (ingest, graph-sync, Suggested Fix drafting, each the cron backstop
+ * the ledger (ingest, Suggested Fix drafting, each the cron backstop
  * for the host's after-response accelerator), then atomically claims one bounded,
  * least-recently-attempted batch of `processing` crawls across all orgs and
  * finalizes any whose provider run has finished. A finalize failure is reported
@@ -219,7 +217,6 @@ export async function finalizeDueCrawls(
     superseded: 0,
   });
   const jobs = emptyJobs();
-  const graphSync = emptyJobs();
   const proposals = emptyJobs();
   const memories = emptyJobs();
   const agentMemories = emptyJobs();
@@ -245,7 +242,6 @@ export async function finalizeDueCrawls(
     const [
       batchEffects,
       batchJobs,
-      batchGraph,
       batchProposals,
       batchMemories,
       batchAgentMemories,
@@ -254,10 +250,6 @@ export async function finalizeDueCrawls(
     ] = await Promise.all([
       drainTurnEffects(db, { limit: 50, now: options.now }),
       runDueIngestJobs({ db }, { workerId, limit: 10, now: options.now }),
-      runDueGraphSyncJobs(
-        { db },
-        { workerId: `${workerId}-graph`, limit: 20, now: options.now },
-      ),
       runDueProposalJobs(
         { db },
         { workerId: `${workerId}-proposals`, limit: 10, now: options.now },
@@ -281,7 +273,6 @@ export async function finalizeDueCrawls(
     ]);
     addEffects(batchEffects);
     addJobs(jobs, batchJobs);
-    addJobs(graphSync, batchGraph);
     addJobs(proposals, batchProposals);
     addJobs(memories, batchMemories);
     addJobs(agentMemories, batchAgentMemories);
@@ -290,7 +281,6 @@ export async function finalizeDueCrawls(
     if (
       batchEffects.claimed +
         batchJobs.claimed +
-        batchGraph.claimed +
         batchProposals.claimed +
         batchMemories.claimed +
         batchAgentMemories.claimed +
@@ -343,7 +333,6 @@ export async function finalizeDueCrawls(
   return {
     effects,
     jobs,
-    graphSync,
     proposals,
     memories,
     agentMemories,

@@ -1,6 +1,6 @@
 /**
  * The one bearer-authenticated JSON request the provider adapters share
- * (Apify, the Crawl4AI worker, the graph worker): POST/GET with a timeout,
+ * (Apify and the Crawl4AI worker): POST/GET with a timeout,
  * a non-2xx body surfaced as a capped error message (optionally scrubbed of
  * secrets by the adapter's redactor), and the parsed JSON body on success.
  * The token only ever travels in the `Authorization` header.

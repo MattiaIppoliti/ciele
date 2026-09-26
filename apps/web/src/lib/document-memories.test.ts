@@ -70,7 +70,7 @@ describe("liveMemoryCount", () => {
 
 describe("memoryActorLabel", () => {
   it("says who wrote the sentence, not which version it is", () => {
-    expect(memoryActorLabel("knowledge-memory-extractor/claude-haiku-4-5")).toBe(
+    expect(memoryActorLabel("knowledge-memory-extractor/claude-sonnet-5")).toBe(
       "Extracted"
     );
     expect(memoryActorLabel("process:knowledge-memory-extraction")).toBe(

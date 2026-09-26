@@ -7,6 +7,7 @@ import type {
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { EMBEDDING_DIMS } from "./embeddings";
+import { RERANK_CANDIDATES } from "./rerank";
 import {
   draftGoalProposal,
   draftImprovementProposal,
@@ -84,7 +85,7 @@ function fakeDb(over: Partial<Db> = {}): Db {
     getConversationForMessage: vi.fn().mockResolvedValue(conversation),
     getAssistant: vi
       .fn()
-      .mockResolvedValue({ id: "a1", organizationId: "org1", knowledgeEngine: "vector" }),
+      .mockResolvedValue({ id: "a1", organizationId: "org1" }),
     listMessages: vi
       .fn()
       .mockResolvedValue([msg("u1", "user", "how do I reset?"), msg("m1", "assistant", "bad answer")]),
@@ -148,7 +149,8 @@ describe("draftImprovementProposal", () => {
     expect(db.searchChunks).toHaveBeenCalledWith("a1", null, {
       embedding: null,
       text: QUERY,
-      limit: 6,
+      // The rerank stage's candidate pool, not the final six (ADR-0025).
+      limit: RERANK_CANDIDATES,
       // No embedding-capable connection means no space either (#801, CYB-14).
       embeddingSpace: null,
     });

@@ -100,8 +100,7 @@ export function PreviewEscalation({
         )}
         {screen === "empty" && (
           <p className="text-muted-foreground pt-6 text-sm">
-            No support channels are available right now. Select help desks
-            below and add channels in the Help Desks library.
+            No support channels yet. Select help desks below and add channels to them.
           </p>
         )}
 

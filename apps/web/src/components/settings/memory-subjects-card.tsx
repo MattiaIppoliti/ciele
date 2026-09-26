@@ -97,9 +97,7 @@ export function MemorySubjectsCard({
           Remembered users
         </CardTitle>
         <CardDescription>
-          Every signed-in user your assistants hold memories about. Look a
-          user up to review, delete, or fully erase what is remembered,
-          erasure is complete and immediate.
+          Signed-in users your assistants remember. Review or erase a user&apos;s memories here; erasure is immediate.
         </CardDescription>
       </CardHeader>
       <CardContent>

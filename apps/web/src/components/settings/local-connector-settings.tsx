@@ -711,10 +711,7 @@ export function LocalConnectorSettings({
                 <p className="text-sm font-medium">Connector not detected</p>
                 <p className="text-muted-foreground mt-1 text-xs">
                   Use <span className="font-medium">Authorize from Terminal</span> to
-                  paste one command for your OS. It starts the connector and pairs
-                  this Member and Organization automatically. Requires Node.js 18+,
-                  runs per-user without administrator privileges, and needs no
-                  Vercel or Supabase access.
+                  paste one command for your OS. It starts the connector and pairs automatically. Needs Node.js 18+, no admin rights.
                 </p>
               </div>
             </div>

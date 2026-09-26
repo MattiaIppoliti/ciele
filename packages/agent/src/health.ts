@@ -53,8 +53,11 @@ export const alertKeys = {
   preflightDrift: () => "preflight-drift",
   /** Standing-goal verification failures. */
   goal: (goalId: string) => `goal:${goalId}`,
-  /** Graph knowledge worker reachability, per organization (ADR-0017). */
-  graphWorker: (organizationId: string) => `graph-worker:${organizationId}`,
+  /**
+   * The knowledge search's rerank stage (ADR-0025), per organization. Raised
+   * only after repeated fail-open searches, cleared by the next reranked one.
+   */
+  rerank: (organizationId: string) => `rerank:${organizationId}`,
   /** Per-Entity Record sync lifecycle (sync failed / recovered, #670). */
   entitySync: (entityId: string) => `entity-sync:${entityId}`,
   /**

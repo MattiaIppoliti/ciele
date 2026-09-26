@@ -113,9 +113,7 @@ export function TicketingIntegrationSection({
         </span>
       </div>
       <p className="text-muted-foreground mt-1 text-sm">
-        Connect a ticketing system to automatically create cases from chat
-        escalations. Set this up before configuring support channels to
-        enable ticket creation per channel.
+        Create tickets from escalations. Set it up before your support channels.
       </p>
 
       <Card size="sm" className="mt-5 gap-0 p-4">

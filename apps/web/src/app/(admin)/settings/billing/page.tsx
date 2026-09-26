@@ -169,9 +169,7 @@ export default async function BillingPage({
           </CardHeader>
           <CardContent className="text-muted-foreground space-y-2 text-sm">
             <p>
-              Assistants, knowledge, flows and conversation history stay exactly
-              as they are while an organization is pending, paused, or between
-              plans. Activating restores answering; nothing has to be rebuilt.
+              Your assistants, knowledge and history are kept while the organization is inactive. Activating turns answering back on.
             </p>
             <p>
               You can also run Ciele yourself, free and forever, on the same

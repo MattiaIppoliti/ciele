@@ -16,6 +16,7 @@ import {
 } from "@agent-hub/ui";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { formatDateTime } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 const TYPE_LABELS: Record<AlertType, string> = {
   integration: "Integration",
@@ -63,12 +64,10 @@ export function AlertsList({
   return (
     <div className="flex h-full flex-col">
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
+        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Alerts" /></h1>
       </header>
       <p className="text-muted-foreground px-4 text-sm sm:px-6">
-        Operational issues that need attention, failing integrations, crawls,
-        and AI providers. Alerts clear when you resolve them or the underlying
-        issue recovers.
+        Failing integrations, crawls and providers. Alerts clear when resolved or recovered.
       </p>
 
       <Tabs

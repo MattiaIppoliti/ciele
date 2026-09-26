@@ -16,9 +16,7 @@ export default function TeammatesPage() {
       </span>
       <h2 className="text-xl font-bold">Pick a teammate or a group</h2>
       <p className="text-muted-foreground max-w-sm text-sm">
-        A teammate is an AI colleague your team chats with inside Ciele. It
-        answers from the knowledge you already curated in the Library, and it
-        never talks to your website visitors.
+        An AI colleague your team chats with inside Ciele. It answers from your Library and never talks to visitors.
       </p>
     </div>
   );

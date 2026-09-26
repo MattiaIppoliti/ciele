@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { RollInText } from "@/components/motion/roll-in-text";
 import { cn } from "@/lib/utils";
 
 /**
@@ -94,7 +95,9 @@ export function SectionHeading({
                 : "text-2xl"
           )}
         >
-          {title}
+          {/* The mock variant is a drawing inside a marketing preview, not a
+              page that opened, so it does not roll. */}
+          {mock ? title : <RollInText text={title} />}
         </Heading>
         <p
           className={cn(

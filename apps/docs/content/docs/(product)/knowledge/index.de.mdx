@@ -4,19 +4,19 @@ description: Fügen Sie Quellen hinzu, die der Assistent durchsuchen und zitiere
 ---
 
 Sources gehören zur Organization, und eine Knowledge Collection speichert sie
-zusammen mit den während der Ingestion erstellten Concepts. Ein Assistent
-durchsucht eine Quelle erst, nachdem Sie diese Quelle mit dem Assistenten
+zusammen mit den während der Ingestion erstellten Documents. Ein Assistant
+durchsucht eine Source erst, nachdem Sie diese Source mit dem Assistant
 verknüpft haben. Verknüpfen Sie eine Quelle aus der
-[Bibliothek](/knowledge/library) oder fügen Sie sie innerhalb des Assistenten
-hinzu, der sie dann für Sie verknüpft.
+[Library](/knowledge/library) oder fügen Sie sie im Assistant hinzu, wodurch sie
+automatisch für Sie verknüpft wird.
 
-Da eine Quelle für mehrere Assistenten antworten kann, sind das Entfernen aus
-einem Assistenten und das Löschen für die Organisation unterschiedliche
-Vorgänge. Wenn Sie einen Assistenten löschen, bleiben die Quellen der
-Organisation erhalten. Es werden nur die Verknüpfungen dieses Assistenten
-entfernt.
+Da eine Quelle für mehrere Assistenten Antworten liefern kann, sind das
+Entfernen aus einem Assistenten und das Löschen für die gesamte Organisation
+unterschiedliche Vorgänge. Wenn Sie einen Assistenten löschen, bleiben die
+Quellen der Organisation erhalten. Es werden nur die Verknüpfungen dieses
+Assistants entfernt.
 
-## Verfügbare Quellentypen
+## Verfügbare Quelltypen
 
 - Website-URL
 - Hochgeladene Datei
@@ -24,31 +24,31 @@ entfernt.
 - Verbundene Anwendung
 - Kuratierte FAQ
 
-Ciele extrahiert Source-Inhalte und erstellt durchsuchbare Concepts. Die
-Laufzeit löst Zitate auf die benannten Quellen zurück.
+Ciele extrahiert Source-Inhalte und erstellt durchsuchbare Dokumente. Die
+Runtime ordnet Zitate wieder benannten Quellen zu.
 
-## Quellstatus
+## Status der Quelle
 
 | Status | Bedeutung |
 | --- | --- |
-| Processing | Ciele extrahiert und indiziert die Source. |
-| Bereit | Die Quelle steht für die Wissenssuche zur Verfügung. |
-| Failed | Die Aufnahme wurde nicht abgeschlossen. Überprüfen Sie den Fehler und wiederholen Sie den Vorgang. |
+| Processing | Ciele extrahiert und indiziert die Quelle. |
+| Ready | Die Quelle steht für die Suche nach Wissen zur Verfügung. |
+| Failed | Die Ingestion wurde nicht abgeschlossen. Überprüfen Sie den Fehler und versuchen Sie den Vorgang erneut. |
 
-Testen Sie eine neue Quelle erst, wenn ihr Status **Ready** lautet.
+Testen Sie eine neue Source erst, wenn ihr Status **Ready** lautet.
 
 ## Direkter Zugriff
 
-Eine Datei-Quelle kann dem Besucher neben der Zitation auch die Originaldatei
-zur Verfügung stellen. Dies ist die Einstellung **Direct access** für einen
-Assistant-Link und sie ist standardmäßig deaktiviert. Legen Sie dies in der
-Bibliothek fest.
+Eine Datei-Quelle kann dem Visitor neben der Quellenangabe auch die
+Originaldatei bereitstellen. Dies ist die Einstellung **Direct access** für
+einen Assistant-Link, und sie ist standardmäßig deaktiviert. Legen Sie es in der
+Library fest.
 
 ## Abruf
 
-Die Wissenssuche kann die Vektorsuche, den lexikalischen Fallback und die
-Navigation im Wissensgraphen nutzen. Die ausgewählte Knowledge-Engine steuert
-den primären Pfad.
+Search Knowledge verwendet die Vektorsuche und den lexikalischen Fallback, um
+potenzielle Passagen zu finden. Anschließend wählt ein Reranking-Schritt die
+Passagen aus, die der Assistant liest.
 
-Deep Search ermöglicht mehr reine Knowledge-Iterationen. Es durchsucht nicht das
-offene Web.
+Deep Search ermöglicht mehr Iterationen, die ausschließlich auf Knowledge
+beschränkt sind. Es durchsucht nicht das offene Web.

@@ -6,8 +6,6 @@ import { createHash } from "node:crypto";
 
 import {
   enqueueDraftProposalJob,
-  feedbackScore,
-  forwardGraphFeedback,
   sendEmail,
   sendEscalationApiRequest,
 } from "@agent-hub/agent";
@@ -264,15 +262,6 @@ export async function escalateConversation(input: {
       { swallowErrors: true }
     );
     if (lastAssistant?.id) {
-      // An escalation is an implicit thumbs-down on the last answer: if it was
-      // graph-served, score it 1 so the learning loop demotes its material (#389).
-      await forwardGraphFeedback({
-        db,
-        organizationId: assistant.organizationId,
-        messageId: lastAssistant.id,
-        score: feedbackScore(-1),
-        text: "Escalated to human support without a resolving answer.",
-      });
       // Draft a Suggested Fix for the flagged answer (#390).
       if (raised) {
         await enqueueDraftProposalJob(

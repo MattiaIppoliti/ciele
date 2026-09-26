@@ -14,6 +14,7 @@ import {
   tabHealth,
   type KnowledgeTabSlug,
 } from "@/lib/knowledge-hub";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 const HEALTH_DOT: Record<SourceStatus, string> = {
   ready: "bg-emerald-500",
@@ -76,7 +77,7 @@ export function LibraryHeader({
     <div className="shrink-0">
       <header className="flex flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          {KNOWLEDGE_TAB_TITLES[tab]}
+          <RollInText text={KNOWLEDGE_TAB_TITLES[tab]} />
           <Badge variant="secondary">{tabSummaries[tab]?.total ?? 0}</Badge>
         </h1>
       </header>

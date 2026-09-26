@@ -81,6 +81,8 @@ export { extractSourceText } from "./extract";
 export { createVisionReader } from "./vision";
 export type { VisionReader } from "./vision";
 export { enqueueIngestJob, runDueIngestJobs } from "./jobs";
+// The one-off verbatim re-ingest (ADR-0025), driven by a manual cron route.
+export { enqueueVerbatimReingests, type VerbatimReingestReport } from "./jobs";
 export { enqueueApplicationSyncJob } from "./jobs";
 export {
   discoverApplicationConnectionScopes,
@@ -134,17 +136,6 @@ export type {
   FinalizedCrawlResult,
   SweptTraceResult,
 } from "./scheduled";
-
-// Graph-sync ledger, keeps each Collection's derived Knowledge Graph in step
-// with its OKF Concepts (ADR-0017). Inert without a graph worker. The per-kind
-// cron DRAINS (runDue*Jobs, enqueueDueEntitySyncs) are deliberately not here:
-// only `scheduled.ts` composes them, and `finalizeDueCrawls` is the public
-// entrypoint that runs them all.
-export { backfillCollectionToGraph, enqueueGraphSyncJob } from "./jobs";
-
-// Graph learning loop: feedback on graph-served answers re-weights retrieval
-// (ADR-0017). Inert without a graph worker; fail-soft with auto-resolving Alerts.
-export { feedbackScore, forwardGraphFeedback, runGraphLearning } from "./graph-feedback";
 
 // Suggested Fix: drafts a reviewable knowledge proposal for a flagged answer
 // (ADR-0017). Best-effort; a drafting failure leaves a "no proposal" state.

@@ -55,15 +55,11 @@ export function ActivationStatusCard({
           <CardDescription>
             {selfServe ? (
               <>
-                Your assistants do not answer yet. Everything else is open, 
-                pick a plan and they start answering as soon as the payment
-                clears.
+                Your assistants don&apos;t answer yet. Pick a plan and they start once payment clears.
               </>
             ) : (
               <>
-                Your assistants do not answer yet. Everything else is open, 
-                build them now and they start working the moment we activate
-                you.
+                Your assistants don&apos;t answer yet. Build them now; they start once we activate you.
               </>
             )}
           </CardDescription>
@@ -99,9 +95,7 @@ export function ActivationStatusCard({
             )}
           </div>
           <p className="text-muted-foreground text-xs">
-            Prefer to run it yourself? The open-source edition is the same
-            product, free forever, and you can move your work to it or from it
-            at any time.
+            Prefer to self-host? The open-source edition is the same product, free, and you can move your work either way.
           </p>
         </CardContent>
       </Card>
@@ -165,9 +159,7 @@ export function ActivationStatusCard({
         </dl>
         {subscription.status === "past_due" && (
           <p className="text-sm text-amber-600 dark:text-amber-400">
-            A payment did not go through. Your assistants keep answering while
-            we retry, update your card from the billing portal to avoid an
-            interruption.
+            A payment failed. Assistants keep answering while we retry. Update your card to avoid an interruption.
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3">

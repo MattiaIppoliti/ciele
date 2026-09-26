@@ -6,9 +6,8 @@
  * knowledge context). The draft is stored for human review; nothing edits
  * knowledge until a Member accepts it.
  *
- * Context retrieval goes through the assistant's active Knowledge Engine
- * (`withGraphEngine` over the vector searcher), so graph context is used when
- * available and vector otherwise, matching how the widget answers.
+ * Context retrieval goes through the same searcher the widget answers with
+ * (`buildKnowledgeSearcher`: hybrid candidates, then the rerank stage).
  *
  * Best-effort: no model credential, no flagged message, or an LLM error simply
  * leaves the Improvement without a proposal (the UI shows a "no proposal"
@@ -221,10 +220,10 @@ async function draftFrom(
   const classifier = getClassifierModel("anthropic", connections);
   if (!classifier) return; // No credential → leave a "no proposal" state.
 
-  // Retrieve knowledge context via the assistant's active engine.
+  // Retrieve knowledge context the way the widget does.
   const query = [ctx.question, ctx.description].filter(Boolean).join(" ") || ctx.flaggedAnswer;
   const results = await ctx.searcher(query, { scope: "assistant" }).catch((error) => {
-    // Retrieval failed (graph/vector outage): draft from the flagged answer +
+    // Retrieval failed (index outage): draft from the flagged answer +
     // note alone rather than starving the proposal, but leave a breadcrumb.
     console.error("[proposal] context retrieval failed:", error);
     return [];

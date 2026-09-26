@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Download, UserRound, X } from "lucide-react";
 import { BellRing, Calendar as CalendarIcon, Info, ListFilter } from "lucide-react";
-import { escapeCsvField } from "@ciele/ops/csv";
+import { recordsToCsv } from "@ciele/ops/csv";
 import { Button } from "@agent-hub/ui";
 import { CalendarRange } from "@/components/ui/calendar";
 import {
@@ -42,6 +42,7 @@ import type {
   InsightsFilter,
   InsightsOverview,
 } from "@/lib/insights/report";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 interface AssistantOption {
   id: string;
@@ -249,15 +250,7 @@ export function InsightsClient({
         type: "application/json",
       });
     } else {
-      const headers = Object.keys(rows[0] ?? { date: "" });
-      const escape = (v: unknown) => escapeCsvField(String(v));
-      const csv = [
-        headers.join(","),
-        ...rows.map((r) =>
-          headers.map((h) => escape(r[h as keyof typeof r])).join(",")
-        ),
-      ].join("\n");
-      blob = new Blob([csv], { type: "text/csv" });
+      blob = new Blob([recordsToCsv(rows, rows.length ? undefined : ["date"])], { type: "text/csv" });
     }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -275,7 +268,7 @@ export function InsightsClient({
           className="text-2xl font-bold tracking-tight"
           data-testid="insights-heading"
         >
-          Insights
+          <RollInText text="Insights" />
         </h1>
         {refreshing && <span className="text-muted-foreground text-sm">Updating…</span>}
         {/* Four controls, two of them wide date/assistant pickers: they wrap
@@ -403,8 +396,8 @@ export function InsightsClient({
                 value={filters.feedback}
                 placeholder="All Feedbacks"
                 options={[
-                  { value: "up", label: "Positive 🙂" },
-                  { value: "down", label: "Negative 🙁" },
+                  { value: "up", label: "Positive 🥰" },
+                  { value: "down", label: "Negative 🤬" },
                 ]}
                 onChange={(feedback) =>
                   setFilters({

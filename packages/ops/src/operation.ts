@@ -1,4 +1,5 @@
 import type {
+  ApplicationScopeOption,
   Concept,
   ConceptFrontmatter,
   DecisionBooleanAnswer,
@@ -131,6 +132,19 @@ export interface TriageDecisionAnswers {
 
 export interface OperationPorts {
   /**
+   * The host half of the Application Import lifecycle. A port because each of
+   * these needs what an operation cannot hold: discovery reads the sealed
+   * credential (hidden from the Member's RLS) and may rotate it, and the sync
+   * queue and its cancellation live on the system Db's job ledger. Absent, the
+   * lifecycle operations refuse rather than store an Import nothing can sync.
+   */
+  applicationImports?: {
+    /** What this Connection can import from right now, per its provider. */
+    discoverScopes(connectionId: string): Promise<ApplicationScopeOption[]>;
+    enqueueSync(input: { importId: string; organizationId: string }): Promise<void>;
+    cancelSync(importId: string, reason: string): Promise<void>;
+  };
+  /**
    * Runs an action the approval gate stopped, once a Member has approved it
    * (#958). A port because the action must run on the **org-pinned**
    * service-role Db the Teammate paths use, never on the approving Member's
@@ -207,8 +221,6 @@ export interface OperationPorts {
   validateSsoConnection?(
     connection: SsoConnection
   ): Promise<{ ok: true } | { ok: false; error: string }>;
-  /** Retire one deleted Concept's graph document (ADR-0017). */
-  removeConceptGraph?(collectionId: string, conceptId: string): Promise<void>;
   /** Defer the OKF pipeline (extract→enrich→chunk→embed) to an Ingestion Job. */
   enqueueIngest?(job: {
     assistantId: string;

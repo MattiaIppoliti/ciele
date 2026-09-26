@@ -32,6 +32,7 @@ import {
 } from "@/components/motion/select";
 import { SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
+import { SmoothCaret } from "./smooth-caret";
 
 // Stable Lucide icon data lets MorphIcon reshape one SVG path in place.
 const ArrowUpData = [
@@ -279,18 +280,18 @@ export function PromptInput({
           // 16px below `md`: iOS Safari zooms the page in when a focused field
           // is smaller than that, and never zooms back out, on the chat
           // composer, the one control every mobile visitor touches.
+          // The native caret is hidden: `SmoothCaret` paints one that glides.
           className={cn(
-            "scrollbar-hide relative block w-full resize-none overflow-y-auto bg-transparent outline-none placeholder:text-muted-foreground/55",
+            "scrollbar-hide relative block w-full resize-none overflow-y-auto bg-transparent caret-transparent outline-none placeholder:text-muted-foreground/55",
             TEXT_LAYER,
             // With a highlight layer under it the glyphs come from there, and
-            // this element contributes only the caret and the selection. The
-            // caret is coloured explicitly because `text-transparent` would
-            // otherwise take it with it.
+            // this element contributes only the selection.
             highlight
-              ? "text-transparent caret-foreground selection:bg-primary/30 selection:text-transparent"
+              ? "text-transparent selection:bg-primary/30 selection:text-transparent"
               : "text-foreground",
           )}
         />
+        <SmoothCaret textareaRef={textareaRef} value={currentValue} textClassName={TEXT_LAYER} />
       </div>
 
       <div className="mt-1 flex min-h-8 items-center gap-1">
@@ -430,9 +431,24 @@ export function PromptInput({
     </form>
   );
 
+  // The beam is an overlay beside the form, not a wrapper around it: it clips
+  // its glow with `overflow: hidden`, and wrapping the form cut off the model
+  // picker, which opens upward out of the composer. Its layers paint over
+  // their box with pointer events off, so an empty beam draws the same glow.
   return voiceInput ? (
-    <VoiceBeam stream={voiceStream} active={voiceStream !== null} theme={renderedTheme} className="w-full">
+    <div className="relative w-full">
       {form}
-    </VoiceBeam>
+      <VoiceBeam
+        stream={voiceStream}
+        active={voiceStream !== null}
+        theme={renderedTheme}
+        aria-hidden="true"
+        // Inline, because the beam's own unlayered `position: relative`
+        // outranks a Tailwind utility.
+        style={{ position: "absolute", inset: 0, pointerEvents: "none", isolation: "isolate" }}
+      >
+        {null}
+      </VoiceBeam>
+    </div>
   ) : form;
 }

@@ -32,7 +32,7 @@ async function insertUsage(row: {
   await pg.query(
     `insert into public.ai_usage
        (organization_id, assistant_id, stage, provider, model_id, credential_kind, input_tokens, output_tokens, created_at)
-     values ($1, null, $2, 'anthropic', 'claude-haiku-4-5', $3, $4, $5, $6)`,
+     values ($1, null, $2, 'anthropic', 'claude-sonnet-5', $3, $4, $5, $6)`,
     [
       organizationId,
       row.stage,

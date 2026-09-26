@@ -19,6 +19,7 @@ import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 const DESCRIPTION_LIMIT = 5000;
 
@@ -212,7 +213,7 @@ export function HelpDesksClient({
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <header className="flex shrink-0 items-center gap-3 px-6 pt-5 pb-4">
-        <h1 className="text-2xl font-bold tracking-tight">Help Desks</h1>
+        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Help Desks" /></h1>
         {canEdit && (
           <Button
             className="ml-auto h-10 rounded-lg px-4 font-semibold"

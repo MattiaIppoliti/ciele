@@ -1,3 +1,4 @@
+import type { DbTableMap } from "./table-access";
 import type { Db } from "./types";
 
 /**
@@ -343,46 +344,94 @@ const NULL_READ_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   getMemory: memoryOwner,
 };
 
+/** A table the API-key surface may not reach, and why. */
+interface Hidden {
+  hidden: string;
+}
+
 /**
- * Tables exposed through the generic accessor over the API-key surface.
- * Every pinned table's rows carry an `organizationId` stamp, which is what
- * the pinning below relies on. A new table earns its exposure by joining this
- * set in the same PR as the route that needs it (fail-closed like the method
- * lists above).
+ * One decision per `DbTableMap` table. `"pinned"` exposes it through the
+ * generic accessor, with every list filtered, insert stamped and id write
+ * owner-checked by the rows' own `organizationId`, so it is only allowed where
+ * the row type carries one. Every other table says why it stays out.
+ *
+ * A mapped type rather than a Set on purpose: a new table in `DbTableMap` does
+ * not compile until somebody decides here. The Set it replaced had to be
+ * remembered, and `teammates` shipped without it, so every Teammate endpoint
+ * threw `not_exposed` on its first real call while the drift tests passed.
+ * Fail-closed still holds: a table earns `"pinned"` from a route (or the
+ * api-surface gate), never from being adjacent to one.
  */
-const PINNED_TABLES = new Set([
-  "entities",
-  "skills",
-  "projects",
+export type TableExposureMap = {
+  [K in keyof DbTableMap]: DbTableMap[K]["row"] extends { organizationId: string }
+    ? "pinned" | Hidden
+    : Hidden;
+};
+
+export const TABLE_EXPOSURE: TableExposureMap = {
+  entities: "pinned",
+  skills: "pinned",
+  projects: "pinned",
   // AI Teammates (#768), their governance (#770), their routines (#772) and
-  // their channels (#778). Every row carries an `organizationId` stamp, which
-  // is what the pinning below relies on. `teammateRosterHidden` stays out: no
-  // /api/v1 route reaches it, and fail-closed means a table earns its exposure
-  // from a route, not from being adjacent to one. Grants and routines earned
-  // theirs when `/teammates/{id}/grants` and `/teammates/{id}/routines`
-  // shipped.
-  "teammates",
-  "teammateGrants",
-  "teammateRoutines",
-  "teammateChannels",
-  "teammateChannelParticipants",
-  "assistantGoals",
+  // their channels (#778). Grants and routines earned exposure when
+  // `/teammates/{id}/grants` and `/teammates/{id}/routines` shipped.
+  teammates: "pinned",
+  teammateGrants: "pinned",
+  teammateRoutines: "pinned",
+  teammateChannels: "pinned",
+  teammateChannelParticipants: "pinned",
+  teammateRosterHidden: {
+    hidden: "No /api/v1 route reaches it: a Member's own roster preference, adjacent to the Teammates routes but not part of them.",
+  },
+  assistantGoals: "pinned",
   // Human review requests (#841): `/api/v1/reviews` lists and decides them.
-  "reviewRequests",
-  // Inbound HTTP Flow runs (#843). Earned its exposure when
-  // `GET /flows/{id}/runs` shipped: an operator watching a webhook from a
-  // script has nowhere else to look, and a run is not a Conversation, so the
-  // Inbox endpoints do not cover it.
-  "httpFlowRuns",
-  // Knowledge memories (#926). The exception to the rule above: no /api/v1
-  // route reaches them yet. They are here because the three operations that
-  // own them run on this view in `api-surface.test.ts`, which is the gate the
-  // Teammates domain shipped without. A row carries `organizationId`, so the
-  // pinning has something to pin, and the day a route arrives it arrives
-  // already proven rather than throwing on its first real call.
-  "knowledgeMemories",
-] as const);
-type PinnedTableName = typeof PINNED_TABLES extends Set<infer T> ? T : never;
+  reviewRequests: "pinned",
+  // Inbound HTTP Flow runs (#843), from `GET /flows/{id}/runs`: an operator
+  // watching a webhook from a script has nowhere else to look, and a run is
+  // not a Conversation, so the Inbox endpoints do not cover it.
+  httpFlowRuns: "pinned",
+  // Knowledge memories (#926). No /api/v1 route yet: exposed because the three
+  // operations that own them run on this view in `api-surface.test.ts`, so the
+  // day a route arrives it arrives already proven.
+  knowledgeMemories: "pinned",
+  cookieConsentRecords: {
+    hidden: "Visitor consent evidence for the marketing site, not an Organization's row: nothing to pin it on.",
+  },
+  localConnectorPairings: {
+    hidden: "A Member's device pairing, reached only by the connector relay routes, never by an Organization API key.",
+  },
+  localConnectorDevices: {
+    hidden: "A Member's paired devices, reached only by the connector relay routes, never by an Organization API key.",
+  },
+  localInferenceJobs: {
+    hidden: "Relay jobs between a Member's Preview and their own device; no API-key caller has a reason to see them.",
+  },
+  actionApprovals: {
+    hidden: "Written by the runtime's approval gate (#958) and decided in the console on the Member's own session; no /api/v1 route reaches it.",
+  },
+  webhookSubscriptions: {
+    hidden: "Opened and settled by the Flow runtime and its callback route; a key reading or writing them could forge a callback.",
+  },
+};
+
+type PinnedTableName = {
+  [K in keyof TableExposureMap]: TableExposureMap[K] extends "pinned" | Hidden
+    ? "pinned" extends TableExposureMap[K]
+      ? K
+      : never
+    : never;
+}[keyof TableExposureMap];
+
+/** The tables `TABLE_EXPOSURE` pins, as the accessor branch below checks them. */
+export function pinnedTableNames(): ReadonlySet<string> {
+  return new Set(
+    Object.entries(TABLE_EXPOSURE)
+      .filter(([, exposure]) => exposure === "pinned")
+      .map(([name]) => name),
+  );
+}
+
+const PINNED_TABLES = pinnedTableNames();
 
 /**
  * The org-pinning rules for one generic table accessor: lists are filtered
@@ -469,7 +518,7 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
 
       if (method === "table") {
         return (name: unknown) => {
-          if (!PINNED_TABLES.has(name as PinnedTableName)) {
+          if (typeof name !== "string" || !PINNED_TABLES.has(name)) {
             throw new OrgPinnedDbError(`table(${String(name)})`, "not_exposed");
           }
           return pinTableAccessor(

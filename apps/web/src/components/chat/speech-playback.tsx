@@ -7,6 +7,10 @@ import type { VoiceEndpoint } from "./voice-input-button";
 
 let playingAudio: HTMLAudioElement | null = null;
 
+/** 1ms of 24kHz silence: the clip that unlocks an element inside the click. */
+const SILENCE =
+  "data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAwF0AAIC7AAACABAAZGF0YTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
 type SpeechPlaybackProps = VoiceEndpoint & {
   text: string;
   /** Published playback is authorized against the persisted conversation message. */
@@ -54,6 +58,12 @@ function SpeechPlaybackSession({ endpoint, assistantId, visitorId, text, convers
     request.current = controller;
     try {
       if (!audio.current) {
+        // Safari and iOS allow play() only inside the click that asked for it,
+        // and synthesis takes seconds. Starting a silent clip here unlocks this
+        // element, so the real audio may start on it once the fetch returns.
+        // Chrome is lenient, which is why this only failed on Apple devices.
+        const player = new Audio(SILENCE);
+        void player.play().catch(() => {});
         setState("loading");
         const response = await fetch(endpoint, {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -66,9 +76,9 @@ function SpeechPlaybackSession({ endpoint, assistantId, visitorId, text, convers
         const blob = await response.blob();
         if (controller.signal.aborted) return;
         url.current = URL.createObjectURL(blob);
-        const player = new Audio(url.current);
+        player.pause();
+        player.src = url.current;
         audio.current = player;
-        player.onpause = player.onended = () => setState("idle");
         player.onerror = () => {
           if (playingAudio === player) playingAudio = null;
           audio.current = null;
@@ -80,7 +90,11 @@ function SpeechPlaybackSession({ endpoint, assistantId, visitorId, text, convers
       }
       if (playingAudio && playingAudio !== audio.current) playingAudio.pause();
       playingAudio = audio.current;
-      await audio.current.play();
+      const current = audio.current;
+      await current.play();
+      // Bound only once the real audio runs: swapping the silent clip's source
+      // queues a pause event that would otherwise flip the button back to idle.
+      current.onpause = current.onended = () => setState("idle");
       if (!controller.signal.aborted) setState("playing");
     } catch (error) {
       if (!controller.signal.aborted) {

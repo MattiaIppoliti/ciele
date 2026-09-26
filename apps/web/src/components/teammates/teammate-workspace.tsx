@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { feedbackReactionScore, type ConversationMetadata, type FeedbackReactionId, type Teammate } from "@agent-hub/core";
 import { teammateSearchesKnowledge } from "@agent-hub/core";
 import { threadEntryLabel } from "@/lib/teammates/thread-label";
-import { EMPTY_TURN_TRACE, consumeTurnStream } from "@agent-hub/agent/client";
+import { EMPTY_TURN_TRACE } from "@agent-hub/agent/client";
 import type { ChatModelOption } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatMessagesFromStored } from "@/components/chat/stored-messages";
@@ -49,6 +49,7 @@ import {
   decideActionApprovalAction,
   startReferredConversationAction,
 } from "@/app/(admin)/teammates/actions";
+import { patchLastBot, runTurn } from "@/components/chat/turn-session";
 
 export interface ThreadEntry {
   id: string;
@@ -269,19 +270,13 @@ export function TeammateWorkspace({
   }, [initialConversationId]);
 
   const updateLastBot = (fn: (bot: ChatBotMsg) => ChatBotMsg) =>
-    setMessages((prev) => {
-      const next = [...prev];
-      const last = next[next.length - 1];
-      if (last?.role === "bot") next[next.length - 1] = fn(last);
-      return next;
-    });
+    setMessages((prev) => patchLastBot(prev, fn));
 
   async function send(text: string) {
     const message = text.trim();
     if (!message || pending) return;
     setPending(true);
     playFeedback("send");
-    const turnId = crypto.randomUUID();
     setMessages((prev) => [
       ...prev,
       { role: "user", text: message, sentAt: new Date().toISOString() },
@@ -296,30 +291,28 @@ export function TeammateWorkspace({
     ]);
 
     try {
-      const response = await fetch(`/api/teammates/${teammate.id}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversationId: conversationRef.current,
-          message,
-          turnId,
-          model: model ?? null,
-          attachments: attachments.tokens,
-        }),
-      });
-      if (!response.ok || !response.body) {
-        throw new Error(`Chat failed (${response.status})`);
-      }
-      await consumeTurnStream<ChatBotMsg>(response.body, {
+      const outcome = await runTurn<ChatBotMsg>({
+        request: (signal, turnId) =>
+          fetch(`/api/teammates/${teammate.id}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              conversationId: conversationRef.current,
+              message,
+              turnId,
+              model: model ?? null,
+              attachments: attachments.tokens,
+            }),
+            signal,
+          }),
         update: updateLastBot,
         onStart: ({ conversationId: started }) => {
           conversationRef.current = started;
           setConversationId(started);
         },
-        onDone: ({ conversationId: done, messageId }) => {
+        onDone: ({ conversationId: done }) => {
           conversationRef.current = done;
           setConversationId(done);
-          updateLastBot((bot) => ({ ...bot, id: messageId }));
         },
         onEvent: (event) => {
           const cue = chatFeedbackForEvent(event);
@@ -327,8 +320,7 @@ export function TeammateWorkspace({
         },
         errorText: (text) => `⚠️ ${text}`,
       });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Chat failed");
+      if (outcome.status === "failed") toast.error(outcome.error.message);
     } finally {
       setPending(false);
     }

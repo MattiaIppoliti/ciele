@@ -44,22 +44,18 @@ describe("Source generation", () => {
       prior.id,
     ]);
 
-    const retired: string[] = [];
     await expect(
       commitSourceGeneration({
         db,
         sourceId: source.id,
         generation,
-        onRetired: async (conceptIds) => {
-          retired.push(...conceptIds);
-        },
       }),
     ).resolves.toBe("committed");
 
     expect((await db.listConcepts(collection.id)).map((item) => item.id)).toEqual([
       staged.id,
     ]);
-    expect(retired).toEqual([prior.id]);
+    expect(await db.getConcept(prior.id)).toBeNull();
   });
 
   it("finishes cleanup when a retry resumes after the atomic cutover", async () => {
@@ -106,22 +102,18 @@ describe("Source generation", () => {
       resume: started,
     });
     expect(resumed.alreadyCommitted).toBe(true);
-    const retired: string[] = [];
     await expect(
       commitSourceGeneration({
         db,
         sourceId: source.id,
         generation: resumed,
-        onRetired: async (conceptIds) => {
-          retired.push(...conceptIds);
-        },
       }),
     ).resolves.toBe("committed");
 
     expect((await db.listConcepts(collection.id)).map((item) => item.id)).toEqual([
       staged.id,
     ]);
-    expect(retired).toEqual([prior.id]);
+    expect(await db.getConcept(prior.id)).toBeNull();
   });
 
   it("owns the durable paging checkpoint a crawl resumes from", async () => {

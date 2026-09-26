@@ -1,35 +1,35 @@
 ---
 title: Herramientas y habilidades
-description: Controla las herramientas de tiempo de ejecución y adjunta instrucciones reutilizables a un Asistente.
+description: Controla las herramientas de tiempo de ejecución y adjunta instrucciones reutilizables a un asistente.
 ---
 
-Abre un Asistente y selecciona **Tools & Skills**. Esta sección controla las
-capacidades de tiempo de ejecución y las instrucciones reutilizables.
+Abre un asistente y selecciona **Tools & Skills**. Esta sección controla las
+capacidades en tiempo de ejecución y las instrucciones reutilizables.
 
 ## Herramientas integradas
 
 | Herramienta | Predeterminado | Comportamiento actual |
 | --- | :---: | --- |
-| Buscar en el conocimiento | Activado | Busca en el conocimiento conectado y devuelve respuestas citadas. |
-| Memoria de sesión | Activada | Utiliza la información de la sesión de conversación actual. |
-| Obtener URL | Desactivado | Lee una URL cuando el tiempo de ejecución selecciona la herramienta. |
-| Mostrar una tabla | Desactivado | Muestra los datos en una tabla cuando el tiempo de ejecución selecciona la herramienta. |
+| Search knowledge | Activado | Busca en la Knowledge conectada y devuelve respuestas con citas. |
+| Session memory | Activada | Utiliza la información de la sesión de conversación actual. |
+| Fetch URL | Off | Lee una URL cuando el entorno de ejecución selecciona la herramienta. |
+| Show a table | Off | Muestra los datos en una tabla cuando el entorno de ejecución selecciona la herramienta. |
 
-La búsqueda de conocimiento siempre está disponible. Puedes activar o desactivar
-las demás herramientas integradas.
+La herramienta Search knowledge está siempre disponible. Puedes habilitar o
+deshabilitar las demás herramientas integradas.
 
-Mostrar una tabla organiza los datos que el Asistente ha encontrado en esta
-respuesta. No calcula valores. La tabla aparece encima de la respuesta escrita y
-la transcripción de la bandeja de entrada muestra la misma tabla.
+Show a table organiza los datos que el asistente ha encontrado en esta
+respuesta. No calcula valores. La tabla aparece encima de la respuesta escrita,
+y la transcripción de Inbox muestra la misma tabla.
 
-El Asistente puede añadir una pregunta de seguimiento a una fila. El visitante
+El asistente puede añadir una pregunta de seguimiento a una fila. El Visitor
 selecciona la fila para hacer esa pregunta. La transcripción de la bandeja de
-entrada muestra estas filas, pero un miembro no puede seleccionarlas.
+entrada muestra estas filas, pero un Member no puede seleccionarlas.
 
 ## Habilita el modo de estudio
 
 **Study Mode** está desactivado de forma predeterminada. Actívalo para que los
-visitantes puedan practicar los conocimientos del asistente con ejercicios
+visitantes puedan practicar el Knowledge del asistente con ejercicios
 interactivos.
 
 1. Abre **Tools & Skills** y habilita **Study Mode**.
@@ -48,12 +48,12 @@ exercises van directamente a este Flow. Aparece un icono de birrete de
 graduación en Thinking.
 
 Los ejercicios necesitan material relevante en la Knowledge del Assistant. Si no
-se encuentra ningún material, el asistente te pide un tema admitido o material
+se encuentra ningún material, el Asistente te pide un tema admitido o material
 de estudio.
 
 | Formato | Cómo responde el Visitor |
 | --- | --- |
-| Multiple choice | Selecciona una opción. No hay disponible ninguna respuesta de texto libre. |
+| Opción múltiple | Selecciona una opción. No hay disponible ninguna respuesta de texto libre. |
 | Arrastra las palabras | Arrastra o selecciona una palabra para completar un espacio en blanco por pregunta. |
 | Verdadero / Falso | Selecciona una de las dos opciones. |
 | Flashcards | Escribe la palabra que falta o una frase corta. |
@@ -63,71 +63,129 @@ máximo cinco preguntas distintas basadas en el Knowledge recuperado.
 
 Selecciona **Check** para guardar una respuesta. Ciele te muestra si es
 correcta, la respuesta correcta y una explicación. No puedes modificar una
-respuesta ya enviada. Las tarjetas de memoria aceptan las variantes ortográficas
-definidas cuando se creó el ejercicio.
+respuesta una vez enviada. Las tarjetas de memoria (flashcards) aceptan las
+variantes ortográficas definidas cuando se creó el ejercicio.
 
 La Inbox muestra las preguntas, las respuestas enviadas, las respuestas
 correctas y la puntuación. Los ejercicios sin terminar muestran cuántas
 preguntas quedan sin responder. Los ejercicios se ejecutan dentro del chat. No
 necesitan un reproductor H5P externo.
 
-## Conecta datos estructurados
+## Conectar datos estructurados
 
 La sección **Data** enumera las Entidades importadas a través de **Settings →
-Data**. Selecciona cada Entidad que este Asistente pueda consultar.
+Data**. Selecciona cada Entidad a la que este Asistente puede realizar
+consultas.
 
-Cada Entidad seleccionada proporciona una herramienta de filtro exacto. Una
-Entidad con atributos de texto también proporciona una herramienta de búsqueda
-por palabras clave.
+Cada Entity seleccionada ofrece una herramienta de filtrado exacto. Una entidad
+con atributos de texto también ofrece una herramienta de búsqueda por palabras
+clave.
 
-Las Entidades compartidas están disponibles para todos los Visitantes atendidos
-por el Asistente. Las Entidades con ámbito de usuario requieren una
-[declaración de identidad](/authentication/microsoft-entra-id#choose-an-identity-claim)
+Las Shared Entities están disponibles para todos los Visitors atendidos por el
+Assistant. Las Entidades con ámbito de usuario requieren una
+[identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim)
 verificada.
 
-La selección de Entidad y el esquema pasan a la siguiente instantánea de
-Publicación. El contenido del registro permanece activo después de la
-publicación.
+La selección de la entidad y el esquema pasan a formar parte de la siguiente
+instantánea de la publicación. El contenido de los registros permanece activo
+después de la Publicación.
 
-Consulta [Entidades y registros](/data/entities-and-records) para las
-importaciones CSV, las opciones de ámbito y el filtrado de identidad.
+Consulta [Entities and Records](/data/entities-and-records) para obtener
+información sobre las importaciones CSV, las opciones de ámbito y el filtrado de
+identidades.
 
 ## Configura una integración de API
 
-Un Asistente puede usar una integración de API registrada. La integración
-contiene una URL base, una credencial protegida y puntos de conexión descritos.
+Un asistente puede utilizar una integración de API registrada. La integración
+contiene una URL base, una credencial protegida y endpoints descritos.
 
-Para cada punto de conexión, define el método, la ruta, el propósito, los
-parámetros y la forma de la respuesta. El tiempo de ejecución valida cada ruta
-solicitada con este catálogo.
+Para cada endpoint, define el método, la ruta, el propósito, los parámetros y la
+estructura de la respuesta. El entorno de ejecución valida cada ruta solicitada
+frente a este catálogo.
 
-El agente puede inspeccionar los detalles del punto de conexión antes de enviar
-una solicitud. Las respuestas grandes siguen estando disponibles a través de
-lecturas en ventanas.
+El agente puede inspeccionar los detalles del endpoint antes de enviar una
+solicitud. Las respuestas de gran tamaño siguen estando disponibles mediante
+lecturas por ventanas.
 
 <Callout title="Control the endpoint catalogue">
 Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
 </Callout>
 
-## Adjunta una habilidad de organización
+### Evita una escritura duplicada
 
-Una Skill es una plantilla de instrucciones reutilizable. Una Organización puede
-asignar la misma Habilidad a varios Asistentes.
+Puedes volver a enviar una solicitud después de un tiempo de espera o de un
+fallo. Si el endpoint escribe datos, la segunda solicitud puede crear un segundo
+registro.
+
+Para evitarlo, asigna al endpoint una clave de idempotencia. En el formulario
+del endpoint, indica dónde lee tu API la clave:
+
+- `header:Idempotency-Key` envía la clave en un encabezado de solicitud.
+- `body:request_id` envía la clave en el cuerpo JSON.
+
+Usa el nombre que lee tu API. Ciele no adivina este nombre. Diferentes API leen
+diferentes nombres.
+
+Ciele genera una clave para cada llamada. Al reintentar la misma llamada, se
+envía la misma clave. Una llamada diferente envía una clave diferente. Tu API
+puede entonces considerar las dos solicitudes como una única operación de
+escritura.
+
+Tu API también debe hacer su parte. Debe almacenar la clave y devolver el primer
+resultado cuando vuelva a ver la clave.
+
+<Callout title="An endpoint with no key is not protected">
+If you give no key, a retry of the call can write two times. A `GET` endpoint does not need a key, because a read does not change data.
+</Callout>
+
+## Asigna una Skill de organización
+
+Una Skill es una plantilla de instrucciones reutilizable. Una organización puede
+asociar la misma Skill a varios asistentes.
 
 1. Abre **Tools & Skills**.
-2. Busca la habilidad de organización necesaria.
-3. Asigna la habilidad al asistente.
-4. Prueba el resultado en Vista previa.
-5. Publica el Asistente cuando el resultado sea correcto.
+2. Busca la Organization Skill necesaria.
+3. Asocia la Skill al Assistant.
+4. Prueba el resultado en Preview.
+5. Publica el asistente cuando el resultado sea correcto.
 
-Los cambios en las habilidades están disponibles en Vista previa de inmediato.
-El widget publicado utiliza la última instantánea de la publicación.
+Los cambios en las habilidades están disponibles en Preview de inmediato. El
+Widget publicado utiliza la última instantánea de Publication.
+
+### Permite que los usuarios inicien una Skill desde la ventana de chat
+
+Una Skill puede tener un **Opening line**. Escríbelo como la persona que
+pregunta, no como el asistente.
+
+La ventana de chat muestra un menú **/** con cada Skill que tiene una frase de
+apertura. Cuando seleccionas una Skill, la ventana de chat escribe la frase de
+apertura en el cuadro de mensaje. Puedes editar el texto antes de enviarlo.
+
+Si la frase de apertura está vacía, la Skill no aparece en el menú **/**. El
+prompt de la Skill sigue aplicándose a cada respuesta.
+
+Publica el asistente después de escribir una frase de apertura. El Widget
+utiliza la última instantánea de Publication.
+
+## Los archivos adjuntos y la Knowledge no son lo mismo
+
+Tanto un archivo adjunto como una Knowledge Source se convierten en texto, y
+Ciele los lee con el mismo extractor. Lo que ocurre a continuación es diferente.
+
+Una Knowledge Source es permanente. Ciele almacena su texto, lo indexa y el
+Asistente puede citarlo en todas las conversaciones posteriores.
+
+Un archivo adjunto pertenece a su conversación. Ciele lo lee una sola vez,
+descarta los bytes y nunca lo añade a la Library. Ninguna otra conversación lo
+ve.
+
+Para que un archivo sea permanente, añádelo en **Library** en su lugar.
 
 ## Prueba la configuración
 
-Haz una pregunta que requiera cada herramienta habilitada. Revisa el panel
-Pensamiento y las Fuentes antes de publicar.
+Haz una pregunta que requiera cada una de las herramientas habilitadas. Revisa
+el panel Thinking y las Sources antes de publicar.
 
-Para los datos estructurados, prueba una búsqueda exacta de atributos y una
-búsqueda de texto. Prueba el acceso con ámbito de usuario con dos cuentas
-diferentes con sesión iniciada.
+En el caso de los datos estructurados, prueba una búsqueda exacta de atributos y
+una búsqueda de texto. Prueba el acceso con ámbito de usuario con dos cuentas
+diferentes que hayan iniciado sesión.

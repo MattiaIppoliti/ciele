@@ -123,9 +123,9 @@ export async function runHandoverContinuation(
       createdAt: publication.createdAt,
       updatedAt: publication.createdAt,
     };
-    // Same factory as the live turn, so the continuation honors the TARGET
-    // assistant's Knowledge Engine choice instead of silently running a
-    // vector-only path production never uses elsewhere.
+    // Same factory as the live turn, so the continuation searches the TARGET
+    // assistant's knowledge through the same rerank stage instead of a
+    // bespoke path production never uses elsewhere.
     const searchKnowledge: KnowledgeSearcher = buildKnowledgeSearcher({
       db,
       connections: input.connections,

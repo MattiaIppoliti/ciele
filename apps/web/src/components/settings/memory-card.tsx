@@ -54,12 +54,7 @@ export function MemoryCard({
           Long-term memory
         </CardTitle>
         <CardDescription>
-          Let assistants remember durable facts about signed-in users across
-          conversations, stated preferences, standing instructions, stable
-          account facts. Only users signed in through the widget&apos;s SSO
-          gate are remembered; anonymous visitors never are. Extraction runs
-          in the background after a conversation ends and counts against the
-          daily AI budget.
+          Assistants remember preferences and facts about signed-in users across conversations. Anonymous visitors are never remembered.
         </CardDescription>
       </CardHeader>
       <CardContent>

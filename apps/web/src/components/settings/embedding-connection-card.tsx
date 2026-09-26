@@ -80,9 +80,7 @@ export function EmbeddingConnectionCard({
           Embedding connection
         </CardTitle>
         <CardDescription>
-          Which connection turns your knowledge into vectors. Everything in one
-          collection must be embedded by the same model for search to work, so
-          pin it here if you run more than one provider.
+          The connection that indexes your knowledge. Pin one if you use more than one provider.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -106,8 +104,7 @@ export function EmbeddingConnectionCard({
 
         {capable.length === 0 && (
           <p className="text-muted-foreground text-sm">
-            None of your connections can embed yet. Add an OpenAI or Google key,
-            or give your OpenAI-compatible endpoint an embedding model.
+            No connection can index yet. Add an OpenAI or Google key, or an embedding model to your endpoint.
           </p>
         )}
 

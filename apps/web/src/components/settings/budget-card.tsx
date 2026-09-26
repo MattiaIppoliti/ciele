@@ -177,9 +177,7 @@ export function BudgetCard({
               Weekly improvement suggestions
             </Label>
             <p className="text-muted-foreground text-sm">
-              Once a week, review the past week&apos;s answers and file up to three
-              suggested improvements for your team to consider. Nothing is applied
-              automatically. Turn this off to skip the weekly pass entirely.
+              Each week, suggest up to three improvements from recent answers. Nothing is applied automatically.
             </p>
           </div>
           <Switch

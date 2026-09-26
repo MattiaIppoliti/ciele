@@ -1,6 +1,6 @@
 ---
 title: API v1
-description: Llama a la API de administración actual de Ciele con una clave API de organización.
+description: Llama a la API de administración actual de Ciele con una clave de API de organización.
 ---
 
 La API de Ciele utiliza JSON sobre HTTP. Todas las rutas de la versión 1
@@ -12,19 +12,19 @@ en formato JSON o YAML.
 
 ## Descubre el despliegue
 
-Utiliza estos puntos de conexión públicos antes de generar un cliente:
+Utiliza estos endpoints públicos antes de generar un cliente:
 
 ```text
 GET /api/v1/meta
 GET /api/v1/openapi.json
 ```
 
-`meta` muestra la versión de la API y los dominios disponibles. `openapi.json`
+`meta` enumera la versión de la API y los dominios disponibles. `openapi.json`
 devuelve el contrato legible por máquina para el despliegue.
 
 ## Autenticar una solicitud
 
-Envía la clave de API como token bearer:
+Envía la clave API como token bearer:
 
 ```bash
 curl https://ciele.app/api/v1/whoami \
@@ -51,12 +51,12 @@ Los códigos de estado más habituales son:
 
 | Status | Significado |
 | --- | --- |
-| `400` | El cuerpo de la solicitud está mal formado o falta un archivo obligatorio. |
-| `401` | La clave no existe, no es válida o ha sido revocada. |
+| `400` | El cuerpo de la solicitud tiene un formato incorrecto o falta un archivo obligatorio. |
+| `401` | Falta la clave, no es válida o ha sido revocada. |
 | `403` | El Role de la clave no permite la operación. |
 | `404` | El recurso no existe en la Organization. |
 | `409` | La solicitud entra en conflicto con el estado actual. |
-| `422` | Los datos analizados no superan la validación. |
+| `422` | La entrada analizada no supera la validación. |
 
 ## Paginación
 
@@ -74,20 +74,19 @@ el mismo valor solo cuando vuelvas a intentar la misma operación lógica.
 Estos son ejemplos. La [API reference](/api-reference) enumera el conjunto
 completo y actual de operaciones.
 
-- Asistentes: listar, leer, crear, actualizar, duplicar y eliminar.
-- Flujos: listar, leer, crear, actualizar, reordenar y eliminar.
+- Assistants: listar, leer, crear, actualizar, duplicar y eliminar.
+- Flujos: list, read, create, update, reorder y delete.
 - Knowledge: gestiona Collections, Sources, FAQs y los enlaces del asistente en
   cada Source.
-- Publicación: consultar el estado, publicar, anular la publicación y restaurar
-  una publicación.
-- Bandeja de entrada: revisa, exporta, ancla, anota, valora y elimina
-  Conversaciones.
-- Mejoras: enumera, lee y actualiza elementos.
+- Publicación: consulta el estado, publica, anula la publicación y restaura una
+  publicación.
+- Inbox: revisa, exporta, ancla, anota, valora y elimina Conversations.
+- Mejoras: listar, leer y actualizar elementos.
 - Entidades y recuerdos: gestiona los datos tipados de la organización y el
   borrado de recuerdos con ámbito definido.
 - SSO: gestiona las afirmaciones de identidad, la configuración de conexión, la
   validación y la desconexión.
-- Help Desks: gestiona los desks, los canales de escalado, la ordenación y
+- Help Desks: gestiona los desks, los canales de escalado, el orden y
   ServiceNow.
 - Teammates: gestiona a los Teammates de IA y lee tus propias conversaciones con
   Teammates.
@@ -96,15 +95,15 @@ completo y actual de operaciones.
   enviar un mensaje: un mensaje inicia una cadena de respuestas de compañeros de
   equipo, y esa cadena se ejecuta en la consola.
 - Configuration: gestiona Skills, Assistant Goals y Alerts operativas.
-- Organization: gestiona la configuración, los Members, las Invites y las claves
+- Organización: gestiona la configuración, los Members, las Invites y las claves
   API.
 - Integrations: gestiona las integraciones de la API del asistente y las
   conexiones con los proveedores de modelos.
 - Uso: consulta los contadores del plan y quién ha gastado los créditos de una
-  ventana. Solo lectura. El desglose del gasto mantiene sus dimensiones
-  separadas. Una respuesta menciona tanto al compañero de equipo que ejecutó la
+  ventana. Solo lectura. El desglose del gasto mantiene separadas sus
+  dimensiones. Una respuesta indica tanto al compañero de equipo que ejecutó la
   acción como al compañero que la solicitó, por lo que sumar las dimensiones la
-  cuenta dos veces. La compra de créditos no tiene un endpoint: una compra
+  contabiliza dos veces. La compra de créditos no tiene un endpoint: una compra
   corresponde a una pantalla en la que una persona confirma un importe.
 
 Utiliza el documento OpenAPI para los campos de las solicitudes, la

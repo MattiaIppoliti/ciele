@@ -154,7 +154,7 @@ export function OrganizationClient({
       <div className="space-y-3">
         <FieldHeader
           title="Reasoning trace retention"
-          hint="How long a conversation keeps its Thinking panel (the assistant's reasoning and tool calls). After the window, a nightly sweep removes the trace; the messages themselves stay."
+          hint="How long the Thinking panel is kept. Messages stay after it is removed."
         />
         <Select
           value={retention}
@@ -176,7 +176,7 @@ export function OrganizationClient({
       <div className="space-y-3">
         <FieldHeader
           title="Conversation retention"
-          hint="How long a conversation is kept at all. After the window, a nightly sweep deletes it, transcript included. Conversations placed on legal hold are skipped."
+          hint="How long conversations are kept before deletion. Legal holds are skipped."
         />
         <Select
           value={transcriptRetention}

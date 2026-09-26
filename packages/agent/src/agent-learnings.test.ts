@@ -67,7 +67,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   classifier.mockReturnValue({
     model: {} as never,
-    modelId: "claude-haiku",
+    modelId: "claude-sonnet-5",
     provider: "anthropic",
     credentialKind: "platform",
   } as never);

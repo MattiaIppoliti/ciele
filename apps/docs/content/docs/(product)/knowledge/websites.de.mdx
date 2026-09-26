@@ -1,32 +1,97 @@
 ---
 title: Websites
-description: Fügen Sie eine Website-URL hinzu und überwachen Sie deren Aufnahmestatus.
+description: Fügen Sie eine Website-URL hinzu und überwachen Sie deren Ingestionsstatus.
 ---
 
-## Fügen Sie eine Website-Quelle hinzu
+## Eine Website-Quelle hinzufügen
 
-1. Öffnen Sie den Assistenten.
-2. Wählen Sie **Knowledge**.
+1. Öffnen Sie den Assistant.
+2. Wählen Sie **Knowledge** aus.
 3. Fügen Sie eine Website-Quelle hinzu.
-4. Geben Sie die Seiten-URL ein.
-5. Starten Sie die Aufnahme.
+4. Geben Sie die URL der Seite ein.
+5. Starten Sie die Ingestion.
 6. Warten Sie, bis der Status der Quelle **Ready** lautet.
-7. Stellen Sie eine Frage, die die Seite beantwortet.
-8. Bestätigen Sie die zurückgegebene Quellenangabe.
+7. Stellen Sie eine Frage, die auf der Seite beantwortet wird.
+8. Bestätigen Sie die zurückgegebene Source-Fundstelle.
 
 Der Crawler ruft den konfigurierten Website-Inhalt ab. Für Seiten, die ein
 Browser-Rendering erfordern, ist ein JavaScript-Rendering-Worker erforderlich.
 
+## Das Crawling überwachen
+
+Ciele zeigt beim Start eines Crawls eine Activity Card in der unteren rechten
+Ecke der Konsole an. Sie bleibt auf jeder Seite der Konsole sichtbar, bis die
+Aufgabe abgeschlossen ist.
+
+Die Karte zählt die **pages**, die das Crawling zu Ciele hinzufügt, zum Beispiel
+162/291. Die Gesamtzahl steht zur Verfügung, wenn der Crawler seine letzte
+Gruppe von Seiten an Ciele übergibt. Vor diesem Zeitpunkt zeigt die Karte nur
+die Anzahl der indizierten Seiten an.
+
+Während Apify die Website crawlt, zeigt die Zeile für die Source den von Apify
+gemeldeten Fortschritt an, zum Beispiel **12 of 197 pages crawled**. Die zweite
+Zahl erhöht sich, während Apify weitere Links findet.
+
+Die Library zählt **Documents** für dieselbe Source. Ciele erstellt aus einer
+Seite ein Document. Die Karte zählt, was der Crawler abruft. Die Library zählt,
+was Ciele behält. Die beiden Zahlen stimmen überein, wenn das Crawling endet.
+
+1. Wählen Sie den Pfeil auf der Karte aus, um die Sources anzuzeigen.
+2. Lesen Sie den Status jeder Source. Die Karte zeigt maximal vier Sources
+   gleichzeitig an.
+3. Wählen Sie das Steuerelement „close“, um die Karte auszublenden. Das Crawling
+   wird fortgesetzt.
+
+Eine Source, die fehlschlägt, bleibt auf der Karte, bis Sie sie schließen. Eine
+abgeschlossene Source verschwindet nach einigen Sekunden.
+
 ## Eine Quelle erneut crawlen
 
-Verwenden Sie **Recrawl**, wenn sich der Inhalt der Quell-Website ändert. Ciele
-startet das Crawlen neu und ersetzt den indizierten Inhalt nach erfolgreicher
-Aufnahme.
+Verwenden Sie **Recrawl**, wenn sich der Inhalt der Quellwebsite ändert. Ciele
+startet das Crawling erneut und ersetzt den indexierten Inhalt nach
+erfolgreicher Aufnahme.
 
-Die API und die CLI unterstützen das erneute Crawlen nur für Website-Quellen.
+Die API und die CLI unterstützen das erneute Crawlen nur für Website-Sources.
 
-## Quellzugriff
+## Zugriff auf die Quelle
 
-Der Crawler muss die URL vom Bereitstellungsnetzwerk aus erreichen.
-Authentifizierungspflichtige Inhalte sind ohne einen unterstützten Zugriffspfad
+Der Crawler muss die URL aus dem Deployment-Netzwerk erreichen. Durch
+Authentifizierung geschützte Inhalte sind ohne einen unterstützten Zugriffspfad
 nicht verfügbar.
+
+Der integrierte Crawler folgt einer Umleitung zur selben Website. Beispielsweise
+kann `https://example.com` zu `https://www.example.com` wechseln, und `http`
+kann zu `https` wechseln. Eine Weiterleitung auf eine andere Domain oder
+Subdomain beendet das Crawling mit einem Fehler.
+
+## Verwenden Sie Ihr eigenes Apify-Konto
+
+Apify ist der Managed Crawler für Datei-Downloads, login-geschützte Websites und
+umfangreiche Crawls. Sie können das Apify-Konto Ihrer Organisation verbinden.
+Anschließend verwenden Apify-Crawls Ihr Token, und Ihr Apify-Konto übernimmt die
+Kosten dafür.
+
+1. Öffnen Sie in der Apify Console **Settings** und anschließend **API &
+   Integrations**.
+2. Kopieren Sie das API-Token.
+3. Öffnen Sie in Ciele **Settings** und wählen Sie **Crawling** aus.
+4. Wählen Sie **Connect** auf der Karte **Apify** aus.
+5. Fügen Sie das Token in **API token** ein.
+6. Optional: Geben Sie Ihre Apify-Benutzer-ID in **User ID** ein. Ciele stellt
+   sicher, dass das Token zu diesem Konto gehört.
+7. Wählen Sie **Save** aus.
+
+Wenn das Konto verbunden ist, verwendet der **Automatic** Crawler Apify für alle
+Crawls. Neue Website-Quellen verwenden standardmäßig ebenfalls **No page
+limit**. Apify fährt dann fort, bis es keine weiteren Seiten auf der Website
+mehr findet. Um bei einer bestimmten Anzahl von Seiten anzuhalten, deaktivieren
+Sie **No page limit** und geben Sie einen Wert in **Max pages to crawl** ein.
+
+Andere Crawler stoppen stets bei ihrem eigenen Limit. Der integrierte Crawler
+stoppt bei 30 Seiten und Crawl4AI bei 5.000 Seiten. Apify stoppt beim
+Plattformkonto bei 100.000.
+
+Ciele verschlüsselt das Token und zeigt nur dessen letzte vier Zeichen an. Nur
+Owners und Admins können das Konto verbinden oder entfernen. Wenn Sie den Token
+entfernen, während ein Apify-Crawl läuft, wird dieser Crawl mit einem Fehler
+abgebrochen.

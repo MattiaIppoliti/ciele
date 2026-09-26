@@ -53,6 +53,7 @@ import {
 import { StudyProvider } from "@/components/chat/study-context";
 import { StudyMenu } from "@/components/chat/study-menu";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
+import { patchLastBot, runTurn } from "@/components/chat/turn-session";
 import { latestHelpDeskId } from "@/components/chat/visible-reply-parts";
 import { PreviewEscalation } from "./preview-escalation";
 import { RefreshButton } from "./refresh-button";
@@ -423,6 +424,10 @@ export function PreviewPanel({
     return () => window.removeEventListener("storage", readPreferences);
   }, [connectorScope]);
 
+  function updateLastBot(update: (bot: BotMsg) => BotMsg) {
+    setMessages((prev) => patchLastBot(prev, update));
+  }
+
   /**
    * Proactive triggers in Preview (#545). The preview has no host page, so a
    * preview run *is* the page: mounting or restarting it counts as the page load
@@ -514,19 +519,6 @@ export function PreviewPanel({
     };
   }, [assistant.id, previewRun, firePreviewTrigger]);
 
-  function updateLastBot(update: (bot: BotMsg) => BotMsg) {
-    setMessages((prev) => {
-      const next = [...prev];
-      for (let i = next.length - 1; i >= 0; i--) {
-        if (next[i].role === "bot") {
-          next[i] = update(next[i] as BotMsg);
-          break;
-        }
-      }
-      return next;
-    });
-  }
-
   function applyFollowUpCommands(commands: FollowUpCommand[]) {
     for (const command of commands) {
       if (command.type === "abort") {
@@ -561,31 +553,28 @@ export function PreviewPanel({
 
     const controller = new AbortController();
     abortRef.current = controller;
-    const turnId = crypto.randomUUID();
 
     try {
-      const response = await fetch("/api/preview/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assistantId: assistant.id,
-          conversationId: conversationIdRef.current,
-          collectionId: null,
-          message,
-          turnId,
-          modelPreference: aiPreferences.defaultModel,
-          // Advisory, and outranked by `modelPreference` above when this
-          // Member has their own subscription connected.
-          model: model ?? null,
-          attachments: attachments.tokens,
-        }),
+      const outcome = await runTurn<BotMsg>({
         signal: controller.signal,
-      });
-      if (!response.ok || !response.body) {
-        throw new Error(`Chat failed (${response.status})`);
-      }
-
-      await consumeTurnStream<BotMsg>(response.body, {
+        request: (signal, turnId) =>
+          fetch("/api/preview/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              assistantId: assistant.id,
+              conversationId: conversationIdRef.current,
+              collectionId: null,
+              message,
+              turnId,
+              modelPreference: aiPreferences.defaultModel,
+              // Advisory, and outranked by `modelPreference` above when this
+              // Member has their own subscription connected.
+              model: model ?? null,
+              attachments: attachments.tokens,
+            }),
+            signal,
+          }),
         update: updateLastBot,
         onStart: ({ conversationId: startedConversationId }) => {
           conversationIdRef.current = startedConversationId;
@@ -595,10 +584,9 @@ export function PreviewPanel({
             abortRef.current?.abort();
           }
         },
-        onDone: ({ conversationId, messageId }) => {
+        onDone: ({ conversationId }) => {
           conversationIdRef.current = conversationId;
           setConversationId(conversationId);
-          updateLastBot((bot) => ({ ...bot, id: messageId }));
         },
         onEvent: (event) => {
           const cue = chatFeedbackForEvent(event);
@@ -606,10 +594,7 @@ export function PreviewPanel({
         },
         errorText: (message) => `⚠️ ${message}`,
       });
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
-        toast.error(error instanceof Error ? error.message : "Chat failed");
-      }
+      if (outcome.status === "failed") toast.error(outcome.error.message);
     } finally {
       abortRef.current = null;
       const transition = completeFollowUp(followUpStateRef.current);
@@ -1152,8 +1137,7 @@ export function PreviewPanel({
             // stored for a device that is not currently paired, and then the
             // choice here is what runs.
             <p className="text-muted-foreground mt-1 text-2xs">
-              A connected AI subscription answers Preview turns instead,
-              whichever model is picked here. Change it in Settings → AI.
+              Your connected subscription answers the Preview instead. Change it in Settings → AI.
             </p>
           ) : null}
           {pending && (

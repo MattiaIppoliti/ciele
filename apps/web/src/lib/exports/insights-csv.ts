@@ -1,7 +1,5 @@
-import { escapeCsvField } from "@ciele/ops/csv";
+import { tableToCsv } from "@ciele/ops/csv";
 import type { InsightsOverview } from "@/lib/insights/report";
-
-const escapeCsv = (value: unknown): string => escapeCsvField(String(value));
 
 /**
  * Renders an Insights Overview as the same per-day, per-series CSV the
@@ -16,8 +14,5 @@ export function insightsOverviewToCsv(overview: InsightsOverview): string {
     label,
     ...series.map((s) => s.values[index] ?? 0),
   ]);
-  return [
-    headers.map(escapeCsv).join(","),
-    ...rows.map((row) => row.map(escapeCsv).join(",")),
-  ].join("\n");
+  return tableToCsv(headers, rows);
 }

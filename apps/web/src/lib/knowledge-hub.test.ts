@@ -11,6 +11,7 @@ import {
   parseHubSearchParams,
   sourceTypeLabel,
   tabHealth,
+  tabSources,
 } from "./knowledge-hub";
 
 describe("tab kind buckets", () => {
@@ -315,5 +316,34 @@ describe("bulkRemovalChoice", () => {
         sharedCount: 0,
       }).title
     ).toBe("Delete 3 websites?");
+  });
+});
+
+/**
+ * The Assistant's Knowledge tabs filter the Sources they already hold on the
+ * client; the Library asks the server. Both must agree on which kinds a tab
+ * shows, so the client filter reads the same bucket map.
+ */
+describe("tabSources", () => {
+  const rows = [
+    { name: "Help Center", kind: "website", status: "ready" },
+    { name: "pricing page", kind: "url", status: "processing" },
+    { name: "Handbook.pdf", kind: "file", status: "ready" },
+    { name: "Notes", kind: "text", status: "failed" },
+    { name: "Refunds?", kind: "faq", status: "ready" },
+  ] as const;
+
+  it("keeps only the kinds the tab lists", () => {
+    expect(tabSources(rows, "websites", {}).map((s) => s.name)).toEqual(["Help Center", "pricing page"]);
+    expect(tabSources(rows, "files", {}).map((s) => s.name)).toEqual(["Handbook.pdf", "Notes"]);
+  });
+
+  it("matches the name case-insensitively and filters by status", () => {
+    expect(tabSources(rows, "websites", { query: "PRICING" }).map((s) => s.name)).toEqual(["pricing page"]);
+    expect(tabSources(rows, "files", { status: "failed" }).map((s) => s.name)).toEqual(["Notes"]);
+  });
+
+  it("treats an empty query and an empty status as no filter", () => {
+    expect(tabSources(rows, "files", { query: "", status: "" })).toHaveLength(2);
   });
 });

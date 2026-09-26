@@ -255,7 +255,7 @@ describe("chatVisibleSteps", () => {
 
   it("drops the Generating answer bookkeeping notice", () => {
     const steps = [
-      notice("Generating answer", "Model: gpt-5.1-mini"),
+      notice("Generating answer", "Model: gpt-5.4-mini"),
       trace.steps[2],
     ];
     expect(chatVisibleSteps(steps)).toEqual([trace.steps[2]]);

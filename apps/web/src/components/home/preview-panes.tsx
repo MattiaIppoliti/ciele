@@ -353,9 +353,9 @@ function InboxPane() {
                   {conversation.assistant}
                 </span>
                 {conversation.up ? (
-                  <span aria-label="Positive response" title="Positive response">🙂</span>
+                  <span aria-label="Positive response" title="Positive response">🥰</span>
                 ) : (
-                  <span aria-label="Negative response" title="Negative response">🙁</span>
+                  <span aria-label="Negative response" title="Negative response">🤬</span>
                 )}
               </div>
             </div>
@@ -385,9 +385,9 @@ function InboxPane() {
                 <span className="bg-muted rounded-md border px-1.5 py-0.5">
                   IT KB · VPN access
                 </span>
-                <span aria-label="Positive response" title="Positive response">🙂</span>
-                <span aria-label="Neutral response" title="Neutral response">😐</span>
-                <span aria-label="Negative response" title="Negative response">🙁</span>
+                <span aria-label="Positive response" title="Positive response">🥰</span>
+                <span aria-label="Neutral response" title="Neutral response">😶‍🌫️</span>
+                <span aria-label="Negative response" title="Negative response">🤬</span>
               </div>
             </div>
             <div className="bg-muted ml-auto w-fit max-w-[70%] rounded-2xl rounded-br-sm px-4 py-2.5 text-sm">

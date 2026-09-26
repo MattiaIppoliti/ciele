@@ -113,8 +113,8 @@ does one decision cost", not "what does the whole feature cost", which is §3.
 |---|---|---|---|---|
 | **Jev** | 0.04 | 0 | **€0.000020** | 1× |
 | gemini-3.5-flash | 0.30 | 1.20 | €0.000180 | 9× |
-| Haiku 4.5 | 0.75 | 3.70 | €0.000468 | 23× |
-| gpt-5.1-mini | 0.90 | 3.60 | €0.000540 | 27× |
+| gemini-3.5-flash-lite | 0.26 | 2.20 | €0.000185 | 9× |
+| gpt-5.4-mini | 0.66 | 3.90 | €0.000428 | 21× |
 | **Sonnet 5** | 2.80 | 14.00 | €0.001750 | **88×** |
 | Opus 4.8 | 14.00 | 70.00 | €0.008750 | 438× |
 
@@ -124,14 +124,16 @@ At 100,000 Visitor messages a month, one decision each:
 |---|---|
 | Jev | €2 |
 | gemini-3.5-flash | €18 |
-| Haiku 4.5 | €47 |
-| gpt-5.1-mini | €54 |
+| gemini-3.5-flash-lite | €19 |
+| gpt-5.4-mini | €43 |
 | Sonnet 5 | €175 |
 | Opus 4.8 | €875 |
 
 **The honest reading of this table.** Nobody routes intents on Opus, and the
 row is there only to bound the range. The real comparison for a classification
-is against a small model, where the ratio is 9× to 27×, not 88×. €2 against
+is against a small model, where the ratio is 9× to 21×, not 88×. (Haiku 4.5
+and gpt-5.1-mini sat in this table until 2026-09; Haiku is retired from Ciele
+and gpt-5.1-mini was never an OpenAI model. Anthropic now classifies on Sonnet 5.) €2 against
 €18 a month is not why you would do this. **The reasons are latency and
 structure**, which is the next section.
 

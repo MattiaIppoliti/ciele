@@ -42,6 +42,7 @@
     "test": "vitest run --exclude \"**/*.security.test.ts\"",
     "test:security": "vitest run .security.test",
     "typecheck": "tsc --noEmit",
+    "bench:rag": "tsx scripts/rag-eval.mts",
     "replay:preflight": "tsx scripts/replay-preflight.mts",
     "labelling:preflight": "tsx scripts/preflight-labelling.mts",
     "sample:preflight": "tsx scripts/sample-preflight-source.mts"

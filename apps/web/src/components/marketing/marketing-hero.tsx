@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@agent-hub/ui";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 /** Shared centered heading block for every top-level marketing page. */
 export function MarketingHero({
@@ -19,7 +20,7 @@ export function MarketingHero({
         {eyebrow}
       </p>
       <h1 className="from-foreground to-foreground/25 mt-4 bg-gradient-to-b bg-clip-text text-4xl font-semibold text-transparent sm:text-5xl">
-        {title}
+        {typeof title === "string" ? <RollInText text={title} /> : title}
       </h1>
       {children}
     </div>

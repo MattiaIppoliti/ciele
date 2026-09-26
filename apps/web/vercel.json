@@ -21,10 +21,6 @@
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/learn-graph",
-      "schedule": "30 4 * * *"
-    },
-    {
       "path": "/api/cron/run-exports",
       "schedule": "0 5 * * *"
     },

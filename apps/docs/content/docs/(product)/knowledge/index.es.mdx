@@ -1,18 +1,18 @@
 ---
 title: Conocimiento
-description: Añade fuentes que el Asistente pueda consultar y citar.
+description: Añade fuentes en las que el asistente pueda buscar y que pueda citar.
 ---
 
-Las fuentes pertenecen a la organización y una colección de conocimiento las
-almacena junto con los conceptos generados durante la ingesta. Un Asistente
-busca en una Fuente solo después de que tú vincules esa Fuente al Asistente.
-Vincula una Fuente desde la [Biblioteca](/knowledge/library) o añádela dentro
-del Asistente, que la vinculará por ti.
+Las fuentes pertenecen a la Organización, y una Knowledge Collection las
+almacena junto con los Documentos generados durante la ingesta. Un asistente
+solo busca en una fuente después de que vincules esa fuente al asistente.
+Vincula una fuente desde la [Library](/knowledge/library) o añádela dentro del
+asistente, que la vinculará por ti.
 
-Dado que una Fuente puede responder a varios Asistentes, eliminarla de un
-Asistente y eliminarla para la Organización son operaciones diferentes. Al
-eliminar un Asistente, las Fuentes de la Organización permanecen intactas. Solo
-elimina los enlaces de ese asistente.
+Dado que una fuente puede responder para varios asistentes, eliminarla de un
+asistente y eliminarla para la organización son operaciones distintas. Al
+eliminar un asistente, las fuentes de la organización se mantienen intactas.
+Solo elimina los enlaces de ese asistente.
 
 ## Tipos de fuentes disponibles
 
@@ -22,31 +22,31 @@ elimina los enlaces de ese asistente.
 - Aplicación conectada
 - Preguntas frecuentes seleccionadas
 
-Ciele extrae el contenido de la Fuente y crea Conceptos en los que se puede
-buscar. El entorno de ejecución resuelve las citas y las remite a las Fuentes
-con nombre.
+Ciele extrae el contenido de las fuentes y crea documentos en los que se pueden
+realizar búsquedas. El entorno de ejecución resuelve las citas relacionándolas
+con las Fuentes con nombre.
 
 ## Estado de la fuente
 
-| Estado | Significado |
+| Status | Significado |
 | --- | --- |
-| Procesando | Ciele está extrayendo e indexando la Fuente. |
-| Listo | La Fuente está disponible para la búsqueda de conocimiento. |
-| Error | La ingesta no se ha completado. Revisa el error y vuelve a intentar la operación. |
+| Processing | Ciele está extrayendo e indexando el Source. |
+| Ready | El origen está disponible para buscar conocimiento. |
+| Failed | La ingesta no se completó. Revisa el error y vuelve a intentar la operación. |
 
-No pruebes una nueva Fuente antes de que su estado sea **Ready**.
+No pruebes un nuevo Source antes de que su estado sea **Ready**.
 
 ## Acceso directo
 
-Una fuente de archivo puede entregar al visitante el archivo original junto con
-la cita. Esta es la configuración **Direct access** en un enlace de Asistente y
-está desactivada de forma predeterminada. Configúralo en la Biblioteca.
+Un Source de tipo archivo puede entregar al Visitor el archivo original junto
+con la cita. Este es el ajuste **Direct access** de un enlace de Assistant, y
+está desactivado de forma predeterminada. Establécelo en la Library.
 
 ## Recuperación
 
-Search Knowledge puede usar la búsqueda vectorial, la reserva léxica y la
-navegación por el grafo de conocimiento. El motor de conocimiento seleccionado
-controla la ruta principal.
+La búsqueda en el conocimiento utiliza la búsqueda vectorial y el recurso léxico
+como alternativa para encontrar pasajes candidatos. A continuación, un paso de
+reordenación selecciona los pasajes que lee el asistente.
 
-Deep Search permite más iteraciones solo de conocimiento. No busca en la web
-abierta.
+Deep Search permite más iteraciones exclusivas de Knowledge. No realiza
+búsquedas en la web abierta.

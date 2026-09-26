@@ -32,8 +32,7 @@ export function IdentityGate({
           Verify your identity to continue
         </h2>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-          Access requires authentication to continue. Signing in helps us
-          personalize your experience and keep your data secure.
+          Sign in to continue.
         </p>
         <SkeletonReveal
           loading={loading}

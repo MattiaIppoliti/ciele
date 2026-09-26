@@ -13,26 +13,25 @@ flowchart TB
   EXTRACT["Extract the content"]
   DOCUMENT["Create Documents"]
   INDEX["Index for search"]
-  GRAPH["Update the graph"]
   READY["Status becomes Ready"]
   SOURCE --> EXTRACT
   EXTRACT --> DOCUMENT
   DOCUMENT --> INDEX
-  DOCUMENT --> GRAPH
   INDEX --> READY
-  GRAPH --> READY
 `}
 />
 
 Ciele stores Knowledge as Documents in Open Knowledge Format (OKF). A Document keeps a reference to its original Source. OKF calls the same record a Concept, and the database tables keep that name.
 
-FAQ ingestion creates a curated Document with question and answer provenance. File and website ingestion preserve the original Source object where applicable.
+File, text, and website ingestion store the extracted text without changes. Ciele does not rewrite a Source with a model. FAQ ingestion creates a curated Document with question and answer provenance. File and website ingestion preserve the original Source object where applicable.
 
 ## Retrieval
 
-The runtime can retrieve Documents through vector search and lexical fallback. Graph mode can add navigation through indexed Document relationships.
+The runtime retrieves 20 candidate passages through vector search and lexical fallback. A rerank model then selects the 6 passages that the Assistant reads.
 
-Every path scopes by the Assistant-to-Source links. A hit from a Source that is not linked to the querying Assistant is dropped, in the graph path as in the vector path.
+The rerank step uses the platform `AI_GATEWAY_API_KEY`. If the key is not set, or the rerank model does not answer in time, search keeps the order of the index. Answers continue in both cases.
+
+Every search scopes by the Assistant-to-Source links. Ciele drops a hit from a Source that is not linked to the querying Assistant.
 
 A Context Hint can constrain retrieval to a relevant Collection or course-like context when the runtime supplies one.
 
@@ -46,6 +45,6 @@ The Visitor can open the Sources display after the answer. The Inbox stores the 
 
 ## Deletion and recrawl
 
-Source deletion retires related Documents from active graph and search data, for every linked Assistant. Removing one link retires nothing. It stops one Assistant from reaching the Source.
+Source deletion retires related Documents from active search data, for every linked Assistant. Removing one link retires nothing. It stops one Assistant from reaching the Source.
 
 Website recrawl restarts extraction and indexing for that Source.
