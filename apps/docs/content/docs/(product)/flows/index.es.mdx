@@ -1,22 +1,24 @@
 ---
 title: Flujos
-description: Enruta mensajes y eventos proactivos a acciones de respuesta ordenadas.
+description: Dirige los mensajes y los eventos proactivos a acciones de respuesta ordenadas.
 ---
 
-Un flujo contiene un desencadenante, condiciones disponibles y acciones
-ordenadas. El enrutador procesa los Flows habilitados en el orden configurado.
+Un Flow contiene un desencadenante (trigger), las condiciones disponibles y las
+acciones ordenadas. El enrutador procesa los Flows habilitados en el orden
+configurado.
 
 ## Flujos de mensajes
 
 El desencadenante **User sends a message** utiliza la clasificación de
-intenciones. Un clasificador de modelos selecciona el mejor flujo apto cuando
+intenciones. Un clasificador de modelos selecciona el mejor Flow elegible cuando
 hay un modelo disponible.
 
-El enrutador de palabras clave proporciona una alternativa para casos de
-desconexión y error. Ambos enrutadores utilizan el mismo filtro de candidatos.
+El enrutador de palabras clave ofrece una alternativa de respaldo para
+situaciones offline y en caso de error. Ambos enrutadores utilizan el mismo
+filtro de candidatos.
 
-El flujo **Default behavior** bloqueado permanece en último lugar. Gestiona un
-mensaje apto cuando ningún flujo anterior gana.
+El flujo **Default behavior** bloqueado permanece en último lugar. Procesa un
+mensaje apto cuando no resulta seleccionado ningún Flow anterior.
 
 ## Flujos proactivos
 
@@ -26,13 +28,17 @@ Estos desencadenantes no clasifican un mensaje:
 - **Time on page**
 - **Chat opens**
 
-Un flujo proactivo no tiene condiciones y contiene una acción de notificación.
-Consulta [Notificaciones](/flows/notifications).
+Un Flow proactivo no tiene condiciones y contiene una acción de tipo
+Notification. Consulta [Notifications](/flows/notifications).
 
 ## Orden de los flujos
 
 Coloca los flujos de mensajes específicos antes de los flujos de mensajes
-generales. El orden también controla el atajo integrado Basic Interaction.
+generales. El orden también controla el atajo integrado de Basic Interaction.
 
-Un flujo personalizado anterior que coincida puede gestionar un mensaje de
-cortesía antes del flujo de interacción básica integrado.
+Un Flow personalizado coincidente situado antes puede gestionar un mensaje de
+cortesía antes del Flow de interacción básica integrado.
+
+Cuando [Study Mode](/assistants/tools-and-skills#enable-study-mode) está
+activado, una solicitud de ejercicio de estudio va directamente al flujo Study
+Mode. La clasificación de intenciones no se ejecuta para esa solicitud.

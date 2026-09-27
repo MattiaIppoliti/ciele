@@ -1,6 +1,5 @@
 import type { Conversation, ReviewRequest, WebhookSubscription } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
-import { drain } from "./drain";
 
 /** Continue a settled gate; return false when its Assistant no longer exists. */
 export async function resumeGateTurn({
@@ -37,6 +36,7 @@ export async function resumeGateTurn({
     keyResolution: request.simulated ? { surface: "preview" } : undefined,
     signal: new AbortController().signal,
   });
-  await drain(stream);
+  // Drive the turn for its side effects; nobody reads the stream.
+  await stream.pipeTo(new WritableStream());
   return true;
 }

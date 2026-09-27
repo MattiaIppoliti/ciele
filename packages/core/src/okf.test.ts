@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  OKF_VERSION,
   conceptGeneratedAt,
   conceptStatus,
   isHumanActor,
@@ -13,12 +12,6 @@ import {
 } from "./okf";
 
 const bare: ConceptFrontmatter = { type: "FAQ" };
-
-describe("OKF version", () => {
-  it("declares v0.2", () => {
-    expect(OKF_VERSION).toBe("0.2");
-  });
-});
 
 describe("actor convention (§7)", () => {
   it("builds the three actor forms", () => {

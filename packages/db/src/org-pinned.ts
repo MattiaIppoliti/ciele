@@ -71,7 +71,6 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "clearSsoConnection",
   "listProviderConnections",
   "createProviderConnection",
-  "getEmbeddingConnectionId",
   "setEmbeddingConnectionId",
 ]);
 

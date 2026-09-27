@@ -1,13 +1,27 @@
 import { InsightsClient } from "@/components/insights/insights-client";
 import { requirePageMember } from "@/lib/authz";
-import { defaultInsightsFilter, getInsightsOverviewCached } from "@/lib/insights/report";
+import {
+  getInsightsOverviewCached,
+  insightsFilterFromSearchParams,
+} from "@/lib/insights/report";
 
 export const dynamic = "force-dynamic";
 
-export default async function InsightsPage() {
+export default async function InsightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { organizationId, reads } = await requirePageMember();
 
-  const filters = defaultInsightsFilter();
+  // The same parser the /api/insights route uses, so a shared link opens on
+  // its range and filters, and anything invalid falls back to the defaults.
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(await searchParams)) {
+    const first = Array.isArray(value) ? value[0] : value;
+    if (first !== undefined) params.set(key, first);
+  }
+  const filters = insightsFilterFromSearchParams(params);
   const [overview, assistants] = await Promise.all([
     getInsightsOverviewCached(organizationId, filters),
     reads.assistants(),

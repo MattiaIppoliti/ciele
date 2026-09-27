@@ -391,7 +391,20 @@ export function AiSettingsClient({
     });
   }
 
+  // Disconnecting deletes the stored credential: whatever ran on it stops
+  // until someone pastes the key again, so it asks first like the local
+  // subscription disconnect above.
   function handleDisconnect(id: string, what: string) {
+    confirmDelete({
+      title: `Disconnect this ${what.toLowerCase()}?`,
+      description:
+        "The stored credential is deleted. Anything that runs on it stops until it is connected again.",
+      confirmLabel: "Disconnect",
+      onConfirm: () => disconnectNow(id, what),
+    });
+  }
+
+  function disconnectNow(id: string, what: string) {
     startTransition(async () => {
       try {
         await deleteProviderConnectionAction(id);
@@ -771,7 +784,7 @@ export function AiSettingsClient({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting..." : "Connect"}
+                {isPending ? "Connecting…" : "Connect"}
               </Button>
             </DialogFooter>
           </form>
@@ -835,6 +848,10 @@ export function AiSettingsClient({
               </Label>
               <Input
                 id="vertex-service-account"
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                spellCheck={false}
                 value={vertexServiceAccount}
                 onChange={(e) => setVertexServiceAccount(e.target.value)}
                 placeholder="ciele-runtime@ciele-prod.iam.gserviceaccount.com"
@@ -849,7 +866,7 @@ export function AiSettingsClient({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting..." : "Connect"}
+                {isPending ? "Connecting…" : "Connect"}
               </Button>
             </DialogFooter>
           </form>
@@ -915,7 +932,7 @@ export function AiSettingsClient({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting..." : "Connect"}
+                {isPending ? "Connecting…" : "Connect"}
               </Button>
             </DialogFooter>
           </form>
@@ -945,6 +962,10 @@ export function AiSettingsClient({
               <Label htmlFor="azure-endpoint">Endpoint</Label>
               <Input
                 id="azure-endpoint"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
                 value={azureEndpoint}
                 onChange={(e) => setAzureEndpoint(e.target.value)}
                 placeholder="https://example.openai.azure.com"
@@ -1002,7 +1023,7 @@ export function AiSettingsClient({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting..." : "Connect"}
+                {isPending ? "Connecting…" : "Connect"}
               </Button>
             </DialogFooter>
           </form>
@@ -1037,6 +1058,10 @@ export function AiSettingsClient({
               <Label htmlFor="compat-base-url">Base URL</Label>
               <Input
                 id="compat-base-url"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
                 value={compatBaseUrl}
                 onChange={(e) => setCompatBaseUrl(e.target.value)}
                 placeholder="http://localhost:11434/v1"
@@ -1116,7 +1141,7 @@ export function AiSettingsClient({
                 }
                 onClick={handleTestCompat}
               >
-                {isTestingCompat ? "Testing..." : "Test connection"}
+                {isTestingCompat ? "Testing…" : "Test connection"}
               </Button>
               <Button
                 type="button"
@@ -1126,7 +1151,7 @@ export function AiSettingsClient({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting..." : "Connect"}
+                {isPending ? "Connecting…" : "Connect"}
               </Button>
             </DialogFooter>
           </form>

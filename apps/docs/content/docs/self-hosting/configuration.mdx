@@ -35,6 +35,26 @@ Configure Anthropic, OpenAI, or Google provider keys. You can also configure an 
 
 Knowledge search uses lexical matching when no embedding model is available.
 
+## Chat capacity
+
+Each chat turn that calls a model takes a slot before its first model call. The slots are in the database, so all application instances share one count.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | The maximum number of turns that run at the same time for one Organization. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | The maximum number of turns that run at the same time on one platform provider key. |
+| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | How long a turn waits for a free slot, in milliseconds. The maximum is `60000`. |
+
+Set a limit to `0` or `off` to remove it. Keep the variable empty to use the default.
+
+A turn that gets no slot in the wait time does not run. The widget tells the Visitor to try again in a few seconds.
+
+When a provider refuses a request because of its rate limit, the application tries the request again after a random delay. The widget shows the same message if all tries fail.
+
+The widget also limits each Visitor to 12 messages per minute. One network address can send 300 messages per minute to one Assistant. Many Visitors can share one address, for example on an office network.
+
+Turns on a personal subscription do not take a slot.
+
 ## TLS
 
 Terminate TLS in a reverse proxy. Then set both public origin variables to their HTTPS addresses and rebuild the application.

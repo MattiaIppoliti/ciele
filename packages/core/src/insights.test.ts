@@ -9,7 +9,6 @@ import {
   filterConversations,
   filterMessages,
   hostOf,
-  isNotificationOnly,
 } from "./insights";
 import {
   ASSISTANTS,
@@ -208,13 +207,6 @@ describe("proactive Notifications in the read model", () => {
     expect(stats.userMessages).toBe(1);
     // One answer to one conversation: the nudge does not inflate the ratio.
     expect(stats.answersPerConversation).toBe(1);
-  });
-
-  it("recognises a conversation that never got past the nudge", () => {
-    expect(isNotificationOnly("cx", [nudge("cx")])).toBe(true);
-    expect(isNotificationOnly("cx", [nudge("cx"), question("cx")])).toBe(false);
-    // Nothing to be "only": an empty conversation keeps its old treatment.
-    expect(isNotificationOnly("cx", [])).toBe(false);
   });
 
   it("drops notification-only conversations from the population", () => {

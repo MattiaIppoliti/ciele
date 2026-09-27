@@ -89,7 +89,7 @@ export function EmbeddingConnectionCard({
           onValueChange={(value) => setSelected(value ?? AUTOMATIC)}
           disabled={!canManage || isPending}
         >
-          <SelectTrigger className="w-full sm:w-96">
+          <SelectTrigger className="w-full sm:w-96" aria-label="Embedding connection">
             <SelectValue>{(value: string) => labelFor(value)}</SelectValue>
           </SelectTrigger>
           <SelectContent>

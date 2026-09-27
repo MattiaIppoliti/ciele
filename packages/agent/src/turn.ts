@@ -9,6 +9,7 @@ import type {
   FlowTrigger,
   PreflightTraceRecord,
   ProactiveTriggerContext,
+  Provider,
   ProviderConnection,
   ReviewRequest,
   SkillSnapshot,
@@ -94,7 +95,20 @@ import {
   admitAiSpend,
   CONVERSATION_SPEND_CAPACITY,
 } from "./spend-admission";
-import { isOperatorSurface, resolveChatModel, type KeyResolution } from "./models";
+import {
+  isOperatorSurface,
+  resolveChatModel,
+  type KeyResolution,
+  type ProviderCredential,
+} from "./models";
+import { capacityRefusalOf } from "./rate-limit-retry";
+import {
+  admitTurnConcurrency,
+  turnConcurrencyLimits,
+  turnConcurrencyScopes,
+  turnOverloadOf,
+  TurnBusyError,
+} from "./turn-concurrency";
 import { dbConnectorRuntime } from "./connector-request";
 import type { EscalationDeskCandidate } from "./help-desk-recommend";
 import { getRuntimeHost } from "./host";
@@ -326,14 +340,35 @@ export function turnConnectionKind(
   connections: ProviderConnection[],
   keyResolution: KeyResolution = {}
 ): "platform" | "byok" | null {
+  return connectionKindOf(turnModelIdentity(assistant, connections, keyResolution));
+}
+
+/**
+ * The provider and credential this turn's chat model resolves to: what the
+ * spend gate reads as platform-or-BYOK, and what the concurrency admission
+ * reads to pick its scopes (`turn-concurrency.ts`).
+ */
+function turnModelIdentity(
+  assistant: Assistant,
+  connections: ProviderConnection[],
+  keyResolution: KeyResolution = {}
+): { provider: Provider; credentialKind: ProviderCredential["kind"] } | null {
   const resolved = resolveChatModel(
     assistant.modelProvider,
     assistant.modelId,
     connections,
     keyResolution
   );
-  if (!resolved) return null;
-  return resolved.credentialKind === "platform" ? "platform" : "byok";
+  return resolved
+    ? { provider: resolved.provider, credentialKind: resolved.credentialKind }
+    : null;
+}
+
+function connectionKindOf(
+  identity: { credentialKind: ProviderCredential["kind"] } | null
+): "platform" | "byok" | null {
+  if (!identity) return null;
+  return identity.credentialKind === "platform" ? "platform" : "byok";
 }
 
 /** A turn that decided there is nothing to say: no db writes, no wire events. */
@@ -812,11 +847,12 @@ export async function streamConversationTurn(
     ? `study_${studySubmission.data.exerciseId}_${studySubmission.data.questionId}`
     : suppliedTurnId || crypto.randomUUID();
 
-  const connectionKind = turnConnectionKind(
+  const turnModel = turnModelIdentity(
     assistant,
     input.connections,
     input.keyResolution
   );
+  const connectionKind = connectionKindOf(turnModel);
   // Long-term memory applies only to SSO-signed subjects (#664); derived up
   // front so the toggle read can join the parallel gate wave below.
   const memorySubjectId =
@@ -1236,6 +1272,7 @@ export async function streamConversationTurn(
         await finishTurn({ parts: [textPart, helpPart], flowId: null, flowName });
       };
       let teammateFailureRecorded = false;
+      let releaseConcurrency: (() => Promise<void>) | null = null;
       try {
         if (input.studyAnswer !== undefined) {
           if (teammate || !assistant.tools.studyMode?.enabled) throw new Error("Study mode is disabled.");
@@ -1303,6 +1340,26 @@ export async function streamConversationTurn(
             });
             return;
           }
+        }
+        // Concurrency admission (`turn-concurrency.ts`): the first model call
+        // is below, so this is where a turn takes its slot. After every gate
+        // that answers without a model (budget, activation, study, FAQ), so a
+        // verbatim reply never waits behind a queue it does not need. A full
+        // queue throws into the catch, which reports `busy` on the wire and
+        // fails the turn claim, so the same turn id can be retried.
+        if (turnModel) {
+          const limits = turnConcurrencyLimits();
+          const slot = await admitTurnConcurrency({
+            db: systemDb,
+            scopes: turnConcurrencyScopes(
+              { organizationId: input.organizationId, ...turnModel },
+              limits
+            ),
+            maxWaitMs: limits.queueWaitMs,
+            signal,
+          });
+          if (slot.status === "busy") throw new TurnBusyError(slot.retryAfterMs);
+          releaseConcurrency = slot.release;
         }
         // "AI recommended help desk" candidates: resolved live (desk
         // descriptions are org data, never snapshotted into Publications);
@@ -1756,7 +1813,10 @@ export async function streamConversationTurn(
         const message =
           error instanceof Error ? error.message : "Unknown error";
         if (!signal.aborted) {
-          emit({ type: "error", message });
+          // A capacity failure says so, with a wait, so the client can tell
+          // "busy, try again" from "broken" (`TurnOverloadCode`).
+          const overload = turnOverloadOf(error, capacityRefusalOf);
+          emit({ type: "error", message, ...(overload ?? {}) });
         }
         if (turnLeaseToken) {
           await systemDb
@@ -1786,6 +1846,7 @@ export async function streamConversationTurn(
           });
         }
       } finally {
+        await releaseConcurrency?.();
         await spendAdmission.release();
         controller.close();
       }

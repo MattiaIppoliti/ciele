@@ -9,8 +9,8 @@ import { DOCS_REPO_URL, SITE_URL } from '@/lib/repo';
  * rules in global.css that draw the divider after the repository button and size
  * both glyphs, keep the two in step.
  */
-export const HOME_BUTTON_LABEL = 'Back to ciele.app';
-export const REPO_BUTTON_LABEL = 'Ciele on GitHub';
+const HOME_BUTTON_LABEL = 'Back to ciele.app';
+const REPO_BUTTON_LABEL = 'Ciele on GitHub';
 
 /**
  * Shared layout options for Ciele documentation (ciele.app/docs).

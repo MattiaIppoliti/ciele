@@ -1,36 +1,47 @@
 ---
 title: Réponses rapides
-description: Ajoutez des boutons de démarrage qui envoient du texte ou renvoient une réponse sélectionnée parmi les FAQ.
+description: Ajoutez des boutons de démarrage qui envoient du texte, ouvrent l'assistance, ouvrent un lien ou renvoient une réponse sélectionnée de la FAQ.
 ---
 
-Les réponses rapides apparaissent à côté du message de bienvenue. Elles aident
-un Visiteur à démarrer une tâche courante.
+Les réponses rapides s'affichent à proximité du message de bienvenue. Elles
+aident un Visiteur à démarrer une tâche courante.
 
-## Envoyer un texte
+## Envoyer du texte dans le chat
 
-Une réponse rapide **Send Text** envoie le texte configuré en tant que message
-du visiteur. Le routeur Flow standard traite ensuite ce message.
+Une réponse rapide **Send Text Into Chat** envoie son texte configuré sous la
+forme d'un message de visiteur. Le routeur de flux normal prend ensuite en
+charge ce message.
 
 Utilisez ce type lorsque l'Assistant doit interpréter le texte de départ selon
 ses règles de routage habituelles.
 
+## Remontée (escalade)
+
+Une réponse rapide **Escalation** ouvre le panneau d'assistance de l'Assistant.
+Le Visiteur peut ensuite sélectionner un canal Help Desk.
+
+## Ouvrir un lien externe
+
+Une réponse rapide **Open External Link** ouvre son URL dans un nouvel onglet du
+navigateur. Cela n'envoie pas de message.
+
 ## FAQ
 
-Une réponse rapide **FAQ** renvoie textuellement la réponse FAQ sélectionnée.
-Elle n'appelle pas le modèle de chat.
+Une réponse rapide **FAQ** renvoie mot pour mot la réponse sélectionnée de la
+FAQ. Il n'appelle pas le modèle de chat.
 
-La réponse inclut la citation de la source FAQ. Utilisez ce type lorsqu'une
-réponse approuvée doit rester exacte.
+La réponse inclut la citation de la source de la FAQ. Utilisez ce type
+lorsqu'une réponse approuvée doit rester exacte.
 
-## Ajoutez une réponse rapide
+## Ajouter une réponse rapide
 
 1. Ouvrez **General**.
-2. Recherchez **Quick replies**.
-3. Ajoutez un élément **Send Text** ou **FAQ**.
+2. Rechercher **Quick replies**.
+3. Ajoutez un élément et sélectionnez son **Type**.
 4. Saisissez le libellé visible.
 5. Sélectionnez ou saisissez le contenu requis.
 6. Enregistrez le brouillon.
-7. Testez le bouton en mode Aperçu.
+7. Testez le bouton dans Preview.
 
-Utilisez des libellés courts. Le libellé doit décrire l'action qui se produit
+Rédigez des libellés concis. Le libellé doit décrire l'action qui se produit
 après la sélection.

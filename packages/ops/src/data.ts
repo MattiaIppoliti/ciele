@@ -9,7 +9,7 @@ import type {
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { parseCsv } from "./csv";
-import { OperationError, defineOperation } from "./operation";
+import { OperationError, defineOperation, type OperationContext } from "./operation";
 
 const attributeSchema = z.object({
   key: z.string().min(1).max(100),
@@ -190,14 +190,6 @@ function validateEntityInput(input: EntityInput): EntityInput {
     identityAttribute: input.scope === "user" ? identityAttribute : null,
   };
 }
-
-export const listEntitiesOp = defineOperation({
-  name: "entities.list",
-  capability: "member",
-  input: z.object({}),
-  entities: () => [],
-  run: (ctx) => ctx.db.table("entities").list({ organizationId: ctx.organizationId }),
-});
 
 export const listEntitiesPageOp = defineOperation({
   name: "entities.listPage",
@@ -402,10 +394,6 @@ export const setMemorySettingsOp = defineOperation({
   entities: () => [{ kind: "aiSettings" as const }],
   run: async (ctx, { enabled }) => { await ctx.db.setMemoryEnabled(ctx.organizationId, enabled); return { enabled }; },
 });
-export const listMemorySubjectsOp = defineOperation({
-  name: "memories.subjects.list", capability: "member", input: z.object({}), entities: () => [],
-  run: (ctx) => ctx.db.listMemorySubjects(ctx.organizationId),
-});
 export const listMemorySubjectsPageOp = defineOperation({
   name: "memories.subjects.listPage", capability: "member",
   input: z.object({
@@ -420,7 +408,7 @@ export const listSubjectMemoriesOp = defineOperation({
   run: (ctx, { subjectId }) =>
     ctx.db.listMemories({ organizationId: ctx.organizationId, subjectId }),
 });
-async function requireMemory(ctx: Parameters<typeof listMemorySubjectsOp.run>[0], id: string): Promise<Memory> {
+async function requireMemory(ctx: OperationContext, id: string): Promise<Memory> {
   const memory = await ctx.db.getMemory(id);
   if (memory?.organizationId === ctx.organizationId) return memory;
   throw new OperationError("not_found", "Memory not found");

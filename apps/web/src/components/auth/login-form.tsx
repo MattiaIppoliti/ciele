@@ -44,7 +44,7 @@ function LoginFormInner() {
       />
 
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Logging in..." : "Log in"}
+        {pending ? "Logging in…" : "Log in"}
       </Button>
       <p className="text-muted-foreground text-center text-sm">
         No account?{" "}

@@ -33,7 +33,8 @@ export function ProjectPicker({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+            aria-pressed={value === null}
+className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
               value === null
                 ? "border-primary ring-primary/30 ring-1"
                 : "hover:bg-muted/50"
@@ -46,7 +47,8 @@ export function ProjectPicker({
               key={project.id}
               type="button"
               onClick={() => onChange(project.id)}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+              aria-pressed={value === project.id}
+className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                 value === project.id
                   ? "border-primary ring-primary/30 ring-1"
                   : "hover:bg-muted/50"

@@ -25,7 +25,7 @@
 import { pageBudget } from "@agent-hub/core";
 import type { CrawledPage, CrawlOptions } from "./apify";
 import { bearerRequest } from "./bearer-fetch";
-import { redactBearerSecrets, trimTrailingSlash } from "./redact";
+import { redactBearerSecrets } from "./redact";
 
 /**
  * A self-hosted worker returns its completed result as one payload, so keep a
@@ -236,7 +236,7 @@ function requireConfig(): { baseUrl: string; token: string } {
       "CRAWL4AI_BASE_URL and CRAWL4AI_API_TOKEN must be set, required for the Crawl4AI crawler."
     );
   }
-  return { baseUrl: trimTrailingSlash(baseUrl), token };
+  return { baseUrl: baseUrl.replace(/\/+$/, ""), token };
 }
 
 /** A started (still-running) crawl: what we persist on the Source to track it. */

@@ -64,7 +64,7 @@ and requires the full repository. Every release also publishes those three as
 container images:
 
 ```bash
-./deploy/bootstrap.sh --images v0.4.0
+./deploy/bootstrap.sh --images v1.0.62
 ```
 
 The command writes two settings into `deploy/.env` and pulls instead of
@@ -72,7 +72,7 @@ building:
 
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
-CIELE_IMAGE_TAG=v0.4.0
+CIELE_IMAGE_TAG=v1.0.62
 ```
 
 Because both live in `deploy/.env`, a later `docker compose up -d` in that

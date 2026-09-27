@@ -56,6 +56,7 @@ import {
 import { ExtractMemoriesButton } from "@/components/knowledge/extract-memories-button";
 import { relativeTimeLabel } from "@/lib/source-documents";
 import { toast } from "@/lib/toast";
+import { formatDateTime, formatDay } from "@/lib/format";
 
 /**
  * A Document's Memories (#932): the facts extracted from the page, one
@@ -384,7 +385,7 @@ function MemoriesEmpty({
           <p className="text-muted-foreground text-sm" suppressHydrationWarning>
             Nothing has extracted memories from this Document yet.{" "}
             {state.nextCrawlAt
-              ? `The next crawl, due ${new Date(state.nextCrawlAt).toLocaleDateString()}, will.`
+              ? `The next crawl, due ${formatDay(state.nextCrawlAt)}, will.`
               : canEdit
                 ? "Extract memories starts it now."
                 : "An Editor can start it with Extract memories on the Source's page."}
@@ -482,11 +483,11 @@ function MemoryDialog({
             <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-y-2 font-mono text-xs">
               <dt className="text-muted-foreground">Created</dt>
               <dd suppressHydrationWarning>
-                {new Date(memory.createdAt).toLocaleString()}
+                {formatDateTime(memory.createdAt)}
               </dd>
               <dt className="text-muted-foreground">Updated</dt>
               <dd suppressHydrationWarning>
-                {new Date(memory.updatedAt).toLocaleString()}
+                {formatDateTime(memory.updatedAt)}
               </dd>
               <dt className="text-muted-foreground">ID</dt>
               <dd className="flex items-center gap-1 break-all">

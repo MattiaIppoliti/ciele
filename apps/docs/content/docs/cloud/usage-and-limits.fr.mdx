@@ -4,32 +4,68 @@ description: Vérifiez l'utilisation récente de l'IA, de l'intégration et du s
 ---
 
 Ouvrez **Settings > Usage**. La page affiche les données d'utilisation
-disponibles pour les 30 derniers jours.
+disponibles des 30 derniers jours.
 
 ## Compteurs d'utilisation
 
 Ciele mesure ces groupes de ressources séparément :
 
 - Utilisation du modèle d'IA
-- utilisation de l'intégration
+- utilisation de l'embedding
 - utilisation du scraping
 
-La page indique si l'opération a été financée par le financement de la
-plateforme Ciele ou par les identifiants de l'organisation.
+La page indique si l'opération a été financée par le crédit de la plateforme
+Ciele ou par les identifiants de l'organisation.
 
-Les crédits représentent le coût estimé en cents. Ils ne correspondent pas au
-nombre de réponses de l'Assistant.
+Les crédits représentent le coût estimé en centimes. Ils ne représentent pas un
+décompte des réponses de l'Assistant.
 
 ## Limites
 
-La page compare l'utilisation actuelle aux limites disponibles de l'abonnement.
-Elle peut également afficher le budget quotidien de l'organisation.
+La page compare l'utilisation actuelle aux limites prévues par le forfait. Elle
+peut également afficher le budget quotidien de l'organisation.
 
 Les lignes quotidiennes utilisent le temps universel coordonné (UTC). Utilisez
 cette limite lorsque vous comparez les données Ciele avec une facture de
 fournisseur.
 
-## Examinez l'utilisation inattendue
+## Où les crédits ont été dépensés
+
+La page répertorie les entités ayant consommé les crédits de la fenêtre :
+Assistants, Teammates, Members, API keys, Routines et Flows.
+
+Chaque carte totalise un type de « spender ». Une réponse de Teammate indique le
+nom du Teammate ainsi que celui du collègue qui a posé la question. Le même
+crédit figure donc sur deux cartes. N'additionnez pas les cartes entre elles.
+
+## Crédits de recharge
+
+L'allocation d'un plan est réinitialisée à chaque nouvelle période (window). Les
+crédits de recharge constituent un pool que votre organisation conserve jusqu'à
+ce qu'elle les utilise.
+
+Ciele ne puise dans le pool qu'une fois l'allocation d'une fenêtre entièrement
+utilisée. Les réponses se poursuivent ensuite au lieu de s'interrompre. Lorsque
+le pool est également vide, le message de limite habituel s'applique à nouveau.
+
+Achetez un pack dans **Settings > Billing**. Un pack coûte toujours plus cher
+par crédit que votre plan. Si vous achetez un pack chaque mois, un passage à un
+abonnement supérieur est moins coûteux.
+
+## Autres tâches
+
+Certaines tâches ne coûtent aucun crédit : une requête API sortante depuis un
+Flow, un e-mail, une exécution de Flow entrant, un rappel de webhook.
+
+La page comptabilise ces opérations. Elle ne leur attribue pas de prix. Le
+compteur vous indique qu'un Flow effectue de nombreux appels sortants, ce
+qu'aucune autre page ne montre.
+
+Chaque ligne indique également le résultat. **Refused by Ciele** signifie que
+notre propre politique a interrompu l'appel. **Failed** signifie que l'autre
+système ou le réseau l'a fait.
+
+## Examiner une utilisation inattendue
 
 1. Sélectionnez le compteur concerné.
 2. Identifiez le jour UTC et la source de financement.

@@ -4,9 +4,11 @@ import {
   PERSONAL_SETTINGS_HOME,
   PERSONAL_SETTINGS_TABS,
   SETTINGS_HOME,
+  SIDEBAR_SETTINGS_ITEMS,
   crossScopeLink,
   settingsScopeFromPath,
   settingsTabFromPath,
+  sidebarSettingsActiveIndex,
   tabsForScope,
 } from "./settings-nav";
 
@@ -50,5 +52,25 @@ describe("settings navigation", () => {
     expect(PERSONAL_SETTINGS_TABS.map((t) => t.href)).toContain(
       PERSONAL_SETTINGS_HOME
     );
+  });
+
+  it("the sidebar group ends with a row into personal settings", () => {
+    const last = SIDEBAR_SETTINGS_ITEMS[SIDEBAR_SETTINGS_ITEMS.length - 1]!;
+    expect(last.label).toBe("Personal settings");
+    expect(last.href).toBe(PERSONAL_SETTINGS_HOME);
+    expect(SIDEBAR_SETTINGS_ITEMS.slice(0, -1)).toEqual(ORG_SETTINGS_TABS);
+  });
+
+  it("lights the org tab, the personal row for any personal tab, and nothing elsewhere", () => {
+    expect(sidebarSettingsActiveIndex("/settings/billing")).toBe(
+      ORG_SETTINGS_TABS.findIndex((tab) => tab.slug === "billing")
+    );
+    for (const tab of PERSONAL_SETTINGS_TABS) {
+      expect(sidebarSettingsActiveIndex(tab.href)).toBe(
+        SIDEBAR_SETTINGS_ITEMS.length - 1
+      );
+    }
+    expect(sidebarSettingsActiveIndex("/insights")).toBe(-1);
+    expect(sidebarSettingsActiveIndex("/settings/whatever")).toBe(-1);
   });
 });

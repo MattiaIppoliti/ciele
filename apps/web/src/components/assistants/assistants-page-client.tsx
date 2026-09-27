@@ -59,7 +59,10 @@ export function AssistantsPageClient({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search Assistants..."
+              placeholder="Search Assistants…"
+              aria-label="Search assistants"
+              type="search"
+              autoComplete="off"
               data-testid="assistants-search"
               className="h-9 pl-9"
             />
@@ -121,7 +124,7 @@ export function AssistantsPageClient({
             ))}
           </div>
 
-          {canCreate && <CreateAssistantDialog triggerLabel="Add New..." />}
+          {canCreate && <CreateAssistantDialog triggerLabel="Add New…" />}
         </div>
 
         {view === "grid" ? (

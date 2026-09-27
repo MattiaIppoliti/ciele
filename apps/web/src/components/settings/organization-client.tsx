@@ -145,6 +145,8 @@ export function OrganizationClient({
       <div className="space-y-3">
         <FieldHeader title="Organization name" hint="Shown throughout the admin app." />
         <Input
+          aria-label="Organization name"
+          autoComplete="organization"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="h-11 max-w-sm"
@@ -160,7 +162,7 @@ export function OrganizationClient({
           value={retention}
           onValueChange={(value) => setRetention(value ?? "forever")}
         >
-          <SelectTrigger className="h-11 w-full max-w-sm">
+          <SelectTrigger className="h-11 w-full max-w-sm" aria-label="Reasoning trace retention">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -182,7 +184,7 @@ export function OrganizationClient({
           value={transcriptRetention}
           onValueChange={(value) => setTranscriptRetention(value ?? "forever")}
         >
-          <SelectTrigger className="h-11 w-full max-w-sm">
+          <SelectTrigger className="h-11 w-full max-w-sm" aria-label="Conversation retention">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -198,7 +200,7 @@ export function OrganizationClient({
       <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
         {dirty && <span className="text-muted-foreground text-sm">Unsaved changes</span>}
         <Button onClick={handleSave} disabled={isPending || !dirty} className="px-6 font-semibold">
-          {isPending ? "Saving..." : "Save changes"}
+          {isPending ? "Saving…" : "Save changes"}
         </Button>
       </div>
     </div>

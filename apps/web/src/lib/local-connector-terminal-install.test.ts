@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildConnectorInstallScript,
-  connectorInstallCommand,
   isConnectorInstallShell,
 } from "./local-connector-terminal-install";
 
@@ -13,21 +12,6 @@ describe("isConnectorInstallShell", () => {
     expect(isConnectorInstallShell("ps1")).toBe(true);
     expect(isConnectorInstallShell("bat")).toBe(false);
     expect(isConnectorInstallShell("")).toBe(false);
-  });
-});
-
-describe("connectorInstallCommand", () => {
-  it("is a single copy-paste line per shell", () => {
-    expect(connectorInstallCommand(ORIGIN, "sh")).toBe(
-      "curl -fsSL https://ciele.example.com/api/local-connector/install/sh | sh"
-    );
-    expect(connectorInstallCommand(ORIGIN, "ps1")).toBe(
-      "irm https://ciele.example.com/api/local-connector/install/ps1 | iex"
-    );
-  });
-
-  it("rejects an unsafe origin", () => {
-    expect(() => connectorInstallCommand("http://ciele.example.com", "sh")).toThrow();
   });
 });
 

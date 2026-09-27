@@ -38,6 +38,7 @@ import {
   thrownMessage,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { nonRetryable } from "./job-errors";
 import {
   ApplicationAuthorizationError,
   applicationCredentials,
@@ -135,15 +136,6 @@ export async function resolveSlackRouting(
   const candidates = await slackCandidates(db, mention);
   if (candidates.length === 1) return { kind: "one", connection: candidates[0]! };
   return candidates.length === 0 ? { kind: "none" } : { kind: "conflict", candidates };
-}
-
-/** The single owner of this channel, or null for both of the other outcomes. */
-export async function resolveSlackConnection(
-  db: Db,
-  mention: SlackMention
-): Promise<ApplicationConnection | null> {
-  const routing = await resolveSlackRouting(db, mention);
-  return routing.kind === "one" ? routing.connection : null;
 }
 
 /**
@@ -478,11 +470,6 @@ export async function slackChannelContext(
 // ---------------------------------------------------------------------------
 // The handler.
 // ---------------------------------------------------------------------------
-
-/** A failure the ledger must not retry: the next attempt would find the same state. */
-function nonRetryable(message: string): Error & { retryable: false } {
-  return Object.assign(new Error(message), { retryable: false as const });
-}
 
 async function openSlackCredentials(
   db: Db,

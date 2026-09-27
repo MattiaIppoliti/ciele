@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as engine from "./engine";
 import type { Assistant, Flow, RuntimeEventInput } from "@agent-hub/core";
 import { buildPublicationConfig } from "@agent-hub/core";
@@ -1742,5 +1742,114 @@ describe("replayableTrailingParts", () => {
   it("stops at the Visitor's last message", () => {
     const stored = [assistant([gateOutcome]), user()];
     expect(replayableTrailingParts(stored as never)).toEqual([]);
+  });
+});
+
+describe("concurrency admission", () => {
+  // As in the plan-cap gate: the platform env key makes the mock assistant's
+  // google model resolve without any network call, and a verbatim Flow
+  // answers it, so what is under test is the slot and nothing else.
+  const PLATFORM_KEY = "GOOGLE_GENERATIVE_AI_API_KEY";
+
+  // The limits under test are the defaults, whatever the shell running the
+  // suite exports.
+  const CAPACITY_ENV = [
+    "CHAT_MAX_CONCURRENT_TURNS_PER_ORG",
+    "CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER",
+    "CHAT_TURN_QUEUE_WAIT_MS",
+  ] as const;
+  const saved = Object.fromEntries(CAPACITY_ENV.map((name) => [name, process.env[name]]));
+  beforeEach(() => {
+    for (const name of CAPACITY_ENV) delete process.env[name];
+  });
+  afterEach(() => {
+    delete process.env[PLATFORM_KEY];
+    for (const name of CAPACITY_ENV) {
+      if (saved[name] === undefined) delete process.env[name];
+      else process.env[name] = saved[name];
+    }
+  });
+
+  async function verbatimTurn(watchedDb: Db, subjectId: string) {
+    const { assistant } = await fixture();
+    const exact = await db.createFlow(assistant.id, {
+      name: "Slot check",
+      description: "check the slot",
+      actions: ["custom_message"],
+      customMessage: "slot checked",
+    });
+    const stream = await streamConversationTurn({
+      db: watchedDb,
+      assistant,
+      flows: [exact],
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "visitor",
+      subjectId,
+      message: "check the slot",
+      signal: new AbortController().signal,
+    });
+    const text = await new Response(stream).text();
+    return text
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as RuntimeEvent);
+  }
+
+  it("holds one slot per scope for the turn and gives it back after", async () => {
+    process.env[PLATFORM_KEY] = "test-platform-key";
+    const acquired: { key: string; limit: number }[][] = [];
+    let released = 0;
+    const watchedDb: Db = {
+      ...db,
+      async acquireTurnConcurrency(input) {
+        acquired.push(input.scopes);
+        return db.acquireTurnConcurrency(input);
+      },
+      async releaseTurnConcurrency(leaseId) {
+        released += 1;
+        return db.releaseTurnConcurrency(leaseId);
+      },
+    };
+    const events = await verbatimTurn(watchedDb, "visitor-slot-ok");
+    expect(events.at(-1)?.type).toBe("done");
+    expect(acquired).toEqual([
+      [
+        { key: `org:${DEMO_ORG.id}`, limit: 50 },
+        { key: "platform:google", limit: 200 },
+      ],
+    ]);
+    expect(released).toBe(1);
+  });
+
+  it("answers busy, with a wait, when every slot stays taken", async () => {
+    process.env[PLATFORM_KEY] = "test-platform-key";
+    process.env.CHAT_TURN_QUEUE_WAIT_MS = "0";
+    const watchedDb: Db = {
+      ...db,
+      async acquireTurnConcurrency() {
+        return null;
+      },
+    };
+    const events = await verbatimTurn(watchedDb, "visitor-slot-busy");
+    const error = events.find((event) => event.type === "error");
+    expect(error).toMatchObject({ type: "error", code: "busy" });
+    expect((error as { retryAfterMs?: number }).retryAfterMs).toBeGreaterThanOrEqual(4_000);
+    // The turn never reached the engine: no Flow answered.
+    expect(events.some((event) => event.type === "flow")).toBe(false);
+  });
+
+  it("takes no slot on the deterministic no-model path", async () => {
+    let acquired = 0;
+    const watchedDb: Db = {
+      ...db,
+      async acquireTurnConcurrency(input) {
+        acquired += 1;
+        return db.acquireTurnConcurrency(input);
+      },
+    };
+    const events = await verbatimTurn(watchedDb, "visitor-slot-none");
+    expect(events.at(-1)?.type).toBe("done");
+    expect(acquired).toBe(0);
   });
 });

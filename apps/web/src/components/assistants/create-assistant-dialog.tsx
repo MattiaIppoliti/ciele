@@ -16,6 +16,7 @@ import {
 import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 export function CreateAssistantDialog({
   triggerLabel = "Create New Assistant",
@@ -61,16 +62,20 @@ export function CreateAssistantDialog({
             <Label htmlFor="new-title">Assistant title</Label>
             <Input
               id="new-title"
+              name="title"
+              autoComplete="off"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Customer Support Assistant"
-              autoFocus
+              autoFocus={canAutoFocus()}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-nickname">Nickname</Label>
             <Input
               id="new-nickname"
+              name="nickname"
+              autoComplete="off"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="Displayed on the assistant header"
@@ -80,6 +85,8 @@ export function CreateAssistantDialog({
             <Label htmlFor="new-description">Description</Label>
             <Textarea
               id="new-description"
+              name="description"
+              autoComplete="off"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="A short overview of what this assistant does"
@@ -95,7 +102,7 @@ export function CreateAssistantDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Creating..." : "Create assistant"}
+              {isPending ? "Creating…" : "Create assistant"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,5 @@
 import type {
   Provider,
-  Role,
   SourceKind,
   Teammate,
   TeammateRoutine,
@@ -140,6 +139,3 @@ export async function loadTeammateSettingsProps(
       .map((project) => ({ id: project.id, name: project.name })),
   };
 }
-
-/** The viewer shape both routes resolve a Teammate with. */
-export type SettingsViewer = { userId: string; role: Role | null };

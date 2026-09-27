@@ -42,6 +42,7 @@ function SettingToggle({
         checked={checked}
         disabled={disabled}
         onCheckedChange={onCheckedChange}
+        aria-label={title}
       />
     </div>
   );
@@ -193,6 +194,8 @@ export function AssistantHelpDesks({
           </p>
           <Input
             value={buttonLabel}
+            aria-label="Contact support button name"
+            autoComplete="off"
             onChange={(e) => onButtonLabelChange(e.target.value)}
             onBlur={onButtonLabelBlur}
             disabled={!canEdit}
@@ -239,6 +242,9 @@ export function AssistantHelpDesks({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search help desks"
+            aria-label="Search help desks"
+            type="search"
+            autoComplete="off"
             className="h-11 pl-9"
           />
         </div>

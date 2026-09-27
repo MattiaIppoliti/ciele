@@ -53,14 +53,15 @@ import {
 } from "@/components/shell/nav";
 import { NavFoldGroup } from "@/components/shell/nav-tree";
 import {
-  ORG_SETTINGS_TABS,
-  settingsTabFromPath,
+  SIDEBAR_SETTINGS_ITEMS,
+  sidebarSettingsActiveIndex,
 } from "@/components/settings/settings-nav";
 import {
   useShell,
   useShellAssistants,
 } from "@/components/shell/shell-provider";
 import { canManageMembers } from "@/lib/rbac";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 /** Full name if set, else username, else the email local-part. */
 function profileDisplayName(profile: Profile | null, email: string): string {
@@ -301,10 +302,13 @@ function OrgAvatarSwitcher({
         <div className="flex items-center gap-2 border-b px-3">
           <Search className="text-muted-foreground size-4 shrink-0" />
           <input
-            autoFocus
+            autoFocus={canAutoFocus()}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find Organization..."
+            placeholder="Find Organization…"
+            aria-label="Find organization"
+            autoComplete="off"
+            spellCheck={false}
             className="placeholder:text-muted-foreground h-10 w-full bg-transparent text-sm outline-none"
           />
         </div>
@@ -492,7 +496,7 @@ function SidebarContent({
             className="press border-input text-muted-foreground hover:bg-muted flex h-8 w-full items-center gap-2 rounded-lg border px-2.5 text-sm transition-colors"
           >
             <AnimatedIcon icon={Search} size={16} className="shrink-0" />
-            <span className="flex-1 truncate text-left">Find...</span>
+            <span className="flex-1 truncate text-left">Find…</span>
             <kbd className="rounded-md border px-1.5 font-sans text-xs">F</kbd>
           </button>
         )}
@@ -652,14 +656,12 @@ function SidebarContent({
                   )}
                 />
               }
-              items={ORG_SETTINGS_TABS.map((tab) => ({
+              items={SIDEBAR_SETTINGS_ITEMS.map((tab) => ({
                 label: tab.label,
                 href: tab.href,
                 icon: tab.icon,
               }))}
-              activeIndex={ORG_SETTINGS_TABS.findIndex(
-                (tab) => tab.slug === settingsTabFromPath(pathname)
-              )}
+              activeIndex={sidebarSettingsActiveIndex(pathname)}
             />
           )}
         </div>

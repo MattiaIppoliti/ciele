@@ -207,8 +207,3 @@ export function checkAttachmentAllowance(
 ): RateLimitDecision {
   return attachmentLimiter.check(key, now);
 }
-
-/** Test seam: forget every window. */
-export function resetAttachmentAllowance(): void {
-  attachmentLimiter.reset();
-}

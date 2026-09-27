@@ -8,8 +8,6 @@ export {
   SelectGroup,
   SelectGroupLabel,
   SelectItem,
-  SelectScrollDownArrow,
-  SelectScrollUpArrow,
   SelectSeparator,
   SelectTrigger,
   SelectValue,

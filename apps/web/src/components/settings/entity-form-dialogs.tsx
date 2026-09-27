@@ -167,7 +167,7 @@ export function CreateEntityDialog({ open, onClose }: DialogProps) {
                     {ATTRIBUTE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="sm" onClick={() => setAttributes((current) => current.length === 1 ? current : current.filter((_, position) => position !== index))}>✕</Button>
+                <Button variant="ghost" size="sm" aria-label={`Remove attribute ${index + 1}`} onClick={() => setAttributes((current) => current.length === 1 ? current : current.filter((_, position) => position !== index))}><span aria-hidden>✕</span></Button>
               </div>
             ))}
             <Button variant="outline" size="sm" onClick={() => setAttributes((current) => [...current, { ...EMPTY_ATTRIBUTE }])}>Add attribute</Button>

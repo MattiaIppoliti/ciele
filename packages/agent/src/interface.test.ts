@@ -33,8 +33,6 @@ describe("runtime public interface", () => {
       // stay tunable as code, with tests, rather than as vendor config.
       "BULK_DOWNLOAD_THRESHOLD",
       "CHANNEL_NDJSON_HEADERS",
-      "CRAWL_FINALIZE_BATCH_SIZE",
-      "CRAWL_FINALIZE_LEASE_MS",
       // The shipped platform prompt layer: public so the owner-only editor can
       // show "the default" and the host's cached reader can fall back to it.
       "DEFAULT_PLATFORM_PROMPT",
@@ -44,12 +42,9 @@ describe("runtime public interface", () => {
       "NEW_ADDRESS_BASELINE_DAYS",
       "NEW_ADDRESS_MIN_BASELINE",
       // Ledger retention (#801, CYB-19), beside the other sweep constants.
-      "OBJECT_ACCESS_RETENTION_DAYS",
-      "RECRAWL_SWEEP_BATCH_SIZE",
       "REFUSAL_PROBE_THRESHOLD",
       // A Document's Summary (#931): the input cap, exported so the card and a
       // test can agree about what the model was shown.
-      "SUMMARY_INPUT_CHARS",
       // The warn threshold: a deliberate widening (#509). The admin Usage
       // surface must colour a gauge amber at exactly the fraction the
       // enterprise ladder warns at, and open-source code cannot import from
@@ -69,17 +64,12 @@ describe("runtime public interface", () => {
       // on its own behalf.
       "createVisionReader",
       "dbConnectorRuntime",
-      "dbReviewRuntime",
       "deliverWebhookCallback",
       // The pure detection rules over the object-access ledger (#801,
       // CYB-19); the cron tick composing them is runSecurityDetections.
-      "detectBulkDownloads",
-      "detectNewAddressDownloads",
-      "detectRefusalProbes",
       "discoverApplicationConnectionScopes",
       // The Agent memory layer's writer (#771). Public because the job ledger
       // and the cron drain both reach it; nothing else should.
-      "distillAgentLearning",
       "embedConcept",
       "enqueueApplicationSyncJob",
       "enqueueDraftProposalJob",
@@ -94,8 +84,6 @@ describe("runtime public interface", () => {
       "enqueueStaleDocumentMemoryExtractions",
       // The one-off verbatim re-ingest (ADR-0025), behind a manual cron route.
       "enqueueVerbatimReingests",
-      "expireDueReviews",
-      "expireDueWebhooks",
       "extractSourceText",
       // The two scheduled drains. The cron endpoints in apps/web are auth-and-
       // serialize adapters over these, so the tick's policy is tested here.
@@ -110,21 +98,17 @@ describe("runtime public interface", () => {
       // The host port registry: how a framework-free package gets the two
       // facts only its host knows (see host.ts).
       "registerRuntimeHost",
-      "resolveSlackConnection",
       "restartWebsiteCrawl",
       "resumeReviewedConversation",
-      "resumeWebhookConversation",
-      "reviewLinkUrl",
       "revokeApplicationConnectionCredentials",
       // The nightly agentic-ops drain, one export for the verify-goals cron
       // route; the four loops it sequences (goals, verifier, trust, compost)
       // are internals of scheduled.ts, not surface.
-      "runDetectionRules",
       "runDueAgenticOps",
-      // The one per-kind drain still public: apps/web's reingest test drives
-      // it directly. Its siblings (proposals / memories /
-      // entity-sync) are composed only by finalizeDueCrawls and stay internal.
-      "runDueIngestJobs",
+      // The job-ledger drain, public because apps/web's reingest test drives
+      // the ingest_source kind directly. The cron ticks compose it per kind
+      // inside scheduled.ts.
+      "runDueJobs",
       // The unattended Routine drain (#772): its own schedule, so it is not a
       // job-ledger kind, and the cron tick composes it directly.
       "runDueReviewJobs",
@@ -140,7 +124,6 @@ describe("runtime public interface", () => {
       "sessionMetadata",
       // The stable job/conversation key Slack surfaces share (#857), so the
       // web route test can name the job it expects.
-      "slackKey",
       // Teammate channels (#778): one entrypoint for a whole chain, like
       // `streamConversationTurn` is for one turn.
       "streamChannelChain",
@@ -170,7 +153,6 @@ describe("runtime public interface", () => {
       "verifyApifyToken",
       "verifyReviewLinkToken",
       "verifyWebhookCallbackToken",
-      "webhookCallbackUrl",
       "websiteCrawlerCapabilities",
     ]);
   });
@@ -192,9 +174,10 @@ describe("runtime public interface", () => {
       // A retired model id's successor (Haiku, gpt-5.1-mini), for the picker.
       "currentModelId",
       "decodeRuntimeEvents",
-      "foldTraceEvent",
       // The Reply Component shape rules, shared with the chat clients.
       "normalizeTable",
+      // The "busy, try again" copy, for the stream's `code` and the route's 429.
+      "overloadErrorText",
     ]);
   });
 

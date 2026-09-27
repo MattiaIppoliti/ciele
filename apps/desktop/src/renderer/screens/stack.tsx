@@ -8,8 +8,7 @@ import { ArrowLeft, ExternalLink, Play, RotateCw, Square } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useFeedback } from "@agent-hub/ui/feedback";
 import { bridge, navigate } from "../lib/bridge";
-import { Button, Card, TitleBar } from "../components/ui";
-import { cn } from "../lib/cn";
+import { Button, Card, TitleBar, cn } from "../components/ui";
 import { stackCue } from "../../shared/feedback";
 import type { StackHealth, StackStatus } from "../../shared/stack";
 

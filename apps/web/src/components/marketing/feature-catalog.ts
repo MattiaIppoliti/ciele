@@ -35,8 +35,6 @@ export type FeatureShot =
         | "alerts"
         | "developers";
     }
-  /** The editor's live Preview playing a scripted conversation on loop. */
-  | { kind: "preview" }
   /** A Teammate chat playing a scripted turn on loop. Org-wide, not an
    *  assistant-editor section, so it lights the Teammates nav row. */
   | { kind: "teammates" };

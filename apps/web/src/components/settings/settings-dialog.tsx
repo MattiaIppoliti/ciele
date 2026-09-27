@@ -2,11 +2,18 @@
 
 import { useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, X } from "lucide-react";
 import Link from "next/link";
 import { Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
 import { AnimateIcons, AnimatedIcon } from "@/components/ui/animated-icon";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useExitTransition } from "@/components/motion/use-exit-transition";
 import {
   crossScopeLink,
@@ -89,15 +96,22 @@ export function SettingsDialog({
         {/* The rail is chrome, not page content: re-enable the shell's animated
             icons, which `(admin)/layout.tsx` switches off for pages. */}
         <AnimateIcons>
-          {/* The rail is a column of tabs on a desktop and a scrollable strip
-              of them on a phone, same rows, laid out along the axis that has
-              room. The scope title is the dialog's heading in both. */}
+          {/* A column of tabs on a desktop. A phone has no room for the
+              column, and a horizontal strip of tabs made Members scroll a bar
+              sideways to find a tab, past its end into empty space, so there
+              the rail folds into one menu named after the tab you are on. The
+              scope title is the dialog's heading in both. */}
           <aside className="bg-muted/40 flex shrink-0 flex-row items-center gap-2 border-b py-2 pr-14 pl-3 sm:w-56 sm:flex-col sm:items-stretch sm:gap-0 sm:border-r sm:border-b-0 sm:py-3 sm:pr-0 sm:pl-0">
             <p className="text-muted-foreground shrink-0 text-xs font-semibold tracking-wide uppercase sm:px-4 sm:pb-2">
               {scopeTitle(scope)}
             </p>
-            <HoverHighlight className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-x-auto sm:overflow-x-visible sm:overflow-y-auto sm:px-2">
-              <div className="flex flex-row gap-1 sm:flex-col sm:gap-0.5">
+            <RailMenu
+              tabs={tabs}
+              active={activeTab}
+              cross={showCross ? cross : null}
+            />
+            <HoverHighlight className="hidden min-h-0 min-w-0 flex-1 overflow-y-auto px-2 sm:block">
+              <div className="flex flex-col gap-0.5">
                 {tabs.map((tab) => (
                   <RailRow
                     key={tab.slug}
@@ -105,13 +119,6 @@ export function SettingsDialog({
                     active={active === tab.slug}
                   />
                 ))}
-                {/* On the strip the cross-scope link is just the last tab; the
-                    column keeps it pinned to the footer below. */}
-                {showCross && (
-                  <span className="contents sm:hidden">
-                    <RailRow tab={cross} active={false} crossScope />
-                  </span>
-                )}
               </div>
             </HoverHighlight>
             {showCross && (
@@ -126,8 +133,8 @@ export function SettingsDialog({
 
         {/* Anchored to the dialog, not to the content pane: the pane is flush
             with the dialog's right edge on a desktop, but on a phone the rail
-            strip owns that corner and the button has to sit in it (which is
-            what the rail's `pr-14` reserves room for). */}
+            rail's header owns that corner and the button has to sit in it
+            (which is what the rail's `pr-14` reserves room for). */}
         <button
           type="button"
           aria-label="Close settings"
@@ -143,6 +150,64 @@ export function SettingsDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The rail on a phone: one trigger naming the current tab, opening every tab of
+ * the scope and, after a separator, the way into the other scope. The same
+ * links as the column, with the same `replace`, so the dialog still takes one
+ * history entry however it was browsed.
+ */
+function RailMenu({
+  tabs,
+  active,
+  cross,
+}: {
+  tabs: SettingsTab[];
+  active: SettingsTab | undefined;
+  /** The other scope, or null where it is not offered. */
+  cross: SettingsTab | null;
+}) {
+  const current = active ?? tabs[0]!;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            className="press-control bg-muted text-foreground flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2.5 text-sm font-medium sm:hidden"
+          />
+        }
+      >
+        <AnimatedIcon icon={current.icon} size={16} className="shrink-0" />
+        <span className="truncate">{current.label}</span>
+        <ChevronDown className="text-muted-foreground size-3.5 shrink-0" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-60">
+        {tabs.map((tab) => (
+          <DropdownMenuItem
+            key={tab.slug}
+            render={<Link href={tab.href} replace />}
+            aria-current={tab.slug === current.slug ? "page" : undefined}
+          >
+            <tab.icon className="size-4" />
+            <span className="min-w-0 flex-1 truncate">{tab.label}</span>
+            {tab.slug === current.slug && <Check className="size-4" />}
+          </DropdownMenuItem>
+        ))}
+        {cross && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem render={<Link href={cross.href} replace />}>
+              <cross.icon className="size-4" />
+              <span className="min-w-0 flex-1 truncate">{cross.label}</span>
+              <ArrowUpRight className="size-3.5" />
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -166,7 +231,7 @@ function RailRow({
       replace
       aria-current={active ? "page" : undefined}
       data-highlight-row
-      className={`relative flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap transition-colors sm:shrink sm:whitespace-normal ${
+      className={`relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
         active
           ? "bg-muted text-foreground"
           : "text-muted-foreground hover:text-foreground"
@@ -175,10 +240,9 @@ function RailRow({
       <AnimatedIcon icon={tab.icon} size={16} className="shrink-0" />
       <span className="min-w-0 flex-1 truncate">
         {tab.label}
-        {/* The hint is a second line under the label, the horizontal strip
-            has no vertical room for it. */}
+        {/* The hint is a second line under the label. */}
         {tab.hint && (
-          <span className="text-muted-foreground hidden truncate text-xs font-normal sm:block">
+          <span className="text-muted-foreground block truncate text-xs font-normal">
             {tab.hint}
           </span>
         )}

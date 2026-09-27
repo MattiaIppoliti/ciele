@@ -1,102 +1,123 @@
 ---
 title: Entidades y registros
-description: Define datos tipados de la Organización, importa filas CSV y expón herramientas de recuperación seguras.
+description: Define datos tipados de la organización, importa filas CSV y proporciona herramientas de recuperación seguras.
 ---
 
-Una Entidad describe un tipo de datos estructurados de la Organización. Sus
-Registros contienen los valores que un Asistente puede consultar.
+Una Entity describe un tipo de datos estructurados de la organización. Sus
+Records contienen los valores que un Assistant puede consultar.
 
-Una entidad **Orders** puede contener atributos `order_id`, `status`, `total` y
-`customer_email`.
+Una entidad **Orders** puede contener los atributos `order_id`, `status`,
+`total` y `customer_email`.
 
 ## Crea una entidad
 
-1. Abre **Settings**.
-2. Selecciona **Data**.
-3. Selecciona **New entity**.
-4. Introduce un nombre y una descripción.
-5. Añade la clave, la etiqueta y el tipo de cada atributo.
-6. Selecciona el atributo clave.
-7. Selecciona **Shared** o **User-scoped**.
-8. Selecciona **Create entity**.
+1. Ve a `/settings/data` en la consola. Las pestañas **Settings** no muestran
+   esta página.
+2. Selecciona **New entity**.
+3. Introduce un nombre y una descripción.
+4. Añade cada clave, etiqueta y tipo de atributo.
+5. Selecciona el atributo key.
+6. Selecciona **Shared** o **User-scoped**.
+7. Selecciona **Create entity**.
 
-Los atributos admiten valores de texto, número, fecha y booleanos. El atributo
-clave identifica un Registro dentro de la Entidad.
+Los atributos admiten valores de tipo texto, número, fecha y booleano. El
+atributo key identifica un registro dentro de la entidad.
 
-Los atributos, la clave y el ámbito de una Entidad se fijan después de su
-creación. Crea otra Entidad cuando esa estructura deba cambiar.
+Los atributos, la clave y el ámbito de una entidad quedan fijados tras su
+creación. Crea otra entidad cuando sea necesario modificar esa estructura.
 
-## Editar o eliminar una Entidad
+## Editar o eliminar una entidad
 
-Abre una Entidad y selecciona **Edit** para cambiar su nombre o descripción. Sus
-atributos, atributo clave y ámbito permanecen fijos.
+Abre una Entity y selecciona **Edit** para cambiar su nombre o su descripción.
+Sus atributos, su atributo clave y su ámbito permanecen fijos.
 
-Selecciona **Delete** para eliminar la Entidad y todos sus Registros.
+Selecciona **Delete** para eliminar la entidad y todos sus registros.
 
 ## Elige el ámbito
 
 | Ámbito | Úsalo para | Comportamiento en tiempo de ejecución |
 | --- | --- | --- |
-| **Shared** | Catálogos, horarios, ubicaciones y datos de referencia comunes | Cualquier visitante atendido por el Asistente puede consultar los Registros coincidentes. |
-| **User-scoped** | Pedidos, cuentas, solicitudes y otros datos por visitante | El servidor restringe cada consulta al visitante verificado que ha iniciado sesión. |
+| **Shared** | Catálogos, horarios, ubicaciones y datos de referencia comunes | Cualquier Visitor atendido por el Assistant puede consultar los Records coincidentes. |
+| **User-scoped** | Pedidos, cuentas, aplicaciones y otros datos específicos de cada Visitor | El servidor restringe todas las consultas al Visitor verificado que ha iniciado sesión. |
 
 Una Entidad con ámbito de usuario también necesita un atributo de identidad. Sus
 valores deben coincidir con la
-[notificación de identidad de Entra](/authentication/microsoft-entra-id#choose-an-identity-claim)
+[Entra identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim)
 configurada.
 
-## Importar registros desde CSV
+## Importa registros desde un archivo CSV
 
-1. Abre la Entidad.
+1. Abre la entidad.
 2. Selecciona **Import CSV**.
 3. Elige un archivo CSV o pega su texto.
 4. Confirma que cada encabezado coincida con una clave de atributo o una
    etiqueta. La coincidencia no distingue entre mayúsculas y minúsculas.
 5. Selecciona **Import**.
-6. Revisa el número de filas importadas y rechazadas.
+6. Revisa los recuentos de filas importadas y rechazadas.
 
-Importa y actualiza por el atributo clave. Al volver a importar la misma clave,
-se actualiza su Registro en lugar de crear un duplicado.
+Las importaciones realizan una operación upsert según el atributo clave. Al
+volver a importar la misma clave, se actualiza su registro en lugar de crear un
+duplicado.
 
-Las filas válidas se importan igualmente cuando otras filas no superan la
+Las filas válidas se siguen importando aunque otras filas no superen la
 validación. El informe indica un motivo para cada fila rechazada.
 
 Una columna CSV desconocida rechaza la importación. Elimínala o añade el
-atributo correspondiente a una nueva Entidad.
+atributo correspondiente a una nueva Entity.
 
-Selecciona **Records** para explorar los primeros 50 registros en orden de
+## Sincronizar registros desde un endpoint
+
+Una Entity también puede leer sus Records desde tu propio endpoint JSON según
+una programación.
+
+1. Abre la entidad y selecciona **Sync**.
+2. Introduce el **Endpoint URL**.
+3. Introduce los encabezados de autenticación, un par `name: value` en cada
+   línea.
+4. Asigna cada campo JSON a un atributo, un par `jsonField -> attributeKey` en
+   cada línea.
+5. Introduce el intervalo en horas. El mínimo es 1 hora.
+6. Selecciona **Remove records missing from the source** si el endpoint es la
+   lista completa.
+7. Guarda o selecciona **Sync now** para ejecutarlo inmediatamente.
+
+Ciele cifra los encabezados antes de almacenarlos. Una sincronización realiza
+upserts por el atributo key, igual que una importación CSV.
+
+Selecciona **Records** para explorar los primeros 50 registros ordenados por
 clave.
 
-## Conecta una Entidad a un Asistente
+## Conecta una entidad a un asistente
 
-1. Abre el Asistente.
+1. Abre el Assistant.
 2. Selecciona **Tools & Skills**.
 3. Busca **Data**.
-4. Selecciona cada Entidad que el Asistente pueda consultar.
+4. Selecciona cada Entidad a la que el Asistente pueda realizar consultas.
 5. Prueba la búsqueda exacta y la búsqueda de texto en **Preview**.
-6. Publica el Asistente.
+6. Publica el asistente.
 
-Cada Entidad seleccionada puede proporcionar una herramienta de filtro exacto.
-Las entidades con atributos de texto también proporcionan una herramienta de
-búsqueda por palabras clave.
+Cada Entity seleccionada puede ofrecer una herramienta de filtrado exacto. Las
+entidades con atributos de texto también ofrecen una herramienta de búsqueda por
+palabras clave.
 
-Los esquemas de la Entidad seleccionada entran en la instantánea de Publicación.
-Las Entidades no seleccionadas no generan herramientas.
+Los esquemas de las Entidades seleccionadas pasan a formar parte de la
+instantánea de Publicación. Las Entities no seleccionadas no generan ninguna
+herramienta.
 
-El contenido del registro se lee en tiempo real. No es necesario realizar otra
-publicación para importar registros actualizados.
+El contenido de los registros se lee en tiempo real. Importar Registros
+actualizados no requiere otra Publicación.
 
-## Proteger los registros con ámbito de usuario
+## Protege los Registros con ámbito de usuario
 
 Las herramientas con ámbito de usuario solo existen cuando el turno contiene una
-afirmación de identidad verificada. Los visitantes anónimos no reciben esas
+declaración de identidad verificada. Los visitantes anónimos no reciben esas
 herramientas.
 
-El atributo de identidad se elimina de la entrada de la herramienta orientada al
+Se elimina el atributo identity de la entrada de la herramienta orientada al
 modelo. El servidor añade el valor verificado a cada consulta.
 
-Si falta la notificación, las herramientas con ámbito de usuario no estarán
-disponibles. Las herramientas de Entidad compartida aún pueden funcionar.
+Si falta la afirmación, las herramientas con ámbito de usuario siguen estando no
+disponibles. Las herramientas de Shared Entity pueden seguir funcionando.
 
 <Callout title="Identity cannot come from the prompt">
 Never ask a Visitor to type the identity used for Record access. Configure the claim in Microsoft Entra ID instead.

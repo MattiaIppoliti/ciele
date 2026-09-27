@@ -4,9 +4,7 @@ import {
   coveringCollectionName,
   filterByName,
   groupScopeSources,
-  knowledgeScopeLabel,
   knowledgeScopeSummary,
-  scopeSourceOnTab,
   type ScopeSource,
 } from "./knowledge-scope";
 
@@ -59,11 +57,6 @@ describe("groupScopeSources", () => {
       "applications",
       "faqs",
     ]);
-  });
-
-  it("agrees with the per-tab predicate", () => {
-    expect(scopeSourceOnTab(source({ kind: "faq" }), "faqs")).toBe(true);
-    expect(scopeSourceOnTab(source({ kind: "faq" }), "files")).toBe(false);
   });
 });
 
@@ -125,38 +118,5 @@ describe("knowledgeScopeSummary", () => {
     expect(
       knowledgeScopeSummary({ collectionIds: ["a", "b"], sourceIds: ["c"] })
     ).toBe("Searches 2 collections and 1 library item, and cites what it finds.");
-  });
-});
-
-describe("knowledgeScopeLabel", () => {
-  const known = {
-    collections: [{ id: "col-1", name: "General knowledge" }],
-    sources: [source({ id: "src-1", name: "Handbook.pdf" })],
-  };
-
-  it("names both halves on the roster card", () => {
-    expect(
-      knowledgeScopeLabel(
-        { collectionIds: ["col-1"], sourceIds: ["src-1"] },
-        known
-      )
-    ).toBe("Knows: General knowledge, Handbook.pdf");
-  });
-
-  it("says a scope is empty rather than naming nothing", () => {
-    expect(
-      knowledgeScopeLabel({ collectionIds: [], sourceIds: [] }, known)
-    ).toBe("Answers from its persona only, no knowledge in scope");
-  });
-
-  it("keeps a deleted entry visible, in both halves", () => {
-    // The Alert (#769) is the other half of this; a card that quietly dropped
-    // the id would make a broken scope look like a smaller one.
-    expect(
-      knowledgeScopeLabel(
-        { collectionIds: ["gone"], sourceIds: ["also-gone"] },
-        known
-      )
-    ).toBe("Knows: a deleted collection, a deleted library item");
   });
 });

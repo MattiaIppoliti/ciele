@@ -2,18 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   actionRefusal,
   ceilingAllowsCapability,
-  grantedDomains,
-  hasGrant,
   mayAcceptSuggestedFix,
   memberRoleRank,
   roleAllowsCapability,
 } from "./teammate-grants";
-import type { TeammateGrant } from "./types";
-
-function grant(domain: TeammateGrant["domain"]): Pick<TeammateGrant, "domain"> {
-  return { domain };
-}
-
 describe("ceilingAllowsCapability", () => {
   it("lets a granted operation through at or under the ceiling", () => {
     expect(ceilingAllowsCapability("edit", "member")).toBe(true);
@@ -42,28 +34,6 @@ describe("ceilingAllowsCapability", () => {
     // `edit` by accident: unknown is denied until somebody decides.
     expect(ceilingAllowsCapability("edit", "impersonate")).toBe(false);
     expect(ceilingAllowsCapability("edit", "")).toBe(false);
-  });
-});
-
-describe("grants", () => {
-  it("reports a held domain and refuses an absent one", () => {
-    const grants = [grant("improvements")];
-    expect(hasGrant(grants, "improvements")).toBe(true);
-    expect(hasGrant(grants, "knowledge")).toBe(false);
-    expect(hasGrant([], "improvements")).toBe(false);
-  });
-
-  it("lists held domains in the vocabulary's order, not the rows'", () => {
-    expect(grantedDomains([grant("inbox"), grant("improvements")])).toEqual([
-      "improvements",
-      "inbox",
-    ]);
-  });
-
-  it("collapses duplicate rows for one domain", () => {
-    expect(grantedDomains([grant("knowledge"), grant("knowledge")])).toEqual([
-      "knowledge",
-    ]);
   });
 });
 

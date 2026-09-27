@@ -8,6 +8,7 @@ import type {
   ImprovementStatus,
 } from "@agent-hub/core";
 import { IMPROVEMENT_STATUS_VALUES } from "@agent-hub/core";
+import { filtersFromSearchParams } from "@/lib/url-state";
 
 type IconType = ComponentType<{ className?: string }>;
 
@@ -312,4 +313,32 @@ export function priorityMeta(priority: ImprovementPriority) {
     IMPROVEMENT_PRIORITIES.find((p) => p.value === priority) ??
     IMPROVEMENT_PRIORITIES[3]
   );
+}
+
+/**
+ * The board's search, priority and assignee filters and its layout, as the
+ * address bar keeps them. The rows are filtered in the browser, so the URL
+ * only has to seed the controls.
+ */
+export interface ImprovementsUrlState {
+  q: string;
+  priority: "" | ImprovementPriority;
+  assignee: string;
+  view: "list" | "kanban";
+}
+
+export const DEFAULT_IMPROVEMENTS_URL_STATE: ImprovementsUrlState = {
+  q: "",
+  priority: "",
+  assignee: "",
+  view: "list",
+};
+
+export function improvementsUrlStateFromSearchParams(
+  params: URLSearchParams | Record<string, string | string[] | undefined>,
+): ImprovementsUrlState {
+  return filtersFromSearchParams(params, DEFAULT_IMPROVEMENTS_URL_STATE, {
+    priority: ["", ...IMPROVEMENT_PRIORITIES.map((p) => p.value)],
+    view: ["list", "kanban"],
+  });
 }

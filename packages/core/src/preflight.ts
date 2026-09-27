@@ -1,7 +1,6 @@
 import {
   CHOICE_OPTION_CAP,
   clearsThreshold,
-  scoreLevel,
   type AnswersFor,
   type DecisionBooleanQuestion,
   type DecisionChoiceQuestion,
@@ -377,16 +376,6 @@ export function describePreflightRouting(routing: PreflightRouting): string {
     case "fallback":
       return `fallback (${routing.reason})`;
   }
-}
-
-/** The level the reasoning Score landed on, as a name. */
-export function reasoningLevel(decision: PreflightDecision): ReasoningLevel {
-  return REASONING_LEVELS[scoreLevel(decision.answers.reasoning, REASONING_LEVELS.length)];
-}
-
-/** The frustration level, 0 (calm) to 3 (angry). */
-export function frustrationLevel(decision: PreflightDecision): number {
-  return scoreLevel(decision.answers.frustration, FRUSTRATION_LEVELS);
 }
 
 /**

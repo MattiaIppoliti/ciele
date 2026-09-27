@@ -19,11 +19,6 @@ export type ContactResult =
   | { added: true }
   | { added: false; reason: "not_configured" | "failed" };
 
-/** True when a confirmed address can actually reach the list. */
-export function newsletterAudienceConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_AUDIENCE_ID);
-}
-
 /**
  * Adds a confirmed address to the Audience. Never throws: a failure here must
  * not become a 500 on a page the visitor reached from their inbox.

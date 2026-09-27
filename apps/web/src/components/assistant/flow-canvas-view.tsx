@@ -15,8 +15,6 @@ import {
 import { useTheme } from "@/components/theme-provider";
 import type { FlowAction } from "@agent-hub/core";
 import {
-  Background,
-  BackgroundVariant,
   Handle,
   Position,
   ReactFlow,
@@ -100,6 +98,8 @@ import {
 import type { ConnectorConnectionOption } from "@/lib/connector-options";
 import { TestConnectorControl } from "@/components/assistant/flow-connector-config";
 import { HumanReviewPreview } from "@/components/assistant/flow-human-review-config";
+import { FlowCanvasField } from "@/components/assistant/flow-canvas-field";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 /**
  * The Flow Canvas rendering (spec #836, #837): React Flow in fully controlled
@@ -147,10 +147,8 @@ function CanvasNodeCard({ data }: NodeProps<CanvasNode>) {
   const renderAddStep = useContext(AddStepContext);
   return (
     <div
-      className={cn(
-        "bg-card press group relative flex items-start gap-3 rounded-xl border px-3.5 py-3 shadow-sm transition-colors",
-        data.selected ? "border-primary ring-primary/30 ring-2" : "hover:border-foreground/30"
-      )}
+      data-selected={data.selected || undefined}
+      className="flow-surface-card press group relative flex items-start gap-3 px-3.5 py-3"
       style={{ width: CANVAS_NODE_WIDTH }}
     >
       {renderAddStep?.(data.insertIndex)}
@@ -158,7 +156,7 @@ function CanvasNodeCard({ data }: NodeProps<CanvasNode>) {
         <Handle
           type="target"
           position={data.direction === "vertical" ? Position.Top : Position.Left}
-          className="!bg-muted-foreground/60 !size-2.5 !border-0"
+          className="flow-surface-handle"
         />
       )}
       <span
@@ -197,7 +195,7 @@ function CanvasNodeCard({ data }: NodeProps<CanvasNode>) {
       <Handle
         type="source"
         position={data.direction === "vertical" ? Position.Bottom : Position.Right}
-        className="!bg-muted-foreground/60 !size-2.5 !border-0"
+        className="flow-surface-handle"
       />
     </div>
   );
@@ -420,7 +418,10 @@ function FlowCanvasInner({
             // Bezier, the reference's curve between two steps.
             type: "default",
             animated: false,
-            style: { stroke: "var(--muted-foreground)", strokeOpacity: 0.5, strokeWidth: 1.5 },
+            style: {
+              stroke: "color-mix(in oklab, var(--foreground) 26%, transparent)",
+              strokeWidth: 1.5,
+            },
           }))
         : [],
     [projection.edges, showChain]
@@ -540,6 +541,8 @@ function FlowCanvasInner({
   // in the other mode's colours.
   const { resolvedTheme } = useTheme();
   const colorMode = resolvedTheme === "dark" ? "dark" : "light";
+  // The box the flow and its field share: scene rectangles are relative to it.
+  const canvasRef = useRef<HTMLDivElement | null>(null);
 
   const selectAndOpen = useCallback(
     (id: string) => {
@@ -724,7 +727,8 @@ function FlowCanvasInner({
       <ContextMenu onOpenChange={(open) => !open && setMenuNodeId(null)}>
       <ContextMenuTrigger>
       <div
-        className="relative min-w-0 flex-1"
+        ref={canvasRef}
+        className="flow-canvas bg-background relative min-w-0 flex-1"
         onDragOver={onDragOver}
         onDrop={onDrop}
         // Runs before the trigger opens the menu, so the menu is already
@@ -734,6 +738,10 @@ function FlowCanvasInner({
           setMenuNodeId(node?.getAttribute("data-id") ?? null);
         }}
       >
+        {/* The floor: dots and lines that pan with the camera and make room
+            round every step. It replaces React Flow's own dotted
+            `<Background>`, so the flow above it stays transparent. */}
+        <FlowCanvasField root={canvasRef} themeKey={colorMode} />
         <AddStepContext.Provider value={renderAddStep}>
           <ReactFlow<CanvasNode, Edge>
             colorMode={colorMode}
@@ -767,10 +775,8 @@ function FlowCanvasInner({
             minZoom={0.4}
             maxZoom={1.5}
             proOptions={{ hideAttribution: true }}
-            className="bg-background"
-          >
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
-          </ReactFlow>
+            className="!bg-transparent"
+          />
         </AddStepContext.Provider>
 
         {/* The bottom bar: the pointer tools and Add on the left, and, once
@@ -1637,7 +1643,7 @@ function FlowStepPicker({
   const [group, setGroup] = useState<FlowStepGroup | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
-    if (!autoFocus) return;
+    if (!autoFocus || !canAutoFocus()) return;
     const frame = window.requestAnimationFrame(() => searchRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [autoFocus]);

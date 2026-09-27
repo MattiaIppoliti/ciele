@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import type {
   ApiAuthType,
   ChannelAvailability,
@@ -48,6 +48,7 @@ import {
 import { COUNTRIES, findCountry } from "@/lib/countries";
 import { TIMEZONES } from "@/lib/timezones";
 import { AvailabilityScheduler } from "./availability-scheduler";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 export type ChannelPanelState =
   | { mode: "select" }
@@ -137,12 +138,18 @@ function KeyValueListEditor({
               value={row.name}
               onChange={(e) => updateRow(index, { name: e.target.value })}
               placeholder={namePlaceholder}
+              aria-label={`${title}: ${namePlaceholder} ${index + 1}`}
+              autoComplete="off"
+              spellCheck={false}
               className="h-11"
             />
             <Input
               value={row.value}
               onChange={(e) => updateRow(index, { value: e.target.value })}
               placeholder={valuePlaceholder}
+              aria-label={`${title}: ${valuePlaceholder} ${index + 1}`}
+              autoComplete="off"
+              spellCheck={false}
               className="h-11"
             />
             <Hint label="Remove row">
@@ -195,6 +202,11 @@ function ConfigFields({
           value={config.destinationEmail ?? ""}
           onChange={(e) => onChange({ destinationEmail: e.target.value })}
           placeholder="help@example.com"
+          aria-label="Destination email"
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          spellCheck={false}
           className="mt-2 h-11"
         />
       </div>
@@ -225,7 +237,7 @@ function ConfigFields({
               });
             }}
           >
-            <SelectTrigger className="h-11">
+            <SelectTrigger className="h-11" aria-label="Country">
               <SelectValue>
                 {() => country.name}
               </SelectValue>
@@ -242,6 +254,10 @@ function ConfigFields({
             value={config.phoneNumber ?? ""}
             onChange={(e) => onChange({ phoneNumber: e.target.value })}
             placeholder={`${country.dialCode} 06 1234 5678`}
+            aria-label="Phone number"
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
             className="h-11"
           />
         </div>
@@ -259,6 +275,11 @@ function ConfigFields({
           value={config.url ?? ""}
           onChange={(e) => onChange({ url: e.target.value })}
           placeholder="https://..."
+          aria-label="Live chat URL"
+          type="url"
+          inputMode="url"
+          autoComplete="off"
+          spellCheck={false}
           className="mt-2 h-11"
         />
       </div>
@@ -272,6 +293,11 @@ function ConfigFields({
           value={config.url ?? ""}
           onChange={(e) => onChange({ url: e.target.value })}
           placeholder="https://www.helpdeskurl.com"
+          aria-label="Link URL"
+          type="url"
+          inputMode="url"
+          autoComplete="off"
+          spellCheck={false}
           className="mt-2 h-11"
         />
       </div>
@@ -292,6 +318,11 @@ function ConfigFields({
             value={config.url ?? ""}
             onChange={(e) => onChange({ url: e.target.value })}
             placeholder="https://api.example.com/escalations"
+            aria-label="API endpoint URL"
+            type="url"
+            inputMode="url"
+            autoComplete="off"
+            spellCheck={false}
             className="mt-2 h-11"
           />
         </div>
@@ -304,7 +335,7 @@ function ConfigFields({
               onChange({ authType: value as ApiAuthType })
             }
           >
-            <SelectTrigger className="mt-2">
+            <SelectTrigger className="mt-2" aria-label="Authentication type">
               <SelectValue>
                 {(v: string) => AUTH_TYPE_LABELS[v as ApiAuthType]}
               </SelectValue>
@@ -325,12 +356,18 @@ function ConfigFields({
               value={config.apiKeyHeaderName ?? ""}
               onChange={(e) => onChange({ apiKeyHeaderName: e.target.value })}
               placeholder="Header name"
+              aria-label="API key header name"
+              autoComplete="off"
+              spellCheck={false}
               className="h-11"
             />
             <Input
               value={config.apiKeyValue ?? ""}
               onChange={(e) => onChange({ apiKeyValue: e.target.value })}
               placeholder="Header value"
+              aria-label="API key value"
+              autoComplete="off"
+              spellCheck={false}
               className="h-11"
             />
           </div>
@@ -340,6 +377,9 @@ function ConfigFields({
             value={config.bearerToken ?? ""}
             onChange={(e) => onChange({ bearerToken: e.target.value })}
             placeholder="Bearer token"
+            aria-label="Bearer token"
+            autoComplete="off"
+            spellCheck={false}
             className="h-11"
           />
         )}
@@ -349,6 +389,9 @@ function ConfigFields({
               value={config.basicUsername ?? ""}
               onChange={(e) => onChange({ basicUsername: e.target.value })}
               placeholder="Username"
+              aria-label="Basic auth username"
+              autoComplete="off"
+              spellCheck={false}
               className="h-11"
             />
             <Input
@@ -356,6 +399,11 @@ function ConfigFields({
               value={config.basicPassword ?? ""}
               onChange={(e) => onChange({ basicPassword: e.target.value })}
               placeholder="Password"
+              aria-label="Basic auth password"
+              // "new-password" is the one value browsers reliably honour: it
+              // stops them filling the Member's own saved Ciele password into
+              // a credential that belongs to somebody else's API.
+              autoComplete="new-password"
               className="h-11"
             />
           </div>
@@ -460,6 +508,7 @@ function FieldEditor({
   onDelete: () => void;
 }) {
   const [draft, setDraft] = useState<ChannelFormField>(field);
+  const fieldId = useId();
 
   const CHECKS: Array<{
     key: keyof Pick<
@@ -509,7 +558,7 @@ function FieldEditor({
             setDraft({ ...draft, type: value as ChannelFormField["type"] })
           }
         >
-          <SelectTrigger className="mt-2">
+          <SelectTrigger className="mt-2" aria-label="Field type">
             <SelectValue>
               {(value: string) => {
                 const fieldType = value as ChannelFormField["type"];
@@ -538,8 +587,10 @@ function FieldEditor({
       </div>
 
       <div>
-        <Label className="font-semibold">Label</Label>
+        <Label htmlFor={`${fieldId}-label`} className="font-semibold">Label</Label>
         <Input
+          id={`${fieldId}-label`}
+          autoComplete="off"
           value={draft.label}
           onChange={(e) => setDraft({ ...draft, label: e.target.value })}
           className="mt-2 h-11"
@@ -547,8 +598,10 @@ function FieldEditor({
       </div>
 
       <div>
-        <Label className="font-semibold">Placeholder</Label>
+        <Label htmlFor={`${fieldId}-placeholder`} className="font-semibold">Placeholder</Label>
         <Input
+          id={`${fieldId}-placeholder`}
+          autoComplete="off"
           value={draft.placeholder ?? ""}
           onChange={(e) => setDraft({ ...draft, placeholder: e.target.value })}
           className="mt-2 h-11"
@@ -669,7 +722,7 @@ function AvailabilityTab({
               value={availability.timezone}
               onValueChange={(value) => onChange({ timezone: value as string })}
             >
-              <SelectTrigger className="mt-2">
+              <SelectTrigger className="mt-2" aria-label="Timezone">
                 <SelectValue>
                   {(v: string) => TIMEZONES.find((tz) => tz.value === v)?.label}
                 </SelectValue>
@@ -725,14 +778,55 @@ export function ChannelPanel({
     });
 
   useModalFocus(true, containerRef);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+
+  // Edits live only in this draft until Save & Close. Escape, the backdrop and
+  // the X all used to drop them without a word; now they ask first, and a
+  // reload or closed tab gets the browser's own prompt.
+  const savedChannel = state.mode === "edit" ? state.channel : null;
+  const dirty =
+    channel !== null &&
+    savedChannel !== null &&
+    JSON.stringify(channel) !== JSON.stringify(savedChannel);
+
+  function requestClose() {
+    if (!dirty) {
+      onClose();
+      return;
+    }
+    confirmDelete({
+      title: "Discard your changes?",
+      description: "The edits to this channel are not saved yet.",
+      confirmLabel: "Discard changes",
+      onConfirm: onClose,
+    });
+  }
 
   useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  // Read through a ref so the listener is attached once, not per keystroke.
+  const requestCloseRef = useRef(requestClose);
+  useEffect(() => {
+    requestCloseRef.current = requestClose;
+  });
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented) onClose();
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      // The discard confirm is a dialog of its own: Escape there closes it,
+      // and must not also reach the panel underneath.
+      if (document.querySelectorAll('[role="dialog"], [role="alertdialog"]').length > 1) {
+        return;
+      }
+      requestCloseRef.current();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, []);
 
   function pickKind(kind: ChannelKind) {
     const meta = CHANNEL_KINDS[kind];
@@ -811,9 +905,10 @@ export function ChannelPanel({
 
   return (
     <>
+      {confirmDeleteModal}
       <div
         className="fixed inset-0 z-40 bg-black/20"
-        onClick={onClose}
+        onClick={requestClose}
         aria-hidden
       />
       <aside
@@ -848,7 +943,7 @@ export function ChannelPanel({
                   Select channel type
                 </h2>
                 <Hint label="Close">
-                  <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
+                  <Button variant="ghost" size="icon" aria-label="Close" onClick={requestClose}>
                     <X className="size-5" />
                   </Button>
                 </Hint>
@@ -902,7 +997,7 @@ export function ChannelPanel({
                     size="icon"
                     aria-label="Close"
                     className="ml-auto"
-                    onClick={onClose}
+                    onClick={requestClose}
                   >
                     <X className="size-5" />
                   </Button>
@@ -936,6 +1031,8 @@ export function ChannelPanel({
                   </p>
                   <Input
                     value={name}
+                    aria-label="Channel name"
+                    autoComplete="off"
                     onChange={(e) => setName(e.target.value)}
                     className="mt-2 h-11"
                   />
@@ -969,7 +1066,7 @@ export function ChannelPanel({
                   onClick={() => create(state.kind)}
                   disabled={isPending}
                 >
-                  {isPending ? "Creating..." : "Create channel"}
+                  {isPending ? "Creating…" : "Create channel"}
                 </Button>
               </div>
             </div>
@@ -993,10 +1090,10 @@ export function ChannelPanel({
                     onClick={saveAndClose}
                     disabled={isPending}
                   >
-                    {isPending ? "Saving..." : "Save & Close"}
+                    {isPending ? "Saving…" : "Save & Close"}
                   </Button>
                   <Hint label="Close">
-                    <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
+                    <Button variant="ghost" size="icon" aria-label="Close" onClick={requestClose}>
                       <X className="size-5" />
                     </Button>
                   </Hint>
@@ -1041,6 +1138,8 @@ export function ChannelPanel({
                     </p>
                     <Input
                       value={channel.name}
+                      aria-label="Channel name"
+                      autoComplete="off"
                       onChange={(e) => patchChannel({ name: e.target.value })}
                       className="mt-2 h-11"
                     />
@@ -1121,6 +1220,7 @@ export function ChannelPanel({
                     <p className="font-semibold">Message shown after submission</p>
                     <Textarea
                       value={channel.confirmationMessage}
+                      aria-label="Message shown after submission"
                       onChange={(e) =>
                         patchChannel({ confirmationMessage: e.target.value })
                       }

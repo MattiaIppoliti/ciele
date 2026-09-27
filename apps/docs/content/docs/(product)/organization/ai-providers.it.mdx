@@ -12,15 +12,15 @@ modello.
 | Type | Use |
 | --- | --- |
 | Platform plan | Utilizza i modelli forniti dal piano Ciele gestito. |
-| Subscription | Utilizza un abbonamento del membro per le sue chat personali. |
+| Subscription | Utilizza l'abbonamento di un membro per le sue chat personali. |
 | API key | Utilizza una chiave del provider gestita dall'organizzazione. |
 
 Un abbonamento membro gestisce solo le chat di quel membro: l'Assistant Preview
 e le sue chat con un AI Teammate. Non serve un widget pubblicato e non gestisce
-la chat di un altro membro. Seleziona un piano Platform o una connessione
-tramite API key per il traffico pubblicato.
+la chat di un altro membro. Seleziona un Platform plan o una connessione tramite
+API key per il traffico pubblicato.
 
-## Aggiungi una connessione con chiave API
+## Aggiungi una connessione tramite chiave API
 
 1. Apri **Settings**.
 2. Seleziona **AI Provider**.
@@ -29,12 +29,20 @@ tramite API key per il traffico pubblicato.
 5. Inserisci le credenziali del provider richieste.
 6. Salva la connessione.
 
+## Altri tipi di connessione
+
+- **OpenAI-compatible endpoints** collega un server come Ollama, vLLM o LM
+  Studio. Inserisci il suo base URL e i modelli. La chiave API è facoltativa.
+- **Keyless enterprise auth** connette Google Vertex, Anthropic o Azure OpenAI
+  tramite la federazione delle identità dei workload. Ciele non memorizza alcuna
+  chiave statica per queste connessioni.
+
 Ciele crittografa le credenziali prima di memorizzarle. Non riutilizzare una
 chiave personale che dispone di autorizzazioni non correlate.
 
 Le connessioni ElevenLabs forniscono modelli vocali. Seleziona questi modelli
 nelle impostazioni **General** dell'Assistente, alla voce **Voice mode**. Anche
-le connessioni Google e OpenAI possono fornire modelli vocali. I modelli
+le connessioni a Google e OpenAI possono fornire modelli vocali. I modelli
 disponibili dipendono dall'account collegato e dalle sue autorizzazioni API.
 ElevenLabs non compare nei selettori del modello di testo né in quelli
 dell'embedding della conoscenza.

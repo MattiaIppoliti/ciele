@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronsUpDown, LayoutGrid, Search, X } from "lucide-react";
 import { Check } from "lucide-react";
 import {
@@ -18,6 +19,7 @@ import {
   assistantSectionFromPath,
   setupHref,
 } from "@/components/shell/nav";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 /**
  * Vercel-style project switcher in the top bar: "All Assistants" or the
@@ -25,7 +27,6 @@ import {
  * section when there is one, otherwise lands on its Overview.
  */
 export function ScopeSwitcher() {
-  const router = useRouter();
   const pathname = usePathname();
   const assistants = useShellAssistants();
   const [open, setOpen] = useState(false);
@@ -41,10 +42,11 @@ export function ScopeSwitcher() {
     `${a.title} ${a.nickname}`.toLowerCase().includes(query.toLowerCase())
   );
 
-  function go(href: string) {
+  // Rows are links, so Cmd/Ctrl+click and middle-click open a new tab; a
+  // plain click navigates and closes the popover.
+  function close() {
     setOpen(false);
     setQuery("");
-    router.push(href);
   }
 
   return (
@@ -97,17 +99,20 @@ export function ScopeSwitcher() {
         <div className="flex items-center gap-2 border-b px-3">
           <Search className="text-muted-foreground size-4 shrink-0" />
           <input
-            autoFocus
+            autoFocus={canAutoFocus()}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find Assistant..."
+            placeholder="Find Assistant…"
+            aria-label="Find assistant"
+            autoComplete="off"
+            spellCheck={false}
             className="placeholder:text-muted-foreground h-10 w-full bg-transparent text-sm outline-none"
           />
         </div>
         <HoverHighlight className="max-h-72 overflow-y-auto p-1.5">
-          <button
-            type="button"
-            onClick={() => go("/")}
+          <Link
+            href="/"
+            onClick={close}
             data-highlight-row
             className="relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm"
           >
@@ -119,18 +124,17 @@ export function ScopeSwitcher() {
             />
             <span className="flex-1 truncate">All Assistants</span>
             {!scoped && <Check className="size-4 shrink-0" />}
-          </button>
+          </Link>
           {filtered.map((assistant) => (
-            <button
+            <Link
               key={assistant.id}
-              type="button"
-              onClick={() =>
-                go(
-                  currentSection
-                    ? setupHref(assistant.id, currentSection)
-                    : `/assistants/${assistant.id}`
-                )
+              href={
+                currentSection
+                  ? setupHref(assistant.id, currentSection)
+                  : `/assistants/${assistant.id}`
               }
+              onClick={close}
+              aria-current={assistant.id === scopedId ? "page" : undefined}
               data-highlight-row
               className="relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm"
             >
@@ -155,7 +159,7 @@ export function ScopeSwitcher() {
               {assistant.id === scopedId && (
                 <Check className="size-4 shrink-0" />
               )}
-            </button>
+            </Link>
           ))}
           {filtered.length === 0 && (
             <p className="text-muted-foreground px-3 py-6 text-center text-sm">
@@ -170,14 +174,13 @@ export function ScopeSwitcher() {
         <>
           <div className="bg-border h-5 w-px shrink-0" />
           <Hint label="Back to all assistants">
-            <button
-              type="button"
+            <Link
+              href="/"
               aria-label="Back to all assistants"
-              onClick={() => router.push("/")}
-              className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               <AnimatedIcon icon={X} size={16} />
-            </button>
+            </Link>
           </Hint>
         </>
       )}

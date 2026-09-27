@@ -125,8 +125,6 @@ export interface AppState {
   update: UpdateNotice | null;
   /** Set when the product window could not load; null the rest of the time. */
   productError: ProductError | null;
-  /** True when the ports are fakes, the E2E smoke and `--fake-ports` runs. */
-  fakePorts: boolean;
 }
 
 /**

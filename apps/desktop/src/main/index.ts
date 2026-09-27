@@ -43,7 +43,6 @@ function state(): AppState {
     version: appVersion(),
     update,
     productError,
-    fakePorts: FAKE_PORTS,
   };
 }
 

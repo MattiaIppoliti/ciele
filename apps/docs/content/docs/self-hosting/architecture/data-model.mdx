@@ -7,7 +7,9 @@ description: Understand the main tenant, configuration, Knowledge, and Conversat
 
 An Organization is the primary tenant. Members join an Organization with one Role.
 
-Organization-owned records include Assistants, Entities, Memories, Help Desks, provider connections, API keys, Skills, Improvements, Goals, Alerts, and usage records.
+Organization-owned records include Assistants, Teammates, Entities, Memories, Help Desks, provider connections, API keys, Skills, Improvements, Goals, Alerts, and usage records.
+
+Teammate records include Projects, memory documents, Routines, and group threads. A group thread keeps its own messages, not Conversations.
 
 ## Assistant configuration
 
@@ -59,7 +61,9 @@ Deleting an Assistant drops its links and leaves every Source in place.
 
 ## Conversation data
 
-A Conversation belongs to the serving Assistant and tracks one Visitor session. Messages store typed parts for text, citations, buttons, traces, and other replies.
+A Conversation belongs to one Assistant or to one Teammate, never to both. An Assistant Conversation tracks one Visitor session.
+
+A Teammate Conversation is an internal chat of a Member. It does not appear in Inbox or in Insights. Messages store typed parts for text, citations, buttons, traces, and other replies.
 
 Session state also records proactive Notification delivery. A Notification does not create a Visitor message.
 

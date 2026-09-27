@@ -1,30 +1,31 @@
 ---
-title: Limite de l'open source
-description: Identifiez le noyau public et le répertoire d'entreprise distinct.
+title: Délimitation de l'open source
+description: Identifiez le core public et le répertoire Enterprise distinct.
 ---
 
-Le noyau public de Ciele utilise la licence `AGPL-3.0-only`. Son code source
-inclut l'application du produit et les paquets d'exécution partagés.
+Le core public de Ciele utilise la licence `AGPL-3.0-only`. Son code source
+comprend l'application produit et les packages d'exécution partagés.
 
 Le dépôt peut également contenir un répertoire `ee/` distinct. Ce répertoire a
-ses propres mentions de licence et ne fait pas partie du noyau AGPL.
+ses propres mentions de licence et ne fait pas partie du core AGPL.
 
 ## Règle relative à la documentation publique
 
 La documentation Open Source décrit uniquement les composants nécessaires pour
-compiler, exécuter et comprendre le noyau public.
+compiler, exécuter et comprendre le core public.
 
-Elle n'énumère pas les éléments internes de l'entreprise. Lisez le fichier de
+Elle n'énumère pas les éléments internes à l'entreprise. Lisez le fichier de
 licence dans chaque zone de code avant de redistribuer ou de modifier cette
 zone.
 
-## Principales zones open source
+## Principaux domaines open source
 
-- `apps/web` contient l'application du produit et les routes de l'API.
+- `apps/web` contient l'application produit et les routes de l'API.
 - `apps/docs` contient ce site de documentation.
-- `packages` contient des paquets partagés de produits et d'accès
-  programmatique.
-- `services` contient des services de travail optionnels.
-- `supabase` contient les migrations de schéma et la configuration des données
+- `apps/desktop` contient l'application Ciele Desktop.
+- `packages` contient les packages partagés du produit et ceux d'accès par
+  programmation.
+- `services` contient des services de worker optionnels.
+- `supabase` contient les migrations de schémas et la configuration des données
   locales.
-- `deploy` contient l'exemple de déploiement sur un hôte unique.
+- `deploy` contient l'exemple de déploiement sur un seul hôte.

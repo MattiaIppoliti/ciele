@@ -11,7 +11,6 @@ import { OperationError, type OperationContext, type TeammateActor } from "./ope
 import {
   createProjectOp,
   deleteProjectOp,
-  getMyMemoryOp,
   getProjectOp,
   getTeammateMemoryOp,
   listProjectsOp,
@@ -54,6 +53,20 @@ const ctx = (over: Partial<OperationContext> = {}): OperationContext => ({
  * never declared throws here instead of on a Viewer's turn in production.
  */
 const pinned = (inner = getMockDb()) => createOrgPinnedDb(inner, DEMO_ORG.id);
+
+/** The caller's own User-layer document and its history, read straight off the Db. */
+async function readMyMemory(context: OperationContext) {
+  const document = await context.db.getMemoryDocument(context.organizationId, {
+    scope: "user",
+    memberId: context.userId,
+  });
+  return {
+    document,
+    entries: document
+      ? await context.db.listMemoryDocumentEntries(context.organizationId, document.id)
+      : [],
+  };
+}
 
 const actor = (over: Partial<TeammateActor> = {}): TeammateActor => ({
   id: "tm-1",
@@ -124,12 +137,6 @@ describe("Projects", () => {
 });
 
 describe("the User layer", () => {
-  it("starts absent, and absent is a real answer", async () => {
-    const view = await getMyMemoryOp.run(ctx({ db: getMockDb() }), {});
-    expect(view.document).toBeNull();
-    expect(view.entries).toEqual([]);
-  });
-
   it("round-trips the Member's own edit with history", async () => {
     const db = getMockDb();
     const context = ctx({ db });
@@ -137,7 +144,7 @@ describe("the User layer", () => {
       body: "I work in CET and prefer bullet points.",
       note: "",
     });
-    const view = await getMyMemoryOp.run(context, {});
+    const view = await readMyMemory(context);
     expect(view.document?.body).toContain("CET");
     expect(view.entries[0].authorId).toBe(DEMO_MEMBER.userId);
     // A Member editing their own document is not a Teammate write.
@@ -167,11 +174,11 @@ describe("the User layer", () => {
     await writeMyMemoryOp.run(context, { body: "Correct.", note: "" });
     await writeMyMemoryOp.run(context, { body: "Wrong.", note: "a bad write" });
 
-    const before = await getMyMemoryOp.run(context, {});
+    const before = await readMyMemory(context);
     expect(before.document?.body).toBe("Wrong.");
 
     await revertMyMemoryOp.run(context, { entryId: before.entries[0].id });
-    const after = await getMyMemoryOp.run(context, {});
+    const after = await readMyMemory(context);
     expect(after.document?.body).toBe("Correct.");
     // Append-only: the revert is itself a write, so the record shows both.
     expect(after.entries.length).toBe(before.entries.length + 1);
@@ -291,7 +298,7 @@ describe("what a Teammate writes mid-turn", () => {
       body: "Marta works in CET.",
       note: "Learned their timezone",
     });
-    const view = await getMyMemoryOp.run(ctx({ db }), {});
+    const view = await readMyMemory(ctx({ db }));
     expect(view.document?.body).toBe("Marta works in CET.");
     // Who/when/what: the Teammate that wrote it and the Member it is about.
     expect(view.entries[0].teammateId).toBe("tm-1");
@@ -312,9 +319,8 @@ describe("what a Teammate writes mid-turn", () => {
       }),
       { body: "A viewer's own note.", note: "" }
     );
-    const view = await getMyMemoryOp.run(
-      ctx({ db, role: "viewer" as Role, userId: "u-viewer" }),
-      {}
+    const view = await readMyMemory(
+      ctx({ db, role: "viewer" as Role, userId: "u-viewer" })
     );
     expect(view.document?.body).toBe("A viewer's own note.");
   });

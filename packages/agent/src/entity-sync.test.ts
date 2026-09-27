@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Entity } from "@agent-hub/core";
 import { getMockDb, DEMO_ORG, type Db } from "@agent-hub/db";
-import { enqueueEntitySyncJob, runDueEntitySyncJobs } from "./jobs";
+import { enqueueEntitySyncJob, runDueJobs } from "./jobs";
 import { ENTITY_SYNC_MAX_ROWS, mapSyncRows, runEntitySync } from "./entity-sync";
 
 /**
@@ -59,7 +59,7 @@ beforeEach(async () => {
 });
 
 async function drain() {
-  return runDueEntitySyncJobs({ db }, { workerId: "test-worker" });
+  return runDueJobs({ db }, { kinds: ["sync_entity_records"], workerId: "test-worker" });
 }
 
 describe("sync_entity_records through the registry seam", () => {

@@ -21,6 +21,7 @@ import {
   updateProjectAction,
   writeProjectDocumentAction,
 } from "@/app/actions";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 /**
  * The Project view (#771): one screen for a Project's name, what it is about,
@@ -61,9 +62,11 @@ export function ProjectDialog({
   const [archived, setArchived] = useState(false);
   const [entries, setEntries] = useState<MemoryDocumentEntry[]>([]);
   /** What the read returned, so a save writes only what actually changed. */
-  const [saved, setSaved] = useState<{ description: string; body: string } | null>(
-    null
-  );
+  const [saved, setSaved] = useState<{
+    name: string;
+    description: string;
+    body: string;
+  } | null>(null);
   const [unreadable, setUnreadable] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
@@ -82,6 +85,7 @@ export function ProjectDialog({
         setBody(document?.body ?? "");
         setEntries(history);
         setSaved({
+          name: project.name,
           description: project.description,
           body: document?.body ?? "",
         });
@@ -93,6 +97,39 @@ export function ProjectDialog({
       live = false;
     };
   }, [projectId]);
+
+  // The decisions are the point of this dialog, and a stray Escape or backdrop
+  // click used to throw an unsaved page of them away. While anything differs
+  // from what was loaded (or, for a new project, once anything is typed), every
+  // way out asks first, and a reload gets the browser's prompt.
+  const dirty = creating
+    ? name.trim() !== "" || description.trim() !== "" || body.trim() !== ""
+    : saved !== null &&
+      (name !== saved.name ||
+        description !== saved.description ||
+        body !== saved.body);
+
+  function requestClose() {
+    if (!dirty || isPending) {
+      onClose();
+      return;
+    }
+    confirmDelete({
+      title: "Discard your changes?",
+      description: creating
+        ? "This project has not been created yet."
+        : "The edits to this project are not saved yet.",
+      confirmLabel: "Discard changes",
+      onConfirm: onClose,
+    });
+  }
+
+  useEffect(() => {
+    if (!open || !dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [open, dirty]);
 
   function run(work: () => Promise<unknown>, done: string) {
     startTransition(async () => {
@@ -150,7 +187,7 @@ export function ProjectDialog({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent
         showCloseButton={false}
         className="flex h-[85vh] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-3xl"
@@ -175,7 +212,7 @@ export function ProjectDialog({
             variant="ghost"
             size="icon"
             aria-label="Close project"
-            onClick={onClose}
+            onClick={requestClose}
           >
             <X className="size-5" />
           </Button>
@@ -196,19 +233,19 @@ export function ProjectDialog({
             {/* Borderless, because this reads as the project's own title
                 rather than a field of a form. */}
             <input
-              autoFocus={creating}
+              autoFocus={creating && canAutoFocus()}
               value={name}
               placeholder="Project name"
               aria-label="Project name"
               onChange={(e) => setName(e.target.value.slice(0, 120))}
-              className="placeholder:text-muted-foreground w-full bg-transparent text-2xl font-semibold outline-none"
+              className="placeholder:text-muted-foreground w-full bg-transparent text-2xl font-semibold outline-none focus-visible:underline focus-visible:decoration-ring focus-visible:decoration-2 focus-visible:underline-offset-4"
             />
             <input
               value={description}
-              placeholder="Add a short summary..."
+              placeholder="Add a short summary…"
               aria-label="Short summary"
               onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
-              className="placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none"
+              className="placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none focus-visible:underline focus-visible:decoration-ring focus-visible:decoration-2 focus-visible:underline-offset-4"
             />
 
             <div className="mt-4 border-t pt-4">
@@ -224,7 +261,7 @@ export function ProjectDialog({
                    hard against the edge of the field with nothing to read
                    into, which is what the panel's own gutter gives every other
                    line on this screen. */
-                className="min-h-48 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0"
+                className="min-h-48 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0 focus-visible:bg-muted/40"
               />
               <p className="text-muted-foreground text-xs">
                 {body.length} / {MEMORY_DOCUMENT_MAX_CHARS} characters. Every
@@ -302,7 +339,7 @@ export function ProjectDialog({
               </Button>
             </>
           )}
-          <Button variant="outline" className="ml-auto" onClick={onClose}>
+          <Button variant="outline" className="ml-auto" onClick={requestClose}>
             Cancel
           </Button>
           <Button

@@ -5,6 +5,7 @@ import { LayoutGrid, Search } from "lucide-react";
 import { Check } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 interface AssistantOption {
   id: string;
@@ -63,10 +64,13 @@ export function AssistantFilterDropdown({
         <div className="flex items-center gap-2 border-b px-3">
           <Search className="text-muted-foreground size-4 shrink-0" />
           <input
-            autoFocus
+            autoFocus={canAutoFocus()}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find Assistant..."
+            placeholder="Find Assistant…"
+            aria-label="Find assistant"
+            type="search"
+            autoComplete="off"
             className="placeholder:text-muted-foreground h-10 w-full bg-transparent text-sm outline-none"
           />
         </div>

@@ -1,40 +1,41 @@
 ---
 title: Memoria a lungo termine
-description: Ricorda i fatti duraturi per i Visitatori che hanno effettuato l'accesso e cancellali quando necessario.
+description: Memorizza i fatti permanenti per i Visitor connessi e cancellali quando necessario.
 ---
 
-La memoria a lungo termine porta i fatti duraturi nelle Conversazioni
-successive. Funziona solo per i Visitatori che hanno effettuato l'accesso
-tramite il gateway SSO del Widget.
+La memoria a lungo termine trasferisce fatti duraturi nelle Conversations
+successive. Funziona solo per i Visitor che hanno effettuato l'accesso tramite
+il gate SSO del Widget.
 
-La funzione è disattivata per impostazione predefinita. I Visitatori anonimi non
-generano né richiamano mai ricordi a lungo termine.
+La funzionalità è disattivata per impostazione predefinita. I Visitatori anonimi
+non creano né richiamano mai ricordi a lungo termine.
 
 ## Abilita la memoria a lungo termine
 
 1. Apri **Settings**.
-2. Seleziona **AI Providers**.
+2. Seleziona **AI Provider**.
 3. Trova **Long-term memory**.
 4. Abilita **Remember signed-in users across conversations**.
 
-L'Organizzazione ha bisogno di una connessione funzionante con il provider.
-L'estrazione della memoria utilizza il modello a livelli di classificatori e
-viene conteggiata nel budget giornaliero dell'IA.
+L'Organization necessita di una connessione funzionante con un provider.
+L'estrazione della memoria utilizza il modello classifier-tier e viene
+conteggiata nel budget giornaliero dell'IA.
 
 ## Cosa ricorda Ciele
 
 Ciele promuove fatti espliciti che possono rimanere utili anche dopo la
-Conversazione in corso. Gli esempi includono una preferenza di contatto o
+Conversazione in corso. Esempi includono una preferenza di contatto o
 un'istruzione permanente.
 
-L'estrattore evita richieste una tantum, domande, ipotesi e affermazioni fatte
-solo dall'Assistente. Molte Conversazioni non producono fatti duraturi.
+L'estrattore evita richieste una tantum, domande, congetture e affermazioni
+formulate esclusivamente dall'Assistente. Molte Conversations non producono
+fatti duraturi.
 
-Ogni ricordo memorizzato mantiene il riferimento alla Conversazione di origine.
-I fatti esattamente duplicati vengono rimossi durante la memorizzazione.
+Ogni ricordo memorizzato conserva la provenienza dalla Conversation di origine.
+I fatti che sono duplicati esatti vengono rimossi durante la memorizzazione.
 
-Un Visitatore che ha effettuato l'accesso può conservare fino a 200 ricordi. Le
-nuove scritture rimuovono i fatti più vecchi una volta raggiunto tale limite.
+Un Visitor connesso può contenere fino a 200 ricordi. Le nuove scritture
+rimuovono i fatti più vecchi una volta superato tale limite.
 
 ## Promozione e richiamo
 
@@ -56,42 +57,44 @@ flowchart TB
 `}
 />
 
-Un job di promozione attende che la Conversazione rimanga inattiva per 15
-minuti. Un messaggio più recente sostituisce un vecchio lavoro in sospeso.
+Un job di promozione attende finché la Conversation rimane inattiva per 15
+minuti. Un messaggio più recente sostituisce un job in sospeso più vecchio.
 
-Prima di memorizzare qualsiasi cosa, il job verifica quattro aspetti:
-l'attivazione/disattivazione dell'organizzazione, il soggetto SSO, la
-disponibilità di un modello e il budget. Ognuno di questi elementi può
-interrompere la promozione.
+Prima di archiviare qualsiasi elemento, il job verifica quattro aspetti:
+l'interruttore Organization, il soggetto SSO, un modello disponibile e il
+budget. Ognuno di questi elementi può interrompere la promozione.
 
-Solo il primo turno di una Conversazione successiva riceve i ricordi in questo
-modo. Dopodiché, il runtime li raggiunge tramite lo strumento `searchMemories`.
+Solo il primo turno di una Conversation successiva riceve i ricordi in questo
+modo. Successivamente, il runtime vi accede tramite lo strumento
+`searchMemories`.
 
-Recall non supera mai i confini di un'Organizzazione o di un soggetto SSO.
+Il richiamo non supera mai i confini di un'Organization o di un soggetto SSO.
 
-## Consenti a un Visitatore di ispezionare ed eliminare i ricordi
+## Consenti a un Visitor di ispezionare ed eliminare i ricordi
 
-Un Visitatore che ha effettuato l'accesso può aprire il pannello della
-cronologia del Widget. La cartella **Memory** appare quando la memoria a lungo
-termine è abilitata.
+Un Visitor che ha effettuato l'accesso può aprire il pannello Widget history. La
+cartella **Memory** viene visualizzata quando la memoria a lungo termine è
+abilitata.
 
-La cartella elenca i fatti ricordati per quel Visitatore. Seleziona il comando
+La cartella elenca i fatti memorizzati per quel Visitor. Seleziona il controllo
 di eliminazione accanto a un fatto per dimenticarlo.
 
-L'eliminazione rimuove il fatto dal richiamo futuro del prompt e dalle ricerche
-in memoria.
+L'eliminazione rimuove il fatto dai futuri richiami nei prompt e dalle ricerche
+nella memoria.
 
 ## Gestisci una richiesta di cancellazione
 
 1. Apri **Settings**.
-2. Seleziona **AI Providers**.
+2. Seleziona **AI Provider**.
 3. Trova **Remembered users**.
-4. Cerca per ID utente o claim di identità.
+4. Cerca per user ID o identity claim.
 5. Rivedi i fatti memorizzati.
-6. Elimina una memoria o seleziona **Delete all memories for this user**.
+6. Elimina un ricordo oppure seleziona **Delete all memories for this user**.
+7. Conferma l'eliminazione nella finestra di dialogo.
 
-La cancellazione completa è immediata. I membri dell'organizzazione possono
-gestire le memorie solo all'interno della loro organizzazione.
+L'eliminazione avviene immediatamente dopo la tua conferma. Non puoi annullare
+l'operazione. I membri dell'organizzazione possono gestire i ricordi solo
+all'interno della propria Organization.
 
 <Callout title="Disabling and deleting are different">
 Disabling long-term memory stops extraction and recall. Use **Remembered users** when stored facts must also be erased.

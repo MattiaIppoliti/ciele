@@ -9,6 +9,7 @@ description: Individua l'attuale applicazione open-source, i pacchetti, i worker
 | --- | --- |
 | `apps/web` | Administrator console, widget runtime, public pages, server actions e API v1. |
 | `apps/docs` | Applicazione di documentazione Fumadocs e pipeline di traduzione. |
+| `apps/desktop` | Ciele Desktop: la schermata di accesso e la procedura guidata di configurazione locale. |
 
 ## Pacchetti condivisi
 
@@ -20,7 +21,7 @@ description: Individua l'attuale applicazione open-source, i pacchetti, i worker
 | `packages/ops` | Operazioni dell'organizzazione condivisa utilizzate dalle azioni della console e dall'API v1. |
 | `packages/client` | Client tipizzato per API v1. |
 | `packages/cli` | Interfaccia a riga di comando basata sul client tipizzato. |
-| `packages/mcp` | Adattatore MCP locale con quattordici strumenti, basato sul client tipizzato. |
+| `packages/mcp` | Server MCP sul client tipizzato: uno strumento di identità e sedici strumenti di dominio. |
 | `packages/ui` | Componenti condivisi dell'interfaccia utente. |
 | `packages/charts` | Visualizzazioni analitiche condivise. |
 
@@ -34,11 +35,11 @@ description: Individua l'attuale applicazione open-source, i pacchetti, i worker
 
 ## Direzione delle dipendenze
 
-Le regole pure appartengono a `packages/core`. Il comportamento di persistenza
+Le pure rules appartengono a `packages/core`. Il comportamento di persistenza
 appartiene a `packages/db`.
 
 Le mutazioni riutilizzabili appartengono a `packages/ops`. Il comportamento del
 modello e del recupero appartiene a `packages/agent`.
 
 Gli adattatori di superficie in `apps/web`, `packages/cli` e `packages/mcp` non
-devono creare un comportamento di dominio separato.
+devono creare comportamenti di dominio separati.

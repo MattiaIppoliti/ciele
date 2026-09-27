@@ -18,6 +18,7 @@ import {
   listSubjectMemoriesAction,
   wipeSubjectMemoriesAction,
 } from "@/app/actions";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 /**
  * Admin erasure surface over long-term memories (#666): look up a signed-in
@@ -37,6 +38,7 @@ export function MemorySubjectsCard({
   const [memories, setMemories] = useState<Memory[]>([]);
   const [wiped, setWiped] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   const visible = subjects.filter((s) => {
     if (wiped.has(s.subjectId)) return false;
@@ -61,6 +63,15 @@ export function MemorySubjectsCard({
   }
 
   function deleteOne(subjectId: string, memoryId: string) {
+    confirmDelete({
+      title: "Delete this memory?",
+      description: "The assistant stops using it for this user. This cannot be undone.",
+      confirmLabel: "Delete memory",
+      onConfirm: () => deleteOneNow(subjectId, memoryId),
+    });
+  }
+
+  function deleteOneNow(subjectId: string, memoryId: string) {
     startTransition(async () => {
       try {
         await deleteSubjectMemoryAction(subjectId, memoryId);
@@ -73,9 +84,15 @@ export function MemorySubjectsCard({
   }
 
   function wipeAll(subjectId: string) {
-    if (!window.confirm("Delete every memory held for this user? This cannot be undone.")) {
-      return;
-    }
+    confirmDelete({
+      title: "Delete every memory for this user?",
+      description: "Everything the assistant remembers about this user goes. This cannot be undone.",
+      confirmLabel: "Delete all",
+      onConfirm: () => wipeAllNow(subjectId),
+    });
+  }
+
+  function wipeAllNow(subjectId: string) {
     startTransition(async () => {
       try {
         await wipeSubjectMemoriesAction(subjectId);
@@ -91,6 +108,7 @@ export function MemorySubjectsCard({
 
   return (
     <Card className="mt-8">
+      {confirmDeleteModal}
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserRound className="size-[18px]" />
@@ -111,6 +129,10 @@ export function MemorySubjectsCard({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by user id or identity claim"
+              aria-label="Search remembered users"
+              type="search"
+              autoComplete="off"
+              spellCheck={false}
               className="mb-4 max-w-sm"
             />
             {visible.length === 0 && (
@@ -158,7 +180,7 @@ export function MemorySubjectsCard({
                               key={m.id}
                               className="flex items-start justify-between gap-3 text-sm"
                             >
-                              <span className="min-w-0">{m.text}</span>
+                              <span className="min-w-0 [overflow-wrap:anywhere]">{m.text}</span>
                               {canEdit && (
                                 <button
                                   type="button"

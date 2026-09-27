@@ -19,9 +19,9 @@ Desktop. This page is the server path.
 
 ## Un solo comando
 
-Il programma di installazione esegue tutti i passaggi della sezione successiva:
-verifica i prerequisiti, recupera il codice sorgente in `./ciele` ed esegue
-`bootstrap.sh`.
+Il programma di installazione esegue tutti i passaggi descritti nella sezione
+successiva: verifica i prerequisiti, recupera il codice sorgente in `./ciele` ed
+esegue `bootstrap.sh`.
 
 ```bash
 curl -fsSL https://ciele.app/install.sh | sh
@@ -42,8 +42,9 @@ comunica.
 Su un Mac senza Docker, l'installer non si interrompe in caso di errore. Apre
 [Ciele Desktop](/self-hosting/desktop), scaricando prima la release se l'app non
 è presente. La configurazione guidata disponibile lì collega Docker Desktop e
-avvia lo stesso stack descritto in questa pagina. Su Linux l'installer rifiuta
-l'operazione, perché non c'è alcuna app desktop a cui affidare il lavoro.
+avvia lo stesso stack descritto in questa pagina. Su Linux il programma di
+installazione rifiuta, perché non c'è alcuna app desktop a cui affidare il
+lavoro.
 
 ## Esegui il bootstrap dello stack
 
@@ -72,7 +73,7 @@ l'intero repository. Ogni release pubblica anche questi tre elementi come
 immagini container:
 
 ```bash
-./deploy/bootstrap.sh --images v0.4.0
+./deploy/bootstrap.sh --images v1.0.62
 ```
 
 Il comando scrive due impostazioni in `deploy/.env` ed esegue il pull anziché la
@@ -80,7 +81,7 @@ compilazione:
 
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
-CIELE_IMAGE_TAG=v0.4.0
+CIELE_IMAGE_TAG=v1.0.62
 ```
 
 Poiché entrambi risiedono in `deploy/.env`, un successivo `docker compose up -d`
@@ -106,7 +107,7 @@ restart alone keeps the previous value.
 | `db` | Sì | Postgres, pgvector, autenticazione, API dati, storage e gateway. |
 | `migrate` | Sì | Migrazioni in sospeso e storage bucket richiesti. |
 | `app` | Sì | Administrator console, widget runtime e API v1. |
-| `cron` | Sì | Job dell'applicazione pianificati. |
+| `cron` | Sì | Job pianificati dell'applicazione. |
 | `workers` | No | Servizio di crawling con rendering JavaScript. |
 | `studio` | No | Interfaccia di amministrazione del database. |
 
@@ -133,11 +134,11 @@ L'applicazione esegue questo controllo all'avvio. Legge `PUBLIC_URL`,
 `http://` e non punta alla macchina locale, l'applicazione non si avvia. Il log
 del container indica il nome della variabile. Il valore predefinito
 `PUBLIC_URL=http://localhost:3000` supera il controllo. Per eseguire
-intenzionalmente su HTTP non protetto, ad esempio su una rete privata, imposta
-`CIELE_ALLOW_INSECURE_HTTP=1` in `deploy/.env`.
+intenzionalmente su HTTP non crittografato, ad esempio su una rete privata,
+imposta `CIELE_ALLOW_INSECURE_HTTP=1` in `deploy/.env`.
 
 Una volta che esiste un origin pubblico, imposta `CIELE_PUBLIC_ORIGIN` in
 `deploy/.env` su quell'URL HTTPS. I link che vengono inseriti in un'email, come
-la conferma dell'iscrizione alla newsletter, sono generati a partire da questo
-valore. Senza di esso, l'applicazione rifiuta di inviare tali email. Non crea un
-link a partire dall'header `Host` della richiesta.
+la conferma dell'iscrizione alla newsletter, vengono generati a partire da
+questo valore. Senza di esso, l'applicazione rifiuta di inviare tali email. Non
+crea un link a partire dall'header `Host` della richiesta.

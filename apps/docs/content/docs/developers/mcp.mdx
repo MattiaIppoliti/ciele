@@ -79,7 +79,7 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_flows` | Read the Flow catalogue, check a Flow without saving it, read an HTTP Flow's runs, then list, read, create, update, reorder, or delete Flows. |
 | `manage_knowledge` | Manage Collections, Sources, and FAQs. |
 | `publish_assistant` | Read status, publish, unpublish, or restore a publication. |
-| `read_inbox` | List, read, export, pin, annotate, rate, or delete Conversations. |
+| `read_inbox` | List, read, export, pin, annotate, rate, or delete Conversations. List, read, and decide Human review requests. |
 | `manage_improvements` | List, read, or update Improvements. |
 | `manage_entities` | Manage Organization Entities and typed Records. |
 | `manage_memories` | Inspect settings and perform scoped Memory erasure. |
@@ -89,10 +89,10 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_projects` | Manage Projects and the memory document of each Project. |
 | `manage_channels` | Read and shape the teammate channels you are in. |
 | `manage_configuration` | Manage Skills, Assistant Skill selection, Goals, and Alerts. |
-| `manage_organization` | Manage Organization settings, Members, Invites, and API keys. |
+| `manage_organization` | Manage Organization settings, Members, Invites, and API keys. Read the usage meters and spenders of the plan. |
 | `manage_integrations` | Manage Assistant API integrations and model providers. |
 
-The server registers sixteen tools. Each domain tool uses an `action` field for its operations.
+The server registers seventeen tools: one identity tool and sixteen domain tools. Each domain tool uses an `action` field for its operations.
 
 Read-only mode classifies each action. It permits list, read, status, query, and export actions while refusing mutations.
 

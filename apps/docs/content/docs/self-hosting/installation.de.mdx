@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Starten Sie die aktuelle Single-Host-Docker-Compose-Bereitstellung.
+description: Starten Sie die aktuelle Single-Host-Bereitstellung mit Docker Compose.
 ---
 
 <Callout title="No terminal? Use the desktop app">
@@ -20,9 +20,9 @@ Desktop. This page is the server path.
 
 ## Ein einziger Befehl
 
-Das Installationsprogramm führt alle im nächsten Abschnitt beschriebenen
-Schritte aus: Es überprüft die Voraussetzungen, lädt den Quellcode in `./ciele`
-herunter und führt `bootstrap.sh` aus.
+Das Installationsprogramm führt alle Schritte im nächsten Abschnitt aus: Es
+überprüft die Voraussetzungen, lädt den Quellcode in `./ciele` herunter und
+führt `bootstrap.sh` aus.
 
 ```bash
 curl -fsSL https://ciele.app/install.sh | sh
@@ -43,12 +43,13 @@ Auf einem Mac ohne Docker hält das Installationsprogramm bei einem Fehler nicht
 an. Es öffnet [Ciele Desktop](/self-hosting/desktop) und lädt zunächst die
 Release-Version herunter, wenn die App nicht vorhanden ist. Die dortige geführte
 Einrichtung verknüpft Docker Desktop und startet denselben Stack, der auf dieser
-Seite beschrieben wird. Unter Linux verweigert das Installationsprogramm den
-Vorgang, da es keine Desktop-App gibt, an die die Aufgabe übergeben werden kann.
+Seite beschrieben wird. Unter Linux verweigert das Installationsprogramm die
+Ausführung, da es keine Desktop-App gibt, an die die Aufgabe übergeben werden
+kann.
 
 ## Den Stack bootstrappen
 
-Um die gleichen Schritte manuell auszuführen:
+Um dieselben Schritte manuell auszuführen:
 
 ```bash
 git clone https://github.com/MattiaIppoliti/ciele.git
@@ -66,14 +67,14 @@ Owner.
 Verwenden Sie `./deploy/bootstrap.sh --seed`, um bereinigte Demo-Inhalte
 hinzuzufügen.
 
-## Veröffentlichte Images ausführen, statt sie zu bauen
+## Verwenden Sie veröffentlichte Images, anstatt sie zu erstellen
 
 Das Builden von `app`, `migrate` und `cron` aus dem Checkout nimmt erheblich
 Zeit in Anspruch und erfordert das vollständige Repository. Jedes Release
 veröffentlicht diese drei Elemente auch als Container-Images:
 
 ```bash
-./deploy/bootstrap.sh --images v0.4.0
+./deploy/bootstrap.sh --images v1.0.62
 ```
 
 Der Befehl schreibt zwei Einstellungen in `deploy/.env` und führt einen Pull
@@ -81,14 +82,14 @@ statt eines Builds durch:
 
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
-CIELE_IMAGE_TAG=v0.4.0
+CIELE_IMAGE_TAG=v1.0.62
 ```
 
 Da sich beide in `deploy/.env` befinden, bleibt ein späterer
 `docker compose up -d` in diesem Verzeichnis im Image-Modus. Löschen Sie beide
 Einstellungen, um wieder zum Builden aus dem Quellcode zurückzukehren. Setzen
-Sie `CIELE_IMAGE_REGISTRY`, um einen Mirror oder Ihren eigenen Rebuild zu
-verwenden.
+Sie `CIELE_IMAGE_REGISTRY` so, dass ein Mirror oder Ihr eigener Rebuild
+verwendet wird.
 
 Profiles, Service Ordering und die Database Layer sind in beiden Modi identisch.
 Es ändert sich lediglich die Herkunft dieser drei Services.
@@ -133,13 +134,13 @@ The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of eve
 Die Anwendung überprüft dies beim Start. Es liest `PUBLIC_URL`,
 `CIELE_PUBLIC_ORIGIN` und `NEXT_PUBLIC_APP_URL`. Wenn eine dieser Variablen mit
 `http://` beginnt und nicht auf den lokalen Rechner verweist, startet die
-Anwendung nicht. Das Container-Protokoll nennt die Variable. Der Standardwert
-`PUBLIC_URL=http://localhost:3000` besteht die Prüfung. Um absichtlich über
-unverschlüsseltes HTTP zu arbeiten, beispielsweise in einem privaten Netzwerk,
-setzen Sie `CIELE_ALLOW_INSECURE_HTTP=1` in `deploy/.env`.
+Anwendung nicht. Das Container-Log nennt die Variable. Der Standardwert
+`PUBLIC_URL=http://localhost:3000` besteht die Prüfung. Um die Anwendung gezielt
+über unverschlüsseltes HTTP auszuführen, beispielsweise in einem privaten
+Netzwerk, setzen Sie `CIELE_ALLOW_INSECURE_HTTP=1` in `deploy/.env`.
 
 Sobald ein öffentlicher Ursprung vorhanden ist, setzen Sie `CIELE_PUBLIC_ORIGIN`
 in `deploy/.env` auf diese HTTPS-URL. Links, die in eine E-Mail eingefügt
-werden, wie etwa die Newsletter-Bestätigung, werden aus diesem Wert generiert.
+werden, wie z. B. die Newsletter-Bestätigung, werden aus diesem Wert generiert.
 Ohne diesen Wert verweigert die Anwendung das Versenden dieser E-Mails. Es wird
 kein Link aus dem `Host`-Header der Anfrage erstellt.

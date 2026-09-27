@@ -26,6 +26,7 @@ vi.mock("@agent-hub/agent", () => ({
 import { sessionMetadata } from "@agent-hub/agent";
 import { POST } from "./route";
 import { SSO_GATE_COOKIE, sealGate } from "@/lib/sso";
+import { resetWidgetTurnAllowance } from "@/lib/widget-rate-limit";
 
 const ORG = "org-1";
 
@@ -75,6 +76,7 @@ describe("widget chat route, SSO gate enforcement", () => {
   beforeEach(() => {
     mocks.resolveWidgetContext.mockReset();
     mocks.streamConversationTurn.mockReset();
+    resetWidgetTurnAllowance();
   });
 
   it("401s an enforced assistant when no gate cookie is present", async () => {
@@ -210,5 +212,33 @@ describe("widget chat route, reported page URL", () => {
     mocks.resolveWidgetContext.mockResolvedValue(contextWith(false));
     await post(undefined, { visitorId: "v1", message: "hi", pageUrl: null });
     expect(sessionMetadata).toHaveBeenCalledWith(expect.anything(), undefined);
+  });
+});
+
+describe("widget chat route, per-caller budget", () => {
+  beforeEach(() => {
+    mocks.resolveWidgetContext.mockReset();
+    mocks.streamConversationTurn.mockReset();
+    resetWidgetTurnAllowance();
+  });
+
+  it("429s a Visitor sending faster than a person types, before any turn starts", async () => {
+    const context = contextWith(false);
+    mocks.resolveWidgetContext.mockResolvedValue(context);
+    mocks.streamConversationTurn.mockResolvedValue(new ReadableStream());
+    for (let i = 0; i < 12; i++) {
+      const ok = await post(undefined, { visitorId: "fast", message: `hi ${i}` });
+      expect(ok.status).toBe(200);
+    }
+    const refused = await post(undefined, { visitorId: "fast", message: "hi again" });
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("Retry-After")).toBeTruthy();
+    expect(await refused.json()).toMatchObject({ error: "rate_limited" });
+    expect(mocks.streamConversationTurn).toHaveBeenCalledTimes(12);
+    expect(context.db.listProviderConnections).toHaveBeenCalledTimes(12);
+
+    // Another Visitor on the same page is unaffected.
+    const other = await post(undefined, { visitorId: "slow", message: "hello" });
+    expect(other.status).toBe(200);
   });
 });

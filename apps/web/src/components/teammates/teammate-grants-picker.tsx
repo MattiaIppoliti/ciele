@@ -112,7 +112,8 @@ export function TeammateGrantsPicker({
                   onClick={() =>
                     onChange({ ...value, ceiling: copy.ceiling })
                   }
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  aria-pressed={value.ceiling === copy.ceiling}
+className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     value.ceiling === copy.ceiling
                       ? "border-primary ring-primary/30 ring-1"
                       : "hover:bg-muted/50"
@@ -127,6 +128,7 @@ export function TeammateGrantsPicker({
           <button
             type="button"
             disabled={blocked !== null}
+            aria-pressed={value.approvalBypass && !blocked}
             onClick={() =>
               onChange({ ...value, approvalBypass: !value.approvalBypass })
             }

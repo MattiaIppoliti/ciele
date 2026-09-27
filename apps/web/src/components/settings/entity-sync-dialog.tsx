@@ -22,6 +22,7 @@ import {
   syncEntityNowAction,
   type EntitySyncStatus,
 } from "@/app/actions";
+import { formatDateTime } from "@/lib/format";
 
 export function EntitySyncDialog({
   entity,
@@ -122,11 +123,11 @@ export function EntitySyncDialog({
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="sync-url">Endpoint URL</Label>
-            <Input id="sync-url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://api.example.com/orders" />
+            <Input id="sync-url" type="url" inputMode="url" autoComplete="off" spellCheck={false} value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://api.example.com/orders" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="sync-headers">Auth headers, one name: value per line{status?.config?.hasHeaders ? "; blank keeps current headers" : ""}</Label>
-            <Textarea id="sync-headers" rows={2} value={headersText} onChange={(event) => setHeadersText(event.target.value)} placeholder="authorization: Bearer …" />
+            <Textarea id="sync-headers" spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" rows={2} value={headersText} onChange={(event) => setHeadersText(event.target.value)} placeholder="authorization: Bearer …" />
             {status?.config?.hasHeaders && (
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox checked={clearHeaders} onCheckedChange={(value) => setClearHeaders(value === true)} />
@@ -154,7 +155,7 @@ export function EntitySyncDialog({
               <ul className="mt-1 grid gap-1">
                 {status.runs.map((run) => (
                   <li key={run.id} className="text-muted-foreground">
-                    {new Date(run.finishedAt).toLocaleString()}, {run.status === "succeeded"
+                    {formatDateTime(run.finishedAt)}, {run.status === "succeeded"
                       ? `${run.upserted} upserted${run.pruned ? `, ${run.pruned} pruned` : ""}${run.rejected.length ? `, ${run.rejected.length} rejected` : ""}`
                       : `failed: ${run.error}`}
                     {run.rejected.slice(0, 3).map((reason) => <span key={reason} className="block pl-3">· {reason}</span>)}

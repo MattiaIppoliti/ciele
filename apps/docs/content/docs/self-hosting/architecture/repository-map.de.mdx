@@ -7,22 +7,23 @@ description: Suchen Sie die aktuelle Open-Source-Anwendung, die Pakete, die Work
 
 | Pfad | Zuständigkeit |
 | --- | --- |
-| `apps/web` | Administrator Console, Widget Runtime, Public Pages, Server Actions und API v1. |
+| `apps/web` | Administrator Console, Widget Runtime, öffentliche Seiten, Server Actions und API v1. |
 | `apps/docs` | Fumadocs-Dokumentationsanwendung und Übersetzungspipeline. |
+| `apps/desktop` | Ciele Desktop: der Anmeldebildschirm und der geführte Assistent für die lokale Einrichtung. |
 
 ## Gemeinsam genutzte Pakete
 
-| Path | Verantwortlichkeit |
+| Pfad | Verantwortlichkeit |
 | --- | --- |
 | `packages/core` | Domain-Typen, reine Flow-Regeln, Standardwerte, Bedingungen und Analytiklogik. |
-| `packages/db` | Persistenzschnittstellen, Mock-Speicher und Supabase-Implementierung. |
+| `packages/db` | Persistence-Schnittstellen, Mock-Speicher und Supabase-Implementierung. |
 | `packages/agent` | Ausführung von Turns, Modellanbieter, Knowledge-Tools, Ingestion und Evaluation. |
-| `packages/ops` | Von Console-Aktionen und API v1 verwendete gemeinsame Organisation-Operationen. |
+| `packages/ops` | Gemeinsame Organisation-Operationen, die von Console-Aktionen und API v1 verwendet werden. |
 | `packages/client` | Typed client für API v1. |
 | `packages/cli` | Terminal-Schnittstelle über den Typed Client. |
-| `packages/mcp` | Lokaler MCP-Adapter mit vierzehn Tools über den Typed Client. |
+| `packages/mcp` | MCP-Server über den Typed Client: ein Identity Tool und sechzehn Domain Tools. |
 | `packages/ui` | Gemeinsam genutzte Komponenten der Benutzeroberfläche. |
-| `packages/charts` | Gemeinsam genutzte Analytics-Visualisierungen. |
+| `packages/charts` | Gemeinsam genutzte Visualisierungen von Analysen. |
 
 ## Services und Infrastruktur
 

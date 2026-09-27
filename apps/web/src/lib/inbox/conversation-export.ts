@@ -36,13 +36,6 @@ import { recordsToCsv } from "@ciele/ops/csv";
  */
 export const INBOX_EXPORT_MAX_CONVERSATIONS = 500;
 
-/**
- * Transcript reads issued at once while assembling an export. Fanning all 500 out
- * concurrently would make a single click a load spike on the tenant's own
- * database; batching trades a little wall-clock for not doing that.
- */
-export const INBOX_EXPORT_READ_BATCH = 20;
-
 /** One `Messages[]` item, exactly the reference's five fields. */
 export interface ConversationExportMessage {
   Sender: "User" | "Assistant";

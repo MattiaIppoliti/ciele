@@ -1,32 +1,32 @@
 ---
-title: Actions de flux
-description: Sélectionnez les actions de réponse que le runtime actuel peut exécuter.
+title: Actions du flux
+description: Sélectionnez les actions de réponse que l'environnement d'exécution actuel peut exécuter.
 ---
 
-Les actions Message Flow sont exécutées dans l'ordre. Les actions non
-génératives utilisent le contenu configuré sans réécriture du modèle.
+Les actions du flux de messages s'exécutent dans l'ordre. Les actions non
+génératives utilisent le contenu configuré sans réécriture par le modèle.
 
 ## Actions disponibles
 
 | Action | Utilisation du modèle | Comportement actuel |
 | --- | :---: | --- |
-| Message | Non | Émet le texte configuré tel quel. |
-| Bouton | Non | Ajoute un bouton de lien ou un bouton qui envoie du texte dans le chat. |
-| Recherche de connaissances | Oui | Exécute la boucle de l'agent Knowledge et renvoie des citations. |
-| Suivis | Facultatif | Utilise les questions configurées ou génère des suggestions de questions. |
-| Iframe | Non | Incorpore le contenu externe configuré dans le chat. |
-| Requête API | Non | Appelle un point de terminaison HTTP, saisi sous forme d'URL ou nommé dans une définition Swagger/OpenAPI, et mappe son résultat. |
-| Envoyer un e-mail | Non | Envoie un e-mail via le transport Resend configuré. |
-| Amélioration | Non | Crée une amélioration pour la réponse concernée. |
-| Transfert | Dépend de la cible | Se poursuit une fois dans un autre Assistant publié. |
-| Webhook HTTP | Non | S'abonne à un système et attend son rappel. Voir [HTTP et webhooks](/flows/http). |
-| Réponse | Non | Répond à la requête HTTP entrante qui a lancé le flux. Voir [HTTP et webhooks](/flows/http). |
-| Connecteur | Non | Exécute une action dans ServiceNow, Salesforce, Slack, OneDrive ou Google Drive via une application connectée. Voir [Connector](/flows/connector). |
-| Révision humaine | Non | Arrête le flux jusqu'à ce qu'un collègue l'approuve par e-mail ou Slack. Voir [Révision humaine](/flows/human-review). |
+| Message | No | Émet le texte configuré tel quel. |
+| Button | Non | Ajoute un bouton de lien ou un bouton qui envoie du texte dans le chat. |
+| Search knowledge | Oui | Exécute la boucle de l'agent Knowledge et renvoie des citations. |
+| Follow-ups | Facultatif | Utilise les questions configurées ou génère des questions suggérées. |
+| Iframe | Non | Intègre le contenu externe configuré dans le chat. |
+| API request | Non | Appelle un point de terminaison HTTP, saisi sous la forme d'une URL ou nommé dans une définition Swagger/OpenAPI, et mappe son résultat. |
+| Send email | Non | Envoie un e-mail via le transport Resend configuré. |
+| Improvement | Non | Crée une amélioration pour la réponse concernée. |
+| Handover | Dépend de la cible | Poursuit une seule fois dans un autre Assistant publié. |
+| HTTP webhook | Non | S'abonne à un système et attend son rappel. Voir [HTTP et webhooks](/flows/http). |
+| Response | Non | Répond à la requête HTTP entrante qui a déclenché le Flow. Voir [HTTP et webhooks](/flows/http). |
+| Connector | Non | Exécute une action dans ServiceNow, Salesforce, Slack, OneDrive ou Google Drive via une application connectée. Voir [Connector](/flows/connector). |
+| Human review | Non | Interrompt le Flow jusqu'à ce qu'un collègue l'approuve par e-mail ou sur Slack. Voir [Human review](/flows/human-review). |
 
-Le flux d'interaction de base intégré utilise également **Basic reply**. La
-recommandation du service d'assistance utilise une action d'exécution que le
-sélecteur d'action directe n'affiche pas.
+Le Basic Interaction Flow intégré utilise également **Basic reply**. La
+recommandation du Help Desk utilise une action d'exécution que le sélecteur
+d'actions directes n'affiche pas.
 
 ## Message
 
@@ -36,36 +36,44 @@ sont remplacées par leurs valeurs.
 
 ## Réponse de base
 
-La réponse de base gère les salutations courtes, les remerciements et les
-formules de prise de congé. Elle utilise un seul appel de modèle et ne fait
-appel à aucun outil Knowledge, à aucune citation ni à aucun événement Thinking.
+La réponse de base prend en charge les salutations brèves, les remerciements et
+les formules de congé. Elle utilise un seul appel de modèle et aucun outil
+Knowledge, aucune citation ni aucun événement Thinking.
 
-Saisissez un texte d'action fixe pour ignorer le modèle. Le même texte sert de
-solution de secours lorsqu'aucun modèle de chat n'est disponible.
+Saisissez un texte d'action fixe pour ignorer le modèle. Ce même texte sert de
+solution de repli lorsqu'aucun modèle de chat n'est disponible.
 
-## Recherche de connaissances
+## Recherche dans la base de connaissances
 
 Search knowledge utilise les outils Knowledge disponibles jusqu'à la limite
-d'étapes d'exécution. Il peut renvoyer des citations de source nommées et des
-étapes de réflexion.
+d'étapes d'exécution. Il peut renvoyer des citations de sources nommées et des
+étapes de raisonnement (Thinking Steps).
 
-Utilisez ses paramètres de requête non résolue pour proposer une remontée au
-service d'assistance ou créer une amélioration.
+Utilisez ses paramètres unresolved-query pour proposer une remontée au Help Desk
+ou créer une Improvement.
+
+**Search guidelines** indique à la recherche ce qu'il faut chercher. **Answering
+style** définit le ton et le format de cette réponse. Chaque champ accepte
+jusqu'à 10 000 caractères.
+
+Par défaut, le style de réponse de l'action s'ajoute au style de l'Assistant.
+Sélectionnez **Override answering style** pour remplacer le style de l'Assistant
+pour cette action.
 
 ## Bouton
 
-Configurez une étiquette et une cible. Une cible peut ouvrir un lien ou envoyer
-du texte configuré dans la conversation.
+Configurez un label et une cible. Une cible peut ouvrir un lien ou envoyer du
+texte configuré dans la Conversation.
 
 ## Questions de suivi
 
-Saisissez des questions de suivi prédéfinies ou activez leur génération. Les
+Saisissez des questions de suivi prédéfinies ou activez la génération. Les
 questions de suivi générées utilisent le modèle rapide configuré.
 
 ## Iframe
 
-Configurez le titre, le lien HTTPS, les préférences de la lightbox et la
-hauteur. Le site hôte peut toujours empêcher l'intégration via ses en-têtes de
+Configurez le titre, le lien HTTPS, la préférence de lightbox et la hauteur. Le
+site hôte peut toujours empêcher l'intégration par le biais de ses en-têtes de
 sécurité.
 
 ## Requête API
@@ -80,81 +88,84 @@ saisissez.
 
 **An operation in a Swagger/OpenAPI definition** prend un **Swagger URL** et un
 **Operation ID**. Ciele lit la définition lorsque l'action s'exécute, et en
-extrait la méthode et l'URL. Le flux continue de fonctionner lorsque l'API se
-déplace. La définition est lue à chaque exécution et n'est pas mise en cache. Un
-paramètre de chemin d'accès tel que `{refundId}` devient la variable de modèle
-`{{refundId}}`, de sorte qu'une action antérieure peut fournir sa valeur. La
-définition doit placer l'API sur le même site que la définition elle-même. Une
-définition fournie par `docs.example.com` peut porter le nom `api.example.com`.
-Un autre domaine est refusé. Cela permet de conserver les informations
-d'identification de l'action sur le site que vous avez configuré.
+extrait la méthode et l'URL. Le Flow continue de fonctionner lorsque l'API
+change de localisation. La définition est lue à chaque exécution et n'est pas
+mise en cache. Un paramètre de chemin tel que `{refundId}` devient la variable
+de modèle `{{refundId}}`, de sorte qu'une action antérieure peut fournir sa
+valeur. La définition doit placer l'API sur le même site que la définition
+elle-même. Une définition servie depuis `docs.example.com` peut être nommée
+`api.example.com`. Un autre domaine est refusé. Cela permet de conserver les
+informations d'identification de l'action sur le site que vous avez configuré.
 
 Les variables de modèle peuvent fournir des valeurs issues du contexte actuel.
-Utilisez **Test API** avant d'enregistrer le flux.
+Utilisez **Test API** avant d'enregistrer le Flow.
 
-L'action peut afficher des messages distincts en cas de succès ou d'échec. Les
+L'action peut afficher des messages distincts pour la réussite et l'échec. Les
 règles de sortie réseau s'appliquent à l'URL finale et à l'URL Swagger.
 
 ## Webhook HTTP
 
-Le webhook HTTP s'abonne à un système externe, arrête le flux et reprend lorsque
-ce système rappelle. Configurez l'appel d'abonnement, l'appel de désabonnement,
-le temps d'attente et ce que le visiteur lit pendant ce temps.
+Le webhook HTTP s'abonne à un système externe, interrompt le Flow et reprend son
+exécution lorsque ce système effectue un rappel. Configurez l'appel
+d'abonnement, l'appel de désabonnement, la durée d'attente et ce que le Visiteur
+lit pendant ce temps.
 
-Placez `{{webhook.callbackUrl}}` dans l'URI ou le corps de la demande
+Insérez `{{webhook.callbackUrl}}` dans l'URI ou le corps de la requête
 d'abonnement. C'est ainsi que l'autre système apprend où répondre. Le corps du
 rappel atteint les actions ultérieures sous la forme de `{{webhook.body}}`.
-**Response mapping** en extrait des valeurs nommées.
+**Response mapping** en extrait les valeurs nommées.
 
-Le comportement complet, y compris ce que l'adresse de rappel autorise, se
-trouve dans [HTTP et webhooks](/flows/http).
+Le comportement complet, y compris ce que l'adresse de rappel autorise, est
+décrit dans [HTTP and webhooks](/flows/http).
 
 ## Réponse
 
-Response répond à la requête HTTP entrante qui a lancé le Flow, avec un code
-d'état, ainsi que des en-têtes et un corps facultatifs. Elle n'est disponible
-que sur le déclencheur **On HTTP request** et met fin au flux.
+Response répond à la requête HTTP entrante qui a déclenché le Flow, avec un code
+de statut ainsi que des en-têtes et un corps optionnels. Elle n'est disponible
+que sur le déclencheur **On HTTP request** et met fin au Flow.
 
-Voir [HTTP et webhooks](/flows/http).
+Voir [HTTP and webhooks](/flows/http).
 
 ## Envoyer un e-mail
 
-Configurez les destinataires, l'objet, le corps et le comportement de réponse.
-Le runtime utilise Resend lorsque son transport est configuré.
+Configurez les destinataires, l'objet, le corps du message et le comportement de
+l'adresse de réponse. L'environnement d'exécution utilise Resend lorsque son
+transport est configuré.
 
 Lorsque le transport n'est pas configuré, l'action indique qu'elle n'a pas
-envoyé l'e-mail. Elle ne confirme pas la livraison.
+envoyé l'e-mail. Elle ne revendique pas la remise.
 
 ## Amélioration
 
-L'action crée une tâche d'amélioration. Elle n'ajoute pas de texte de réponse
-visible par elle-même.
+L'action crée une tâche d'amélioration. Elle n'ajoute pas d'elle-même de texte
+de réponse visible.
 
 ## Transfert
 
 Sélectionnez un autre Assistant dans la même Organisation. La cible doit avoir
-une publication en cours.
+une Publication en cours.
 
-Ciele fait passer une seule fois le même message de visiteur à l'assistant
-cible. Il ne poursuit pas un deuxième transfert à partir de ce tour de cible.
+Ciele fait passer le même message de visiteur par l'Assistant cible une seule
+fois. Il n'effectue pas de second transfert à partir de ce tour cible.
 
 ## Connecteur
 
 Sélectionnez une application connectée, une connexion et une action cataloguée.
-Le flux stocke l'identifiant de connexion et l'action, jamais un identifiant.
+Le Flow stocke l'identifiant de connexion et l'action, mais jamais d'identifiant
+de connexion.
 
-Les résultats deviennent des variables de modèle `{{connector.*}}` pour les
-actions ultérieures. Consultez [Connector](/flows/connector) pour le catalogue,
-les champs et ce que voit le visiteur.
+Les résultats deviennent des variables de template `{{connector.*}}` pour des
+actions ultérieures. Consultez [Connector](/flows/connector) pour accéder au
+catalogue, aux champs et à ce que le Visitor voit.
 
-## Révision humaine
+## Vérification humaine
 
-Nommez les réviseurs, le canal et les champs qu'ils remplissent. Le flux
-s'arrête à cette action et ne se poursuit qu'après approbation. Les entrées du
-réviseur deviennent des variables de modèle `{{review.*}}`. Voir
-[Révision humaine](/flows/human-review).
+Indiquez les noms des reviewers, le channel et les inputs qu'ils renseignent. Le
+Flow s'arrête à cette action et ne se poursuit qu'après approbation. Les entrées
+du reviewer deviennent des variables de template `{{review.*}}`. Voir
+[Human review](/flows/human-review).
 
 ## Ordre des actions
 
-Placez le texte d'encadrement avant Rechercher des connaissances. Placez les
-boutons et les suivis après la réponse qu'ils prennent en charge.
+Insérez un texte d'encadrement avant Search knowledge. Placez les boutons et les
+actions de suivi après la réponse qu'ils concernent.

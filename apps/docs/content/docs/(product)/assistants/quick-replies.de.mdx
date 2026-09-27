@@ -1,36 +1,47 @@
 ---
-title: Schnelle Antworten
-description: Fügen Sie Starter-Buttons hinzu, die Text senden oder eine kuratierte FAQ-Antwort zurückgeben.
+title: Schnellantworten
+description: Fügen Sie Starter-Schaltflächen hinzu, die Text senden, den Support öffnen, einen Link öffnen oder eine kuratierte FAQ-Antwort zurückgeben.
 ---
 
-Schnelle Antworten werden in der Nähe der Begrüßungsnachricht angezeigt. Sie
-helfen einem Besucher, eine gängige Aufgabe zu starten.
+Schnellantworten werden in der Nähe der Begrüßungsnachricht angezeigt. Sie
+helfen einem Besucher, eine häufige Aufgabe zu starten.
 
-## Text senden
+## Text in den Chat senden
 
-Eine **Send Text**-Schnellantwort sendet ihren konfigurierten Text als
-Besuchernachricht. Der normale Flow-Router verarbeitet diese Nachricht dann.
+Eine **Send Text Into Chat** Quick Reply sendet ihren konfigurierten Text als
+Nachricht eines Visitors. Der normale Flow-Router verarbeitet diese Nachricht
+anschließend.
 
-Verwenden Sie diesen Typ, wenn der Assistent den Starttext anhand seiner
-normalen Routing-Regeln interpretieren muss.
+Verwenden Sie diesen Typ, wenn der Assistant den Startertext anhand seiner
+normalen Routingregeln interpretieren muss.
 
-## Häufig gestellte Fragen
+## Eskalation
 
-Eine **FAQ**-Schnellantwort gibt die kuratierte FAQ-Antwort wortgetreu zurück.
-Das Chat-Modell wird dabei nicht aufgerufen.
+Eine **Escalation** Schnellantwort öffnet das Support-Panel des Assistenten.
+Anschließend kann der Besucher einen Help-Desk-Kanal auswählen.
 
-Die Antwort enthält die Quellenangabe zur FAQ. Verwenden Sie diesen Typ, wenn
-eine genehmigte Antwort genau bleiben muss.
+## Externen Link öffnen
 
-## Fügen Sie eine Schnellantwort hinzu
+Eine **Open External Link** Schnellantwort öffnet ihre URL in einem neuen
+Browser-Tab. Es wird keine Nachricht gesendet.
+
+## FAQ
+
+Eine **FAQ** Schnellantwort gibt die kuratierte FAQ-Antwort wortgetreu zurück.
+Es ruft das Chat-Modell nicht auf.
+
+Die Antwort enthält die FAQ Source-Fundstelle. Verwenden Sie diesen Typ, wenn
+eine genehmigte Antwort exakt bleiben muss.
+
+## Eine Schnellantwort hinzufügen
 
 1. Öffnen Sie **General**.
-2. Suchen Sie **Quick replies**.
-3. Fügen Sie ein **Send Text**- oder **FAQ**-Element hinzu.
-4. Geben Sie die sichtbare Beschriftung ein.
+2. Suchen Sie nach **Quick replies**.
+3. Fügen Sie ein Element hinzu und wählen Sie dessen **Type** aus.
+4. Geben Sie die sichtbare Bezeichnung ein.
 5. Wählen Sie den erforderlichen Inhalt aus oder geben Sie ihn ein.
 6. Speichern Sie den Entwurf.
-7. Testen Sie die Schaltfläche in der Vorschau.
+7. Testen Sie die Schaltfläche in Preview.
 
-Halten Sie Beschriftungen kurz. Die Beschriftung muss die Aktion beschreiben,
-die nach der Auswahl erfolgt.
+Halten Sie Labels kurz. Das Label muss die Aktion beschreiben, die nach der
+Auswahl ausgeführt wird.

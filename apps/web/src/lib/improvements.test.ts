@@ -5,7 +5,9 @@ import type {
   ImprovementStatus,
 } from "@agent-hub/core";
 import {
+  DEFAULT_IMPROVEMENTS_URL_STATE,
   emptyLaneRecord,
+  improvementsUrlStateFromSearchParams,
   keepsLinkNavigation,
   laneCountsWithOverrides,
   mergeImprovementRows,
@@ -262,5 +264,30 @@ describe("laneCountsWithOverrides", () => {
     expect(laneCountsWithOverrides(server, rows, (row) => row.status)).toEqual(
       server,
     );
+  });
+});
+
+describe("improvementsUrlStateFromSearchParams", () => {
+  it("opens on the list with no filters when the URL carries nothing", () => {
+    expect(improvementsUrlStateFromSearchParams({})).toEqual(
+      DEFAULT_IMPROVEMENTS_URL_STATE,
+    );
+  });
+
+  it("reads the search, priority, assignee and layout a shared link carries", () => {
+    expect(
+      improvementsUrlStateFromSearchParams(
+        new URLSearchParams("q=login&priority=high&assignee=u1&view=kanban"),
+      ),
+    ).toEqual({ q: "login", priority: "high", assignee: "u1", view: "kanban" });
+  });
+
+  it("ignores a priority or layout that does not exist", () => {
+    const state = improvementsUrlStateFromSearchParams({
+      priority: "urgent",
+      view: "grid",
+    });
+    expect(state.priority).toBe("");
+    expect(state.view).toBe("list");
   });
 });

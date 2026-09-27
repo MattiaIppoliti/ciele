@@ -1,16 +1,16 @@
 ---
 title: Configuración
-description: Configura orígenes, secretos, cuentas, modelos, correo electrónico y trabajadores opcionales.
+description: Configura orígenes, secretos, cuentas, modelos, correo electrónico y workers opcionales.
 ---
 
-El script de arranque escribe `deploy/.env`. Utiliza `deploy/.env.example` como
-referencia de la variable actual.
+El script de bootstrap escribe `deploy/.env`. Usa `deploy/.env.example` como la
+referencia de variable actual.
 
 ## Orígenes públicos
 
 Establece `PUBLIC_URL` como el origen público de la aplicación. Establece
-`SUPABASE_PUBLIC_URL` como el origen de la puerta de enlace de la base de datos
-accesible desde el navegador.
+`SUPABASE_PUBLIC_URL` como el origen de la pasarela de base de datos accesible
+desde el navegador.
 
 Vuelve a compilar la aplicación después de cambiar `SUPABASE_PUBLIC_URL`. El
 paquete del navegador contiene este valor en el momento de la compilación.
@@ -21,33 +21,61 @@ docker compose -f deploy/docker-compose.yml up -d --build app
 
 ## Secretos generados
 
-La pila requiere Postgres, JSON Web Token, rol de servicio, cifrado de la
-aplicación y secretos de cron. Deja que el script de arranque los genere.
+La pila requiere Postgres, JSON Web Token, un rol de servicio, cifrado de la
+aplicación y secretos de cron. Deja que el script de bootstrap los genere.
 
 No cambies `JWT_SECRET`, `ANON_KEY` ni `SERVICE_ROLE_KEY` de forma
-independiente. Forman una configuración de firma.
+independiente. Forman una única configuración de firma.
 
 ## Cuentas y correo electrónico
 
 La primera cuenta se convierte en la propietaria de la organización. Establece
-`DISABLE_SIGNUP=true` después de que existan las cuentas necesarias.
+`DISABLE_SIGNUP=true` una vez que existan las cuentas necesarias.
 
-Sin configuración SMTP, `MAILER_AUTOCONFIRM=true` confirma automáticamente las
-nuevas cuentas.
+Sin la configuración de SMTP, `MAILER_AUTOCONFIRM=true` confirma automáticamente
+las nuevas cuentas.
 
 Las acciones de correo electrónico en tiempo de ejecución utilizan
-`RESEND_API_KEY` y `EMAIL_FROM`. Informan de un resultado sin configurar cuando
-falta cualquiera de los valores.
+`RESEND_API_KEY` y `EMAIL_FROM`. Informan de un resultado no configurado cuando
+falta alguno de los dos valores.
 
-## Puntos de conexión de modelos
+## Endpoints de modelos
 
-Configura las claves de proveedor de Anthropic, OpenAI o Google. También puedes
-configurar un punto de conexión de chat y de incrustación compatible con OpenAI.
+Configura las claves de los proveedores Anthropic, OpenAI o Google. También
+puedes configurar un endpoint de chat y de incrustación compatible con OpenAI.
 
 La búsqueda de conocimiento utiliza la coincidencia léxica cuando no hay ningún
 modelo de incrustación disponible.
 
+## Capacidad de chat
+
+Cada turno de chat que llama a un modelo ocupa un slot antes de su primera
+llamada al modelo. Los slots están en la base de datos, por lo que todas las
+instancias de la aplicación comparten un único contador.
+
+| Variable | Valor predeterminado | Efecto |
+|---|---|---|
+| `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | El número máximo de turnos que se ejecutan al mismo tiempo para una sola organización. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | El número máximo de turnos que se ejecutan al mismo tiempo en una única clave de proveedor de plataforma. |
+| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Tiempo que un turno espera a que haya un slot libre, en milisegundos. El máximo es `60000`. |
+
+Establece un límite en `0` o `off` para eliminarlo. Deja la variable vacía para
+usar el valor predeterminado.
+
+Un turno que no obtiene un slot durante el tiempo de espera no se ejecuta. El
+widget le indica al visitante que lo intente de nuevo en unos segundos.
+
+Cuando un proveedor rechaza una solicitud debido a su límite de tasa, la
+aplicación vuelve a intentar la solicitud tras un retraso aleatorio. El widget
+muestra el mismo mensaje si todos los intentos fallan.
+
+El widget también limita a cada Visitor a 12 mensajes por minuto. Una dirección
+de red puede enviar 300 mensajes por minuto a un Assistant. Muchos Visitantes
+pueden compartir una misma dirección, por ejemplo, en una red de oficina.
+
+Los turnos de una suscripción personal no ocupan una plaza.
+
 ## TLS
 
 Termina TLS en un proxy inverso. A continuación, establece ambas variables de
-origen público en sus direcciones HTTPS y recompila la aplicación.
+origen público con sus direcciones HTTPS y vuelve a compilar la aplicación.

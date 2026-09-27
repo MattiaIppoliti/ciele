@@ -56,8 +56,6 @@ export const consentRecordPayloadSchema = z.object({
   pageUrl: z.string().max(CONSENT_LOG_LIMITS.pageUrl).nullish(),
 });
 
-export type ConsentRecordPayload = z.infer<typeof consentRecordPayloadSchema>;
-
 /**
  * Reduces a submitted page URL to origin + path.
  *

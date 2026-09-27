@@ -422,7 +422,7 @@ export function AssistantPreviewDemo({
             onStop={noop}
             minRows={1}
             maxRows={3}
-            placeholder="Ask Acme Assistant..."
+            placeholder="Ask Acme Assistant…"
             aria-label="Preview composer"
           />
           <p className="text-muted-foreground mt-3 text-xs leading-snug">

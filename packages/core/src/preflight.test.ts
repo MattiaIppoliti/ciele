@@ -12,9 +12,7 @@ import {
   THINKING_LINES,
   buildPreflightQuestions,
   foldPreflightSignals,
-  frustrationLevel,
   preflightRouting,
-  reasoningLevel,
   spokenLanguage,
   thinkingLine,
   thinkingOutcome,
@@ -213,8 +211,6 @@ describe("labelled replay (the gate)", () => {
       };
       expect(preflightRouting(decision, PREFLIGHT_FIXTURE_CATALOGUE)).toEqual(labelled.expected.routing);
       expect(spokenLanguage(decision)).toBe(labelled.expected.language);
-      expect(reasoningLevel(decision)).toBe(labelled.expected.reasoning);
-      expect(frustrationLevel(decision)).toBe(labelled.expected.frustration);
       expect(
         clearsThreshold({
           answer: decision.answers.wants_human,

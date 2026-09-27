@@ -20,6 +20,7 @@ import {
   deleteRoutineAction,
   updateRoutineAction,
 } from "@/app/(admin)/teammates/actions";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 /**
  * Standing instructions this Teammate carries out on its own (#772).
@@ -46,6 +47,7 @@ export function RoutinesPanel({
   const [cadence, setCadence] = useState<RoutineCadence>("daily");
   const [hour, setHour] = useState(8);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   // Rendered once per mount rather than per row: every relative time in the
   // panel should be measured from the same moment.
   const [now] = useState(() => new Date());
@@ -66,6 +68,7 @@ export function RoutinesPanel({
 
   return (
     <div className="space-y-3">
+      {confirmDeleteModal}
       <div className="flex items-center justify-between">
         <Label>Routines</Label>
         {canEdit && !blocked && (
@@ -113,6 +116,7 @@ export function RoutinesPanel({
                 size="sm"
                 disabled={isPending}
                 title={routine.enabled ? "Pause" : "Resume"}
+                aria-label={routine.enabled ? "Pause routine" : "Resume routine"}
                 onClick={() =>
                   run(
                     () =>
@@ -134,8 +138,15 @@ export function RoutinesPanel({
                 size="sm"
                 className="text-destructive"
                 disabled={isPending}
+                aria-label="Delete routine"
                 onClick={() =>
-                  run(() => deleteRoutineAction(routine.id), "Routine deleted")
+                  confirmDelete({
+                    title: "Delete this routine?",
+                    description: "The Teammate stops running it. This cannot be undone.",
+                    confirmLabel: "Delete routine",
+                    onConfirm: () =>
+                      run(() => deleteRoutineAction(routine.id), "Routine deleted"),
+                  })
                 }
               >
                 <Trash2 className="size-4" />
@@ -155,6 +166,7 @@ export function RoutinesPanel({
             value={instruction}
             rows={3}
             placeholder="Every morning, triage yesterday's negative feedback and file what is new."
+            aria-label="Routine instruction"
             onChange={(e) => setInstruction(e.target.value.slice(0, 2000))}
           />
           <div className="flex flex-wrap items-end gap-2">
@@ -164,6 +176,7 @@ export function RoutinesPanel({
                   key={option}
                   type="button"
                   onClick={() => setCadence(option)}
+                  aria-pressed={cadence === option}
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     cadence === option
                       ? "border-primary ring-primary/30 ring-1"

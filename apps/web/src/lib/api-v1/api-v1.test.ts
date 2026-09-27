@@ -17,7 +17,7 @@ import {
 } from "@/app/api/v1/assistants/[id]/route";
 import { POST as duplicateAssistant } from "@/app/api/v1/assistants/[id]/duplicate/route";
 import { resolveApiKeyContext, requireApiCapability } from "./auth";
-import { paginate, parseListParams } from "./http";
+import { parseListParams } from "./http";
 import { clearIdempotencyStore, withIdempotency } from "./idempotency";
 
 /**
@@ -291,23 +291,10 @@ describe("assistants CRUD over /api/v1 (#620)", () => {
 });
 
 describe("pagination helpers", () => {
-  const items = [{ id: "a" }, { id: "b" }, { id: "c" }];
-
-  it("clamps limit and treats unknown cursors as a restart", () => {
+  it("clamps limit", () => {
     expect(parseListParams(new URL("http://x/?limit=9999")).limit).toBe(100);
     expect(parseListParams(new URL("http://x/?limit=0")).limit).toBe(1);
     expect(parseListParams(new URL("http://x/?limit=junk")).limit).toBe(50);
-    const restarted = paginate(items, { limit: 2, cursor: "missing" });
-    expect(restarted.data.map((i) => i.id)).toEqual(["a", "b"]);
-  });
-
-  it("chains cursors to the end", () => {
-    const first = paginate(items, { limit: 2, cursor: null });
-    expect(first.data.map((i) => i.id)).toEqual(["a", "b"]);
-    expect(first.nextCursor).toBe("b");
-    const second = paginate(items, { limit: 2, cursor: first.nextCursor });
-    expect(second.data.map((i) => i.id)).toEqual(["c"]);
-    expect(second.nextCursor).toBeNull();
   });
 });
 

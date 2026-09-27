@@ -575,8 +575,9 @@ Ingestion (server actions in `actions.ts` are thin adapters; runtime in `package
   DOCX, plain text). Server actions call `extractSourceText` and never parse anything inline.
 - **Ingestion Jobs** (`packages/agent/src/jobs.ts`, unit-tested): the OKF pipeline and website crawls run
   **off the request path**. `enqueueIngestJob` is the in-process deferred adapter (Next `after()`);
-  `runIngestJob` rehydrates everything from the `Db` (the payload is JSON-serializable on purpose,
-  so a queue-backed adapter can replace `enqueueIngestJob` without touching callers). Progress and
+  the `ingest_source` handler, drained by `runDueJobs`, rehydrates everything from the `Db` (the
+  payload is JSON-serializable on purpose, so a queue-backed adapter can replace `enqueueIngestJob`
+  without touching callers). Progress and
   failures land in the Source `status` lifecycle (`processing` → `ready`/`error`), which
   `KnowledgeClient` polls (3s `router.refresh()` while any Source is processing).
 - **Sources** by kind: `text`, `url`, `file`, `website` (configured crawler provider + a persisted

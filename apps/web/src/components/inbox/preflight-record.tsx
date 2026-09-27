@@ -60,7 +60,7 @@ export function PreflightRecordPanel({ record }: { record: PreflightTraceRecord 
         </p>
 
         {record.answers.length > 0 && (
-          <table className="w-full">
+          <table className="w-full tabular-nums">
             <thead>
               <tr className="text-left">
                 <th className="font-medium">Question</th>

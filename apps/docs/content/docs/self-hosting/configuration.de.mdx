@@ -1,19 +1,19 @@
 ---
 title: Konfiguration
-description: Konfigurieren Sie Ursprünge, Secrets, Konten, Modelle, E-Mail und optionale Worker.
+description: Konfigurieren Sie Origins, Secrets, Accounts, Models, E-Mail und optionale Workers.
 ---
 
 Das Bootstrap-Skript schreibt `deploy/.env`. Verwenden Sie `deploy/.env.example`
-als Referenz für die aktuelle Variable.
+als aktuelle Variablenreferenz.
 
-## Öffentliche Ursprünge
+## Öffentliche Origins
 
-Setzen Sie `PUBLIC_URL` auf den öffentlichen Anwendungs-Ursprung. Setzen Sie
-`SUPABASE_PUBLIC_URL` auf den Ursprung des vom Browser zugänglichen
+Setzen Sie `PUBLIC_URL` auf den öffentlichen Anwendungsursprung. Setzen Sie
+`SUPABASE_PUBLIC_URL` auf den für den Browser zugänglichen Ursprung des
 Datenbank-Gateways.
 
 Erstellen Sie die Anwendung neu, nachdem Sie `SUPABASE_PUBLIC_URL` geändert
-haben. Das Browser-Bundle enthält diesen Wert zum Zeitpunkt des Builds.
+haben. Das Browser-Bundle enthält diesen Wert zur Build-Zeit.
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d --build app
@@ -21,33 +21,64 @@ docker compose -f deploy/docker-compose.yml up -d --build app
 
 ## Generierte Geheimnisse
 
-Der Stack benötigt Postgres, JSON Web Token, Service-Rolle,
-Anwendungsverschlüsselung und Cron-Geheimnisse. Lassen Sie das Bootstrap-Skript
-sie generieren.
+Der Stack erfordert Postgres, JSON Web Token, eine Service-Rolle,
+Anwendungsverencryption und Cron-Secrets. Lassen Sie das Bootstrap-Skript sie
+generieren.
 
 Ändern Sie `JWT_SECRET`, `ANON_KEY` oder `SERVICE_ROLE_KEY` nicht unabhängig
-voneinander. Sie bilden eine Signaturkonfiguration.
+voneinander. Sie bilden eine einzige Signaturkonfiguration.
 
 ## Konten und E-Mail
 
-Das erste Konto wird zum Eigentümer der Organisation. Legen Sie
-`DISABLE_SIGNUP=true` fest, nachdem die erforderlichen Konten vorhanden sind.
+Das erste Konto wird zum Organization Owner. Legen Sie `DISABLE_SIGNUP=true`
+fest, nachdem die erforderlichen Accounts vorhanden sind.
 
 Ohne SMTP-Konfiguration bestätigt `MAILER_AUTOCONFIRM=true` neue Konten
 automatisch.
 
 E-Mail-Aktionen zur Laufzeit verwenden `RESEND_API_KEY` und `EMAIL_FROM`. Sie
-melden ein nicht konfiguriertes Ergebnis, wenn einer der Werte fehlt.
+melden ein unkonfiguriertes Ergebnis, wenn einer der beiden Werte fehlt.
 
-## Modell-Endpunkte
+## Modell-Endpoints
 
 Konfigurieren Sie die Provider-Schlüssel für Anthropic, OpenAI oder Google. Sie
-können auch einen OpenAI-kompatiblen Chat- und Embedding-Endpunkt konfigurieren.
+können auch einen mit OpenAI kompatiblen Chat- und Embedding-Endpoint
+konfigurieren.
 
-Die Wissenssuche verwendet lexikalischen Abgleich, wenn kein Embedding-Modell
-verfügbar ist.
+Die Knowledge Search verwendet lexikalisches Matching, wenn kein
+Embedding-Modell verfügbar ist.
+
+## Chat-Kapazität
+
+Jeder Chat-Turnus, der ein Modell aufruft, belegt einen Slot, bevor der erste
+Modellaufruf erfolgt. Die Slots befinden sich in der Datenbank, sodass alle
+Anwendungsinstanzen einen gemeinsamen Zähler verwenden.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | Die maximale Anzahl von Turns, die gleichzeitig für eine Organisation ausgeführt werden. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Die maximale Anzahl von Turns, die gleichzeitig auf einem Platform Provider Key ausgeführt werden. |
+| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Wie lange ein Turn auf einen freien Slot wartet, in Millisekunden. Der Höchstwert beträgt `60000`. |
+
+Setzen Sie einen Grenzwert auf `0` oder `off`, um ihn zu entfernen. Lassen Sie
+die Variable leer, um den Standardwert zu verwenden.
+
+Ein Turn, der während der Wartezeit keinen Slot erhält, wird nicht ausgeführt.
+Das Widget weist den Besucher an, es in einigen Sekunden erneut zu versuchen.
+
+Wenn ein Provider eine Anfrage aufgrund seines Rate Limits ablehnt, versucht die
+Anwendung die Anfrage nach einer zufälligen Verzögerung erneut. Das Widget zeigt
+dieselbe Nachricht an, wenn alle Versuche fehlschlagen.
+
+Das Widget begrenzt außerdem jeden Visitor auf 12 Nachrichten pro Minute. Eine
+Netzwerkadresse kann 300 Nachrichten pro Minute an einen Assistant senden. Viele
+Besucher können eine Adresse gemeinsam nutzen, beispielsweise in einem
+Büronetzwerk.
+
+Turns in einem persönlichen Abonnement belegen keinen Slot.
 
 ## TLS
 
-Terminieren Sie TLS in einem Reverse-Proxy. Setzen Sie dann beide öffentlichen
-Origin-Variablen auf ihre HTTPS-Adressen und bauen Sie die Anwendung neu.
+Beenden Sie TLS in einem Reverse Proxy. Stellen Sie anschließend beide Variablen
+für den öffentlichen Ursprung auf ihre HTTPS-Adressen ein und bauen Sie die
+Anwendung neu.

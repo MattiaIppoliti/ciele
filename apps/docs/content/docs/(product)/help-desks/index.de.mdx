@@ -1,38 +1,46 @@
 ---
-title: Helpdesks
-description: Bieten Sie Besuchern einen konfigurierten Weg, um ein menschliches Team zu kontaktieren.
+title: Help Desks
+description: Bieten Sie Besucherinnen und Besuchern einen konfigurierten Weg, um ein menschliches Team zu kontaktieren.
 ---
 
-Ein Helpdesk fasst Kontaktkanäle, Verfügbarkeit, Formularfelder und
-Eskalationseinstellungen zusammen. Eine Organisation kann einen Helpdesk mit
+Ein Help Desk fasst Kontaktkanäle, Verfügbarkeiten, Formularfelder und
+Eskalationseinstellungen zusammen. Eine Organisation kann einen Help Desk mit
 mehreren Assistenten verbinden.
 
-## Aktuelles Kanalverhalten
+## Aktuelles Verhalten des Kanals
 
-| Kanal | Ergebnis für Besucher |
+| Channel | Ergebnis für Besucher |
 | --- | --- |
-| E-Mail | Ciele sendet eine Eskalations-E-Mail, wenn der E-Mail-Transport konfiguriert ist. |
-| Telefon | Das Widget zeigt den konfigurierten Telefonkontakt an. |
-| Live-Chat | Das Widget zeigt den konfigurierten Live-Chat-Kontaktpfad an. |
-| Externer Link | Das Widget öffnet das konfigurierte Ziel. |
+| Email | Ciele sendet eine Eskalations-E-Mail, wenn der E-Mail-Transport konfiguriert ist. |
+| Phone | Das Widget zeigt den konfigurierten Telefonkontakt an. |
+| Live chat | Das Widget zeigt den konfigurierten Kontaktpfad für den Live-Chat an. |
+| External link | Das Widget öffnet das konfigurierte Ziel. |
+| API endpoint | Das Widget zeigt das Kanalformular an und sendet es an den konfigurierten Endpoint. |
 
-Konfigurieren Sie einen Kanal erst, nachdem Sie seinen vollständigen
-Besucherpfad getestet haben.
+Konfigurieren Sie einen Kanal erst, nachdem Sie den gesamten Visitor-Pfad
+getestet haben.
 
 ## Auswahl der Eskalation
 
-Ein Assistent kann eine immer verfügbare **Contact support**-Aktion anzeigen.
+Ein Assistant kann eine stets verfügbare **Contact support**-Aktion anzeigen.
 Ciele kann anhand der Beschreibung und des Konversationskontexts einen
-verknüpften Helpdesk empfehlen.
+verbundenen Help Desk empfehlen.
 
-Der Besucher wählt einen verfügbaren Kanal aus. Das Widget zeigt dann das
-konfigurierte Formular oder die Kontaktaktion an.
+Der Visitor wählt einen verfügbaren Channel aus. Das Widget zeigt dann das
+konfigurierte Formular oder die konfigurierte Kontaktaktion an.
 
-## Erstellen Sie einen Helpdesk
+Ein Visitor kann auch **@** in das Nachrichtenfeld schreiben. Das Chat-Fenster
+zeigt die Help Desks an, die dieser Assistent empfehlen kann. Wenn der Besucher
+einen auswählt, entfernt das Chat-Fenster das **@** und zeigt diesen Help Desk
+an. Der Text wird nicht an den Assistant gesendet.
+
+Ein Help Desk ohne aktiven Kanal wird in dieser Liste nicht angezeigt.
+
+## Einen Helpdesk erstellen
 
 1. Öffnen Sie **Help Desks**.
-2. Erstellen Sie einen Helpdesk.
-3. Geben Sie einen Namen und eine Routing-Beschreibung ein.
+2. Erstellen Sie einen Help Desk.
+3. Geben Sie einen Namen und eine Weiterleitungsbeschreibung ein.
 4. Fügen Sie einen unterstützten Kanal hinzu.
 5. Konfigurieren Sie die Verfügbarkeit und die Formularfelder.
 6. Verbinden Sie den Help Desk mit einem Assistant.

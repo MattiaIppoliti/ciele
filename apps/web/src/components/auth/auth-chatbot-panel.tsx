@@ -63,7 +63,7 @@ export function AuthChatbotPanel() {
                 value=""
                 readOnly
                 onKeyDown={(e) => e.preventDefault()}
-                placeholder="Ask anything..."
+                placeholder="Ask anything…"
                 aria-label="Ask anything"
                 className="w-full cursor-default bg-transparent text-xl text-gray-200 outline-none placeholder:text-gray-500"
               />

@@ -116,7 +116,7 @@ export function AlertsList({
                     <Badge variant="outline">{TYPE_LABELS[alert.type]}</Badge>
                     <span className="truncate font-medium">{alert.title}</span>
                   </div>
-                  <p className="text-muted-foreground mt-0.5 text-xs lg:truncate">
+                  <p className="text-muted-foreground mt-0.5 text-xs [overflow-wrap:anywhere] lg:truncate">
                     {alert.detail}
                   </p>
                 </div>
@@ -182,7 +182,7 @@ export function AlertsList({
                   {details.title}
                 </DialogTitle>
               </DialogHeader>
-              <p className="text-sm whitespace-pre-wrap">{details.detail}</p>
+              <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{details.detail}</p>
               <div className="text-muted-foreground grid grid-cols-2 gap-2 text-xs">
                 <span>Detected</span>
                 <span>{formatDateTime(details.detectedAt)}</span>

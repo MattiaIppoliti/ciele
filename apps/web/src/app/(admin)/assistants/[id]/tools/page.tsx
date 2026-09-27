@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Wrench } from "lucide-react";
 import { ToolsClient } from "@/components/assistant/tools-client";
-import { SectionHero } from "@/components/settings/section-hero";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit } from "@/lib/rbac";
 import { getAssistantCached } from "../get-assistant";
@@ -23,7 +23,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
-      <SectionHero
+      <SectionHeading
         icon={Wrench}
         title="Tools & Skills"
         description="The agent's tool registry and reusable prompt skills, what it can do while answering, beyond generating text."

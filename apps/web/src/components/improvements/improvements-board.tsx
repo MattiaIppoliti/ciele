@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import type {
   Improvement,
   ImprovementListItem,
@@ -32,9 +32,12 @@ import { formatDay } from "@/lib/format";
 import { memberDisplayName } from "@/lib/members";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { replaceFilterParams } from "@/lib/url-state";
 import {
+  DEFAULT_IMPROVEMENTS_URL_STATE,
   IMPROVEMENT_PRIORITIES,
   IMPROVEMENT_STATUSES,
+  type ImprovementsUrlState,
   emptyLaneRecord,
   improvementKey,
   improvementKeyClass,
@@ -114,7 +117,10 @@ export function ImprovementsBoard({
   counts,
   members,
   canEdit,
+  initialUrlState = DEFAULT_IMPROVEMENTS_URL_STATE,
 }: {
+  /** The search, filters and layout the URL asked for. */
+  initialUrlState?: ImprovementsUrlState;
   /** The first page of every lane, rendered by the server. */
   initialLanes: ImprovementLanePages;
   /** Authoritative lane sizes from the server, refreshed with every mutation. */
@@ -202,11 +208,20 @@ export function ImprovementsBoard({
       return next;
     });
   }
-  const [search, setSearch] = useState("");
-  const [priority, setPriority] = useState<ImprovementPriority | "">("");
-  const [assignee, setAssignee] = useState("");
+  const [search, setSearch] = useState(initialUrlState.q);
+  const [priority, setPriority] = useState<ImprovementPriority | "">(
+    initialUrlState.priority,
+  );
+  const [assignee, setAssignee] = useState(initialUrlState.assignee);
   const [collapsed, setCollapsed] = useState<Set<ImprovementStatus>>(new Set());
-  const [view, setView] = useState<ViewMode>("list");
+  const [view, setView] = useState<ViewMode>(initialUrlState.view);
+  // A reload or a copied link keeps the same search, filters and layout.
+  useEffect(() => {
+    replaceFilterParams(
+      { q: search, priority, assignee, view },
+      DEFAULT_IMPROVEMENTS_URL_STATE,
+    );
+  }, [search, priority, assignee, view]);
   const [openId, setOpenId] = useState<string | null>(null);
   const recordUpdate = (updated: Improvement) =>
     setUpdates((current) =>
@@ -379,7 +394,10 @@ export function ImprovementsBoard({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search improvements..."
+              placeholder="Search improvements…"
+              aria-label="Search improvements"
+              type="search"
+              autoComplete="off"
               className="h-10 w-full rounded-lg pl-9 sm:w-64"
             />
           </div>
@@ -397,16 +415,16 @@ export function ImprovementsBoard({
               <span className="hidden sm:inline">Filters</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 p-3">
-              <label className="mb-1.5 block text-sm font-medium">
+              <p className="mb-1.5 block text-sm font-medium" aria-hidden>
                 Priority
-              </label>
+              </p>
               <Select
                 value={priority}
                 onValueChange={(v) =>
                   setPriority(v as ImprovementPriority | "")
                 }
               >
-                <SelectTrigger className="mb-3">
+                <SelectTrigger className="mb-3" aria-label="Priority">
                   <SelectValue>
                     {(v: string) =>
                       IMPROVEMENT_PRIORITIES.find((p) => p.value === v)
@@ -423,14 +441,14 @@ export function ImprovementsBoard({
                   ))}
                 </SelectContent>
               </Select>
-              <label className="mb-1.5 block text-sm font-medium">
+              <p className="mb-1.5 block text-sm font-medium" aria-hidden>
                 Assignee
-              </label>
+              </p>
               <Select
                 value={assignee}
                 onValueChange={(v) => setAssignee(v as string)}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label="Assignee">
                   <SelectValue>
                     {(v: string) =>
                       v ? memberDisplayName(emailOf(v)) : "Anyone"
@@ -550,7 +568,7 @@ export function ImprovementsBoard({
                       <span className="text-sm font-semibold">
                         {lane.label}
                       </span>
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-muted-foreground text-xs tabular-nums">
                         {filterActive ? items.length : paging.total}
                       </span>
                     </button>
@@ -617,7 +635,7 @@ export function ImprovementsBoard({
                                 {i.title}
                               </span>
                               {i.messageCount > 0 && (
-                                <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
+                                <span className="text-muted-foreground inline-flex items-center gap-1 text-xs tabular-nums">
                                   <MessageSquare className="size-3.5" />
                                   {i.messageCount}
                                 </span>
@@ -630,7 +648,7 @@ export function ImprovementsBoard({
                                   {i.tags.slice(0, 2).map((t) => (
                                     <span
                                       key={t}
-                                      className="rounded-full border px-2 py-0.5 text-2xs"
+                                      className="max-w-32 truncate rounded-full border px-2 py-0.5 text-2xs"
                                     >
                                       {t}
                                     </span>

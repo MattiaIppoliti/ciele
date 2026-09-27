@@ -45,10 +45,12 @@ import {
 import { transcriptDocument } from "@/lib/inbox/transcript-print";
 import {
   defaultInboxFilters,
+  defaultInboxUrlState,
   inboxQueryFromFilters,
   subjectName,
   type InboxFilters,
 } from "@/lib/inbox/conversation-filter";
+import { replaceFilterParams } from "@/lib/url-state";
 import { StudyProvider } from "@/components/chat/study-context";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { PreflightRecordPanel } from "@/components/inbox/preflight-record";
@@ -75,7 +77,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatTime } from "@/lib/format";
 import { reviewDecisionLabel } from "@/lib/review-status";
 import { EmptyState } from "@/components/ui/empty-state";
 import { conversationSummaryCsv } from "@/lib/inbox/conversation-export";
@@ -141,10 +143,7 @@ function MessageTime({ iso }: { iso: string }) {
       title={formatDateTime(iso)}
       className="text-muted-foreground/70 mt-1 block text-2xs"
     >
-      {new Date(iso).toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-      })}
+      {formatTime(iso)}
     </time>
   );
 }
@@ -180,14 +179,34 @@ function parseIsoDay(iso: string): Date | undefined {
 }
 
 /** shadcn Date Picker: Popover + Calendar, storing a yyyy-mm-dd string. */
+function conversationHref(id: string): string {
+  return `/inbox?conversation=${encodeURIComponent(id)}`;
+}
+
+/** Set or clear `?conversation=` in place, leaving the filters beside it. */
+function replaceConversationParam(id: string | null) {
+  const params = new URLSearchParams(window.location.search);
+  if (id) params.set("conversation", id);
+  else params.delete("conversation");
+  const query = params.toString();
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `${window.location.pathname}${query ? `?${query}` : ""}`,
+  );
+}
+
 function DateField({
   value,
   onChange,
   className,
+  label,
 }: {
   value: string;
   onChange: (iso: string) => void;
   className?: string;
+  /** Names the trigger, whose own text is only the date or "Pick a date". */
+  label: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = parseIsoDay(value);
@@ -198,6 +217,7 @@ function DateField({
           <Button
             variant="outline"
             data-empty={!selected}
+            aria-label={selected ? `${label}: ${dayLabel(value)}` : `${label}: not set`}
             className={`justify-start px-3 font-normal data-[empty=true]:text-muted-foreground ${className ?? ""}`}
           />
         }
@@ -368,7 +388,7 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
         </p>
         <p className="font-medium">Waited on {host}</p>
         <p className="text-muted-foreground text-xs">
-          Until {new Date(part.expiresAt).toLocaleString()}
+          Until {formatDateTime(part.expiresAt)}
           {part.simulated ? " · simulated" : ""}
         </p>
       </div>
@@ -503,6 +523,8 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
 
 export function InboxClient({
   initialPage,
+  initialFilters,
+  initialSearch = "",
   assistants,
   canEdit = false,
   canViewReasoning = false,
@@ -510,6 +532,9 @@ export function InboxClient({
   canManageRetention = false,
 }: {
   initialPage: InboxPage;
+  /** The filters the URL asked for; the server already read this page with them. */
+  initialFilters?: InboxFilters;
+  initialSearch?: string;
   assistants: AssistantOption[];
   canEdit?: boolean;
   /** Admins and above see the model's own reasoning in the trace (#557). */
@@ -542,9 +567,16 @@ export function InboxClient({
       ? requestedId
       : null;
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<InboxFilters>(defaultInboxFilters);
+  const [filters, setFilters] = useState<InboxFilters>(
+    initialFilters ?? defaultInboxFilters,
+  );
+  // The address bar follows the filters and the search, so a reload or a copied
+  // link lands on the same view; `?conversation=` rides along untouched.
+  useEffect(() => {
+    replaceFilterParams({ ...filters, q: search }, defaultInboxUrlState());
+  }, [filters, search]);
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [messages, setMessages] = useState<StoredMessage[] | null>(null);
   const [links, setLinks] = useState<ImprovementMessageLink[]>([]);
@@ -702,6 +734,10 @@ export function InboxClient({
     const generation = ++reviewGeneration.current;
     selectedIdRef.current = id;
     setSelectedId(id);
+    // The open conversation lives in the address bar, so a reload or a copied
+    // link lands on it. replaceState, not the router: page.tsx reads the same
+    // param, and a navigation would refetch the page to learn nothing new.
+    replaceConversationParam(id);
     setDetailsOpen(false);
     setMessages(null);
     setLinks([]);
@@ -903,7 +939,10 @@ export function InboxClient({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search conversations..."
+              placeholder="Search conversations…"
+              aria-label="Search conversations"
+              type="search"
+              autoComplete="off"
               className="h-10 w-full rounded-lg pl-9 sm:w-64"
             />
           </div>
@@ -1024,12 +1063,14 @@ export function InboxClient({
                   <DateField
                     value={filters.from}
                     onChange={(from) => setFilters({ ...filters, from })}
+                    label="From date"
                     className="h-10 flex-1"
                   />
                   <span className="text-muted-foreground">, </span>
                   <DateField
                     value={filters.to}
                     onChange={(to) => setFilters({ ...filters, to })}
+                    label="To date"
                     className="h-10 flex-1"
                   />
                 </div>
@@ -1171,11 +1212,26 @@ export function InboxClient({
             />
           )}
           {filtered.map((c) => (
-            <button
+            // A link, so Cmd/Ctrl/middle-click opens the conversation in a new
+            // tab; a plain click selects it in place.
+            <a
               key={c.id}
-              type="button"
-              onClick={() => select(c)}
-              className={`flex gap-3 border-b px-4 py-3 text-left transition-colors ${
+              href={conversationHref(c.id)}
+              aria-current={selectedId === c.id ? "page" : undefined}
+              onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                select(c);
+              }}
+              className={`focus-visible:ring-ring flex gap-3 border-b px-4 py-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${
                 selectedId === c.id ? "bg-primary/5 dark:bg-primary/25" : "hover:bg-muted/50"
               }`}
             >
@@ -1205,7 +1261,7 @@ export function InboxClient({
                   {dayLabel(c.updatedAt)}
                 </span>
               </span>
-            </button>
+            </a>
           ))}
           {nextCursor && (
             <Button
@@ -1248,7 +1304,10 @@ export function InboxClient({
                   variant="outline"
                   size="sm"
                   className="lg:hidden"
-                  onClick={() => setSelectedId(null)}
+                  onClick={() => {
+                    setSelectedId(null);
+                    replaceConversationParam(null);
+                  }}
                 >
                   <ChevronLeft className="size-4" /> All conversations
                 </Button>
@@ -1302,7 +1361,7 @@ export function InboxClient({
                         {subjectInitials(selected)}
                       </span>
                       <div className="flex min-w-0 flex-1 flex-col items-end">
-                        <div className="bg-primary text-primary-foreground max-w-[75%] rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed">
+                        <div className="bg-primary text-primary-foreground max-w-[75%] rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap">
                           {messageText(m.content)}
                         </div>
                         <MessageTime iso={m.createdAt} />
@@ -1515,7 +1574,7 @@ export function InboxClient({
               {meta?.feedbackText && (
                 <div>
                   <p className="text-muted-foreground text-xs">User feedback</p>
-                  <p className="text-sm whitespace-pre-wrap">{meta.feedbackText}</p>
+                  <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{meta.feedbackText}</p>
                 </div>
               )}
             </Card>

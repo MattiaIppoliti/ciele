@@ -74,29 +74,6 @@ function describeCandidate(
 }
 
 /**
- * What the referring Teammate is told about referring, or null when there is
- * nobody to refer to.
- *
- * Null rather than an empty list is the point: with no colleagues, the tool is
- * not registered and the model is never told referral exists. A model holding
- * a tool it can never usefully call reaches for it anyway, and an organization
- * with one Teammate would get "let me hand you to..." with nowhere to go.
- */
-export function referralPromptSection(
-  candidates: readonly ReferralCandidate[]
-): string | null {
-  if (candidates.length === 0) return null;
-  return [
-    "# Colleagues you can refer to",
-    "These are the other AI teammates in this organization. When a request is outside what you are for, or outside what you can look up, refer the person to whichever one fits and say why. Referring is better than a vague answer, and much better than guessing.",
-    "Do not refer for something you can do yourself, and do not refer more than once in a turn.",
-    ...candidates.map(
-      (candidate) => `- ${candidate.name}: ${candidate.description}`
-    ),
-  ].join("\n");
-}
-
-/**
  * The context a referred-to Teammate reads at the start of its first turn.
  *
  * Rendered as standing context rather than as a message, because it is neither
@@ -143,11 +120,4 @@ export function standingContextSections(
 ): string[] {
   const referral = referralContextSection(metadata);
   return referral ? [...memorySections, referral] : [...memorySections];
-}
-
-/** Whether this Conversation began as a referral from another Teammate. */
-export function isReferredConversation(
-  metadata: Pick<ConversationMetadata, "referredFromConversationId"> | null | undefined
-): boolean {
-  return Boolean(metadata?.referredFromConversationId);
 }

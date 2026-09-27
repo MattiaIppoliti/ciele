@@ -2,7 +2,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModel } from "ai";
+import { wrapLanguageModel, type LanguageModel } from "ai";
 import type {
   GoogleVertexFederatedConfig,
   Provider,
@@ -18,6 +18,7 @@ import {
 import type { LocalSubscriptionProvider } from "./local-subscriptions";
 import { createGoogleVertexProvider } from "./google-vertex";
 import { currentModelId } from "./catalog";
+import { capacityRetryMiddleware } from "./rate-limit-retry";
 
 export { MODEL_CATALOG } from "./catalog";
 
@@ -325,6 +326,12 @@ export function providerAvailability(
   return availability;
 }
 
+/**
+ * Every hosted model answers through the capacity retry (`rate-limit-retry.ts`):
+ * a 429 from a shared platform key is retried with jitter instead of on the
+ * SDK's fixed schedule, so a crowd refused together does not return together.
+ * A local CLI subscription has no HTTP status and is left as it is.
+ */
 function buildModel(
   provider: Provider,
   modelId: string,
@@ -338,6 +345,17 @@ function buildModel(
       run: credential.run,
     });
   }
+  return wrapLanguageModel({
+    model: buildHostedModel(provider, modelId, credential),
+    middleware: capacityRetryMiddleware(),
+  });
+}
+
+function buildHostedModel(
+  provider: Provider,
+  modelId: string,
+  credential: Exclude<ProviderCredential, { kind: "local_subscription" }>
+) {
   if (credential.provider === "openai_compatible" && "config" in credential) {
     return createOpenAICompatible({
       name: "openai-compatible",

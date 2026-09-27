@@ -34,7 +34,7 @@ export type PanelCard = {
   title: string;
   href: string;
   external?: boolean;
-  visual: "list" | "grid" | "waves" | "lock" | "folder" | "flows" | "stack";
+  visual: "waves" | "lock" | "folder" | "flows" | "stack";
 };
 export type MenuItem = MenuLink & {
   /* Present = the item is a dropdown trigger, not a link of its own. `href`

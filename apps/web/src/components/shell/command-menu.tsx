@@ -22,6 +22,7 @@ import {
   type AssistantSummary,
 } from "@/components/shell/nav";
 import type { LucideIcon } from "lucide-react";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 interface FindItem {
   key: string;
@@ -33,7 +34,7 @@ interface FindItem {
 }
 
 /**
- * "Find..." palette: fuzzy search over assistants, admin pages and the scoped
+ * "Find…" palette: fuzzy search over assistants, admin pages and the scoped
  * SETUP sections, grouped by kind. Opened from the sidebar or with F / Cmd+K
  * (see ShellProvider). The active row is a single highlight element that
  * slides between rows as the selection moves.
@@ -179,12 +180,15 @@ export function CommandMenu({
         <div className="flex items-center gap-2.5 border-b px-4">
           <Search className="text-muted-foreground size-4 shrink-0" />
           <input
-            autoFocus
+            autoFocus={canAutoFocus()}
             data-foley-type=""
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Find..."
+            placeholder="Find…"
+            aria-label="Find assistants, pages and setup sections"
+            autoComplete="off"
+            spellCheck={false}
             role="combobox"
             aria-expanded={open}
             aria-controls={`${uid}-list`}

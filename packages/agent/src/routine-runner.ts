@@ -7,7 +7,6 @@ import {
   thrownMessage,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
-import { drain } from "./drain";
 import { alertKeys, signalHealth } from "./health";
 import { streamConversationTurn } from "./turn";
 import type { TeammateActionTool } from "./types";
@@ -256,18 +255,13 @@ async function executeRoutine(
     signal: new AbortController().signal,
   });
 
-  await drain(stream);
+  // Nobody is watching, but the turn persists as it streams, so reading it to
+  // the end and discarding the bytes is how an unattended run gets the same
+  // Conversation, tool cards and trace an attended one gets. Reusing the
+  // streaming entrypoint rather than a second headless path is the whole
+  // reason the audit trails match.
+  await stream.pipeTo(new WritableStream());
   return actions.length > 0
     ? `Ran with ${actions.length} action${actions.length === 1 ? "" : "s"} available`
     : "Ran with no granted actions";
 }
-
-/**
- * Read the turn to completion and throw the bytes away.
- *
- * Nobody is watching, but the turn persists as it streams, so draining is how
- * an unattended run gets the same Conversation, tool cards and trace an
- * attended one gets. Reusing the streaming entrypoint rather than adding a
- * second headless path is the whole reason the audit trails match.
- */
-// The mechanics are shared with the two gate continuations (`drain.ts`).

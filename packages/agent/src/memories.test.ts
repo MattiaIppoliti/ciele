@@ -3,7 +3,7 @@ import { DEMO_ORG, getMockDb } from "@agent-hub/db";
 import type { LanguageModel } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { getClassifierModel } from "./models";
-import { runDueMemoryPromotionJobs } from "./jobs";
+import { runDueJobs } from "./jobs";
 
 // The extraction model is faked at the provider seam: the handler's gates,
 // transcript rendering, metering and upsert all run for real over the mock Db.
@@ -132,7 +132,7 @@ describe("promote_memories job (registry seam, #664)", () => {
     const { conversation } = await seedConversation({});
 
     const usedBefore = await db.getOrgTokensUsedToday(DEMO_ORG.id);
-    const result = await runDueMemoryPromotionJobs({ db });
+    const result = await runDueJobs({ db }, { kinds: ["promote_memories"] });
     expect(result).toMatchObject({ claimed: 1, succeeded: 1, failed: 0 });
 
     const memories = await db.listMemories({
@@ -149,7 +149,7 @@ describe("promote_memories job (registry seam, #664)", () => {
   it("does nothing while the org toggle is off", async () => {
     fakeClassifier(["Should never be stored"]);
     const { conversation } = await seedConversation({});
-    const result = await runDueMemoryPromotionJobs({ db });
+    const result = await runDueJobs({ db }, { kinds: ["promote_memories"] });
     expect(result).toMatchObject({ claimed: 1, succeeded: 1 });
     expect(await db.listMemories(memorySubject(conversation.subjectId))).toHaveLength(0);
     expect(classifierMock).not.toHaveBeenCalled();
@@ -159,7 +159,7 @@ describe("promote_memories job (registry seam, #664)", () => {
     await db.setMemoryEnabled(DEMO_ORG.id, true);
     fakeClassifier(["Should never be stored"]);
     const { conversation } = await seedConversation({ subjectType: "visitor" });
-    await runDueMemoryPromotionJobs({ db });
+    await runDueJobs({ db }, { kinds: ["promote_memories"] });
     expect(await db.listMemories(memorySubject(conversation.subjectId))).toHaveLength(0);
     expect(classifierMock).not.toHaveBeenCalled();
   });
@@ -184,7 +184,7 @@ describe("promote_memories job (registry seam, #664)", () => {
         outputTokens: 5,
       },
     ]);
-    const result = await runDueMemoryPromotionJobs({ db });
+    const result = await runDueJobs({ db }, { kinds: ["promote_memories"] });
     expect(result).toMatchObject({ claimed: 1, succeeded: 1 });
     expect(await db.listMemories(memorySubject(conversation.subjectId))).toHaveLength(0);
     expect(classifierMock).not.toHaveBeenCalled();
@@ -194,7 +194,7 @@ describe("promote_memories job (registry seam, #664)", () => {
     await db.setMemoryEnabled(DEMO_ORG.id, true);
     fakeClassifier(["Should not be extracted by the stale job"]);
     const { conversation } = await seedConversation({ laterMessage: true });
-    const result = await runDueMemoryPromotionJobs({ db });
+    const result = await runDueJobs({ db }, { kinds: ["promote_memories"] });
     expect(result).toMatchObject({ claimed: 1, succeeded: 1 });
     expect(await db.listMemories(memorySubject(conversation.subjectId))).toHaveLength(0);
   });
@@ -205,7 +205,7 @@ describe("promote_memories job (registry seam, #664)", () => {
     const { conversation } = await seedConversation({});
 
     await db.deleteSubjectMemories(memorySubject(conversation.subjectId));
-    const result = await runDueMemoryPromotionJobs({ db });
+    const result = await runDueJobs({ db }, { kinds: ["promote_memories"] });
 
     expect(result).toMatchObject({ claimed: 1, succeeded: 1 });
     expect(await db.listMemories(memorySubject(conversation.subjectId))).toHaveLength(0);
@@ -233,7 +233,7 @@ describe("promote_memories job (registry seam, #664)", () => {
     } as unknown as ReturnType<typeof getClassifierModel>);
     const { conversation } = await seedConversation({});
 
-    const running = runDueMemoryPromotionJobs({ db });
+    const running = runDueJobs({ db }, { kinds: ["promote_memories"] });
     await started;
     await db.deleteSubjectMemories(memorySubject(conversation.subjectId));
     resume();
@@ -255,7 +255,7 @@ describe("promote_memories job (registry seam, #664)", () => {
     ]);
     const { conversation } = await seedConversation({});
 
-    await runDueMemoryPromotionJobs({ db });
+    await runDueJobs({ db }, { kinds: ["promote_memories"] });
 
     const memories = await db.listMemories(memorySubject(conversation.subjectId));
     expect(memories.map((memory) => memory.text)).toEqual([
@@ -267,7 +267,7 @@ describe("promote_memories job (registry seam, #664)", () => {
     await db.setMemoryEnabled(DEMO_ORG.id, true);
     fakeClassifier([]);
     const { conversation } = await seedConversation({});
-    const result = await runDueMemoryPromotionJobs({ db });
+    const result = await runDueJobs({ db }, { kinds: ["promote_memories"] });
     expect(result).toMatchObject({ claimed: 1, succeeded: 1 });
     expect(await db.listMemories(memorySubject(conversation.subjectId))).toHaveLength(0);
   });

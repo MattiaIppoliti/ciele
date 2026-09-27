@@ -16,14 +16,7 @@ import { BrowserWindow, shell } from "electron";
 import path from "node:path";
 import { CHANNELS, type Mode } from "../shared/state";
 
-// The wording and the partition name live in a module that imports no
-// Electron, so a unit test for them needs no Electron binary. The three this
-// file uses are re-exported because callers of the window functions expect
-// to find their failure wording beside them; the partition list is not,
-// import it from `./failure-reasons`.
 import { httpFailureReason, loadFailureReason, partitionForMode } from "./failure-reasons";
-
-export { httpFailureReason, loadFailureReason, partitionForMode };
 
 const MIN_WIDTH = 900;
 const MIN_HEIGHT = 640;

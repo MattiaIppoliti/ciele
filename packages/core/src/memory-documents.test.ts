@@ -5,7 +5,6 @@ import {
   appendAgentLearning,
   capMemoryDocument,
   memoryDocumentChanges,
-  memoryDocumentOwner,
   memoryDocumentScope,
   memoryPromptSections,
   projectInjects,
@@ -20,7 +19,7 @@ import {
  * whole.
  */
 
-describe("scope and owner", () => {
+describe("scope", () => {
   it("reads the layer off whichever owner column is set", () => {
     const row = { memberId: null, teammateId: null, projectId: null };
     expect(memoryDocumentScope({ ...row, memberId: "u-1" })).toBe("user");
@@ -28,14 +27,6 @@ describe("scope and owner", () => {
     expect(memoryDocumentScope({ ...row, projectId: "p-1" })).toBe("project");
   });
 
-  it("round-trips the owner back to the argument reads take", () => {
-    expect(
-      memoryDocumentOwner({ memberId: "u-1", teammateId: null, projectId: null })
-    ).toEqual({ scope: "user", memberId: "u-1" });
-    expect(
-      memoryDocumentOwner({ memberId: null, teammateId: "tm-1", projectId: null })
-    ).toEqual({ scope: "agent", teammateId: "tm-1" });
-  });
 });
 
 describe("capMemoryDocument", () => {

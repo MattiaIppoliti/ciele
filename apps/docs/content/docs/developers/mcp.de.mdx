@@ -1,33 +1,33 @@
 ---
-title: Ciele-MCP-Server
-description: Gewähren Sie einem MCP-Client kontrollierten Zugriff auf Ciele-Administrationsvorgänge.
+title: Ciele MCP-Server
+description: Gewähren Sie einem MCP-Client kontrollierten Zugriff auf die Administrationsvorgänge von Ciele.
 ---
 
-Der Ciele Model Context Protocol (MCP)-Server stellt die Verwaltungsvorgänge
-einem KI-Agenten zur Verfügung. Er verfügt über zwei Transporte, und beide
-registrieren dieselben Tools.
+Der Ciele Model Context Protocol (MCP)-Server stellt die Administrationsvorgänge
+einem KI-Agenten zur Verfügung. Er verfügt über zwei Transportschichten, und
+beide registrieren dieselben Tools.
 
 - Der **hosted endpoint** ist `POST /api/mcp` in Ihrer Bereitstellung. Verwenden
   Sie ihn für einen Client, der sich über HTTP verbindet.
-- Der **lokale Server** ist ein `stdio`-Prozess, den Sie aus einem
-  Repository-Checkout heraus starten.
+- Der **local server** ist ein `stdio`-Prozess, den Sie nach dem Auschecken
+  eines Repositorys starten.
 
 Jeder Tool-Aufruf erreicht die Organisation über `/api/v1`, sodass eine
-Operation einen Ausführungspfad hat, unabhängig davon, welcher Transport ihn
-angefordert hat.
+Operation unabhängig davon, welcher Transport sie angefordert hat, nur einen
+Ausführungspfad hat.
 
 ## Gehosteter Endpunkt
 
-Jede Ciele-Bereitstellung bedient den Endpunkt an ihrem eigenen Ursprung. Dazu
-gehören der gehostete Service, ein Docker-Self-Host und der lokale Stack von
-Ciele Desktop. Der Endpunkt benötigt keine Konfiguration.
+Jede Ciele-Bereitstellung stellt den Endpoint an ihrem eigenen Ursprung bereit.
+Dazu gehören der gehostete Service, ein Docker-Self-Host und der lokale Stack
+von Ciele Desktop. Der Endpoint erfordert keine Konfiguration.
 
 ```text
 https://ciele.example.edu/api/mcp
 ```
 
 Authentifizieren Sie sich mit einem [Organization API key](/developers/api-keys)
-im Header `Authorization`:
+im `Authorization`-Header:
 
 ```text
 Authorization: Bearer ciele_sk_...
@@ -42,21 +42,22 @@ The hosted endpoint has no read-only switch. Its permissions are the Role of the
 
 ## Protokollrevisionen
 
-Der Server spricht die Revision `2026-07-28` und die Revisionen 2025. Er
-entscheidet die Revision anhand des Eröffnungsaustauschs, sodass ein Client, der
-nicht auf `2026-07-28` umgestellt hat, weiterhin funktioniert.
+Der Server unterstützt die Revision `2026-07-28` sowie die Revisionen von 2025.
+Es ermittelt die Revision anhand des ersten Nachrichtenaustauschs, sodass ein
+Client, der noch nicht auf `2026-07-28` umgestellt wurde, weiterhin
+funktioniert.
 
-Mit der Revision `2026-07-28` wurden Protokollsitzungen entfernt. Jede Anfrage
-ist in sich geschlossen, sodass der gehostete Endpunkt weder Sticky Routing noch
-einen Session Store benötigt.
+In der Revision `2026-07-28` wurden Protokollsitzungen entfernt. Jede Anfrage
+ist in sich abgeschlossen, sodass der gehostete Endpoint weder Sticky Routing
+noch einen Session Store benötigt.
 
 ## Lokaler `stdio`-Server
 
-### Anforderungen
+### Voraussetzungen
 
-- Verwenden Sie Node.js 22.6 oder höher.
+- Verwenden Sie Node.js 22.6 oder eine höhere Version.
 - Klonen Sie das Ciele-Repository.
-- Erstellen Sie einen [Organisations-API-Schlüssel](/developers/api-keys).
+- Erstellen Sie einen [Organization API key](/developers/api-keys).
 - Verwenden Sie einen MCP-Client, der einen lokalen `stdio`-Server starten kann.
 
 Starten Sie dieses Programm aus dem Repository:
@@ -74,8 +75,8 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 | `CIELE_MCP_READ_ONLY` | Optional | Lehnt Mutationsaktionen ab, wenn der Wert `1` ist. |
 | `CIELE_MCP_MODERN_ONLY` | Optional | Lehnt Clients der Revision 2025 ab, wenn der Wert `1` ist. |
 
-Die Read-only-Prüfung findet innerhalb des MCP-Prozesses statt. Eine abgelehnte
-Mutation führt zu keiner API-Anforderung.
+Die Read-only-Prüfung findet innerhalb des MCP-Prozesses statt. Bei einer
+abgelehnten Mutation erfolgt keine API-Anfrage.
 
 <Callout type="warn" title="These variables apply to the local server only">
 A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
@@ -87,40 +88,41 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 ## Verfügbare Tools
 
-| Tool | Aktuelle Vorgänge |
+| Tool | Aktuelle Operationen |
 | --- | --- |
-| `ciele_identity` | Informationen zu Bereitstellung, Organisation und Rolle lesen. |
-| `manage_assistants` | Assistenten auflisten, lesen, erstellen, aktualisieren, duplizieren oder löschen. |
-| `manage_flows` | Den Flow-Katalog lesen, einen Flow prüfen, ohne ihn zu speichern, die Ausführungen eines HTTP-Flows lesen und anschließend Flows auflisten, lesen, erstellen, aktualisieren, neu anordnen oder löschen. |
-| `manage_knowledge` | Verwalten Sie Sammlungen, Quellen und FAQs. |
-| `publish_assistant` | Status lesen, Veröffentlichung durchführen, Veröffentlichung aufheben oder eine Veröffentlichung wiederherstellen. |
-| `read_inbox` | Konversationen auflisten, lesen, exportieren, anheften, mit Anmerkungen versehen, bewerten oder löschen. |
-| `manage_improvements` | Auflisten, Lesen oder Aktualisieren von Verbesserungen. |
-| `manage_entities` | Verwalten Sie Organization Entities und typisierte Records. |
-| `manage_memories` | Überprüfen Sie die Einstellungen und führen Sie eine bereichsbezogene Löschung des Speichers durch. |
+| `ciele_identity` | Informationen zu Deployment, Organization und Role lesen. |
+| `manage_assistants` | Assistants auflisten, lesen, erstellen, aktualisieren, duplizieren oder löschen. |
+| `manage_flows` | Den Flow-Katalog lesen, einen Flow prüfen, ohne ihn zu speichern, die Runs eines HTTP-Flows lesen und anschließend Flows auflisten, lesen, erstellen, aktualisieren, neu ordnen oder löschen. |
+| `manage_knowledge` | Verwalten Sie Collections, Sources und FAQs. |
+| `publish_assistant` | Status lesen, eine Veröffentlichung veröffentlichen, die Veröffentlichung aufheben oder eine Veröffentlichung wiederherstellen. |
+| `read_inbox` | Conversations auflisten, lesen, exportieren, anheften, kommentieren, bewerten oder löschen. Human Review Requests auflisten, lesen und entscheiden. |
+| `manage_improvements` | Improvements auflisten, lesen oder aktualisieren. |
+| `manage_entities` | Organization Entities und typisierte Records verwalten. |
+| `manage_memories` | Einstellungen prüfen und eine bereichsbezogene Löschung des Speichers durchführen. |
 | `manage_sso` | Verwalten Sie Identity Claims und die SSO-Verbindung der Organisation. |
-| `manage_help_desks` | Verwalten Sie Helpdesks, Kanäle, Bestellungen und ServiceNow. |
+| `manage_help_desks` | Help Desks, Channels, Ordering und ServiceNow verwalten. |
 | `manage_teammates` | Verwalten Sie AI Teammates, ihre Berechtigungen, ihre Routines und ihren Speicher. `provision` führt die vollständige Einrichtung in einem einzigen Schritt durch. |
-| `manage_projects` | Verwalten Sie Projekte und das Speicherdokument jedes Projekts. |
-| `manage_channels` | Lesen und gestalten Sie die Teamkollegen-Kanäle, in denen Sie sich befinden. |
-| `manage_configuration` | Verwalten Sie Skills, die Auswahl von Assistant Skills, Ziele und Warnungen. |
-| `manage_organization` | Verwalten Sie Organisationseinstellungen, Mitglieder, Einladungen und API-Schlüssel. |
-| `manage_integrations` | Verwalten Sie API-Integrationen für Assistenten und Modellanbieter. |
+| `manage_projects` | Verwalten Sie Projects und das Memory-Dokument jedes Projekts. |
+| `manage_channels` | Lesen und gestalten Sie die Teammate-Kanäle, in denen Sie sich befinden. |
+| `manage_configuration` | Verwalten Sie Skills, die Auswahl der Assistant Skills, Goals und Alerts. |
+| `manage_organization` | Verwalten Sie die Einstellungen der Organisation, Members, Invites und API keys. Lesen Sie die Usage Meters und Spender des Plans. |
+| `manage_integrations` | Verwalten Sie Assistant-API-Integrationen und Modellanbieter. |
 
-Der Server registriert sechzehn Tools. Jedes Domänen-Tool verwendet ein
-`action`-Feld für seine Operationen.
+Der Server registriert siebzehn Tools: ein Identity-Tool und sechzehn
+Domain-Tools. Jedes Domain-Tool verwendet ein `action`-Feld für seine
+Operationen.
 
-Der schreibgeschützte Modus klassifiziert jede Aktion. Er erlaubt die Aktionen
-„List“, „Read“, „Status“, „Query“ und „Export“, lehnt jedoch Mutationen ab.
+Der Read-only-Modus klassifiziert jede Aktion. Es erlaubt die Aktionen list,
+read, status, query und export, während es Mutationsaktionen ablehnt.
 
 Informationen zur Konfiguration der einzelnen unterstützten Clients finden Sie
 unter [AI clients](/developers/ai-clients).
 
-## Überprüfen Sie die Verbindung
+## Verbindung prüfen
 
-Bitten Sie den Client, `ciele_identity` aufzurufen. Bestätigen Sie die erwartete
-Organisations-ID, die Rolle, die API-Version und die Domain-Liste.
+Bitten Sie den Client, `ciele_identity` anzurufen. Bestätigen Sie die erwartete
+Organization ID, Role, API-Version und Domain-Liste.
 
-Die Repository-Testsuite startet auch den eigentlichen `stdio`-Prozess. Sie
+Die Testsuite des Repositorys startet ebenfalls den echten `stdio`-Prozess. Sie
 überprüft die Initialisierung, die Tool-Erkennung und einen authentifizierten
 API-Aufruf.

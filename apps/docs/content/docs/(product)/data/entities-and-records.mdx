@@ -9,14 +9,13 @@ An **Orders** Entity might contain `order_id`, `status`, `total`, and `customer_
 
 ## Create an Entity
 
-1. Open **Settings**.
-2. Select **Data**.
-3. Select **New entity**.
-4. Enter a name and description.
-5. Add each attribute key, label, and type.
-6. Select the key attribute.
-7. Select **Shared** or **User-scoped**.
-8. Select **Create entity**.
+1. Go to `/settings/data` in the console. The **Settings** tabs do not show this page.
+2. Select **New entity**.
+3. Enter a name and description.
+4. Add each attribute key, label, and type.
+5. Select the key attribute.
+6. Select **Shared** or **User-scoped**.
+7. Select **Create entity**.
 
 Attributes support text, number, date, and boolean values. The key attribute identifies one Record within the Entity.
 
@@ -51,6 +50,20 @@ Imports upsert by the key attribute. Re-importing the same key updates its Recor
 Valid rows still import when other rows fail validation. The report lists a reason for each rejected row.
 
 An unknown CSV column rejects the import. Remove it or add the corresponding attribute to a new Entity.
+
+## Sync Records from an endpoint
+
+An Entity can also read its Records from your own JSON endpoint on a schedule.
+
+1. Open the Entity and select **Sync**.
+2. Enter the **Endpoint URL**.
+3. Enter the auth headers, one `name: value` pair on each line.
+4. Map each JSON field to an attribute, one `jsonField -> attributeKey` pair on each line.
+5. Enter the interval in hours. The minimum is 1 hour.
+6. Select **Remove records missing from the source** if the endpoint is the complete list.
+7. Save, or select **Sync now** to run it at once.
+
+Ciele encrypts the headers before storage. A sync upserts by the key attribute, the same as a CSV import.
 
 Select **Records** to browse the first 50 Records in key order.
 

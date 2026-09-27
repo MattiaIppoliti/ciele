@@ -30,20 +30,6 @@ function hintOf(token: string): string {
   return token.length >= 4 ? `…${token.slice(-4)}` : "";
 }
 
-export const getCrawlerConnectionOp = defineOperation({
-  name: "crawlers.get",
-  capability: "manageMembers",
-  input: z.object({ provider: z.enum(["apify"]) }),
-  entities: () => [],
-  run: async (ctx, { provider }): Promise<CrawlerConnectionView | null> => {
-    const connection = await ctx.db.getCrawlerConnection(
-      ctx.organizationId,
-      provider
-    );
-    return connection ? crawlerView(connection) : null;
-  },
-});
-
 export const setCrawlerConnectionOp = defineOperation({
   name: "crawlers.set",
   capability: "manageMembers",

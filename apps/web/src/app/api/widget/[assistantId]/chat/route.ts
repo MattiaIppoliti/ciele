@@ -9,6 +9,10 @@ import {
 import { openAttachments } from "@/lib/attachments";
 import { resolveWidgetContext, widgetOptions, widgetSubject } from "@/lib/widget-db";
 import { getRuntimeDb } from "@/lib/runtime-db";
+import {
+  checkWidgetTurnAllowance,
+  widgetThrottledResponse,
+} from "@/lib/widget-rate-limit";
 
 export const maxDuration = 300;
 export const runtime = "nodejs";
@@ -84,6 +88,18 @@ export async function POST(
   if (!message || !subject.id) {
     return new Response("Bad request", { status: 400, headers: cors });
   }
+
+  // One caller's budget (`widget-rate-limit.ts`), checked before any Db read:
+  // a refused message costs a map lookup, not a provider-connections query.
+  // Keyed on the verified subject when there is one, so signing in does not
+  // hand a Visitor a fresh budget per visitor id.
+  const allowance = checkWidgetTurnAllowance({
+    kind: "chat",
+    assistantId: ctx.assistantId,
+    subjectId: subject.id,
+    headers: request.headers,
+  });
+  if (!allowance.allowed) return widgetThrottledResponse(allowance, cors);
 
   // Which model answers this one message (the composer's picker).
   //

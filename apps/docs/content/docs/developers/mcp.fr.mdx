@@ -1,33 +1,34 @@
 ---
-title: Serveur Ciele MCP
-description: Accordez à un client MCP un accès contrôlé aux opérations d'administration de Ciele.
+title: Serveur MCP de Ciele
+description: Accorder à un client MCP un accès contrôlé aux opérations d'administration de Ciele.
 ---
 
 Le serveur Ciele Model Context Protocol (MCP) expose les opérations
 d'administration à un agent d'IA. Il dispose de deux transports, et les deux
 enregistrent les mêmes outils.
 
-- Le **point de terminaison hébergé** est `POST /api/mcp` sur votre déploiement.
-  Utilisez-le pour un client qui se connecte via HTTP.
-- Le **local server** est un processus `stdio` que vous démarrez à partir d'une
-  copie locale d'un dépôt.
+- Le **hosted endpoint** est `POST /api/mcp` sur votre déploiement. Utilisez-le
+  pour un client qui se connecte via HTTP.
+- Le **local server** est un processus `stdio` que vous démarrez à partir d'un
+  clonage de dépôt.
 
-Chaque appel d'outil parvient à l'Organisation via `/api/v1`, de sorte qu'une
-opération a un seul chemin d'exécution, quel que soit le transport qui l'a
-demandé.
+Chaque appel d'outil atteint l'organisation via `/api/v1`, de sorte qu'une
+opération suit un seul chemin d'exécution, quel que soit le transport qui l'a
+demandée.
 
 ## Point de terminaison hébergé
 
-Chaque déploiement Ciele dessert le point de terminaison à sa propre origine.
-Cela inclut le service hébergé, un auto-hébergement Docker et la pile locale de
-Ciele Desktop. Le point de terminaison ne nécessite aucune configuration.
+Chaque déploiement Ciele expose le point de terminaison depuis sa propre
+origine. Cela inclut le service hébergé, un auto-hébergement Docker et la pile
+locale de Ciele Desktop. L'endpoint ne nécessite aucune configuration.
 
 ```text
 https://ciele.example.edu/api/mcp
 ```
 
-Authentifiez-vous avec une [clé API d'organisation](/developers/api-keys) dans
-l'en-tête `Authorization` :
+Authentifiez-vous à l'aide d'une
+[clé API de l'organisation](/developers/api-keys) dans l'en-tête `Authorization`
+:
 
 ```text
 Authorization: Bearer ciele_sk_...
@@ -47,19 +48,19 @@ détermine la révision dès l'échange d'ouverture, de sorte qu'un client qui n
 pas passé à `2026-07-28` continue de fonctionner.
 
 La révision `2026-07-28` a supprimé les sessions de protocole. Chaque requête
-est autonome ; par conséquent, le point de terminaison hébergé n'a besoin ni de
-routage persistant ni de stockage de session.
+est autonome ; par conséquent, l'endpoint hébergé n'a pas besoin de routage
+persistant (sticky routing) ni de stockage de session.
 
-## Serveur `stdio` local
+## Serveur local `stdio`
 
-### Prérequis
+### Configuration requise
 
 - Utilisez Node.js 22.6 ou une version ultérieure.
 - Clonez le dépôt Ciele.
 - Créez une [clé API d'organisation](/developers/api-keys).
 - Utilisez un client MCP capable de démarrer un serveur `stdio` local.
 
-Lancez ce programme à partir du dépôt :
+Démarrez ce programme à partir du dépôt :
 
 ```text
 node <repo>/packages/mcp/bin/ciele-mcp.mjs
@@ -72,7 +73,7 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 | `CIELE_API_KEY` | Obligatoire | Authentifie l'organisation. |
 | `CIELE_BASE_URL` | Facultatif | Sélectionne une origine auto-hébergée. |
 | `CIELE_MCP_READ_ONLY` | Facultatif | Refuse les actions de mutation lorsque la valeur est `1`. |
-| `CIELE_MCP_MODERN_ONLY` | Facultatif | Refuse les clients de la révision 2025 lorsque la valeur est `1`. |
+| `CIELE_MCP_MODERN_ONLY` | Optional | Refuse les clients de la révision 2025 lorsque la valeur est `1`. |
 
 La vérification en lecture seule a lieu au sein du processus MCP. Une mutation
 refusée n'effectue pas de requête API.
@@ -87,40 +88,39 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 ## Outils disponibles
 
-| Outil | Opérations en cours |
+| Tool | Opérations en cours |
 | --- | --- |
 | `ciele_identity` | Lire les informations relatives au déploiement, à l'organisation et aux rôles. |
-| `manage_assistants` | Répertorier, lire, créer, mettre à jour, dupliquer ou supprimer des Assistants. |
-| `manage_flows` | Lire le catalogue de flux, vérifier un flux sans l'enregistrer, lire les exécutions d'un flux HTTP, puis répertorier, lire, créer, mettre à jour, réorganiser ou supprimer des flux. |
+| `manage_assistants` | Lister, lire, créer, mettre à jour, dupliquer ou supprimer des Assistants. |
+| `manage_flows` | Consultez le catalogue des Flows, vérifiez un Flow sans l'enregistrer, consultez les exécutions d'un Flow HTTP, puis listez, consultez, créez, mettez à jour, réorganisez ou supprimez des Flows. |
 | `manage_knowledge` | Gérez les Collections, les Sources et les FAQ. |
-| `publish_assistant` | Lire l'état, publier, annuler la publication ou restaurer une publication. |
-| `read_inbox` | Lister, lire, exporter, épingler, annoter, noter ou supprimer des Conversations. |
-| `manage_improvements` | Lister, lire ou mettre à jour les améliorations. |
-| `manage_entities` | Gérez les entités de l'organisation et les enregistrements typés. |
-| `manage_memories` | Inspectez les paramètres et effectuez un effacement de la mémoire ciblé. |
+| `publish_assistant` | Lire le statut, publier, annuler la publication ou restaurer une publication. |
+| `read_inbox` | Lister, lire, exporter, épingler, annoter, évaluer ou supprimer des Conversations. Lister, lire et statuer sur les demandes de revue humaine. |
+| `manage_improvements` | Lister, lire ou mettre à jour les Improvements. |
+| `manage_entities` | Gérez les Organization Entities et les Records typés. |
+| `manage_memories` | Inspectez les paramètres et effectuez un effacement de la mémoire dans un périmètre défini. |
 | `manage_sso` | Gérez les revendications d'identité et la connexion SSO de l'organisation. |
-| `manage_help_desks` | Gérez les centres d'assistance, les canaux, les commandes et ServiceNow. |
-| `manage_teammates` | Gérez les collègues IA, leurs autorisations, leurs routines et leur mémoire. `provision` effectue la configuration complète en une seule action. |
+| `manage_help_desks` | Gérez les Help Desks, les canaux, l'ordonnancement et ServiceNow. |
+| `manage_teammates` | Gérez les AI Teammates, leurs autorisations, leurs Routines et leur mémoire. `provision` effectue la configuration complète en une seule action. |
 | `manage_projects` | Gérez les Projects et le document de mémoire de chaque Project. |
-| `manage_channels` | Lisez et façonnez les canaux des coéquipiers dont vous faites partie. |
-| `manage_configuration` | Gérez les compétences, la sélection des compétences de l'assistant, les objectifs et les alertes. |
-| `manage_organization` | Gérez les paramètres de l'organisation, les Members, les Invites et les API keys. |
-| `manage_integrations` | Gérez les intégrations d'API d'assistant et les fournisseurs de modèles. |
+| `manage_channels` | Consultez et configurez les canaux des coéquipiers auxquels vous appartenez. |
+| `manage_configuration` | Gérez les Skills, la sélection des Assistant Skills, les Goals et les Alerts. |
+| `manage_organization` | Gérez les paramètres de l'organisation, les membres, les invitations et les clés API. Consultez les compteurs d'utilisation et les éléments générateurs de dépenses du plan. |
+| `manage_integrations` | Gérez les intégrations d'API de l'assistant et les fournisseurs de modèles. |
 
-Le serveur enregistre seize outils. Chaque outil de domaine utilise un champ
-`action` pour ses opérations.
+Le serveur enregistre dix-sept outils : un outil d'identité et seize outils de
+domaine. Chaque outil de domaine utilise un champ `action` pour ses opérations.
 
-Le mode lecture seule catégorise chaque action. Il autorise les actions list,
-read, status, query et export tout en refusant les mutations.
+Le mode lecture seule classe chaque action. Il autorise les actions list, read,
+status, query et export, tout en refusant les mutations.
 
-Consultez [Clients IA](/developers/ai-clients) pour la configuration de chaque
+Consultez [AI clients](/developers/ai-clients) pour la configuration de chaque
 client pris en charge.
 
-## Vérifier la connexion
+## Vérifiez la connexion
 
-Demandez au client d'appeler `ciele_identity`. Confirmez l'ID de l'organisation,
-le rôle, la version de l'API et la liste des domaines attendus.
+Demandez au client d'appeler `ciele_identity`. Confirmez l'identifiant
+d'organisation, le rôle, la version de l'API et la liste des domaines attendus.
 
-La suite de tests du référentiel lance également le véritable processus `stdio`.
-Elle vérifie l'initialisation, la découverte des outils et un appel d'API
-authentifié.
+La suite de tests du dépôt lance également le processus réel `stdio`. Il vérifie
+l'initialisation, la découverte des outils et un appel d'API authentifié.

@@ -12,7 +12,6 @@ import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { DOCS_REPO_URL } from '@/lib/repo';
 import { docsAlternates, docsOpenGraph } from '@/lib/seo';
-import { i18n } from '@/lib/i18n';
 import { OpenAPIPage } from '@/components/openapi-page';
 import { apiOperationSlug } from '@/lib/api-operation-slug';
 import Link from 'next/link';
@@ -136,9 +135,7 @@ export async function generateMetadata(
   const page = source.getPage(params.slug, params.lang);
   if (!page) notFound();
 
-  const localePrefix = params.lang === i18n.defaultLanguage ? '' : `/${params.lang}`;
-  const fallbackUrl = `${localePrefix}/${params.slug?.join('/') ?? ''}`.replace(/\/$/, '') || '/';
-  const pageUrl = page.url ?? fallbackUrl;
+  const pageUrl = page.url;
   const title = page.data.title ?? 'Ciele documentation';
   const description = page.data.description ?? 'Ciele product and developer documentation.';
 

@@ -17,7 +17,6 @@ import {
   deleteTeammateOp,
   getTeammateMemoryOp,
   hideTeammateOp,
-  listTeammateThreadOp,
   readTeammateConversationOp,
   setTeammateGrantsOp,
   decideActionApprovalOp,
@@ -151,11 +150,6 @@ export async function updateRoutineAction(
 
 export async function deleteRoutineAction(id: string): Promise<void> {
   await runOperation(deleteRoutineOp, { id });
-}
-
-/** This Member's own thread with one Teammate, for the chat's history list. */
-export async function listTeammateThreadAction(id: string) {
-  return runOperation(listTeammateThreadOp, { id });
 }
 
 /** One past conversation with this Teammate, reopened in the chat. */

@@ -35,6 +35,7 @@ import {
 } from "@/components/teammates/teammate-grants-picker";
 import type { CollectionOption } from "@/components/teammates/teammates-client";
 import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 /**
  * The Teammate's configuration. Everything here takes effect on the next
@@ -128,6 +129,7 @@ export function TeammateSettingsForm({
    */
   const [memoryUnreadable, setMemoryUnreadable] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   useEffect(() => {
     // Guards the slow case: a response that arrives after this was closed, or
@@ -195,14 +197,68 @@ export function TeammateSettingsForm({
     grants.domains.length !== governance.domains.length ||
     grants.domains.some((domain) => !governance.domains.includes(domain));
 
-  function remove() {
-    if (
-      !confirm(
-        `Delete ${teammate.name}? Your conversations with it stay readable, but nobody can chat with it again.`
-      )
-    ) {
+  const sameIds = (a: readonly string[], b: readonly string[]) =>
+    a.length === b.length && a.every((id) => b.includes(id));
+  // Every field against what the page loaded, and memory against the read on
+  // open. Cancel, the breadcrumb and a reload used to drop an edited persona,
+  // scope or set of grants without a word; while this is true they ask first.
+  const dirty =
+    name !== teammate.name ||
+    title !== teammate.title ||
+    roleDescription !== teammate.roleDescription ||
+    !sameIds(collectionIds, teammate.collectionIds) ||
+    !sameIds(sourceIds, teammate.sourceIds) ||
+    !sameIds(editorIds, teammate.editorIds) ||
+    visibility !== teammate.visibility ||
+    avatarSeed !== teammate.avatarSeed ||
+    projectId !== teammate.projectId ||
+    JSON.stringify(allowedModels) !== JSON.stringify(teammate.allowedModels ?? []) ||
+    (loadedMemory !== null && agentMemory !== loadedMemory) ||
+    changedGrants;
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  /** Leave now, or after a Discard confirm when there are unsaved edits. */
+  function leave(go: () => void) {
+    if (!dirty || isPending) {
+      go();
       return;
     }
+    confirmDelete({
+      title: "Discard your changes?",
+      description: `The edits to ${teammate.name} are not saved yet.`,
+      confirmLabel: "Discard changes",
+      onConfirm: go,
+    });
+  }
+
+  /** A breadcrumb link that asks first, keeping Cmd/Ctrl-click as a new tab. */
+  function guardLink(href: string) {
+    return (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!dirty || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+        return;
+      }
+      event.preventDefault();
+      leave(() => router.push(href));
+    };
+  }
+
+  function remove() {
+    confirmDelete({
+      title: `Delete ${teammate.name}?`,
+      description:
+        "Your conversations with it stay readable, but nobody can chat with it again.",
+      confirmLabel: "Delete teammate",
+      onConfirm: removeNow,
+    });
+  }
+
+  function removeNow() {
     startTransition(async () => {
       try {
         await deleteTeammateAction(teammate.id);
@@ -215,15 +271,21 @@ export function TeammateSettingsForm({
 
   return (
     <div className="space-y-6 px-6 py-5">
+      {confirmDeleteModal}
       <div className="flex items-center gap-3">
         <nav className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
-          <Link href="/teammates" className="hover:text-foreground">
+          <Link
+            href="/teammates"
+            className="hover:text-foreground"
+            onClick={guardLink("/teammates")}
+          >
             Teammates
           </Link>
           <ChevronRight className="size-3.5 shrink-0" />
           <Link
             href={`/teammates/${teammate.id}`}
             className="truncate hover:text-foreground"
+            onClick={guardLink(`/teammates/${teammate.id}`)}
           >
             {teammate.name}
           </Link>
@@ -366,11 +428,15 @@ export function TeammateSettingsForm({
         >
           Delete teammate
         </Button>
-        <Button variant="outline" className="ml-auto h-10 px-5" onClick={onDone}>
+        <Button
+          variant="outline"
+          className="ml-auto h-10 px-5"
+          onClick={() => leave(onDone)}
+        >
           Cancel
         </Button>
         <Button className="h-10 px-5" onClick={save} disabled={isPending}>
-          {isPending ? "Saving..." : "Save"}
+          {isPending ? "Saving…" : "Save"}
         </Button>
       </div>
     </div>

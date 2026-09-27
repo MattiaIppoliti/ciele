@@ -91,8 +91,3 @@ export function buildPanelDomains(domains: readonly ApiV1Domain[]): PanelDomain[
     ];
   });
 }
-
-/** Domains the panel can present today, what the coverage test measures. */
-export function presentableDomains(): ApiV1Domain[] {
-  return Object.keys(DOMAIN_PRESENTATION) as ApiV1Domain[];
-}

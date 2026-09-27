@@ -6,22 +6,27 @@ description: Gestiona los miembros, las conexiones con proveedores, las claves A
 Una organización es el límite de inquilino para los datos y los permisos de
 Ciele.
 
-Usa **Settings** para estas áreas actuales:
+Utiliza **Settings** para estas áreas actuales:
 
 - **General** para la información de la organización.
 - **Members** para las membresías, las invitaciones y los Roles.
-- **AI Providers** para las conexiones con proveedores.
-- **Data** para los esquemas de entidades y los registros importados.
+- **AI Provider** para las conexiones con proveedores.
+- **Crawling** para el rastreador web de la organización, como su propia cuenta
+  de Apify.
 - **API Keys** para las credenciales programáticas.
-- **Usage** para consultar el uso reciente de los recursos y sus límites.
+- **Usage** para consultar el uso reciente de recursos y los límites.
 - **Billing** para el plan gestionado y la cuenta de facturación.
+
+Los esquemas de entidades y los registros importados se encuentran en
+`/settings/data`. Las pestañas **Settings** no muestran esa página. Consulta
+[Entities and Records](/data/entities-and-records).
 
 La edición autoalojada no muestra un catálogo de suscripciones gestionadas.
 
-Los Member Roles y los API-key Roles utilizan la misma escala de permisos. Una
-clave API no puede recibir un Role superior al de su creador.
+Los roles de miembro y los roles de clave API utilizan la misma escala de
+permisos. Una clave API no puede recibir un Role superior al de su creador.
 
-El área **AI Providers** también controla la
+El área **AI Provider** también controla la
 [memoria a largo plazo](/data/long-term-memory). Incluye herramientas para
 borrar los recuerdos almacenados de un Visitor.
 
@@ -31,7 +36,9 @@ razonamiento y otro para las conversaciones completas. Consulta
 
 ## Apariencia personal
 
-Abre el menú de la cuenta, selecciona **Personal settings** y, a continuación,
-**Theme**. Elige **Light**, **Dark** o **System** y selecciona la paleta
-**Midnight** o **Mist Blue**. Estas preferencias afectan a tu consola y se
-guardan en este navegador. El widget publicado conserva su estilo de asistente.
+En la barra lateral, expande **Settings** y selecciona **Personal settings**,
+luego **Theme**. Si no ves **Settings**, abre el menú de la cuenta y selecciona
+**Profile** y, a continuación, **Theme**. Elige **Light**, **Dark** o **System**
+y selecciona la paleta **Midnight** o **Mist Blue**. Estas preferencias afectan
+a tu consola y se guardan en este navegador. El widget publicado conserva su
+estilo de Assistant.

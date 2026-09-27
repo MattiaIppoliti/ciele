@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronRight, type LucideIcon } from "lucide-react";
@@ -53,7 +53,9 @@ export function NavTree({
   /** Names the group for a screen reader, e.g. "Settings sections". */
   label: string;
 }) {
-  const tree = navTreeGeometry({ count: items.length, activeIndex });
+  const groupRef = useRef<HTMLDivElement>(null);
+  const pitch = useRowPitch(groupRef);
+  const tree = navTreeGeometry({ count: items.length, activeIndex, pitch });
   if (items.length === 0) return null;
 
   return (
@@ -68,6 +70,7 @@ export function NavTree({
         // the glyph is 16 wide, so its middle is 18 from the row's edge. A
         // connector hanging off the glyph is what makes these read as owned by
         // the row above rather than merely indented under it.
+        ref={groupRef}
         className="relative flex flex-col"
         role="group"
         aria-label={label}
@@ -122,6 +125,32 @@ export function NavTree({
       </div>
     </div>
   );
+}
+
+/**
+ * The rows' real pitch, px. The rows are drawn at `NAV_TREE_PITCH`, but the
+ * mobile drawer raises every nav row to a 44px touch target from `globals.css`
+ * (`[data-nav-drawer] [data-highlight-row]`), and a connector drawn at 34 then
+ * slid 10px further off its row with each one: by the eighth row the elbow
+ * pointed at the gap between two items. So the tree reads the pitch from the
+ * first row rather than assuming it, and follows it through a resize.
+ */
+function useRowPitch(groupRef: React.RefObject<HTMLDivElement | null>) {
+  const [pitch, setPitch] = useState(NAV_TREE_PITCH);
+  useLayoutEffect(() => {
+    const row = groupRef.current?.querySelector<HTMLElement>("[data-highlight-row]");
+    if (!row) return;
+    const measure = () => {
+      const height = row.offsetHeight;
+      if (height > 0) setPitch(height);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [groupRef]);
+  return pitch;
 }
 
 /**

@@ -173,7 +173,7 @@ function CreateHelpDeskDialog({
             onChange={(e) =>
               setDescription(e.target.value.slice(0, DESCRIPTION_LIMIT))
             }
-            placeholder="Describe what this help desk handles..."
+            placeholder="Describe what this help desk handles…"
             rows={6}
           />
           <p className="text-muted-foreground text-right text-xs">
@@ -193,7 +193,7 @@ function CreateHelpDeskDialog({
             onClick={handleCreate}
             disabled={isPending}
           >
-            {isPending ? "Creating..." : "Create Help Desk"}
+            {isPending ? "Creating…" : "Create Help Desk"}
           </Button>
         </div>
       </DialogContent>

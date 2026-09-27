@@ -26,7 +26,6 @@ export * from "./input";
 export * from "./label";
 export * from "./popover";
 export * from "./progressive-blur";
-export * from "./separator";
 export * from "./skeleton";
 // Tooltip/TooltipTrigger/TooltipContent stay internal to Hint; the apps only
 // mount the provider.

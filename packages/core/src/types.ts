@@ -2914,7 +2914,7 @@ export interface KnowledgeMemory {
   generatedBy: string;
   /** OKF `generated.at`. */
   generatedAt: string;
-  /** Liveness, the whole of it: live iff null. See `isKnowledgeMemoryLive`. */
+  /** Liveness, the whole of it: live iff null (`forgotten_at is null`). */
   forgottenAt: string | null;
   forgetReason: string | null;
   forgottenBy: string | null;

@@ -20,7 +20,7 @@ export function DownloadCta() {
         href={resolveDesktopPackageUrl()}
         target="_blank"
         rel="noreferrer"
-        className="press group flex items-center gap-3.5 rounded-[18px] bg-zinc-900 p-2.5 pr-6 shadow-sm shadow-zinc-950/10 outline-none transition-colors duration-150 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+        className="press group flex items-center gap-3.5 rounded-[18px] bg-zinc-900 p-2.5 pr-6 shadow-sm shadow-zinc-950/10 outline-none transition-colors duration-150 hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-zinc-800 dark:hover:bg-zinc-700"
       >
         <span className="flex size-9 items-center justify-center rounded-[8px] bg-white">
           <GhostMark className="size-7" />

@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  addNewsletterContact,
-  newsletterAudienceConfigured,
-} from "./newsletter-audience";
+import { addNewsletterContact } from "./newsletter-audience";
 
 describe("addNewsletterContact", () => {
   beforeEach(() => {
@@ -32,7 +29,6 @@ describe("addNewsletterContact", () => {
     vi.stubEnv("RESEND_AUDIENCE_ID", "");
     const fetchMock = vi.spyOn(globalThis, "fetch");
 
-    expect(newsletterAudienceConfigured()).toBe(false);
     expect(await addNewsletterContact("dean@example.edu")).toEqual({
       added: false,
       reason: "not_configured",

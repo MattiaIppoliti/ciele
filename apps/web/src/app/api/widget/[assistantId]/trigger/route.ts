@@ -10,6 +10,10 @@ import { SSO_GATE_COOKIE, isGateValidForOrg } from "@/lib/sso";
 import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
 import { reportedPageUrl } from "@/lib/widget-triggers";
 import { getRuntimeDb } from "@/lib/runtime-db";
+import {
+  checkWidgetTurnAllowance,
+  widgetThrottledResponse,
+} from "@/lib/widget-rate-limit";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -62,6 +66,14 @@ export async function POST(
   if (!visitorId || !body.trigger || !isProactiveTrigger(body.trigger)) {
     return new Response("Bad request", { status: 400, headers: cors });
   }
+
+  const allowance = checkWidgetTurnAllowance({
+    kind: "trigger",
+    assistantId: ctx.assistantId,
+    subjectId: visitorId,
+    headers: request.headers,
+  });
+  if (!allowance.allowed) return widgetThrottledResponse(allowance, cors);
 
   // The referer on this request is the chat frame's own URL, so for a floater
   // embed the host page is only knowable from what the script reported. Trusted

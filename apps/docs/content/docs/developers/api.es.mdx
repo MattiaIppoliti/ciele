@@ -1,16 +1,16 @@
 ---
 title: API v1
-description: Llama a la API de administración actual de Ciele con una clave de API de organización.
+description: Llama a la API de administración de Ciele actual con una clave de API de organización.
 ---
 
 La API de Ciele utiliza JSON sobre HTTP. Todas las rutas de la versión 1
-comienzan por `/api/v1`.
+comienzan con `/api/v1`.
 
 [Abre la referencia interactiva de la API](/api-reference) para explorar todas
 las operaciones públicas por dominio. Descarga allí el contrato OpenAPI actual
 en formato JSON o YAML.
 
-## Descubre el despliegue
+## Descubre la implementación
 
 Utiliza estos endpoints públicos antes de generar un cliente:
 
@@ -19,12 +19,12 @@ GET /api/v1/meta
 GET /api/v1/openapi.json
 ```
 
-`meta` enumera la versión de la API y los dominios disponibles. `openapi.json`
+`meta` muestra la versión de la API y los dominios disponibles. `openapi.json`
 devuelve el contrato legible por máquina para el despliegue.
 
 ## Autenticar una solicitud
 
-Envía la clave API como token bearer:
+Envía la clave de API como token bearer:
 
 ```bash
 curl https://ciele.app/api/v1/whoami \
@@ -52,7 +52,7 @@ Los códigos de estado más habituales son:
 | Status | Significado |
 | --- | --- |
 | `400` | El cuerpo de la solicitud tiene un formato incorrecto o falta un archivo obligatorio. |
-| `401` | Falta la clave, no es válida o ha sido revocada. |
+| `401` | Falta la clave, no es válida o está revocada. |
 | `403` | El Role de la clave no permite la operación. |
 | `404` | El recurso no existe en la Organization. |
 | `409` | La solicitud entra en conflicto con el estado actual. |
@@ -81,7 +81,7 @@ completo y actual de operaciones.
 - Publicación: consulta el estado, publica, anula la publicación y restaura una
   publicación.
 - Inbox: revisa, exporta, ancla, anota, valora y elimina Conversations.
-- Mejoras: listar, leer y actualizar elementos.
+- Mejoras: enumera, lee y actualiza elementos.
 - Entidades y recuerdos: gestiona los datos tipados de la organización y el
   borrado de recuerdos con ámbito definido.
 - SSO: gestiona las afirmaciones de identidad, la configuración de conexión, la
@@ -90,21 +90,26 @@ completo y actual de operaciones.
   ServiceNow.
 - Teammates: gestiona a los Teammates de IA y lee tus propias conversaciones con
   Teammates.
-- Canales: lee y da forma a los canales de compañeros de equipo en los que
-  participas, así como a sus listas de miembros. No hay ningún endpoint para
-  enviar un mensaje: un mensaje inicia una cadena de respuestas de compañeros de
-  equipo, y esa cadena se ejecuta en la consola.
+- Projects: gestiona los Projects a los que se asocian los Teammates, así como
+  sus documentos de Project.
+- Reviews: enumera, lee y toma decisiones sobre las solicitudes de revisión
+  humana.
+- Channels: lee y da forma a los canales de Teammates en los que participas, así
+  como a sus listas de miembros. No hay ningún endpoint para enviar un mensaje:
+  un mensaje inicia una cadena de respuestas de los compañeros de equipo, y esa
+  cadena se ejecuta en la consola.
 - Configuration: gestiona Skills, Assistant Goals y Alerts operativas.
-- Organización: gestiona la configuración, los Members, las Invites y las claves
+- Organization: gestiona la configuración, los Members, las Invites y las claves
   API.
 - Integrations: gestiona las integraciones de la API del asistente y las
   conexiones con los proveedores de modelos.
 - Uso: consulta los contadores del plan y quién ha gastado los créditos de una
   ventana. Solo lectura. El desglose del gasto mantiene separadas sus
   dimensiones. Una respuesta indica tanto al compañero de equipo que ejecutó la
-  acción como al compañero que la solicitó, por lo que sumar las dimensiones la
-  contabiliza dos veces. La compra de créditos no tiene un endpoint: una compra
-  corresponde a una pantalla en la que una persona confirma un importe.
+  acción como al compañero que la solicitó, por lo que sumar las dimensiones
+  cuenta esa respuesta dos veces. La compra de créditos no tiene un endpoint:
+  una compra corresponde a una pantalla en la que una persona confirma un
+  importe.
 
 Utiliza el documento OpenAPI para los campos de las solicitudes, la
 autenticación y los códigos de estado de las respuestas documentados.

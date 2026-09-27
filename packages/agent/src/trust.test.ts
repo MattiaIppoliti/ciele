@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getMockDb, DEMO_ORG } from "@agent-hub/db";
 import type { ChatReplyPart } from "./types";
 import {
@@ -167,28 +167,33 @@ describe("demotion history events", () => {
       title: "Demotion History Fixture",
     });
 
+    const record = vi.spyOn(db, "recordFlowTrustEvent");
+    const events = () =>
+      record.mock.calls
+        .map(([event]) => event)
+        .filter((e) => e.assistantId === assistant.id && e.flowId === FLOW);
+
     // First materialization: 20 clean runs → auto. One event (null → auto).
     for (let i = 0; i < 20; i++) await seedVerdict(assistant.id, true);
     await runTrustMaterialization({ db });
-    let events = await db.listFlowTrustEvents(assistant.id, FLOW);
-    expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ fromTier: null, toTier: "auto" });
+    expect(events()).toHaveLength(1);
+    expect(events()[0]).toMatchObject({ fromTier: null, toTier: "auto" });
 
     // Re-materialize with the same signals: no transition, no new event.
     await runTrustMaterialization({ db });
-    expect(await db.listFlowTrustEvents(assistant.id, FLOW)).toHaveLength(1);
+    expect(events()).toHaveLength(1);
 
     // Failures drag the rate under 90% → watch. A second event (auto → watch).
     for (let i = 0; i < 5; i++) await seedVerdict(assistant.id, false);
     await runTrustMaterialization({ db });
-    events = await db.listFlowTrustEvents(assistant.id, FLOW);
-    expect(events).toHaveLength(2);
-    // Newest first: the demotion, carrying the runs/passes at the transition.
-    expect(events[0]).toMatchObject({
+    expect(events()).toHaveLength(2);
+    // The demotion carries the runs/passes at the transition.
+    expect(events()[1]).toMatchObject({
       fromTier: "auto",
       toTier: "watch",
       runs: 25,
       passes: 20,
     });
+    record.mockRestore();
   });
 });

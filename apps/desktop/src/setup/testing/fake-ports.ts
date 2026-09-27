@@ -47,7 +47,6 @@ export function fakePorts(options: FakePortOptions = {}): FakePorts {
   } = options;
 
   const files = new Map<string, string>(Object.entries(options.files ?? {}));
-  const dirs = new Set<string>();
   const composeCalls: string[] = [];
   const failed = new Set<string>();
   let seed = 1;
@@ -102,7 +101,7 @@ export function fakePorts(options: FakePortOptions = {}): FakePorts {
     },
 
     fs: {
-      ensureDir: async (path) => void dirs.add(path),
+      ensureDir: async () => {},
       readFile: async (path) => files.get(path) ?? null,
       writeFile: async (path, contents) => void files.set(path, contents),
     },

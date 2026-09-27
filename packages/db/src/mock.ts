@@ -277,6 +277,8 @@ interface MockStore {
   >;
   /** organizationId -> serialized conservative euro spend for one UTC day. */
   orgBudgetSpentEur: Map<string, { day: string; eur: number }>;
+  /** leaseId -> the scopes one admitted turn counts against, and until when. */
+  turnConcurrencyLeases: Map<string, { scopeKeys: string[]; expiresAt: string }>;
   goals: Map<string, AssistantGoal>;
   actionApprovals: Map<string, ActionApproval>;
   reviewRequests: Map<string, ReviewRequest>;
@@ -615,6 +617,7 @@ function emptyStore(): MockStore {
     ],
     orgBudgets: new Map(),
     orgBudgetReservations: new Map(),
+    turnConcurrencyLeases: new Map(),
     orgBudgetSpentEur: new Map(),
     goals: new Map(),
     actionApprovals: new Map(),
@@ -2403,6 +2406,62 @@ function inboxConversationRows(organizationId: string): InboxConversation[] {
     .sort(compareInboxConversation);
 }
 
+/** Generative answers without a verdict, in verifier priority order. */
+function unverifiedAnswerCandidates(limit: number): VerifiableAnswer[] {
+  const store = getStore();
+  const candidates: VerifiableAnswer[] = [];
+  for (const m of store.messages.values()) {
+    if (m.role !== "assistant") continue;
+    if (store.answerVerdicts.has(m.id)) continue;
+    const parts = m.content as { type?: string; action?: string; text?: string }[];
+    const generative = parts.some(
+      (p) => p.type === "text" && p.action === "search_knowledge"
+    );
+    if (!generative) continue;
+    const conversation = store.conversations.get(m.conversationId);
+    if (!conversation) continue;
+    const assistant = assistantOfConversation(conversation);
+    if (!assistant) continue;
+    const question =
+      [...store.messages.values()]
+        .filter(
+          (mm) =>
+            mm.conversationId === m.conversationId &&
+            mm.role === "user" &&
+            mm.createdAt < m.createdAt
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+        ?.content.map((p) => (p as { text?: string }).text ?? "")
+        .join("\n") ?? null;
+    candidates.push({
+      messageId: m.id,
+      conversationId: m.conversationId,
+      assistantId: assistant.id,
+      organizationId: assistant.organizationId,
+      flowId: m.flowId ?? null,
+      flowName: m.flowName ?? null,
+      content: parts,
+      question,
+      createdAt: m.createdAt,
+    });
+  }
+  // Priority sampling: human signals first, 👎, then escalated
+  // conversations, then newest.
+  const rank = (c: VerifiableAnswer): number => {
+    const message = getStore().messages.get(c.messageId);
+    if (message?.feedback === -1) return 0;
+    const conversation = getStore().conversations.get(c.conversationId);
+    if (conversation?.metadata?.escalated === true) return 1;
+    return 2;
+  };
+  return candidates
+    .sort(
+      (a, b) =>
+        rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt)
+    )
+    .slice(0, limit);
+}
+
 export const mockDb: Db = {
   // --- Organizations & membership (single demo org) -------------------
 
@@ -2996,10 +3055,6 @@ export const mockDb: Db = {
       .map((c) => ({ ...c, preferredForEmbedding: c.id === chosen }));
   },
 
-  async getEmbeddingConnectionId(organizationId) {
-    return getStore().embeddingConnections.get(organizationId) ?? null;
-  },
-
   async setEmbeddingConnectionId(organizationId, connectionId) {
     const store = getStore();
     if (connectionId) {
@@ -3464,18 +3519,15 @@ export const mockDb: Db = {
     return run;
   },
 
-  async listApplicationSyncRuns(importId) {
-    return [...getStore().applicationSyncRuns.values()]
-      .filter((run) => run.importId === importId)
-      .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
-  },
-
   async listApplicationOperationalState(organizationId) {
     const imports = await mockDb.listApplicationImports(organizationId);
     return Promise.all(
       imports.map(async (applicationImport) => ({
         importId: applicationImport.id,
-        lastRun: (await mockDb.listApplicationSyncRuns(applicationImport.id))[0] ?? null,
+        lastRun:
+          [...getStore().applicationSyncRuns.values()]
+            .filter((run) => run.importId === applicationImport.id)
+            .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0] ?? null,
         sourceCount: (await mockDb.listApplicationSources(applicationImport.id))
           .filter((mapping) => mapping.sourceId).length,
       }))
@@ -4036,16 +4088,6 @@ export const mockDb: Db = {
     return true;
   },
 
-  async releaseApiIdempotency(input) {
-    const mapKey = `${input.scope}\n${input.key}`;
-    const row = getStore().apiIdempotency.get(mapKey);
-    if (!row || row.status !== "running" || row.leaseToken !== input.leaseToken) {
-      return false;
-    }
-    getStore().apiIdempotency.delete(mapKey);
-    return true;
-  },
-
   async getWorkQueueHealth(now) {
     const store = getStore();
     type Health = {
@@ -4480,16 +4522,6 @@ export const mockDb: Db = {
       }
   },
 
-  async deleteConceptsByIds(ids) {
-    const store = getStore();
-    for (const id of ids) {
-      if (!store.concepts.delete(id)) continue;
-      detachMemoriesFromConcept(id);
-      for (const [kid, k] of store.chunks)
-        if (k.conceptId === id) store.chunks.delete(kid);
-    }
-  },
-
   async deleteSourceKnowledgeGeneration(sourceId, generationId) {
     const store = getStore();
     const deleted: string[] = [];
@@ -4620,19 +4652,6 @@ export const mockDb: Db = {
           : [];
       })
       .sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-  },
-
-  async listConceptPage(collectionId, input) {
-    return [...getStore().concepts.values()]
-      .filter((concept) => concept.collectionId === collectionId)
-      .filter((concept) => {
-        if (!concept.sourceId) return true;
-        return concept.generationId ===
-          getStore().sources.get(concept.sourceId)?.activeGenerationId;
-      })
-      .filter((concept) => !input.afterId || concept.id > input.afterId)
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-      .slice(0, Math.max(1, Math.min(input.limit, 500)));
   },
 
   async getConcept(id) {
@@ -4773,12 +4792,6 @@ export const mockDb: Db = {
     const store = getStore();
     const concept = store.concepts.get(id);
     if (concept) store.concepts.set(id, { ...concept, excluded });
-  },
-
-  async setConceptRecrawlSchedule(id, schedule) {
-    const store = getStore();
-    const concept = store.concepts.get(id);
-    if (concept) store.concepts.set(id, { ...concept, recrawlSchedule: schedule });
   },
 
   async saveChunks(chunks) {
@@ -5095,11 +5108,21 @@ export const mockDb: Db = {
   },
 
   async getInboxConversationReview(conversationId) {
-    const [messages, improvementLinks, answerVerdicts] = await Promise.all([
+    const [messages, improvementLinks] = await Promise.all([
       mockDb.listMessages(conversationId),
       mockDb.listConversationImprovementLinks(conversationId),
-      mockDb.listConversationAnswerVerdicts(conversationId),
     ]);
+    const store = getStore();
+    const answerVerdicts = [...store.answerVerdicts.values()]
+      .filter(
+        (v) => store.messages.get(v.messageId)?.conversationId === conversationId
+      )
+      .map((v) => ({
+        messageId: v.messageId,
+        verdict: v.verdict,
+        reason: v.reason,
+        createdAt: v.createdAt,
+      }));
     return { messages, improvementLinks, answerVerdicts };
   },
 
@@ -5162,14 +5185,6 @@ export const mockDb: Db = {
     const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
     store.webhookSubscriptions.set(id, next);
     return next;
-  },
-
-  async updateConversationSessionState(id, state) {
-    const store = getStore();
-    const conversation = store.conversations.get(id);
-    if (conversation) {
-      store.conversations.set(id, { ...conversation, sessionState: state });
-    }
   },
 
   async mergeConversationSessionState(input) {
@@ -5243,27 +5258,6 @@ export const mockDb: Db = {
       updatedAt: input.now,
     });
     return { status: "claimed" as const, leaseToken, assistantMessageId: null };
-  },
-
-  async completeConversationTurn(input) {
-    const key = `${input.conversationId}:${input.requestId}`;
-    const turns = getStore().conversationTurns;
-    const turn = turns.get(key);
-    if (
-      !turn ||
-      turn.status !== "running" ||
-      turn.leaseToken !== input.leaseToken
-    ) {
-      return false;
-    }
-    turns.set(key, {
-      ...turn,
-      status: "completed",
-      assistantMessageId: input.assistantMessageId,
-      lockedAt: input.now,
-      updatedAt: input.now,
-    });
-    return true;
   },
 
   async commitConversationTurn(input) {
@@ -6818,14 +6812,6 @@ export const mockDb: Db = {
     });
   },
 
-  async listRetentionSweepEvents(organizationId, options) {
-    return getStore()
-      .retentionSweepEvents.filter((item) => item.organizationId === organizationId)
-      .slice()
-      .reverse()
-      .slice(0, options?.limit ?? 100);
-  },
-
   async getOrgBudget(organizationId) {
     return getStore().orgBudgets.get(organizationId) ?? null;
   },
@@ -6915,6 +6901,35 @@ export const mockDb: Db = {
     return getStore().orgBudgetReservations.delete(id);
   },
 
+  async acquireTurnConcurrency(input) {
+    if (input.scopes.length === 0 || input.scopes.length > 8) {
+      throw new Error("Scope keys and limits must pair up (1 to 8)");
+    }
+    const leases = getStore().turnConcurrencyLeases;
+    // Single-threaded, so the check and the insert below are already atomic;
+    // the Postgres function needs an advisory lock to say the same thing.
+    for (const [id, lease] of leases) {
+      if (lease.expiresAt <= input.now) leases.delete(id);
+    }
+    for (const scope of input.scopes) {
+      let active = 0;
+      for (const lease of leases.values()) {
+        if (lease.scopeKeys.includes(scope.key)) active += 1;
+      }
+      if (active >= Math.max(0, scope.limit)) return null;
+    }
+    const id = crypto.randomUUID();
+    leases.set(id, {
+      scopeKeys: [...new Set(input.scopes.map((scope) => scope.key))],
+      expiresAt: input.expiresAt,
+    });
+    return id;
+  },
+
+  async releaseTurnConcurrency(leaseId) {
+    return getStore().turnConcurrencyLeases.delete(leaseId);
+  },
+
   async settleOrgBudgetReservation(id, rows) {
     const store = getStore();
     const reservation = store.orgBudgetReservations.get(id);
@@ -6981,81 +6996,11 @@ export const mockDb: Db = {
 
   // --- Answer verification ----------------------------------------------------
 
-  async listUnverifiedAnswers({ limit }) {
-    const store = getStore();
-    const candidates: VerifiableAnswer[] = [];
-    for (const m of store.messages.values()) {
-      if (m.role !== "assistant") continue;
-      if (store.answerVerdicts.has(m.id)) continue;
-      const parts = m.content as { type?: string; action?: string; text?: string }[];
-      const generative = parts.some(
-        (p) => p.type === "text" && p.action === "search_knowledge"
-      );
-      if (!generative) continue;
-      const conversation = store.conversations.get(m.conversationId);
-      if (!conversation) continue;
-      const assistant = assistantOfConversation(conversation);
-      if (!assistant) continue;
-      const question =
-        [...store.messages.values()]
-          .filter(
-            (mm) =>
-              mm.conversationId === m.conversationId &&
-              mm.role === "user" &&
-              mm.createdAt < m.createdAt
-          )
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
-          ?.content.map((p) => (p as { text?: string }).text ?? "")
-          .join("\n") ?? null;
-      candidates.push({
-        messageId: m.id,
-        conversationId: m.conversationId,
-        assistantId: assistant.id,
-        organizationId: assistant.organizationId,
-        flowId: m.flowId ?? null,
-        flowName: m.flowName ?? null,
-        content: parts,
-        question,
-        createdAt: m.createdAt,
-      });
-    }
-    // Priority sampling: human signals first, 👎, then escalated
-    // conversations, then newest.
-    const rank = (c: VerifiableAnswer): number => {
-      const message = getStore().messages.get(c.messageId);
-      if (message?.feedback === -1) return 0;
-      const conversation = getStore().conversations.get(c.conversationId);
-      if (conversation?.metadata?.escalated === true) return 1;
-      return 2;
-    };
-    return candidates
-      .sort(
-        (a, b) =>
-          rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt)
-      )
-      .slice(0, limit);
-  },
-
-  async listConversationAnswerVerdicts(conversationId) {
-    const store = getStore();
-    return [...store.answerVerdicts.values()]
-      .filter((v) => {
-        const message = store.messages.get(v.messageId);
-        return message?.conversationId === conversationId;
-      })
-      .map((v) => ({
-        messageId: v.messageId,
-        verdict: v.verdict,
-        reason: v.reason,
-        createdAt: v.createdAt,
-      }));
-  },
-
   async claimUnverifiedAnswers({ limit, staleBefore }) {
     const store = getStore();
-    // Same candidates and priority order as listUnverifiedAnswers, minus any
-    // that already carry a fresh claim (a stale claim is re-claimable).
-    const candidates = (await this.listUnverifiedAnswers({ limit: 1_000 }))
+    // Unverified candidates in priority order, minus any that already carry
+    // a fresh claim (a stale claim is re-claimable).
+    const candidates = unverifiedAnswerCandidates(1_000)
       .filter((c) => {
         const claim = store.answerVerifierClaims.get(c.messageId);
         return claim === undefined || claim < staleBefore;
@@ -7172,21 +7117,6 @@ export const mockDb: Db = {
         return true;
       });
     }
-  },
-
-  async listFlowTrustEvents(assistantId, flowId) {
-    // Newest first. Two transitions materialized in the same millisecond
-    // (createdAt ties) fall back to insertion order so the later event still
-    // sorts first, keeping the order deterministic.
-    return getStore()
-      .flowTrustEvents.map((e, index) => ({ e, index }))
-      .filter(
-        ({ e }) => e.assistantId === assistantId && e.flowId === flowId
-      )
-      .sort(
-        (a, b) => b.e.createdAt.localeCompare(a.e.createdAt) || b.index - a.index
-      )
-      .map(({ e }) => e);
   },
 
   // --- Compost loop -----------------------------------------------------------
@@ -7639,10 +7569,6 @@ export const mockDb: Db = {
     };
     store.entitySyncConfigs.set(entityId, config);
     return config;
-  },
-
-  async deleteEntitySyncConfig(entityId) {
-    getStore().entitySyncConfigs.delete(entityId);
   },
 
   async markEntitySynced(entityId, at) {

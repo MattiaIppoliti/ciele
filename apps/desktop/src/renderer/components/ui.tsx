@@ -3,7 +3,11 @@
 // and the native surface here is a handful of screens.
 
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
-import { cn } from "../lib/cn";
+
+/** Joins class names, skipping falsy ones. No conflict merging: no call site passes two classes from one utility group. */
+export function cn(...classes: (string | false | null | undefined)[]): string {
+  return classes.filter(Boolean).join(" ");
+}
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 

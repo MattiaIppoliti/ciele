@@ -80,8 +80,8 @@ function ImprovementCard({
           {item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {item.tags.slice(0, 3).map((t) => (
-                <Badge key={t} variant="outline" className="text-2xs">
-                  {t}
+                <Badge key={t} variant="outline" className="max-w-full shrink text-2xs">
+                  <span className="truncate">{t}</span>
                 </Badge>
               ))}
             </div>
@@ -95,7 +95,7 @@ function ImprovementCard({
             </span>
             <div className="flex items-center gap-2">
               {item.messageCount > 0 && (
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1 tabular-nums">
                   <MessageSquare className="size-3.5" />
                   {item.messageCount}
                 </span>
@@ -188,7 +188,7 @@ export function ImprovementsKanban({
           >
             <header className="flex items-center gap-2 px-3 py-2.5">
               <span className="text-sm font-semibold">{lane.label}</span>
-              <Badge variant="outline">{laneCount(lane.value)}</Badge>
+              <Badge variant="outline" className="tabular-nums">{laneCount(lane.value)}</Badge>
             </header>
             <div className="flex min-h-24 flex-1 flex-col gap-2.5 p-2">
               {items.length === 0 ? (

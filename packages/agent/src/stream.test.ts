@@ -6,8 +6,10 @@ import {
   decodeRuntimeEvents,
   dropPendingComponents,
   foldTraceEvent,
+  overloadErrorText,
   updatePendingComponent,
   EMPTY_TURN_TRACE,
+  type ConsumeTurnOptions,
   type TurnView,
 } from "./stream";
 
@@ -63,7 +65,7 @@ describe("decodeRuntimeEvents", () => {
 /** Drives a whole turn through the consumer and returns what a client would hold. */
 async function runTurn(
   events: RuntimeEvent[],
-  options: { errorText?: (m: string) => string } = {}
+  options: { errorText?: ConsumeTurnOptions<TurnView>["errorText"] } = {}
 ) {
   let view: TurnView = {
     flowName: null,
@@ -382,6 +384,41 @@ describe("consumeTurnStream", () => {
       errorText: (m) => `⚠️ ${m}`,
     });
     expect(view.parts[0]).toMatchObject({ text: "⚠️ boom" });
+  });
+
+  it("tells a capacity refusal apart from a fault, with the server's wait", async () => {
+    const { view } = await runTurn([
+      { type: "error", message: "Provider rate limit (429)", code: "rate_limited", retryAfterMs: 12_000 },
+    ]);
+    expect(view.parts[0]).toMatchObject({
+      action: "fallback",
+      text: "The assistant is handling a lot of conversations right now. Please try again in about 12 seconds.",
+    });
+  });
+
+  it("hands the overload to a custom renderer, with a default wait", async () => {
+    const seen: unknown[] = [];
+    await runTurn([{ type: "error", message: "full", code: "busy" }], {
+      errorText: (message, overload) => {
+        seen.push(overload);
+        return message;
+      },
+    });
+    expect(seen).toEqual([{ code: "busy", retryAfterMs: 5_000 }]);
+  });
+});
+
+describe("overloadErrorText", () => {
+  it("rounds up and clamps the seconds it quotes", () => {
+    expect(overloadErrorText({ code: "busy", retryAfterMs: 200 })).toContain("about 3 seconds");
+    expect(overloadErrorText({ code: "busy", retryAfterMs: 7_100 })).toContain("about 8 seconds");
+    expect(overloadErrorText({ code: "busy", retryAfterMs: 600_000 })).toContain("about 60 seconds");
+  });
+
+  it("tells a Visitor sending too fast that it is their pace, not the load", () => {
+    expect(overloadErrorText({ code: "throttled", retryAfterMs: 20_000 })).toBe(
+      "You're sending messages faster than the assistant can answer. Please wait about 20 seconds and try again."
+    );
   });
 });
 

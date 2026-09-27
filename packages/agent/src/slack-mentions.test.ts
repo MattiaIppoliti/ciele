@@ -10,7 +10,7 @@ import { connectorAlertKey } from "./connector-request";
 import { alertKeys } from "./health";
 import {
   enqueueSlackMention,
-  resolveSlackConnection,
+  resolveSlackRouting,
   runDueSlackMentionJobs,
   slackChannelContext,
   slackFailureDetail,
@@ -131,10 +131,13 @@ const activeAlerts = async (organizationId: string) =>
 describe("Slack mention routing", () => {
   it("routes by workspace, app and explicit channel opt-in, never by a default org", async () => {
     const { connection } = await fixture();
-    expect((await resolveSlackConnection(db, mention))?.id).toBe(connection.id);
-    expect(await resolveSlackConnection(db, { ...mention, teamId: "TOTHER" })).toBeNull();
-    expect(await resolveSlackConnection(db, { ...mention, appId: "AOTHER" })).toBeNull();
-    expect(await resolveSlackConnection(db, { ...mention, channel: "COTHER" })).toBeNull();
+    expect(await resolveSlackRouting(db, mention)).toMatchObject({
+      kind: "one",
+      connection: { id: connection.id },
+    });
+    for (const other of [{ teamId: "TOTHER" }, { appId: "AOTHER" }, { channel: "COTHER" }]) {
+      expect(await resolveSlackRouting(db, { ...mention, ...other })).toEqual({ kind: "none" });
+    }
   });
 
   it("fails closed on a channel two Organizations claim, and tells both of them", async () => {

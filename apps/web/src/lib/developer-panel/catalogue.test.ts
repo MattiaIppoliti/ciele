@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { API_V1_DOMAINS } from "@/lib/api-v1/meta";
+import { API_V1_DOMAINS, type ApiV1Domain } from "@/lib/api-v1/meta";
 import { API_V1_ENDPOINTS } from "@/lib/api-v1/openapi";
-import { buildPanelDomains, presentableDomains } from "./catalogue";
+import { buildPanelDomains } from "./catalogue";
 import { DOMAIN_PRESENTATION } from "./domains";
 
 /**
@@ -9,6 +9,10 @@ import { DOMAIN_PRESENTATION } from "./domains";
  * actually present, and a presented domain must have something to show. Without
  * this, adding an /api/v1 domain ships an empty panel instead of failing CI.
  */
+
+/** Domains the panel can present today, what the coverage tests measure. */
+const presentableDomains = () =>
+  Object.keys(DOMAIN_PRESENTATION) as ApiV1Domain[];
 
 describe("every domain is presentable", () => {
   it("covers all 18 advertised domains", () => {

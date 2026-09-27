@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Lock } from "lucide-react";
 import { AuthenticationClient } from "@/components/assistant/authentication-client";
-import { SectionHero } from "@/components/settings/section-hero";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit, canManageMembers } from "@/lib/rbac";
 import { getAssistantCached } from "../get-assistant";
@@ -20,7 +20,7 @@ export default async function AuthenticationPage({
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
-      <SectionHero
+      <SectionHeading
         icon={Lock}
         title="Authentication"
         description="Ask visitors to sign in before they chat. One connection serves all your assistants."

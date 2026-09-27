@@ -140,9 +140,7 @@ export {
   buildPreflightQuestions,
   describePreflightRouting,
   foldPreflightSignals,
-  frustrationLevel,
   preflightRouting,
-  reasoningLevel,
   spokenLanguage,
   thinkingLine,
   thinkingOutcome,
@@ -320,13 +318,10 @@ export type { FlowTriggerKind, HttpFlowMethod, HttpFlowRequest } from "./http-fl
 // every granted domain at once, and approval-bypass is the one explicit
 // relaxation of ADR-0017's human-accept invariant.
 export {
-  DEFAULT_TEAMMATE_CEILING,
   actionRefusal,
   ceilingAllowsCapability,
   memberRoleRank,
   roleAllowsCapability,
-  grantedDomains,
-  hasGrant,
   mayAcceptSuggestedFix,
 } from "./teammate-grants";
 export type { TeammateActionDomain } from "./teammate-grants";
@@ -340,7 +335,6 @@ export {
   appendAgentLearning,
   capMemoryDocument,
   memoryDocumentChanges,
-  memoryDocumentOwner,
   memoryDocumentScope,
   memoryPromptSections,
   projectInjects,
@@ -349,11 +343,6 @@ export type {
   MemoryDocumentChange,
   MemoryLayerInput,
 } from "./memory-documents";
-// What "live" means for a memory, written once (#926). The knowledge half
-// names the two constants a page-scoped memory implies, so no caller re-checks
-// `forgottenAt` by hand. The subject half is ADR-0023's shape, here ahead of
-// that branch so its merge is a no-op.
-export { isKnowledgeMemoryLive, isMemoryLive } from "./memory";
 // Memory extraction's pure half (#930): the verbatim-quote gate that refuses an
 // invented fact, the cap, and the re-crawl reconciliation that never undoes a
 // Member's forget.
@@ -392,7 +381,6 @@ export type {
   OrgKnowledgeSourceOrder,
   SourceDocumentOrder,
 } from "./knowledge-order";
-export type { MemoryLifecycleFields } from "./memory";
 
 // Near-duplicate detection for auto-filed Improvements (#767, story 15): the
 // cross-conversation half of the dedup, lexical rather than embedding-based on
@@ -451,10 +439,8 @@ export type {
 // colleague on the other end reads when it arrives. Human-mediated by design:
 // the card is an offer, and nothing runs until the Member clicks.
 export {
-  isReferredConversation,
   referralCandidates,
   referralContextSection,
-  referralPromptSection,
   standingContextSections,
 } from "./referral";
 export type { ReferralCandidate } from "./referral";
@@ -508,7 +494,6 @@ export {
   connectorOutputVariable,
   connectorParamValue,
   connectorSettingsIssue,
-  isConnectorProvider,
 } from "./connector-catalog";
 export type {
   ConnectorAction,

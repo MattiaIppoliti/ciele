@@ -6,6 +6,7 @@ import { createOrganizationAction } from "@/app/actions";
 import { Button } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 export function OnboardingForm() {
   const [name, setName] = useState("");
@@ -28,16 +29,18 @@ export function OnboardingForm() {
         <Label htmlFor="org-name">Organization name</Label>
         <Input
           id="org-name"
+          name="organization"
+          autoComplete="organization"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Acme Corp"
-          autoFocus
+          autoFocus={canAutoFocus()}
           className="bg-white"
           required
         />
       </div>
       <Button type="submit" className="w-full" disabled={isPending}>
-        {isPending ? "Creating..." : "Create organization"}
+        {isPending ? "Creating…" : "Create organization"}
       </Button>
       <p className="text-muted-foreground text-center text-xs">
         Got an invite link instead? Just open it, you&apos;ll join that

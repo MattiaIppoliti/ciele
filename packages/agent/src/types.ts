@@ -453,7 +453,24 @@ export type RuntimeEvent =
   | { type: "text-delta"; delta: string }
   | { type: "text-end" }
   | { type: "done"; conversationId: string; messageId: string | null }
-  | { type: "error"; message: string };
+  | {
+      type: "error";
+      message: string;
+      /**
+       * Set only when the turn failed for capacity rather than for a fault:
+       * `rate_limited` is the provider refusing after the jittered retries
+       * (`rate-limit-retry.ts`), `busy` is this deployment's own concurrency
+       * budget staying full for the whole queue wait (`turn-concurrency.ts`).
+       * `throttled` never comes from the runtime: it is the widget route's
+       * per-caller 429, which the client renders through the same path.
+       * A client may say "try again in a few seconds" for these and only these.
+       */
+      code?: TurnOverloadCode;
+      /** How long the client should wait before retrying, when `code` is set. */
+      retryAfterMs?: number;
+    };
+
+export type TurnOverloadCode = "rate_limited" | "busy" | "throttled";
 
 /**
  * The channel stream's own events (#778), beside the turn events of whoever is

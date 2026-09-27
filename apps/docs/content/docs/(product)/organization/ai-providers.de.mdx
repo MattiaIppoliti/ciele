@@ -1,6 +1,6 @@
 ---
 title: KI-Anbieter
-description: Verbinden Sie einen Modellanbieter und wählen Sie für jeden Assistenten das entsprechende Modell aus.
+description: Verbinden Sie einen Modellanbieter und wählen Sie das Modell für jeden Assistenten aus.
 ---
 
 Ciele verwendet eine einzige Provider-Abstraktion für Modelle von Anthropic,
@@ -15,11 +15,11 @@ aus.
 | Subscription | Verwendet ein Mitgliedsabonnement für die eigenen Chats dieses Mitglieds. |
 | API key | Verwendet einen von der Organisation verwalteten Provider-Schlüssel. |
 
-Ein Mitgliedsabonnement führt nur die eigenen Chats dieses Mitglieds aus: die
-Assistant Preview und seine Chats mit einem KI-Teammate. Es bedient kein
+Ein Mitgliedsabonnement betreibt nur die eigenen Chats dieses Mitglieds: die
+Assistant Preview sowie dessen Chats mit einem KI-Teammate. Es bedient kein
 veröffentlichtes Widget und führt keinen Chat eines anderen Mitglieds aus.
-Wählen Sie für den veröffentlichten Traffic einen Platform-Plan oder eine
-API-Key-Verbindung aus.
+Wählen Sie einen Platform-Plan oder eine API-Key-Verbindung für den
+veröffentlichten Traffic aus.
 
 ## Eine API-Schlüssel-Verbindung hinzufügen
 
@@ -30,16 +30,25 @@ API-Key-Verbindung aus.
 5. Geben Sie die erforderlichen Anmeldeinformationen des Providers ein.
 6. Speichern Sie die Verbindung.
 
-Ciele verschlüsselt die Anmeldeinformationen, bevor sie gespeichert werden.
-Verwenden Sie keinen persönlichen Schlüssel erneut, der über nicht relevante
+## Andere Verbindungstypen
+
+- **OpenAI-compatible endpoints** Verbinden Sie einen Server wie Ollama, vLLM
+  oder LM Studio. Geben Sie die Base-URL und die Models ein. Der API-Schlüssel
+  ist optional.
+- **Keyless enterprise auth** verbindet Google Vertex, Anthropic oder Azure
+  OpenAI über die Workload Identity Federation. Ciele speichert keinen
+  statischen Schlüssel für diese Verbindungen.
+
+Ciele verschlüsselt die Anmeldeinformationen vor der Speicherung. Verwenden Sie
+keinen persönlichen Schlüssel erneut, der über nicht zusammenhängende
 Berechtigungen verfügt.
 
 ElevenLabs-Verbindungen stellen Sprachmodelle bereit. Wählen Sie diese Modelle
-in den **General**-Einstellungen des Assistenten unter **Voice mode** aus. Auch
-Verbindungen zu Google und OpenAI können Sprachmodelle bereitstellen. Welche
-Modelle verfügbar sind, hängt vom verbundenen Konto und dessen
+in den **General**-Einstellungen des Assistenten unter **Voice mode** aus.
+Google- und OpenAI-Verbindungen können ebenfalls Sprachmodelle bereitstellen.
+Die verfügbaren Modelle hängen vom verbundenen Konto und dessen
 API-Berechtigungen ab. ElevenLabs wird weder im Textmodell noch in den
-Auswahlfeldern für Knowledge Embedding angezeigt.
+Auswahlfeldern für Knowledge Embeddings angezeigt.
 
 ## Wählen Sie ein Assistant-Modell aus
 
@@ -47,10 +56,10 @@ Auswahlfeldern für Knowledge Embedding angezeigt.
 2. Wählen Sie **General** aus.
 3. Wählen Sie die Provider-Verbindung aus.
 4. Wählen Sie ein verfügbares Modell aus.
-5. Testen Sie den Assistenten in der Vorschau.
+5. Testen Sie den Assistant im Preview-Modus.
 6. Veröffentlichen Sie den Assistenten.
 
-Das veröffentlichte Widget verwendet den Provider und das Modell aus seinem
+Das veröffentlichte Widget verwendet den Provider und das Modell in seinem
 Veröffentlichungs-Snapshot. Spätere allgemeine Änderungen erfordern eine erneute
 Veröffentlichung.
 

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Plane } from "lucide-react";
 import { PublishClient } from "@/components/assistant/publish-client";
-import { SectionHero } from "@/components/settings/section-hero";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
 import { canPublish } from "@/lib/rbac";
 import { getAssistantCached } from "../get-assistant";
@@ -19,7 +19,7 @@ export default async function PublishPage({
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
-      <SectionHero
+      <SectionHeading
         icon={Plane}
         title="Publish"
         description="The live widget serves your last publish. New edits stay in Preview until you publish again."

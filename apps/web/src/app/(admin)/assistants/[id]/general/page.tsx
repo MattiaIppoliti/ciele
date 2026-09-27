@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 import { GeneralForm } from "@/components/assistant/general-form";
-import { SectionHero } from "@/components/settings/section-hero";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
 import { providersWithoutCredential } from "@/lib/model-credentials";
 import { getAssistantCached } from "../get-assistant";
@@ -21,7 +21,7 @@ export default async function GeneralPage({
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
-      <SectionHero
+      <SectionHeading
         icon={SlidersHorizontal}
         title="General Settings"
         description="Manage your assistant's name, messaging, and other settings."

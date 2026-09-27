@@ -1,38 +1,41 @@
 ---
 title: Miglioramenti
-description: Tieni traccia e completa il lavoro per correggere le risposte deboli dell'Assistente.
+description: Monitora e porta a termine il lavoro volto a correggere le risposte carenti dell'Assistente.
 ---
 
-Un Miglioramento registra un problema relativo alla qualità della risposta. Può
-includere messaggi collegati, fonti, una descrizione e una correzione suggerita.
+Un Improvement registra un problema relativo alla qualità delle risposte. Può
+includere messaggi collegati, Sources, una descrizione e un suggerimento di
+correzione.
 
-## Fonti di miglioramento
+## Fonti dei miglioramenti
 
-- Un'azione del flusso di miglioramento crea un elemento.
+- Un'azione di Improvement Flow crea un elemento.
 - Un Help Desk può creare un elemento dopo l'escalation.
-- Un amministratore può contrassegnare una risposta dalla Posta in arrivo.
+- Un amministratore può contrassegnare una risposta dalla Inbox.
 - Se configurata, la ricerca nella knowledge base può creare un elemento per una
   query irrisolta.
+- Un Goal permanente che non viene raggiunto crea un item. I successivi errori
+  aggiungono prove allo stesso elemento.
 
 ## Gestisci un elemento
 
 Apri un elemento per esaminare i messaggi collegati e la correzione suggerita
-disponibile. Puoi modificarne lo stato, la priorità, i tag, l'assegnatario e la
+disponibile. Puoi modificare lo stato, la priorità, i tag, l'assegnatario e la
 data di scadenza.
 
 L'API, la CLI e il server MCP possono elencare, leggere e aggiornare i
-miglioramenti esistenti. La creazione di un miglioramento rimane un'operazione
-eseguita in fase di runtime del prodotto.
+**Improvements** esistenti. La creazione di un Improvement rimane un'operazione
+eseguita durante il runtime del prodotto.
 
 ## Correggi la risposta
 
-1. Leggi la conversazione collegata.
-2. Identifica la fonte, la FAQ, il flusso o l'istruzione errati.
-3. Correggi la bozza di configurazione.
-4. Poni la domanda originale in Anteprima.
-5. Conferma la risposta e le Fonti.
+1. Leggi la Conversation collegata.
+2. Identifica la Source, la FAQ, il Flow o l'istruzione errati.
+3. Correggi la configurazione della bozza.
+4. Poni la domanda originale in Preview.
+5. Conferma la risposta e le Sources.
 6. Pubblica l'Assistente.
-7. Contrassegna il Miglioramento come completato.
+7. Contrassegna l'Improvement come completato.
 
-Rivedi le correzioni suggerite generate prima di usarle. Il suggerimento salvato
-non è una modifica alla pubblicazione.
+Rivedi le correzioni suggerite generate prima di usarle. Il suggerimento
+memorizzato non costituisce una modifica alla pubblicazione.

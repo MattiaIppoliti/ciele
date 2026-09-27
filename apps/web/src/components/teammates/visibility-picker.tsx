@@ -30,7 +30,8 @@ export function VisibilityPicker({
             key={option.value}
             type="button"
             onClick={() => onChange(option.value)}
-            className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+            aria-pressed={value === option.value}
+className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
               value === option.value
                 ? "border-primary ring-primary/30 ring-1"
                 : "hover:bg-muted/50"

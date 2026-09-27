@@ -220,3 +220,4 @@ function CalendarDayButton({
 }
 
 export { Calendar }
+export type { DateRange } from "react-day-picker"

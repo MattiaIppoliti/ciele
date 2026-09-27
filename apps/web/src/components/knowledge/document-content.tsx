@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Button, CopyFeedbackIcon, useCopyFeedback } from "@agent-hub/ui";
 import { getDocumentBodyAction } from "@/app/actions";
 import { toast } from "@/lib/toast";
+import { formatCount } from "@/lib/format";
 
 /**
  * A Document's OKF body, rendered (#928).
@@ -191,7 +192,7 @@ export function DocumentContent({
               ? "Show less"
               : isPending
                 ? "Loading…"
-                : `Show all (${total.toLocaleString()} characters)`}
+                : `Show all (${formatCount(total)} characters)`}
           </Button>
         </div>
       )}

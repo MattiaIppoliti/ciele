@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import type { BackgroundJob } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
-import { enqueueIngestJob, runDueIngestJobs, runIngestJob } from "./jobs";
+import { enqueueIngestJob, runDueJobs } from "./jobs";
 import { ingestSource } from "./ingest";
 
 vi.mock("./ingest", () => ({
@@ -58,7 +58,7 @@ beforeEach(() => {
   vi.mocked(ingestSource).mockResolvedValue(true);
 });
 
-describe("runDueIngestJobs", () => {
+describe("runDueJobs, ingest_source", () => {
   it("marks a claimed job succeeded and a second run does not ingest it again", async () => {
     const db = fakeDb({
       claimBackgroundJobs: vi
@@ -68,9 +68,10 @@ describe("runDueIngestJobs", () => {
     });
 
     await expect(
-      runDueIngestJobs(
+      runDueJobs(
         { db },
         {
+          kinds: ["ingest_source"],
           now: new Date("2026-07-09T10:01:00.000Z"),
           workerId: "worker1",
         }
@@ -83,9 +84,10 @@ describe("runDueIngestJobs", () => {
       superseded: 0,
     });
     await expect(
-      runDueIngestJobs(
+      runDueJobs(
         { db },
         {
+          kinds: ["ingest_source"],
           now: new Date("2026-07-09T10:02:00.000Z"),
           workerId: "worker1",
         }
@@ -141,10 +143,10 @@ describe("runDueIngestJobs", () => {
     });
 
     await expect(
-      runDueIngestJobs({ db }, { now: new Date("2026-07-09T10:01:00Z") })
+      runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date("2026-07-09T10:01:00Z") })
     ).resolves.toMatchObject({ superseded: 1 });
     await expect(
-      runDueIngestJobs({ db }, { now: new Date("2026-07-09T10:20:00Z") })
+      runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date("2026-07-09T10:20:00Z") })
     ).resolves.toMatchObject({ succeeded: 1 });
 
     expect(upgrade).toHaveBeenCalledTimes(1);
@@ -176,7 +178,7 @@ describe("runDueIngestJobs", () => {
     });
 
     await expect(
-      runDueIngestJobs({ db }, { now: new Date("2026-07-09T10:01:00Z") })
+      runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date("2026-07-09T10:01:00Z") })
     ).resolves.toMatchObject({ succeeded: 1 });
     expect(stage).not.toHaveBeenCalled();
     expect(ingestSource).toHaveBeenCalledWith(
@@ -201,7 +203,7 @@ describe("runDueIngestJobs", () => {
     });
 
     await expect(
-      runDueIngestJobs({ db }, { now: new Date("2026-07-09T10:01:00Z") })
+      runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date("2026-07-09T10:01:00Z") })
     ).resolves.toMatchObject({ succeeded: 1 });
     expect(upgrade).toHaveBeenCalledOnce();
     expect(ingestSource).toHaveBeenCalledWith(
@@ -252,8 +254,8 @@ describe("runDueIngestJobs", () => {
       upgradeLegacySourceIngestJob: upgrade as Db["upgradeLegacySourceIngestJob"],
     });
 
-    await runDueIngestJobs({ db }, { now: new Date("2026-07-09T10:01:00Z") });
-    await runDueIngestJobs({ db }, { now: new Date("2026-07-09T10:02:00Z") });
+    await runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date("2026-07-09T10:01:00Z") });
+    await runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date("2026-07-09T10:02:00Z") });
 
     expect(upgrade).toHaveBeenCalledTimes(1);
     expect(upgrade).toHaveBeenCalledWith(
@@ -271,9 +273,10 @@ describe("runDueIngestJobs", () => {
     });
 
     await expect(
-      runDueIngestJobs(
+      runDueJobs(
         { db },
         {
+          kinds: ["ingest_source"],
           now: new Date("2026-07-09T10:01:00.000Z"),
           workerId: "worker1",
         }
@@ -306,9 +309,10 @@ describe("runDueIngestJobs", () => {
     });
 
     await expect(
-      runDueIngestJobs(
+      runDueJobs(
         { db },
         {
+          kinds: ["ingest_source"],
           now: new Date("2026-07-09T10:01:00.000Z"),
           workerId: "worker1",
         }
@@ -345,7 +349,7 @@ describe("runDueIngestJobs", () => {
     });
 
     await expect(
-      runDueIngestJobs({ db }, { now: new Date("2026-07-09T11:00:00.000Z") })
+      runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date("2026-07-09T11:00:00.000Z") })
     ).resolves.toEqual({
       claimed: 0,
       succeeded: 0,
@@ -379,7 +383,7 @@ describe("runDueIngestJobs", () => {
     });
 
     await expect(
-      runDueIngestJobs({ db }, { now: new Date("2026-07-09T11:00:00.000Z") })
+      runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date("2026-07-09T11:00:00.000Z") })
     ).resolves.toEqual({
       claimed: 0,
       succeeded: 0,
@@ -388,51 +392,6 @@ describe("runDueIngestJobs", () => {
       superseded: 0,
     });
     expect(db.settleBackgroundJob).not.toHaveBeenCalled();
-  });
-});
-
-describe("runIngestJob", () => {
-  it("rehydrates assistant, source and connections for ingest_source", async () => {
-    const db = fakeDb();
-    await runIngestJob(
-      {
-        kind: "ingest_source",
-        assistantId: "a1",
-        collectionId: "c1",
-        sourceId: "s1",
-        rawText: "hello",
-      },
-      { db }
-    );
-    expect(db.listProviderConnections).toHaveBeenCalledWith("org1");
-    expect(ingestSource).toHaveBeenCalledWith(
-      expect.objectContaining({
-        db,
-        assistantId: "a1",
-        collectionId: "c1",
-        rawText: "hello",
-        source: expect.objectContaining({ id: "s1" }),
-      })
-    );
-  });
-
-  it("lands rehydration failures in the Source error status", async () => {
-    const db = fakeDb({ getSource: vi.fn().mockResolvedValue(null) as Db["getSource"] });
-    await runIngestJob(
-      {
-        kind: "ingest_source",
-        assistantId: "a1",
-        collectionId: "c1",
-        sourceId: "s1",
-        rawText: "hello",
-      },
-      { db }
-    );
-    expect(ingestSource).not.toHaveBeenCalled();
-    expect(db.updateSource).toHaveBeenCalledWith("s1", {
-      status: "error",
-      error: "Not found",
-    });
   });
 });
 

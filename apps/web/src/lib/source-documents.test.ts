@@ -8,7 +8,6 @@ import {
   sourceDocumentsPageHref,
   sourceDocumentsQuery,
   sourceDocumentsParamsHref,
-  sourceDocumentsSortHref,
   sourceDocumentTone,
   type SourceDocumentsSearchParams,
 } from "./source-documents";
@@ -112,16 +111,6 @@ describe("hrefs", () => {
         status: "excluded",
       })
     ).toBe(`${base}?column=title&status=excluded`);
-  });
-
-  it("returns to page one when the sort flips", () => {
-    // Page 4 of the old order is a different set of rows in the new one.
-    expect(
-      sourceDocumentsSortHref("/library/websites/src-1", at(4, false))
-    ).toBe("/library/websites/src-1?sort=oldest");
-    expect(
-      sourceDocumentsSortHref("/library/websites/src-1", at(4, true))
-    ).toBe("/library/websites/src-1");
   });
 });
 

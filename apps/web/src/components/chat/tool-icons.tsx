@@ -131,16 +131,6 @@ function iconSpecFor(step: TurnStep): IconSpec {
   return (step.stage && STAGE_ICONS[step.stage]) || DEFAULT_STEP_ICON;
 }
 
-/** snake_case or camelCase tool identifier → "Title Case" display name. */
-export function formatToolName(name: string): string {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .split(/[_\s]+/)
-    .filter(Boolean)
-    .map((word) => word[0].toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
 /** The muted icon circle for one step, same palette as the rest of the panel. */
 export function StepIcon({
   step,

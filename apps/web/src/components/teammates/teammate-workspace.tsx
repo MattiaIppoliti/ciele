@@ -681,7 +681,7 @@ export function TeammateWorkspace({
                     onModelChange={setModel}
                     minRows={1}
                     maxRows={6}
-                    placeholder={`Ask ${teammate.name}...`}
+                    placeholder={`Ask ${teammate.name}…`}
                     aria-label={`Ask ${teammate.name}`}
                   />
                 </div>

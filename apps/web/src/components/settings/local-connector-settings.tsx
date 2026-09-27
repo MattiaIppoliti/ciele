@@ -47,6 +47,7 @@ import type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,
 } from "@agent-hub/agent/client";
+import { formatCount, formatDateTime } from "@/lib/format";
 
 /**
  * Dev-only direct-CLI controls (the local-subscription test flag). When
@@ -206,9 +207,13 @@ function ProviderRow({
         variant={connected ? "ghost" : "outline"}
         disabled={actionDisabled}
         onClick={onAction}
+        aria-busy={actionBusy}
       >
         {actionBusy ? (
-          <LoaderCircle className="size-4 animate-spin" />
+          <>
+            <LoaderCircle className="size-4 animate-spin" />
+            <span className="sr-only">{connected ? "Disconnecting…" : "Connecting…"}</span>
+          </>
         ) : connected ? (
           "Disconnect"
         ) : (
@@ -255,12 +260,12 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
           <div className="bg-muted/60 mt-2 rounded-md px-2.5 py-2 text-xs">
             <p className="font-medium">Ciele Preview tokens</p>
             <p className="text-muted-foreground mt-0.5">
-              {provider.tokenUsage.inputTokens.toLocaleString()} input ·{" "}
-              {provider.tokenUsage.outputTokens.toLocaleString()} output
+              {formatCount(provider.tokenUsage.inputTokens)} input ·{" "}
+              {formatCount(provider.tokenUsage.outputTokens)} output
             </p>
             {provider.tokenUsage.updatedAt && (
               <p className="text-muted-foreground mt-0.5 text-2xs">
-                Updated {new Date(provider.tokenUsage.updatedAt * 1_000).toLocaleString()}
+                Updated {formatDateTime(provider.tokenUsage.updatedAt * 1_000)}
               </p>
             )}
           </div>
@@ -281,7 +286,7 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
                 </div>
                 {window.resetsAt && (
                   <p className="text-muted-foreground mt-1 text-2xs">
-                    Resets {new Date(window.resetsAt * 1_000).toLocaleString()}
+                    Resets {formatDateTime(window.resetsAt * 1_000)}
                   </p>
                 )}
               </div>

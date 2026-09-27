@@ -267,13 +267,21 @@ export function MembersClient({
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="email (optional)"
+              aria-label="Invite email (optional)"
               type="email"
+              autoComplete="off"
+              spellCheck={false}
               className="w-64"
             />
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button type="button" variant="outline" className="capitalize" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="capitalize"
+                    aria-label={`Invite role: ${inviteRole}`}
+                  />
                 }
               >
                 {inviteRole}

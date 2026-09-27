@@ -75,6 +75,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Browser chrome (mobile address bar, PWA title bar) tinted to the `--background`
+  // token of each scheme in globals.css, so it does not frame the app in white.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f5f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#121212" },
+  ],
 };
 
 export default function RootLayout({

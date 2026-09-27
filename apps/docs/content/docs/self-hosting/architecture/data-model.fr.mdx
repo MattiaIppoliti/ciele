@@ -1,22 +1,26 @@
 ---
 title: Modèle de données
-description: Comprenez les relations entre le locataire principal, la configuration, les connaissances et les conversations.
+description: Comprenez les relations principales entre le tenant, la configuration, la Knowledge et la Conversation.
 ---
 
-## Propriété du locataire
+## Propriété du tenant
 
-Une organisation est le locataire principal. Les membres rejoignent une
-organisation avec un rôle.
+Une Organization est le tenant principal. Les membres rejoignent une
+Organisation avec un seul Role.
 
-Les enregistrements appartenant à l'organisation comprennent les assistants, les
-entités, les mémoires, les centres d'assistance, les connexions aux
-fournisseurs, les clés API, les compétences, les améliorations, les objectifs,
-les alertes et les enregistrements d'utilisation.
+Les enregistrements appartenant à l'organisation comprennent les Assistants, les
+Teammates, les Entities, les Memories, les Help Desks, les connexions aux
+fournisseurs, les clés API, les Skills, les Improvements, les Goals, les Alerts
+et les enregistrements d'utilisation.
+
+Les enregistrements des Teammates comprennent les Projects, les documents de
+mémoire, les Routines et les fils de discussion de groupe. Un fil de discussion
+de groupe conserve ses propres messages, et non les Conversations.
 
 ## Configuration de l'assistant
 
 <Mermaid
-  title="Un Assistant est propriétaire de son routage et de ses instantanés"
+  title="Un Assistant est propriétaire de son routage et de ses snapshots"
   chart={`
 flowchart TB
   ORG["Organization"]
@@ -29,21 +33,20 @@ flowchart TB
 `}
 />
 
-Une Publication stocke un instantané immuable de la configuration de
-l'Assistant. Les enregistrements en brouillon restent modifiables après la
-publication.
+Une Publication stocke un instantané immuable de la configuration d'un
+Assistant. Les enregistrements de type Draft restent modifiables après la
+Publication.
 
-Un flux stocke un déclencheur, une configuration de condition et des actions
-ordonnées. La validation à l'exécution impose des paires valides de déclencheurs
-et d'actions.
+Un Flow stocke un déclencheur, une configuration de condition et des actions
+ordonnées. La validation à l'exécution impose des paires trigger-action valides.
 
-Un Assistant sélectionne des schémas d'Entité pour sa prochaine Publication.
-L'instantané de schéma contrôle les outils générés, tandis que chaque requête
-lit les enregistrements actuels.
+Un Assistant sélectionne les schémas d'entités pour sa prochaine Publication.
+L'instantané du schéma contrôle les outils générés, tandis que chaque requête
+lit les Records actuels.
 
-Les Entités partagées exposent les données communes de l'Organisation. Les
-Entités à portée utilisateur désignent un attribut d'identité pour le filtrage
-lié au serveur.
+Les Shared Entities exposent les données communes de l'Organization. Les Entités
+à portée utilisateur désignent un attribut d'identité pour le filtrage côté
+serveur.
 
 ## Propriété des connaissances
 
@@ -55,52 +58,56 @@ flowchart TB
   ASSISTANT["Assistant"]
   COLLECTION["Knowledge Collection"]
   SOURCE["Source"]
-  CONCEPT["Concept"]
+  DOCUMENT["Document"]
   ORG -->|"owns"| COLLECTION
   COLLECTION -->|"holds"| SOURCE
-  SOURCE -->|"ingests into"| CONCEPT
+  SOURCE -->|"ingests into"| DOCUMENT
   ASSISTANT -->|"links to"| SOURCE
 `}
 />
 
-La connaissance appartient à l'Organisation. Une Collection est un conteneur, et
-non un propriétaire, et elle ne décide pas quel Assistant répond à partir d'une
-Source.
+Les connaissances appartiennent à l'Organisation. Une Collection est un
+conteneur, pas un propriétaire, et elle ne décide pas quel Assistant répond à
+partir d'une Source.
 
-C'est le lien Assistant-Source qui le fait. La récupération lit l'ensemble des
-liens, de sorte qu'une source non liée ne répond à personne. Le lien permet
-également un accès direct par Assistant.
+C'est le lien Assistant-to-Source qui le fait. Le module de récupération lit
+l'ensemble des liens ; par conséquent, une Source non liée ne répond à aucun
+Assistant. Le lien confère également un accès direct par Assistant.
 
-La suppression d'un Assistant supprime ses liens et laisse chaque Source en
+La suppression d'un Assistant supprime ses liens et laisse toutes les Sources en
 place.
 
 ## Données de conversation
 
-Une Conversation appartient à l'Assistant qui la sert et suit une session
-Visiteur. Les messages stockent les éléments saisis pour le texte, les
-citations, les boutons, les traces et les autres réponses.
+Une Conversation appartient à un Assistant ou à un Teammate, jamais aux deux.
+Une Conversation d'Assistant suit une session de Visiteur.
 
-L'état de la session enregistre également la livraison de notifications
-proactives. Une notification ne crée pas de message visiteur.
+Une Conversation de collègue est un chat interne d'un Member. Elle n'apparaît ni
+dans Inbox ni dans Insights. Les messages stockent les parties saisies pour le
+texte, les citations, les boutons, les traces et d'autres réponses.
 
-Les mémoires à long terme appartiennent à une organisation et à un sujet SSO
-vérifié. Elles stockent un fait durable, l'intégration, les horodatages et la
-provenance de la conversation source.
+L'état de la session enregistre également la remise proactive des Notifications.
+Une Notification ne crée pas de message de Visiteur.
 
-Le moteur d'exécution limite chaque sujet à 200 mémoires. La suppression retire
-un fait de l'injection future d'invites et des recherches dans la mémoire.
+Les Long-term Memories appartiennent à une seule Organization et à un sujet SSO
+vérifié. Ils stockent un fait durable, un embedding, des horodatages et la
+provenance de la Conversation source.
+
+L'environnement d'exécution limite chaque sujet à 200 mémoires. La suppression
+retire un fait des futures injections de prompt et des recherches dans la
+mémoire.
 
 ## Identifiants programmatiques
 
-Un enregistrement de clé API appartient à une organisation et stocke un hachage
-secret, un rôle, un créateur et un état de révocation. Le secret en texte clair
-n'est pas stocké.
+Un enregistrement de clé API appartient à une Organisation et stocke un hachage
+secret, un Role, le créateur et l'état de révocation. Le secret en clair n'est
+pas stocké.
 
-## Isolement
+## Isolation
 
 L'accès authentifié à la console utilise la sécurité au niveau des lignes, le
-cas échéant. Les chemins d'accès des rôles de service doivent ajouter une limite
-explicite d'organisation.
+cas échéant. Les chemins de Service-role doivent ajouter une limite
+d'Organization explicite.
 
-L'API v1 utilise l'organisation résolue à partir de la clé API. Elle n'accepte
-pas une organisation sélectionnée par l'appelant comme autorité.
+L'API v1 utilise l'Organisation déterminée à partir de la clé API. Elle
+n'accepte pas une Organization sélectionnée par l'appelant comme autorité.

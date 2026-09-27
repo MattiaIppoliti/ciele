@@ -105,7 +105,12 @@ export function LibraryHeader({
                   ? tabHealth(summary.statusCounts)
                   : null;
             return (
-              <TabsTrigger key={slug} value={slug} className="gap-2">
+              <TabsTrigger
+                key={slug}
+                value={slug}
+                href={`/library/${slug}`}
+                className="gap-2"
+              >
                 {KNOWLEDGE_TAB_LABELS[slug]}
                 <span className="text-xs opacity-70">{summary?.total ?? 0}</span>
                 {health && (

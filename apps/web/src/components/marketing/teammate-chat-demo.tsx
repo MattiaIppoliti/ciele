@@ -447,7 +447,7 @@ export function TeammateChatDemo({
             onStop={noop}
             minRows={1}
             maxRows={3}
-            placeholder={`Ask ${TEAMMATE}...`}
+            placeholder={`Ask ${TEAMMATE}…`}
             aria-label="Teammate composer"
           />
         </div>

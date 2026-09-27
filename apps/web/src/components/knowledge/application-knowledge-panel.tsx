@@ -228,6 +228,7 @@ function OAuthSetupDialog({
             <Label htmlFor="application-client-id">OAuth client ID</Label>
             <Input
               id="application-client-id"
+              spellCheck={false}
               value={form.clientId}
               onChange={(event) =>
                 setForm({ ...form, clientId: event.target.value })
@@ -366,7 +367,7 @@ function providerConfigFields(
             });
           }}
         >
-          <SelectTrigger className="w-full"><SelectValue placeholder={scopesLoading ? "Loading…" : "Select a drive or folder"} /></SelectTrigger>
+          <SelectTrigger className="w-full" aria-label="Drive or folder"><SelectValue placeholder={scopesLoading ? "Loading…" : "Select a drive or folder"} /></SelectTrigger>
           <SelectContent>
             {selectable.map((scope) => <SelectItem key={scope.id} value={scope.id}>{scope.kind === "folder" ? `Folder · ${scope.label}` : scope.label}</SelectItem>)}
           </SelectContent>
@@ -394,7 +395,7 @@ function providerConfigFields(
             });
           }}
         >
-          <SelectTrigger className="w-full"><SelectValue placeholder={scopesLoading ? "Loading…" : "Select a scope"} /></SelectTrigger>
+          <SelectTrigger className="w-full" aria-label="My Drive, Shared Drive, or folder"><SelectValue placeholder={scopesLoading ? "Loading…" : "Select a scope"} /></SelectTrigger>
           <SelectContent>
             {selectable.map((scope) => <SelectItem key={scope.id} value={scope.id}>{scope.kind === "folder" ? `Folder · ${scope.label}` : scope.label}</SelectItem>)}
           </SelectContent>
@@ -643,7 +644,7 @@ function ImportDialog({
                 setCadence((value ?? "daily") as "manual" | "daily")
               }
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" aria-label="Synchronization">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -929,7 +930,7 @@ export function ApplicationKnowledgePanel({
                             <Button
                               size="icon-sm"
                               variant="ghost"
-                              title="Configure import"
+                              title="Configure import" aria-label="Configure import"
                               onClick={() => {
                                 setEditingImport(null);
                                 setImportConnection(connection);
@@ -944,7 +945,7 @@ export function ApplicationKnowledgePanel({
                             <Button
                               size="icon-sm"
                               variant="ghost"
-                              title="Reconnect"
+                              title="Reconnect" aria-label="Reconnect"
                               onClick={() =>
                                 connect(definition, connection.id, connection.name)
                               }
@@ -959,7 +960,7 @@ export function ApplicationKnowledgePanel({
                             <Button
                               size="icon-sm"
                               variant="ghost"
-                              title="Delete connection"
+                              title="Delete connection" aria-label="Delete connection"
                               onClick={() =>
                                 startTransition(async () => {
                                   try {
@@ -1070,6 +1071,7 @@ export function ApplicationKnowledgePanel({
                       <Button
                         size="icon-sm"
                         variant="ghost"
+                        aria-label="Edit import"
                         title={
                           item.status === "syncing"
                             ? "Wait for synchronization to finish"
@@ -1121,7 +1123,7 @@ export function ApplicationKnowledgePanel({
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        title="Delete import"
+                        title="Delete import" aria-label="Delete import"
                         onClick={() =>
                           confirmDelete({
                             title: `Delete “${item.name}”?`,

@@ -84,6 +84,7 @@ function stubDb(overrides: Partial<Db>): Db {
     claimDueRecrawlSources: vi.fn().mockResolvedValue([]),
     claimProcessingCrawlSources: vi.fn().mockResolvedValue([]),
     claimBackgroundJobs: vi.fn().mockResolvedValue([]),
+    claimTerminalBackgroundJobs: vi.fn().mockResolvedValue([]),
     getWorkQueueHealth: vi.fn().mockResolvedValue({
       backgroundJobs: {},
       turnEffects: { due: 0, oldestDueAt: null },

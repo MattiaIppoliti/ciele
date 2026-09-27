@@ -34,6 +34,7 @@ import {
   type SortValue,
 } from "@/lib/table-sort";
 import { cn } from "@/lib/utils";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 /**
  * A column header that does something when you click it.
@@ -316,7 +317,7 @@ export function TableColumnHeader({
               <div className="relative">
                 <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
                 <Input
-                  autoFocus
+                  autoFocus={canAutoFocus()}
                   value={filter.value}
                   placeholder={filter.placeholder ?? "Contains…"}
                   onChange={(e) => filter.onChange(e.target.value)}

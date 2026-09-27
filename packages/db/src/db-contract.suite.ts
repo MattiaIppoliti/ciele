@@ -887,15 +887,11 @@ export function describeDbContract(
         });
 
         // Default: no choice, so the runtime keeps its automatic order.
-        expect(await db.getEmbeddingConnectionId(ctx.organizationId)).toBeNull();
         const before = await db.listProviderConnections(ctx.organizationId);
         expect(before.every((c) => !c.preferredForEmbedding)).toBe(true);
 
         // Choosing one marks exactly that connection, for every reader.
         await db.setEmbeddingConnectionId(ctx.organizationId, local.id);
-        expect(await db.getEmbeddingConnectionId(ctx.organizationId)).toBe(
-          local.id
-        );
         const chosen = await db.listProviderConnections(ctx.organizationId);
         expect(
           chosen.filter((c) => c.preferredForEmbedding).map((c) => c.id)
@@ -911,12 +907,12 @@ export function describeDbContract(
         // Deleting the chosen connection returns the org to the automatic
         // order instead of leaving a dangling reference.
         await db.deleteProviderConnection(openai.id);
-        expect(await db.getEmbeddingConnectionId(ctx.organizationId)).toBeNull();
+        const orphaned = await db.listProviderConnections(ctx.organizationId);
+        expect(orphaned.every((c) => !c.preferredForEmbedding)).toBe(true);
 
         // Clearing the choice explicitly is the other way back.
         await db.setEmbeddingConnectionId(ctx.organizationId, local.id);
         await db.setEmbeddingConnectionId(ctx.organizationId, null);
-        expect(await db.getEmbeddingConnectionId(ctx.organizationId)).toBeNull();
         const cleared = await db.listProviderConnections(ctx.organizationId);
         expect(cleared.every((c) => !c.preferredForEmbedding)).toBe(true);
 
@@ -1661,9 +1657,6 @@ export function describeDbContract(
         const runs = await db.listEntitySyncRuns(entity.id);
         expect(runs).toHaveLength(2);
         expect(runs[0].status).toBe("failed"); // newest first
-
-        await db.deleteEntitySyncConfig(entity.id);
-        expect(await db.getEntitySyncConfig(entity.id)).toBeNull();
       });
 
       it("commits a complete sync snapshot once per observed config version", async () => {
@@ -2091,15 +2084,14 @@ export function describeDbContract(
         expect(winner?.leaseToken).toBeTruthy();
         expect(duplicate).toBeTruthy();
 
-        expect(
-          await systemDb.completeConversationTurn({
-            conversationId: conversation.id,
-            requestId: input.requestId,
-            leaseToken: winner!.leaseToken!,
-            assistantMessageId: "answer-1",
-            now: "2026-08-27T00:00:10.000Z",
-          })
-        ).toBe(true);
+        const answer = await systemDb.commitConversationTurn({
+          conversationId: conversation.id,
+          requestId: input.requestId,
+          leaseToken: winner!.leaseToken!,
+          content: [{ type: "text", text: "answer" }],
+          now: "2026-08-27T00:00:10.000Z",
+        });
+        expect(answer).not.toBeNull();
         await expect(
           systemDb.claimConversationTurn({
             ...input,
@@ -2108,7 +2100,7 @@ export function describeDbContract(
           })
         ).resolves.toMatchObject({
           status: "completed",
-          assistantMessageId: "answer-1",
+          assistantMessageId: answer!.id,
         });
       });
 
@@ -3143,77 +3135,7 @@ export function describeDbContract(
       });
     });
 
-    describe("per-page re-crawl override", () => {
-      it("defaults concept schedule to null (inherit) and toggles it", async () => {
-        const assistant = await newAssistant();
-        const collection = await db.createCollection(assistant.id, {
-          name: "Page Schedule Collection",
-        });
-        const concept = await db.createConcept({
-          collectionId: collection.id,
-          sourceId: null,
-          path: "web/page.md",
-          frontmatter: { type: "Web Page", title: "A page" },
-          body: "content",
-        });
-        expect(concept.recrawlSchedule).toBeNull(); // inherit by default
-
-        await db.setConceptRecrawlSchedule(concept.id, "daily");
-        expect((await db.getConcept(concept.id))?.recrawlSchedule).toBe("daily");
-
-        // null clears the override back to inheriting the site schedule.
-        await db.setConceptRecrawlSchedule(concept.id, null);
-        expect((await db.getConcept(concept.id))?.recrawlSchedule).toBeNull();
-      });
-    });
-
-    describe("targeted Concept deletion (atomic crawl replacement)", () => {
-      it("deletes exactly the given Concepts and their chunks, leaving the rest", async () => {
-        const assistant = await newAssistant();
-        const collection = await db.createCollection(assistant.id, {
-          name: "Targeted Delete Collection",
-        });
-        const source = await db.createSource({
-          collectionId: collection.id,
-          name: "Targeted Delete Source",
-          kind: "website",
-          config: { url: "https://x.edu" },
-        });
-        const make = async (path: string) => {
-          const concept = await db.createConcept({
-            collectionId: collection.id,
-            sourceId: source.id,
-            path,
-            frontmatter: { type: "Web Page", title: path },
-            body: "content",
-          });
-          await db.saveChunks([
-            {
-              conceptId: concept.id,
-              collectionId: collection.id,
-              content: `chunk for ${path}`,
-              embedding: null,
-            },
-          ]);
-          return concept;
-        };
-        const keep = await make("web/keep.md");
-        const dropA = await make("web/drop-a.md");
-        const dropB = await make("web/drop-b.md");
-
-        await db.deleteConceptsByIds([dropA.id, dropB.id]);
-
-        const remaining = await db.listConcepts(collection.id);
-        expect(remaining.map((c) => c.id)).toEqual([keep.id]);
-        // Chunks of the deleted Concepts are gone; the survivor's are retained.
-        expect(await db.getConcept(dropA.id)).toBeNull();
-        const results = await db.searchChunks(assistant.id, collection.id, {
-          embedding: null,
-          text: "chunk",
-        });
-        expect(results.every((r) => r.conceptId === keep.id)).toBe(true);
-      });
-
+    describe("per-Source search diversity", () => {
       it("backfills past the per-Source cap from the over-fetch (#801, CYB-14)", async () => {
         // A long Source whose every chunk matches must not turn the cap into
         // a short result: the window it loses goes to the next Source. This
@@ -3267,27 +3189,6 @@ export function describeDbContract(
         }
         expect(bySource.get(long.id)).toBe(3);
         expect(bySource.get(other.id)).toBe(1);
-      });
-
-      it("ignores unknown ids and treats an empty list as a no-op", async () => {
-        const assistant = await newAssistant();
-        const collection = await db.createCollection(assistant.id, {
-          name: "No-op Delete Collection",
-        });
-        const concept = await db.createConcept({
-          collectionId: collection.id,
-          sourceId: null,
-          path: "web/survivor.md",
-          frontmatter: { type: "Web Page", title: "Survivor" },
-          body: "content",
-        });
-
-        await db.deleteConceptsByIds([]);
-        await db.deleteConceptsByIds(["missing-1", "missing-2"]);
-
-        expect((await db.listConcepts(collection.id)).map((c) => c.id)).toEqual([
-          concept.id,
-        ]);
       });
     });
 
@@ -3823,29 +3724,6 @@ export function describeDbContract(
         ]);
         const bounded = await db.listConceptsBySource(source.id, 2);
         expect(bounded.map((c) => c.path)).toEqual(["web/a.md", "web/b.md"]);
-      });
-
-      it("pages active Concepts by a stable id cursor", async () => {
-        const { collection, source } = await newKnowledgeFixture(
-          "file",
-          "Paged graph inventory",
-        );
-        const created = await Promise.all(
-          ["one", "two", "three"].map((name) => db.createConcept({
-            collectionId: collection.id,
-            sourceId: source.id,
-            path: `paged/${name}.md`,
-            frontmatter: { type: "Document", title: name },
-            body: name,
-          })),
-        );
-        const expected = created.map((concept) => concept.id).sort();
-        const first = await db.listConceptPage(collection.id, { limit: 2 });
-        const second = await db.listConceptPage(collection.id, {
-          afterId: first.at(-1)!.id,
-          limit: 2,
-        });
-        expect([...first, ...second].map((concept) => concept.id)).toEqual(expected);
       });
     });
 
@@ -5231,13 +5109,12 @@ export function describeDbContract(
             })
           ).length;
 
-        const [secret, cadence] = await crawl([
+        const [secret] = await crawl([
           "secret.md",
           "cadence.md",
           "plain.md",
         ]);
         await db.setConceptExcluded(secret!.id, true);
-        await db.setConceptRecrawlSchedule(cadence!.id, "daily");
         expect(await retrieved()).toBe(2); // the excluded page is already out
 
         // The next crawl finds the same three pages, plus one that is new.
@@ -5260,7 +5137,6 @@ export function describeDbContract(
         );
         expect(byPath.get("secret.md")?.id).toBe(restaged[0]!.id);
         expect(byPath.get("secret.md")?.excluded).toBe(true);
-        expect(byPath.get("cadence.md")?.recrawlSchedule).toBe("daily");
         // Carried state is per page: the untouched ones keep the defaults.
         expect(byPath.get("plain.md")?.excluded).toBe(false);
         expect(byPath.get("plain.md")?.recrawlSchedule).toBeNull();
@@ -5297,7 +5173,6 @@ export function describeDbContract(
         const afterGap = new Map(
           (await db.listConcepts(collection.id)).map((c) => [c.path, c])
         );
-        expect(afterGap.get("cadence.md")?.recrawlSchedule).toBe("daily"); // never absent
         expect(afterGap.get("secret.md")?.excluded).toBe(false); // absent for a crawl
 
         await db.deleteSource(source.id);
@@ -6127,6 +6002,105 @@ export function describeDbContract(
           staleBefore: "2029-01-01T00:00:00.000Z",
           expiresAt: "2031-01-01T00:00:00.000Z",
         })).resolves.toMatchObject({ status: "claimed" });
+      });
+    });
+
+    describe("turn concurrency leases", () => {
+      // Every test uses its own scope keys: leases are cross-org by design,
+      // so a key shared between tests would count another test's slots.
+      const scope = (name: string) => `contract:${name}:${crypto.randomUUID()}`;
+      const window = () => {
+        const now = new Date();
+        return {
+          now: now.toISOString(),
+          expiresAt: new Date(now.getTime() + 60_000).toISOString(),
+        };
+      };
+
+      it("admits up to the limit and refuses the next turn", async () => {
+        const key = scope("limit");
+        const first = await systemDb.acquireTurnConcurrency({
+          scopes: [{ key, limit: 2 }],
+          ...window(),
+        });
+        const second = await systemDb.acquireTurnConcurrency({
+          scopes: [{ key, limit: 2 }],
+          ...window(),
+        });
+        expect(first).toBeTruthy();
+        expect(second).toBeTruthy();
+        expect(first).not.toBe(second);
+        await expect(
+          systemDb.acquireTurnConcurrency({ scopes: [{ key, limit: 2 }], ...window() })
+        ).resolves.toBeNull();
+
+        await expect(systemDb.releaseTurnConcurrency(first!)).resolves.toBe(true);
+        await expect(systemDb.releaseTurnConcurrency(first!)).resolves.toBe(false);
+        const third = await systemDb.acquireTurnConcurrency({
+          scopes: [{ key, limit: 2 }],
+          ...window(),
+        });
+        expect(third).toBeTruthy();
+        await systemDb.releaseTurnConcurrency(second!);
+        await systemDb.releaseTurnConcurrency(third!);
+      });
+
+      it("takes every scope or none", async () => {
+        const org = scope("org");
+        const platform = scope("platform");
+        const holder = await systemDb.acquireTurnConcurrency({
+          scopes: [{ key: platform, limit: 1 }],
+          ...window(),
+        });
+        expect(holder).toBeTruthy();
+
+        // The platform scope is full, so the org slot must not be taken either.
+        await expect(
+          systemDb.acquireTurnConcurrency({
+            scopes: [
+              { key: org, limit: 1 },
+              { key: platform, limit: 1 },
+            ],
+            ...window(),
+          })
+        ).resolves.toBeNull();
+        const orgOnly = await systemDb.acquireTurnConcurrency({
+          scopes: [{ key: org, limit: 1 }],
+          ...window(),
+        });
+        expect(orgOnly).toBeTruthy();
+        await systemDb.releaseTurnConcurrency(holder!);
+        await systemDb.releaseTurnConcurrency(orgOnly!);
+      });
+
+      it("stops counting a lease once it expires, released or not", async () => {
+        const key = scope("expiry");
+        const start = Date.now();
+        const stale = await systemDb.acquireTurnConcurrency({
+          scopes: [{ key, limit: 1 }],
+          now: new Date(start).toISOString(),
+          expiresAt: new Date(start + 1_000).toISOString(),
+        });
+        expect(stale).toBeTruthy();
+        const later = await systemDb.acquireTurnConcurrency({
+          scopes: [{ key, limit: 1 }],
+          now: new Date(start + 2_000).toISOString(),
+          expiresAt: new Date(start + 60_000).toISOString(),
+        });
+        expect(later).toBeTruthy();
+        await systemDb.releaseTurnConcurrency(later!);
+      });
+
+      it("admits exactly the limit when turns race for the last slots", async () => {
+        const key = scope("race");
+        const leases = await Promise.all(
+          Array.from({ length: 6 }, () =>
+            systemDb.acquireTurnConcurrency({ scopes: [{ key, limit: 3 }], ...window() })
+          )
+        );
+        const admitted = leases.filter((lease): lease is string => lease !== null);
+        expect(admitted).toHaveLength(3);
+        await Promise.all(admitted.map((lease) => systemDb.releaseTurnConcurrency(lease)));
       });
     });
 
@@ -7293,39 +7267,6 @@ export function describeDbContract(
         );
         expect(purged).toBeGreaterThanOrEqual(before.length);
         expect(await db.listObjectAccessEvents(ctx.organizationId)).toEqual([]);
-      });
-
-      it("keeps a durable audit of retention-sweep ticks (#801, CYB-12)", async () => {
-        // The sweep's counts used to live only in the cron response; the audit
-        // must survive the deletion it describes, failures included.
-        await db.recordRetentionSweep({
-          organizationId: ctx.organizationId,
-          policy: "transcripts",
-          retentionDays: 30,
-          cutoff: "2026-08-01T00:00:00.000Z",
-          deleted: 12,
-        });
-        await db.recordRetentionSweep({
-          organizationId: ctx.organizationId,
-          policy: "traces",
-          retentionDays: 7,
-          cutoff: "2026-08-24T00:00:00.000Z",
-          error: "boom",
-        });
-
-        const events = await db.listRetentionSweepEvents(ctx.organizationId);
-        expect(events.length).toBeGreaterThanOrEqual(2);
-        expect(events.find((event) => event.policy === "transcripts")).toMatchObject({
-          retentionDays: 30,
-          deleted: 12,
-          error: null,
-        });
-        // A failed tick is on the audit too, with what stopped it and no count.
-        expect(events.find((event) => event.policy === "traces")).toMatchObject({
-          retentionDays: 7,
-          deleted: null,
-          error: "boom",
-        });
       });
 
       it("reports a completed crawl as pages, attributed to the crawler", async () => {
@@ -9493,9 +9434,12 @@ export function describeDbContract(
           startedAt: "2026-08-27T12:00:00.000Z",
           completedAt: "2026-08-27T12:00:01.000Z",
         });
-        expect(await db.listApplicationSyncRuns(applicationImport.id)).toContainEqual(
-          run
-        );
+        const state = await db.listApplicationOperationalState(ctx.organizationId);
+        // Compared by id and counts: the RPC's jsonb path renders timestamps
+        // as +00:00 where the table read renders .000Z.
+        expect(
+          state.find((item) => item.importId === applicationImport.id)?.lastRun
+        ).toMatchObject({ id: run.id, status: "succeeded", upserted: 1 });
 
         const jobInput = {
           importId: applicationImport.id,

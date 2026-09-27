@@ -58,6 +58,7 @@ export function PlatformPromptCard({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={defaultPrompt}
+        aria-label="Platform system prompt"
         rows={12}
         className="mt-4 resize-y font-mono text-xs"
       />
@@ -66,7 +67,7 @@ export function PlatformPromptCard({
           <span className="text-muted-foreground text-sm">Unsaved changes</span>
         )}
         <Button onClick={save} disabled={isPending || !dirty}>
-          {isPending ? "Saving..." : "Save platform prompt"}
+          {isPending ? "Saving…" : "Save platform prompt"}
         </Button>
       </div>
     </Card>

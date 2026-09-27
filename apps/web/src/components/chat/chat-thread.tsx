@@ -34,6 +34,7 @@ import { toCitationItems } from "@/components/chat/citation-items";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import { SpeechPlayback } from "@/components/chat/speech-playback";
 import type { VoiceEndpoint } from "@/components/chat/voice-input-button";
+import { formatTime } from "@/lib/format";
 
 /**
  * The chat transcript, shared by the console's two chat surfaces (#768): the
@@ -180,7 +181,7 @@ function PartView({
             <p className="truncate text-sm font-medium">Waiting on {host}</p>
             <p className="text-muted-foreground text-xs">
               {part.simulated ? "Simulated turn. " : ""}
-              Until {new Date(part.expiresAt).toLocaleTimeString()}
+              Until {formatTime(part.expiresAt)}
             </p>
           </div>
         </div>
@@ -445,6 +446,7 @@ export function ChatThread({
    * Teammate chat pass one; the widget never sees a simulated request.
    */
   onDecideReview,
+  onDecideApproval,
   /**
    * How a person's own words are drawn, when the surface knows something about
    * them that plain text cannot say. A channel passes a renderer that turns a
@@ -487,7 +489,7 @@ export function ChatThread({
                 <MessageContent>
                   {msg.author && <AuthorLine author={msg.author} />}
                   <MessageBubble>
-                    <MessageBubbleContent className="max-w-[85%] text-primary-foreground [&>span[aria-hidden]]:bg-primary">
+                    <MessageBubbleContent className="max-w-[85%] text-primary-foreground whitespace-pre-wrap [overflow-wrap:anywhere] [&>span[aria-hidden]]:bg-primary">
                       {renderUserText ? renderUserText(msg.text) : msg.text}
                     </MessageBubbleContent>
                   </MessageBubble>
@@ -568,6 +570,7 @@ export function ChatThread({
                             onOpenSupport={onOpenSupport ?? (() => {})}
                             onAcceptReferral={onAcceptReferral}
                         onDecideReview={onDecideReview}
+                        onDecideApproval={onDecideApproval}
                           />
                         );
                       })}

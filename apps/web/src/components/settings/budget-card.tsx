@@ -155,7 +155,7 @@ export function BudgetCard({
             onValueChange={(v) => setMode(v === "block" ? "block" : "notify")}
             disabled={!canManage || isPending}
           >
-            <SelectTrigger className="w-56">
+            <SelectTrigger className="w-56" aria-label="At the limit">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

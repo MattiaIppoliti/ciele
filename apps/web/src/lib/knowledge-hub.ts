@@ -5,7 +5,7 @@ import type {
   OrgKnowledgeSourceSort,
   SourceStatus,
 } from "@agent-hub/core";
-import { DEFAULT_PAGE_SIZE, clampPageSize } from "@/lib/pagination";
+import { clampPageSize } from "@/lib/pagination";
 
 /**
  * Pure derivations for the Library and the assistant editor's Knowledge
@@ -130,9 +130,6 @@ export function sourceTypeLabel(kind: SourceKind): string {
       return "FAQ";
   }
 }
-
-/** The Library's page size when the URL does not name one. */
-export const HUB_PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export interface HubSearchParams {
   q: string;

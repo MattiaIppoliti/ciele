@@ -8,6 +8,6 @@ import type { Improvement } from "./types";
  * walks before it lived here; a pure function of a domain type belongs in the
  * domain package (ADR-0019).
  */
-export function isOpenImprovement(improvement: Improvement): boolean {
+export function isOpenImprovement(improvement: Pick<Improvement, "status">): boolean {
   return improvement.status !== "done" && improvement.status !== "archived";
 }

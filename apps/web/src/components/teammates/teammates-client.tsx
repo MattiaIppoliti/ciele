@@ -173,7 +173,8 @@ function CreateTeammateDialog({
                 key={template.title}
                 type="button"
                 onClick={() => pick(template)}
-                className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
+                aria-pressed={title === template.title}
+className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
                   title === template.title
                     ? "border-primary ring-primary/30 shadow-sm ring-1"
                     : "hover:bg-muted/50"
@@ -249,7 +250,7 @@ function CreateTeammateDialog({
             Cancel
           </Button>
           <Button className="h-10 px-5" onClick={handleCreate} disabled={isPending}>
-            {isPending ? "Creating..." : "Create teammate"}
+            {isPending ? "Creating…" : "Create teammate"}
           </Button>
         </div>
       </DialogContent>
@@ -343,7 +344,8 @@ function CreateChannelDialog({
                     onClick={() =>
                       toggle(teammate.id, teammateIds, setTeammateIds)
                     }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
+                    aria-pressed={teammateIds.includes(teammate.id)}
+className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
                       teammateIds.includes(teammate.id)
                         ? "border-primary bg-primary/5 text-primary"
                         : "hover:bg-muted"
@@ -369,7 +371,8 @@ function CreateChannelDialog({
                     key={member.userId}
                     type="button"
                     onClick={() => toggle(member.userId, memberIds, setMemberIds)}
-                    className={`rounded-full border px-3 py-1.5 text-sm ${
+                    aria-pressed={memberIds.includes(member.userId)}
+className={`rounded-full border px-3 py-1.5 text-sm ${
                       memberIds.includes(member.userId)
                         ? "border-primary bg-primary/5 text-primary"
                         : "hover:bg-muted"
@@ -386,7 +389,7 @@ function CreateChannelDialog({
             disabled={isPending || !name.trim()}
             onClick={handleCreate}
           >
-            {isPending ? "Opening..." : "Open group"}
+            {isPending ? "Opening…" : "Open group"}
           </Button>
         </div>
       </DialogContent>
@@ -581,7 +584,7 @@ export function TeammatesShell({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search teammates and groups..."
+              placeholder="Search teammates and groups…"
               aria-label="Search teammates and groups"
               className="h-9 w-full rounded-lg pl-9"
             />

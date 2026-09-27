@@ -2,10 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ORG, getMockDb, resetMockDb, type Db } from "@agent-hub/db";
 import type { ApplicationConnector } from "./application-connectors";
 import { syncApplicationImport } from "./application-sync";
-import {
-  enqueueApplicationSyncJob,
-  runDueApplicationSyncJobs,
-} from "./jobs";
+import { enqueueApplicationSyncJob, runDueJobs } from "./jobs";
 
 let db: Db;
 
@@ -116,9 +113,9 @@ describe("Application Import synchronization", () => {
       { db, applicationConnectors: { salesforce: connector } }
     );
 
-    const result = await runDueApplicationSyncJobs(
+    const result = await runDueJobs(
       { db, applicationConnectors: { salesforce: connector } },
-      { workerId: "application-sync-test" }
+      { kinds: ["sync_application_import"], workerId: "application-sync-test" }
     );
 
     expect(result).toMatchObject({ claimed: 1, succeeded: 1 });
@@ -181,14 +178,14 @@ describe("Application Import synchronization", () => {
       deps
     );
     await expect(
-      runDueApplicationSyncJobs(deps, { workerId: "bounded-page-1" })
+      runDueJobs(deps, { kinds: ["sync_application_import"], workerId: "bounded-page-1" })
     ).resolves.toMatchObject({ claimed: 1, succeeded: 1 });
     expect(await db.getApplicationImport(applicationImport.id)).toMatchObject({
       status: "syncing",
       checkpoint: { cursor: "page-2" },
     });
     await expect(
-      runDueApplicationSyncJobs(deps, { workerId: "bounded-page-2" })
+      runDueJobs(deps, { kinds: ["sync_application_import"], workerId: "bounded-page-2" })
     ).resolves.toMatchObject({ claimed: 1, succeeded: 1 });
     expect(claims).toBe(2);
     expect(await db.getApplicationImport(applicationImport.id)).toMatchObject({

@@ -59,7 +59,6 @@ import {
 } from "@agent-hub/core";
 import {
   isSupabaseConfigured,
-  raiseDanglingCollectionAlert,
   raiseImprovement,
   type Db,
 } from "@agent-hub/db";
@@ -668,36 +667,6 @@ export async function deleteAssistantAction(id: string) {
   // Cascade lives in the operation (#620); knowledge is org-owned, so only
   // the assistant's links die with it (PRD #726).
   await runOperation(deleteAssistantOp, { id });
-}
-
-/** Deletes a Knowledge Collection (cascade-deletes its Sources and Concepts). */
-export async function deleteCollectionAction(
-  assistantId: string,
-  collectionId: string,
-) {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    async ({ db, organizationId }) => {
-      // Read the name before the row is gone: the Alert below has to say which
-      // Collection disappeared, and after the delete nobody can look it up.
-      const collection = await db.getCollection(collectionId);
-      await db.deleteCollection(collectionId);
-      // A Teammate's Knowledge Scope is a list of ids, not a foreign key, so
-      // this delete can leave one searching something that is gone (#769).
-      // Deleting a Collection has no operation yet, so this is the only path;
-      // move the raise into it when `knowledge.collections.delete` lands, or
-      // /api/v1 and the CLI will delete a Collection and raise nothing.
-      await raiseDanglingCollectionAlert(
-        db,
-        organizationId,
-        collectionId,
-        collection?.name ?? collectionId
-      );
-    },
-  );
 }
 
 /**

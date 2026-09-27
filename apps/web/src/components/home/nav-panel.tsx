@@ -47,25 +47,6 @@ const STAGGER_STEP = 0.038;
 function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
   if (visual === "folder") return <FolderVisual />;
 
-  if (visual === "list") {
-    return (
-      <span className="bg-background/70 mt-3 block rounded-xl border p-2.5 shadow-sm">
-        <span className="text-muted-foreground block text-[0.625rem]">Controls</span>
-        <span className="mt-2 block space-y-2" aria-hidden>
-          {[0.9, 0.65, 0.8, 0.5].map((w, i) => (
-            <span key={i} className="flex items-center gap-2">
-              <span className="bg-muted-foreground/30 size-3 shrink-0 rounded-full" />
-              <span
-                className="bg-muted-foreground/20 h-1.5 rounded-full"
-                style={{ width: `${w * 100}%` }}
-              />
-            </span>
-          ))}
-        </span>
-      </span>
-    );
-  }
-
   return (
     <span
       aria-hidden
@@ -180,21 +161,6 @@ function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
             <rect x="70" y="38" width="20" height="15" rx="3" />
             <path d="M74 38v-4a6 6 0 0 1 12 0v4" />
           </g>
-        </svg>
-      ) : visual === "grid" ? (
-        <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">
-          {/* Faint graph paper with one routed path drawn over it. */}
-          <g strokeWidth="0.5" className="opacity-40">
-            {[0, 20, 40, 60, 80, 100, 120, 140, 160].map((x) => (
-              <line key={x} x1={x} y1="0" x2={x} y2="80" />
-            ))}
-            {[0, 20, 40, 60, 80].map((y) => (
-              <line key={y} x1="0" y1={y} x2="160" y2={y} />
-            ))}
-          </g>
-          <path d="M30 20v25a5 5 0 0 0 5 5h45" strokeWidth="1.5" />
-          <circle cx="30" cy="20" r="3" strokeWidth="1.5" />
-          <circle cx="80" cy="50" r="3" strokeWidth="1.5" />
         </svg>
       ) : (
         <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">

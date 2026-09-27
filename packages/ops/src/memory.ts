@@ -180,22 +180,6 @@ export const writeProjectDocumentOp = defineOperation({
 
 // ── The User layer ──────────────────────────────────────────────────────────
 
-export const getMyMemoryOp = defineOperation({
-  name: "memory.me.get",
-  capability: "member",
-  input: z.object({}),
-  entities: () => [],
-  run: async (ctx): Promise<MemoryDocumentView> => {
-    // No member id in, no member id out. The only document this operation can
-    // name is the caller's.
-    const document = await ctx.db.getMemoryDocument(ctx.organizationId, {
-      scope: "user",
-      memberId: ctx.userId,
-    });
-    return readWithHistory(ctx, document);
-  },
-});
-
 export const writeMyMemoryOp = defineOperation({
   name: "memory.me.write",
   capability: "member",

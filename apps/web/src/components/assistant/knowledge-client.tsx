@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
@@ -116,6 +116,8 @@ import {
   type RowSelection,
 } from "@/components/ui/table-selection";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatDateTime, formatDay } from "@/lib/format";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 type Mode = "websites" | "documents" | "applications" | "faqs" | "concepts";
 
@@ -150,10 +152,10 @@ function StatusBadge({ source }: { source: Source }) {
 /** "Never crawled" / "Last …" plus the next scheduled crawl, if any. */
 function crawlScheduleHint(source: Source): string {
   const last = source.lastCrawledAt
-    ? `Last: ${new Date(source.lastCrawledAt).toLocaleDateString()}`
+    ? `Last: ${formatDay(source.lastCrawledAt)}`
     : "Never crawled";
   const due = nextCrawlDue(source.recrawlSchedule, source.lastCrawledAt);
-  return due ? `${last} · Next: ${new Date(due).toLocaleDateString()}` : last;
+  return due ? `${last} · Next: ${formatDay(due)}` : last;
 }
 
 function Collapsible({ title, children }: { title: string; children: React.ReactNode }) {
@@ -212,14 +214,18 @@ function WebsiteConfigFields({
   crawl4aiAvailable?: boolean;
   apifyAvailable?: boolean;
 }) {
+  const id = useId();
   return (
     <>
       <div className="space-y-2">
-        <Label>
+        <Label htmlFor={`${id}-name`}>
           Name of Knowledge source <span className="text-destructive">*</span>
         </Label>
         <p className="text-muted-foreground text-xs">A generic name that can help you remember it.</p>
         <Input
+          id={`${id}-name`}
+          name="name"
+          autoComplete="off"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value.slice(0, 100) })}
           placeholder="Enter name of website"
@@ -229,12 +235,16 @@ function WebsiteConfigFields({
       </div>
 
       <div className="space-y-2">
-        <Label>
+        <Label htmlFor={`${id}-url`}>
           Knowledge Base URL <span className="text-destructive">*</span>
         </Label>
         <p className="text-muted-foreground text-xs">The URL of the website whose content you want to import.</p>
         <Input
+          id={`${id}-url`}
+          name="url"
           type="url"
+          autoComplete="url"
+          spellCheck={false}
           value={form.url}
           onChange={(e) => setForm({ ...form, url: e.target.value.slice(0, 300) })}
           placeholder="https://example.com"
@@ -289,9 +299,11 @@ function WebsiteConfigFields({
 
       <Collapsible title="Advanced settings">
         <div className="space-y-2">
-          <Label>Positive Search Filters</Label>
+          <Label htmlFor={`${id}-include`}>Positive Search Filters</Label>
           <p className="text-muted-foreground text-xs">Only crawl URLs matching these globs (one per line).</p>
           <Textarea
+            id={`${id}-include`}
+            spellCheck={false}
             value={form.includeGlobs}
             onChange={(e) => setForm({ ...form, includeGlobs: e.target.value.slice(0, 2000) })}
             placeholder={"https://example.com/docs/**"}
@@ -300,9 +312,11 @@ function WebsiteConfigFields({
           <p className="text-muted-foreground text-right text-xs">{(form.includeGlobs ?? "").length}/2000</p>
         </div>
         <div className="space-y-2">
-          <Label>Negative Search Filters</Label>
+          <Label htmlFor={`${id}-exclude`}>Negative Search Filters</Label>
           <p className="text-muted-foreground text-xs">Skip URLs matching these globs (one per line).</p>
           <Textarea
+            id={`${id}-exclude`}
+            spellCheck={false}
             value={form.excludeGlobs}
             onChange={(e) => setForm({ ...form, excludeGlobs: e.target.value.slice(0, 2000) })}
             placeholder={"https://example.com/blog/**"}
@@ -328,11 +342,12 @@ function WebsiteConfigFields({
           </span>
         </label>
         <div className="space-y-2">
-          <Label>Custom page timeout</Label>
+          <Label htmlFor={`${id}-timeout`}>Custom page timeout</Label>
           <p className="text-muted-foreground text-xs">
             Per-page navigation timeout (in seconds). Leave empty to use the crawler default.
           </p>
           <Input
+            id={`${id}-timeout`}
             type="number"
             min={5}
             max={120}
@@ -345,11 +360,12 @@ function WebsiteConfigFields({
           />
         </div>
         <div className="space-y-2">
-          <Label>Wait before content extraction</Label>
+          <Label htmlFor={`${id}-wait`}>Wait before content extraction</Label>
           <p className="text-muted-foreground text-xs">
             Extra seconds to wait for JavaScript pages. Uses a real-browser crawler.
           </p>
           <Input
+            id={`${id}-wait`}
             type="number"
             min={1}
             max={30}
@@ -981,7 +997,7 @@ function WebsitesTab({
                       className="text-muted-foreground mt-0.5 block text-xs"
                       suppressHydrationWarning
                     >
-                      Last update: {new Date(source.updatedAt ?? source.createdAt).toLocaleString()}
+                      Last update: {formatDateTime(source.updatedAt ?? source.createdAt)}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -1349,7 +1365,7 @@ function DocumentsTab({
                   <span className="flex items-center gap-2">
                     <StatusBadge source={source} />
                     <span className="text-muted-foreground text-xs" suppressHydrationWarning>
-                      {new Date(source.createdAt).toLocaleString()}
+                      {formatDateTime(source.createdAt)}
                     </span>
                   </span>
                 </TableCell>
@@ -1640,7 +1656,7 @@ function FaqDialog({
               value={question}
               onChange={(e) => setQuestion(e.target.value.slice(0, 1000))}
               placeholder="Enter the question or title of your content.."
-              autoFocus={!faq}
+              autoFocus={!faq && canAutoFocus()}
               aria-invalid={showErrors && questionMissing}
               className={
                 showErrors && questionMissing
@@ -1660,7 +1676,7 @@ function FaqDialog({
               Answer <span className="text-destructive">*</span>
             </Label>
             <p className="text-muted-foreground text-xs">We recommend adding at least 100 words</p>
-            <div className="rounded-xl border">
+            <div className="rounded-xl border focus-within:border-ring focus-within:ring-ring/50 transition-[border-color,box-shadow] focus-within:ring-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-2 py-1.5">
                 {FAQ_TOOLBAR.map((group, g) => (
                   <span key={g} className="flex items-center gap-0.5">
@@ -1920,8 +1936,14 @@ function FaqsTab({
       );
       return;
     }
-    startTransition(async () => {
-      await deleteConceptAction(assistantId, faq.id);
+    confirmDelete({
+      title: "Delete this FAQ?",
+      description: `“${faq.frontmatter.title ?? "This FAQ"}” and its answer go. This cannot be undone.`,
+      confirmLabel: "Delete FAQ",
+      onConfirm: () =>
+        startTransition(async () => {
+          await deleteConceptAction(assistantId, faq.id);
+        }),
     });
   }
 
@@ -2262,9 +2284,11 @@ function FaqsTab({
 function ConceptCard({ assistantId, concept }: { assistantId: string; concept: Concept }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const provenance = conceptProvenanceView(concept.frontmatter);
   return (
     <div className={`rounded-xl border ${isPending ? "opacity-50" : ""}`}>
+      {confirmDeleteModal}
       <div className="flex items-center gap-2 px-4 py-2.5">
         <button type="button" onClick={() => setOpen(!open)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <ChevronDown className={`size-4 shrink-0 transition-transform ${open ? "" : "-rotate-90"}`} />
@@ -2293,8 +2317,14 @@ function ConceptCard({ assistantId, concept }: { assistantId: string; concept: C
           size="icon-sm"
           aria-label="Delete concept"
           onClick={() =>
-            startTransition(async () => {
-              await deleteConceptAction(assistantId, concept.id);
+            confirmDelete({
+              title: "Delete this concept?",
+              description: `“${concept.frontmatter.title ?? concept.path}” leaves this assistant's knowledge. This cannot be undone.`,
+              confirmLabel: "Delete concept",
+              onConfirm: () =>
+                startTransition(async () => {
+                  await deleteConceptAction(assistantId, concept.id);
+                }),
             })
           }
         >

@@ -12,6 +12,15 @@ import { runDueAnswerVerifications } from "./verifier";
  */
 
 const db = getMockDb();
+/** Claims the current candidates, then releases them so later ticks still see them. */
+async function claimCandidates(limit: number) {
+  const candidates = await db.claimUnverifiedAnswers({
+    limit,
+    staleBefore: new Date().toISOString(),
+  });
+  for (const c of candidates) await db.releaseAnswerVerifierClaim(c.messageId);
+  return candidates;
+}
 
 function verdictModel(verdict: "pass" | "fail", reason = "checked") {
   return new MockLanguageModelV3({
@@ -220,7 +229,7 @@ describe("runDueAnswerVerifications", () => {
     await answered({
       parts: [{ type: "text", action: "refusal", text: "I can't help with that." }],
     });
-    const candidates = await db.listUnverifiedAnswers({ limit: 100 });
+    const candidates = await claimCandidates(100);
     expect(
       candidates.every((c) =>
         (c.content as { action?: string; type?: string }[]).some(
@@ -267,7 +276,7 @@ describe("runDueAnswerVerifications", () => {
     const thumbed = await answered({ parts: [generativeText("thumbed")] });
     await db.setMessageFeedback(thumbed.messageId, -1);
 
-    const candidates = await db.listUnverifiedAnswers({ limit: 10 });
+    const candidates = await claimCandidates(10);
     const ids = candidates.map((c) => c.messageId);
     expect(ids.indexOf(thumbed.messageId)).toBe(0);
     expect(ids.indexOf(escalated.messageId)).toBe(1);

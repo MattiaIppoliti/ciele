@@ -3,6 +3,7 @@ import { ImprovementsBoard } from "@/components/improvements/improvements-board"
 import { requirePageMember } from "@/lib/authz";
 import {
   IMPROVEMENT_LANE_PAGE_SIZE,
+  improvementsUrlStateFromSearchParams,
   type ImprovementLanePages,
 } from "@/lib/improvements";
 import { canEdit } from "@/lib/rbac";
@@ -16,8 +17,13 @@ export const dynamic = "force-dynamic";
  * the same on a small org and silently dropped an old In-Progress item once
  * the Done lane outgrew it.
  */
-export default async function ImprovementsPage() {
+export default async function ImprovementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { organizationId, role, db } = await requirePageMember();
+  const urlState = improvementsUrlStateFromSearchParams(await searchParams);
 
   const [counts, members, ...pages] = await Promise.all([
     db.countImprovementsByStatus(organizationId),
@@ -39,6 +45,7 @@ export default async function ImprovementsPage() {
       counts={counts}
       members={members.map((m) => ({ userId: m.userId, email: m.email }))}
       canEdit={canEdit(role)}
+      initialUrlState={urlState}
     />
   );
 }

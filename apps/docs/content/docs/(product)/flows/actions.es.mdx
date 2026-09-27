@@ -1,160 +1,168 @@
 ---
-title: Acciones de flujo
-description: Selecciona las acciones de respuesta que el tiempo de ejecución actual puede ejecutar.
+title: Acciones del flujo
+description: Selecciona las acciones de respuesta que el entorno de ejecución actual puede ejecutar.
 ---
 
-Las acciones de Message Flow se ejecutan en orden. Las acciones no generativas
-utilizan el contenido configurado sin reescribir el modelo.
+Las acciones del flujo de mensajes se ejecutan en orden. Las acciones no
+generativas utilizan el contenido configurado sin que el modelo lo reescriba.
 
 ## Acciones disponibles
 
 | Acción | Uso del modelo | Comportamiento actual |
 | --- | :---: | --- |
-| Mensaje | No | Emite el texto configurado textualmente. |
-| Botón | No | Añade un botón de enlace o un botón que envía texto al chat. |
-| Buscar conocimiento | Sí | Ejecuta el bucle del agente de conocimiento y devuelve citas. |
-| Seguimientos | Opcional | Utiliza las preguntas configuradas o genera preguntas sugeridas. |
+| Message | No | Emite el texto configurado tal cual. |
+| Button | No | Añade un botón de enlace o un botón que envía texto al chat. |
+| Search knowledge | Sí | Ejecuta el bucle del agente de Knowledge y devuelve citas. |
+| Follow-ups | Opcional | Utiliza las preguntas configuradas o genera preguntas sugeridas. |
 | Iframe | No | Incrusta en el chat el contenido externo configurado. |
-| Solicitud de API | No | Llama a un punto de conexión HTTP, introducido como URL o nombrado en una definición Swagger/OpenAPI, y mapea su resultado. |
-| Enviar correo electrónico | No | Envía correo a través del transporte Resend configurado. |
-| Mejora | No | Crea una mejora para la respuesta correspondiente. |
-| Traspaso | Depende del destino | Continúa una vez en otro Asistente publicado. |
-| Webhook HTTP | No | Se suscribe a un sistema y espera su devolución de llamada. Consulta [HTTP y webhooks](/flows/http). |
-| Respuesta | No | Responde a la solicitud HTTP entrante que inició el flujo. Consulta [HTTP y webhooks](/flows/http). |
-| Conector | No | Ejecuta una acción en ServiceNow, Salesforce, Slack, OneDrive o Google Drive a través de una aplicación conectada. Consulta [Connector](/flows/connector). |
-| Revisión humana | No | Detiene el flujo hasta que un compañero lo apruebe por correo electrónico o Slack. Consulta [Revisión humana](/flows/human-review). |
+| API request | No | Llama a un endpoint HTTP, introducido como URL o nombrado en una definición Swagger/OpenAPI, y mapea su resultado. |
+| Send email | No | Envía un correo electrónico a través del transporte Resend configurado. |
+| Improvement | No | Crea una mejora para la respuesta correspondiente. |
+| Handover | Depende del destino | Continúa una vez en otro asistente publicado. |
+| HTTP webhook | No | Te suscribes a un sistema y esperas su callback. Consulta [HTTP y webhooks](/flows/http). |
+| Response | No | Responde a la solicitud HTTP entrante que inició el flujo. Consulta [HTTP y webhooks](/flows/http). |
+| Connector | No | Ejecuta una acción en ServiceNow, Salesforce, Slack, OneDrive o Google Drive a través de una aplicación conectada. Consulta [Connector](/flows/connector). |
+| Human review | No | Detiene el Flow hasta que un compañero lo apruebe por correo electrónico o Slack. Consulta [Human review](/flows/human-review). |
 
-El flujo de interacción básico integrado también utiliza **Basic reply**. La
-recomendación de Help Desk utiliza una acción de tiempo de ejecución que el
-selector de acciones directas no muestra.
+El flujo de interacción básica integrado también utiliza **Basic reply**. La
+recomendación del Help Desk utiliza una acción en tiempo de ejecución que no
+aparece en el selector de acciones directas.
 
 ## Mensaje
 
 Introduce el texto exacto que Ciele debe enviar. El tiempo de ejecución no
-parafrasea este texto. Las variables de plantilla como `{{user.name}}` o
-`{{review.amount}}` se sustituyen por sus valores.
+parafrasea este texto. Las variables de plantilla, como `{{user.name}}` o
+`{{review.amount}}`, se sustituyen por sus valores.
 
 ## Respuesta básica
 
 La respuesta básica gestiona saludos breves, agradecimientos y despedidas.
-Utiliza una llamada al modelo y no utiliza herramientas de conocimiento, citas
-ni eventos de pensamiento.
+Utiliza una sola llamada al modelo y no emplea herramientas de Knowledge, citas
+ni eventos de Thinking.
 
-Introduce texto de acción fijo para omitir el modelo. El mismo texto proporciona
-la respuesta alternativa cuando no hay ningún modelo de chat disponible.
+Introduce el texto de acción fija para omitir el modelo. El mismo texto sirve
+como alternativa cuando no hay ningún modelo de chat disponible.
 
 ## Buscar en el conocimiento
 
-Search knowledge utiliza las herramientas de Knowledge disponibles hasta el
-límite de pasos de tiempo de ejecución. Puede devolver citas de fuentes con
-nombre y pasos de razonamiento.
+Search knowledge utiliza las herramientas de Knowledge disponibles hasta
+alcanzar el límite de pasos en tiempo de ejecución. Puede devolver citas de
+fuentes con nombre y Thinking Steps.
 
-Utiliza su configuración de consultas sin resolver para derivar el caso al
-servicio de asistencia o crear una mejora.
+Utiliza sus ajustes de unresolved-query para ofrecer la derivación al servicio
+de asistencia o para crear una mejora.
+
+**Search guidelines** indica a la búsqueda qué buscar. **Answering style**
+establece el tono y el formato de esta respuesta. Cada campo admite hasta 10 000
+caracteres.
+
+De forma predeterminada, el estilo de respuesta de la acción se suma al estilo
+del asistente. Selecciona **Override answering style** para sustituir el estilo
+del asistente en esta acción.
 
 ## Botón
 
-Configura una etiqueta y un destino. Un destino puede abrir un enlace o enviar
-texto configurado a la conversación.
+Configura una etiqueta y un destino. Un target puede abrir un enlace o enviar el
+texto configurado a la Conversation.
 
 ## Preguntas de seguimiento
 
-Introduce preguntas de seguimiento fijas o habilita su generación. Las preguntas
+Introduce preguntas de seguimiento fijas o habilita la generación. Las preguntas
 de seguimiento generadas utilizan el modelo rápido configurado.
 
 ## Iframe
 
 Configura el título, el enlace HTTPS, la preferencia de lightbox y la altura. El
-sitio de alojamiento aún puede impedir la incrustación mediante sus encabezados
-de seguridad.
+sitio host aún puede impedir la inserción mediante sus cabeceras de seguridad.
 
 ## Solicitud de API
 
 La solicitud de API realiza una llamada HTTP. Configura la autenticación, los
-encabezados, los parámetros de consulta, el cuerpo JSON y la ruta JSON de
-respuesta, y elige de dónde proviene el punto de conexión en **Endpoint**.
+encabezados, los parámetros de consulta, el cuerpo JSON y la ruta JSON de la
+respuesta, y elige de dónde procede el endpoint en **Endpoint**.
 
-**A URL** recibe un método y una URL de punto de conexión que tú introduces.
+**A URL** recibe un método y una URL de endpoint que tú introduces.
 
 **An operation in a Swagger/OpenAPI definition** recibe un **Swagger URL** y un
-**Operation ID**. Ciele lee la definición cuando se ejecuta la acción y toma de
-ella el método y la URL. El Flow sigue funcionando cuando la API se mueve. La
-definición se lee en cada ejecución y no se almacena en caché. Un parámetro de
-ruta como `{refundId}` se convierte en la variable de plantilla `{{refundId}}`,
-por lo que una acción anterior puede proporcionar su valor. La definición debe
-colocar la API en el mismo sitio que la propia definición. Una definición
-servida desde `docs.example.com` puede tener el nombre `api.example.com`. Se
+**Operation ID**. Ciele lee la definición cuando se ejecuta la acción y extrae
+de ella el método y la URL. El flujo sigue funcionando cuando la API cambia de
+ubicación. La definición se lee en cada ejecución y no se almacena en caché. Un
+parámetro de ruta como `{refundId}` se convierte en la variable de plantilla
+`{{refundId}}`, de modo que una acción anterior puede proporcionar su valor. La
+definición debe situar la API en el mismo sitio que la propia definición. Una
+definición servida desde `docs.example.com` puede llamarse `api.example.com`. Se
 rechaza otro dominio. Esto mantiene la credencial de la acción en el sitio que
-configuraste.
+has configurado.
 
-Las variables de plantilla pueden proporcionar valores del contexto actual.
-Utiliza **Test API** antes de guardar el flujo.
+Las variables de plantilla pueden proporcionar valores del contexto actual. Usa
+**Test API** antes de guardar el Flow.
 
-La acción puede mostrar mensajes separados de éxito y error. Las reglas de
-salida de red se aplican a la URL final y a la URL de Swagger.
+La acción puede mostrar mensajes distintos para indicar si se ha completado con
+éxito o si ha fallado. Las reglas de salida de red se aplican a la URL final y a
+la URL de Swagger.
 
 ## Webhook HTTP
 
-El webhook HTTP se suscribe a un sistema externo, detiene el flujo y continúa
-cuando ese sistema devuelve la llamada. Configura la llamada de suscripción, la
-llamada de cancelación de suscripción, el tiempo de espera y lo que el visitante
-lee mientras tanto.
+El webhook HTTP se suscribe a un sistema externo, detiene el Flow y lo reanuda
+cuando ese sistema realiza una llamada de retorno. Configura la llamada de
+suscripción, la llamada de cancelación de suscripción, el tiempo de espera y lo
+que lee el Visitor mientras tanto.
 
-Pon `{{webhook.callbackUrl}}` en el URI de suscripción o en el cuerpo. Así es
-como el otro sistema sabe dónde responder. El cuerpo de la devolución de llamada
-llega a las acciones posteriores como `{{webhook.body}}`. **Response mapping**
-extrae de él valores con nombre.
+Incluye `{{webhook.callbackUrl}}` en el URI de suscripción o en el cuerpo. Es la
+forma en que el otro sistema sabe dónde responder. El cuerpo de la llamada de
+retorno llega a las acciones posteriores como `{{webhook.body}}`. **Response
+mapping** extrae de él los valores con nombre.
 
-El comportamiento completo, incluido lo que permite la dirección de devolución
-de llamada, se encuentra en [HTTP y webhooks](/flows/http).
+El comportamiento completo, incluido lo que permite la dirección de callback, se
+describe en [HTTP and webhooks](/flows/http).
 
 ## Respuesta
 
 Response responde a la solicitud HTTP entrante que inició el Flow, con un código
-de estado y encabezados y cuerpo opcionales. Solo está disponible en el
+de estado y, de forma opcional, cabeceras y cuerpo. Solo está disponible en el
 desencadenante **On HTTP request** y finaliza el flujo.
 
 Consulta [HTTP y webhooks](/flows/http).
 
 ## Enviar correo electrónico
 
-Configura los destinatarios, el asunto, el cuerpo y el comportamiento de
-respuesta. El tiempo de ejecución utiliza Resend cuando su transporte está
-configurado.
+Configura los destinatarios, el asunto, el cuerpo y el comportamiento de la
+dirección de respuesta. El entorno de ejecución utiliza Resend cuando su
+transporte está configurado.
 
 Cuando el transporte no está configurado, la acción informa de que no ha enviado
-el correo electrónico. No confirma la entrega.
+el correo electrónico. No indica que se haya producido la entrega.
 
 ## Mejora
 
-La acción crea una tarea de mejora. No añade por sí misma texto de respuesta
-visible.
+La acción crea una tarea de tipo Improvement. No añade por sí sola ningún texto
+de respuesta visible.
 
 ## Traspaso
 
-Selecciona otro Asistente de la misma Organización. El destino debe tener una
-Publicación actual.
+Selecciona otro Assistant en la misma Organization. El destino debe tener una
+Publication actual.
 
-Ciele ejecuta una vez el mismo mensaje de visitante a través del asistente de
-destino. No continúa con un segundo traspaso desde ese turno de destino.
+Ciele hace pasar el mismo mensaje del visitante por el asistente de destino una
+sola vez. No procede a un segundo traspaso a partir de ese turno de destino.
 
 ## Conector
 
 Selecciona una aplicación conectada, una conexión y una acción catalogada. El
-Flow almacena el ID de conexión y la acción, nunca una credencial.
+Flow almacena el ID de la conexión y la acción, pero nunca una credencial.
 
 Los resultados se convierten en variables de plantilla `{{connector.*}}` para
 acciones posteriores. Consulta [Connector](/flows/connector) para ver el
-catálogo, los campos y lo que ve el visitante.
+catálogo, los campos y lo que ve el Visitor.
 
 ## Revisión humana
 
 Indica los revisores, el canal y las entradas que rellenan. El flujo se detiene
-en esta acción y continúa solo tras la aprobación. Las entradas del revisor se
+en esta acción y solo continúa tras la aprobación. Las entradas del revisor se
 convierten en variables de plantilla `{{review.*}}`. Consulta
-[Revisión humana](/flows/human-review).
+[Human review](/flows/human-review).
 
 ## Orden de las acciones
 
-Coloca el texto de encuadre antes de Buscar en el conocimiento. Coloca los
-botones y los seguimientos después de la respuesta a la que dan soporte.
+Coloca texto de contexto antes de Search knowledge. Coloca los botones y los
+seguimientos después de la respuesta a la que corresponden.

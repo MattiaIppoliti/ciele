@@ -3,19 +3,19 @@ title: Utilizzo e limiti
 description: Verifica l'utilizzo recente di AI, embedding e scraping rispetto ai limiti attuali.
 ---
 
-Apri **Settings > Usage**. La pagina mostra i dati di utilizzo disponibili
-relativi agli ultimi 30 giorni.
+Apri **Settings > Usage**. La pagina legge gli ultimi 30 giorni di dati di
+utilizzo disponibili.
 
-## Misuratori di utilizzo
+## Indicatori di utilizzo
 
-Ciele misura questi gruppi di risorse separatamente:
+Ciele misura separatamente questi gruppi di risorse:
 
-- Utilizzo del modello IA
-- utilizzo dell'Embedding
+- Uso del modello di IA
+- utilizzo dell'embedding
 - utilizzo dello scraping
 
 La pagina indica se l'operazione è stata finanziata con i fondi della
-piattaforma Ciele o con le credenziali dell'Organizzazione.
+piattaforma Ciele o con le credenziali dell'organizzazione.
 
 I crediti rappresentano il costo stimato in centesimi. Non rappresentano un
 conteggio delle risposte dell'Assistente.
@@ -23,15 +23,54 @@ conteggio delle risposte dell'Assistente.
 ## Limiti
 
 La pagina confronta l'utilizzo corrente con i limiti del piano disponibile. Può
-anche mostrare il budget giornaliero dell'Organizzazione.
+anche mostrare il budget giornaliero dell'organizzazione.
 
-Le righe giornaliere utilizzano il Tempo Coordinato Universale (UTC). Utilizza
-questo limite quando confronti i dati di Ciele con una fattura del provider.
+Le righe giornaliere utilizzano il Coordinated Universal Time (UTC). Utilizza
+questo limite quando confronti i dati di Ciele con la fattura di un provider.
 
-## Analizza l'utilizzo imprevisto
+## Dove sono finiti i crediti
+
+La pagina elenca i soggetti che hanno utilizzato i crediti della finestra:
+Assistants, Teammates, Members, API keys, Routines e Flows.
+
+Ogni scheda riporta il totale per un tipo di spender. Una risposta di un
+Teammate indica il nome del Teammate e anche quello del collega che ha posto la
+domanda. Lo stesso credito risulta quindi presente su due schede. Non sommare le
+schede.
+
+## Crediti di ricarica
+
+Il budget di un piano viene azzerato al termine della relativa finestra
+temporale. I crediti di ricarica costituiscono un pool che la tua Organizzazione
+conserva fino a quando non li spende.
+
+Ciele attinge al pool solo dopo che il plafond di una finestra è stato
+completamente utilizzato. A quel punto le risposte proseguono invece di
+interrompersi. Quando anche il pool è vuoto, viene nuovamente visualizzato il
+consueto messaggio di superamento del limite.
+
+Acquista un pack in **Settings > Billing**. Un pacchetto costa sempre di più per
+ogni credito rispetto al tuo piano. Se acquisti un pack ogni mese, passare a un
+piano superiore è meno costoso.
+
+## Altre attività
+
+Alcune operazioni non comportano alcun costo in crediti: una richiesta API in
+uscita da un Flow, un'email, un'esecuzione di un Flow in entrata, un callback di
+un webhook.
+
+La pagina conta queste operazioni. Non ne indica il prezzo. Il conteggio ti
+mostra che un Flow effettua molte chiamate in uscita, cosa che nessuna altra
+pagina evidenzia.
+
+Ogni riga indica anche l'esito. **Refused by Ciele** significa che il nostro
+criterio ha interrotto la chiamata. **Failed** significa che l'ha interrotta
+l'altro sistema o la rete.
+
+## Indaga sull'uso imprevisto
 
 1. Seleziona il contatore interessato.
 2. Identifica il giorno UTC e la fonte di finanziamento.
 3. Esamina l'attività dell'Assistente per lo stesso periodo.
-4. Controlla la connessione del provider selezionato.
-5. Modifica il budget dell'organizzazione quando autorizzato.
+4. Verifica la connessione del provider selezionato.
+5. Modifica il budget dell'organizzazione quando sei autorizzato a farlo.

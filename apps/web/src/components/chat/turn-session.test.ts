@@ -99,6 +99,38 @@ describe("runTurn", () => {
     expect(outcome.status === "failed" && outcome.error.message).toBe("Only editors can do this");
   });
 
+  it("renders a route 429 as the overload fallback, with the server's wait", async () => {
+    const view = surface([{ role: "user", text: "hi" }, emptyBot()]);
+    const outcome = await runTurn<Bot>({
+      request: () =>
+        Promise.resolve(
+          Response.json(
+            { error: "rate_limited", retryAfterMs: 9_000 },
+            { status: 429, headers: { "Retry-After": "9" } }
+          )
+        ),
+      update: view.update,
+    });
+    expect(outcome).toEqual({ status: "throttled", retryAfterMs: 9_000 });
+    const bot = view.messages.at(-1) as Bot;
+    expect(bot.parts).toEqual([
+      {
+        type: "text",
+        action: "fallback",
+        text: "You're sending messages faster than the assistant can answer. Please wait about 9 seconds and try again.",
+      },
+    ]);
+  });
+
+  it("falls back to Retry-After when a 429 has no JSON body", async () => {
+    const outcome = await runTurn<Bot>({
+      request: () =>
+        Promise.resolve(new Response("slow down", { status: 429, headers: { "Retry-After": "4" } })),
+      update: () => {},
+    });
+    expect(outcome).toEqual({ status: "throttled", retryAfterMs: 4_000 });
+  });
+
   it("uses a default failure message when the surface gives none", async () => {
     const outcome = await runTurn<Bot>({
       request: () => Promise.resolve(new Response(null, { status: 500 })),

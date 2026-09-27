@@ -1151,8 +1151,8 @@ export const listDocumentMemoriesOp = defineOperation({
   run: async (ctx, input): Promise<KnowledgeMemory[]> => {
     const { source } = await requireSource(ctx, input.sourceId);
     await requireLinkedSource(ctx, source, input.assistantId);
-    // `forgottenAt: null` *is* the liveness rule, the filter form of
-    // `isKnowledgeMemoryLive`. Nothing here re-checks the column by hand.
+    // `forgottenAt: null` *is* the liveness rule, the filter form of the
+    // `forgotten_at is null` column rule. Nothing here re-checks it by hand.
     return ctx.db.table("knowledgeMemories").list({
       sourceId: input.sourceId,
       documentPath: input.documentPath,

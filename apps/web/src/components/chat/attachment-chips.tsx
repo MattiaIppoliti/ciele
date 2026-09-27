@@ -4,6 +4,7 @@ import { FileText, Upload, X } from "lucide-react";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
 import { isImageAttachment } from "@/lib/attachments";
 import type { AttachmentEntry } from "@/components/chat/use-attachments";
+import { formatCount } from "@/lib/format";
 
 /**
  * The strip above the composer: what is attached, and therefore what is still
@@ -48,7 +49,7 @@ export function AttachmentChips({
               {entry.state === "reading"
                 ? "reading…"
                 : entry.state === "ready"
-                  ? `${entry.chars.toLocaleString()} characters`
+                  ? `${formatCount(entry.chars)} characters`
                   : entry.message}
             </span>
             <button

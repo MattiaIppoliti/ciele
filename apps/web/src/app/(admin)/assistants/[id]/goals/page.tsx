@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { ASSISTANT_GOAL_CAP } from "@agent-hub/core";
 import { Compass } from "lucide-react";
 import { GoalsClient } from "@/components/assistant/goals-client";
-import { SectionHero } from "@/components/settings/section-hero";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit } from "@/lib/rbac";
 import { getAssistantCached } from "../get-assistant";
@@ -15,7 +15,7 @@ export default async function GoalsPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
-      <SectionHero
+      <SectionHeading
         icon={Compass}
         title="Goals"
         description="Key questions, re-checked on a schedule. A failing goal raises an Alert."

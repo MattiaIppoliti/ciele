@@ -26,6 +26,7 @@ import {
   flowsAgentThreadAction,
 } from "@/app/(admin)/assistants/[id]/flows/flows-agent-actions";
 import { patchLastBot, runTurn } from "@/components/chat/turn-session";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * The Flows Agent panel (#838): the Teammate chat, docked in the workspace's
@@ -333,7 +334,7 @@ export function FlowsAgentPanel({
                           {entry.title || "Conversation"}
                         </span>
                         <span className="text-muted-foreground text-xs">
-                          {new Date(entry.updatedAt).toLocaleString()}
+                          {formatDateTime(entry.updatedAt)}
                         </span>
                       </button>
                     </li>

@@ -5,7 +5,7 @@ import {
   PREFLIGHT_FIXTURE_CATALOGUE,
   PREFLIGHT_LABELLED_CASES,
 } from "@agent-hub/core/testing";
-import { prefilterFaqs, runPreflightShadow } from "./preflight-shadow";
+import { prefilterFaqs, runPreflight } from "./preflight-shadow";
 import type { ResolvedDecisionModel } from "./decision-model";
 import type { UsageEvent } from "./types";
 
@@ -51,15 +51,15 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("runPreflightShadow", () => {
+describe("runPreflight, the shadow record", () => {
   it("records nothing at all when no key resolves", async () => {
     const { usage, recordUsage } = collector();
-    const record = await runPreflightShadow({
+    const record = (await runPreflight({
       message: labelled.message,
       catalogue: PREFLIGHT_FIXTURE_CATALOGUE,
       resolved: null,
       recordUsage,
-    });
+    }))?.record ?? null;
     // Deliberately null rather than a `no_model` failure: a deployment with the
     // flag on and no key would otherwise stamp the same row on every trace.
     expect(record).toBeNull();
@@ -68,12 +68,12 @@ describe("runPreflightShadow", () => {
 
   it("answers every question and meters the call once", async () => {
     const { usage, recordUsage } = collector();
-    const record = await runPreflightShadow({
+    const record = (await runPreflight({
       message: labelled.message,
       catalogue: PREFLIGHT_FIXTURE_CATALOGUE,
       resolved: answering,
       recordUsage,
-    });
+    }))?.record ?? null;
 
     expect(record?.failure).toBeUndefined();
     expect(record?.answers.map((a) => a.id)).toEqual([...PREFLIGHT_QUESTION_IDS]);
@@ -86,12 +86,12 @@ describe("runPreflightShadow", () => {
 
   it("reports the confidence the provider sent, unrounded", async () => {
     const { recordUsage } = collector();
-    const record = await runPreflightShadow({
+    const record = (await runPreflight({
       message: labelled.message,
       catalogue: PREFLIGHT_FIXTURE_CATALOGUE,
       resolved: answering,
       recordUsage,
-    });
+    }))?.record ?? null;
     for (const [id, value] of Object.entries(labelled.confidence)) {
       expect(record?.answers.find((a) => a.id === id)?.confidence).toBe(value);
     }
@@ -99,14 +99,14 @@ describe("runPreflightShadow", () => {
 
   it("records a failure, and no ledger row, when the backend throws", async () => {
     const { usage, recordUsage } = collector();
-    const record = await runPreflightShadow({
+    const record = (await runPreflight({
       message: labelled.message,
       catalogue: PREFLIGHT_FIXTURE_CATALOGUE,
       resolved: resolvedWith(async () => {
         throw new Error("gateway said no");
       }),
       recordUsage,
-    });
+    }))?.record ?? null;
     expect(record?.failure).toEqual({ reason: "error", message: "gateway said no" });
     expect(record?.answers).toEqual([]);
     expect(usage).toEqual([]);
@@ -121,13 +121,13 @@ describe("runPreflightShadow", () => {
    */
   it("gives up on a backend that never answers, and says it timed out", async () => {
     const { usage, recordUsage } = collector();
-    const record = await runPreflightShadow({
+    const record = (await runPreflight({
       message: labelled.message,
       catalogue: PREFLIGHT_FIXTURE_CATALOGUE,
       resolved: resolvedWith(() => new Promise(() => {})),
       timeoutMs: 20,
       recordUsage,
-    });
+    }))?.record ?? null;
     expect(record?.failure).toEqual({ reason: "timeout", afterMs: 20 });
     expect(record?.answers).toEqual([]);
     expect(usage).toEqual([]);
@@ -136,7 +136,7 @@ describe("runPreflightShadow", () => {
   it("asks the other six questions when the FAQ catalogue will not fit, and says so", async () => {
     const { recordUsage } = collector();
     let askedFaqOptions = 0;
-    const record = await runPreflightShadow({
+    const record = (await runPreflight({
       message: labelled.message,
       catalogue: {
         ...PREFLIGHT_FIXTURE_CATALOGUE,
@@ -167,7 +167,7 @@ describe("runPreflightShadow", () => {
         };
       }),
       recordUsage,
-    });
+    }))?.record ?? null;
 
     // 254 FAQs plus the `none` exit: the cap, not one over it.
     expect(record?.failure).toBeUndefined();

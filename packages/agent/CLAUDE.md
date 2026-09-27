@@ -59,6 +59,13 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
 - `untrusted-content.ts`: the per-turn prompt fence and the persistence signal scanner (#801);
   `tools.ts`, `api-catalog-tools.ts`, `memories.ts` and `agent-learnings.ts` consume it.
 - `host.ts`: the host ports above. `ee.ts`, the enterprise capability registry.
+- Capacity, two modules that answer different questions. `rate-limit-retry.ts` is the middleware
+  `buildModel` puts on every hosted model: a 429/529 is retried with full jitter and, once the budget
+  is spent, becomes a `ProviderRateLimitedError`, which is deliberately not an `APICallError` so the
+  AI SDK's own retry does not multiply it. `turn-concurrency.ts` is the slot a turn takes before its
+  first model call (Postgres leases, shared across instances) and **fails open**, unlike
+  `spend-admission.ts`. Both surface on the wire as an `error` event carrying `code`, which is the
+  only thing a client may read as "try again in a few seconds".
 
 ## Rules
 

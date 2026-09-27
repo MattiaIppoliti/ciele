@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Phone } from "lucide-react";
 import { AssistantHelpDesks } from "@/components/assistant/assistant-help-desks";
-import { SectionHero } from "@/components/settings/section-hero";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit } from "@/lib/rbac";
 import { getAssistantCached } from "../get-assistant";
@@ -15,7 +15,7 @@ export default async function HelpDesksPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
-      <SectionHero
+      <SectionHeading
         icon={Phone}
         title="Help desks"
         description="Configure escalation behavior and select which help desks this assistant can recommend."

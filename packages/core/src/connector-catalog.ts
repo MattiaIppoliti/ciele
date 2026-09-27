@@ -37,10 +37,6 @@ export const CONNECTOR_PROVIDER_LABELS: Record<ConnectorProvider, string> = {
   google_drive: "Google Drive",
 };
 
-export function isConnectorProvider(value: unknown): value is ConnectorProvider {
-  return (CONNECTOR_PROVIDERS as readonly unknown[]).includes(value);
-}
-
 /**
  * Providers whose Connections are personal grants (ADR-0021): a Drive action
  * runs under one Member's identity, so it may run only where that Member is

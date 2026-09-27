@@ -154,7 +154,7 @@ export function TimelineSection({
     <section ref={ref} className="relative pt-2 pb-12 pl-10 last:pb-4">
       <span
         aria-hidden
-        className={`absolute top-[13px] left-0 size-3 rounded-full border-2 transition-all duration-300 ${
+        className={`absolute top-[13px] left-0 size-3 rounded-full border-2 transition-[transform,border-color] duration-300 motion-reduce:transition-none ${
           active
             ? "border-foreground bg-background scale-110"
             : "border-muted-foreground/35 bg-background"

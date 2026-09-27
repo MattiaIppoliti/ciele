@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getMockDb, DEMO_ORG, type Db } from "@agent-hub/db";
-import { runIngestJob } from "./jobs";
+import { enqueueIngestJob, runDueJobs, type IngestJob } from "./jobs";
 
 /**
  * Issue #190 (spec #189): re-ingesting a file/text Source replaces its
@@ -8,12 +8,13 @@ import { runIngestJob } from "./jobs";
  * website-crawl finalizer already has, a failed re-ingest keeps last-good
  * knowledge, a successful one leaves exactly the new set. These tests assert
  * observable Source status + resulting Concepts at the Ingestion Job seam
- * (`runIngestJob`, the path both the re-process and retry actions enqueue),
+ * (`enqueueIngestJob` + the `ingest_source` drain, the path both the re-process
+ * and retry actions take),
  * never internal call ordering. Failures are injected at the existing
  * persist/embed boundary (`db.saveChunks`). Runs offline: no Provider
  * Connections → naive enrichment + lexical embeddings.
  */
-describe("runIngestJob, atomic knowledge replacement on re-ingest", () => {
+describe("ingest_source job, atomic knowledge replacement on re-ingest", () => {
   async function seed(db: Db, name: string) {
     const assistant = await db.createAssistant(DEMO_ORG.id, { title: name });
     const collection = await db.createCollection(assistant.id, { name });
@@ -44,6 +45,15 @@ describe("runIngestJob, atomic knowledge replacement on re-ingest", () => {
     rawText: "Fresh content for the replacement set.",
   });
 
+  /** Enqueue then drain, the way the actions and cron do. Each call drains an
+   *  hour later than the last so a retry backoff from a prior failure is due. */
+  let clock = Date.now();
+  async function runIngest(db: Db, job: IngestJob) {
+    await enqueueIngestJob(job, { db });
+    clock += 60 * 60_000;
+    await runDueJobs({ db }, { kinds: ["ingest_source"], now: new Date(clock) });
+  }
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -55,7 +65,7 @@ describe("runIngestJob, atomic knowledge replacement on re-ingest", () => {
 
     vi.spyOn(db, "saveChunks").mockRejectedValue(new Error("embeddings provider timeout"));
 
-    await runIngestJob(jobFor(assistantId, collectionId, source.id), { db });
+    await runIngest(db, jobFor(assistantId, collectionId, source.id));
 
     const stored = await db.getSource(source.id);
     expect(stored?.status).toBe("error");
@@ -90,7 +100,7 @@ describe("runIngestJob, atomic knowledge replacement on re-ingest", () => {
       return realSaveChunks(chunks);
     });
 
-    await runIngestJob(jobFor(assistantId, collectionId, source.id), { db });
+    await runIngest(db, jobFor(assistantId, collectionId, source.id));
 
     expect((await db.getSource(source.id))?.status).toBe("ready");
     const concepts = await db.listConcepts(collectionId);
@@ -108,7 +118,7 @@ describe("runIngestJob, atomic knowledge replacement on re-ingest", () => {
     const prior = await seedPriorConcept(db, collectionId, source.id, "docs/previous.md");
     const debris = await seedPriorConcept(db, collectionId, source.id, "docs/partial-new.md");
 
-    await runIngestJob(jobFor(assistantId, collectionId, source.id), { db });
+    await runIngest(db, jobFor(assistantId, collectionId, source.id));
 
     expect((await db.getSource(source.id))?.status).toBe("ready");
     const concepts = await db.listConcepts(collectionId);
@@ -121,7 +131,7 @@ describe("runIngestJob, atomic knowledge replacement on re-ingest", () => {
     const db = getMockDb();
     const { assistantId, collectionId, source } = await seed(db, "reingest-initial");
 
-    await runIngestJob(jobFor(assistantId, collectionId, source.id), { db });
+    await runIngest(db, jobFor(assistantId, collectionId, source.id));
 
     expect((await db.getSource(source.id))?.status).toBe("ready");
     const concepts = await db.listConcepts(collectionId);
@@ -137,10 +147,10 @@ describe("runIngestJob, atomic knowledge replacement on re-ingest", () => {
     const failing = vi
       .spyOn(db, "saveChunks")
       .mockRejectedValue(new Error("embeddings provider timeout"));
-    await runIngestJob(jobFor(assistantId, collectionId, source.id), { db });
+    await runIngest(db, jobFor(assistantId, collectionId, source.id));
     failing.mockRestore();
 
-    await runIngestJob(jobFor(assistantId, collectionId, source.id), { db });
+    await runIngest(db, jobFor(assistantId, collectionId, source.id));
 
     expect((await db.getSource(source.id))?.status).toBe("ready");
     const alerts = await db.listAlerts(DEMO_ORG.id);

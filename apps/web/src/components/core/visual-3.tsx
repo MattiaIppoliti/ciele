@@ -102,7 +102,7 @@ const EllipseGradient: React.FC<{ color: string }> = ({ color }) => {
 
 const Layer3: React.FC<{ color: string }> = ({ color }) => {
   return (
-    <div className="absolute inset-0 z-[6] flex translate-y-full items-center justify-center opacity-0 transition-all duration-500 ease-[cubic-bezier(0.6,0.6,0,1)] group-hover/animated-card:translate-y-0 group-hover/animated-card:opacity-100">
+    <div className="absolute inset-0 z-[6] flex translate-y-full items-center justify-center opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.6,0.6,0,1)] motion-reduce:transition-none group-hover/animated-card:translate-y-0 group-hover/animated-card:opacity-100">
       <svg
         width="356"
         height="180"
@@ -210,7 +210,7 @@ const Layer4: React.FC<LayerProps> = ({ color, secondaryColor, hovered }) => {
             fill={hovered ? rect.hoverFill : rect.fill}
             rx="2"
             ry="2"
-            className="transition-all duration-500 ease-[cubic-bezier(0.6,0.6,0,1)]"
+            className="transition-[height,y,fill] duration-500 ease-[cubic-bezier(0.6,0.6,0,1)] motion-reduce:transition-none"
           />
         ))}
       </svg>

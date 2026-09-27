@@ -194,13 +194,20 @@ export function ApiKeysClient({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Key name (e.g. CI deploy)"
+            aria-label="Key name"
+            autoComplete="off"
             className="w-64"
             required
           />
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button type="button" variant="outline" className="capitalize" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="capitalize"
+                  aria-label={`Role: ${role}`}
+                />
               }
             >
               {role}

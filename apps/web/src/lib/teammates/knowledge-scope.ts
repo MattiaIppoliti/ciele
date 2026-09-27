@@ -1,6 +1,5 @@
 import type { SourceKind } from "@agent-hub/core";
 import {
-  KNOWLEDGE_TAB_KINDS,
   KNOWLEDGE_TAB_SLUGS,
   knowledgeTabForKind,
   type KnowledgeTabSlug,
@@ -60,14 +59,6 @@ export function groupScopeSources(
   return groups;
 }
 
-/** Whether a Library item's kind belongs on a given tab. */
-export function scopeSourceOnTab(
-  source: ScopeSource,
-  tab: KnowledgeTabSlug
-): boolean {
-  return KNOWLEDGE_TAB_KINDS[tab].includes(source.kind);
-}
-
 /** Case-insensitive name filter, the picker's search box. */
 export function filterByName<T extends { name: string }>(
   items: readonly T[],
@@ -125,37 +116,4 @@ export function knowledgeScopeSummary(scope: {
     return "Nothing selected: it answers from its role and says so when a question needs a source.";
   }
   return `Searches ${parts.join(" and ")}, and cites what it finds.`;
-}
-
-/**
- * The roster card's one line about what a Teammate knows.
- *
- * Names, not counts, because the card is where a Member recognises the Teammate
- * they meant. Deleted entries are still named as deleted: an id in a scope with
- * no row behind it is exactly the state the dangling-scope Alert exists for
- * (#769), and silently dropping it from this line would hide it.
- */
-export function knowledgeScopeLabel(
-  scope: { collectionIds: readonly string[]; sourceIds: readonly string[] },
-  known: {
-    collections: readonly ScopeCollection[];
-    sources: readonly ScopeSource[];
-  }
-): string {
-  const names = [
-    ...scope.collectionIds.map(
-      (id) =>
-        known.collections.find((collection) => collection.id === id)?.name ??
-        "a deleted collection"
-    ),
-    ...scope.sourceIds.map(
-      (id) =>
-        known.sources.find((source) => source.id === id)?.name ??
-        "a deleted library item"
-    ),
-  ];
-  if (names.length === 0) {
-    return "Answers from its persona only, no knowledge in scope";
-  }
-  return `Knows: ${names.join(", ")}`;
 }

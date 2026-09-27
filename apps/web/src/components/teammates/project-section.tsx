@@ -112,7 +112,7 @@ export function ProjectSection({
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
               {attached === null
-                ? "Reading its decisions..."
+                ? "Reading its decisions…"
                 : attached.decisions === 0
                   ? "No decisions recorded yet."
                   : `${attached.decisions} decision${

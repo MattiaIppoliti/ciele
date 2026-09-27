@@ -1,21 +1,25 @@
 ---
 title: Datenmodell
-description: Verstehen Sie die Beziehungen zwischen Hauptmandant, Konfiguration, Wissen und Konversation.
+description: Machen Sie sich mit den Beziehungen zwischen dem Hauptmandanten, der Konfiguration, dem Knowledge und den Conversations vertraut.
 ---
 
-## Mandantenbesitz
+## Tenant-Eigentümerschaft
 
-Eine Organisation ist der primäre Mandant. Mitglieder treten einer Organisation
-mit einer Rolle bei.
+Eine Organization ist der primäre Tenant. Mitglieder treten einer Organization
+mit einer Role bei.
 
-Zu den Datensätzen im Besitz der Organisation gehören Assistenten, Entitäten,
-Speicher, Helpdesks, Provider-Verbindungen, API-Schlüssel, Skills,
-Verbesserungen, Ziele, Warnungen und Nutzungsdatensätze.
+Zu den Datensätzen im Besitz der Organisation gehören Assistants, Teammates,
+Entities, Memories, Help Desks, Provider Connections, API Keys, Skills,
+Improvements, Goals, Alerts und Usage Records.
+
+Zu den Teammate-Datensätzen gehören Projects, Memory-Dokumente, Routines und
+Group-Threads. Ein Group Thread speichert seine eigenen Nachrichten, nicht
+Conversations.
 
 ## Konfiguration des Assistenten
 
 <Mermaid
-  title="Ein Assistant ist für sein Routing und seine Snapshots verantwortlich"
+  title="Ein Assistant ist Eigentümer seines Routings und seiner Snapshots"
   chart={`
 flowchart TB
   ORG["Organization"]
@@ -28,78 +32,80 @@ flowchart TB
 `}
 />
 
-Eine Veröffentlichung speichert einen unveränderlichen Snapshot der
-Assistenten-Konfiguration. Entwurfsdatensätze bleiben nach der Veröffentlichung
+Eine Publication speichert einen unveränderlichen Snapshot der
+Assistant-Konfiguration. Draft-Datensätze bleiben auch nach der Publication
 bearbeitbar.
 
-Ein Flow speichert einen Trigger, eine Bedingungskonfiguration und geordnete
-Aktionen. Die Laufzeitvalidierung erzwingt gültige Trigger-Aktions-Paare.
+Ein Flow speichert einen Trigger, eine Konfiguration der Bedingungen sowie
+geordnete Actions. Die Laufzeitvalidierung stellt sicher, dass nur gültige Paare
+aus Trigger und Aktion verwendet werden.
 
-Ein Assistant wählt Entity-Schemata für seine nächste Veröffentlichung aus. Der
+Ein Assistant wählt Entity-Schemas für seine nächste Publication aus. Der
 Schema-Snapshot steuert die generierten Tools, während jede Abfrage die
-aktuellen Datensätze ausliest.
+aktuellen Records liest.
 
-Gemeinsam genutzte Entitäten stellen allgemeine Organisationsdaten zur
-Verfügung. Entitäten im Benutzerbereich benennen ein Identitätsattribut für die
-servergebundene Filterung.
+Shared Entities stellen gemeinsame Daten der Organisation bereit. User-scoped
+Entities geben ein Identitätsattribut für die serverseitige Filterung an.
 
-## Wissensbesitz
+## Eigentum an Wissen
 
 <Mermaid
-  title="Ein Link, nicht eine Collection, bestimmt, was ein Assistant sucht"
+  title="Ein Link, nicht eine Collection, bestimmt, wonach ein Assistant sucht."
   chart={`
 flowchart TB
   ORG["Organization"]
   ASSISTANT["Assistant"]
   COLLECTION["Knowledge Collection"]
   SOURCE["Source"]
-  CONCEPT["Concept"]
+  DOCUMENT["Document"]
   ORG -->|"owns"| COLLECTION
   COLLECTION -->|"holds"| SOURCE
-  SOURCE -->|"ingests into"| CONCEPT
+  SOURCE -->|"ingests into"| DOCUMENT
   ASSISTANT -->|"links to"| SOURCE
 `}
 />
 
-Das Wissen gehört der Organisation. Eine Collection ist ein Container, kein
+Wissen gehört der Organisation. Eine Collection ist ein Container, kein
 Eigentümer, und sie entscheidet nicht, welcher Assistant aus einer Source
 antwortet.
 
-Die Verknüpfung zwischen Assistant und Quelle bestimmt dies. Retrieval liest den
-Link-Satz, sodass eine nicht verknüpfte Quelle niemandem antwortet. Die
-Verknüpfung ermöglicht zudem den direkten Zugriff für jeden einzelnen
-Assistenten.
+Die Verknüpfung „Assistant-to-Source“ bestimmt dies. Retrieval liest den
+Link-Satz aus, sodass eine nicht verknüpfte Source niemandem antwortet. Die
+Verknüpfung umfasst außerdem den Direct-Zugriff pro Assistenten.
 
-Wenn Sie einen Assistenten löschen, werden seine Verknüpfungen aufgehoben, aber
-alle Quellen bleiben erhalten.
+Wenn Sie einen Assistant löschen, werden dessen Verknüpfungen entfernt, während
+alle Sources unverändert bestehen bleiben.
 
-## Gesprächsdaten
+## Konversationsdaten
 
-Eine Konversation gehört zum bedienenden Assistenten und verfolgt eine
-Besuchersitzung. In Messages werden eingegebene Teile für Text, Zitate,
-Schaltflächen, Traces und andere Antworten gespeichert.
+Eine Conversation gehört zu einem Assistant oder zu einem Teammate, niemals zu
+beiden. Eine Assistant Conversation verfolgt eine einzelne Visitor-Sitzung.
 
-Der Sitzungsstatus zeichnet auch die proaktive Zustellung von Benachrichtigungen
-auf. Eine Benachrichtigung erzeugt keine Besuchernachricht.
+Eine Teammate Conversation ist ein interner Chat eines Members. Sie wird weder
+in der Inbox noch in den Insights angezeigt. Messages speichern eingegebene
+Elemente für Text, Zitate, Buttons, Traces und andere Antworten.
 
-Langzeit-Speicher gehören zu einer Organisation und zu einem verifizierten
-SSO-Benutzer. Sie speichern eine dauerhafte Tatsache, eine Einbettung,
-Zeitstempel und die Herkunft der Quell-Konversation.
+Der Session-Status erfasst auch die proaktive Zustellung von Notifications. Eine
+Notification erzeugt keine Visitor-Nachricht.
 
-Die Laufzeit begrenzt jedes Subjekt auf 200 Speicher. Durch das Löschen wird ein
-Fakt aus zukünftiger Prompt-Injektion und Speichersuchen entfernt.
+Langzeiterinnerungen gehören zu einer Organisation und einem verifizierten
+SSO-Subject. Sie speichern eine dauerhafte Tatsache, eine Einbettung,
+Zeitstempel und die Herkunft der Quell-Conversation.
+
+Die Runtime begrenzt jeden Subject auf 200 Memories. Durch das Löschen wird eine
+Information aus zukünftigen Prompt-Injektionen und Memory-Suchen entfernt.
 
 ## Programmatische Anmeldeinformationen
 
 Ein API-Schlüssel-Datensatz gehört zu einer Organisation und speichert einen
-geheimen Hash, eine Rolle, den Ersteller und den Widerrufsstatus. Das
-Klartext-Geheimnis wird nicht gespeichert.
+geheimen Hash, die Role, den Creator sowie den Revocation-Status. Das im
+Klartext vorliegende Secret wird nicht gespeichert.
 
-## Isolierung
+## Isolation
 
-Der authentifizierte Konsolenzugriff verwendet gegebenenfalls Sicherheit auf
-Zeilenebene. Pfade für Service-Rollen müssen eine explizite Organisationsgrenze
-hinzufügen.
+Der authentifizierte Zugriff auf die Konsole verwendet gegebenenfalls
+Row-Level-Security. Service-Rollen-Pfade müssen eine explizite
+Organization-Grenze hinzufügen.
 
-API v1 verwendet die Organisation, die aus dem API-Schlüssel aufgelöst wurde.
-Sie akzeptiert keine vom Aufrufer ausgewählte Organisation als Autorität.
+API v1 verwendet die anhand des API-Schlüssels aufgelöste Organization. Es
+akzeptiert keine vom Aufrufer ausgewählte Organization als Autorität.

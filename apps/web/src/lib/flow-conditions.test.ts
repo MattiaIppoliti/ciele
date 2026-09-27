@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FlowCondition } from "@agent-hub/core";
 import {
-  availableFlowConditionKinds,
   cleanFlowConditions,
   FLOW_CONDITION_KINDS,
   FLOW_URL_OPERATORS,
@@ -22,7 +21,7 @@ import {
 
 describe("flowConditionPicker", () => {
   it("offers Conversation context, URL and Schedule for a message trigger", () => {
-    expect(availableFlowConditionKinds("message")).toEqual([
+    expect(flowConditionPicker("message").map((m) => m.kind)).toEqual([
       "conversation_context",
       "url",
       "schedule",
@@ -30,7 +29,10 @@ describe("flowConditionPicker", () => {
   });
 
   it("drops Conversation context for a trigger no message starts", () => {
-    expect(availableFlowConditionKinds("page_load")).toEqual(["url", "schedule"]);
+    expect(flowConditionPicker("page_load").map((m) => m.kind)).toEqual([
+      "url",
+      "schedule",
+    ]);
     expect(
       flowConditionPicker("page_load").some(
         (meta) => meta.kind === "conversation_context"
@@ -58,7 +60,6 @@ describe("flowConditionPicker", () => {
   });
 
   it("offers nothing until a trigger is chosen", () => {
-    expect(availableFlowConditionKinds(null)).toEqual([]);
     expect(flowConditionPicker(null)).toEqual([]);
   });
 });

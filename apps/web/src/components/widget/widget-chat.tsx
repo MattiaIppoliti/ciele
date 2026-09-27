@@ -1399,7 +1399,7 @@ export function WidgetChat({
             placeholder={
               composerClosed
                 ? "This message doesn't take replies"
-                : `Ask ${nickname}...`
+                : `Ask ${nickname}…`
             }
             aria-label={`Ask ${nickname}`}
           />

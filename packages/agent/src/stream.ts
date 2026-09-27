@@ -5,7 +5,7 @@ import type {
   TurnTerminalStatus,
 } from "@agent-hub/core";
 import type { ChannelEvent, ChatReplyPart } from "./types";
-import type { RuntimeEvent } from "./types";
+import type { RuntimeEvent, TurnOverloadCode } from "./types";
 import { parsePartialJson } from "./partial-json";
 import { stripNonProps } from "./reply-components";
 
@@ -361,6 +361,45 @@ export async function* decodeRuntimeEvents<E = RuntimeEvent>(
   if (buffer.trim()) yield JSON.parse(buffer) as E;
 }
 
+/** A turn that failed for capacity: what to call it and how long to wait. */
+export interface TurnOverload {
+  code: TurnOverloadCode;
+  retryAfterMs: number;
+}
+
+/** Without a hint from the server, "a few seconds" means this. */
+const DEFAULT_OVERLOAD_RETRY_MS = 5_000;
+
+function overloadOf(
+  event: Extract<RuntimeEvent, { type: "error" }>
+): TurnOverload | undefined {
+  if (!event.code) return undefined;
+  return {
+    code: event.code,
+    retryAfterMs: event.retryAfterMs ?? DEFAULT_OVERLOAD_RETRY_MS,
+  };
+}
+
+/**
+ * The Visitor-facing text for a turn the server could not take on right now.
+ * Seconds are rounded up and clamped so a 200ms hint does not read "0 seconds"
+ * and a provider's 45s does not read like a promise to the second.
+ *
+ * `throttled` is about the Visitor's own pace, so it says so; the other two
+ * are about the assistant's load, and blaming the Visitor for those would be
+ * wrong.
+ */
+export function overloadErrorText(overload: TurnOverload): string {
+  const seconds = Math.min(60, Math.max(3, Math.ceil(overload.retryAfterMs / 1000)));
+  return overload.code === "throttled"
+    ? `You're sending messages faster than the assistant can answer. Please wait about ${seconds} seconds and try again.`
+    : `The assistant is handling a lot of conversations right now. Please try again in about ${seconds} seconds.`;
+}
+
+export function defaultErrorText(_message: string, overload?: TurnOverload): string {
+  return overload ? overloadErrorText(overload) : "Something went wrong, please try again.";
+}
+
 export interface ConsumeTurnOptions<T extends TurnView> {
   /** Applies a functional update to the in-flight bot message. */
   update: (fn: (view: T) => T) => void;
@@ -368,8 +407,12 @@ export interface ConsumeTurnOptions<T extends TurnView> {
   onStart?: (start: { conversationId: string }) => void;
   /** Fires on the final `done` event with the persisted ids. */
   onDone?: (done: { conversationId: string; messageId: string | null }) => void;
-  /** Renders the fallback text for an `error` event (default: generic). */
-  errorText?: (message: string) => string;
+  /**
+   * Renders the fallback text for an `error` event. The second argument is set
+   * when the turn failed for capacity (`code` on the event), so a surface can
+   * tell "busy, try again" from "broken". Default: {@link defaultErrorText}.
+   */
+  errorText?: (message: string, overload?: TurnOverload) => string;
   /**
    * Every event, raw, before it is applied. A tap for what the fold does not
    * model and the view does not need to carry: a surface playing a cue when a
@@ -448,8 +491,7 @@ function applyTurnEvent<T extends TurnView>(
   state: TurnApplyState
 ): void {
   const { update, onStart, onDone } = options;
-  const errorText =
-    options.errorText ?? (() => "Something went wrong, please try again.");
+  const errorText = options.errorText ?? defaultErrorText;
   const streamingProps = state.streamingProps;
   // The shared fold first, for every event, then the streaming-only extras.
   update((view) => ({ ...view, ...foldTraceEvent(view, event) }));
@@ -568,7 +610,7 @@ function applyTurnEvent<T extends TurnView>(
           {
             type: "text",
             action: "fallback",
-            text: errorText(event.message),
+            text: errorText(event.message, overloadOf(event)),
           } as ChatReplyPart,
         ],
       }));
@@ -596,7 +638,7 @@ export interface ConsumeChannelOptions<T extends TurnView> {
     turns: number;
     capped: ChainCapReason | null;
   }) => void;
-  errorText?: (message: string) => string;
+  errorText?: (message: string, overload?: TurnOverload) => string;
   /** Every turn event, raw, before it is applied; see `ConsumeTurnOptions.onEvent`. */
   onEvent?: (event: RuntimeEvent) => void;
 }

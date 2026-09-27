@@ -10,21 +10,26 @@ Utilisez **Settings** pour les domaines suivants :
 
 - **General** pour les informations relatives à l'organisation.
 - **Members** pour les membres, les invitations et les rôles.
-- **AI Providers** pour les connexions aux fournisseurs.
-- **Data** pour les schémas d'entités et les enregistrements importés.
-- **API Keys** pour les identifiants d'authentification programmatiques.
+- **AI Provider** pour les connexions aux fournisseurs.
+- **Crawling** pour le crawler de site web de l'Organisation, par exemple son
+  propre compte Apify.
+- **API Keys** pour les identifiants programmatiques.
 - **Usage** pour l'utilisation récente des ressources et les limites.
 - **Billing** pour le forfait géré et le compte de facturation.
 
+Les schémas d'entités et les enregistrements importés se trouvent à l'adresse
+`/settings/data`. Les onglets **Settings** n'affichent pas cette page. Voir
+[Entities and Records](/data/entities-and-records).
+
 L'édition auto-hébergée n'affiche pas de catalogue d'abonnements gérés.
 
-Les rôles des membres et les rôles des clés API utilisent la même hiérarchie
-d'autorisations. Une clé API ne peut pas recevoir un Role supérieur à celui de
-son créateur.
+Les rôles des membres et les rôles des clés API utilisent la même hiérarchie des
+autorisations. Une clé API ne peut pas recevoir un Role supérieur à celui de son
+créateur.
 
-La zone **AI Providers** contrôle également la
-[mémoire à long terme](/data/long-term-memory). Il comprend des outils
-permettant d'effacer les mémoires stockées d'un Visitor.
+La zone **AI Provider** contrôle également la
+[mémoire à long terme](/data/long-term-memory). Il inclut des outils permettant
+d'effacer les mémoires stockées d'un Visitor.
 
 L'onglet **General** comporte deux paramètres de conservation : l'un pour les
 traces de raisonnement et l'autre pour les conversations complètes. Voir
@@ -32,8 +37,9 @@ traces de raisonnement et l'autre pour les conversations complètes. Voir
 
 ## Apparence personnelle
 
-Ouvrez le menu du compte, sélectionnez **Personal settings**, puis **Theme**.
-Choisissez **Light**, **Dark** ou **System**, puis sélectionnez la palette
-**Midnight** ou **Mist Blue**. Ces préférences s'appliquent à votre console et
-sont enregistrées dans ce navigateur. Le widget publié conserve son style
-Assistant.
+Dans la barre latérale, développez **Settings** et sélectionnez **Personal
+settings**, puis **Theme**. Si vous ne voyez pas **Settings**, ouvrez le menu du
+compte et sélectionnez **Profile**, puis **Theme**. Choisissez **Light**,
+**Dark** ou **System**, puis sélectionnez la palette **Midnight** ou **Mist
+Blue**. Ces préférences s'appliquent à votre console et sont enregistrées dans
+ce navigateur. Le widget publié conserve son style Assistant.

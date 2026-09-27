@@ -201,10 +201,11 @@ describe("study response conversation turn", () => {
       subjectId: "study-owner",
       collectionId: null,
     });
-    await db.updateConversationSessionState(
-      conversation.id,
-      session.snapshot(),
-    );
+    await db.mergeConversationSessionState({
+      id: conversation.id,
+      expectedVersion: conversation.sessionVersion,
+      patch: session.snapshot(),
+    });
     await db.appendMessage({
       conversationId: conversation.id,
       role: "assistant",

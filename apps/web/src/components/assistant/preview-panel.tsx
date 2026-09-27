@@ -81,6 +81,7 @@ import type { ChatModelOption } from "@agent-hub/agent/client";
 import type { EscalationHelpDesk } from "@/lib/escalation-desks";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
 import { MessageSquareText } from "lucide-react";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 /** The transcript's message shapes live with the renderer they belong to. */
 type BotMsg = ChatBotMsg;
@@ -177,6 +178,7 @@ export function PreviewPanel({
     })();
   }
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   // Full screen grows the panel out of the flow (see use-fullscreen-grow).
@@ -755,6 +757,7 @@ export function PreviewPanel({
 
   return (
     <StudyProvider replies={messages.flatMap(message => message.role === "bot" ? [message.parts] : [])} endpoint={assistant.tools?.studyMode?.enabled ? "/api/preview/chat" : undefined} request={{ assistantId: assistant.id, conversationId }} disabled={pending}>
+    {confirmDeleteModal}
     <RailPanel
       title="Preview"
       labels={{
@@ -911,13 +914,21 @@ export function PreviewPanel({
                         </button>
                         <button
                           type="button"
-                          onClick={async () => {
+                          onClick={() => {
                             controls.close();
-                            await deleteConversationAction(conversation.id);
-                            setConversations((prev) =>
-                              prev.filter((x) => x.id !== conversation.id)
-                            );
-                            if (conversationId === conversation.id) newChat();
+                            confirmDelete({
+                              title: "Delete this conversation?",
+                              description:
+                                "The test conversation and its messages go. This cannot be undone.",
+                              confirmLabel: "Delete conversation",
+                              onConfirm: async () => {
+                                await deleteConversationAction(conversation.id);
+                                setConversations((prev) =>
+                                  prev.filter((x) => x.id !== conversation.id)
+                                );
+                                if (conversationId === conversation.id) newChat();
+                              },
+                            });
                           }}
                           className="hover:text-destructive flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-xs text-foreground outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                         >
@@ -1120,7 +1131,7 @@ export function PreviewPanel({
               }}
               minRows={1}
               maxRows={6}
-              placeholder={`Ask ${nickname}...`}
+              placeholder={`Ask ${nickname}…`}
               aria-label={`Ask ${nickname}`}
               loading={pending}
               onStop={stop}

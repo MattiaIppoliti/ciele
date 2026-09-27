@@ -30,12 +30,7 @@ import {
   enqueueDueEntitySyncs,
   enqueueDueApplicationSyncs,
   type RunDueJobsResult,
-  runDueEntitySyncJobs,
-  runDueApplicationSyncJobs,
-  runDueIngestJobs,
-  runDueAgentMemoryJobs,
-  runDueMemoryPromotionJobs,
-  runDueProposalJobs,
+  runDueJobs,
 } from "./jobs";
 
 export interface ScheduledDeps {
@@ -249,26 +244,54 @@ export async function finalizeDueCrawls(
       batchApplicationSyncs,
     ] = await Promise.all([
       drainTurnEffects(db, { limit: 50, now: options.now }),
-      runDueIngestJobs({ db }, { workerId, limit: 10, now: options.now }),
-      runDueProposalJobs(
+      runDueJobs(
         { db },
-        { workerId: `${workerId}-proposals`, limit: 10, now: options.now },
+        { kinds: ["ingest_source"], workerId, limit: 10, now: options.now },
       ),
-      runDueMemoryPromotionJobs(
+      runDueJobs(
         { db },
-        { workerId: `${workerId}-memories`, limit: 20, now: options.now },
+        {
+          kinds: ["draft_improvement_proposal"],
+          workerId: `${workerId}-proposals`,
+          limit: 10,
+          now: options.now,
+        },
       ),
-      runDueAgentMemoryJobs(
+      runDueJobs(
         { db },
-        { workerId: `${workerId}-agent-memory`, limit: 20, now: options.now },
+        {
+          kinds: ["promote_memories"],
+          workerId: `${workerId}-memories`,
+          limit: 20,
+          now: options.now,
+        },
       ),
-      runDueEntitySyncJobs(
+      runDueJobs(
         { db },
-        { workerId: `${workerId}-entity-sync`, limit: 10, now: options.now },
+        {
+          kinds: ["distill_agent_memory"],
+          workerId: `${workerId}-agent-memory`,
+          limit: 20,
+          now: options.now,
+        },
       ),
-      runDueApplicationSyncJobs(
+      runDueJobs(
         { db },
-        { workerId: `${workerId}-application-sync`, limit: 10, now: options.now },
+        {
+          kinds: ["sync_entity_records"],
+          workerId: `${workerId}-entity-sync`,
+          limit: 10,
+          now: options.now,
+        },
+      ),
+      runDueJobs(
+        { db },
+        {
+          kinds: ["sync_application_import"],
+          workerId: `${workerId}-application-sync`,
+          limit: 10,
+          now: options.now,
+        },
       ),
     ]);
     addEffects(batchEffects);

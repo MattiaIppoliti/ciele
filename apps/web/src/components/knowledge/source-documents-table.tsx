@@ -324,7 +324,7 @@ export function SourceDocumentsTable({
                     )}
                   </TableOpenCell>
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground tabular-nums">
                   {memoryCounts[document.path] ?? 0}
                 </TableCell>
                 <TableCell>

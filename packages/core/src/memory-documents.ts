@@ -1,7 +1,6 @@
 import type {
   MemoryDocument,
   MemoryDocumentEntry,
-  MemoryDocumentOwner,
   MemoryDocumentScope,
   Project,
 } from "./types";
@@ -41,15 +40,6 @@ export function memoryDocumentScope(
   if (row.memberId) return "user";
   if (row.teammateId) return "agent";
   return "project";
-}
-
-/** The owner as the single argument reads and writes take. */
-export function memoryDocumentOwner(
-  row: Pick<MemoryDocument, "memberId" | "teammateId" | "projectId">
-): MemoryDocumentOwner {
-  if (row.memberId) return { scope: "user", memberId: row.memberId };
-  if (row.teammateId) return { scope: "agent", teammateId: row.teammateId };
-  return { scope: "project", projectId: row.projectId ?? "" };
 }
 
 /**

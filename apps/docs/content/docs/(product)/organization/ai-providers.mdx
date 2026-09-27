@@ -26,6 +26,11 @@ Select a Platform plan or API-key connection for published traffic.
 5. Enter the required provider credential.
 6. Save the connection.
 
+## Other connection types
+
+- **OpenAI-compatible endpoints** connect a server such as Ollama, vLLM, or LM Studio. Enter its base URL and models. The API key is optional.
+- **Keyless enterprise auth** connects Google Vertex, Anthropic, or Azure OpenAI through workload identity federation. Ciele stores no static key for these connections.
+
 Ciele encrypts the credential before storage. Do not reuse a personal key that has unrelated permissions.
 
 ElevenLabs connections supply voice models. Select these models in the Assistant's **General** settings under **Voice mode**.

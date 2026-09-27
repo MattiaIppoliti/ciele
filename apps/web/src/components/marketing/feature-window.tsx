@@ -21,20 +21,8 @@ import {
    the home page owns the fully interactive version of this mock; only the
    Knowledge mock's view tabs respond to clicks. */
 
-/* The one animated shot: the widget preview playing its scripted turn. Split
-   into its own chunk, it pulls the real chat components (Thinking panel,
-   markdown, shiki) that the rest of the marketing bundle never needs. */
-const AssistantPreviewDemo = dynamic(
-  () =>
-    import("./assistant-preview-demo").then(
-      (module) => module.AssistantPreviewDemo
-    ),
-  { ssr: false, loading: () => <div className="bg-muted/40 h-full" /> }
-);
-
-/* The other animated shot: a Teammate answering a colleague. Its own chunk for
-   the same reason, and separate from the widget demo because the two are
-   different surfaces, not two skins of one. */
+/* The one animated shot: a Teammate answering a colleague. Its own chunk, it
+   pulls the real chat components the rest of the marketing bundle never needs. */
 const TeammateChatDemo = dynamic(
   () => import("./teammate-chat-demo").then((module) => module.TeammateChatDemo),
   { ssr: false, loading: () => <div className="bg-muted/40 h-full" /> }
@@ -79,19 +67,17 @@ export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: strin
   const activeGlobal: string | null =
     shot.kind === "pane" ? shot.view : shot.kind === "teammates" ? "Teammates" : null;
   const activeSetup =
-    shot.kind === "preview"
-      ? "preview"
-      : shot.kind === "mock"
-        ? { knowledge: "knowledge", flows: "flows", publishing: "publish", authentication: "authentication", alerts: null, developers: "flows" }[
-            shot.mock
-          ]
-        : null;
+    shot.kind === "mock"
+      ? { knowledge: "knowledge", flows: "flows", publishing: "publish", authentication: "authentication", alerts: null, developers: "flows" }[
+          shot.mock
+        ]
+      : null;
 
   const Mock = shot.kind === "mock" ? MOCKS[shot.mock] : null;
 
-  // The animated preview keeps more of itself: its lower third is where the
+  // The animated chat keeps more of itself: its lower third is where the
   // answer streams, so the dissolve starts later than on the static shots.
-  const animated = shot.kind === "preview" || shot.kind === "teammates";
+  const animated = shot.kind === "teammates";
   const flows = shot.kind === "mock" && shot.mock === "flows";
   const maskStop = animated ? "80%" : flows ? "76%" : "62%";
 
@@ -163,9 +149,7 @@ export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: strin
           <span className="font-medium">{label}</span>
         </header>
         <div className="min-h-0 flex-1 overflow-hidden">
-          {shot.kind === "preview" ? (
-            <AssistantPreviewDemo />
-          ) : shot.kind === "teammates" ? (
+          {shot.kind === "teammates" ? (
             <TeammateChatDemo />
           ) : Mock ? (
             <Mock />

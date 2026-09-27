@@ -116,8 +116,6 @@ export const FLOW_ACTIONS: Record<FlowAction, FlowActionMeta> = {
   },
 };
 
-export const FLOW_ACTION_KEYS = Object.keys(FLOW_ACTIONS) as FlowAction[];
-
 /**
  * Tiles offered in the builder's "Add an action" grid for a message-triggered
  * flow, in display order. A proactive trigger has its own single action (see

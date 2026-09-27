@@ -6,6 +6,7 @@ import { ExtractMemoriesButton } from "@/components/knowledge/extract-memories-b
 import { SourceDocumentsTable } from "@/components/knowledge/source-documents-table";
 import { SourceHeaderMenu } from "@/components/knowledge/source-header-menu";
 import type { SourceDocumentsSearchParams } from "@/lib/source-documents";
+import { formatDay } from "@/lib/format";
 
 /**
  * Level 2 of the knowledge drill-down (#927): one Source's Documents.
@@ -68,7 +69,7 @@ export function SourceDocumentsView({
                 third time the same fact is stated. */}
             <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-sm">
               <span suppressHydrationWarning>
-                Added {new Date(source.createdAt).toLocaleDateString()}
+                Added {formatDay(source.createdAt)}
               </span>
               {source.config.url && (
                 <a

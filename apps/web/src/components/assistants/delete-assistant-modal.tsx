@@ -10,6 +10,7 @@ import { MorphingModal } from "@/components/motion/morphing-modal";
 import { isRedirectError } from "@/components/ui/confirm-delete-modal";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import { Button, Input, Label } from "@agent-hub/ui";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 /**
  * Three-step delete confirmation (warning -> name -> slide) in the same
@@ -124,7 +125,7 @@ export function DeleteAssistantModal({
             <Label htmlFor="confirm-assistant-name">Assistant name</Label>
             <Input
               id="confirm-assistant-name"
-              autoFocus
+              autoFocus={canAutoFocus()}
               value={typedName}
               onChange={(event) => setTypedName(event.target.value)}
               placeholder={assistantTitle}

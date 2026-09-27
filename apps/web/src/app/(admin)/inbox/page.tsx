@@ -2,8 +2,8 @@ import { InboxClient } from "@/components/inbox/inbox-client";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit, canManageMembers, canViewReasoning } from "@/lib/rbac";
 import {
-  defaultInboxFilters,
   inboxQueryFromFilters,
+  inboxUrlStateFromSearchParams,
 } from "@/lib/inbox/conversation-filter";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,11 @@ export default async function InboxPage({
   const params = await searchParams;
   const requested =
     typeof params.conversation === "string" ? params.conversation : null;
+  // The filters and search a shared link carries, so the first page the server
+  // reads is already the filtered one rather than a default the client redoes.
+  const { q, ...initialFilters } = inboxUrlStateFromSearchParams(params);
   const initialQuery = inboxQueryFromFilters(
-    { ...defaultInboxFilters(), search: "" },
+    { ...initialFilters, search: q },
     { limit: 50 },
   );
 
@@ -44,6 +47,8 @@ export default async function InboxPage({
   return (
     <InboxClient
       initialPage={{ ...page, conversations }}
+      initialFilters={initialFilters}
+      initialSearch={q}
       assistants={assistants.map((a) => ({ id: a.id, title: a.title }))}
       canEdit={canEdit(role)}
       canViewReasoning={canViewReasoning(role)}

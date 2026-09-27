@@ -4,7 +4,6 @@ import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import type { OperationContext, OperationPorts } from "./operation";
 import {
   deleteCrawlerConnectionOp,
-  getCrawlerConnectionOp,
   setCrawlerConnectionOp,
 } from "./crawlers";
 
@@ -68,7 +67,7 @@ describe("crawler connection operations", () => {
     );
 
     expect(result.error).toBe("nope");
-    expect(await getCrawlerConnectionOp.run(ctx(), { provider: "apify" })).toBeNull();
+    expect(await getMockDb().getCrawlerConnection(DEMO_ORG.id, "apify")).toBeNull();
   });
 
   it("disconnects", async () => {
@@ -77,6 +76,6 @@ describe("crawler connection operations", () => {
       token: "apify_api_abcd1234",
     });
     await deleteCrawlerConnectionOp.run(ctx(), { provider: "apify" });
-    expect(await getCrawlerConnectionOp.run(ctx(), { provider: "apify" })).toBeNull();
+    expect(await getMockDb().getCrawlerConnection(DEMO_ORG.id, "apify")).toBeNull();
   });
 });

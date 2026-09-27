@@ -1,18 +1,18 @@
 ---
 title: Configuration
-description: Configurez les origines, les secrets, les comptes, les modèles, l'e-mail et les travailleurs optionnels.
+description: Configurez les origines, les secrets, les comptes, les modèles, l'e-mail et les workers optionnels.
 ---
 
-Le script de démarrage écrit `deploy/.env`. Utilisez `deploy/.env.example` comme
+Le script de bootstrap écrit `deploy/.env`. Utilisez `deploy/.env.example` comme
 référence de variable actuelle.
 
 ## Origines publiques
 
 Définissez `PUBLIC_URL` sur l'origine publique de l'application. Définissez
 `SUPABASE_PUBLIC_URL` sur l'origine de la passerelle de base de données
-accessible par le navigateur.
+accessible depuis le navigateur.
 
-Recompilez l'application après avoir modifié `SUPABASE_PUBLIC_URL`. Le paquet du
+Recompilez l'application après avoir modifié `SUPABASE_PUBLIC_URL`. Le bundle du
 navigateur contient cette valeur au moment de la compilation.
 
 ```bash
@@ -22,11 +22,11 @@ docker compose -f deploy/docker-compose.yml up -d --build app
 ## Secrets générés
 
 La pile nécessite Postgres, JSON Web Token, un rôle de service, le chiffrement
-de l'application et des secrets cron. Laissez le script de démarrage les
+de l'application et des secrets cron. Laissez le script de bootstrap les
 générer.
 
-Ne modifiez pas `JWT_SECRET`, `ANON_KEY` ou `SERVICE_ROLE_KEY` indépendamment.
-Ils forment une configuration de signature.
+Ne modifiez pas `JWT_SECRET`, `ANON_KEY` ou `SERVICE_ROLE_KEY` de manière
+indépendante. Ils constituent une configuration de signature unique.
 
 ## Comptes et e-mail
 
@@ -36,21 +36,51 @@ Le premier compte devient le propriétaire de l'organisation. Définissez
 Sans configuration SMTP, `MAILER_AUTOCONFIRM=true` confirme automatiquement les
 nouveaux comptes.
 
-Les actions d'e-mail d'exécution utilisent `RESEND_API_KEY` et `EMAIL_FROM`.
+Les actions d'e-mail au runtime utilisent `RESEND_API_KEY` et `EMAIL_FROM`.
 Elles signalent un résultat non configuré lorsque l'une ou l'autre de ces
 valeurs est absente.
 
-## Points de terminaison de modèle
+## Points de terminaison des modèles
 
-Configurez les clés de fournisseur Anthropic, OpenAI ou Google. Vous pouvez
-également configurer un point de terminaison de chat et d'intégration compatible
+Configurez les clés des fournisseurs Anthropic, OpenAI ou Google. Vous pouvez
+également configurer un point de terminaison de chat et d'embedding compatible
 avec OpenAI.
 
-La recherche de connaissances utilise la correspondance lexicale lorsqu'aucun
-modèle d'intégration n'est disponible.
+La recherche dans la base de connaissances utilise la correspondance lexicale
+lorsqu'aucun modèle d'embedding n'est disponible.
+
+## Capacité de chat
+
+Chaque tour de conversation qui appelle un modèle utilise un slot avant son
+premier appel de modèle. Les slots se trouvent dans la base de données ; par
+conséquent, toutes les instances de l'application partagent un même compteur.
+
+| Variable | Valeur par défaut | Effet |
+|---|---|---|
+| `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | Nombre maximal de tours exécutés simultanément pour une même Organisation. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Le nombre maximal de tours exécutés simultanément sur une seule clé de fournisseur de plateforme. |
+| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Durée pendant laquelle un tour attend un slot libre, en millisecondes. La valeur maximale est `60000`. |
+
+Définissez une limite à `0` ou à `off` pour la supprimer. Laissez la variable
+vide pour utiliser la valeur par défaut.
+
+Un tour qui n'obtient aucun slot pendant le temps d'attente n'est pas exécuté.
+Le widget indique au Visiteur de réessayer dans quelques secondes.
+
+Lorsqu'un fournisseur refuse une requête en raison de sa limite de taux,
+l'application tente à nouveau la requête après un délai aléatoire. Le widget
+affiche le même message si toutes les tentatives échouent.
+
+Le widget limite également chaque Visitor à 12 messages par minute. Une adresse
+réseau peut envoyer 300 messages par minute à un Assistant. De nombreux
+Visiteurs peuvent partager une même adresse, par exemple sur un réseau
+d'entreprise.
+
+Les tours effectués dans le cadre d'un abonnement personnel n'occupent pas de
+slot.
 
 ## TLS
 
-Terminez le protocole TLS dans un proxy inverse. Ensuite, définissez les deux
-variables d'origine publique sur leurs adresses HTTPS et recompilez
+Terminez TLS dans un serveur mandataire inverse. Ensuite, définissez les deux
+variables d'origine publique sur leurs adresses HTTPS et reconstruisez
 l'application.

@@ -48,16 +48,3 @@ export async function uploadExportArtifact(
   if (error) throw error;
   return { path };
 }
-
-/** Short-lived signed download URL for a stored export artifact. */
-export async function createExportDownloadUrl(
-  client: SupabaseClient,
-  path: string,
-  expiresInSeconds = 600
-): Promise<string | null> {
-  const { data, error } = await client.storage
-    .from(ANALYTICS_EXPORTS_BUCKET)
-    .createSignedUrl(path, expiresInSeconds);
-  if (error) return null;
-  return data?.signedUrl ?? null;
-}

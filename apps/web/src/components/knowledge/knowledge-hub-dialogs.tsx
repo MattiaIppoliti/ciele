@@ -68,7 +68,7 @@ export function AssistantMultiSelect({
         aria-label="Search assistants"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search assistant..."
+        placeholder="Search assistant…"
       />
       <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
         {filtered.length === 0 && (
@@ -324,6 +324,10 @@ export function AddWebsiteDialog({
             <Label htmlFor="hub-site-url">Knowledge base URL</Label>
             <Input
               id="hub-site-url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com"
@@ -334,6 +338,7 @@ export function AddWebsiteDialog({
               <Label>Positive search filters (one per line)</Label>
               <Textarea
                 aria-label="Positive search filters"
+                spellCheck={false}
                 value={includeGlobs}
                 onChange={(e) => setIncludeGlobs(e.target.value.slice(0, 2000))}
                 rows={3}
@@ -343,6 +348,7 @@ export function AddWebsiteDialog({
               <Label>Negative search filters (one per line)</Label>
               <Textarea
                 aria-label="Negative search filters"
+                spellCheck={false}
                 value={excludeGlobs}
                 onChange={(e) => setExcludeGlobs(e.target.value.slice(0, 2000))}
                 rows={3}

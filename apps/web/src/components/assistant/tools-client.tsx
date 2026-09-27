@@ -35,6 +35,7 @@ import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 /**
  * Tools & Skills SETUP section: which built-in agent tools the assistant runs
@@ -122,6 +123,7 @@ export function ToolsClient({
   const [attached, setAttached] = useState<string[]>(attachedSkillIds);
   const [skillDraft, setSkillDraft] = useState<SkillDraft | null>(null);
   const [, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   // Rapid consecutive saves must not clobber each other, patch on the latest.
   const latestTools = useRef(tools);
@@ -223,7 +225,18 @@ export function ToolsClient({
     setSkillDraft(null);
   }
 
+  // A Skill belongs to the Organization, so deleting it detaches it from every
+  // assistant it is attached to, not only this one.
   function removeSkill(skill: Skill) {
+    confirmDelete({
+      title: "Delete this skill?",
+      description: `“${skill.name}” is deleted for the whole organization and detached from every assistant that uses it. This cannot be undone.`,
+      confirmLabel: "Delete skill",
+      onConfirm: () => deleteSkillNow(skill),
+    });
+  }
+
+  function deleteSkillNow(skill: Skill) {
     startTransition(async () => {
       await deleteSkillAction(assistantId, skill.id);
       setSkills((prev) => prev.filter((s) => s.id !== skill.id));
@@ -237,6 +250,7 @@ export function ToolsClient({
 
   return (
     <div className="pt-8">
+      {confirmDeleteModal}
       <SectionTimeline>
       <TimelineSection title="Built-in tools" boxed>
       <section>
@@ -430,7 +444,7 @@ export function ToolsClient({
                 <Textarea
                   id="skill-prompt"
                   rows={6}
-                  placeholder="When citing internal policies, always name the official document and advise the user to verify with the relevant team..."
+                  placeholder="When citing internal policies, always name the official document and advise the user to verify with the relevant team…"
                   value={skillDraft.prompt}
                   onChange={(e) => setSkillDraft({ ...skillDraft, prompt: e.target.value })}
                 />

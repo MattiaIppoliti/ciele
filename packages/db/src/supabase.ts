@@ -52,7 +52,6 @@ import type {
   FlowTrigger,
   FlowTriggerSettings,
   FlowTrust,
-  FlowTrustEvent,
   FeedbackReactionId,
   HelpDesk,
   HelpDeskSettings,
@@ -925,21 +924,6 @@ interface FlowTrustRow {
 
 function toFlowTrust(row: FlowTrustRow): FlowTrust {
   return rowToDomain(row as unknown as Record<string, unknown>) as unknown as FlowTrust;
-}
-
-interface FlowTrustEventRow {
-  organization_id: string;
-  assistant_id: string;
-  flow_id: string;
-  from_tier: "auto" | "queue" | "watch" | null;
-  to_tier: "auto" | "queue" | "watch";
-  runs: number;
-  passes: number;
-  created_at: string;
-}
-
-function toFlowTrustEvent(row: FlowTrustEventRow): FlowTrustEvent {
-  return rowToDomain(row as unknown as Record<string, unknown>) as unknown as FlowTrustEvent;
 }
 
 function toAlert(row: AlertRow): Alert {
@@ -2484,19 +2468,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       );
     },
 
-    async getEmbeddingConnectionId(organizationId) {
-      const { data, error } = await client
-        .from("organizations")
-        .select("embedding_connection_id")
-        .eq("id", organizationId)
-        .maybeSingle();
-      if (error) throw error;
-      return (
-        (data as { embedding_connection_id?: string | null } | null)
-          ?.embedding_connection_id ?? null
-      );
-    },
-
     async setEmbeddingConnectionId(organizationId, connectionId) {
       if (connectionId) {
         // Cross-org references would silently embed with someone else's key.
@@ -3138,16 +3109,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return toApplicationSyncRun(data as Record<string, unknown>);
     },
 
-    async listApplicationSyncRuns(importId) {
-      const { data, error } = await client
-        .from("application_sync_runs")
-        .select("*")
-        .eq("import_id", importId)
-        .order("started_at", { ascending: false });
-      if (error) throw error;
-      return (data as Array<Record<string, unknown>>).map(toApplicationSyncRun);
-    },
-
     async listApplicationOperationalState(organizationId) {
       const { data, error } = await client.rpc("list_application_operational_state", {
         p_organization_id: organizationId,
@@ -3499,16 +3460,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return data === true;
     },
 
-    async releaseApiIdempotency(input) {
-      const { data, error } = await client.rpc("release_api_idempotency", {
-        p_scope: input.scope,
-        p_key: input.key,
-        p_lease_token: input.leaseToken,
-      });
-      if (error) throw error;
-      return data === true;
-    },
-
     async getWorkQueueHealth(now) {
       const { data, error } = await client.rpc("get_work_queue_health", {
         p_now: now,
@@ -3723,14 +3674,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (error) throw error;
     },
 
-    async deleteConceptsByIds(ids) {
-      if (ids.length === 0) return;
-      // Chunks cascade on the concept FK (0005_knowledge); ids that no longer
-      // exist are silently ignored by the `in` filter, so this is idempotent.
-      const { error } = await client.from("concepts").delete().in("id", ids);
-      if (error) throw error;
-    },
-
     async deleteSourceKnowledgeGeneration(sourceId, generationId) {
       const { data, error } = await client
         .from("concepts")
@@ -3849,25 +3792,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         if (sourceIds.length < pageSize) break;
       }
       return options.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-    },
-
-    async listConceptPage(collectionId, input) {
-      const limit = Math.max(1, Math.min(input.limit, 500));
-      const build = (activeOnly: boolean) => {
-        let query = client
-          .from("concepts")
-          .select("*")
-          .eq("collection_id", collectionId)
-          .order("id", { ascending: true })
-          .limit(limit);
-        if (activeOnly) query = query.eq("is_active", true);
-        if (input.afterId) query = query.gt("id", input.afterId);
-        return query;
-      };
-      let result = await build(true);
-      if (result.error && isSchemaLagError(result.error)) result = await build(false);
-      if (result.error) throw result.error;
-      return ((result.data ?? []) as Array<Record<string, unknown>>).map(toConcept);
     },
 
     async getConcept(id) {
@@ -4050,14 +3974,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const { error } = await client
         .from("concepts")
         .update({ excluded })
-        .eq("id", id);
-      if (error) throw error;
-    },
-
-    async setConceptRecrawlSchedule(id, schedule) {
-      const { error } = await client
-        .from("concepts")
-        .update({ recrawl_schedule: schedule })
         .eq("id", id);
       if (error) throw error;
     },
@@ -4642,14 +4558,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (updateError) throw updateError;
     },
 
-    async updateConversationSessionState(id, state) {
-      const { error } = await client
-        .from("conversations")
-        .update({ session_state: state })
-        .eq("id", id);
-      if (error) throw error;
-    },
-
     async mergeConversationSessionState(input) {
       const { data, error } = await client.rpc(
         "merge_conversation_session_state",
@@ -4691,18 +4599,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         leaseToken: row.claim_lease_token ?? null,
         assistantMessageId: row.claim_assistant_message_id ?? null,
       };
-    },
-
-    async completeConversationTurn(input) {
-      const { data, error } = await client.rpc("complete_conversation_turn", {
-        p_conversation_id: input.conversationId,
-        p_request_id: input.requestId,
-        p_lease_token: input.leaseToken,
-        p_assistant_message_id: input.assistantMessageId,
-        p_now: input.now,
-      });
-      if (error) throw error;
-      return data === true;
     },
 
     async commitConversationTurn(input) {
@@ -6483,26 +6379,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (error) throw error;
     },
 
-    async listRetentionSweepEvents(organizationId, options) {
-      const { data, error } = await client
-        .from("retention_sweep_events")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false })
-        .limit(options?.limit ?? 100);
-      if (error) throw error;
-      return (data ?? []).map((row) => ({
-        id: String(row.id),
-        organizationId: String(row.organization_id),
-        policy: row.policy,
-        retentionDays: Number(row.retention_days),
-        cutoff: String(row.cutoff),
-        deleted: row.deleted === null || row.deleted === undefined ? null : Number(row.deleted),
-        error: row.error ?? null,
-        createdAt: String(row.created_at),
-      }));
-    },
-
     async getOrgBudget(organizationId) {
       const { data, error } = await client
         .from("org_budgets")
@@ -6577,6 +6453,25 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       });
       if (error) throw error;
       return typeof data === "string" ? data : null;
+    },
+
+    async acquireTurnConcurrency(input) {
+      const { data, error } = await client.rpc("acquire_turn_concurrency", {
+        p_scope_keys: input.scopes.map((scope) => scope.key),
+        p_limits: input.scopes.map((scope) => scope.limit),
+        p_now: input.now,
+        p_expires_at: input.expiresAt,
+      });
+      if (error) throw error;
+      return typeof data === "string" ? data : null;
+    },
+
+    async releaseTurnConcurrency(leaseId) {
+      const { data, error } = await client.rpc("release_turn_concurrency", {
+        p_lease_id: leaseId,
+      });
+      if (error) throw error;
+      return data === true;
     },
 
     async settleOrgBudgetReservation(id, rows) {
@@ -6675,34 +6570,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     // --- Answer verification --------------------------------------------------
 
-    async listUnverifiedAnswers({ limit }) {
-      const { data, error } = await client.rpc("list_unverified_answers", {
-        p_limit: limit,
-      });
-      if (error) throw error;
-      return ((data ?? []) as {
-        message_id: string;
-        conversation_id: string;
-        assistant_id: string;
-        organization_id: string;
-        flow_id: string | null;
-        flow_name: string | null;
-        content: unknown[];
-        question: string | null;
-        created_at: string;
-      }[]).map((row) => ({
-        messageId: row.message_id,
-        conversationId: row.conversation_id,
-        assistantId: row.assistant_id,
-        organizationId: row.organization_id,
-        flowId: row.flow_id,
-        flowName: row.flow_name,
-        content: row.content ?? [],
-        question: row.question,
-        createdAt: row.created_at,
-      }));
-    },
-
     async claimUnverifiedAnswers({ limit, staleBefore }) {
       const { data, error } = await client.rpc("claim_unverified_answers", {
         p_limit: limit,
@@ -6738,32 +6605,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .delete()
         .eq("message_id", messageId);
       if (error) throw error;
-    },
-
-    async listConversationAnswerVerdicts(conversationId) {
-      const { data: messageRows, error: messagesError } = await client
-        .from("messages")
-        .select("id")
-        .eq("conversation_id", conversationId);
-      if (messagesError) throw messagesError;
-      const ids = ((messageRows ?? []) as { id: string }[]).map((r) => r.id);
-      if (ids.length === 0) return [];
-      const { data, error } = await client
-        .from("answer_verdicts")
-        .select("message_id, verdict, reason, created_at")
-        .in("message_id", ids);
-      if (error) throw error;
-      return ((data ?? []) as {
-        message_id: string;
-        verdict: "pass" | "fail";
-        reason: string;
-        created_at: string;
-      }[]).map((row) => ({
-        messageId: row.message_id,
-        verdict: row.verdict,
-        reason: row.reason,
-        createdAt: row.created_at,
-      }));
     },
 
     async recordAnswerVerdict(input) {
@@ -6887,17 +6728,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           .in("id", staleIds);
         if (deleteError) throw deleteError;
       }
-    },
-
-    async listFlowTrustEvents(assistantId, flowId) {
-      const { data, error } = await client
-        .from("flow_trust_events")
-        .select("*")
-        .eq("assistant_id", assistantId)
-        .eq("flow_id", flowId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return ((data ?? []) as FlowTrustEventRow[]).map(toFlowTrustEvent);
     },
 
     // --- Compost loop ----------------------------------------------------------
@@ -7487,14 +7317,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .single();
       if (error) throw error;
       return toEntitySyncConfig(data as EntitySyncConfigRow);
-    },
-
-    async deleteEntitySyncConfig(entityId) {
-      const { error } = await client
-        .from("entity_sync_configs")
-        .delete()
-        .eq("entity_id", entityId);
-      if (error) throw error;
     },
 
     async markEntitySynced(entityId, at) {

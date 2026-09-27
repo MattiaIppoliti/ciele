@@ -1,4 +1,5 @@
 import type { ImprovementStatus } from "./types";
+import { isOpenImprovement } from "./improvements";
 import { STOPWORDS, allWords, stem } from "./text";
 
 /**
@@ -110,11 +111,6 @@ function isNegated(title: string): boolean {
   return allWords(title).some((word) => NEGATIONS.has(word));
 }
 
-/** Not done and not archived: a closed item is a solved problem. */
-function isOpen(status: ImprovementStatus): boolean {
-  return status !== "done" && status !== "archived";
-}
-
 /**
  * The open Improvement this title is a restatement of, or null.
  *
@@ -132,7 +128,7 @@ export function findDuplicateImprovement<
   let best: T | null = null;
   let bestScore = 0;
   for (const improvement of improvements) {
-    if (!isOpen(improvement.status)) continue;
+    if (!isOpenImprovement(improvement)) continue;
     // Opposite reports of the same feature are two problems, or one problem and
     // one working feature. Either way, not the same board item.
     if (isNegated(improvement.title) !== candidateNegated) continue;

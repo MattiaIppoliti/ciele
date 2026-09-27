@@ -11,7 +11,7 @@ vi.mock("@/lib/authz", () => ({
 }));
 
 import { requireMember } from "@/lib/authz";
-import { runDueIngestJobs } from "@agent-hub/agent";
+import { runDueJobs } from "@agent-hub/agent";
 import { retrySourceIngestAction } from "./actions";
 
 /**
@@ -80,7 +80,7 @@ describe("retrySourceIngestAction, no destructive pre-delete", () => {
     await retrySourceIngestAction(assistantId, collectionId, source.id);
 
     vi.spyOn(db, "saveChunks").mockRejectedValue(new Error("embeddings provider timeout"));
-    await runDueIngestJobs({ db }, { workerId: "retry-failing-worker" });
+    await runDueJobs({ db }, { kinds: ["ingest_source"], workerId: "retry-failing-worker" });
     vi.restoreAllMocks();
 
     const concepts = await db.listConcepts(collectionId);

@@ -238,7 +238,8 @@ export function HelpDeskManage({
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe what this help desk handles..."
+          placeholder="Describe what this help desk handles…"
+          aria-label="Help desk description"
           rows={4}
           disabled={!canEdit}
           className="mt-2"
@@ -246,7 +247,7 @@ export function HelpDeskManage({
         {canEdit && dirty && (
           <div className="mt-3 flex justify-end">
             <Button className="h-10 px-5" onClick={save} disabled={isPending}>
-              {isPending ? "Saving..." : "Save changes"}
+              {isPending ? "Saving…" : "Save changes"}
             </Button>
           </div>
         )}

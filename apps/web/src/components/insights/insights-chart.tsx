@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatCount, formatPercent, formatStat } from "@/lib/format";
 
 export interface ChartSeries {
   key: string;
@@ -55,9 +56,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { label: "Channels", id: "channels" },
 ];
 
-function formatValue(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
+const formatValue = formatStat;
 
 function elapsedLabel(since: number, nowMs: number): string {
   const minutes = Math.floor((nowMs - since) / 60_000);
@@ -272,8 +271,8 @@ export function UsageCard({
                 <span className="truncate text-sm font-medium">{r.label}</span>
                 {r.total !== undefined && (
                   <span className="text-muted-foreground ml-auto flex shrink-0 items-center gap-6 text-sm">
-                    <span className="tabular-nums">{r.total.toLocaleString()}</span>
-                    <span className="w-12 text-right tabular-nums">{r.percent}%</span>
+                    <span className="tabular-nums">{formatCount(r.total)}</span>
+                    <span className="w-12 text-right tabular-nums">{r.percent === undefined ? "—" : formatPercent(r.percent)}</span>
                   </span>
                 )}
               </button>
@@ -321,7 +320,7 @@ export function UsageCard({
                   <TableRow key={label}>
                     <TableCell className="whitespace-nowrap">{label}</TableCell>
                     {visible.map((r) => (
-                      <TableCell key={r.key}>{formatValue(r.values[i])}</TableCell>
+                      <TableCell key={r.key} className="text-right tabular-nums">{formatValue(r.values[i])}</TableCell>
                     ))}
                   </TableRow>
                 ))}

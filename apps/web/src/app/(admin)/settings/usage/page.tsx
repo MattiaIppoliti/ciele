@@ -401,17 +401,17 @@ export default async function UsageSettingsPage() {
                       <TableCell className="text-muted-foreground">
                         {r.modelId || r.provider || "N/A"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right tabular-nums">
                         {formatCount(r.calls)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right tabular-nums">
                         {r.kind === "crawl"
                           ? "N/A"
                           : `${formatCount(r.inputTokens)} · ${formatCount(
                               r.outputTokens
                             )}`}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right tabular-nums">
                         {r.kind === "crawl" ? formatCount(r.units) : "N/A"}
                       </TableCell>
                     </TableRow>

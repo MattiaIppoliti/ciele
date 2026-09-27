@@ -126,6 +126,32 @@ export const SETTINGS_API_DOMAINS: Record<string, ApiV1Domain[]> = {
   data: ["entities"],
 };
 
+/**
+ * The rows the sidebar's Settings group unfolds: every Organization tab, then
+ * one row into the personal scope, last because it leaves the tenant's
+ * configuration for the signed-in person's own. The row is the scope, not its
+ * three tabs, so it stays lit on any personal route.
+ */
+export const SIDEBAR_SETTINGS_ITEMS: SettingsTab[] = [
+  ...ORG_SETTINGS_TABS,
+  {
+    label: "Personal settings",
+    slug: "personal-scope",
+    href: PERSONAL_SETTINGS_HOME,
+    icon: Fingerprint,
+  },
+];
+
+/** Which sidebar Settings row the pathname lights, or -1 outside Settings. */
+export function sidebarSettingsActiveIndex(pathname: string): number {
+  const slug = settingsTabFromPath(pathname);
+  if (!slug) return -1;
+  if (settingsScopeFromPath(pathname) === "personal") {
+    return SIDEBAR_SETTINGS_ITEMS.length - 1;
+  }
+  return SIDEBAR_SETTINGS_ITEMS.findIndex((tab) => tab.slug === slug);
+}
+
 /** The tab a pathname is inside, or null when it is not a settings route. */
 export function settingsTabFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/settings\/([^/?#]+)/);

@@ -89,21 +89,10 @@ export interface PreflightShadowInput {
 }
 
 /**
- * Runs the shadow and returns what to record, or `null` when there was nothing
- * to ask. Never throws and never rejects: a shadow that could fail a turn would
- * be worse than no shadow at all.
- */
-export async function runPreflightShadow(
-  input: PreflightShadowInput
-): Promise<PreflightShadowRecord | null> {
-  return (await runPreflight(input))?.record ?? null;
-}
-
-/**
  * The pre-flight itself (#952, #953): one decision over the message, the
- * record for the trace and the decision for whoever may act on it. The same
- * contract as the shadow: never throws, never rejects, never holds the turn
- * past its budget.
+ * record for the trace and the decision for whoever may act on it. Never
+ * throws, never rejects, never holds the turn past its budget: a shadow that
+ * could fail a turn would be worse than no shadow at all.
  */
 export async function runPreflight(input: PreflightShadowInput): Promise<PreflightOutcome | null> {
   const { resolved } = input;

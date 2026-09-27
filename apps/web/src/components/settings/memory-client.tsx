@@ -91,7 +91,7 @@ export function MemoryClient({
             disabled={!dirty || isPending}
             onClick={save}
           >
-            {isPending ? "Saving..." : "Save"}
+            {isPending ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>

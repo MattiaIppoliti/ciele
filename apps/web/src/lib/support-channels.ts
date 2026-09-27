@@ -4,7 +4,6 @@ import type {
   ChannelFormField,
   ChannelKind,
   SupportChannelConfig,
-  WeekDay,
 } from "@agent-hub/core";
 import { findCountry } from "./countries";
 import { AlignLeft, AtSign, FileText, Mail, MessageCircle, Phone, SquareCheck, Upload, UserRound, Webhook, type LucideIcon } from "lucide-react";
@@ -214,13 +213,3 @@ export const CONVERSATION_DATA_ITEMS: Array<{
     description: "All conversation metadata fields are included by default",
   },
 ];
-
-export const WEEK_DAY_LABELS: Record<WeekDay, string> = {
-  monday: "Monday",
-  tuesday: "Tuesday",
-  wednesday: "Wednesday",
-  thursday: "Thursday",
-  friday: "Friday",
-  saturday: "Saturday",
-  sunday: "Sunday",
-};

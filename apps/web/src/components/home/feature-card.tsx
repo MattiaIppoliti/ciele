@@ -14,7 +14,7 @@ import {
   MorphingDialogTrigger,
 } from "@/components/core/morphing-dialog";
 import { Spotlight } from "@/components/core/spotlight";
-import { Tilt } from "@/components/core/tilt";
+import { TiltCard } from "@/components/motion/tilt-card";
 import {
   VisualSkeleton,
   type Feature,
@@ -45,12 +45,8 @@ export function FeatureCard({
         duration: 0.25,
       }}
     >
-      <Tilt
-        rotationFactor={8}
-        isRevese
-        springOptions={{ stiffness: 300, damping: 30 }}
-        className="h-full"
-      >
+      {/* TiltCard's `max` is peak-to-peak, so 16 is the 8deg edge tilt. */}
+      <TiltCard max={16} invert glare={false} className="h-full">
         {/* Spotlight border glow: the wrapper's translucent bg reads as the
             card border; the cursor-following glow shines through the 1px
             inset around the opaque trigger on top. data-feature-card marks the
@@ -99,7 +95,7 @@ export function FeatureCard({
             </div>
           </MorphingDialogTrigger>
         </div>
-      </Tilt>
+      </TiltCard>
       <MorphingDialogContainer>
         <MorphingDialogContent
           style={{ borderRadius: "24px" }}

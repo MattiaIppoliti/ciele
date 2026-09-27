@@ -106,8 +106,6 @@ type StoredIngestJob =
 
 export type IngestJobDeps = JobDeps;
 
-export type RunDueIngestJobsResult = RunDueJobsResult;
-
 /** Executes one job to completion. Rehydrates everything from the Db so the
  *  payload stays serializable; any failure lands in the Source's `error`. */
 async function performIngest(
@@ -180,18 +178,6 @@ async function performIngest(
   const updated = await db.getSource(job.sourceId);
   if (updated?.status === "error") {
     throw new Error(updated.error || "Ingestion failed");
-  }
-}
-
-export async function runIngestJob(job: IngestJob, deps: IngestJobDeps): Promise<void> {
-  const { db } = deps;
-  try {
-    await performIngest(job, job.rawText, deps);
-  } catch (error) {
-    await db.updateSource(job.sourceId, {
-      status: "error",
-      error: thrownMessage(error, "Ingestion failed"),
-    });
   }
 }
 
@@ -490,14 +476,6 @@ export async function enqueueAgentMemoryJob(
   getRuntimeHost().scheduleAfterResponse(() =>
     runDueJobs(deps, { kinds: [DISTILL_AGENT_MEMORY_KIND], limit: 5 })
   );
-}
-
-/** Drains due agent-memory jobs, the cron backstop for `after()`. */
-export async function runDueAgentMemoryJobs(
-  deps: JobDeps,
-  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
-): Promise<RunDueJobsResult> {
-  return runDueJobs(deps, { ...options, kinds: [DISTILL_AGENT_MEMORY_KIND] });
 }
 
 // ---------------------------------------------------------------------------
@@ -984,16 +962,13 @@ export async function runDueJobs(
     const limit = options.limit ?? 5;
     const workerId = options.workerId ?? `${kind}-${crypto.randomUUID()}`;
     const staleBefore = new Date(now.getTime() - staleAfterMs).toISOString();
-    const terminal =
-      typeof deps.db.claimTerminalBackgroundJobs === "function"
-        ? await deps.db.claimTerminalBackgroundJobs({
-            kind,
-            workerId,
-            now: now.toISOString(),
-            staleBefore,
-            limit,
-          })
-        : [];
+    const terminal = await deps.db.claimTerminalBackgroundJobs({
+      kind,
+      workerId,
+      now: now.toISOString(),
+      staleBefore,
+      limit,
+    });
     for (const record of terminal) {
       if (!record.leaseToken) throw new Error("Terminal cleanup job has no lease token");
       const message = record.error || "Worker lease expired after final attempt";
@@ -1029,13 +1004,6 @@ export async function runDueJobs(
     }
   }
   return result;
-}
-
-export async function runDueIngestJobs(
-  deps: IngestJobDeps,
-  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
-): Promise<RunDueIngestJobsResult> {
-  return runDueJobs(deps, { ...options, kinds: ["ingest_source"] });
 }
 
 /**
@@ -1165,14 +1133,6 @@ export async function enqueueDraftProposalJob(
   );
 }
 
-/** Drains due Suggested Fix drafting jobs, the cron backstop for the after-response accelerator. */
-export async function runDueProposalJobs(
-  deps: JobDeps,
-  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
-): Promise<RunDueJobsResult> {
-  return runDueJobs(deps, { ...options, kinds: [DRAFT_PROPOSAL_KIND] });
-}
-
 /**
  * Enqueues a memory-promotion job for a Conversation, due once the quiet
  * window elapses (#664). Every SSO turn enqueues one; the handler defers to
@@ -1196,14 +1156,6 @@ export async function enqueueMemoryPromotionJob(
   getRuntimeHost().scheduleAfterResponse(() =>
     runDueJobs(deps, { kinds: [PROMOTE_MEMORIES_KIND], limit: 5 })
   );
-}
-
-/** Drains due memory-promotion jobs, the cron backstop for `after()`. */
-export async function runDueMemoryPromotionJobs(
-  deps: JobDeps,
-  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
-): Promise<RunDueJobsResult> {
-  return runDueJobs(deps, { ...options, kinds: [PROMOTE_MEMORIES_KIND] });
 }
 
 /**
@@ -1245,14 +1197,6 @@ export async function enqueueDueEntitySyncs(
     });
   }
   return { enqueued: due.length };
-}
-
-/** Drains due Entity sync jobs, the cron backstop for `after()`. */
-export async function runDueEntitySyncJobs(
-  deps: JobDeps,
-  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
-): Promise<RunDueJobsResult> {
-  return runDueJobs(deps, { ...options, kinds: [ENTITY_SYNC_KIND] });
 }
 
 /** Enqueues one manual or scheduled Application Import sync. */
@@ -1300,12 +1244,4 @@ export async function enqueueDueApplicationSyncs(
     }
   }
   return { enqueued };
-}
-
-/** Drains due Application Import jobs through the shared claim/retry ledger. */
-export async function runDueApplicationSyncJobs(
-  deps: JobDeps,
-  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
-): Promise<RunDueJobsResult> {
-  return runDueJobs(deps, { ...options, kinds: [APPLICATION_SYNC_KIND] });
 }

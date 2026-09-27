@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_ORG, getMockDb, type Db } from "@agent-hub/db";
-import { enqueueVerbatimReingests, runDueIngestJobs } from "./jobs";
+import { enqueueVerbatimReingests, runDueJobs } from "./jobs";
 
 /**
  * The one-off verbatim re-ingest (ADR-0025): a Source ingested under the old
@@ -55,7 +55,7 @@ describe("enqueueVerbatimReingests", () => {
 
     const report = await enqueueVerbatimReingests({ db }, { limit: 1_000 });
     expect(report.enqueued).toContain(source.id);
-    await runDueIngestJobs({ db }, { workerId: "verbatim-test" });
+    await runDueJobs({ db }, { kinds: ["ingest_source"], workerId: "verbatim-test" });
 
     const concepts = (await db.listConcepts(collection.id)).filter(
       (c) => c.sourceId === source.id

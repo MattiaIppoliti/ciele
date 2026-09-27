@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import type {
   Assistant,
   ModelRef,
@@ -87,11 +87,31 @@ const TOOLBAR_BUTTONS: Array<{
   { label: "Link", Icon: Link2, command: { wrap: "[", wrapEnd: "](url)" } },
 ];
 
-function FieldHeader({ title, hint }: { title: string; hint: string }) {
+/**
+ * A field's heading and hint. With `htmlFor`, the heading text is the
+ * control's `<label>` and the hint is reachable as `${htmlFor}-hint`, so pass
+ * that to the control's `aria-describedby`.
+ */
+function FieldHeader({
+  title,
+  hint,
+  htmlFor,
+}: {
+  title: string;
+  hint: string;
+  htmlFor?: string;
+}) {
   return (
     <div>
-      <h2 className="text-base font-semibold">{title}</h2>
-      <p className="text-muted-foreground mt-0.5 text-sm">{hint}</p>
+      <h2 className="text-base font-semibold">
+        {htmlFor ? <label htmlFor={htmlFor}>{title}</label> : title}
+      </h2>
+      <p
+        id={htmlFor ? `${htmlFor}-hint` : undefined}
+        className="text-muted-foreground mt-0.5 text-sm"
+      >
+        {hint}
+      </p>
     </div>
   );
 }
@@ -105,6 +125,7 @@ export function GeneralForm({
   unavailableProviders?: Provider[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const fieldId = useId();
 
   const [launcherEnabled, setLauncherEnabled] = useState(
     assistant.chatLauncherEnabled
@@ -169,6 +190,16 @@ export function GeneralForm({
     JSON.stringify(questions) !== JSON.stringify(assistant.suggestedQuestions) ||
     JSON.stringify(quickReplies) !==
       JSON.stringify(assistant.quickReplies ?? []);
+
+  // A reload or closed tab would drop every unsaved field without a word; the
+  // browser's own "Leave site?" prompt is the whole guard. In-app navigation
+  // is not covered: the App Router exposes no blocking hook.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   function wrapSelection(before: string, after = before) {
     const el = welcomeRef.current;
@@ -426,9 +457,14 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Assistant title"
+          htmlFor={`${fieldId}-title`}
           hint="Shown on your assistants page."
         />
         <Input
+          id={`${fieldId}-title`}
+          aria-describedby={`${fieldId}-title-hint`}
+          name="title"
+          autoComplete="off"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="h-11"
@@ -439,9 +475,14 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Nickname"
+          htmlFor={`${fieldId}-nickname`}
           hint="Displayed on the AI Assistant header."
         />
         <Input
+          id={`${fieldId}-nickname`}
+          aria-describedby={`${fieldId}-nickname-hint`}
+          name="nickname"
+          autoComplete="off"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
           className="h-11"
@@ -452,10 +493,14 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Description"
+          htmlFor={`${fieldId}-description`}
           hint="A short overview of what this assistant does"
         />
         <div>
           <Textarea
+            id={`${fieldId}-description`}
+            aria-describedby={`${fieldId}-description-hint`}
+            name="description"
             value={description}
             maxLength={DESCRIPTION_MAX}
             onChange={(e) => setDescription(e.target.value)}
@@ -476,9 +521,10 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Welcome Message"
+          htmlFor={`${fieldId}-welcome`}
           hint="Shown when users first open the assistant"
         />
-        <div className="rounded-xl border">
+        <div className="focus-within:border-ring focus-within:ring-ring/50 rounded-xl border transition-[border-color,box-shadow] focus-within:ring-3">
           <div className="flex flex-wrap items-center gap-1 border-b px-2 py-1.5">
             {TOOLBAR_BUTTONS.map((btn) => (
               <Hint key={btn.label} label={btn.label}>
@@ -496,6 +542,9 @@ export function GeneralForm({
             ))}
           </div>
           <Textarea
+            id={`${fieldId}-welcome`}
+            aria-describedby={`${fieldId}-welcome-hint`}
+            name="welcomeMessage"
             ref={welcomeRef}
             value={welcomeMessage}
             onChange={(e) => setWelcomeMessage(e.target.value)}
@@ -509,10 +558,14 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="AI Disclaimer"
+          htmlFor={`${fieldId}-disclaimer`}
           hint="Shown under AI responses at the bottom of the chat window. Leave empty to hide it."
         />
         <div>
           <Textarea
+            id={`${fieldId}-disclaimer`}
+            aria-describedby={`${fieldId}-disclaimer-hint`}
+            name="aiDisclaimer"
             value={aiDisclaimer}
             maxLength={AI_DISCLAIMER_MAX}
             onChange={(e) => setAiDisclaimer(e.target.value)}
@@ -534,16 +587,20 @@ export function GeneralForm({
       <div className="space-y-3">
         <FieldHeader
           title="Answering style"
+          htmlFor={`${fieldId}-style`}
           hint="Persona, tone and format. Platform rules still apply."
         />
         <div>
           <Textarea
+            id={`${fieldId}-style`}
+            aria-describedby={`${fieldId}-style-hint`}
+            name="answeringStyle"
             value={answeringStyle}
             maxLength={ANSWERING_STYLE_MAX}
             onChange={(e) => setAnsweringStyle(e.target.value)}
             rows={8}
             placeholder={
-              "e.g. You are the virtual assistant for Acme Corp. Be warm and concise, use bullet points for procedures, and always end factual answers with the relevant team to contact..."
+              "e.g. You are the virtual assistant for Acme Corp. Be warm and concise, use bullet points for procedures, and always end factual answers with the relevant team to contact…"
             }
             className="resize-y"
           />
@@ -607,7 +664,9 @@ export function GeneralForm({
                     questions.map((cur, j) => (j === i ? e.target.value : cur))
                   )
                 }
-                placeholder="e.g. When is my next assignment due?"
+                placeholder="e.g. How do I reset my password?"
+                aria-label={`Suggested question ${i + 1}`}
+                autoComplete="off"
               />
               <Hint label="Remove question">
                 <Button
@@ -709,6 +768,8 @@ export function GeneralForm({
                     value={button.label}
                     onChange={(e) => patchButton({ label: e.target.value })}
                     placeholder="Button name"
+                    aria-label={`Quick reply ${i + 1} name`}
+                    autoComplete="off"
                     className="flex-1"
                   />
                   <Select value={button.type} onValueChange={(type) => patchButton({ type: type as QuickReplyType })} className="w-48">
@@ -746,13 +807,24 @@ export function GeneralForm({
                         ? "FAQ question to answer"
                         : "Message sent into the chat"
                     }
+                    aria-label={
+                      button.type === "faq"
+                        ? `Quick reply ${i + 1} FAQ question`
+                        : `Quick reply ${i + 1} message`
+                    }
+                    autoComplete="off"
                   />
                 )}
                 {button.type === "external_link" && (
                   <Input
                     value={button.url ?? ""}
                     onChange={(e) => patchButton({ url: e.target.value })}
-                    placeholder="https://example.edu/page"
+                    placeholder="https://example.com/page"
+                    aria-label={`Quick reply ${i + 1} link URL`}
+                    type="url"
+                    inputMode="url"
+                    autoComplete="off"
+                    spellCheck={false}
                   />
                 )}
                 </div>
@@ -794,7 +866,7 @@ export function GeneralForm({
           disabled={isPending || !dirty}
           className="px-6 font-semibold"
         >
-          {isPending ? "Saving..." : "Save changes"}
+          {isPending ? "Saving…" : "Save changes"}
         </Button>
       </div>
     </div>

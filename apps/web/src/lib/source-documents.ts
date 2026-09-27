@@ -144,19 +144,6 @@ export function sourceDocumentHref(
 }
 
 /**
- * The Updated header's href: flips the sort and returns to page 1, because
- * page 4 of the old order is a different set of rows in the new one.
- */
-export function sourceDocumentsSortHref(
-  base: string,
-  params: SourceDocumentsSearchParams
-): string {
-  return sourceDocumentsParamsHref(base, params, {
-    ascending: !params.ascending,
-  });
-}
-
-/**
  * "3 minutes ago" for the Updated column, beside an absolute `title`. It takes
  * `now` rather than reading the clock, so the cell hydrates against the same
  * instant the server rendered.

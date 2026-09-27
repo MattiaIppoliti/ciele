@@ -16,7 +16,7 @@ import {
   SectionTimeline,
   TimelineSection,
 } from "@/components/settings/section-timeline";
-import { SwipeButton } from "@/components/motion/swipe-button";
+import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import {
   Badge,
   Button,
@@ -27,6 +27,7 @@ import {
   cn,
   useCopyFeedback,
 } from "@agent-hub/ui";
+import { formatDateTime } from "@/lib/format";
 
 interface PublicationSummary {
   id: string;
@@ -146,6 +147,9 @@ export function PublishClient({
             <Label htmlFor="domains">Domains</Label>
             <Input
               id="domains"
+              name="allowedDomains"
+              autoComplete="off"
+              spellCheck={false}
               value={domains}
               onChange={(e) => setDomains(e.target.value)}
               placeholder="example.com, app.example.com"
@@ -194,7 +198,7 @@ export function PublishClient({
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
               {latest
-                ? `Published ${new Date(latest.createdAt).toLocaleString()}`
+                ? `Published ${formatDateTime(latest.createdAt)}`
                 : "The widget stays offline until the first publish."}
             </p>
           </div>
@@ -215,7 +219,7 @@ export function PublishClient({
                 className="px-6 font-semibold"
               >
                 <AnimatedIcon icon={Plane} size={16} />
-                {isPending ? "Publishing..." : latest ? "Publish new version" : "Publish"}
+                {isPending ? "Publishing…" : latest ? "Publish new version" : "Publish"}
               </Button>
             </div>
           ) : (
@@ -230,7 +234,7 @@ export function PublishClient({
               <div key={p.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm">
                 <span className="font-mono">v{p.version}</span>
                 <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
-                  {new Date(p.createdAt).toLocaleString()}
+                  {formatDateTime(p.createdAt)}
                 </span>
                 {canPublish && (
                   <Button
@@ -307,15 +311,17 @@ export function PublishClient({
                 </h3>
                 <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
                   A new snapshot goes live to every page the widget is embedded
-                  on. Swipe to confirm.
+                  on. Slide to confirm.
                 </p>
               </div>
             </div>
-            <SwipeButton
-              text="Swipe to publish"
-              onSwipeComplete={publish}
-              className="pointer-events-auto"
-            />
+            <div className="flex justify-center">
+              <SlideToConfirm
+                onConfirm={publish}
+                label="Slide to publish"
+                confirmedLabel="Publishing"
+              />
+            </div>
           </div>
         ) : (
           <div className="space-y-4">

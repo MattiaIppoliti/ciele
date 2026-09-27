@@ -62,6 +62,7 @@ import {
   updateChannelAction,
 } from "@/app/(admin)/teammates/channels/actions";
 import { patchLastBot } from "@/components/chat/turn-session";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 /**
  * A Teammate group (#778, "channel" in the code): the 1:1 chat's transcript
@@ -340,6 +341,7 @@ export function ChannelWorkspace({
               <Button
                 variant="outline"
                 size="sm"
+                aria-label="Group settings"
                 onClick={() => setSettingsOpen(true)}
               >
                 <Settings2 className="size-4" />
@@ -392,8 +394,8 @@ export function ChannelWorkspace({
             // about a syntax that does not exist.
             placeholder={
               seatedTeammates.length > 0
-                ? `Write @${seatedTeammates[0].name} to ask a teammate...`
-                : "Message the group..."
+                ? `Write @${seatedTeammates[0].name} to ask a teammate…`
+                : "Message the group…"
             }
             aria-label={`Message ${channel.name}`}
           />
@@ -441,6 +443,7 @@ function ChannelSettingsDialog({
   const [name, setName] = useState(channel.name);
   const [projectId, setProjectId] = useState(channel.projectId ?? "");
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   function run(work: () => Promise<void>, done: string, back?: string) {
     startTransition(async () => {
@@ -457,6 +460,8 @@ function ChannelSettingsDialog({
   }
 
   return (
+    <>
+    {confirmDeleteModal}
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -540,16 +545,27 @@ function ChannelSettingsDialog({
                     size="sm"
                     disabled={isPending}
                     aria-label={`Remove ${entry.name}`}
-                    onClick={() =>
-                      run(
-                        () =>
-                          entry.kind === "member"
-                            ? removeChannelMemberAction(channel.id, entry.id)
-                            : removeChannelTeammateAction(channel.id, entry.id),
-                        `${entry.name} left the group`,
-                        entry.id === currentUserId ? "/teammates" : undefined
-                      )
-                    }
+                    onClick={() => {
+                      const leaving = entry.id === currentUserId;
+                      confirmDelete({
+                        title: leaving
+                          ? "Leave this group?"
+                          : `Remove ${entry.name}?`,
+                        description: leaving
+                          ? "You stop seeing the thread. Someone who manages the group has to add you back."
+                          : `${entry.name} stops seeing the thread and is no longer mentioned in it.`,
+                        confirmLabel: leaving ? "Leave group" : "Remove",
+                        onConfirm: () =>
+                          run(
+                            () =>
+                              entry.kind === "member"
+                                ? removeChannelMemberAction(channel.id, entry.id)
+                                : removeChannelTeammateAction(channel.id, entry.id),
+                            `${entry.name} left the group`,
+                            leaving ? "/teammates" : undefined
+                          ),
+                      });
+                    }}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -567,11 +583,18 @@ function ChannelSettingsDialog({
               variant="destructive"
               disabled={isPending}
               onClick={() =>
-                run(
-                  () => deleteChannelAction(channel.id),
-                  "Group closed",
-                  "/teammates"
-                )
+                confirmDelete({
+                  title: "Close this group?",
+                  description:
+                    "The thread and its transcript are deleted for everybody in it. This cannot be undone.",
+                  confirmLabel: "Close group",
+                  onConfirm: () =>
+                    run(
+                      () => deleteChannelAction(channel.id),
+                      "Group closed",
+                      "/teammates"
+                    ),
+                })
               }
             >
               <Trash2 className="size-4" /> Close group
@@ -580,5 +603,6 @@ function ChannelSettingsDialog({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

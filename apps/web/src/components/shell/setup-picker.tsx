@@ -7,6 +7,7 @@ import { cn } from "@agent-hub/ui";
 import Link from "next/link";
 import { formatDay } from "@/lib/format";
 import { fuzzyFilter } from "@/lib/fuzzy";
+import { canAutoFocus } from "@/lib/auto-focus";
 
 /** One row of the picker: an assistant plus the two facts the list shows. */
 export interface SetupPickerAssistant {
@@ -194,10 +195,13 @@ export function SetupPicker({
         <div className="relative">
           <Search className="text-muted-foreground/60 absolute top-1/2 left-4 z-10 size-4 -translate-y-1/2" />
           <input
-            autoFocus
+            autoFocus={canAutoFocus()}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Find Assistant..."
+            placeholder="Find Assistant…"
+            aria-label="Find assistant"
+            autoComplete="off"
+            spellCheck={false}
             className="bg-muted/40 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-border h-11 w-full rounded-2xl pr-4 pl-11 text-sm outline-none focus-visible:ring-1"
           />
         </div>
@@ -275,7 +279,7 @@ export function SetupPicker({
             <button
               type="button"
               aria-label="Close the assistants directory"
-              className="bg-muted/60 text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-xl transition-all active:scale-90 motion-reduce:transform-none motion-reduce:transition-none"
+              className="bg-muted/60 text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-xl transition-[color,transform] active:scale-90 motion-reduce:transform-none motion-reduce:transition-none"
               onClick={(event) => {
                 event.stopPropagation();
                 setIsExpanded(false);
@@ -320,7 +324,10 @@ export function SetupPicker({
                       setHighlightSearch(false);
                     }}
                     onBlur={() => setHighlightSearch(false)}
-                    placeholder="Search assistants..."
+                    placeholder="Search assistants…"
+                    aria-label="Search assistants"
+                    autoComplete="off"
+                    spellCheck={false}
                     className={cn(
                       "bg-muted/30 text-foreground placeholder:text-muted-foreground/40 h-10 w-full rounded-xl pr-4 pl-10 text-sm outline-none transition-shadow",
                       highlightSearch

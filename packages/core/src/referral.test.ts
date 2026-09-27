@@ -1,9 +1,7 @@
 ﻿import { describe, expect, it } from "vitest";
 import {
-  isReferredConversation,
   referralCandidates,
   referralContextSection,
-  referralPromptSection,
   standingContextSections,
 } from "./referral";
 import type { Teammate } from "./types";
@@ -105,23 +103,6 @@ describe("referralCandidates", () => {
   });
 });
 
-describe("referralPromptSection", () => {
-  it("is null when there is nobody to refer to", () => {
-    // The tool is then never registered. A model holding one it can never
-    // usefully call reaches for it anyway, and a one-Teammate organization
-    // would get "let me hand you to..." with nowhere to go.
-    expect(referralPromptSection([])).toBeNull();
-  });
-
-  it("lists the colleagues and says when not to use them", () => {
-    const section = referralPromptSection([
-      { id: "tm-2", name: "Ada", description: "Data Analyst" },
-    ]);
-    expect(section).toContain("Ada: Data Analyst");
-    expect(section).toContain("Do not refer for something you can do yourself");
-  });
-});
-
 describe("referralContextSection", () => {
   it("is null without a summary, so an ordinary chat reads nothing", () => {
     expect(referralContextSection(null)).toBeNull();
@@ -147,16 +128,6 @@ describe("referralContextSection", () => {
       referralSummary: "They hit a quota error.",
     });
     expect(section).toContain("Another teammate referred");
-  });
-});
-
-describe("isReferredConversation", () => {
-  it("is true only for a conversation that began as a handoff", () => {
-    expect(
-      isReferredConversation({ referredFromConversationId: "c-1" })
-    ).toBe(true);
-    expect(isReferredConversation({})).toBe(false);
-    expect(isReferredConversation(null)).toBe(false);
   });
 });
 

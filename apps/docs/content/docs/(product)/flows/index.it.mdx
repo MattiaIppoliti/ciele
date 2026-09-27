@@ -1,22 +1,22 @@
 ---
-title: Flussi
-description: Indirizza messaggi ed eventi proattivi ad azioni di risposta ordinate.
+title: Flows
+description: Instrada i messaggi e gli eventi proattivi verso azioni di risposta ordinate.
 ---
 
 Un Flow contiene un trigger, le condizioni disponibili e le azioni ordinate. Il
-router elabora i flussi abilitati nell'ordine configurato.
+router elabora i Flow abilitati nell'ordine configurato.
 
 ## Flussi di messaggi
 
-Il trigger **User sends a message** utilizza la Classificazione degli intenti.
-Un classificatore di modelli seleziona il miglior Flow idoneo quando è
-disponibile un modello.
+Il trigger **User sends a message** utilizza l'Intent Classification. Un
+classificatore di modelli seleziona il Flow più idoneo quando è disponibile un
+modello.
 
-Il router delle parole chiave fornisce un fallback offline e per gli errori.
-Entrambi i router utilizzano lo stesso filtro dei candidati.
+Il router delle parole chiave fornisce un fallback in caso di modalità offline e
+di errore. Entrambi i router utilizzano lo stesso filtro dei candidati.
 
-Il flusso **Default behavior** bloccato rimane l'ultimo. Gestisce un messaggio
-idoneo quando nessun Flow precedente ha la priorità.
+Il Flow bloccato **Default behavior** rimane l'ultimo. Gestisce un messaggio
+idoneo quando nessun Flow precedente risulta vincente.
 
 ## Flussi proattivi
 
@@ -26,13 +26,18 @@ Questi trigger non classificano un messaggio:
 - **Time on page**
 - **Chat opens**
 
-Un flusso proattivo non ha condizioni e contiene un'azione di notifica. Vedi
-[Notifiche](/flows/notifications).
+Un Flow proattivo non ha condizioni e contiene una sola azione Notification.
+Consulta [Notifications](/flows/notifications).
 
 ## Ordine dei flussi
 
-Posiziona i flussi di messaggi specifici prima di quelli generici. L'ordine
-determina anche il collegamento rapido Basic Interaction integrato.
+Posiziona i Flow di messaggi specifici prima dei Flow di messaggi generici.
+L'ordine controlla anche la scorciatoia integrata Basic Interaction.
 
-Un Flow personalizzato corrispondente precedente può gestire un messaggio di
-cortesia prima del Flow Basic Interaction integrato.
+Un Flow personalizzato corrispondente, posizionato prima, può gestire un
+messaggio di cortesia prima del Flow predefinito Basic Interaction.
+
+Quando [Study Mode](/assistants/tools-and-skills#enable-study-mode) è attivo,
+una richiesta di esercizio di studio viene inoltrata direttamente al flusso
+Study Mode. Per quella richiesta non viene eseguita la classificazione
+dell'intento.

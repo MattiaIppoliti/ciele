@@ -1,38 +1,47 @@
 ---
 title: Centres d'assistance
-description: Proposez aux visiteurs un chemin configuré pour contacter une équipe humaine.
+description: Offrez aux visiteurs un parcours configuré pour contacter une équipe humaine.
 ---
 
-Un centre d'assistance regroupe les canaux de contact, la disponibilité, les
-champs de formulaire et les paramètres d'escalade. Une organisation peut
-connecter un centre d'assistance à plusieurs assistants.
+Un Help Desk regroupe les canaux de contact, les informations de disponibilité,
+les champs de formulaire et les paramètres d'escalade. Une organisation peut
+connecter un Help Desk à plusieurs Assistants.
 
 ## Comportement actuel du canal
 
 | Canal | Résultat pour le visiteur |
 | --- | --- |
-| E-mail | Ciele envoie un e-mail de remontée lorsque le transport d'e-mails est configuré. |
+| E-mail | Ciele envoie un e-mail de remontée lorsque le transport e-mail est configuré. |
 | Téléphone | Le widget affiche le contact téléphonique configuré. |
-| Chat en direct | Le widget affiche le chemin de contact configuré pour le chat en direct. |
-| Lien externe | Le widget ouvre la destination configurée. |
+| Live chat | Le widget affiche le chemin de contact du Live Chat configuré. |
+| External link | Le widget ouvre la destination configurée. |
+| Point de terminaison API | Le widget affiche le formulaire du canal et l'envoie au point de terminaison configuré. |
 
-Ne configurez un canal qu'après avoir testé son parcours visiteur complet.
+Ne configurez un canal qu'après avoir testé l'intégralité de son parcours
+Visiteur.
 
 ## Sélection de l'escalade
 
 Un Assistant peut afficher une action **Contact support** toujours disponible.
-Ciele peut recommander un service d'assistance connecté à partir de sa
-description et du contexte de la conversation.
+Ciele peut recommander un Help Desk connecté à partir de sa description et du
+contexte de la Conversation.
 
-Le visiteur sélectionne un canal disponible. Le widget affiche alors le
+Le Visiteur sélectionne un canal disponible. Le widget affiche ensuite le
 formulaire configuré ou l'action de contact.
 
-## Créez un centre d'assistance
+Un Visiteur peut également saisir **@** dans la zone de message. La fenêtre de
+chat affiche les Help Desks que cet Assistant peut recommander. Lorsque le
+Visiteur en sélectionne un, la fenêtre de chat supprime le **@** et affiche ce
+Help Desk. Le texte n'est pas envoyé à l'Assistant.
+
+Un Help Desk sans canal actif n'apparaît pas dans cette liste.
+
+## Créer un centre d'assistance
 
 1. Ouvrez **Help Desks**.
-2. Créez un centre d'assistance.
+2. Créer un Help Desk.
 3. Saisissez un nom et une description du routage.
 4. Ajoutez un canal pris en charge.
 5. Configurez la disponibilité et les champs du formulaire.
-6. Connectez le centre d'assistance à un assistant.
-7. Testez l'escalade en mode Aperçu.
+6. Connectez le Help Desk à un Assistant.
+7. Testez l'escalade dans Preview.

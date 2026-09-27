@@ -184,7 +184,7 @@ export function ImprovementContextMenu({
                 ref={searchRef}
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search members..."
+                placeholder="Search members…"
                 aria-label="Search members"
                 // The menu's typeahead moves focus to the matching item on every
                 // keystroke, which would empty this field after one character.

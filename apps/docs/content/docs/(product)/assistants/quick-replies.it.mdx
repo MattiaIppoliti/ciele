@@ -1,36 +1,47 @@
 ---
 title: Risposte rapide
-description: Aggiungi pulsanti di avvio che inviano un messaggio di testo o restituiscono una risposta selezionata tra le FAQ.
+description: Aggiungi pulsanti di avvio che inviano testo, aprono il supporto, aprono un link o restituiscono una risposta selezionata dalle FAQ.
 ---
 
-Le risposte rapide vengono visualizzate vicino al messaggio di benvenuto.
-Aiutano un Visitatore a iniziare un'attività comune.
+Le risposte rapide vengono visualizzate accanto al messaggio di benvenuto.
+Aiutano un Visitor a iniziare un'attività comune.
 
-## Invia testo
+## Invia testo nella chat
 
-Una risposta rapida **Send Text** invia il testo configurato come messaggio del
-Visitatore. Il normale router Flow gestisce quindi quel messaggio.
+Una risposta rapida **Send Text Into Chat** invia il testo configurato come
+messaggio di un Visitatore. Il normale Flow router gestisce quindi quel
+messaggio.
 
 Utilizza questo tipo quando l'Assistente deve interpretare il testo iniziale
-attraverso le sue normali regole di routing.
+tramite le sue normali regole di routing.
 
-## Domande frequenti
+## Escalation
 
-Una risposta rapida **FAQ** restituisce la risposta FAQ selezionata parola per
-parola. Non chiama il modello di chat.
+Una risposta rapida **Escalation** apre il pannello di supporto dell'Assistente.
+A quel punto puoi selezionare un canale Help Desk.
+
+## Apri link esterno
+
+Una risposta rapida **Open External Link** apre il relativo URL in una nuova
+scheda del browser. Non invia alcun messaggio.
+
+## FAQ
+
+Una risposta rapida **FAQ** restituisce testualmente la risposta selezionata
+dalle FAQ. Non richiama il modello di chat.
 
 La risposta include la citazione della fonte delle FAQ. Utilizza questo tipo
-quando una risposta approvata deve rimanere esatta.
+quando una risposta approvata deve rimanere esattamente invariata.
 
 ## Aggiungi una risposta rapida
 
 1. Apri **General**.
 2. Trova **Quick replies**.
-3. Aggiungi un elemento **Send Text** o **FAQ**.
-4. Inserisci l'etichetta visibile.
+3. Aggiungi un elemento e seleziona il suo **Type**.
+4. Inserisci la **visible label**.
 5. Seleziona o inserisci il contenuto richiesto.
 6. Salva la bozza.
-7. Prova il pulsante in Anteprima.
+7. Prova il pulsante in Preview.
 
 Mantieni le etichette brevi. L'etichetta deve descrivere l'azione che si
 verifica dopo la selezione.

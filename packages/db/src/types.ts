@@ -17,7 +17,6 @@ import type {
   AiUsageInput,
   Alert,
   AlertType,
-  AnswerVerdict,
   AnswerVerdictInput,
   ApiIntegration,
   ApiIntegrationInput,
@@ -66,7 +65,6 @@ import type {
   FlowInput,
   FlowPatch,
   FlowTrust,
-  FlowTrustEvent,
   FeedbackReactionId,
   GoalExpectations,
   HelpDesk,
@@ -122,7 +120,6 @@ import type {
   Publication,
   PublicationConfig,
   RecrawlSchedule,
-  RetentionSweepEvent,
   RetentionSweepEventInput,
   DocumentChunkListItem,
   ActionApproval,
@@ -369,11 +366,6 @@ export interface Db {
   ): Promise<ProviderConnection>;
   deleteProviderConnection(id: string): Promise<void>;
   /**
-   * The connection the Organization chose to embed its knowledge, or null for
-   * the runtime's automatic provider order (#437).
-   */
-  getEmbeddingConnectionId(organizationId: string): Promise<string | null>;
-  /**
    * Pick the embedding connection, or pass null to return to the automatic
    * order. The connection must belong to the Organization.
    */
@@ -560,7 +552,6 @@ export interface Db {
     importId: string,
     input: Omit<ApplicationSyncRun, "id" | "importId">
   ): Promise<ApplicationSyncRun>;
-  listApplicationSyncRuns(importId: string): Promise<ApplicationSyncRun[]>;
   listApplicationOperationalState(organizationId: string): Promise<Array<{
     importId: string;
     lastRun: ApplicationSyncRun | null;
@@ -723,11 +714,6 @@ export interface Db {
     contentType: string;
     now: string;
   }): Promise<boolean>;
-  releaseApiIdempotency(input: {
-    scope: string;
-    key: string;
-    leaseToken: string;
-  }): Promise<boolean>;
   getWorkQueueHealth(now: string): Promise<{
     backgroundJobs: Record<
       string,
@@ -825,15 +811,6 @@ export interface Db {
     input: Pick<CrawlFinalizeClaim, "sourceId" | "workerId">
   ): Promise<void>;
   deleteSource(id: string): Promise<void>;
-  /**
-   * Deletes exactly the given Concepts (and their chunks) by id, ignoring ids
-   * that no longer exist. Targeting a known prior set (rather than everything
-   * under a Source) lets a crawl finalizer persist the full new set of Concepts
-   * first and only then retire the previous one, an atomic create-then-delete
-   * replacement that never destroys last-good knowledge on a mid-ingest failure.
-   * An empty list is a no-op.
-   */
-  deleteConceptsByIds(ids: string[]): Promise<void>;
   /** Removes one uncommitted or retired generation without touching the active one. */
   deleteSourceKnowledgeGeneration(
     sourceId: string,
@@ -860,11 +837,6 @@ export interface Db {
   >;
   /** Active, non-excluded FAQ titles reachable through Assistant Knowledge Links; no bodies. */
   listAssistantFaqOptions(assistantId: string): Promise<{ id: string; question: string }[]>;
-  /** Stable id-cursor page of active Concepts for bounded inventory scans. */
-  listConceptPage(
-    collectionId: string,
-    input: { afterId?: string; limit: number }
-  ): Promise<Concept[]>;
   getConcept(id: string): Promise<Concept | null>;
   /**
    * How many chunks one Document has: the Chunks tab's count (#928), and the
@@ -967,11 +939,6 @@ export interface Db {
   deleteConcept(id: string): Promise<void>;
   deleteChunksByConcept(conceptId: string): Promise<void>;
   setConceptExcluded(id: string, excluded: boolean): Promise<void>;
-  /** Per-page re-crawl override; null clears it back to inheriting the site. */
-  setConceptRecrawlSchedule(
-    id: string,
-    schedule: RecrawlSchedule | null
-  ): Promise<void>;
   saveChunks(
     chunks: Array<{
       conceptId: string;
@@ -1265,11 +1232,6 @@ export interface Db {
     id: string,
     referral: NonNullable<ConversationMetadata["referredTo"]>[number]
   ): Promise<void>;
-  /** Replaces the conversation's persistent session state (runtime-only). */
-  updateConversationSessionState(
-    id: string,
-    state: Record<string, unknown>
-  ): Promise<void>;
   /** CAS-merges a session patch; false means the caller must reload/retry. */
   mergeConversationSessionState(input: {
     id: string;
@@ -1287,13 +1249,6 @@ export interface Db {
     leaseToken: string | null;
     assistantMessageId: string | null;
   }>;
-  completeConversationTurn(input: {
-    conversationId: string;
-    requestId: string;
-    leaseToken: string;
-    assistantMessageId: string;
-    now: string;
-  }): Promise<boolean>;
   /** Fenced atomic commit: assistant message, outbox rows, and turn completion. */
   commitConversationTurn(input: {
     conversationId: string;
@@ -1612,11 +1567,6 @@ export interface Db {
    * the table has no delete policy. Returns how many rows went.
    */
   purgeExpiredObjectAccessEvents(cutoffIso: string): Promise<number>;
-  /** The audit trail, newest first. Admin-read (RLS rank 3). */
-  listRetentionSweepEvents(
-    organizationId: string,
-    options?: { limit?: number }
-  ): Promise<RetentionSweepEvent[]>;
   /** Input+output tokens the organization consumed today (UTC), the budget pre-turn check. */
   getOrgTokensUsedToday(organizationId: string): Promise<number>;
   /** Estimated EUR cost (see pricing.ts) of today's (UTC) usage, the euro budget pre-turn check. */
@@ -1689,6 +1639,21 @@ export interface Db {
   settleOrgBudgetReservation(id: string, rows: AiUsageInput[]): Promise<boolean>;
   releaseOrgBudgetReservation(id: string): Promise<boolean>;
 
+  // Turn concurrency admission (service role)
+  /**
+   * Takes one slot in every scope, or none: returns a lease id when each scope
+   * has fewer than its `limit` unexpired leases, null when any is full. A lease
+   * stops counting at `expiresAt` whether or not it is released, which is what
+   * frees the slot of a turn whose function died mid-answer.
+   */
+  acquireTurnConcurrency(input: {
+    scopes: { key: string; limit: number }[];
+    now: string;
+    expiresAt: string;
+  }): Promise<string | null>;
+  /** Frees every slot the lease holds. False when it was already gone. */
+  releaseTurnConcurrency(leaseId: string): Promise<boolean>;
+
   // Standing goals (scheduled golden-question checks)
   /** Throws when the assistant already has ASSISTANT_GOAL_CAP goals. */
   createAssistantGoal(
@@ -1712,11 +1677,6 @@ export interface Db {
 
   // Answer verification (independent verifier)
   /**
-   * Newest generative answers without a verdict (cross-org, service role).
-   * Verbatim/fallback/refusal-only messages are never returned.
-   */
-  listUnverifiedAnswers(input: { limit: number }): Promise<VerifiableAnswer[]>;
-  /**
    * Atomically claims unverified generative answers before grading (cross-org,
    * service role): stamps a per-message claim so concurrent ticks never
    * double-grade. A claim older than `staleBefore` is re-claimable, so a
@@ -1735,10 +1695,6 @@ export interface Db {
   releaseAnswerVerifierClaim(messageId: string): Promise<void>;
   /** Records the verdict; returns false when the message was already verified (idempotence). */
   recordAnswerVerdict(input: AnswerVerdictInput): Promise<boolean>;
-  /** Verdicts for a conversation's messages (Inbox transcript badges). */
-  listConversationAnswerVerdicts(
-    conversationId: string
-  ): Promise<AnswerVerdict[]>;
 
   // Flow trust ledger (earned autonomy tiers)
   /** Graded signals newest-first (cross-org, service role): verdicts + unverdicted explicit feedback. */
@@ -1763,11 +1719,6 @@ export interface Db {
     runs: number;
     passes: number;
   }): Promise<void>;
-  /** Tier-transition history for one Flow, newest first. */
-  listFlowTrustEvents(
-    assistantId: string,
-    flowId: string
-  ): Promise<FlowTrustEvent[]>;
 
   // Compost loop (weekly exhaust → proposed Improvements)
   /**
@@ -1925,7 +1876,6 @@ export interface Db {
     entityId: string,
     input: EntitySyncConfigInput
   ): Promise<EntitySyncConfig>;
-  deleteEntitySyncConfig(entityId: string): Promise<void>;
   markEntitySynced(entityId: string, at: string): Promise<void>;
   listDueEntitySyncConfigs(
     now: string

@@ -26,9 +26,6 @@
  * jsonb and only ever read field-wise (§4.1 "MUST NOT reject").
  */
 
-/** The OKF revision this platform produces and reads (§12). */
-export const OKF_VERSION = "0.2";
-
 /** Lifecycle state (§5.4). Absent ⇒ `stable`. */
 export type OkfStatus = "draft" | "stable" | "deprecated";
 

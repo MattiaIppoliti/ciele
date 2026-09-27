@@ -13,14 +13,14 @@ Desktop. This page is the server path.
 
 - Installez Git.
 - Installez Docker avec Docker Compose.
-- Réservez un espace disque suffisant pour les images, Postgres et les fichiers
-  importés.
+- Réservez suffisamment d'espace disque pour les images, Postgres et les
+  fichiers importés.
 - Réservez davantage de mémoire lorsque vous activez les workers optionnels.
 
 ## Une seule commande
 
 Le programme d'installation exécute toutes les étapes de la section suivante :
-il vérifie les prérequis, télécharge les sources dans `./ciele` et exécute
+il vérifie les prérequis, récupère les sources dans `./ciele` et exécute
 `bootstrap.sh`.
 
 ```bash
@@ -35,15 +35,16 @@ une balise de version :
 curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 ```
 
-L'installateur ne supprime jamais rien : si le répertoire cible existe et n'est
-pas un répertoire de clonage Ciele, il s'arrête et vous en informe.
+Le programme d'installation ne supprime jamais rien : si le répertoire cible
+existe et n'est pas un répertoire de clonage Ciele, il s'arrête et vous en
+informe.
 
 Sur un Mac sans Docker, l'installateur ne s'arrête pas en cas d'erreur. Il ouvre
-[Ciele Desktop](/self-hosting/desktop) et, si l'application n'est pas présente,
-télécharge d'abord la version correspondante. La configuration guidée qui s'y
-trouve associe Docker Desktop et démarre la même pile que celle décrite sur
-cette page. Sous Linux, l'installateur refuse, car il n'existe pas d'application
-de bureau à laquelle confier la tâche.
+[Ciele Desktop](/self-hosting/desktop), en téléchargeant d'abord la version
+publiée si l'application est absente. La configuration guidée qui s'y trouve
+associe Docker Desktop et démarre la même pile que celle décrite sur cette page.
+Sous Linux, l'installateur refuse, car il n'existe pas d'application de bureau à
+laquelle confier la tâche.
 
 ## Initialiser la pile
 
@@ -59,20 +60,19 @@ Le script génère les secrets requis dans `deploy/.env`. Il construit ensuite l
 profils par défaut et les démarre.
 
 Ouvrez [http://localhost:3000](http://localhost:3000) une fois que les services
-sont passés à l'état « healthy ». Le premier compte devient le propriétaire de
-l'organisation.
+sont opérationnels. Le premier compte devient le propriétaire de l'organisation.
 
 Utilisez `./deploy/bootstrap.sh --seed` pour ajouter du contenu de démonstration
 nettoyé.
 
-## Exécuter les images publiées au lieu de les compiler
+## Exécuter les images publiées au lieu de les générer
 
 La compilation de `app`, `migrate` et `cron` à partir du checkout prend beaucoup
 de temps et nécessite le dépôt complet. Chaque version publie également ces
-trois éléments sous forme d'images conteneur :
+trois éléments sous forme d'images de conteneur :
 
 ```bash
-./deploy/bootstrap.sh --images v0.4.0
+./deploy/bootstrap.sh --images v1.0.62
 ```
 
 La commande écrit deux paramètres dans `deploy/.env` et effectue un pull au lieu
@@ -80,7 +80,7 @@ d'une compilation :
 
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
-CIELE_IMAGE_TAG=v0.4.0
+CIELE_IMAGE_TAG=v1.0.62
 ```
 
 Étant donné que les deux se trouvent dans `deploy/.env`, un
@@ -138,7 +138,7 @@ fonctionner délibérément sur HTTP non chiffré, par exemple sur un réseau pr
 définissez `CIELE_ALLOW_INSECURE_HTTP=1` dans `deploy/.env`.
 
 Une fois qu'une origine publique existe, définissez `CIELE_PUBLIC_ORIGIN` dans
-`deploy/.env` sur cette URL HTTPS. Les liens insérés dans un e-mail, comme la
-confirmation d'inscription à la newsletter, sont générés à partir de cette
+`deploy/.env` sur cette URL HTTPS. Les liens qui figurent dans un e-mail, comme
+la confirmation d'inscription à la newsletter, sont générés à partir de cette
 valeur. Sans cela, l'application refuse d'envoyer ces e-mails. Il ne génère pas
 de lien à partir de l'en-tête `Host` de la requête.

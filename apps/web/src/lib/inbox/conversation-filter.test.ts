@@ -3,6 +3,7 @@ import type { InboxConversation } from "@agent-hub/core";
 import {
   defaultInboxFilters,
   inboxQueryFromFilters,
+  inboxUrlStateFromSearchParams,
   subjectName,
   type InboxFilterCriteria,
 } from "./conversation-filter";
@@ -79,5 +80,30 @@ describe("inboxQueryFromFilters", () => {
         limit: 25,
       })
     );
+  });
+});
+
+describe("inboxUrlStateFromSearchParams", () => {
+  it("opens on the defaults with no search when the URL carries nothing", () => {
+    expect(inboxUrlStateFromSearchParams({})).toEqual({
+      ...defaultInboxFilters(),
+      q: "",
+    });
+  });
+
+  it("reads the filters and the search a shared link carries", () => {
+    const state = inboxUrlStateFromSearchParams(
+      new URLSearchParams("escalation=escalated&feedback=down&q=refund&from=2026-01-01"),
+    );
+    expect(state.escalation).toBe("escalated");
+    expect(state.feedback).toBe("down");
+    expect(state.q).toBe("refund");
+    expect(state.from).toBe("2026-01-01");
+  });
+
+  it("keeps a typed filter at its default when the link holds an impossible value", () => {
+    const state = inboxUrlStateFromSearchParams({ staff: "everyone", review: "maybe" });
+    expect(state.staff).toBe("");
+    expect(state.review).toBe("");
   });
 });

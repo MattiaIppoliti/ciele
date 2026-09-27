@@ -1,9 +1,9 @@
 ---
 title: Configurazione
-description: Configura origini, segreti, account, modelli, e-mail e worker opzionali.
+description: Configura origini, segreti, account, modelli, email e worker opzionali.
 ---
 
-Lo script bootstrap scrive `deploy/.env`. Usa `deploy/.env.example` come
+Lo script di bootstrap scrive `deploy/.env`. Usa `deploy/.env.example` come
 riferimento alla variabile corrente.
 
 ## Origini pubbliche
@@ -12,8 +12,8 @@ Imposta `PUBLIC_URL` sull'origine pubblica dell'applicazione. Imposta
 `SUPABASE_PUBLIC_URL` sull'origine del gateway del database accessibile dal
 browser.
 
-Ricompila l'applicazione dopo aver modificato `SUPABASE_PUBLIC_URL`. Il bundle
-del browser contiene questo valore in fase di compilazione.
+Ricompila l'applicazione dopo aver modificato `SUPABASE_PUBLIC_URL`. Il browser
+bundle contiene questo valore al momento della compilazione.
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d --build app
@@ -21,13 +21,13 @@ docker compose -f deploy/docker-compose.yml up -d --build app
 
 ## Segreti generati
 
-Lo stack richiede Postgres, JSON Web Token, ruolo di servizio, crittografia
-dell'applicazione e segreti cron. Lascia che li generi lo script di bootstrap.
+Lo stack richiede Postgres, JSON Web Token, service Role, la crittografia
+dell'applicazione e i segreti cron. Lascia che lo script di bootstrap li generi.
 
-Non modificare `JWT_SECRET`, `ANON_KEY` o `SERVICE_ROLE_KEY` separatamente.
-Insieme formano un'unica configurazione di firma.
+Non modificare `JWT_SECRET`, `ANON_KEY` o `SERVICE_ROLE_KEY` in modo
+indipendente. Costituiscono un'unica configurazione di firma.
 
-## Account ed e-mail
+## Account e email
 
 Il primo account diventa il proprietario dell'organizzazione. Imposta
 `DISABLE_SIGNUP=true` dopo che gli account richiesti esistono.
@@ -35,17 +35,46 @@ Il primo account diventa il proprietario dell'organizzazione. Imposta
 Senza la configurazione SMTP, `MAILER_AUTOCONFIRM=true` conferma automaticamente
 i nuovi account.
 
-Le azioni e-mail in fase di esecuzione utilizzano `RESEND_API_KEY` e
+Le azioni di posta elettronica in runtime utilizzano `RESEND_API_KEY` e
 `EMAIL_FROM`. Segnalano un risultato non configurato quando uno dei due valori è
 assente.
 
-## Endpoint del modello
+## Endpoint dei modelli
 
 Configura le chiavi dei provider Anthropic, OpenAI o Google. Puoi anche
 configurare un endpoint di chat ed embedding compatibile con OpenAI.
 
-La ricerca nella knowledge base utilizza la corrispondenza lessicale quando non
-è disponibile alcun modello di embedding.
+La ricerca nella Knowledge Base utilizza il matching lessicale quando non è
+disponibile alcun modello di embedding.
+
+## Capacità di chat
+
+Ogni turno di chat che richiama un modello occupa uno slot prima della sua prima
+chiamata al modello. Gli slot si trovano nel database, quindi tutte le istanze
+dell'applicazione condividono un unico contatore.
+
+| Variabile | Valore predefinito | Effetto |
+|---|---|---|
+| `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | Numero massimo di turni che possono essere eseguiti contemporaneamente per una singola Organization. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Numero massimo di turni che possono essere eseguiti contemporaneamente su una singola chiave del provider della piattaforma. |
+| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Per quanto tempo un turno attende uno slot libero, in millisecondi. Il valore massimo è `60000`. |
+
+Imposta un limite a `0` o `off` per rimuoverlo. Lascia la variabile vuota per
+utilizzare il valore predefinito.
+
+Un turno che non ottiene alcuno slot durante il tempo di attesa non viene
+eseguito. Il widget comunica al Visitor di riprovare tra pochi secondi.
+
+Quando un provider rifiuta una richiesta a causa del suo limite di frequenza,
+l'applicazione riprova a inviare la richiesta dopo un intervallo casuale. Il
+widget mostra lo stesso messaggio se tutti i tentativi falliscono.
+
+Il widget limita inoltre ogni Visitor a 12 messaggi al minuto. Un singolo
+indirizzo di rete può inviare 300 messaggi al minuto a un unico Assistente.
+Molti Visitatori possono condividere un unico indirizzo, ad esempio su una rete
+aziendale.
+
+I turni su un abbonamento personale non occupano uno slot.
 
 ## TLS
 

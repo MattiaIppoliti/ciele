@@ -151,6 +151,8 @@ export function ProfileClient({
           <Input
             value={firstName}
             data-testid="profile-first-name"
+            aria-label="First name"
+            autoComplete="given-name"
             onChange={(e) => {
               setFirstName(e.target.value);
               setSaveStatus("idle");
@@ -163,6 +165,8 @@ export function ProfileClient({
           <Input
             value={lastName}
             data-testid="profile-last-name"
+            aria-label="Last name"
+            autoComplete="family-name"
             onChange={(e) => {
               setLastName(e.target.value);
               setSaveStatus("idle");
@@ -180,6 +184,9 @@ export function ProfileClient({
         <Input
           value={username}
           data-testid="profile-username"
+          aria-label="Username"
+          autoComplete="username"
+          spellCheck={false}
           onChange={(e) => {
             setUsername(e.target.value);
             setSaveStatus("idle");
@@ -211,7 +218,7 @@ export function ProfileClient({
           data-testid="profile-save"
           className="px-6 font-semibold"
         >
-          {isPending ? "Saving..." : "Save changes"}
+          {isPending ? "Saving…" : "Save changes"}
         </Button>
       </div>
     </div>

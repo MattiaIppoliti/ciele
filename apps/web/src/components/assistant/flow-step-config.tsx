@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import type {
   ApiRequestAuthType,
   FlowAction,
@@ -90,6 +90,7 @@ import {
 import { ConnectorConfig } from "@/components/assistant/flow-connector-config";
 import { HumanReviewConfig } from "@/components/assistant/flow-human-review-config";
 import type { ConnectorConnectionOption } from "@/lib/connector-options";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * The Flow Builder's three steps as configuration components, hosted by both
@@ -163,7 +164,7 @@ function ExampleRow({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border bg-background px-2">
+        <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border bg-background px-2 focus-within:border-ring focus-within:ring-ring/50 transition-[border-color,box-shadow] focus-within:ring-3">
           <span
             className={`flex size-6 shrink-0 items-center justify-center ${polarityIconClass}`}
           >
@@ -172,7 +173,13 @@ function ExampleRow({
           <input
             value={example.message}
             onChange={(e) => onChange({ message: e.target.value })}
-            placeholder="User message..."
+            placeholder="User message…"
+            aria-label={
+              example.shouldTrigger
+                ? "Example message that should trigger the flow"
+                : "Example message that should not trigger the flow"
+            }
+            autoComplete="off"
             className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
         </div>
@@ -334,7 +341,7 @@ function ConditionCard({
 
       {condition.kind === "conversation_context" && (
         <>
-          <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-2">
+          <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-2 focus-within:border-ring focus-within:ring-ring/50 transition-[border-color,box-shadow] focus-within:ring-3">
             <span className="text-muted-foreground border-r pr-2 text-xs font-medium">
               User
             </span>
@@ -344,6 +351,8 @@ function ConditionCard({
                 onChange({ ...condition, description: e.target.value })
               }
               placeholder="Describe the conversation context, e.g. A customer is asking the assistant to create content for them"
+              aria-label="Conversation context"
+              autoComplete="off"
               className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
             />
           </div>
@@ -398,11 +407,13 @@ function ConditionCard({
               onChange={(e) => onChange({ ...condition, value: e.target.value })}
               placeholder={
                 condition.operator === "regex"
-                  ? ".*/courses/.*"
+                  ? ".*/pricing/.*"
                   : condition.operator === "contains"
-                    ? "/courses"
-                    : "https://site.com/courses"
+                    ? "/pricing"
+                    : "https://example.com/pricing"
               }
+              spellCheck={false}
+              autoComplete="off"
               aria-label="URL"
               aria-invalid={issue !== null}
               className="h-9 min-w-0 flex-1"
@@ -525,7 +536,11 @@ function SettingToggle({
         <p className="text-sm font-semibold">{title}</p>
         <p className="text-muted-foreground mt-0.5 text-xs">{description}</p>
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        aria-label={title}
+      />
     </div>
   );
 }
@@ -561,6 +576,8 @@ function FollowUpManualConfig({
             value={question}
             onChange={(event) => update(index, event.target.value)}
             placeholder={`Follow-up question ${index + 1}`}
+            aria-label={`Follow-up question ${index + 1}`}
+            autoComplete="off"
             className="bg-background"
           />
           {rows.length > 1 && (
@@ -569,6 +586,7 @@ function FollowUpManualConfig({
               variant="ghost"
               size="icon"
               className="shrink-0 text-muted-foreground"
+              aria-label={`Remove follow-up question ${index + 1}`}
               onClick={() => remove(index)}
             >
               <AnimatedIcon icon={Trash2} size={16} />
@@ -601,6 +619,7 @@ function SearchKnowledgeAdvanced({
     patch: Partial<NonNullable<FlowActionSettings["search_knowledge"]>>
   ) => void;
 }) {
+  const fieldId = useId();
   const [open, setOpen] = useState(false);
   const searchGuidelines = settings?.searchGuidelines ?? "";
   const answeringStyle = settings?.answeringStyle ?? "";
@@ -626,15 +645,15 @@ function SearchKnowledgeAdvanced({
       {open && (
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Search guidelines</Label>
-            <Textarea
+            <Label htmlFor={`${fieldId}-f1`}>Search guidelines</Label>
+            <Textarea id={`${fieldId}-f1`}
               value={searchGuidelines}
               maxLength={SEARCH_KNOWLEDGE_FIELD_MAX}
               onChange={(e) =>
                 onChange({ searchGuidelines: e.target.value })
               }
               placeholder={
-                'Example: "When searching about X, also include a search about Y." or: "Tailor results for {{user}} enrolled in {{course}}."'
+                'Example: "When searching about X, also include a search about Y." or: "Tailor results to a visitor in {{conversation.metadata.city}}."'
               }
               rows={5}
               className="bg-background"
@@ -645,8 +664,8 @@ function SearchKnowledgeAdvanced({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Answering style</Label>
-            <Textarea
+            <Label htmlFor={`${fieldId}-f2`}>Answering style</Label>
+            <Textarea id={`${fieldId}-f2`}
               value={answeringStyle}
               maxLength={SEARCH_KNOWLEDGE_FIELD_MAX}
               onChange={(e) => onChange({ answeringStyle: e.target.value })}
@@ -742,6 +761,8 @@ function VariablePicker({ onInsert }: { onInsert: (token: string) => void }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search variables"
+          aria-label="Search variables"
+          autoComplete="off"
           className="mb-2"
         />
         <div className="max-h-64 space-y-0.5 overflow-y-auto">
@@ -774,10 +795,14 @@ function FieldWithPicker({
   value,
   onChange,
   placeholder,
+  id,
+  "aria-label": ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  id?: string;
+  "aria-label"?: string;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const insert = (token: string) => {
@@ -789,9 +814,13 @@ function FieldWithPicker({
     <div className="flex items-center gap-2">
       <Input
         ref={ref}
+        id={id}
+        aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        spellCheck={false}
+        autoComplete="off"
         className="bg-background"
       />
       <VariablePicker onInsert={insert} />
@@ -869,6 +898,9 @@ function KeyValueRows({
             value={row.name}
             onChange={(e) => update(row.id, { name: e.target.value })}
             placeholder="Name"
+            aria-label={`${label} name`}
+            autoComplete="off"
+            spellCheck={false}
             className="bg-background"
           />
           <div className="flex-1">
@@ -876,6 +908,7 @@ function KeyValueRows({
               value={row.value}
               onChange={(value) => update(row.id, { value })}
               placeholder="Value"
+              aria-label={`${label} value`}
             />
           </div>
           <Hint label="Remove row">
@@ -931,12 +964,18 @@ function JsonPathRows({
             value={row.path}
             onChange={(e) => update(row.id, { path: e.target.value })}
             placeholder="$.data.user.name"
+            aria-label="JSON path"
+            autoComplete="off"
+            spellCheck={false}
             className="bg-background font-mono text-xs"
           />
           <Input
             value={row.variable}
             onChange={(e) => update(row.id, { variable: e.target.value })}
             placeholder="userName"
+            aria-label="Variable name"
+            autoComplete="off"
+            spellCheck={false}
             className="bg-background"
           />
           <Hint label="Remove mapping">
@@ -1061,18 +1100,19 @@ function WebhookCallFields({
   withReplyPaths?: boolean;
   defaultMethod: WebhookCallShape["method"];
 }) {
+  const fieldId = useId();
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
         <div className="space-y-1.5">
-          <Label>Method</Label>
+          <Label htmlFor={`${fieldId}-f3`}>Method</Label>
           <Select
             value={call?.method ?? defaultMethod}
             onValueChange={(value) =>
               onChange({ method: value as WebhookCallShape["method"] })
             }
           >
-            <SelectTrigger className="bg-background">
+            <SelectTrigger id={`${fieldId}-f3`} className="bg-background">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1085,8 +1125,8 @@ function WebhookCallFields({
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>URI</Label>
-          <FieldWithPicker
+          <Label htmlFor={`${fieldId}-f4`}>URI</Label>
+          <FieldWithPicker id={`${fieldId}-f4`}
             value={call?.url ?? ""}
             onChange={(url) => onChange({ url })}
             placeholder={urlPlaceholder}
@@ -1095,8 +1135,8 @@ function WebhookCallFields({
       </div>
       {withBody && (
         <div className="space-y-1.5">
-          <Label>Body</Label>
-          <Textarea
+          <Label htmlFor={`${fieldId}-f5`}>Body</Label>
+          <Textarea id={`${fieldId}-f5`}
             value={call?.bodyTemplate ?? ""}
             onChange={(e) => onChange({ bodyTemplate: e.target.value })}
             placeholder={CALLBACK_BODY_PLACEHOLDER}
@@ -1144,14 +1184,15 @@ function ApiAuthFields({
   auth: ApiRequestSettings["auth"];
   onChange: (auth: ApiRequestSettings["auth"]) => void;
 }) {
+  const fieldId = useId();
   const auth = configured ?? { type: "none" };
   const setAuthType = (type: ApiRequestAuthType) =>
     onChange({ type } as ApiRequestSettings["auth"]);
   return (
     <div className="space-y-1.5">
-      <Label>Authentication</Label>
+      <Label htmlFor={`${fieldId}-f6`}>Authentication</Label>
       <Select value={auth.type} onValueChange={(v) => setAuthType(v as ApiRequestAuthType)}>
-        <SelectTrigger className="bg-background">
+        <SelectTrigger id={`${fieldId}-f6`} className="bg-background">
           {/* Explicit children: the primitive otherwise shows the stored value,
               so the closed trigger read "api_key" while its own menu said
               "API key header". Same reason as the endpoint select below. */}
@@ -1171,6 +1212,7 @@ function ApiAuthFields({
           value={auth.token ?? ""}
           onChange={(e) => onChange({ type: "bearer", token: e.target.value })}
           placeholder={auth.hasToken ? "Saved: type to replace" : "Token"}
+          aria-label="Bearer token"
           className="bg-background"
           autoComplete="off"
         />
@@ -1181,6 +1223,9 @@ function ApiAuthFields({
             value={auth.header ?? ""}
             onChange={(e) => onChange({ type: "api_key", header: e.target.value, key: auth.key })}
             placeholder="Header name (e.g. X-API-Key)"
+            aria-label="API key header name"
+            autoComplete="off"
+            spellCheck={false}
             className="bg-background"
           />
           <Input
@@ -1188,6 +1233,7 @@ function ApiAuthFields({
             value={auth.key ?? ""}
             onChange={(e) => onChange({ type: "api_key", header: auth.header, key: e.target.value })}
             placeholder={auth.hasKey ? "Saved: type to replace" : "Key"}
+            aria-label="API key"
             className="bg-background"
             autoComplete="off"
           />
@@ -1201,6 +1247,9 @@ function ApiAuthFields({
               onChange({ type: "basic", username: e.target.value, password: auth.password })
             }
             placeholder="Username"
+            aria-label="Username"
+            autoComplete="off"
+            spellCheck={false}
             className="bg-background"
           />
           <Input
@@ -1210,6 +1259,7 @@ function ApiAuthFields({
               onChange({ type: "basic", username: auth.username, password: e.target.value })
             }
             placeholder={auth.hasPassword ? "Saved: type to replace" : "Password"}
+            aria-label="Password"
             className="bg-background"
             autoComplete="off"
           />
@@ -1233,6 +1283,7 @@ function HttpWebhookConfig({
   settings: FlowActionSettings["http_webhook"];
   onChange: (patch: Partial<HttpWebhookSettingsShape>) => void;
 }) {
+  const fieldId = useId();
   const issue = httpWebhookSettingsIssue(settings);
   return (
     <div className="space-y-5">
@@ -1277,8 +1328,8 @@ function HttpWebhookConfig({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Wait for (minutes)</Label>
-        <Input
+        <Label htmlFor={`${fieldId}-f7`}>Wait for (minutes)</Label>
+        <Input id={`${fieldId}-f7`}
           type="number"
           min={MIN_WEBHOOK_TIMEOUT_MINUTES}
           max={MAX_WEBHOOK_TIMEOUT_MINUTES}
@@ -1302,8 +1353,8 @@ function HttpWebhookConfig({
       </div>
 
       <div className="space-y-1.5">
-        <Label>While waiting</Label>
-        <Input
+        <Label htmlFor={`${fieldId}-f8`}>While waiting</Label>
+        <Input id={`${fieldId}-f8`}
           value={settings?.waitingMessage ?? ""}
           onChange={(e) => onChange({ waitingMessage: e.target.value })}
           placeholder={DEFAULT_WEBHOOK_WAITING_MESSAGE}
@@ -1311,8 +1362,8 @@ function HttpWebhookConfig({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>If nothing arrives</Label>
-        <Input
+        <Label htmlFor={`${fieldId}-f9`}>If nothing arrives</Label>
+        <Input id={`${fieldId}-f9`}
           value={settings?.haltMessage ?? ""}
           onChange={(e) => onChange({ haltMessage: e.target.value })}
           placeholder="I didn&rsquo;t hear back in time, so I&rsquo;ve stopped waiting."
@@ -1342,6 +1393,7 @@ function RespondConfig({
   settings: FlowActionSettings["respond"];
   onChange: (patch: Partial<NonNullable<FlowActionSettings["respond"]>>) => void;
 }) {
+  const fieldId = useId();
   const issue = respondSettingsIssue(settings);
   return (
     <div className="space-y-4">
@@ -1349,10 +1401,10 @@ function RespondConfig({
         Answer the HTTP request that started this flow. Steps after this one don&apos;t run.
       </p>
       <div className="space-y-1.5">
-        <Label>
+        <Label htmlFor={`${fieldId}-f10`}>
           Status code <span className="text-destructive">*</span>
         </Label>
-        <Input
+        <Input id={`${fieldId}-f10`}
           type="number"
           min={200}
           max={599}
@@ -1374,8 +1426,8 @@ function RespondConfig({
         onChange={(headers) => onChange({ headers })}
       />
       <div className="space-y-1.5">
-        <Label>Body (optional)</Label>
-        <Textarea
+        <Label htmlFor={`${fieldId}-f11`}>Body (optional)</Label>
+        <Textarea id={`${fieldId}-f11`}
           value={settings?.bodyTemplate ?? ""}
           onChange={(e) => onChange({ bodyTemplate: e.target.value })}
           placeholder={RESPONSE_BODY_PLACEHOLDER}
@@ -1401,6 +1453,7 @@ function ApiRequestConfig({
   settings: FlowActionSettings["api_request"];
   onChange: (patch: Partial<ApiRequestSettings>) => void;
 }) {
+  const fieldId = useId();
   const endpoint = settings?.endpoint ?? "url";
   const method = settings?.method ?? "POST";
   // A Swagger operation's method is not known until the definition is read, so
@@ -1421,14 +1474,14 @@ function ApiRequestConfig({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Endpoint</Label>
+        <Label htmlFor={`${fieldId}-f12`}>Endpoint</Label>
         <Select
           value={endpoint}
           onValueChange={(value) =>
             onChange({ endpoint: value as ApiRequestSettings["endpoint"] })
           }
         >
-          <SelectTrigger className="bg-background">
+          <SelectTrigger id={`${fieldId}-f12`} className="bg-background">
             {/* Explicit children: the primitive otherwise shows the stored
                 value, and "url" is not what the row above it says. */}
             <SelectValue>{ENDPOINT_LABELS[endpoint]}</SelectValue>
@@ -1452,20 +1505,26 @@ function ApiRequestConfig({
       {endpoint === "swagger" ? (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Swagger URL</Label>
-            <Input
+            <Label htmlFor={`${fieldId}-f13`}>Swagger URL</Label>
+            <Input id={`${fieldId}-f13`}
               value={settings?.swaggerUrl ?? ""}
               onChange={(e) => onChange({ swaggerUrl: e.target.value })}
               placeholder="https://api.example.com/openapi.json"
+              type="url"
+              inputMode="url"
+              spellCheck={false}
+              autoComplete="off"
               className="bg-background"
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Operation ID</Label>
-            <Input
+            <Label htmlFor={`${fieldId}-f14`}>Operation ID</Label>
+            <Input id={`${fieldId}-f14`}
               value={settings?.operationId ?? ""}
               onChange={(e) => onChange({ operationId: e.target.value })}
               placeholder="createRefund"
+              spellCheck={false}
+              autoComplete="off"
               className="bg-background"
             />
             <p className="text-muted-foreground text-xs">
@@ -1478,14 +1537,14 @@ function ApiRequestConfig({
       ) : (
         <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
           <div className="space-y-1.5">
-            <Label>Method</Label>
+            <Label htmlFor={`${fieldId}-f15`}>Method</Label>
             <Select
               value={settings?.method ?? "POST"}
               onValueChange={(value) =>
                 onChange({ method: value as ApiRequestSettings["method"] })
               }
             >
-              <SelectTrigger className="bg-background">
+              <SelectTrigger id={`${fieldId}-f15`} className="bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1498,11 +1557,14 @@ function ApiRequestConfig({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Endpoint URL</Label>
-            <Input
+            <Label htmlFor={`${fieldId}-f16`}>Endpoint URL</Label>
+            <Input id={`${fieldId}-f16`}
               value={settings?.url ?? ""}
               onChange={(e) => onChange({ url: e.target.value })}
               placeholder="https://api.example.com/..."
+              inputMode="url"
+              spellCheck={false}
+              autoComplete="off"
               className="bg-background"
             />
           </div>
@@ -1531,8 +1593,8 @@ function ApiRequestConfig({
 
       {!isBodyless && (
         <div className="space-y-1.5">
-          <Label>Request JSON body</Label>
-          <Textarea
+          <Label htmlFor={`${fieldId}-f17`}>Request JSON body</Label>
+          <Textarea id={`${fieldId}-f17`}
             value={settings?.bodyTemplate ?? ""}
             onChange={(e) => onChange({ bodyTemplate: e.target.value })}
             placeholder={'{\n  "message": "{{workflow.message}}"\n}'}
@@ -1577,6 +1639,8 @@ function NotificationButtonsConfig({
                 value={button.label ?? ""}
                 onChange={(e) => patch(button.id, { label: e.target.value })}
                 placeholder="Button name"
+                aria-label="Notification button name"
+                autoComplete="off"
                 className="bg-background"
               />
               <Hint label="Remove button">
@@ -1617,14 +1681,21 @@ function NotificationButtonsConfig({
               <Input
                 value={button.url ?? ""}
                 onChange={(e) => patch(button.id, { url: e.target.value })}
-                placeholder="https://example.com/exam-results"
+                placeholder="https://example.com/pricing"
+                aria-label="Button link URL"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
                 className="bg-background"
               />
             ) : (
               <Input
                 value={button.text ?? ""}
                 onChange={(e) => patch(button.id, { text: e.target.value })}
-                placeholder="Tell me more about the exam results"
+                placeholder="Tell me more about the new pricing"
+                aria-label="Text the button sends into the chat"
+                autoComplete="off"
                 className="bg-background"
               />
             )}
@@ -1659,6 +1730,7 @@ function FlowButtonConfig({
   faqs: FaqOption[];
   onChange: (patch: Partial<NonNullable<FlowActionSettings["show_button"]>>) => void;
 }) {
+  const fieldId = useId();
   const type = settings?.type ?? "external_link";
   const showIcon = settings?.showIcon ?? false;
   const icon =
@@ -1684,8 +1756,8 @@ function FlowButtonConfig({
   return (
     <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
       <div className="space-y-1.5">
-        <Label>Button name</Label>
-        <Input
+        <Label htmlFor={`${fieldId}-f18`}>Button name</Label>
+        <Input id={`${fieldId}-f18`}
           value={settings?.label ?? ""}
           onChange={(event) => patch({ label: event.target.value })}
           placeholder={label}
@@ -1694,14 +1766,14 @@ function FlowButtonConfig({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Button type</Label>
+        <Label htmlFor={`${fieldId}-f19`}>Button type</Label>
         <Select
           value={type}
           onValueChange={(value) =>
             onChange({ type: value as FlowButtonType })
           }
         >
-          <SelectTrigger className="bg-background">
+          <SelectTrigger id={`${fieldId}-f19`} className="bg-background">
             {/* Explicit children, or the trigger reads "external_link". */}
             <SelectValue>{FLOW_BUTTON_TYPE_LABELS[type]}</SelectValue>
           </SelectTrigger>
@@ -1717,14 +1789,14 @@ function FlowButtonConfig({
 
       {type === "help_desk" ? (
         <div className="space-y-1.5">
-          <Label>Select a help desk</Label>
+          <Label htmlFor={`${fieldId}-f20`}>Select a help desk</Label>
           <Select
             value={settings?.helpDeskId ?? ""}
             onValueChange={(helpDeskId) =>
               patch({ helpDeskId: helpDeskId ?? undefined })
             }
           >
-            <SelectTrigger className="bg-background">
+            <SelectTrigger id={`${fieldId}-f20`} className="bg-background">
               <SelectValue placeholder="Select a help desk" />
             </SelectTrigger>
             <SelectContent>
@@ -1743,9 +1815,9 @@ function FlowButtonConfig({
         </div>
       ) : type === "send_text" ? (
         <div className="space-y-1.5">
-          <Label>Text sent to chat</Label>
+          <Label htmlFor={`${fieldId}-f21`}>Text sent to chat</Label>
           <div className="flex gap-2">
-            <Input
+            <Input id={`${fieldId}-f21`}
               value={settings?.text ?? ""}
               onChange={(event) => patch({ text: event.target.value })}
               placeholder="Enter text"
@@ -1786,7 +1858,7 @@ function FlowButtonConfig({
         </div>
       ) : type === "faq" ? (
         <div className="space-y-1.5">
-          <Label>Select an FAQ from Knowledge</Label>
+          <Label htmlFor={`${fieldId}-f22`}>Select an FAQ from Knowledge</Label>
           <Select
             value={settings?.faqId ?? ""}
             onValueChange={(faqId) => {
@@ -1797,7 +1869,7 @@ function FlowButtonConfig({
               });
             }}
           >
-            <SelectTrigger className="bg-background">
+            <SelectTrigger id={`${fieldId}-f22`} className="bg-background">
               <SelectValue placeholder="Select an FAQ" />
             </SelectTrigger>
             <SelectContent>
@@ -1816,13 +1888,17 @@ function FlowButtonConfig({
         </div>
       ) : (
         <div className="space-y-1.5">
-          <Label>External link URL</Label>
-          <Input
+          <Label htmlFor={`${fieldId}-f23`}>External link URL</Label>
+          <Input id={`${fieldId}-f23`}
             value={settings?.url ?? ""}
             onChange={(event) =>
               onChange({ url: event.target.value, type: "external_link" })
             }
             placeholder="https://..."
+            type="url"
+            inputMode="url"
+            spellCheck={false}
+            autoComplete="off"
             className="bg-background"
           />
         </div>
@@ -1838,11 +1914,12 @@ function FlowButtonConfig({
         <Switch
           checked={showIcon}
           onCheckedChange={(next) => patch({ showIcon: next })}
+          aria-label="Show icon"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label>Select icon</Label>
+        <Label htmlFor={`${fieldId}-f24`}>Select icon</Label>
         <Select
           value={icon}
           disabled={!showIcon}
@@ -1850,7 +1927,7 @@ function FlowButtonConfig({
             patch({ icon: value as FlowButtonIconName })
           }
         >
-          <SelectTrigger className="bg-background">
+          <SelectTrigger id={`${fieldId}-f24`} className="bg-background">
             {/* Explicit children, or the trigger reads the stored icon id. */}
             <SelectValue>
               {FLOW_BUTTON_ICON_OPTIONS.find((option) => option.value === icon)?.label ?? ""}
@@ -2022,7 +2099,7 @@ function HttpFlowRunHistory({ flowId }: { flowId: string }) {
           {runs.map((run) => (
             <li key={run.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2.5 py-1.5">
               <span className="text-muted-foreground tabular-nums">
-                {new Date(run.createdAt).toLocaleString()}
+                {formatDateTime(run.createdAt)}
               </span>
               <span className="font-mono">{run.method}</span>
               <span
@@ -2139,6 +2216,7 @@ export function FlowTriggerConfig({
                   type="number"
                   min={0}
                   max={field.max}
+                  aria-label={field.label}
                   value={dwell[field.key]}
                   onChange={(e) => {
                     const raw = Number.parseInt(e.target.value, 10);
@@ -2301,6 +2379,7 @@ export function FlowActionConfig({
   onPatchSettings: FlowStepHandlers["patchSettings"];
   onCustomMessageChange: (next: string) => void;
 }) {
+  const fieldId = useId();
   const patchSettings = onPatchSettings;
   switch (action) {
     case "connector":
@@ -2326,6 +2405,7 @@ export function FlowActionConfig({
           value={customMessage}
           onChange={(e) => onCustomMessageChange(e.target.value)}
           placeholder="The message the assistant sends when this flow triggers"
+          aria-label="Message"
           rows={3}
           className="bg-background"
         />
@@ -2336,6 +2416,7 @@ export function FlowActionConfig({
           value={settings.basic_reply?.message ?? ""}
           onChange={(e) => patchSettings("basic_reply", { message: e.target.value })}
           placeholder="Leave empty to generate a short reply in the visitor's language, or pin the exact wording here"
+          aria-label="Basic reply message"
           rows={2}
           className="bg-background"
         />
@@ -2369,7 +2450,7 @@ export function FlowActionConfig({
       return (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Mode</Label>
+            <Label htmlFor={`${fieldId}-f25`}>Mode</Label>
             <Select
               value={settings.follow_up_questions?.mode ?? "ai_generated"}
               onValueChange={(value) =>
@@ -2378,7 +2459,7 @@ export function FlowActionConfig({
                 })
               }
             >
-              <SelectTrigger className="bg-background">
+              <SelectTrigger id={`${fieldId}-f25`} className="bg-background">
                 <SelectValue>
                   {(settings.follow_up_questions?.mode ?? "ai_generated") === "manual"
                     ? "Manual"
@@ -2418,8 +2499,8 @@ export function FlowActionConfig({
       return (
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input
+            <Label htmlFor={`${fieldId}-f26`}>Title</Label>
+            <Input id={`${fieldId}-f26`}
               value={settings.iframe?.title ?? ""}
               onChange={(e) => patchSettings("iframe", { title: e.target.value })}
               placeholder="Custom iframe's title"
@@ -2427,17 +2508,20 @@ export function FlowActionConfig({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Link</Label>
+            <Label htmlFor={`${fieldId}-f27`}>Link</Label>
             <div className="flex">
               <span className="text-muted-foreground border-input bg-muted inline-flex items-center rounded-l-md border border-r-0 px-3 text-sm">
                 https://
               </span>
-              <Input
+              <Input id={`${fieldId}-f27`}
                 value={stripHttps(settings.iframe?.url ?? "")}
                 onChange={(e) =>
                   patchSettings("iframe", { url: stripHttps(e.target.value) })
                 }
                 placeholder="example.com"
+                inputMode="url"
+                spellCheck={false}
+                autoComplete="off"
                 className="bg-background rounded-l-none"
               />
             </div>
@@ -2450,9 +2534,9 @@ export function FlowActionConfig({
             Option to open in lightbox if possible
           </label>
           <div className="space-y-1.5">
-            <Label>Iframe height</Label>
+            <Label htmlFor={`${fieldId}-f28`}>Iframe height</Label>
             <div className="flex w-40">
-              <Input
+              <Input id={`${fieldId}-f28`}
                 type="number"
                 min={1}
                 value={settings.iframe?.height ?? 30}
@@ -2508,11 +2592,15 @@ export function FlowActionConfig({
     case "send_email":
       return (
         <div className="space-y-1.5">
-          <Label>Send to</Label>
-          <Input
+          <Label htmlFor={`${fieldId}-f29`}>Send to</Label>
+          <Input id={`${fieldId}-f29`}
             value={settings.send_email?.to ?? ""}
             onChange={(e) => patchSettings("send_email", { to: e.target.value })}
             placeholder="support@example.com"
+            type="email"
+            inputMode="email"
+            spellCheck={false}
+            autoComplete="off"
             className="bg-background"
           />
         </div>
@@ -2521,15 +2609,15 @@ export function FlowActionConfig({
       return (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input
+            <Label htmlFor={`${fieldId}-f30`}>Title</Label>
+            <Input id={`${fieldId}-f30`}
               value={settings.notification?.title ?? ""}
               onChange={(e) =>
                 patchSettings("notification", {
                   title: e.target.value.slice(0, NOTIFICATION_TITLE_LIMIT),
                 })
               }
-              placeholder="Exam results are out"
+              placeholder="New pricing is live"
               className="bg-background"
             />
             <p className="text-muted-foreground text-right text-xs">
@@ -2537,8 +2625,8 @@ export function FlowActionConfig({
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label>Notification content</Label>
-            <Textarea
+            <Label htmlFor={`${fieldId}-f31`}>Notification content</Label>
+            <Textarea id={`${fieldId}-f31`}
               value={settings.notification?.content ?? ""}
               onChange={(e) =>
                 patchSettings("notification", {
@@ -2554,7 +2642,7 @@ export function FlowActionConfig({
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label>Delivery</Label>
+            <Label htmlFor={`${fieldId}-f32`}>Delivery</Label>
             <Select
               value={settings.notification?.deliveryRule ?? "session"}
               onValueChange={(value) =>
@@ -2563,7 +2651,7 @@ export function FlowActionConfig({
                 })
               }
             >
-              <SelectTrigger className="bg-background">
+              <SelectTrigger id={`${fieldId}-f32`} className="bg-background">
                 <SelectValue>
                   {DELIVERY_RULE_LABELS[settings.notification?.deliveryRule ?? "session"]}
                 </SelectValue>
@@ -2600,14 +2688,14 @@ export function FlowActionConfig({
     case "handover":
       return (
         <div className="space-y-1.5">
-          <Label>Transfer to</Label>
+          <Label htmlFor={`${fieldId}-f33`}>Transfer to</Label>
           <Select
             value={settings.handover?.assistantId ?? ""}
             onValueChange={(value) =>
               patchSettings("handover", { assistantId: value as string })
             }
           >
-            <SelectTrigger className="bg-background">
+            <SelectTrigger id={`${fieldId}-f33`} className="bg-background">
               <SelectValue>
                 {(v: string) =>
                   assistants.find((a) => a.id === v)?.title || "Select an assistant…"

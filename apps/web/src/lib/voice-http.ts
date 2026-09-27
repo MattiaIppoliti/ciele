@@ -9,7 +9,6 @@ const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 const MAX_BODY_BYTES = MAX_AUDIO_BYTES + 64 * 1024;
 const callerLimit = createRateLimiter({ limit: 12, windowMs: 60_000 });
 const orgLimit = createRateLimiter({ limit: 120, windowMs: 60_000 });
-export const VOICE_SAMPLE_TEXT = voiceSample("auto");
 
 export class VoiceRequestError extends Error {
   constructor(message: string, public status = 400) { super(message); }

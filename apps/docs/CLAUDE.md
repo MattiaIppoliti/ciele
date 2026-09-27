@@ -72,7 +72,7 @@ Dev server: Browser pane, config `docs` (port 3200).
   of the three should update the others. Keep it describing an **OSS checkout**, never enumerate
   the enterprise internals under `ee/`, which the mirror strips.
 - **Diagrams** use `<Mermaid chart={...} title="..." />` (`src/components/mermaid.tsx`), registered
-  globally in `src/components/mdx.tsx` alongside `Files`/`Folder`/`File`, no per-page import.
+  globally in `src/components/mdx.tsx`, no per-page import.
   `mermaid` is a dynamic `import()`, so only pages with a diagram pay for it. The component renders
   hand-drawn (`look: 'handDrawn'`, Excalidraw-style) with a deterministic seed hashed from the chart
   source, letters it in the `--font-sketch` handwriting face (`Architects_Daughter`, declared in

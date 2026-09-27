@@ -61,27 +61,6 @@ export function userKey(c: InboxConversation): string {
 }
 
 /**
- * Whether a Conversation is nothing but proactive Notifications (#546).
- *
- * Such a Conversation is engagement the Assistant initiated and the Visitor never
- * joined, so Insights does not count it as a Conversation, one reply of any kind
- * makes it a real one. A Conversation with no messages at all is not "only"
- * notifications, and keeps whatever treatment it had.
- */
-export function isNotificationOnly(
-  conversationId: string,
-  messages: InsightsMessage[]
-): boolean {
-  let seen = false;
-  for (const message of messages) {
-    if (message.conversationId !== conversationId) continue;
-    seen = true;
-    if (!message.proactive) return false;
-  }
-  return seen;
-}
-
-/**
  * Drops notification-only Conversations before anything else looks at them, which
  * is where the SQL drops them too (`all_conversations`), so total, resolution
  * rate, unique users, the breakdowns and even the role filter options all inherit

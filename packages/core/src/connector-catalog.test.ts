@@ -11,7 +11,6 @@ import {
   connectorParamValue,
   connectorRunsInternalOnly,
   connectorSettingsIssue,
-  isConnectorProvider,
   CONNECTOR_INTERNAL_ONLY_REASON,
 } from "./connector-catalog";
 
@@ -90,7 +89,7 @@ describe("the Connector catalogue", () => {
     for (const action of CONNECTOR_ACTIONS) {
       expect(action.key).toMatch(/^[a-z_]+\.[a-z_]+\.[a-z_]+$/);
       expect(action.key.startsWith(`${action.provider}.`)).toBe(true);
-      expect(isConnectorProvider(action.provider)).toBe(true);
+      expect(CONNECTOR_PROVIDERS.includes(action.provider)).toBe(true);
     }
   });
 

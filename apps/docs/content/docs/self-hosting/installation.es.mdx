@@ -15,7 +15,7 @@ Desktop. This page is the server path.
 - Instala Docker con Docker Compose.
 - Reserva suficiente espacio en disco para las imágenes, Postgres y los archivos
   subidos.
-- Reserva más memoria cuando habilites los workers opcionales.
+- Reserva más memoria cuando actives los workers opcionales.
 
 ## Un solo comando
 
@@ -27,7 +27,7 @@ requisitos previos, descarga el código fuente en `./ciele` y ejecuta
 curl -fsSL https://ciele.app/install.sh | sh
 ```
 
-Pasa las «bootstrap flags» a través de la tubería con `-s --` y establece
+Pasa las «bootstrap flags» a través de la canalización con `-s --` y establece
 `CIELE_DIR` para elegir el directorio de «checkout» o `CIELE_REF` para instalar
 una etiqueta de versión:
 
@@ -43,7 +43,7 @@ En un Mac sin Docker, el instalador no se detiene ante un error. Abre
 primero descarga la versión correspondiente. La configuración guiada que se
 ofrece allí vincula Docker Desktop e inicia la misma pila que se describe en
 esta página. En Linux, el instalador se niega, porque no hay ninguna aplicación
-de escritorio a la que delegar la tarea.
+de escritorio a la que pasarle la tarea.
 
 ## Inicializa la pila
 
@@ -58,8 +58,8 @@ cd ciele
 El script genera los secretos necesarios en `deploy/.env`. A continuación,
 compila e inicia los perfiles predeterminados.
 
-Abre [http://localhost:3000](http://localhost:3000) una vez que los servicios
-estén operativos. La primera cuenta se convierte en la propietaria de la
+Abre [http://localhost:3000](http://localhost:3000) cuando los servicios estén
+en estado «healthy». La primera cuenta se convierte en el propietario de la
 organización.
 
 Usa `./deploy/bootstrap.sh --seed` para añadir contenido de demostración
@@ -72,7 +72,7 @@ requiere el repositorio completo. Cada versión también publica esos tres
 elementos como imágenes de contenedor:
 
 ```bash
-./deploy/bootstrap.sh --images v0.4.0
+./deploy/bootstrap.sh --images v1.0.62
 ```
 
 El comando escribe dos ajustes en `deploy/.env` y realiza un «pull» en lugar de
@@ -80,7 +80,7 @@ compilar:
 
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
-CIELE_IMAGE_TAG=v0.4.0
+CIELE_IMAGE_TAG=v1.0.62
 ```
 
 Dado que ambos se encuentran en `deploy/.env`, un `docker compose up -d`
@@ -129,14 +129,14 @@ The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of eve
 </Callout>
 
 La aplicación comprueba esto al iniciar. Lee `PUBLIC_URL`, `CIELE_PUBLIC_ORIGIN`
-y `NEXT_PUBLIC_APP_URL`. Cuando cualquiera de ellos empieza por `http://` y no
-apunta a la máquina local, la aplicación no se inicia. El registro del
-contenedor indica el nombre de la variable. El valor predeterminado
+y `NEXT_PUBLIC_APP_URL`. Cuando cualquiera de ellas empieza por `http://` y no
+apunta al equipo local, la aplicación no se inicia. El registro del contenedor
+indica el nombre de la variable. El valor predeterminado
 `PUBLIC_URL=http://localhost:3000` supera la comprobación. Para ejecutar
 deliberadamente sobre HTTP sin cifrar, por ejemplo en una red privada, establece
 `CIELE_ALLOW_INSECURE_HTTP=1` en `deploy/.env`.
 
-Cuando exista un origen público, establece `CIELE_PUBLIC_ORIGIN` en
+Una vez que exista un origen público, establece `CIELE_PUBLIC_ORIGIN` en
 `deploy/.env` con esa URL HTTPS. Los enlaces que se incluyen en un correo
 electrónico, como la confirmación del boletín, se generan a partir de este
 valor. Sin él, la aplicación se niega a enviar esos correos electrónicos. No

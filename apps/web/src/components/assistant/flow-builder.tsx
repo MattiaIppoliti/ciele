@@ -588,7 +588,10 @@ export function FlowBuilder({
       <Input
         value={draft.name}
         onChange={(e) => update({ name: e.target.value }, "name")}
-        placeholder="Name this flow..."
+        placeholder="Name this flow…"
+        aria-label="Flow name"
+        name="name"
+        autoComplete="off"
         disabled={!canEdit || (isEdit && flow.builtIn)}
         className="h-9 min-w-0 flex-1 font-semibold"
       />
@@ -691,10 +694,10 @@ export function FlowBuilder({
             </Button>
           )}
           <Button
-            type="button"
             variant="outline"
             className="rounded-xl px-5 font-semibold"
-            onClick={() => router.push(flowsHref)}
+            nativeButton={false}
+            render={<Link href={flowsHref} />}
           >
             {canEdit ? "Cancel" : "Close"}
           </Button>
@@ -733,7 +736,7 @@ export function FlowBuilder({
             onClick={save}
             className="h-9 rounded-lg px-4 font-semibold"
           >
-            {isPending ? "Saving..." : isEdit ? "Save changes" : "Create flow"}
+            {isPending ? "Saving…" : isEdit ? "Save changes" : "Create flow"}
           </Button>
         ) : (
           <span className="text-muted-foreground text-sm">Read-only</span>

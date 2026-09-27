@@ -118,11 +118,11 @@ export function HoverHighlight({
 }: React.ComponentProps<"div"> & { highlightClassName?: string }) {
   const { showRect, hide, pillNode } = useSlidingPill(highlightClassName);
 
-  function onMouseOver(event: React.MouseEvent<HTMLDivElement>) {
-    const row = (event.target as HTMLElement).closest<HTMLElement>(
+  function highlight(target: EventTarget, scroller: HTMLDivElement) {
+    const row = (target as HTMLElement).closest<HTMLElement>(
       "[data-highlight-row]",
     );
-    if (!row || !event.currentTarget.contains(row)) return;
+    if (!row || !scroller.contains(row)) return;
     // Measured against this container, not the row's offsetParent. A row
     // inside a positioned wrapper (the sidebar's fold groups are `relative`,
     // so the fold chevron has something to sit against) reported an offset of
@@ -135,7 +135,6 @@ export function HoverHighlight({
     // switcher and the assistant scope switcher are both
     // `max-h-72 overflow-y-auto`, so in a list scrolled 150px down the pill
     // would otherwise be drawn 150px above the row under the pointer.
-    const scroller = event.currentTarget;
     const container = scroller.getBoundingClientRect();
     const box = row.getBoundingClientRect();
     showRect(row, {
@@ -146,12 +145,26 @@ export function HoverHighlight({
     });
   }
 
+  // Keyboard focus drives the same pill, so Tab through a list shows where you
+  // are. Only `:focus-visible`: a click already has the hover pill under it.
+  function onFocus(event: React.FocusEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).matches(":focus-visible")) {
+      highlight(event.target, event.currentTarget);
+    }
+  }
+
+  function onBlur(event: React.FocusEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) hide();
+  }
+
   return (
     <div
       {...props}
       className={cn("relative", className)}
-      onMouseOver={onMouseOver}
+      onMouseOver={(event) => highlight(event.target, event.currentTarget)}
       onMouseLeave={hide}
+      onFocus={onFocus}
+      onBlur={onBlur}
     >
       {pillNode}
       {children}

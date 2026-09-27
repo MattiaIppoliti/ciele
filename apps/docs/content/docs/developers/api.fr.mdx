@@ -6,9 +6,9 @@ description: Appelez l'API d'administration actuelle de Ciele à l'aide d'une cl
 L'API Ciele utilise JSON sur HTTP. Toutes les routes de la version 1 commencent
 par `/api/v1`.
 
-[Ouvrez la référence interactive de l'API](/api-reference) pour parcourir toutes
-les opérations publiques par domaine. Téléchargez le contrat OpenAPI actuel à
-cet endroit au format JSON ou YAML.
+[Ouvrez la référence API interactive](/api-reference) pour parcourir toutes les
+opérations publiques par domaine. Téléchargez le contrat OpenAPI actuel à cet
+endroit au format JSON ou YAML.
 
 ## Découvrir le déploiement
 
@@ -36,7 +36,7 @@ Ciele.
 
 ## Erreurs de réponse
 
-Les erreurs utilisent une seule enveloppe JSON :
+Les erreurs utilisent une enveloppe JSON :
 
 ```json
 {
@@ -47,22 +47,22 @@ Les erreurs utilisent une seule enveloppe JSON :
 }
 ```
 
-Les codes de statut courants sont :
+Les codes d'état courants sont :
 
 | Status | Signification |
 | --- | --- |
 | `400` | Le corps de la requête est mal formé ou un fichier requis est manquant. |
-| `401` | La clé est manquante, invalide ou révoquée. |
+| `401` | La clé est manquante, non valide ou révoquée. |
 | `403` | Le rôle de la clé n'autorise pas l'opération. |
 | `404` | La ressource n'existe pas dans l'organisation. |
-| `409` | La requête est en conflit avec l'état actuel. |
+| `409` | La requête entre en conflit avec l'état actuel. |
 | `422` | L'entrée analysée échoue à la validation. |
 
 ## Pagination
 
 Utilisez les paramètres de pagination indiqués pour chaque opération. Les listes
-basées sur un curseur renvoient `nextCursor`. Transmettez-le en tant que
-`cursor` lors de la requête suivante.
+basées sur un curseur renvoient `nextCursor`. Passez-le en tant que `cursor`
+lors de la requête suivante.
 
 ## Nouvelles tentatives sécurisées
 
@@ -77,8 +77,8 @@ l'ensemble complet et actuel des opérations.
 
 - Assistants : list, read, create, update, duplicate et delete.
 - Flows : list, read, create, update, reorder et delete.
-- Knowledge : gérez les Collections, les Sources, les FAQ et les liens Assistant
-  sur chaque Source.
+- Knowledge : gérez les Collections, les Sources, les FAQ et les liens de
+  l'Assistant sur chaque Source.
 - Publication : consulter le statut, publier, annuler la publication et
   restaurer une publication.
 - Inbox : consulter, exporter, épingler, annoter, évaluer et supprimer des
@@ -90,24 +90,28 @@ l'ensemble complet et actuel des opérations.
   validation et la déconnexion.
 - Help Desks : gérez les desks, les canaux d'escalade, l'ordonnancement et
   ServiceNow.
-- Teammates : gérez les Teammates IA et lisez vos propres conversations de
-  Teammate.
+- Teammates : gérez les Teammates IA et consultez vos propres conversations avec
+  les Teammates.
+- Projets : gérez les Projets auxquels les Teammates sont associés, ainsi que
+  leurs documents de projet.
+- Reviews : listez, lisez et prenez des décisions concernant les demandes de
+  revue humaine.
 - Channels : consultez et configurez les canaux des Teammates auxquels vous
-  appartenez, ainsi que leurs rosters. Il n'existe aucun point de terminaison
+  appartenez, ainsi que leurs rosters. Il n'existe pas de point de terminaison
   pour envoyer un message : un message déclenche une chaîne de réponses des
   Teammates, qui s'exécute dans la console.
 - Configuration : gérez les Skills, les Assistant Goals et les Alertes
   opérationnelles.
-- Organisation : gérez les paramètres, les Members, les Invites et les clés API.
-- Integrations : gérez les intégrations de l'API de l'assistant et les
-  connexions aux fournisseurs de modèles.
+- Organization : gérez les paramètres, les Members, les Invites et les clés API.
+- Integrations : gérez les intégrations d'API de l'assistant et les connexions
+  aux fournisseurs de modèles.
 - Usage : consultez les compteurs du plan et identifiez qui a dépensé les
   crédits d'une fenêtre. Lecture seule. La ventilation des dépenses conserve ses
   dimensions distinctes. Une même réponse désigne à la fois le coéquipier qui a
   exécuté l'opération et le collègue qui l'a demandée ; par conséquent,
-  additionner les dimensions revient à la compter deux fois. L'achat de crédits
-  n'a pas de point de terminaison : un achat s'effectue sur un écran où une
-  personne confirme un montant.
+  l'addition des dimensions la comptabilise deux fois. L'achat de crédits n'a
+  pas de point de terminaison : un achat s'effectue sur un écran où une personne
+  confirme un montant.
 
 Utilisez le document OpenAPI pour les champs de requête, l'authentification et
 les codes d'état de réponse documentés.

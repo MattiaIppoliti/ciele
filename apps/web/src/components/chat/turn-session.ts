@@ -1,6 +1,7 @@
 import {
   consumeTurnStream,
   type ConsumeTurnOptions,
+  type RuntimeEvent,
   type TurnView,
 } from "@agent-hub/agent/client";
 
@@ -41,6 +42,12 @@ export function patchLastBot<M extends { role: string }>(
 
 export type TurnOutcome =
   | { status: "done" }
+  /**
+   * The route refused the message with a 429 before any turn started. The
+   * bubble already says so (the same fallback as a runtime overload); the
+   * surface only learns how long the server asked it to wait.
+   */
+  | { status: "throttled"; retryAfterMs: number }
   /** Stopped by the Member or the Visitor leaving: not an error to report. */
   | { status: "aborted" }
   | { status: "failed"; error: Error };
@@ -70,6 +77,19 @@ export async function runTurn<B extends StreamingBot>(options: RunTurnOptions<B>
   const { request, signal, update, onStart, onEvent, onDone, errorText, failure } = options;
   try {
     const response = await request(signal, crypto.randomUUID());
+    if (response.status === 429) {
+      // Rendered through the stream consumer as an overload error of its own
+      // code, so the bubble ends the way a runtime overload does and a
+      // surface's `errorText` sees it as one.
+      const retryAfterMs = await retryAfterOf(response);
+      await consumeTurnStream<B>(eventBody({
+        type: "error",
+        message: "Too many messages",
+        code: "throttled",
+        retryAfterMs,
+      }), { update, errorText });
+      return { status: "throttled", retryAfterMs };
+    }
     if (!response.ok || !response.body) {
       throw new Error(failure ? failure(response.status) : `Chat failed (${response.status})`);
     }
@@ -90,4 +110,22 @@ export async function runTurn<B extends StreamingBot>(options: RunTurnOptions<B>
     }
     return { status: "failed", error: error instanceof Error ? error : new Error(String(error)) };
   }
+}
+
+/** The wait a 429 asked for: the widget routes' JSON body, then `Retry-After`. */
+async function retryAfterOf(response: Response): Promise<number> {
+  try {
+    const body = (await response.clone().json()) as { retryAfterMs?: unknown };
+    if (typeof body.retryAfterMs === "number" && body.retryAfterMs > 0) {
+      return body.retryAfterMs;
+    }
+  } catch {
+    // Not JSON: fall through to the header.
+  }
+  const seconds = Number(response.headers.get("retry-after"));
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 5_000;
+}
+
+function eventBody(event: RuntimeEvent): ReadableStream<Uint8Array> {
+  return new Response(`${JSON.stringify(event)}\n`).body!;
 }

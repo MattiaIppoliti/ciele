@@ -3,7 +3,7 @@ import { BookText } from "lucide-react";
 import { KnowledgeClient } from "@/components/assistant/knowledge-client";
 import { SnippetVariables } from "@/components/developer-panel/snippet-variables";
 import { SharedKnowledgePanel } from "@/components/assistant/shared-knowledge-panel";
-import { SectionHero } from "@/components/settings/section-hero";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit, canPublish } from "@/lib/rbac";
 import { applicationOAuthAvailability } from "@/lib/application-oauth";
@@ -115,7 +115,7 @@ export default async function KnowledgePage({
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-6 sm:px-8 sm:py-10">
-      <SectionHero
+      <SectionHeading
         icon={BookText}
         title="Knowledge"
         description="What this assistant answers from. Sources are shared with the Library and cited in answers."

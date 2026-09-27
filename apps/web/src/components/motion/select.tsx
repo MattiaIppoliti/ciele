@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import {
   type HTMLMotionProps,
   motion,
@@ -664,28 +664,3 @@ export function SelectSeparator({ className, ...props }: HTMLAttributes<HTMLDivE
   );
 }
 
-export function SelectScrollUpArrow({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      data-slot="select-scroll-up-arrow"
-      aria-hidden="true"
-      className={cn("flex h-5 items-center justify-center text-muted-foreground", className)}
-      {...props}
-    >
-      <ChevronUp className="size-4" />
-    </div>
-  );
-}
-
-export function SelectScrollDownArrow({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      data-slot="select-scroll-down-arrow"
-      aria-hidden="true"
-      className={cn("flex h-5 items-center justify-center text-muted-foreground", className)}
-      {...props}
-    >
-      <ChevronDown className="size-4" />
-    </div>
-  );
-}

@@ -24,8 +24,3 @@ export function redactBearerSecrets(text: string, token?: string): string {
   );
   return out;
 }
-
-/** Strips trailing slashes from a base URL so paths join cleanly. */
-export function trimTrailingSlash(baseUrl: string): string {
-  return baseUrl.replace(/\/+$/, "");
-}

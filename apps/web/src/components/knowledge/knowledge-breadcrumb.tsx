@@ -31,12 +31,12 @@ export function KnowledgeBreadcrumb({
             {crumb.href && !last ? (
               <Link
                 href={crumb.href}
-                className="press-text hover:text-foreground shrink-0"
+                className="press-text hover:text-foreground max-w-[16rem] min-w-0 truncate"
               >
                 {crumb.label}
               </Link>
             ) : (
-              <span className={last ? "text-foreground truncate" : "shrink-0"}>
+              <span className={last ? "text-foreground truncate" : "max-w-[16rem] min-w-0 truncate"}>
                 {crumb.label}
               </span>
             )}

@@ -1,6 +1,6 @@
 ---
 title: Proveedores de IA
-description: Conecta un proveedor de modelos y selecciona el modelo para cada Asistente.
+description: Conecta un proveedor de modelos y selecciona el modelo para cada asistente.
 ---
 
 Ciele utiliza una única abstracción de proveedor para los modelos de Anthropic,
@@ -17,8 +17,8 @@ modelo.
 
 Una suscripción de miembro solo ejecuta los chats propios de ese miembro: la
 Assistant Preview y sus chats con un AI Teammate. No atiende a un widget
-publicado y no ejecuta el chat de otro miembro. Selecciona un plan de la
-plataforma o una conexión mediante clave de API para el tráfico publicado.
+publicado y no ejecuta el chat de otro miembro. Selecciona un plan de Platform o
+una conexión mediante clave API para el tráfico publicado.
 
 ## Añade una conexión con clave API
 
@@ -29,11 +29,19 @@ plataforma o una conexión mediante clave de API para el tráfico publicado.
 5. Introduce la credencial del proveedor requerida.
 6. Guarda la conexión.
 
+## Otros tipos de conexión
+
+- **OpenAI-compatible endpoints** conecta un servidor como Ollama, vLLM o LM
+  Studio. Introduce su URL base y sus modelos. La clave API es opcional.
+- **Keyless enterprise auth** conecta Google Vertex, Anthropic o Azure OpenAI
+  mediante la federación de identidades de cargas de trabajo. Ciele no almacena
+  ninguna clave estática para estas conexiones.
+
 Ciele cifra la credencial antes de almacenarla. No reutilices una clave personal
 que tenga permisos no relacionados.
 
 Las conexiones de ElevenLabs proporcionan modelos de voz. Selecciona estos
-modelos en los ajustes **General** del Asistente, en **Voice mode**. Las
+modelos en los ajustes de **General** del Asistente, en **Voice mode**. Las
 conexiones con Google y OpenAI también pueden proporcionar modelos de voz. Los
 modelos disponibles dependen de la cuenta conectada y de sus permisos de API.
 ElevenLabs no aparece en los selectores de modelos de texto ni de incrustación
@@ -41,15 +49,15 @@ de conocimiento.
 
 ## Selecciona un modelo de asistente
 
-1. Abre el asistente.
+1. Abre el Asistente.
 2. Selecciona **General**.
 3. Selecciona la conexión del proveedor.
 4. Selecciona un modelo disponible.
-5. Prueba el asistente en el modo de vista previa.
+5. Prueba el asistente en Preview.
 6. Publica el asistente.
 
-El widget publicado utiliza el proveedor y el modelo de su instantánea de
-publicación. Los cambios generales posteriores requieren otra publicación.
+El widget publicado utiliza el proveedor y el modelo presentes en su instantánea
+de publicación. Los cambios generales posteriores requieren otra publicación.
 
 <Callout title="Provider accounts are separate">
 Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.

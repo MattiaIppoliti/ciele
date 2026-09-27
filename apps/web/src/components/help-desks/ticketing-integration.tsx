@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import type { HelpDesk, TicketingPlatform } from "@agent-hub/core";
 import { CircleCheck, Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -63,6 +63,7 @@ export function TicketingIntegrationSection({
   canEdit: boolean;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const fieldId = useId();
   const [form, setForm] = useState<ServiceNowFormState>(EMPTY_FORM);
   const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
@@ -181,13 +182,15 @@ export function TicketingIntegrationSection({
           </DialogHeader>
           <div className="max-h-[60vh] space-y-4 overflow-y-auto rounded-xl bg-muted/40 p-4">
             <div>
-              <Label className="font-semibold">
+              <Label htmlFor={`${fieldId}-name`} className="font-semibold">
                 Name of Integration <span className="text-destructive">*</span>
               </Label>
               <p className="text-muted-foreground mt-0.5 text-sm">
                 A generic name that can help you remember this.
               </p>
               <Input
+                id={`${fieldId}-name`}
+                autoComplete="off"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Name"
@@ -195,13 +198,18 @@ export function TicketingIntegrationSection({
               />
             </div>
             <div>
-              <Label className="font-semibold">
+              <Label htmlFor={`${fieldId}-baseUrl`} className="font-semibold">
                 Base URL <span className="text-destructive">*</span>
               </Label>
               <p className="text-muted-foreground mt-0.5 text-sm">
                 Enter the base URL of your account.
               </p>
               <Input
+                id={`${fieldId}-baseUrl`}
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
                 value={form.baseUrl}
                 onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
                 placeholder="Base URL"
@@ -209,13 +217,16 @@ export function TicketingIntegrationSection({
               />
             </div>
             <div>
-              <Label className="font-semibold">
+              <Label htmlFor={`${fieldId}-clientId`} className="font-semibold">
                 Client ID <span className="text-destructive">*</span>
               </Label>
               <p className="text-muted-foreground mt-0.5 text-sm">
                 Enter your client ID.
               </p>
               <Input
+                id={`${fieldId}-clientId`}
+                autoComplete="off"
+                spellCheck={false}
                 value={form.clientId}
                 onChange={(e) => setForm({ ...form, clientId: e.target.value })}
                 placeholder="Client ID"
@@ -223,13 +234,15 @@ export function TicketingIntegrationSection({
               />
             </div>
             <div>
-              <Label className="font-semibold">
+              <Label htmlFor={`${fieldId}-clientSecret`} className="font-semibold">
                 Client secret <span className="text-destructive">*</span>
               </Label>
               <p className="text-muted-foreground mt-0.5 text-sm">
                 Enter your integration client secret.
               </p>
               <PasswordInput
+                id={`${fieldId}-clientSecret`}
+                autoComplete="new-password"
                 value={form.clientSecret}
                 onChange={(e) =>
                   setForm({ ...form, clientSecret: e.target.value })
@@ -239,13 +252,16 @@ export function TicketingIntegrationSection({
               />
             </div>
             <div>
-              <Label className="font-semibold">
+              <Label htmlFor={`${fieldId}-username`} className="font-semibold">
                 Username <span className="text-destructive">*</span>
               </Label>
               <p className="text-muted-foreground mt-0.5 text-sm">
                 Enter your username.
               </p>
               <Input
+                id={`${fieldId}-username`}
+                autoComplete="off"
+                spellCheck={false}
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 placeholder="Username"
@@ -253,13 +269,15 @@ export function TicketingIntegrationSection({
               />
             </div>
             <div>
-              <Label className="font-semibold">
+              <Label htmlFor={`${fieldId}-password`} className="font-semibold">
                 Password <span className="text-destructive">*</span>
               </Label>
               <p className="text-muted-foreground mt-0.5 text-sm">
                 Enter your password.
               </p>
               <PasswordInput
+                id={`${fieldId}-password`}
+                autoComplete="new-password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 placeholder="Password"
@@ -272,7 +290,7 @@ export function TicketingIntegrationSection({
               Cancel
             </Button>
             <Button onClick={connect} disabled={isPending}>
-              {isPending ? "Connecting..." : "Connect"}
+              {isPending ? "Connecting…" : "Connect"}
             </Button>
           </DialogFooter>
         </DialogContent>

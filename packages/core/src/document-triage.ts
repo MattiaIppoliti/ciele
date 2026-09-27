@@ -117,16 +117,6 @@ export function documentExtension(name: string): string | null {
   return dot === -1 ? null : name.slice(dot + 1).toLowerCase();
 }
 
-/**
- * The entry names an OOXML package declares, read from its central directory.
- * Empty when the archive is malformed or uses ZIP64, which the caller treats
- * as "cannot see inside" rather than "nothing inside": an Office file whose
- * directory cannot be read is not one this product needs to accept.
- */
-export function zipEntryNames(bytes: Uint8Array): string[] | null {
-  return zipDirectory(bytes)?.map((entry) => entry.name) ?? null;
-}
-
 /** One central-directory entry: enough to name it, and enough to find it. */
 export interface ZipEntry {
   name: string;

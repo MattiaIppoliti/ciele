@@ -48,9 +48,6 @@ export type {
   ChannelTurnRunner,
 } from "./channel-turn";
 export type { ChannelEvent } from "./types";
-// The Agent memory layer's writer (#771): distils one turn into a durable
-// learning. Exported for the cron drain's sake, like the other job entrypoints.
-export { distillAgentLearning } from "./agent-learnings";
 // Unattended Routine runs (#772). Public because the cron tick composes it and
 // the host wires the grant-resolving port; nothing else should reach it.
 export { runDueRoutines } from "./routine-runner";
@@ -69,7 +66,6 @@ export {
   persistConcept,
   embedConcept,
   beginWebsiteCrawl,
-  CRAWL_FINALIZE_LEASE_MS,
   finalizeWebsiteCrawl,
   restartWebsiteCrawl,
   updateWebsiteSourceConfiguration,
@@ -80,7 +76,7 @@ export { extractSourceText } from "./extract";
 // the words join the pipeline where a PDF's text does (see `vision.ts`).
 export { createVisionReader } from "./vision";
 export type { VisionReader } from "./vision";
-export { enqueueIngestJob, runDueIngestJobs } from "./jobs";
+export { enqueueIngestJob, runDueJobs } from "./jobs";
 // The one-off verbatim re-ingest (ADR-0025), driven by a manual cron route.
 export { enqueueVerbatimReingests, type VerbatimReingestReport } from "./jobs";
 export { enqueueApplicationSyncJob } from "./jobs";
@@ -102,22 +98,15 @@ export {
   sweepExpiredObjectAccess,
   sweepExpiredTraces,
   sweepExpiredTranscripts,
-  OBJECT_ACCESS_RETENTION_DAYS,
-  RECRAWL_SWEEP_BATCH_SIZE,
-  CRAWL_FINALIZE_BATCH_SIZE,
 } from "./scheduled";
 // The pre-flight's nightly drift replay (#953): the cron tick over the
 // labelled baseline, tested without a request beside the other scheduled jobs.
 export { runPreflightDriftReplay } from "./preflight-drift";
 export type { PreflightDriftReport } from "./preflight-drift";
-// Detection-as-code over the object-access ledger (#801, CYB-19): the pure
-// rules, and the cron tick that turns findings into keyed Alerts.
+// Detection-as-code over the object-access ledger (#801, CYB-19): the cron
+// tick that turns findings into keyed Alerts, and the rules' thresholds.
 export {
   runSecurityDetections,
-  runDetectionRules,
-  detectBulkDownloads,
-  detectNewAddressDownloads,
-  detectRefusalProbes,
   NEW_ADDRESS_MIN_BASELINE,
   NEW_ADDRESS_BASELINE_DAYS,
   BULK_DOWNLOAD_THRESHOLD,
@@ -146,7 +135,7 @@ export { enqueueDraftProposalJob } from "./jobs";
 // A Document's Summary (#931): one classifier-tier call over a body, made the
 // first time a Member opens that Document and cached on its row. Best-effort:
 // no credential or a model error returns null and the card shows an Excerpt.
-export { summariseDocument, SUMMARY_INPUT_CHARS } from "./summarise-document";
+export { summariseDocument } from "./summarise-document";
 
 // The memories backfill (#933): queue extraction for one Source's Documents
 // that need it, skipping what is already fresh or already queued. Nothing
@@ -212,11 +201,8 @@ export type {
 } from "./connector-request";
 // Human review (#841): the gate's runtime, jobs, clock and signed links.
 export {
-  dbReviewRuntime,
   enqueueReviewResumptionJob,
-  expireDueReviews,
   resumeReviewedConversation,
-  reviewLinkUrl,
   runDueReviewJobs,
   verifyReviewLinkToken,
 } from "./review-runtime";
@@ -228,9 +214,7 @@ export type { ReviewRuntime } from "./types";
 // registered in the job ledger and stays internal.
 export {
   enqueueSlackMention,
-  resolveSlackConnection,
   runDueSlackMentionJobs,
-  slackKey,
 } from "./slack-mentions";
 export type { SlackMention } from "./slack-mentions";
 
@@ -238,12 +222,9 @@ export type { SlackMention } from "./slack-mentions";
 // signed URL that is the anonymous caller's whole authorization.
 export {
   deliverWebhookCallback,
-  expireDueWebhooks,
-  resumeWebhookConversation,
   runDueWebhookJobs,
   unsubscribePendingWebhooks,
   verifyWebhookCallbackToken,
-  webhookCallbackUrl,
 } from "./webhook-runtime";
 export type { WebhookDeliveryOutcome, WebhookTokenVerdict } from "./webhook-runtime";
 export type { WebhookRuntime } from "./types";

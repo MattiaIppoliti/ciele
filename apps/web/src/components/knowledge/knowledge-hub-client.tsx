@@ -338,7 +338,10 @@ export function KnowledgeHubClient({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}...`}
+              placeholder={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}…`}
+              aria-label={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}`}
+              type="search"
+              autoComplete="off"
               className="pl-8"
             />
           </div>
@@ -692,7 +695,7 @@ export function KnowledgeHubClient({
                     <TableCell>
                       <Link
                         href={libraryDocumentsHref(item.kind, item.id)}
-                        className="text-primary press-text font-medium hover:underline"
+                        className="text-primary press-text font-medium hover:underline tabular-nums"
                       >
                         {item.conceptCount}{" "}
                         {item.conceptCount === 1 ? "Document" : "Documents"}
@@ -707,7 +710,7 @@ export function KnowledgeHubClient({
                           variant="ghost"
                           size="icon"
                           className="size-7"
-                          title="Manage linked assistants"
+                          title="Manage linked assistants" aria-label="Manage linked assistants"
                           onClick={() => setLinking(item)}
                         >
                           <Link2 className="size-3.5" />
@@ -724,6 +727,7 @@ export function KnowledgeHubClient({
                             variant="ghost"
                             size="icon"
                             className="size-7"
+                            aria-label="Manage direct access"
                             title={
                               item.originalObjectPath
                                 ? "Manage direct access"
@@ -749,6 +753,7 @@ export function KnowledgeHubClient({
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Download original"
                           title={
                             item.originalObjectPath
                               ? "Download original"
@@ -768,7 +773,7 @@ export function KnowledgeHubClient({
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Extract memories"
+                            title="Extract memories" aria-label="Extract memories"
                             disabled={extracting.has(item.id)}
                             onClick={() =>
                               startTransition(async () => {
@@ -801,7 +806,7 @@ export function KnowledgeHubClient({
                             <Button
                               variant="ghost"
                               size="icon"
-                              title="Edit FAQ"
+                              title="Edit FAQ" aria-label="Edit FAQ"
                               onClick={() => setEditingFaq(item)}
                             >
                               <Pencil className="size-4" />
@@ -811,7 +816,7 @@ export function KnowledgeHubClient({
                             variant="ghost"
                             size="icon"
                             data-destructive=""
-                            title="Delete"
+                            title="Delete" aria-label={`Delete ${item.name}`}
                             onClick={() =>
                               confirmDelete({
                                 title: `Delete “${item.name}”?`,

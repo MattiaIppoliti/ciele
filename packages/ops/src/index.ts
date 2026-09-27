@@ -13,7 +13,6 @@ export type { MutatedEntity } from "./entities";
 export { escapeCsvField, parseCsv, recordsToCsv, tableToCsv } from "./csv";
 export {
   OperationError,
-  defineOperation,
   type Operation,
   type OperationCapability,
   type OperationContext,
@@ -34,7 +33,6 @@ export {
 
 // Flows domain (#621): the authoritative router, invariants included.
 export {
-  assertTriggerActions,
   createFlowOp,
   deleteFlowOp,
   draftFlowOp,
@@ -52,7 +50,6 @@ export {
 
 // The Flows Agent (#838): the per-Assistant system Teammate behind the canvas.
 export {
-  FLOWS_AGENT_NAME,
   adoptFlowsAgentThreadOp,
   ensureFlowsAgentOp,
   listFlowsAgentThreadOp,
@@ -95,7 +92,6 @@ export {
 
 // Publish domain (#623): immutable Publication snapshots.
 export {
-  assertConnectorFlowsPublishable,
   publicationStatusOp,
   publishAssistantOp,
   republishOp,
@@ -108,7 +104,6 @@ export { decideActionApprovalOp } from "./action-approvals";
 
 // Reviews domain (#841): the Human review gate's requests, listed and decided.
 export {
-  assertHumanReviewFlowsPublishable,
   decideReviewOp,
   getReviewOp,
   listReviewsOp,
@@ -117,11 +112,8 @@ export {
 // Applications domain (#839): the Organization's Application Connections as
 // the Connector action sees them, and re-consent for missing scopes.
 export {
-  applicationConnectionView,
   listApplicationConnectionsOp,
   listConnectorActionsOp,
-  reconsentScopes,
-  reconsentStartPath,
   requestApplicationReconsentOp,
 } from "./applications";
 export type { ApplicationConnectionView } from "./applications";
@@ -176,12 +168,7 @@ export {
   removeChannelTeammateOp,
   updateChannelOp,
 } from "./channels";
-export type {
-  ChannelMention,
-  ChannelSummary,
-  ChannelView,
-  PostedChannelMessage,
-} from "./channels";
+export type { ChannelMention } from "./channels";
 
 // Inbox domain (#624): read-only conversation review.
 export type { InboxConversationDetail } from "./inbox";
@@ -191,7 +178,6 @@ export {
   getInboxConversationReviewOp,
   getInboxFacetsOp,
   INBOX_SUMMARY_WINDOW_LIMIT,
-  listInboxConversationsOp,
   listInboxPageOp,
   readConversationsForExportOp,
   readInboxSummaryWindowOp,
@@ -206,14 +192,9 @@ export {
 export {
   acceptSuggestedFixOp,
   dismissSuggestedFixOp,
-  triageFeedbackOp,
-  type AcceptedSuggestedFix,
-  type FeedbackTriageResult,
   getImprovementOp,
   improvementPatchSchema,
-  listImprovementsOp,
   listImprovementsPageOp,
-  proposeSuggestedFixOp,
   updateImprovementOp,
 } from "./improvements";
 
@@ -231,24 +212,19 @@ export {
 // actually lets a Teammate do inside a turn.
 export {
   listTeammateGrantsOp,
-  readTeammateGrants,
   setTeammateGrantsOp,
   type TeammateGovernance,
 } from "./teammate-grants";
-export { writingActor } from "./actor";
 // Memory documents + Projects (#771): the three layers, their history, and
 // the two writes a Teammate performs mid-turn (not grant-gated: acting on the
 // console's domains is #770's rows, remembering is what makes it a colleague).
 export {
   createProjectOp,
   deleteProjectOp,
-  getMyMemoryOp,
   getProjectOp,
   getTeammateMemoryOp,
   listProjectsOp,
   projectPatchSchema,
-  recordProjectDecisionOp,
-  rememberAboutMemberOp,
   revertMyMemoryOp,
   updateProjectOp,
   writeMyMemoryOp,
@@ -258,13 +234,9 @@ export {
 } from "./memory";
 
 export {
-  TEAMMATE_ACTION_CATALOG,
   runTeammateAction,
   teammateActions,
   teammateMemoryActions,
-  type CatalogedOperation,
-  type TeammateActionRun,
-  type TeammateActionSpec,
 } from "./teammate-actions";
 
 export type { OperationPorts } from "./operation";
@@ -343,9 +315,7 @@ export {
 
 export {
   deleteCrawlerConnectionOp,
-  getCrawlerConnectionOp,
   setCrawlerConnectionOp,
-  type CrawlerConnectionView,
 } from "./crawlers";
 
 export {
@@ -353,7 +323,6 @@ export {
   deleteEntityOp,
   deleteMemoryOp,
   entityInputSchema,
-  ENTITY_CSV_MAX_BYTES,
   ENTITY_IMPORT_MAX_ROWS,
   entityPatchSchema,
   entityRecordQuerySchema,
@@ -362,13 +331,10 @@ export {
   getMemorySettingsOp,
   getSsoIdentityOp,
   importEntityRecordsOp,
-  listEntitiesOp,
   listEntitiesPageOp,
   listEntityRecordsOp,
-  listMemorySubjectsOp,
   listMemorySubjectsPageOp,
   listSubjectMemoriesOp,
-  parseEntityCsv,
   queryEntityRecordsOp,
   setMemorySettingsOp,
   setAssistantEntitiesOp,
@@ -376,20 +342,14 @@ export {
   updateEntityOp,
   validateSsoIdentityOp,
   wipeSubjectMemoriesOp,
-  type EntityCsvResult,
 } from "./data";
 
 // The one workflow operation (#773 follow-up): persona + grants + routines.
-export {
-  provisionTeammateOp,
-  type ProvisionedTeammate,
-} from "./teammate-provision";
+export { provisionTeammateOp } from "./teammate-provision";
 
 // Usage, read-only (#853): the plan's meters and who spent the window's
 // credits. Nothing here mutates and nothing here is a purchase.
 export {
   readUsageMetersOp,
   readUsageSpendersOp,
-  resolveUsageWindow,
-  type UsageSpendersResult,
 } from "./usage";

@@ -1,41 +1,41 @@
 ---
 title: Memoria a largo plazo
-description: Recuerda datos duraderos de los visitantes que han iniciado sesión y los borra cuando es necesario.
+description: Recuerda datos persistentes de los Visitors que hayan iniciado sesión y bórralos cuando sea necesario.
 ---
 
-La memoria a largo plazo lleva datos duraderos a las conversaciones posteriores.
-Solo funciona para los visitantes que han iniciado sesión a través de la puerta
-SSO del widget.
+La memoria a largo plazo transfiere datos duraderos a Conversaciones
+posteriores. Solo funciona para los visitantes que hayan iniciado sesión a
+través de la puerta de SSO del widget.
 
 La función está desactivada de forma predeterminada. Los visitantes anónimos
-nunca generan ni recuperan recuerdos a largo plazo.
+nunca generan ni recuerdan memorias a largo plazo.
 
 ## Habilita la memoria a largo plazo
 
 1. Abre **Settings**.
-2. Selecciona **AI Providers**.
+2. Selecciona **AI Provider**.
 3. Busca **Long-term memory**.
 4. Habilita **Remember signed-in users across conversations**.
 
-La organización necesita una conexión de proveedor que funcione. La extracción
-de memoria utiliza el modelo de niveles de clasificadores y se descuenta del
+La organización necesita una conexión funcional con un proveedor. La extracción
+de memoria utiliza el modelo classifier-tier y se contabiliza dentro del
 presupuesto diario de IA.
 
 ## Lo que Ciele recuerda
 
 Ciele promueve hechos explícitos que pueden seguir siendo útiles después de la
-conversación actual. Por ejemplo, una preferencia de contacto o una instrucción
-permanente.
+Conversación actual. Algunos ejemplos son una preferencia de contacto o una
+instrucción permanente.
 
-El extractor evita las solicitudes puntuales, las preguntas, las conjeturas y
-las afirmaciones realizadas únicamente por el Asistente. Muchas conversaciones
-no generan hechos duraderos.
+El extractor evita las solicitudes puntuales, las preguntas, las suposiciones y
+las afirmaciones hechas únicamente por el asistente. Muchas conversaciones no
+generan hechos duraderos.
 
-Cada recuerdo almacenado conserva la procedencia de su conversación de origen.
-Los hechos duplicados exactos se eliminan durante el almacenamiento.
+Cada recuerdo almacenado conserva la procedencia de su Conversación de origen.
+Los datos duplicados exactamente se eliminan durante el almacenamiento.
 
-Un Visitante que haya iniciado sesión puede almacenar hasta 200 recuerdos. Las
-nuevas escrituras eliminan los hechos más antiguos una vez alcanzado ese límite.
+Un Visitor con sesión iniciada puede almacenar hasta 200 recuerdos. Las nuevas
+escrituras eliminan los hechos más antiguos una vez superado ese límite.
 
 ## Promoción y recuperación
 
@@ -57,43 +57,45 @@ flowchart TB
 `}
 />
 
-Una tarea de promoción espera hasta que la conversación permanezca en silencio
-durante 15 minutos. Un mensaje más reciente reemplaza a una tarea pendiente más
-antigua.
+Una tarea de promoción espera hasta que la Conversation permanezca inactiva
+durante 15 minutos. Un mensaje más reciente sustituye a una tarea pendiente
+anterior.
 
-Antes de almacenar nada, el trabajo comprueba cuatro cosas: el conmutador de
-Organización, el sujeto de SSO, un modelo disponible y el presupuesto.
-Cualquiera de ellos puede detener la promoción.
+Antes de almacenar nada, la tarea comprueba cuatro aspectos: el conmutador
+Organization, el sujeto SSO, un modelo disponible y el presupuesto. Cualquiera
+de ellos puede detener la promoción.
 
-Solo el primer turno de una Conversación posterior recibe recuerdos de esta
-manera. Después de eso, el tiempo de ejecución los alcanza a través de la
+Solo el primer turno de una Conversation posterior recibe recuerdos de esta
+manera. Después de eso, el entorno de ejecución accede a ellas a través de la
 herramienta `searchMemories`.
 
-Recall nunca cruza los límites de una organización o de un sujeto SSO.
+La función Recall nunca traspasa los límites de una Organization ni de un sujeto
+de SSO.
 
-## Permite que un Visitante inspeccione y elimine recuerdos
+## Permitir que un Visitor inspeccione y elimine recuerdos
 
-Un Visitante que haya iniciado sesión puede abrir el panel de historial del
-Widget. La carpeta **Memory** aparece cuando la memoria a largo plazo está
-habilitada.
+Un Visitor que haya iniciado sesión puede abrir el panel Widget history. La
+carpeta **Memory** aparece cuando la memoria a largo plazo está habilitada.
 
-La carpeta enumera los hechos recordados para ese Visitante. Selecciona el
-control de eliminación junto a un dato para olvidarlo.
+La carpeta enumera los hechos recordados para ese Visitor. Selecciona el control
+de eliminación situado junto a un dato para olvidarlo.
 
-Al eliminarlo, el hecho desaparece de futuras recuperaciones de prompts y
-búsquedas en la memoria.
+La eliminación hace que el dato no se tenga en cuenta en futuras recuperaciones
+de prompts ni en búsquedas en la memoria.
 
 ## Gestionar una solicitud de supresión
 
 1. Abre **Settings**.
-2. Selecciona **AI Providers**.
+2. Selecciona **AI Provider**.
 3. Busca **Remembered users**.
-4. Busca por ID de usuario o por notificación de identidad.
-5. Revisa los datos almacenados.
-6. Elimina una memoria o selecciona **Delete all memories for this user**.
+4. Busca por user ID o por identity claim.
+5. Revisa los hechos almacenados.
+6. Elimina un recuerdo o selecciona **Delete all memories for this user**.
+7. Confirma la eliminación en el cuadro de diálogo.
 
-El borrado completo es inmediato. Los miembros de la organización solo pueden
-gestionar memorias dentro de su organización.
+La eliminación se produce de forma inmediata después de que la confirmes. No
+puedes deshacerlo. Los miembros de la organización solo pueden gestionar los
+recuerdos dentro de su organización.
 
 <Callout title="Disabling and deleting are different">
 Disabling long-term memory stops extraction and recall. Use **Remembered users** when stored facts must also be erased.

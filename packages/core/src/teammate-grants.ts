@@ -1,11 +1,9 @@
 import type {
   Teammate,
   TeammateCapabilityCeiling,
-  TeammateGrant,
   TeammateGrantDomain,
   Role,
 } from "./types";
-import { TEAMMATE_GRANT_DOMAINS } from "./types";
 
 /**
  * What an AI Teammate is allowed to *do* (#770), as pure functions of its grant
@@ -109,9 +107,6 @@ export function roleAllowsCapability(
  */
 export type TeammateActionDomain = TeammateGrantDomain | "memory";
 
-/** The default and maximum: a Teammate may read and write, not publish. */
-export const DEFAULT_TEAMMATE_CEILING: TeammateCapabilityCeiling = "edit";
-
 /**
  * Whether an operation's declared capability fits under this ceiling.
  *
@@ -127,22 +122,6 @@ export function ceilingAllowsCapability(
   const wanted = CAPABILITY_RANK[capability];
   const allowed = CAPABILITY_RANK[ceiling];
   return wanted !== undefined && allowed !== undefined && wanted <= allowed;
-}
-
-/** The domains this Teammate holds a row for, in the vocabulary's own order. */
-export function grantedDomains(
-  grants: readonly Pick<TeammateGrant, "domain">[]
-): TeammateGrantDomain[] {
-  const held = new Set(grants.map((grant) => grant.domain));
-  return TEAMMATE_GRANT_DOMAINS.filter((domain) => held.has(domain));
-}
-
-/** Whether a domain was granted at all, before the ceiling gets a say. */
-export function hasGrant(
-  grants: readonly Pick<TeammateGrant, "domain">[],
-  domain: TeammateGrantDomain
-): boolean {
-  return grants.some((grant) => grant.domain === domain);
 }
 
 /**

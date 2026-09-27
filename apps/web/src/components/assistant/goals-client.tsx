@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * Standing goals authoring (spec: scheduled golden-question checks). Admins
@@ -212,7 +213,7 @@ export function GoalsClient({
                   .filter(Boolean)
                   .join(" · ") || "no extra expectations"}
                 {goal.lastRunAt &&
-                  ` · last run ${new Date(goal.lastRunAt).toLocaleString()}`}
+                  ` · last run ${formatDateTime(goal.lastRunAt)}`}
                 {goal.lastResult === "fail" && goal.lastDetail
                   ? ` · ${goal.lastDetail}`
                   : ""}

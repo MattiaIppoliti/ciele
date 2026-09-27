@@ -120,7 +120,7 @@ export function DocumentView({
           ]}
         />
         <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">
-          {title}
+          <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
           <Badge tone={sourceDocumentTone(status)}>
             {sourceDocumentStatusLabel(status)}
           </Badge>

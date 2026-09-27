@@ -43,6 +43,8 @@ import type {
   InsightsOverview,
 } from "@/lib/insights/report";
 import { RollInText } from "@/components/motion/roll-in-text";
+import { formatPercent, formatStat } from "@/lib/format";
+import { replaceFilterParams } from "@/lib/url-state";
 
 interface AssistantOption {
   id: string;
@@ -80,10 +82,6 @@ function defaultFilters(): Filters {
     channel: "",
     role: "",
   };
-}
-
-function formatStat(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
 const FIELD_CLASS =
@@ -172,7 +170,7 @@ function StatCard({
       </CardHeader>
       <CardContent className="mt-auto flex items-end justify-between gap-3">
         <p
-          className={`text-4xl font-semibold tracking-tight ${valueClass ?? ""}`}
+          className={`text-4xl font-semibold tracking-tight tabular-nums ${valueClass ?? ""}`}
         >
           {value}
         </p>
@@ -194,6 +192,11 @@ export function InsightsClient({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>({ ...initialFilters, helpDesk: "" });
+  // A reload or a copied link opens on the same range and filters. helpDesk
+  // filters nothing server-side yet, so it is left out of the address bar.
+  useEffect(() => {
+    replaceFilterParams({ ...filters, helpDesk: "" }, defaultFilters());
+  }, [filters]);
   const [overview, setOverview] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
   const firstRequest = useRef(true);
@@ -463,26 +466,26 @@ export function InsightsClient({
       <div className="grid grid-cols-12 gap-3 border-t px-4 pt-5 pb-6 sm:gap-4 sm:px-6">
         <StatCard
           title="AI Resolution Rate"
-          value={stats.resolutionRate === null ? "N/A" : `${stats.resolutionRate} %`}
+          value={stats.resolutionRate === null ? "N/A" : formatPercent(stats.resolutionRate)}
           valueClass="text-green-600"
           className="col-span-6 xl:col-span-3"
         />
         <StatCard
           title="Answer Rating"
-          subtitle={`${stats.positive} positive and ${stats.negative} negative`}
-          value={`${stats.answerRating} %`}
+          subtitle={`${formatStat(stats.positive)} positive and ${formatStat(stats.negative)} negative`}
+          value={formatPercent(stats.answerRating)}
           valueClass="text-green-600"
           className="col-span-6 xl:col-span-3"
         />
         <StatCard
           icon={Activity}
           title="Number of Conversations"
-          value={String(stats.total)}
+          value={formatStat(stats.total)}
           className="col-span-6 xl:col-span-3"
         />
         <StatCard
           title="Escalated to Human"
-          value={String(stats.escalated)}
+          value={formatStat(stats.escalated)}
           className="col-span-6 xl:col-span-3"
         />
         {/* The two cards the pre-flight makes possible (#956). Both render a
@@ -494,7 +497,7 @@ export function InsightsClient({
           value={
             stats.escalationIntentRate === null
               ? "—"
-              : `${stats.escalationIntentRate}%`
+              : formatPercent(stats.escalationIntentRate)
           }
           subtitle="Asked for a person at least once"
           className="col-span-6 xl:col-span-3"
@@ -504,7 +507,7 @@ export function InsightsClient({
           value={
             stats.implicitSatisfaction === null
               ? "—"
-              : `${stats.implicitSatisfaction}%`
+              : formatPercent(stats.implicitSatisfaction)
           }
           subtitle="Ended calm, among those nobody rated"
           className="col-span-6 xl:col-span-3"
@@ -512,7 +515,7 @@ export function InsightsClient({
 
         <StatCard
           title="Languages Spoken"
-          value={String(stats.languages.length)}
+          value={formatStat(stats.languages.length)}
           className="col-span-12 sm:col-span-6 xl:col-span-4"
           action={
             <Dialog>
@@ -555,8 +558,8 @@ export function InsightsClient({
         />
         <StatCard
           title="Number of AI Answers"
-          subtitle={`AI sent ${stats.aiAnswers} answers to ${stats.userMessages} user messages`}
-          value={String(stats.aiAnswers)}
+          subtitle={`AI sent ${formatStat(stats.aiAnswers)} answers to ${formatStat(stats.userMessages)} user messages`}
+          value={formatStat(stats.aiAnswers)}
           className="col-span-12 sm:col-span-6 xl:col-span-4"
         />
         {/* Proactive nudges are counted on their own, never as answers (#546):
@@ -569,14 +572,14 @@ export function InsightsClient({
               ? "No proactive notifications delivered"
               : `${stats.notifications} proactive message${stats.notifications === 1 ? "" : "s"} nobody had to ask for`
           }
-          value={String(stats.notifications)}
+          value={formatStat(stats.notifications)}
           className="col-span-12 sm:col-span-6 xl:col-span-4"
         />
         <StatCard
           icon={UserRound}
           title="Unique Users"
-          subtitle={`${stats.uniqueUsers} user${stats.uniqueUsers === 1 ? "" : "s"} engaged with assistant`}
-          value={String(stats.uniqueUsers)}
+          subtitle={`${formatStat(stats.uniqueUsers)} user${stats.uniqueUsers === 1 ? "" : "s"} engaged with assistant`}
+          value={formatStat(stats.uniqueUsers)}
           className="col-span-12 sm:col-span-6 xl:col-span-4"
         />
 

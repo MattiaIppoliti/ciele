@@ -62,13 +62,6 @@ export function flowConditionPicker(
   );
 }
 
-/** The kinds that can be added for a trigger. */
-export function availableFlowConditionKinds(
-  trigger: FlowTrigger | null
-): FlowConditionKind[] {
-  return flowConditionPicker(trigger).map((meta) => meta.kind);
-}
-
 export const FLOW_URL_OPERATORS: Array<{
   value: FlowUrlOperator;
   label: string;

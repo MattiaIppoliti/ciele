@@ -29,31 +29,3 @@ export function parseListParams(url: URL): ListParams {
     : DEFAULT_PAGE_LIMIT;
   return { limit, cursor: url.searchParams.get("cursor") };
 }
-
-export interface Page<T> {
-  data: T[];
-  /** Pass back as `?cursor=` for the next page; null on the last page. */
-  nextCursor: string | null;
-}
-
-/**
- * Cursor pagination over an already-ordered list: the cursor is the id of
- * the last item served. An unknown cursor restarts from the top rather than
- * erroring, cursors are opaque bookmarks, not queries.
- */
-export function paginate<T extends { id: string }>(
-  items: T[],
-  { limit, cursor }: ListParams
-): Page<T> {
-  let start = 0;
-  if (cursor) {
-    const at = items.findIndex((item) => item.id === cursor);
-    if (at >= 0) start = at + 1;
-  }
-  const data = items.slice(start, start + limit);
-  const nextCursor =
-    start + limit < items.length && data.length > 0
-      ? data[data.length - 1].id
-      : null;
-  return { data, nextCursor };
-}

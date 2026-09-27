@@ -382,7 +382,7 @@ export function ImprovementDetail({
                    no border, and no hover/focus tint either. INLINE_FIELD's
                    tint is a full-width block behind a heading, which reads as
                    a box drawn around the title rather than as an affordance. */
-                className="mt-1 min-h-0 resize-none border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight shadow-none focus-visible:ring-0 disabled:cursor-default disabled:bg-transparent disabled:opacity-100 md:text-2xl dark:bg-transparent"
+                className="mt-1 min-h-0 resize-none border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight shadow-none focus-visible:ring-0 focus-visible:underline focus-visible:decoration-ring focus-visible:decoration-2 focus-visible:underline-offset-8 disabled:cursor-default disabled:bg-transparent disabled:opacity-100 md:text-2xl dark:bg-transparent"
               />
             ) : (
               <h1 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h1>
@@ -434,7 +434,7 @@ export function ImprovementDetail({
             onBlur={saveDescription}
             disabled={!canEdit}
             aria-label="Description"
-            placeholder="Add a description, or what the fix should be..."
+            placeholder="Add a description, or what the fix should be…"
             className={INLINE_FIELD + " min-h-20 text-base md:text-sm"}
           />
 
@@ -458,7 +458,7 @@ export function ImprovementDetail({
                   >
                     <ChevronLeft className="size-4" />
                   </button>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {page + 1} of {associationTotal}
                   </span>
                   <button
@@ -504,7 +504,15 @@ export function ImprovementDetail({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => unlink(current.messageId)}
+                          onClick={() =>
+                            confirmDelete({
+                              title: "Unlink this message?",
+                              description:
+                                "The answer stops counting as evidence for this improvement. Linking it again means finding it in the Inbox.",
+                              confirmLabel: "Unlink",
+                              onConfirm: () => unlink(current.messageId),
+                            })
+                          }
                         >
                           Unlink from this improvement
                         </Button>
@@ -561,7 +569,6 @@ export function ImprovementDetail({
                   label="Email"
                   value={current.conversation.metadata.userEmail}
                 />
-                <DetailRow label="Student ID" value={null} />
               </DetailGroup>
               <DetailGroup title="Conversation">
                 <DetailRow
@@ -658,15 +665,16 @@ export function ImprovementDetail({
                 <p className="text-muted-foreground mb-2 text-xs">
                   Enter to add tags (max 5 tags)
                 </p>
-                <div className="flex flex-wrap items-center gap-1.5 rounded-lg border p-1.5">
+                <div className="focus-within:border-ring focus-within:ring-ring/50 flex flex-wrap items-center gap-1.5 rounded-lg border p-1.5 transition-[border-color,box-shadow] focus-within:ring-3">
                   {tags.map((t) => (
                     <span
                       key={t}
-                      className="bg-muted inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs"
+                      className="bg-muted inline-flex max-w-full min-w-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs"
                     >
-                      {t}
+                      <span className="truncate">{t}</span>
                       <button
                         type="button"
+                        className="shrink-0"
                         aria-label={`Remove ${t}`}
                         onClick={() => removeTag(t)}
                       >
@@ -683,7 +691,9 @@ export function ImprovementDetail({
                         addTag();
                       }
                     }}
-                    placeholder={tags.length >= 5 ? "Max reached" : "Search..."}
+                    placeholder={tags.length >= 5 ? "Max reached" : "Search…"}
+                    aria-label="Add a tag"
+                    autoComplete="off"
                     disabled={tags.length >= 5}
                     className="min-w-20 flex-1 bg-transparent text-sm outline-none"
                   />
@@ -744,6 +754,8 @@ export function ImprovementDetail({
                     value={assigneeSearch}
                     onChange={(e) => setAssigneeSearch(e.target.value)}
                     placeholder="Select user"
+                    aria-label="Search members"
+                    autoComplete="off"
                     className="h-9 pl-8"
                   />
                 </div>
@@ -928,7 +940,7 @@ function Transcript({
       {transcript.map((m) =>
         m.role === "user" ? (
           <div key={m.id} className="flex justify-end">
-            <span className="bg-primary text-primary-foreground max-w-[80%] rounded-2xl rounded-tr-sm px-3 py-1.5 text-sm">
+            <span className="bg-primary text-primary-foreground max-w-[80%] rounded-2xl rounded-tr-sm px-3 py-1.5 text-sm [overflow-wrap:anywhere]">
               {messageText(m.content)}
             </span>
           </div>
@@ -941,7 +953,7 @@ function Transcript({
                 : "pl-3"
             }
           >
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
               {messageText(m.content)}
             </p>
           </div>
@@ -1042,6 +1054,7 @@ function SuggestedFix({
                   value={dismissReason}
                   onChange={(e) => setDismissReason(e.target.value)}
                   placeholder="Why is this fix not right? (optional)"
+                  aria-label="Reason for dismissing the fix"
                   className="min-h-16"
                 />
                 <div className="flex gap-2">

@@ -1,6 +1,7 @@
 "use client";
 // beui.dev/components/motion/tabs
 
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cancelFrame, frame, motion, MotionConfig, useReducedMotion } from "motion/react";
 import {
@@ -44,13 +45,13 @@ function useTabs() {
 
 /** Keep focus inside a real tablist and activate the tab receiving focus. */
 function onTabKeyDown(
-  event: ReactKeyboardEvent<HTMLButtonElement>,
+  event: ReactKeyboardEvent<HTMLElement>,
   setValue: (value: string) => void,
 ) {
   const tabList = event.currentTarget.closest<HTMLElement>('[role="tablist"]');
   if (!tabList) return;
   const tabs = Array.from(
-    tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)'),
+    tabList.querySelectorAll<HTMLElement>('[role="tab"]:not(:disabled)'),
   );
   const currentIndex = tabs.indexOf(event.currentTarget);
   if (currentIndex < 0 || tabs.length < 2) return;
@@ -391,12 +392,19 @@ export function TabsTrigger({
   className,
   indicatorClassName,
   disabled = false,
+  href,
 }: {
   value: string;
   children: ReactNode;
   className?: string;
   indicatorClassName?: string;
   disabled?: boolean;
+  /**
+   * When the tab is also a route: rendered as a link, so Cmd/Ctrl/middle-click
+   * opens it in a new tab. A plain click still just selects it, through the
+   * same onValueChange the button would have fired.
+   */
+  href?: string;
 }) {
   const { value: current, setValue, layoutId, variant, panelValues, tabId, panelId } = useTabs();
   const active = current === value;
@@ -406,27 +414,57 @@ export function TabsTrigger({
   // React owns the initial mask only; TabsList synchronizes subsequent masks.
   const [initialClip] = useState(() => (active ? "inset(0)" : "inset(0 100% 0 0)"));
 
-  if (variant === "underline") {
+  function renderTrigger(triggerClassName: string, content: ReactNode) {
+    const shared = {
+      id,
+      role: isTablist ? "tab" : undefined,
+      "aria-selected": isTablist ? active : undefined,
+      "aria-controls": controls,
+      "data-tabs-value": value,
+      tabIndex: isTablist ? (active ? 0 : -1) : undefined,
+      "data-foley-click": "tick",
+      onKeyDown: isTablist
+        ? (event: ReactKeyboardEvent<HTMLElement>) => onTabKeyDown(event, setValue)
+        : undefined,
+      className: triggerClassName,
+    } as const;
+    if (href && !disabled) {
+      return (
+        <Link
+          {...shared}
+          href={href}
+          aria-current={!isTablist && active ? "page" : undefined}
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            setValue(value);
+          }}
+        >
+          {content}
+        </Link>
+      );
+    }
     return (
       <button
+        {...shared}
         type="button"
-        id={id}
-        role={isTablist ? "tab" : undefined}
-        aria-selected={isTablist ? active : undefined}
         aria-pressed={!isTablist ? active : undefined}
-        aria-controls={controls}
         disabled={disabled}
-        data-tabs-value={value}
-        tabIndex={isTablist ? (active ? 0 : -1) : undefined}
-        data-foley-click="tick"
         onClick={() => setValue(value)}
-        onKeyDown={isTablist ? (event) => onTabKeyDown(event, setValue) : undefined}
-        className={cn(
-          "relative isolate px-3 pb-2.5 pt-1 -mb-px text-sm font-medium transition-colors min-h-[44px] inline-flex items-center whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-          active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-          className,
-        )}
       >
+        {content}
+      </button>
+    );
+  }
+
+  if (variant === "underline") {
+    return renderTrigger(
+      cn(
+        "relative isolate px-3 pb-2.5 pt-1 -mb-px text-sm font-medium transition-colors min-h-[44px] inline-flex items-center whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+        className,
+      ),
+      <>
         {children}
         {active ? (
           <motion.span
@@ -435,7 +473,7 @@ export function TabsTrigger({
             className={cn("absolute bottom-0 left-0 right-0 h-px bg-primary", indicatorClassName)}
           />
         ) : null}
-      </button>
+      </>,
     );
   }
 
@@ -452,37 +490,26 @@ export function TabsTrigger({
           className={cn("absolute inset-0 bg-primary", radius, indicatorClassName)}
         />
       ) : null}
-      <button
-        type="button"
-        id={id}
-        role={isTablist ? "tab" : undefined}
-        aria-selected={isTablist ? active : undefined}
-        aria-pressed={!isTablist ? active : undefined}
-        aria-controls={controls}
-        disabled={disabled}
-        data-tabs-value={value}
-        tabIndex={isTablist ? (active ? 0 : -1) : undefined}
-        data-foley-click="tick"
-        onClick={() => setValue(value)}
-        onKeyDown={isTablist ? (event) => onTabKeyDown(event, setValue) : undefined}
-        className={cn(
-          "relative z-10 inline-flex items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium outline-none",
+      {renderTrigger(
+        cn(
+          "relative z-10 inline-flex items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
           "text-muted-foreground hover:text-foreground",
           radius,
           className,
-        )}
-      >
-        {children}
-        <span
-          data-tabs-label=""
-          aria-hidden="true"
-          inert
-          className="pointer-events-none absolute inset-0 inline-flex items-center justify-center text-primary-foreground [gap:inherit] [padding:inherit]"
-          style={{ clipPath: initialClip }}
-        >
+        ),
+        <>
           {children}
-        </span>
-      </button>
+          <span
+            data-tabs-label=""
+            aria-hidden="true"
+            inert
+            className="pointer-events-none absolute inset-0 inline-flex items-center justify-center text-primary-foreground [gap:inherit] [padding:inherit]"
+            style={{ clipPath: initialClip }}
+          >
+            {children}
+          </span>
+        </>,
+      )}
     </div>
   );
 }

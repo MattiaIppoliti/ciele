@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react"
 import type { ImprovementListItem } from "@agent-hub/core"
+import { canAutoFocus } from "@/lib/auto-focus"
 import { Search } from "lucide-react"
 import {
   createImprovementFromMessageAction,
@@ -173,7 +174,7 @@ export function ImproveAnswerDialog({
           <div>
             <Input
               aria-label="Improvement title"
-              autoFocus
+              autoFocus={canAutoFocus()}
               value={title}
               maxLength={TITLE_MAX}
               onChange={(e) => setTitle(e.target.value)}
@@ -192,7 +193,7 @@ export function ImproveAnswerDialog({
                 aria-label="Search existing improvements"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search improvements..."
+                placeholder="Search improvements…"
                 className="h-10 rounded-lg pl-9"
               />
             </div>

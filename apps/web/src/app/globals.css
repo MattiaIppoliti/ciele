@@ -877,27 +877,6 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
   display: none;
 }
 
-/* Shimmer band that sweeps the "Swipe to publish" label, hinting the drag
-   affordance. Text-clipped so the highlight follows the glyph shapes. */
-.animate-swipe-button-text {
-  animation: swipe-button-text 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-@keyframes swipe-button-text {
-  0% {
-    background-position: calc(-1 * var(--swipe-button-text-width, 130px)) 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-swipe-button-text {
-    animation: none;
-  }
-}
-
 /* Ghost mark glances left and right. Values are SVG user units (viewBox
    212x186); the eye sockets have room for ±12 without leaving the face.
    Shared so the wordmark's eyes can animate anywhere the GhostMark renders
@@ -1250,4 +1229,119 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
   .sld-done {
     transition-duration: 1ms;
   }
+}
+
+/* ═══ The Flow Canvas: surface-field's plates ══════════════════════════════
+   The canvas floor is surface-field (components/assistant/flow-canvas-field),
+   and the step cards borrow its resting plate: a ring that fades from the top
+   down instead of a flat border, a lit top edge, and a two-layer cast, a
+   tight contact plus a wide ambient, because one blur is either a smudge or a
+   halo. Selection is a ring OUTSIDE the plate in the ink, never a hue: the
+   selected card is a state of the card, not a new object. Scoped to the
+   canvas so no other `.bg-card` changes. */
+.flow-canvas {
+  --flow-shadow-ink: oklch(0.3 0 0);
+  --flow-card-face: var(--card);
+  --flow-ring-top: color-mix(in oklab, var(--foreground) 11%, var(--background));
+  --flow-ring-mid: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --flow-ring-foot: color-mix(in oklab, var(--foreground) 2%, var(--background));
+  --flow-lit-edge: color-mix(in oklab, white 70%, transparent);
+  --flow-lit-edge-mid: color-mix(in oklab, white 30%, transparent);
+  --flow-shadow-e2:
+    0 1.35px 2.7px color-mix(in oklab, var(--flow-shadow-ink) 4%, transparent),
+    0 10.8px 29.7px color-mix(in oklab, var(--flow-shadow-ink) 6%, transparent);
+  --flow-shadow-lift:
+    0 4px 10.8px color-mix(in oklab, var(--flow-shadow-ink) 5%, transparent),
+    0 18.9px 43.2px color-mix(in oklab, var(--flow-shadow-ink) 9%, transparent);
+}
+/* In dark there is no white page for a cast to work against: the face sits a
+   step above the ground, the lit edge drops to a whisper, and the ambient
+   cast spreads wide so it darkens the ground instead of drawing a hole. */
+.dark .flow-canvas {
+  --flow-shadow-ink: oklch(0 0 0);
+  --flow-lit-edge: color-mix(in oklab, white 14%, transparent);
+  --flow-lit-edge-mid: color-mix(in oklab, white 5%, transparent);
+  --flow-shadow-e2:
+    0 1.35px 4px color-mix(in oklab, var(--flow-shadow-ink) 18%, transparent),
+    0 16px 59px color-mix(in oklab, var(--flow-shadow-ink) 22%, transparent);
+  --flow-shadow-lift:
+    0 5.4px 19px color-mix(in oklab, var(--flow-shadow-ink) 22%, transparent),
+    0 24px 76px color-mix(in oklab, var(--flow-shadow-ink) 28%, transparent);
+}
+
+.flow-surface-card {
+  --flow-selection: 0 0 0 0 transparent;
+  isolation: isolate;
+  border: 1px solid transparent;
+  border-radius: 0.875rem;
+  /* The ring is the border box painted as a second background: a box-shadow
+     has one colour all round and cannot fade down. */
+  background:
+    linear-gradient(var(--flow-card-face), var(--flow-card-face)) padding-box,
+    linear-gradient(
+        180deg,
+        var(--flow-ring-top),
+        var(--flow-ring-mid) 45%,
+        var(--flow-ring-foot)
+      )
+      border-box;
+  box-shadow: var(--flow-selection), var(--flow-shadow-e2);
+  /* `press` owns `transition` too: keep its transform and add the cast. */
+  transition-property: transform, box-shadow;
+  transition-duration: 100ms, 160ms;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1), ease;
+}
+/* The lit edge lies on the border box so its arc stays concentric with the
+   card's corner; the mask keeps only the 1px band inside the ring. */
+.flow-surface-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    var(--flow-lit-edge) 0,
+    var(--flow-lit-edge-mid) 7px,
+    transparent 22px
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0) padding-box;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0) padding-box;
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.flow-surface-card:hover,
+.flow-surface-card:focus-within {
+  box-shadow: var(--flow-selection), var(--flow-shadow-lift);
+}
+.flow-surface-card[data-selected] {
+  --flow-selection:
+    0 0 0 1.5px color-mix(in oklab, var(--foreground) 55%, transparent),
+    0 0 0 5px color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+/* A card being carried floats: the chrome's cast, not the resting one. */
+.react-flow__node.dragging .flow-surface-card {
+  box-shadow: var(--flow-selection), var(--flow-shadow-lift);
+}
+
+/* The connection points: a ring on the card's own face, not a filled dot. */
+.flow-canvas .react-flow__handle.flow-surface-handle {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid color-mix(in oklab, var(--foreground) 32%, transparent);
+  border-radius: 50%;
+  background: var(--flow-card-face);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.flow-surface-card:hover .react-flow__handle.flow-surface-handle {
+  border-color: color-mix(in oklab, var(--foreground) 55%, transparent);
 }

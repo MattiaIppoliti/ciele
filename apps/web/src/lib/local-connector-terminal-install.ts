@@ -10,22 +10,6 @@ export function isConnectorInstallShell(
 }
 
 /**
- * The single command a user pastes into their terminal. It fetches the
- * matching install script from this deployment and pipes it straight to the
- * shell, no file to save, no execution-policy prompt (piped input is not
- * governed by PowerShell execution policy).
- */
-export function connectorInstallCommand(
-  rawOrigin: string,
-  shell: ConnectorInstallShell
-): string {
-  const origin = normalizeConnectorOrigin(rawOrigin);
-  return shell === "sh"
-    ? `curl -fsSL ${origin}/api/local-connector/install/sh | sh`
-    : `irm ${origin}/api/local-connector/install/ps1 | iex`;
-}
-
-/**
  * The script served at /api/local-connector/install/{sh,ps1}. It downloads the
  * secret-free runtime, then runs it in bootstrap mode on the fixed discovery
  * port so the browser pairing page can complete pairing. No admin rights and

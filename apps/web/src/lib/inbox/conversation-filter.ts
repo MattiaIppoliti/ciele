@@ -1,5 +1,6 @@
 import type { InboxConversation, InboxQuery } from "@agent-hub/core";
 import { isoDay } from "@agent-hub/core";
+import { filtersFromSearchParams } from "@/lib/url-state";
 
 export interface InboxFilters {
   userInfo: string;
@@ -43,6 +44,28 @@ export function defaultInboxFilters(): InboxFilters {
     staff: "",
     review: "",
   };
+}
+
+/** The typed filters' legal values, so a hand-edited link cannot widen them. */
+const INBOX_FILTER_OPTIONS = {
+  feedback: ["", "up", "down", "neutral"],
+  escalation: ["", "escalated", "not_escalated"],
+  staff: ["", "include", "only"],
+  review: ["", "pending"],
+} as const;
+
+/** Filters and search as the address bar keeps them; `q` is the search box. */
+export type InboxUrlState = InboxFilters & { q: string };
+
+export function defaultInboxUrlState(): InboxUrlState {
+  return { ...defaultInboxFilters(), q: "" };
+}
+
+/** The Inbox view a URL asks for, anything missing or invalid at its default. */
+export function inboxUrlStateFromSearchParams(
+  params: URLSearchParams | Record<string, string | string[] | undefined>,
+): InboxUrlState {
+  return filtersFromSearchParams(params, defaultInboxUrlState(), INBOX_FILTER_OPTIONS);
 }
 
 export function subjectName(c: InboxConversation): string {
