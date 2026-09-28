@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -14,13 +14,15 @@ import {
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const ORIGINAL_MAX_BYTES = 25 * 1024 * 1024;
 
-/** Captures upload paths; the storage layer itself is not under test. */
-function fakeClient(uploads: Array<{ bucket: string; path: string }>) {
+/** Captures upload paths and types; the storage layer itself is not under test. */
+function fakeClient(
+  uploads: Array<{ bucket: string; path: string; contentType?: string }>
+) {
   return {
     storage: {
       from: (bucket: string) => ({
-        upload: async (path: string) => {
-          uploads.push({ bucket, path });
+        upload: async (path: string, _body: unknown, options?: { contentType?: string }) => {
+          uploads.push({ bucket, path, contentType: options?.contentType });
           return { error: null };
         },
         getPublicUrl: (path: string) => ({
@@ -88,18 +90,65 @@ describe("knowledge original uploads", () => {
     expect(uploads[0].bucket).toBe("knowledge-originals");
   });
 
-  it("enforces type and size limits at upload (PDF/DOCX/text only)", () => {
+  it("accepts PowerPoint and Excel originals, stored under their own content type", async () => {
+    expect(validateKnowledgeFile({ name: "deck.pptx", size: 10 })).toEqual({ ok: true });
+    expect(validateKnowledgeFile({ name: "Rates.XLSX", size: 10 })).toEqual({ ok: true });
+    const uploads: Array<{ bucket: string; path: string; contentType?: string }> = [];
+    for (const name of ["deck.pptx", "Rates.XLSX"]) {
+      await uploadKnowledgeOriginal(fakeClient(uploads), {
+        organizationId: "org_123",
+        file: new File(["x"], name),
+        id: "obj",
+      });
+    }
+    expect(uploads).toEqual([
+      {
+        bucket: "knowledge-originals",
+        path: "org/org_123/knowledge/obj.pptx",
+        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      },
+      {
+        bucket: "knowledge-originals",
+        path: "org/org_123/knowledge/obj.xlsx",
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    ]);
+  });
+
+  it("stores the extension-derived type, never the browser's File.type", async () => {
+    const sent: Array<{ body: unknown; contentType?: string }> = [];
+    const client = {
+      storage: {
+        from: () => ({
+          upload: async (_path: string, body: unknown, options?: { contentType?: string }) => {
+            sent.push({ body, contentType: options?.contentType });
+            return { error: null };
+          },
+        }),
+      },
+    } as unknown as SupabaseClient;
+    await uploadKnowledgeOriginal(client, {
+      organizationId: "org_123",
+      file: new File(["# notes"], "notes.md", { type: "text/markdown" }),
+    });
+    // supabase-js sends a Blob body with the Blob's own type, so the type
+    // storage receives is the body's when it is a Blob, `contentType` otherwise.
+    const { body, contentType } = sent[0];
+    expect(body instanceof Blob ? body.type : contentType).toBe("text/plain");
+  });
+
+  it("enforces type and size limits at upload (documents and text only)", () => {
     expect(validateKnowledgeFile({ name: "a.pdf", size: 10 })).toEqual({ ok: true });
     expect(validateKnowledgeFile({ name: "notes.docx", size: 10 })).toEqual({ ok: true });
     expect(validateKnowledgeFile({ name: "readme.md", size: 10 })).toEqual({ ok: true });
     expect(validateKnowledgeFile({ name: "data.csv", size: 10 })).toEqual({ ok: true });
     expect(validateKnowledgeFile({ name: "a.png", size: 10 })).toEqual({
       ok: false,
-      error: "Upload a PDF, Word (.docx), Markdown, or text file",
+      error: "Upload a PDF, Word, PowerPoint, Excel, Markdown, or text file",
     });
     expect(validateKnowledgeFile({ name: "noextension", size: 10 })).toEqual({
       ok: false,
-      error: "Upload a PDF, Word (.docx), Markdown, or text file",
+      error: "Upload a PDF, Word, PowerPoint, Excel, Markdown, or text file",
     });
     expect(validateKnowledgeFile({ name: "a.pdf", size: 0 })).toEqual({
       ok: false,
@@ -111,6 +160,33 @@ describe("knowledge original uploads", () => {
       ok: false,
       error: "File is too large - the maximum supported size is 25 MB",
     });
+  });
+});
+
+describe("knowledge-originals bucket MIME allowlist", () => {
+  // The bucket refuses any type it does not list, so every type the uploader
+  // writes has to be in the newest migration that sets the list. A type added
+  // to the app alone would pass every unit test and fail every real upload.
+  it("lists every content type the uploader stores", async () => {
+    const dir = resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../../../../supabase/migrations"
+    );
+    const latest = readdirSync(dir)
+      .filter((file) => file.endsWith(".sql"))
+      .sort()
+      .map((file) => readFileSync(resolve(dir, file), "utf8"))
+      .filter((sql) => /allowed_mime_types[\s\S]*where id = 'knowledge-originals'/.test(sql))
+      .at(-1);
+    const uploads: Array<{ bucket: string; path: string; contentType?: string }> = [];
+    for (const ext of ["pdf", "docx", "pptx", "xlsx", "txt", "text", "md", "markdown", "csv", "tsv", "json", "log"]) {
+      await uploadKnowledgeOriginal(fakeClient(uploads), {
+        organizationId: "org_123",
+        file: new File(["x"], `f.${ext}`),
+        id: "obj",
+      });
+    }
+    for (const { contentType } of uploads) expect(latest).toContain(`'${contentType}'`);
   });
 });
 

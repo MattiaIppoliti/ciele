@@ -1,0 +1,74 @@
+[
+  {
+    "id": "rt-09",
+    "inputs": {
+      "question": "grazie, perfetto"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-10",
+    "inputs": {
+      "question": "are you ChatGPT?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-11",
+    "inputs": {
+      "question": "can I speak to someone in HR?"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-12",
+    "inputs": {
+      "question": "What can the security desk do if I lose my laptop?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-13",
+    "inputs": {
+      "question": "ok 👍"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-14",
+    "inputs": {
+      "question": "which languages do you speak?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-15",
+    "inputs": {
+      "question": "this bot is useless, get me a human"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-16",
+    "inputs": {
+      "question": "who approves trips over 4000 EUR?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  }
+]

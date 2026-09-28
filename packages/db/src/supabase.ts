@@ -6895,6 +6895,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }));
     },
 
+    async removePlatformEvalModel(provider, modelId) {
+      must(await client.from("platform_eval_models")
+        .delete()
+        .eq("provider", provider)
+        .eq("model_id", modelId));
+    },
+
     // --- Skills (reusable prompt templates) ----------------------------------
     // Plain CRUD moved to `table("skills")` (ADR-0016 stage 3); the delete
     // stays named because it carries cascade semantics (assistant_skills).

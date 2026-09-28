@@ -1,0 +1,6464 @@
+[
+ {
+  "url": "https://ciele.app/eval/5dw5Q4HY-CMu",
+  "stage": "answer",
+  "dataset": "Stage eval · knowledge 1/3",
+  "results": [
+   {
+    "exampleId": "kn-01",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 7994,
+    "costEur": 0.0027621,
+    "inputTokens": 7743,
+    "outputTokens": 366,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "The built-in website crawler stops at **30 pages**."
+   },
+   {
+    "exampleId": "kn-01",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8810,
+    "costEur": 0.0019892,
+    "inputTokens": 6500,
+    "outputTokens": 136,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "I don't have that information in my knowledge base. Please reach out to our human support channels for assistance with this question."
+   },
+   {
+    "exampleId": "kn-01",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6246,
+    "costEur": 0.0009111,
+    "inputTokens": 6541,
+    "outputTokens": 164,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-02",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6813,
+    "costEur": 0.0028306399999999997,
+    "inputTokens": 8122,
+    "outputTokens": 326,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "The maximum size of a file a visitor can attach in the chat window is 8MB."
+   },
+   {
+    "exampleId": "kn-02",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10309,
+    "costEur": 0.0022767,
+    "inputTokens": 7225,
+    "outputTokens": 181,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "I'm sorry, but I couldn't find the information about the maximum file size for chat attachments in my knowledge base. For assistance with this, please reach out to the organization's human support channels."
+   },
+   {
+    "exampleId": "kn-02",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 3137,
+    "costEur": 0.0004989400000000001,
+    "inputTokens": 2769,
+    "outputTokens": 75,
+    "sourceUrls": [],
+    "answer": "print(default_api.searchKnowledge(queries='file size limit chat window attachment'))\n"
+   },
+   {
+    "exampleId": "kn-03",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6816,
+    "costEur": 0.0028450599999999995,
+    "inputTokens": 7649,
+    "outputTokens": 457,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "A voice recording will automatically stop after **60 seconds** (and has a maximum file size limit of 4 MB)."
+   },
+   {
+    "exampleId": "kn-03",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9175,
+    "costEur": 0.0017430000000000002,
+    "inputTokens": 5570,
+    "outputTokens": 134,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "A voice recording can last up to **30 minutes** before it stops automatically."
+   },
+   {
+    "exampleId": "kn-03",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 4866,
+    "costEur": 0.0007159600000000001,
+    "inputTokens": 4924,
+    "outputTokens": 71,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-04",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10120,
+    "costEur": 0.00281146,
+    "inputTokens": 7639,
+    "outputTokens": 434,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "One signed-in visitor can hold up to **200** long-term memories. \n\nOnce this limit is reached, any new memories saved will automatically overwrite and remove the oldest ones."
+   },
+   {
+    "exampleId": "kn-04",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9331,
+    "costEur": 0.00192726,
+    "inputTokens": 5771,
+    "outputTokens": 194,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I'm sorry, but the information regarding the maximum number of long-term memories a signed-in visitor can hold is not available in my knowledge base. For further assistance with this limit, please reach out to the organization's human support channels."
+   },
+   {
+    "exampleId": "kn-04",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 4317,
+    "costEur": 0.0005183600000000002,
+    "inputTokens": 2768,
+    "outputTokens": 89,
+    "sourceUrls": [],
+    "answer": "print(default_api.searchKnowledge(queries='visitor long-term memory limit'))\n"
+   },
+   {
+    "exampleId": "kn-05",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6277,
+    "costEur": 0.0029798999999999997,
+    "inputTokens": 8471,
+    "outputTokens": 363,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "A conversation must stay quiet for **15 minutes** before its memories are promoted. \n\nIf a newer message is sent during this time, it will supersede the older pending job and reset the timer."
+   },
+   {
+    "exampleId": "kn-05",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 12023,
+    "costEur": 0.00203066,
+    "inputTokens": 6541,
+    "outputTokens": 150,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I am sorry, but I do not have information in my knowledge base about how long a conversation must stay quiet before its memories are promoted. For assistance with this, please reach out to the organization's human support channels."
+   },
+   {
+    "exampleId": "kn-05",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 4327,
+    "costEur": 0.0009458,
+    "inputTokens": 6886,
+    "outputTokens": 160,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-06",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10010,
+    "costEur": 0.00249038,
+    "inputTokens": 6497,
+    "outputTokens": 451,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "When importing FAQs, your CSV file needs to have the following two columns:\n\n* **`question`**\n* **`answer`**\n\n### Example Format:\n```csv\nquestion,answer\n\"What is your return policy?\",\"We offer a 30-day return policy on all items.\"\n\"How do I contact support?\",\"You can contact us via email at support@example.com.\"\n```"
+   },
+   {
+    "exampleId": "kn-06",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10009,
+    "costEur": 0.0025089800000000005,
+    "inputTokens": 8313,
+    "outputTokens": 158,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "I'm sorry, but I couldn't find information in my knowledge base regarding the required CSV columns for importing FAQs. Please reach out to the organization's human support channels for assistance with this."
+   },
+   {
+    "exampleId": "kn-06",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6817,
+    "costEur": 0.00084138,
+    "inputTokens": 6083,
+    "outputTokens": 105,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "To import FAQs, the CSV file needs to include the following columns:\n\n*   **Question**: This column should contain the FAQ question.\n*   **Answer**: This column should contain the corresponding answer to the FAQ question."
+   },
+   {
+    "exampleId": "kn-07",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10333,
+    "costEur": 0.0030332,
+    "inputTokens": 6468,
+    "outputTokens": 909,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "Non ho a disposizione informazioni specifiche nei miei documenti per verificare quale licenza utilizzi il core dell'edizione open source. \n\nTi invito a consultare la documentazione ufficiale sul nostro sito web o a contattare il canale di supporto per ricevere dettagli precisi."
+   },
+   {
+    "exampleId": "kn-07",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8095,
+    "costEur": 0.0020572200000000002,
+    "inputTokens": 6347,
+    "outputTokens": 185,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "Spiacente, ma nella documentazione e nella knowledge base attuale non sono presenti informazioni riguardo alla licenza utilizzata dal core dell'edizione open source. Per avere questa informazione, ti invito a rivolgerti ai canali di supporto umano dell'organizzazione."
+   },
+   {
+    "exampleId": "kn-07",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 4509,
+    "costEur": 0.0006615,
+    "inputTokens": 4273,
+    "outputTokens": 98,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "Il core dell'edizione open source utilizza la licenza AGPL-3.0-only."
+   },
+   {
+    "exampleId": "kn-08",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8657,
+    "costEur": 0.00273734,
+    "inputTokens": 7139,
+    "outputTokens": 489,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "Un visitatore autenticato può avere al massimo **200** memorie a lungo termine. Una volta raggiunto questo limite, il salvataggio di nuove memorie comporterà la rimozione automatica di quelle più vecchie."
+   },
+   {
+    "exampleId": "kn-08",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10701,
+    "costEur": 0.0018960000000000001,
+    "inputTokens": 5600,
+    "outputTokens": 200,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "La documentazione non contiene informazioni sul numero massimo di memorie a lungo termine che un visitatore autenticato può avere. Per ulteriori dettagli, ti consiglio di rivolgerti ai canali di supporto umano dell'organizzazione."
+   },
+   {
+    "exampleId": "kn-08",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 7345,
+    "costEur": 0.0007898400000000001,
+    "inputTokens": 5460,
+    "outputTokens": 89,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/HFp49EGr-mpv",
+  "stage": "answer",
+  "dataset": "Stage eval · knowledge 2/3",
+  "results": [
+   {
+    "exampleId": "kn-09",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9785,
+    "costEur": 0.00552924,
+    "inputTokens": 16430,
+    "outputTokens": 501,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "The default Slack history window for an Application import is **180 days**."
+   },
+   {
+    "exampleId": "kn-09",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9639,
+    "costEur": 0.0021141600000000003,
+    "inputTokens": 6896,
+    "outputTokens": 146,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "I'm sorry, but I couldn't find information regarding the default Slack history window for an Application import in the knowledge base. Please reach out to our human support channels for assistance with this question."
+   },
+   {
+    "exampleId": "kn-09",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6976,
+    "costEur": 0.00084604,
+    "inputTokens": 5926,
+    "outputTokens": 160,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-10",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 7616,
+    "costEur": 0.00270564,
+    "inputTokens": 7224,
+    "outputTokens": 447,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Visitors cannot attach the following old Office formats in the chat:\n\n* **.doc**\n* **.xls**\n* **.ppt**\n\nTo attach these files, they must be saved in the newer formats: **.docx**, **.xlsx**, or **.pptx**."
+   },
+   {
+    "exampleId": "kn-10",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 11529,
+    "costEur": 0.0020893400000000003,
+    "inputTokens": 6259,
+    "outputTokens": 210,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "Based on the knowledge base, visitors cannot attach files with the following legacy Microsoft Office formats:\n\n* **.doc** (Word 97-2003)\n* **.xls** (Excel 97-2003)\n* **.ppt** (PowerPoint 97-2003)"
+   },
+   {
+    "exampleId": "kn-10",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 3485,
+    "costEur": 0.00050224,
+    "inputTokens": 2758,
+    "outputTokens": 79,
+    "sourceUrls": [],
+    "answer": "print(default_api.searchKnowledge(queries='Unsupported file types for chat uploads'))\n"
+   },
+   {
+    "exampleId": "kn-11",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8545,
+    "costEur": 0.0026337400000000003,
+    "inputTokens": 7071,
+    "outputTokens": 427,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge",
+     "https://docs.ciele.app/getting-started",
+     "https://docs.ciele.app/"
+    ],
+    "answer": "The locked **Default behavior** Flow sits at the very end (last) of the Flow order. It is designed to handle an eligible message when no earlier Flow in the order wins."
+   },
+   {
+    "exampleId": "kn-11",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8676,
+    "costEur": 0.00196284,
+    "inputTokens": 6094,
+    "outputTokens": 172,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/getting-started",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "The **Default behavior** flow sits at the very end of the Flow order. It acts as the fallback flow and is evaluated only after all other specific flows have been checked and none of them match the user's query."
+   },
+   {
+    "exampleId": "kn-11",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 5769,
+    "costEur": 0.00050184,
+    "inputTokens": 2756,
+    "outputTokens": 74,
+    "sourceUrls": [],
+    "answer": "print(default_api.searchKnowledge(queries=['Flow order']))\n"
+   },
+   {
+    "exampleId": "kn-12",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8754,
+    "costEur": 0.002827,
+    "inputTokens": 7098,
+    "outputTokens": 577,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/editions"
+    ],
+    "answer": "In Ciele, a **Publication** is an immutable snapshot of an Assistant. \n\nKey details about Publications include:\n* **Live Widget Use:** The live chat widget always uses the active Publication snapshot, not the current administrator draft. Any draft changes you make will not affect the live widget until you publish.\n* **Snapshot Contents:** When you create a Publication, it captures the assistant's configuration at that moment (for example, selected Entity schemas enter the Publication snapshot to be used as tools)."
+   },
+   {
+    "exampleId": "kn-12",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9108,
+    "costEur": 0.0022866800000000006,
+    "inputTokens": 6798,
+    "outputTokens": 236,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "In Ciele, a **Publication** is a snapshot of your AI assistant (including its configuration, behavior, prompts, and knowledge base associations) that has been packaged and made live for end users. \n\nWhen you make changes to an assistant in development or test environments, those changes are not automatically visible to users interacting with the assistant in production. Creating a Publication allows you to officially release a stable, version-controlled build of your assistant so that it can serve users reliably."
+   },
+   {
+    "exampleId": "kn-12",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6779,
+    "costEur": 0.0007248,
+    "inputTokens": 5066,
+    "outputTokens": 69,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/editions"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-13",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9001,
+    "costEur": 0.00259852,
+    "inputTokens": 6528,
+    "outputTokens": 535,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "A Goal can check an answer against the following expectations:\n\n* **Must cite a source**: The answer must contain at least one Source citation.\n* **Cited URL contains**: A cited URL must contain the configured text.\n* **Answer contains**: The answer must contain each configured text fragment.\n* **Non-fallback answer**: The runtime did not return its fallback result (note that Ciele always checks for a non-fallback answer)."
+   },
+   {
+    "exampleId": "kn-13",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10799,
+    "costEur": 0.00197288,
+    "inputTokens": 6378,
+    "outputTokens": 143,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "I am sorry, but the knowledge base does not contain information about which expectations a Goal can check an answer against. If you have questions about human support channels or other documentation, please let me know!"
+   },
+   {
+    "exampleId": "kn-13",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 5962,
+    "costEur": 0.00083312,
+    "inputTokens": 5594,
+    "outputTokens": 216,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "If you need more specific details about configuring these expectations or have further questions, please let me know!"
+   },
+   {
+    "exampleId": "kn-14",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8353,
+    "costEur": 0.00288676,
+    "inputTokens": 6668,
+    "outputTokens": 741,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "When a Goal fails its check, the following actions and processes occur:\n\n1. **An Alert is Created:** A failed Goal immediately creates an **Alert** for an administrator to review.\n2. **Quarantine (for repeated failures):** If a Goal experiences repeated execution problems, Ciele will **quarantine** it. A quarantined Goal is paused and will not continue its normal schedule until an administrator reviews and reactivates it.\n\n### How to Resolve a Failed Goal\nAn administrator can resolve the issue by following these steps:\n1. Open **Alerts** in the dashboard.\n2. Select the specific Goal failure alert.\n3. Review the assistant's generated answer alongside the failed expectation to understand why it did not pass.\n4. Correct the underlying **Knowledge**, **Flow**, or the **Goal** configuration itself.\n5. Run the Goal again to verify the fix."
+   },
+   {
+    "exampleId": "kn-14",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9212,
+    "costEur": 0.00218648,
+    "inputTokens": 7098,
+    "outputTokens": 155,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "I cannot answer what happens when a Goal fails its check because there is no information about Goal checks or failures in the knowledge base. For assistance with this, please reach out to our human support channels."
+   },
+   {
+    "exampleId": "kn-14",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 11021,
+    "costEur": 0.00079876,
+    "inputTokens": 5434,
+    "outputTokens": 175,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "When a Goal fails its check, the following occurs:\n\n*   **The Goal is marked as \"Failed.\"** This indicates that the objective has not been met.\n*   **No further actions are taken for that specific Goal.** The process associated with that Goal will halt.\n*   **Notifications may be sent.** Depending on the system's configuration, stakeholders or administrators might be alerted to the Goal's failure.\n\nFor more detailed information about how failures are handled within your specific system or process, please refer to the system's documentation or contact your system administrator."
+   },
+   {
+    "exampleId": "kn-15",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6721,
+    "costEur": 0.00300678,
+    "inputTokens": 8059,
+    "outputTokens": 490,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/appearance",
+     "https://docs.ciele.app/getting-started/navigating-the-console",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/knowledge"
+    ],
+    "answer": "You can place the widget launcher at the **bottom left** or **bottom right** of your host page. \n\nWhen choosing a position, it is recommended to select a placement that does not cover important page elements such as navigation, cookie consent controls, or other fixed components.\n\nTo change the launcher's position:\n1. Open your Assistant and select **Style**.\n2. Change the launcher position to either the bottom left or bottom right.\n3. Save your draft.\n4. Inspect the desktop and mobile Preview to ensure it looks correct.\n5. Publish the Assistant to apply the changes."
+   },
+   {
+    "exampleId": "kn-15",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 14453,
+    "costEur": 0.0021298000000000003,
+    "inputTokens": 6220,
+    "outputTokens": 233,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/appearance",
+     "https://docs.ciele.app/getting-started/navigating-the-console",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "It looks like you didn't include the knowledge base documentation in your question! However, based on typical website setups, the widget launcher is generally placed as a floating element fixed to a corner of the page (usually the bottom-right or bottom-left) so it remains visible as the user scrolls. \n\nIf you are looking for specific configuration options or code snippets from our documentation, please let me know or check your knowledge base files, and I'll be happy to give you the exact details!"
+   },
+   {
+    "exampleId": "kn-15",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6184,
+    "costEur": 0.00049368,
+    "inputTokens": 2756,
+    "outputTokens": 72,
+    "sourceUrls": [],
+    "answer": "print(default_api.searchKnowledge(queries=['widget launcher placement']))\n"
+   },
+   {
+    "exampleId": "kn-16",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9103,
+    "costEur": 0.0033790399999999994,
+    "inputTokens": 7272,
+    "outputTokens": 997,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "Per collegare il token Apify della tua organizzazione su Ciele, segui questi passaggi (nota: solo i proprietari e gli amministratori possono configurare o rimuovere l'account):\n\n1. **Recupera il token da Apify**:\n   * Accedi alla console di Apify.\n   * Vai su **Settings** (Impostazioni) e seleziona **API & Integrations**.\n   * Copia il tuo token API.\n\n2. **Collega il token su Ciele**:\n   * Accedi a Ciele e vai su **Settings** (Impostazioni).\n   * Seleziona la voce **Crawling**.\n   * Clicca su **Connect** (Connetti) all'interno della scheda di Apify.\n   * Incolla il codice nel campo **API token**.\n   * *(Opzionale)* Puoi inserire il tuo ID utente Apify nel campo **User ID** per consentire a Ciele di verificare che il token appartenga effettivamente a quell'account.\n   * Clicca su **Save** (Salva).\n\nUna volta completata l'operazione, Ciele crittograferà il token mostrando solo i suoi ultimi quattro caratteri."
+   },
+   {
+    "exampleId": "kn-16",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 11950,
+    "costEur": 0.00237462,
+    "inputTokens": 7627,
+    "outputTokens": 178,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "La knowledge base attuale non contiene informazioni su dove configurare o collegare il token di Apify della tua organizzazione. \n\nPer ricevere assistenza su questo argomento, ti consiglio di rivolgerti ai canali di supporto umano della tua organizzazione."
+   },
+   {
+    "exampleId": "kn-16",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 5206,
+    "costEur": 0.00083774,
+    "inputTokens": 5737,
+    "outputTokens": 173,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/getting-started/navigating-the-console"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/dE25G0xg-HZ3",
+  "stage": "answer",
+  "dataset": "Stage eval · knowledge 3/3",
+  "results": [
+   {
+    "exampleId": "kn-17",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8563,
+    "costEur": 0.0029294200000000003,
+    "inputTokens": 7455,
+    "outputTokens": 579,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/entities-and-records"
+    ],
+    "answer": "Based on the documentation, the following built-in tools are **off by default**:\n\n1. **Fetch URL**: Allows the assistant to fetch and read the HTML content of any URL shared by the user.\n2. **Show a table**: Allows the assistant to present structured data in a sortable markdown table."
+   },
+   {
+    "exampleId": "kn-17",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9589,
+    "costEur": 0.0020148600000000003,
+    "inputTokens": 6311,
+    "outputTokens": 170,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/entities-and-records"
+    ],
+    "answer": "I do not have information in my knowledge base regarding which built-in tools are off by default. For assistance with tool configurations and default settings, please reach out to human support."
+   },
+   {
+    "exampleId": "kn-17",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 4778,
+    "costEur": 0.00048812000000000004,
+    "inputTokens": 2756,
+    "outputTokens": 63,
+    "sourceUrls": [],
+    "answer": "I couldn't find anything about that in the knowledge base. I don't want to guess, so this may be outside the material I have, try rephrasing or narrowing the question, or reach out to support."
+   },
+   {
+    "exampleId": "kn-18",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8833,
+    "costEur": 0.0035446,
+    "inputTokens": 8582,
+    "outputTokens": 806,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "$2f"
+   },
+   {
+    "exampleId": "kn-18",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 12605,
+    "costEur": 0.0023773799999999997,
+    "inputTokens": 7553,
+    "outputTokens": 188,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I'm sorry, but I don't have information in my knowledge base about how to stop an API integration endpoint from writing duplicate records after a retry. \n\nIf you need further assistance related to our organization's systems or policies, please reach out to our human support channels."
+   },
+   {
+    "exampleId": "kn-18",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 5940,
+    "costEur": 0.0009482000000000001,
+    "inputTokens": 6566,
+    "outputTokens": 226,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-19",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6048,
+    "costEur": 0.0027268199999999996,
+    "inputTokens": 7313,
+    "outputTokens": 444,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "When you duplicate an Assistant, the following configuration details are copied:\n\n* **Configuration** (settings, persona, etc.)\n* **Flows**\n\n**What does NOT get copied:**\n* **Knowledge content** (you will need to add the required Sources to the new Assistant manually)\n* **Help Desk connections** (you should review and confirm these connections on the new Assistant) \n\nBe sure to review the new Assistant entirely before publishing it!"
+   },
+   {
+    "exampleId": "kn-19",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 20112,
+    "costEur": 0.00162238,
+    "inputTokens": 5343,
+    "outputTokens": 106,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/getting-started/create-an-assistant"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-19",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 4075,
+    "costEur": 0.0004942200000000001,
+    "inputTokens": 2767,
+    "outputTokens": 71,
+    "sourceUrls": [],
+    "answer": "I couldn't find anything about that in the knowledge base. I don't want to guess, so this may be outside the material I have, try rephrasing or narrowing the question, or reach out to support."
+   },
+   {
+    "exampleId": "kn-20",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 7156,
+    "costEur": 0.0030400999999999996,
+    "inputTokens": 8497,
+    "outputTokens": 406,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/files",
+     "https://docs.ciele.app/knowledge",
+     "https://docs.ciele.app/editions"
+    ],
+    "answer": "The largest PDF that Ciele accepts as a file source is **2,000 pages**. PDFs containing more than 2,000 pages will be refused."
+   },
+   {
+    "exampleId": "kn-20",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 15535,
+    "costEur": 0.00199834,
+    "inputTokens": 6239,
+    "outputTokens": 171,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/files"
+    ],
+    "answer": "Ciele accepts PDF files as sources up to a maximum of **2,000 pages**."
+   },
+   {
+    "exampleId": "kn-20",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 4959,
+    "costEur": 0.0008617000000000001,
+    "inputTokens": 6123,
+    "outputTokens": 125,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/files",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-21",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6590,
+    "costEur": 0.00306844,
+    "inputTokens": 8742,
+    "outputTokens": 369,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "A single Document in the Library can keep a maximum of **20 memories**."
+   },
+   {
+    "exampleId": "kn-21",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10651,
+    "costEur": 0.00202072,
+    "inputTokens": 6452,
+    "outputTokens": 156,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "I do not have information in my knowledge base regarding how many memories a single Document can keep in the Library. \n\nIf you need assistance with this, please reach out to the organization's human support channels for more details!"
+   },
+   {
+    "exampleId": "kn-21",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 5021,
+    "costEur": 0.0007446400000000001,
+    "inputTokens": 5258,
+    "outputTokens": 69,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-22",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 12572,
+    "costEur": 0.0027798000000000002,
+    "inputTokens": 7770,
+    "outputTokens": 374,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "The Crawl4AI crawler stops at a limit of **5,000 pages**."
+   },
+   {
+    "exampleId": "kn-22",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9718,
+    "costEur": 0.0027381000000000003,
+    "inputTokens": 8695,
+    "outputTokens": 217,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "<untrusted-data id=\"2ucvooj63556\">\nThe Crawl4AI crawler stops at a limit of **10,000 pages** (the maximum page limit).\n</untrusted-data>\n\nThe Crawl4AI crawler stops at a limit of **10,000 pages**."
+   },
+   {
+    "exampleId": "kn-22",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6969,
+    "costEur": 0.0008906,
+    "inputTokens": 6468,
+    "outputTokens": 149,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "The Crawl4AI crawler stops at 5,000 pages."
+   },
+   {
+    "exampleId": "kn-23",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6994,
+    "costEur": 0.003025,
+    "inputTokens": 7924,
+    "outputTokens": 535,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/"
+    ],
+    "answer": "Ciele Cloud is sold as a sales-led Enterprise offering, meaning there is no self-serve sign-up option available. To get started with Ciele Cloud, you will need to contact their sales team (\"Talk to sales\"). It is governed by an Enterprise agreement that defines your included usage. \n\nIf you prefer a self-serve option, Ciele does offer a free, open-source self-hosted edition that you can install and manage on your own."
+   },
+   {
+    "exampleId": "kn-23",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8998,
+    "costEur": 0.0020712400000000002,
+    "inputTokens": 6824,
+    "outputTokens": 135,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   },
+   {
+    "exampleId": "kn-23",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 4261,
+    "costEur": 0.000516,
+    "inputTokens": 2782,
+    "outputTokens": 87,
+    "sourceUrls": [],
+    "answer": "print(default_api.searchKnowledge(queries=['how to sign up for Ciele Cloud']))\n"
+   },
+   {
+    "exampleId": "kn-24",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9004,
+    "costEur": 0.0039002599999999996,
+    "inputTokens": 8491,
+    "outputTokens": 1125,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "$30"
+   },
+   {
+    "exampleId": "kn-24",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10205,
+    "costEur": 0.00248982,
+    "inputTokens": 8087,
+    "outputTokens": 176,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "La knowledge base attuale non contiene informazioni su come permettere al visitatore di scegliere un modello diverso all'interno della chat. \n\nPer ricevere assistenza su questa funzionalità, ti invitiamo a contattare i canali di supporto umani dell'organizzazione."
+   },
+   {
+    "exampleId": "kn-24",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 6932,
+    "costEur": 0.00093436,
+    "inputTokens": 6346,
+    "outputTokens": 257,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question."
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/t57VRmWp-4n3",
+  "stage": "classifier",
+  "dataset": "Stage eval · routing 1/3",
+  "results": [
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2155,
+    "costEur": 0.0005702999999999999,
+    "inputTokens": 813,
+    "outputTokens": 272,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 3692,
+    "costEur": 0.00030377999999999997,
+    "inputTokens": 813,
+    "outputTokens": 42,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 820,
+    "costEur": 9.450000000000002e-05,
+    "inputTokens": 813,
+    "outputTokens": 33,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2118,
+    "costEur": 0.0004677,
+    "inputTokens": 819,
+    "outputTokens": 185,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2833,
+    "costEur": 0.00032074,
+    "inputTokens": 819,
+    "outputTokens": 49,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 856,
+    "costEur": 9.630000000000001e-05,
+    "inputTokens": 819,
+    "outputTokens": 36,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 2631,
+    "costEur": 0.0008112,
+    "inputTokens": 820,
+    "outputTokens": 471,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 1458,
+    "costEur": 0.0002814,
+    "inputTokens": 820,
+    "outputTokens": 31,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 749,
+    "costEur": 9.2e-05,
+    "inputTokens": 820,
+    "outputTokens": 25,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2137,
+    "costEur": 0.0005673,
+    "inputTokens": 819,
+    "outputTokens": 268,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2699,
+    "costEur": 0.00031193999999999997,
+    "inputTokens": 819,
+    "outputTokens": 45,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 997,
+    "costEur": 9.630000000000001e-05,
+    "inputTokens": 819,
+    "outputTokens": 36,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 3211,
+    "costEur": 0.00047279999999999995,
+    "inputTokens": 816,
+    "outputTokens": 190,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2696,
+    "costEur": 0.00030676,
+    "inputTokens": 816,
+    "outputTokens": 43,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 948,
+    "costEur": 9.44e-05,
+    "inputTokens": 816,
+    "outputTokens": 32,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 2195,
+    "costEur": 0.0006603,
+    "inputTokens": 821,
+    "outputTokens": 345,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 2460,
+    "costEur": 0.00027726,
+    "inputTokens": 821,
+    "outputTokens": 29,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 940,
+    "costEur": 9.330000000000002e-05,
+    "inputTokens": 821,
+    "outputTokens": 28,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 5124,
+    "costEur": 0.0004653,
+    "inputTokens": 815,
+    "outputTokens": 184,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 4396,
+    "costEur": 0.0003131,
+    "inputTokens": 815,
+    "outputTokens": 46,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 877,
+    "costEur": 9.55e-05,
+    "inputTokens": 815,
+    "outputTokens": 35,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 2498,
+    "costEur": 0.0007194,
+    "inputTokens": 822,
+    "outputTokens": 394,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 3753,
+    "costEur": 0.00027312,
+    "inputTokens": 822,
+    "outputTokens": 27,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 821,
+    "costEur": 9.22e-05,
+    "inputTokens": 822,
+    "outputTokens": 25,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/g4c2cBH5-Y68",
+  "stage": "classifier",
+  "dataset": "Stage eval · routing 2/3",
+  "results": [
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2839,
+    "costEur": 0.0007832999999999999,
+    "inputTokens": 815,
+    "outputTokens": 449,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 3344,
+    "costEur": 0.0003065,
+    "inputTokens": 815,
+    "outputTokens": 43,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 957,
+    "costEur": 9.55e-05,
+    "inputTokens": 815,
+    "outputTokens": 35,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1797,
+    "costEur": 0.0004344,
+    "inputTokens": 820,
+    "outputTokens": 157,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2534,
+    "costEur": 0.00031220000000000005,
+    "inputTokens": 820,
+    "outputTokens": 45,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 836,
+    "costEur": 9.559999999999999e-05,
+    "inputTokens": 820,
+    "outputTokens": 34,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 2003,
+    "costEur": 0.0005274,
+    "inputTokens": 822,
+    "outputTokens": 234,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 3056,
+    "costEur": 0.00028412,
+    "inputTokens": 822,
+    "outputTokens": 32,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 859,
+    "costEur": 9.340000000000001e-05,
+    "inputTokens": 822,
+    "outputTokens": 28,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2310,
+    "costEur": 0.0005162999999999999,
+    "inputTokens": 821,
+    "outputTokens": 225,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2452,
+    "costEur": 0.00031686,
+    "inputTokens": 821,
+    "outputTokens": 47,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 719,
+    "costEur": 9.570000000000002e-05,
+    "inputTokens": 821,
+    "outputTokens": 34,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1787,
+    "costEur": 0.0005013,
+    "inputTokens": 815,
+    "outputTokens": 214,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 3300,
+    "costEur": 0.0003197,
+    "inputTokens": 815,
+    "outputTokens": 49,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 869,
+    "costEur": 9.55e-05,
+    "inputTokens": 815,
+    "outputTokens": 35,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 1816,
+    "costEur": 0.0005360999999999999,
+    "inputTokens": 819,
+    "outputTokens": 242,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 3373,
+    "costEur": 0.00027674,
+    "inputTokens": 819,
+    "outputTokens": 29,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 825,
+    "costEur": 9.15e-05,
+    "inputTokens": 819,
+    "outputTokens": 24,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 3833,
+    "costEur": 0.0008487000000000001,
+    "inputTokens": 817,
+    "outputTokens": 503,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2887,
+    "costEur": 0.00032242,
+    "inputTokens": 817,
+    "outputTokens": 50,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 715,
+    "costEur": 9.570000000000001e-05,
+    "inputTokens": 817,
+    "outputTokens": 35,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 1689,
+    "costEur": 0.000459,
+    "inputTokens": 822,
+    "outputTokens": 177,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 5101,
+    "costEur": 0.00028632,
+    "inputTokens": 822,
+    "outputTokens": 33,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 912,
+    "costEur": 9.380000000000002e-05,
+    "inputTokens": 822,
+    "outputTokens": 29,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/r8Qo0MvY-Dsn",
+  "stage": "classifier",
+  "dataset": "Stage eval · routing 3/3",
+  "results": [
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1960,
+    "costEur": 0.0005322,
+    "inputTokens": 818,
+    "outputTokens": 239,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2134,
+    "costEur": 0.00031388,
+    "inputTokens": 818,
+    "outputTokens": 46,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 967,
+    "costEur": 9.620000000000002e-05,
+    "inputTokens": 818,
+    "outputTokens": 36,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2851,
+    "costEur": 0.0005723999999999999,
+    "inputTokens": 816,
+    "outputTokens": 273,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2947,
+    "costEur": 0.00031776,
+    "inputTokens": 816,
+    "outputTokens": 48,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1033,
+    "costEur": 9.680000000000001e-05,
+    "inputTokens": 816,
+    "outputTokens": 38,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 2039,
+    "costEur": 0.0004998,
+    "inputTokens": 818,
+    "outputTokens": 212,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 2907,
+    "costEur": 0.00027208000000000006,
+    "inputTokens": 818,
+    "outputTokens": 27,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 756,
+    "costEur": 9.620000000000002e-05,
+    "inputTokens": 818,
+    "outputTokens": 36,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1725,
+    "costEur": 0.0004821,
+    "inputTokens": 815,
+    "outputTokens": 198,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 5123,
+    "costEur": 0.0003043,
+    "inputTokens": 815,
+    "outputTokens": 42,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 890,
+    "costEur": 9.59e-05,
+    "inputTokens": 815,
+    "outputTokens": 36,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2714,
+    "costEur": 0.0005298,
+    "inputTokens": 818,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1386,
+    "costEur": 0.00031828000000000005,
+    "inputTokens": 818,
+    "outputTokens": 48,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 865,
+    "costEur": 9.66e-05,
+    "inputTokens": 818,
+    "outputTokens": 37,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2690,
+    "costEur": 0.0008174999999999999,
+    "inputTokens": 821,
+    "outputTokens": 476,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 3122,
+    "costEur": 0.00028826,
+    "inputTokens": 821,
+    "outputTokens": 34,
+    "sourceUrls": [],
+    "answer": "Default behavior"
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 901,
+    "costEur": 9.810000000000001e-05,
+    "inputTokens": 821,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1574,
+    "costEur": 0.00047159999999999997,
+    "inputTokens": 816,
+    "outputTokens": 189,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2966,
+    "costEur": 0.00031116000000000005,
+    "inputTokens": 816,
+    "outputTokens": 45,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 829,
+    "costEur": 9.520000000000002e-05,
+    "inputTokens": 816,
+    "outputTokens": 34,
+    "sourceUrls": [],
+    "answer": "Basic Interaction"
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 2455,
+    "costEur": 0.0004731,
+    "inputTokens": 817,
+    "outputTokens": 190,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1254,
+    "costEur": 0.00030702,
+    "inputTokens": 817,
+    "outputTokens": 43,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 726,
+    "costEur": 9.530000000000001e-05,
+    "inputTokens": 817,
+    "outputTokens": 34,
+    "sourceUrls": [],
+    "answer": "Assistant Information"
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/R3pBDqfe-EYA",
+  "stage": "orchestration",
+  "dataset": "Stage eval · routing 1/3",
+  "results": [
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1351,
+    "costEur": 0.00017768000000000002,
+    "inputTokens": 548,
+    "outputTokens": 16,
+    "sourceUrls": [],
+    "answer": "Hello! How can I help you today? Feel free to ask your question."
+   },
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 3254,
+    "costEur": 0.00019968,
+    "inputTokens": 548,
+    "outputTokens": 26,
+    "sourceUrls": [],
+    "answer": "Hello! I'm here to help you find the information you need from our documentation. What would you like to know today?"
+   },
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1296,
+    "costEur": 0.00018868000000000002,
+    "inputTokens": 548,
+    "outputTokens": 21,
+    "sourceUrls": [],
+    "answer": "Hello! How can I help you today? Feel free to ask your question whenever you're ready."
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 8746,
+    "costEur": 0.00272984,
+    "inputTokens": 8188,
+    "outputTokens": 361,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant here to help you find information, answer questions, and navigate the documentation and resources available on this site. Feel free to ask me questions about the organization's content, policies, or services!"
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 9578,
+    "costEur": 0.0020278400000000004,
+    "inputTokens": 6344,
+    "outputTokens": 172,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/editions"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant here to help you find information, answer your questions, and guide you through the resources available on our website. \n\nHow can I assist you today?"
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 12198,
+    "costEur": 0.0025719600000000003,
+    "inputTokens": 8200,
+    "outputTokens": 289,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant embedded to help you with information related to the Ciele platform and its documentation. \n\nI can assist you by:\n* Answering questions about the Ciele platform, its features, and documentation.\n* Guiding you through the resources and information available within the knowledge base.\n\nIf you have any specific questions about Ciele or need help finding information in the docs, just let me know!"
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 13205,
+    "costEur": 0.0034193599999999998,
+    "inputTokens": 8586,
+    "outputTokens": 796,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "To add a website source:\n\n1. Navigate to your knowledge base or data sources section in your dashboard.\n2. Select the option to add a new source and choose **Website** (or URL).\n3. Enter the web address (URL) of the site you want to add.\n4. Confirm and save the source to begin ingesting the content. \n\nIf you need help finding these specific menus or run into any issues, please reach out to human support for assistance!"
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 13368,
+    "costEur": 0.0019229200000000003,
+    "inputTokens": 6372,
+    "outputTokens": 121,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "I'm sorry, but the current knowledge base does not contain instructions on how to add a website source. Please reach out to your human support channels or platform administrators for assistance with this."
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 11385,
+    "costEur": 0.0020383800000000002,
+    "inputTokens": 7413,
+    "outputTokens": 133,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "I do not have access to any knowledge base articles or instructions explaining how to add a website source. \n\nTo get help with this, please reach out to your organization's human support channels or platform administrator."
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2782,
+    "costEur": 0.00072354,
+    "inputTokens": 1373,
+    "outputTokens": 259,
+    "sourceUrls": [],
+    "answer": "You're very welcome! If you have any more questions about our documentation or platform, feel free to ask."
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 7338,
+    "costEur": 0.0004911799999999999,
+    "inputTokens": 1373,
+    "outputTokens": 61,
+    "sourceUrls": [],
+    "answer": "You're very welcome! Let me know if you have any other questions."
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1823,
+    "costEur": 0.00027774,
+    "inputTokens": 1373,
+    "outputTokens": 53,
+    "sourceUrls": [],
+    "answer": "You're very welcome! Let me know if you need help with anything else."
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 8842,
+    "costEur": 0.00235476,
+    "inputTokens": 6532,
+    "outputTokens": 379,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/editions"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant. I am here to help you navigate information, answer questions, and assist you with what you need on the platform. How can I help you today?"
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 12038,
+    "costEur": 0.00233484,
+    "inputTokens": 7034,
+    "outputTokens": 230,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant built and served by Ciele. I am here to help you navigate documentation, answer your questions about our platform and services, and assist you with what you need while you are here. How can I help you today?"
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 8923,
+    "costEur": 0.0010265800000000002,
+    "inputTokens": 3219,
+    "outputTokens": 175,
+    "sourceUrls": [],
+    "answer": "I am Ciele Docs, an AI assistant embedded in this website to help answer your questions and provide information about the organization and its services. How can I help you today?"
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 11324,
+    "costEur": 0.0024441999999999997,
+    "inputTokens": 5976,
+    "outputTokens": 613,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "I'm sorry, but I don't have any information in my knowledge base about how to set up voice mode. If you need assistance with this feature, please reach out to the organization's human support channels for help."
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 14466,
+    "costEur": 0.00238508,
+    "inputTokens": 7718,
+    "outputTokens": 172,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/appearance"
+    ],
+    "answer": "I'm sorry, but I couldn't find any information in my knowledge base about how to set up voice mode. If you need assistance with this, please reach out to the organization's human support channels for help!"
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9134,
+    "costEur": 0.00198976,
+    "inputTokens": 6822,
+    "outputTokens": 180,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "It looks like you are asking about setting up voice mode, but I don't have any specific information in my knowledge base about how to configure voice mode on this platform. \n\nIf you need assistance with this feature, please reach out to our human support channels for guidance!"
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2587,
+    "costEur": 0.00020240000000000001,
+    "inputTokens": 550,
+    "outputTokens": 27,
+    "sourceUrls": [],
+    "answer": "Ciao! Posso aiutarti a trovare informazioni o rispondere a domande sui documenti e le risorse disponibili. Come posso esserti utile oggi?"
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 7275,
+    "costEur": 0.0001892,
+    "inputTokens": 550,
+    "outputTokens": 21,
+    "sourceUrls": [],
+    "answer": "Ciao! Sono qui per aiutarti: dimmi pure di cosa hai bisogno o fai la tua domanda."
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1852,
+    "costEur": 0.0001892,
+    "inputTokens": 550,
+    "outputTokens": 21,
+    "sourceUrls": [],
+    "answer": "Ciao! Sono qui per aiutarti: dimmi pure di cosa hai bisogno o fai la tua domanda."
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8638,
+    "costEur": 0.0025743000000000003,
+    "inputTokens": 6177,
+    "outputTokens": 612,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/files"
+    ],
+    "answer": "It looks like you didn't include the specific details or context about which system or knowledge base you are referring to, and I couldn't find instructions for deleting a source in my current knowledge base. \n\nIf you are using Ciele to manage your AI assistant's sources, could you please clarify or check the platform's knowledge base or documentation? If you need further assistance with our platform, please reach out to our human support channels so we can guide you through managing your sources."
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10489,
+    "costEur": 0.0021423,
+    "inputTokens": 7055,
+    "outputTokens": 140,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/files"
+    ],
+    "answer": "I'm sorry, but my knowledge base does not contain instructions on how to delete a source. Please reach out to your organization's human support channels for assistance with this."
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9815,
+    "costEur": 0.0019512000000000002,
+    "inputTokens": 7032,
+    "outputTokens": 141,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/files"
+    ],
+    "answer": "I don't have that information in my knowledge base. To find out how to delete a source, please reach out to the organization's human support channels for assistance."
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/PlVE2hER-b2E",
+  "stage": "orchestration",
+  "dataset": "Stage eval · routing 2/3",
+  "results": [
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1593,
+    "costEur": 0.000187,
+    "inputTokens": 550,
+    "outputTokens": 20,
+    "sourceUrls": [],
+    "answer": "Sounds good! Let me know what questions you have, and I'll be happy to help."
+   },
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1449,
+    "costEur": 0.0001936,
+    "inputTokens": 550,
+    "outputTokens": 23,
+    "sourceUrls": [],
+    "answer": "Great! Feel free to ask your question whenever you're ready, and I'll be happy to help."
+   },
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2899,
+    "costEur": 0.00018480000000000002,
+    "inputTokens": 550,
+    "outputTokens": 19,
+    "sourceUrls": [],
+    "answer": "Sounds good! Let me know what you'd like to look up or learn more about."
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 11329,
+    "costEur": 0.00244676,
+    "inputTokens": 6606,
+    "outputTokens": 432,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant here to help you with information related to the documentation and organization I serve. You can ask me questions about our products, services, guides, policies, and procedures available in our knowledge base. \n\nIf you have a specific question about what we offer or need help finding information within our resources, feel free to ask!"
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 13350,
+    "costEur": 0.0020786199999999998,
+    "inputTokens": 6497,
+    "outputTokens": 177,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant here to help you with questions related to the organization's documentation, services, policies, and information available in our knowledge base. \n\nIf you have specific questions about our procedures, products, or guidelines, feel free to ask and I will be happy to assist you!"
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 9320,
+    "costEur": 0.0025179200000000007,
+    "inputTokens": 8592,
+    "outputTokens": 219,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant here to help you with questions related to our organization, its documentation, policies, services, and related topics. \n\nFeel free to ask about our offerings, procedures, or any specific information you need help finding within our knowledge base!"
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 12766,
+    "costEur": 0.0023901200000000004,
+    "inputTokens": 6904,
+    "outputTokens": 346,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge"
+    ],
+    "answer": "I am currently unable to check the license details because my knowledge base search did not return that specific information. Please check the organization's official documentation or reach out to their human support channels for details on the open-source edition's license."
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10203,
+    "costEur": 0.0020738600000000003,
+    "inputTokens": 6851,
+    "outputTokens": 133,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge"
+    ],
+    "answer": "I do not have information in my knowledge base about the license used by the open-source edition. Please reach out to the organization's human support channels for more details."
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 8213,
+    "costEur": 0.00162454,
+    "inputTokens": 5631,
+    "outputTokens": 154,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/knowledge"
+    ],
+    "answer": "I am sorry, but the knowledge base does not contain information about the license used by the open-source edition. For assistance with this, please reach out to the organization's human support channels."
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 6753,
+    "costEur": 0.0013546600000000002,
+    "inputTokens": 3197,
+    "outputTokens": 343,
+    "sourceUrls": [],
+    "answer": "I am an AI assistant built and served by Ciele."
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 9590,
+    "costEur": 0.0010983199999999999,
+    "inputTokens": 3192,
+    "outputTokens": 122,
+    "sourceUrls": [],
+    "answer": "I am an AI assistant built and served by Ciele."
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 7715,
+    "costEur": 0.0009468,
+    "inputTokens": 3206,
+    "outputTokens": 139,
+    "sourceUrls": [],
+    "answer": "I am an AI assistant built and served by Ciele, so I am a virtual assistant rather than a real person. How can I help you today?"
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1549,
+    "costEur": 0.000198,
+    "inputTokens": 550,
+    "outputTokens": 25,
+    "sourceUrls": [],
+    "answer": "Prego! Se hai domande sulla documentazione o sui servizi, chiedi pure e sarò felice di aiutarti."
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 3281,
+    "costEur": 0.0001782,
+    "inputTokens": 550,
+    "outputTokens": 16,
+    "sourceUrls": [],
+    "answer": "Prego! Se hai domande o hai bisogno di informazioni, chiedi pure."
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1902,
+    "costEur": 0.0001804,
+    "inputTokens": 550,
+    "outputTokens": 17,
+    "sourceUrls": [],
+    "answer": "Prego! Se hai domande sulla documentazione o sui servizi, chiedi pure."
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 13451,
+    "costEur": 0.00231466,
+    "inputTokens": 6485,
+    "outputTokens": 364,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "I'm sorry, but I don't have the specific contact information or channels for human support available in my knowledge base. Please check the organization's main website or portal for their support contact details."
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9137,
+    "costEur": 0.0022975599999999997,
+    "inputTokens": 7136,
+    "outputTokens": 201,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "I understand you'd like to talk to a human. However, my knowledge base doesn't currently list specific human support channels or contact details. Please check the organization's main website for their contact page, customer service email, or phone number to reach a support team member."
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9379,
+    "costEur": 0.0021311800000000003,
+    "inputTokens": 7537,
+    "outputTokens": 158,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "I am an AI assistant and I don't have access to your organization's human support channels or contact details in my knowledge base. Please reach out to your organization's website or main support desk to get in touch with a human team member."
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 11291,
+    "costEur": 0.0030874000000000006,
+    "inputTokens": 8432,
+    "outputTokens": 532,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "Sono **Ciele Docs**, un assistente AI progettato per aiutarti a trovare informazioni e rispondere alle domande basate sui documenti e sulle risorse dell'organizzazione in cui sono integrato. \n\nIn particolare, posso:\n- Rispondere a domande basate sulla documentazione e sulla conoscenza interna dell'organizzazione.\n- Fornire informazioni e guidarti sui contenuti disponibili nei canali di supporto dell'organizzazione.\n\nSe hai domande specifiche sui servizi, le procedure o i contenuti dell'organizzazione, chiedi pure e farò del mio meglio per aiutarti!"
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 13772,
+    "costEur": 0.00233602,
+    "inputTokens": 6607,
+    "outputTokens": 281,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/getting-started/create-an-assistant"
+    ],
+    "answer": "Sono un assistente AI progettato per aiutarti a trovare informazioni e rispondere alle tue domande basandomi sulla documentazione e sul knowledge base dell'organizzazione. Posso guidarti sui vari argomenti coperti dalla nostra piattaforma, chiarire dubbi e fornirti assistenza rapida su ciò di cui hai bisogno. Come posso aiutarti oggi?"
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 10150,
+    "costEur": 0.0022830600000000004,
+    "inputTokens": 7633,
+    "outputTokens": 227,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "Sono Ciele Docs, un assistente virtuale integrato in questo sito. Il mio scopo è aiutarti a trovare informazioni e rispondere alle tue domande basandomi sulla documentazione e sulle conoscenze dell'organizzazione. \n\nPosso aiutarti a esplorare i contenuti disponibili, chiarire dubbi e guidarti tra le risorse messe a disposizione. Come posso esserti utile oggi?"
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 11741,
+    "costEur": 0.0025939200000000004,
+    "inputTokens": 7304,
+    "outputTokens": 440,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Non disponendo al momento di informazioni specifiche nel knowledge base riguardo all'importazione delle FAQ da un file CSV, ti invito a consultare la documentazione ufficiale della piattaforma o a rivolgerti ai canali di supporto umano dell'organizzazione per ricevere assistenza dettagliata su questa procedura."
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10817,
+    "costEur": 0.00216984,
+    "inputTokens": 7254,
+    "outputTokens": 129,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Al momento non ho informazioni nella mia base di conoscenza riguardo alla procedura per importare le FAQ da un file CSV. \n\nPer ricevere assistenza su questa operazione, ti invito a rivolgerti ai canali di supporto umano dell'organizzazione."
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9628,
+    "costEur": 0.0020958,
+    "inputTokens": 7402,
+    "outputTokens": 163,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Al momento non disponiamo di informazioni specifiche nella nostra base di conoscenza riguardo alla procedura per importare le FAQ da un file CSV. \n\nPer ricevere assistenza su questa operazione, ti invitiamo a contattare i canali di supporto umano dell'organizzazione."
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/hEF5Btly-8km",
+  "stage": "orchestration",
+  "dataset": "Stage eval · routing 3/3",
+  "results": [
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2967,
+    "costEur": 0.00070638,
+    "inputTokens": 1371,
+    "outputTokens": 246,
+    "sourceUrls": [],
+    "answer": "Goodbye, have a great day! Feel free to reach out whenever you have questions about our documentation or services."
+   },
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 5301,
+    "costEur": 0.00049946,
+    "inputTokens": 1371,
+    "outputTokens": 65,
+    "sourceUrls": [],
+    "answer": "Goodbye, have a great day as well! Feel free to reach out whenever you have questions."
+   },
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 3523,
+    "costEur": 0.00027878,
+    "inputTokens": 1371,
+    "outputTokens": 52,
+    "sourceUrls": [],
+    "answer": "Goodbye! Have a great day, and feel free to reach out whenever you have questions."
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 15559,
+    "costEur": 0.00251364,
+    "inputTokens": 7080,
+    "outputTokens": 426,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant embedded here to help you find information, answer your questions, and guide you through the organization's resources and documentation. How can I assist you today?"
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 12384,
+    "costEur": 0.0021852,
+    "inputTokens": 6560,
+    "outputTokens": 218,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/getting-started",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant here to help answer your questions and provide information based on the organization's knowledge base and documentation. Let me know what you need help with, and I'll do my best to assist you!"
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 12912,
+    "costEur": 0.0018192999999999998,
+    "inputTokens": 6501,
+    "outputTokens": 145,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant built and served by Ciele. My purpose is to help you find information, answer your questions, and assist you with topics related to the organization. How can I help you today?"
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10592,
+    "costEur": 0.00201506,
+    "inputTokens": 5639,
+    "outputTokens": 346,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "I cannot answer this question because the provided knowledge base does not contain information about what a \"Goal\" can check. For assistance, please reach out to the organization's human support channels."
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 9027,
+    "costEur": 0.001744,
+    "inputTokens": 5650,
+    "outputTokens": 125,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "Based on the available documentation, a Goal can check whether a specific action was performed by the user."
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 9667,
+    "costEur": 0.00195502,
+    "inputTokens": 6625,
+    "outputTokens": 193,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant embedded to help you with documentation and questions regarding Ciele and its platform. \n\nRegarding a \"Goal\" check, I do not have specific information in my knowledge base about what a Goal can check. If you have questions about specific features, documentation, or how to use the Ciele platform, please let me know or reach out to human support for assistance!"
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1664,
+    "costEur": 0.00019580000000000002,
+    "inputTokens": 550,
+    "outputTokens": 24,
+    "sourceUrls": [],
+    "answer": "Good morning! I'm here to help you find the information you need. What can I assist you with today?"
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2549,
+    "costEur": 0.00019580000000000002,
+    "inputTokens": 550,
+    "outputTokens": 24,
+    "sourceUrls": [],
+    "answer": "Good morning! I'm here to help you find the information you need. What can I assist you with today?"
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2815,
+    "costEur": 0.00018480000000000002,
+    "inputTokens": 550,
+    "outputTokens": 19,
+    "sourceUrls": [],
+    "answer": "Good morning! How can I help you today? Feel free to ask any questions you have."
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 10953,
+    "costEur": 0.0028127800000000004,
+    "inputTokens": 8131,
+    "outputTokens": 455,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant configured to help you with information related to this organization, its documentation, features, and how to use its services. \n\nIf you have specific questions about the platform, its tools, or documentation, feel free to ask!"
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 12379,
+    "costEur": 0.0027663400000000004,
+    "inputTokens": 8499,
+    "outputTokens": 253,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant built and served by Ciele. I can help you with topics related to building, testing, publishing, and operating AI assistants on the platform, including how to configure them, work with knowledge bases, set up flows, and integrate tools. \n\nIf you have specific questions about using Ciele or setting up your assistant, feel free to ask!"
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 12409,
+    "costEur": 0.0018993999999999999,
+    "inputTokens": 6568,
+    "outputTokens": 181,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/assistants"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant embedded to help you with the organization's documentation, procedures, policies, and related services. If you have specific questions about our documentation, guides, or organizational policies, feel free to ask!"
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 15120,
+    "costEur": 0.00285316,
+    "inputTokens": 7682,
+    "outputTokens": 585,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "I don't have that specific information in my current knowledge base regarding whether Ciele crawls login-protected websites. For accurate details about our crawling capabilities and authentication support, please reach out to our human support channels."
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 10840,
+    "costEur": 0.00251496,
+    "inputTokens": 8006,
+    "outputTokens": 197,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "Yes, Ciele can crawl login-protected websites by integrating with Apify as the managed crawler for your account."
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 7696,
+    "costEur": 0.0020115,
+    "inputTokens": 7141,
+    "outputTokens": 153,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "I do not have information in my knowledge base about whether Ciele crawls login-protected websites. For specific details regarding web crawling capabilities and security features, please reach out to Ciele's human support channels."
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 2555,
+    "costEur": 0.00017845999999999997,
+    "inputTokens": 551,
+    "outputTokens": 16,
+    "sourceUrls": [],
+    "answer": "You're very welcome! Feel free to ask whenever you have a question."
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1897,
+    "costEur": 0.00017626,
+    "inputTokens": 551,
+    "outputTokens": 15,
+    "sourceUrls": [],
+    "answer": "You're welcome! Feel free to ask whenever you have a question."
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 4018,
+    "costEur": 0.00017626,
+    "inputTokens": 551,
+    "outputTokens": 15,
+    "sourceUrls": [],
+    "answer": "You're welcome! Feel free to ask whenever you have a question."
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 11130,
+    "costEur": 0.0027828800000000006,
+    "inputTokens": 8130,
+    "outputTokens": 407,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/assistants/goals"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant embedded in this website. My purpose is to help answer your questions and assist you with information related to the organization. Let me know what you need help with!"
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 15219,
+    "costEur": 0.00234892,
+    "inputTokens": 7342,
+    "outputTokens": 200,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/getting-started",
+     "https://docs.ciele.app/assistants/goals"
+    ],
+    "answer": "I am **Ciele Docs**, an AI assistant embedded in this website. My purpose is to help you find information, answer your questions about the organization and its services, and guide you through what you need while you browse the site. \n\nHow can I help you today?"
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "gemini-2.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 13340,
+    "costEur": 0.0023950000000000004,
+    "inputTokens": 8122,
+    "outputTokens": 216,
+    "sourceUrls": [
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/getting-started/create-an-assistant",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "I am Ciele Docs, an AI assistant embedded in this website. My purpose is to help you find information, answer questions, and assist you with the organization's resources, procedures, and services based on the provided knowledge base."
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/xH1rFZ0b-gPm",
+  "stage": "preflight",
+  "dataset": "Stage eval · routing 1/3",
+  "results": [
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1687,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1662,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-01",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 877,
+    "costEur": 7.404e-05,
+    "inputTokens": 1851,
+    "outputTokens": 240,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0.01 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1288,
+    "costEur": 0.0005751,
+    "inputTokens": 1757,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1655,
+    "costEur": 0.00062402,
+    "inputTokens": 1757,
+    "outputTokens": 76,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-02",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 975,
+    "costEur": 7.428e-05,
+    "inputTokens": 1857,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.26 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 1476,
+    "costEur": 0.0005754,
+    "inputTokens": 1758,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: default · faq: none · wants_human: false · desk: none · reasoning: 1 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1669,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-03",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 623,
+    "costEur": 7.432e-05,
+    "inputTokens": 1858,
+    "outputTokens": 230,
+    "sourceUrls": [],
+    "answer": "flow: default · faq: none · wants_human: false · desk: none · reasoning: 0.88 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1627,
+    "costEur": 0.0005751,
+    "inputTokens": 1757,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1626,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-04",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 927,
+    "costEur": 7.428e-05,
+    "inputTokens": 1857,
+    "outputTokens": 240,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0.03 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1670,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1638,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-05",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 566,
+    "costEur": 7.416e-05,
+    "inputTokens": 1854,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.02 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1486,
+    "costEur": 0.0005757,
+    "inputTokens": 1759,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 1 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1596,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-06",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 559,
+    "costEur": 7.436e-05,
+    "inputTokens": 1859,
+    "outputTokens": 230,
+    "sourceUrls": [],
+    "answer": "flow: other · faq: none · wants_human: false · desk: none · reasoning: 0.94 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1184,
+    "costEur": 0.0005739,
+    "inputTokens": 1753,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: it"
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1627,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-07",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 639,
+    "costEur": 7.412e-05,
+    "inputTokens": 1853,
+    "outputTokens": 240,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0.01 · frustration: 0 · language: it"
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 1526,
+    "costEur": 0.000576,
+    "inputTokens": 1760,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: default · faq: none · wants_human: false · desk: none · reasoning: 1 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1625,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-08",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 901,
+    "costEur": 7.44e-05,
+    "inputTokens": 1860,
+    "outputTokens": 230,
+    "sourceUrls": [],
+    "answer": "flow: default · faq: none · wants_human: false · desk: none · reasoning: 0.68 · frustration: 0.06 · language: en"
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/wGSUvyIh-ncc",
+  "stage": "preflight",
+  "dataset": "Stage eval · routing 2/3",
+  "results": [
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1638,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1703,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-09",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 654,
+    "costEur": 7.412e-05,
+    "inputTokens": 1853,
+    "outputTokens": 240,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0.04 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1637,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1630,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-10",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 620,
+    "costEur": 7.432e-05,
+    "inputTokens": 1858,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.51 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 1375,
+    "costEur": 0.000576,
+    "inputTokens": 1760,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: default · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1631,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-11",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 675,
+    "costEur": 7.436e-05,
+    "inputTokens": 1859,
+    "outputTokens": 230,
+    "sourceUrls": [],
+    "answer": "flow: default · faq: none · wants_human: false · desk: none · reasoning: 0.01 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1634,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1607,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-12",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 654,
+    "costEur": 7.436e-05,
+    "inputTokens": 1859,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.07 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1236,
+    "costEur": 0.0005811,
+    "inputTokens": 1753,
+    "outputTokens": 46,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: it"
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"Delay was aborted\"}",
+    "flowName": null,
+    "latencyMs": 1646,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-13",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 564,
+    "costEur": 7.412e-05,
+    "inputTokens": 1853,
+    "outputTokens": 240,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0.01 · frustration: 0 · language: it"
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1250,
+    "costEur": 0.0005751,
+    "inputTokens": 1757,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: other · faq: none · wants_human: true · desk: none · reasoning: 0 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1619,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-14",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": false,
+    "autonomous": true,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 660,
+    "costEur": 7.428e-05,
+    "inputTokens": 1857,
+    "outputTokens": 230,
+    "sourceUrls": [],
+    "answer": "flow: other · faq: none · wants_human: true · desk: none · reasoning: 0.18 · frustration: 0.42 · language: en"
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1628,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1623,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-15",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 562,
+    "costEur": 7.42e-05,
+    "inputTokens": 1855,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.48 · frustration: 0 · language: it"
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1720,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"Delay was aborted\"}",
+    "flowName": null,
+    "latencyMs": 1619,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-16",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 585,
+    "costEur": 7.44e-05,
+    "inputTokens": 1860,
+    "outputTokens": 230,
+    "sourceUrls": [],
+    "answer": "flow: default · faq: none · wants_human: false · desk: none · reasoning: 0.99 · frustration: 0 · language: it"
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/ZCEm3Cfn-2OE",
+  "stage": "preflight",
+  "dataset": "Stage eval · routing 3/3",
+  "results": [
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1658,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1659,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-17",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 634,
+    "costEur": 7.424e-05,
+    "inputTokens": 1856,
+    "outputTokens": 240,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0.01 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1614,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1666,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-18",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 527,
+    "costEur": 7.416e-05,
+    "inputTokens": 1854,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.41 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1185,
+    "costEur": 0.0005748,
+    "inputTokens": 1756,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 1 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Default behavior",
+    "latencyMs": 1225,
+    "costEur": 0.00055776,
+    "inputTokens": 1756,
+    "outputTokens": 46,
+    "sourceUrls": [],
+    "answer": "flow: default · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-19",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 540,
+    "costEur": 7.424e-05,
+    "inputTokens": 1856,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.48 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1607,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1626,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-20",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 881,
+    "costEur": 7.42e-05,
+    "inputTokens": 1855,
+    "outputTokens": 240,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0.01 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 1332,
+    "costEur": 0.0005748,
+    "inputTokens": 1756,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1689,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-21",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 578,
+    "costEur": 7.424e-05,
+    "inputTokens": 1856,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.14 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1610,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1630,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-22",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"Delay was aborted\"}",
+    "flowName": null,
+    "latencyMs": 1725,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": true,
+    "autonomous": false,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 1200,
+    "costEur": 0.0005742,
+    "inputTokens": 1754,
+    "outputTokens": 40,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1663,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-23",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Basic Interaction",
+    "latencyMs": 594,
+    "costEur": 7.416e-05,
+    "inputTokens": 1854,
+    "outputTokens": 240,
+    "sourceUrls": [],
+    "answer": "flow: 7cbe26b6957f · faq: none · wants_human: false · desk: none · reasoning: 0.03 · frustration: 0 · language: en"
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "gemini-3.5-flash",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1613,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "gemini-3.5-flash-lite",
+     "provider": "google"
+    },
+    "accuracy": false,
+    "autonomous": false,
+    "error": "{\"reason\":\"error\",\"message\":\"The operation was aborted due to timeout\"}",
+    "flowName": null,
+    "latencyMs": 1677,
+    "costEur": 0,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "sourceUrls": [],
+    "answer": ""
+   },
+   {
+    "exampleId": "rt-24",
+    "candidate": {
+     "modelId": "typesafe-ai/jev",
+     "provider": "typesafe"
+    },
+    "accuracy": true,
+    "autonomous": true,
+    "error": null,
+    "flowName": "Assistant Information",
+    "latencyMs": 666,
+    "costEur": 7.42e-05,
+    "inputTokens": 1855,
+    "outputTokens": 237,
+    "sourceUrls": [],
+    "answer": "flow: eTfqOc2k-BIN · faq: none · wants_human: false · desk: none · reasoning: 0.23 · frustration: 0 · language: en"
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/BOeIj3Tj-ckz",
+  "stage": "reranker",
+  "dataset": "Stage eval · knowledge 1/3",
+  "results": [
+   {
+    "exampleId": "kn-01",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1346,
+    "costEur": 4.36e-05,
+    "inputTokens": 872,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "Websites | Ciele Docs · Websites | Ciele Docs · Websites | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-01",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1277,
+    "costEur": 1.7440000000000002e-05,
+    "inputTokens": 872,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "Websites | Ciele Docs · Websites | Ciele Docs · Websites | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-02",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1040,
+    "costEur": 4.015000000000001e-05,
+    "inputTokens": 803,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "General settings | Ciele Docs · General settings | Ciele Docs · Tools and Skills | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-02",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1034,
+    "costEur": 1.606e-05,
+    "inputTokens": 803,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "General settings | Ciele Docs · General settings | Ciele Docs · Tools and Skills | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-03",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1752,
+    "costEur": 2.6e-05,
+    "inputTokens": 520,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "General settings | Ciele Docs · General settings | Ciele Docs · Long-term memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-03",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1166,
+    "costEur": 1.04e-05,
+    "inputTokens": 520,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "General settings | Ciele Docs · General settings | Ciele Docs · Long-term memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-04",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1091,
+    "costEur": 3.430000000000001e-05,
+    "inputTokens": 686,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "Long-term memory | Ciele Docs · Long-term memory | Ciele Docs · Data and memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-04",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1063,
+    "costEur": 1.372e-05,
+    "inputTokens": 686,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "Long-term memory | Ciele Docs · Long-term memory | Ciele Docs · Data and memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-05",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 965,
+    "costEur": 3.495e-05,
+    "inputTokens": 699,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "Long-term memory | Ciele Docs · Long-term memory | Ciele Docs · Long-term memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-05",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1340,
+    "costEur": 1.398e-05,
+    "inputTokens": 699,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "Long-term memory | Ciele Docs · Long-term memory | Ciele Docs · Long-term memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-06",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1101,
+    "costEur": 4.1150000000000004e-05,
+    "inputTokens": 823,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "FAQs | Ciele Docs · Entities and Records | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-06",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1072,
+    "costEur": 1.646e-05,
+    "inputTokens": 823,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/faqs",
+     "https://docs.ciele.app/data/entities-and-records",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "FAQs | Ciele Docs · Entities and Records | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-07",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1045,
+    "costEur": 2.5600000000000002e-05,
+    "inputTokens": 512,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge"
+    ],
+    "answer": "Editions | Ciele Docs · Editions | Ciele Docs · Knowledge | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-07",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1047,
+    "costEur": 1.024e-05,
+    "inputTokens": 512,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge"
+    ],
+    "answer": "Editions | Ciele Docs · Editions | Ciele Docs · Knowledge | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-08",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1147,
+    "costEur": 3.5e-05,
+    "inputTokens": 700,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "Long-term memory | Ciele Docs · Long-term memory | Ciele Docs · Data and memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-08",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1204,
+    "costEur": 1.4e-05,
+    "inputTokens": 700,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data/long-term-memory",
+     "https://docs.ciele.app/data"
+    ],
+    "answer": "Long-term memory | Ciele Docs · Long-term memory | Ciele Docs · Data and memory | Ciele Docs"
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/NmWxcBnD-Fce",
+  "stage": "reranker",
+  "dataset": "Stage eval · knowledge 2/3",
+  "results": [
+   {
+    "exampleId": "kn-09",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1064,
+    "costEur": 3.1200000000000006e-05,
+    "inputTokens": 624,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Applications | Ciele Docs · Applications | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-09",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1082,
+    "costEur": 1.248e-05,
+    "inputTokens": 624,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Applications | Ciele Docs · Applications | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-10",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1037,
+    "costEur": 3.965000000000001e-05,
+    "inputTokens": 793,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "General settings | Ciele Docs · General settings | Ciele Docs · Tools and Skills | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-10",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1150,
+    "costEur": 1.586e-05,
+    "inputTokens": 793,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "General settings | Ciele Docs · General settings | Ciele Docs · Tools and Skills | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-11",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1141,
+    "costEur": 3.2550000000000005e-05,
+    "inputTokens": 651,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/getting-started",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Core concepts | Ciele Docs · Getting started | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-11",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1124,
+    "costEur": 1.3019999999999999e-05,
+    "inputTokens": 651,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/getting-started",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Core concepts | Ciele Docs · Getting started | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-12",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1014,
+    "costEur": 3.4149999999999997e-05,
+    "inputTokens": 683,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/editions"
+    ],
+    "answer": "Core concepts | Ciele Docs · Ciele documentation | Ciele Docs · Editions | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-12",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1041,
+    "costEur": 1.366e-05,
+    "inputTokens": 683,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/getting-started/core-concepts",
+     "https://docs.ciele.app/",
+     "https://docs.ciele.app/editions"
+    ],
+    "answer": "Core concepts | Ciele Docs · Ciele documentation | Ciele Docs · Editions | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-13",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 987,
+    "costEur": 2.4200000000000002e-05,
+    "inputTokens": 484,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "Goals | Ciele Docs · Goals | Ciele Docs · Core concepts | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-13",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 955,
+    "costEur": 9.68e-06,
+    "inputTokens": 484,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "Goals | Ciele Docs · Goals | Ciele Docs · Core concepts | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-14",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 973,
+    "costEur": 2.3700000000000003e-05,
+    "inputTokens": 474,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "Goals | Ciele Docs · Goals | Ciele Docs · Core concepts | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-14",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 921,
+    "costEur": 9.48e-06,
+    "inputTokens": 474,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/assistants/goals",
+     "https://docs.ciele.app/getting-started/core-concepts"
+    ],
+    "answer": "Goals | Ciele Docs · Goals | Ciele Docs · Core concepts | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-15",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1000,
+    "costEur": 4.165e-05,
+    "inputTokens": 833,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/appearance",
+     "https://docs.ciele.app/getting-started/navigating-the-console",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "Appearance | Ciele Docs · Navigate the console | Ciele Docs · Tools and Skills | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-15",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1034,
+    "costEur": 1.666e-05,
+    "inputTokens": 833,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/appearance",
+     "https://docs.ciele.app/getting-started/navigating-the-console",
+     "https://docs.ciele.app/assistants/tools-and-skills"
+    ],
+    "answer": "Appearance | Ciele Docs · Navigate the console | Ciele Docs · Tools and Skills | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-16",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 943,
+    "costEur": 2.1150000000000002e-05,
+    "inputTokens": 423,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/getting-started/navigating-the-console",
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "Websites | Ciele Docs · Navigate the console | Ciele Docs · Websites | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-16",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 949,
+    "costEur": 8.46e-06,
+    "inputTokens": 423,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/getting-started/navigating-the-console",
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "Websites | Ciele Docs · Navigate the console | Ciele Docs · Websites | Ciele Docs"
+   }
+  ]
+ },
+ {
+  "url": "https://ciele.app/eval/YElM3sFJ-7GD",
+  "stage": "reranker",
+  "dataset": "Stage eval · knowledge 3/3",
+  "results": [
+   {
+    "exampleId": "kn-17",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1109,
+    "costEur": 2.035e-05,
+    "inputTokens": 407,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "Tools and Skills | Ciele Docs · Data and memory | Ciele Docs · Long-term memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-17",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1143,
+    "costEur": 8.14e-06,
+    "inputTokens": 407,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/data",
+     "https://docs.ciele.app/data/long-term-memory"
+    ],
+    "answer": "Tools and Skills | Ciele Docs · Data and memory | Ciele Docs · Long-term memory | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-18",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1061,
+    "costEur": 4.76e-05,
+    "inputTokens": 952,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Tools and Skills | Ciele Docs · Tools and Skills | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-18",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1032,
+    "costEur": 1.904e-05,
+    "inputTokens": 952,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/assistants/tools-and-skills",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Tools and Skills | Ciele Docs · Tools and Skills | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-19",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1111,
+    "costEur": 4.07e-05,
+    "inputTokens": 814,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "Assistants | Ciele Docs · Library | Ciele Docs · Library | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-19",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1090,
+    "costEur": 1.628e-05,
+    "inputTokens": 814,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "Assistants | Ciele Docs · Library | Ciele Docs · Library | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-20",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1046,
+    "costEur": 4.435e-05,
+    "inputTokens": 887,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/files",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "Files and text | Ciele Docs · Applications | Ciele Docs · Library | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-20",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 998,
+    "costEur": 1.7740000000000003e-05,
+    "inputTokens": 887,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/files",
+     "https://docs.ciele.app/knowledge/applications",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "Files and text | Ciele Docs · Applications | Ciele Docs · Library | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-21",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1071,
+    "costEur": 4.555e-05,
+    "inputTokens": 911,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "Library | Ciele Docs · Library | Ciele Docs · Library | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-21",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1037,
+    "costEur": 1.822e-05,
+    "inputTokens": 911,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/library",
+     "https://docs.ciele.app/knowledge/library"
+    ],
+    "answer": "Library | Ciele Docs · Library | Ciele Docs · Library | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-22",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1171,
+    "costEur": 4.335e-05,
+    "inputTokens": 867,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "Websites | Ciele Docs · Websites | Ciele Docs · Websites | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-22",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1001,
+    "costEur": 1.734e-05,
+    "inputTokens": 867,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/websites",
+     "https://docs.ciele.app/knowledge/websites"
+    ],
+    "answer": "Websites | Ciele Docs · Websites | Ciele Docs · Websites | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-23",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 987,
+    "costEur": 3.3350000000000004e-05,
+    "inputTokens": 667,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Editions | Ciele Docs · Editions | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-23",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1056,
+    "costEur": 1.334e-05,
+    "inputTokens": 667,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/editions",
+     "https://docs.ciele.app/knowledge/applications"
+    ],
+    "answer": "Editions | Ciele Docs · Editions | Ciele Docs · Applications | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-24",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1113,
+    "costEur": 4.3100000000000004e-05,
+    "inputTokens": 862,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "General settings | Ciele Docs · General settings | Ciele Docs · General settings | Ciele Docs"
+   },
+   {
+    "exampleId": "kn-24",
+    "candidate": {
+     "modelId": "voyage/rerank-2.5-lite",
+     "provider": "voyage"
+    },
+    "accuracy": true,
+    "autonomous": null,
+    "error": null,
+    "flowName": null,
+    "latencyMs": 1071,
+    "costEur": 1.724e-05,
+    "inputTokens": 862,
+    "outputTokens": 0,
+    "sourceUrls": [
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings",
+     "https://docs.ciele.app/assistants/general-settings"
+    ],
+    "answer": "General settings | Ciele Docs · General settings | Ciele Docs · General settings | Ciele Docs"
+   }
+  ]
+ }
+]

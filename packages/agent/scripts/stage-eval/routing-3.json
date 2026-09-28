@@ -1,0 +1,74 @@
+[
+  {
+    "id": "rt-17",
+    "inputs": {
+      "question": "good night"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-18",
+    "inputs": {
+      "question": "what are you for?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-19",
+    "inputs": {
+      "question": "voglio parlare con un operatore"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-20",
+    "inputs": {
+      "question": "is there a human review of expense claims?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-21",
+    "inputs": {
+      "question": "cheers mate"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-22",
+    "inputs": {
+      "question": "sei un bot?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-23",
+    "inputs": {
+      "question": "connect me to a real agent"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-24",
+    "inputs": {
+      "question": "Which person manages the Lyon warehouse?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  }
+]

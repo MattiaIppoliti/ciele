@@ -10042,6 +10042,10 @@ export function describeDbContract(
         };
         await db.addPlatformEvalModel(model);
         expect(await db.listPlatformEvalModels()).toContainEqual(model);
+        await db.removePlatformEvalModel(model.provider, model.modelId);
+        expect(await db.listPlatformEvalModels()).not.toContainEqual(model);
+        // Removing what is already gone is a no-op, not an error.
+        await db.removePlatformEvalModel(model.provider, model.modelId);
       });
     });
   });

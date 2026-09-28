@@ -1,0 +1,8 @@
+KESTREL FREIGHT COOPERATIVE - POLICY CHANGE LOG
+Entries are listed by effective date. An entry supersedes the document it names from its effective date.
+
+2026-04-10  Staff Handbook 4.2, section 1: carry-over limit reviewed and left unchanged at 6 days.
+2026-06-01  Staff Handbook 4.2, section 5: domestic daily meal cap raised from 38 EUR to 42 EUR.
+2026-07-15  Staff Handbook 4.2, section 4: office roles based at the Lisbon hub may work remotely up to 3 days per week. All other locations remain at 2 days.
+2026-09-01  Travel Policy TP-7 rev. C, section 3: European Union per diem raised from 68 EUR to 74 EUR. Domestic and non-EU rates unchanged.
+2026-09-15  IT Security Standard: password rotation is no longer periodic; passwords are changed only after a suspected compromise.

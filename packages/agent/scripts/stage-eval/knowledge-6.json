@@ -1,0 +1,91 @@
+[
+  {
+    "id": "kf-42",
+    "inputs": {
+      "question": "How many days does a customer have to request a return?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "30"
+      ]
+    }
+  },
+  {
+    "id": "kf-12",
+    "inputs": {
+      "question": "Who is the manager of the Poznan warehouse?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Agnieszka"
+      ]
+    }
+  },
+  {
+    "id": "kf-29",
+    "inputs": {
+      "question": "What is the total price, to the cent, of a 30 kg temperature-controlled parcel to Portugal, with fuel and cold chain surcharges?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "44.78"
+      ]
+    }
+  },
+  {
+    "id": "kf-25",
+    "inputs": {
+      "question": "What is the current per diem for a trip inside the European Union?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "74"
+      ]
+    }
+  },
+  {
+    "id": "kf-36",
+    "inputs": {
+      "question": "Which warehouses missed the 95% on-time target in Q3 but are open on Saturdays? Name the cities."
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Poznan",
+        "Lisbon"
+      ]
+    }
+  },
+  {
+    "id": "kf-06",
+    "inputs": {
+      "question": "Which driving licence category is required to drive a company van?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "C1"
+      ]
+    }
+  },
+  {
+    "id": "kf-24",
+    "inputs": {
+      "question": "What is the current daily meal cap for domestic business travel?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "42"
+      ]
+    }
+  },
+  {
+    "id": "kf-26",
+    "inputs": {
+      "question": "How often do employees have to change their password?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "compromise"
+      ]
+    }
+  }
+]

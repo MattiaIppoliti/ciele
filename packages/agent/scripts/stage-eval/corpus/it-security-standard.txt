@@ -1,0 +1,16 @@
+IT SECURITY STANDARD - KESTREL FREIGHT COOPERATIVE
+
+This standard applies to every device and account issued by Kestrel Freight Cooperative.
+
+SIGN-IN
+Multi-factor authentication is mandatory for every account, using the approved authenticator app. Employees in Finance and all system administrators must use a hardware security key instead of the app.
+Passwords must be at least 14 characters long. See the Policy Change Log for the current rotation rule.
+
+REPORTING AN INCIDENT
+Report a suspected incident within 1 hour to the security desk on internal extension 4477 or by email to soc@kestrel.example. A lost or stolen laptop is wiped remotely once reported.
+
+REMOVABLE STORAGE
+USB storage is blocked on company laptops. The only exception is the encrypted drive issued by IT, model Kestrel-Vault 64.
+
+VISITORS AND WI-FI
+Visitors use the KF-Guest network, whose password changes every Monday. Employees never connect personal devices to the KF-Corp network.

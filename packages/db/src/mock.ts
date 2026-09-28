@@ -7725,6 +7725,10 @@ export const mockDb: Db = {
     getStore().platformEvalModels.set(key, model);
   },
 
+  async removePlatformEvalModel(provider, modelId) {
+    getStore().platformEvalModels.delete(`${provider}:${modelId}`);
+  },
+
   // --- Skills (reusable prompt templates) -----------------------------------
   // Plain CRUD moved to `table("skills")` (ADR-0016 stage 3); the delete
   // stays named for its assistant_skills cascade below.

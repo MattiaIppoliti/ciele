@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { CheckCircle2, Layers3, Search } from "lucide-react";
+import { CheckCircle2, Layers3, Search, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Input, Label } from "@agent-hub/ui";
 import { modelSelector, type PlatformEvalModel } from "@agent-hub/core";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { RollInText } from "@/components/motion/roll-in-text";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { toast } from "@/lib/toast";
 import {
   addPlatformModelAction,
   listDiscoverablePlatformModelsAction,
+  removePlatformModelAction,
 } from "@/app/actions";
 
 type CatalogProvider = "anthropic" | "openai" | "google";
@@ -30,6 +32,7 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
   const [catalogError, setCatalogError] = useState("");
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   useEffect(() => {
     let cancelled = false;
@@ -88,8 +91,29 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
     }
   }
 
+  function removeModel(model: PlatformEvalModel) {
+    confirmDelete({
+      title: `Remove ${model.label}?`,
+      description:
+        "The model picker stops offering it. Assistants and Teammates already set to this model keep using it.",
+      confirmLabel: "Remove",
+      onConfirm: async () => {
+        const result = await removePlatformModelAction({
+          provider: model.provider,
+          modelId: model.modelId,
+        });
+        if (!result.ok) throw new Error(result.error);
+        setCatalog((current) => current.map((option) =>
+          modelSelector(option) === modelSelector(model) ? { ...option, added: false } : option,
+        ));
+        toast.success(`${model.label} removed from the Ciele model catalog`);
+      },
+    });
+  }
+
   return (
     <Card size="sm" className="mt-8 gap-0 p-4">
+      {confirmDeleteModal}
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -208,15 +232,25 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
         {models.length ? (
           <div className="mt-2 divide-y">
             {models.map((model) => (
-              <div key={modelSelector(model)} className="grid min-w-0 gap-1 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
+              <div key={modelSelector(model)} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
                 <div className="min-w-0">
                   <div className="font-medium">{model.label}</div>
                   <div className="break-all font-mono text-xs text-muted-foreground">{model.provider}/{model.modelId}</div>
                 </div>
-                <div className="text-xs text-muted-foreground sm:text-right">
+                <div className="col-start-1 text-xs text-muted-foreground sm:col-start-auto sm:text-right">
                   <div>Input €{model.inputEurPerMillion}/1M</div>
                   <div>Output €{model.outputEurPerMillion}/1M</div>
                 </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeModel(model)}
+                  aria-label={`Remove ${model.label}`}
+                  className="col-start-2 row-start-1 text-muted-foreground hover:text-destructive sm:col-start-auto sm:row-start-auto"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
               </div>
             ))}
           </div>

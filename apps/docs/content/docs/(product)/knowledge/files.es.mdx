@@ -5,7 +5,7 @@ description: Sube un archivo o añade texto y elige qué asistentes responden a 
 
 ## Sube un archivo
 
-1. Abre el Assistant.
+1. Abre el asistente.
 2. Selecciona **Knowledge**.
 3. Añade una fuente de tipo archivo.
 4. Selecciona el archivo.
@@ -13,13 +13,27 @@ description: Sube un archivo o añade texto y elige qué asistentes responden a 
 6. Espera hasta que el estado de la fuente sea **Ready**.
 7. Prueba una respuesta y su cita.
 
-Ciele almacena el archivo original y extrae el texto admitido para su ingesta.
+Ciele almacena el archivo original y extrae el texto compatible para su ingesta.
 El estado Source indica si se han completado la extracción y la indexación.
+
+## Archivos compatibles
+
+Knowledge admite estos tipos de archivo, de hasta 25 MB cada uno:
+
+- PDF
+- Word (.docx)
+- PowerPoint (.pptx)
+- Excel (.xlsx)
+- Markdown, texto y CSV
+
+Ciele lee un archivo de PowerPoint diapositiva por diapositiva y un archivo de
+Excel hoja por hoja. Conserva el texto y los valores de las celdas. No conserva
+imágenes, fórmulas ni formato.
 
 ## Archivos que Ciele rechaza
 
-Ciele comprueba el contenido del archivo, no solo su nombre, antes de leer un
-documento. Rechaza:
+Antes de leer un documento, Ciele comprueba el contenido del archivo, no solo su
+nombre. Rechaza:
 
 - un archivo cuyo contenido no coincide con su extensión, por ejemplo, una
   página HTML llamada `.pdf`
@@ -28,9 +42,9 @@ documento. Rechaza:
 - un PDF con más de 2000 páginas
 
 Guarda el documento sin macros ni objetos incrustados, o bien divide un PDF
-largo y súbelo de nuevo.
+extenso y súbelo de nuevo.
 
-## Añade el texto pegado
+## Añadir texto pegado
 
 Utiliza un Source de texto para contenidos breves que no requieran un archivo
 aparte.
@@ -40,13 +54,13 @@ aparte.
 3. Pega el texto.
 4. Inicia la ingesta.
 
-Utiliza un nombre de fuente estable. El nombre puede aparecer en las citas de
+Utiliza un nombre de Source estable. El nombre puede aparecer en las citas de
 Visitor.
 
-## Sustituye el contenido obsoleto
+## Sustituir contenido obsoleto
 
-Elimina la Fuente antigua antes de empezar a usar una de reemplazo. A
-continuación, confirma que la nueva fuente es **Ready** y que genera citas
+Elimina la Source antigua antes de empezar a usar una Source de sustitución. A
+continuación, confirma que la nueva Source es **Ready** y genera citas
 correctas.
 
 Al eliminar una fuente, sus documentos se eliminan del índice de búsqueda
@@ -57,7 +71,7 @@ activo.
 Una Source de tipo archivo puede responder para más de un Assistant. Por lo
 tanto, el editor del asistente ofrece dos operaciones.
 
-- **Remove from this Assistant** elimina un enlace. Los demás asistentes
+- **Remove from this Assistant** elimina un enlace. Los otros asistentes
   conservan el archivo.
 - **Delete** elimina la fuente de todos los asistentes vinculados. La
   confirmación indica el nombre de cada uno.
@@ -65,12 +79,12 @@ tanto, el editor del asistente ofrece dos operaciones.
 Cuando solo este asistente responde a partir del archivo, el editor lo elimina
 directamente.
 
-Cuando eliminas un Source, Ciele también elimina el archivo original del
+Cuando eliminas una Source, Ciele también elimina el archivo original del
 almacenamiento. Si ese paso falla, la limpieza nocturna de retención eliminará
 el archivo más tarde.
 
-## Entrega al Visitor el archivo original
+## Proporciona al Visitor el archivo original
 
-Activa **Direct access** en la [Library](/knowledge/library) para permitir que
-el asistente adjunte el archivo original a su cita. El ajuste se aplica a un
+Activa **Direct access** en la [Library](/knowledge/library) para que el
+asistente pueda adjuntar el archivo original a su cita. El ajuste se aplica a un
 único enlace de Assistant y está desactivado de forma predeterminada.

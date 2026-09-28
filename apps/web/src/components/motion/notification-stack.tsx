@@ -84,6 +84,8 @@ const STATUS_ICONS: Record<
 
 const STACK_PEEK = 8;
 const STACK_INSET = 12;
+/** Long enough to cross the gap to the dismiss control, short enough to feel immediate. */
+const HOVER_COLLAPSE_GRACE_MS = 180;
 
 function NotificationCardContent({ item }: { item: NotificationStackItem }) {
   const status = item.status ? STATUS_ICONS[item.status] : null;
@@ -145,6 +147,14 @@ export function NotificationStack({
   // the dismiss control has to ride that edge instead of sitting still.
   const [closeOffset, setCloseOffset] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  // Pending hover collapse; see the pointer handlers on the root.
+  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelCollapse = () => {
+    if (collapseTimer.current === null) return;
+    clearTimeout(collapseTimer.current);
+    collapseTimer.current = null;
+  };
+  useEffect(() => cancelCollapse, []);
 
   const primaryItem = items[0];
   const noun = items.length === 1 ? "notification" : "notifications";
@@ -242,11 +252,25 @@ export function NotificationStack({
       // Hover lives here, not on the stack button: the dismiss control sits
       // outside that button's box, and chasing a control that collapses the
       // moment you reach for it is worse than no control.
-      onPointerEnter={() => {
-        if (canHover) setIsExpanded(true);
+      //
+      // The dismiss control rides up with the fanned-out stack and overhangs
+      // its rounded corner, so reaching for it crosses a sliver outside the
+      // root. Collapsing there at once slid the control back down under a
+      // still pointer, re-entered, expanded, and looped. So collapse waits out
+      // a short grace that re-entry cancels, and expanding takes a real
+      // pointer move: a control sliding under a resting cursor fires enter,
+      // never move.
+      onPointerMove={() => {
+        cancelCollapse();
+        if (canHover && !isExpanded) setIsExpanded(true);
       }}
       onPointerLeave={() => {
-        if (canHover && !hasFocus.current) setIsExpanded(false);
+        if (!canHover || hasFocus.current) return;
+        cancelCollapse();
+        collapseTimer.current = setTimeout(() => {
+          collapseTimer.current = null;
+          if (!hasFocus.current) setIsExpanded(false);
+        }, HOVER_COLLAPSE_GRACE_MS);
       }}
       className={cn(
         "relative w-full max-w-[22rem]",

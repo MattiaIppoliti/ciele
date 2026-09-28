@@ -1318,9 +1318,9 @@ function DocumentsTab({
       <FileUpload
         value={uploads}
         onValueChange={setUploads}
-        accept=".pdf,.docx,.md,.txt,.markdown"
+        accept=".pdf,.docx,.pptx,.xlsx,.md,.txt,.markdown,.csv"
         title="Drop files here or browse"
-        description="PDF, Word (.docx), Markdown, text · up to 25 MB"
+        description="PDF, Word, PowerPoint, Excel, Markdown, text, CSV · up to 25 MB"
         onFilesAdded={(added) => {
           for (const item of added) {
             if (item.file) void ingest(item, item.file);

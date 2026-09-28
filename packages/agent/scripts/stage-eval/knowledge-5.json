@@ -1,0 +1,89 @@
+[
+  {
+    "id": "kf-04",
+    "inputs": {
+      "question": "What is the annual training budget per employee?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "150"
+      ]
+    }
+  },
+  {
+    "id": "kf-45",
+    "inputs": {
+      "question": "Which company provides the employee dental insurance?"
+    },
+    "reference_outputs": {}
+  },
+  {
+    "id": "kf-11",
+    "inputs": {
+      "question": "What is the reimbursement rate per kilometre for a private car?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "0.39"
+      ]
+    }
+  },
+  {
+    "id": "kf-43",
+    "inputs": {
+      "question": "Within how many hours must transport damage be reported?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "48"
+      ]
+    }
+  },
+  {
+    "id": "kf-13",
+    "inputs": {
+      "question": "Which warehouses have cold storage? Name the cities."
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Verona",
+        "Rotterdam",
+        "Zaragoza"
+      ]
+    }
+  },
+  {
+    "id": "kf-02",
+    "inputs": {
+      "question": "How long is parental leave and at what pay rate?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "18",
+        "80"
+      ]
+    }
+  },
+  {
+    "id": "kf-28",
+    "inputs": {
+      "question": "What does a 12 kg parcel to France cost including the fuel surcharge? Give the amount to the cent."
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "19.31"
+      ]
+    }
+  },
+  {
+    "id": "kf-38",
+    "inputs": {
+      "question": "I have a 7.5-hour flight for work. Which cabin class am I allowed?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "premium economy"
+      ]
+    }
+  }
+]

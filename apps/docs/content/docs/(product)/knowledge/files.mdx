@@ -15,6 +15,18 @@ description: Upload a file or add text, and choose which Assistants answer from 
 
 Ciele stores the original file and extracts supported text for ingestion. The Source status shows whether extraction and indexing completed.
 
+## Supported files
+
+Knowledge accepts these file types, up to 25 MB each:
+
+- PDF
+- Word (.docx)
+- PowerPoint (.pptx)
+- Excel (.xlsx)
+- Markdown, text and CSV
+
+Ciele reads a PowerPoint file one slide at a time and an Excel file one sheet at a time. It keeps the text and the cell values. It does not keep images, formulas or formatting.
+
 ## Files Ciele refuses
 
 Ciele checks the file contents, not only the file name, before it reads a

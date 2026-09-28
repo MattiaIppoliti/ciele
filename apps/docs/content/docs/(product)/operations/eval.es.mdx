@@ -7,8 +7,9 @@ description: Compara dos o tres modelos en una etapa de un asistente, con las mi
 resultados. Una ejecución de Eval prueba una etapa de un asistente. No crea
 ninguna Conversation, por lo que no aparece en Inbox ni en Insights.
 
-Cualquier miembro puede abrir **Eval** y leer las ejecuciones. Los Editors,
-Admins y Owners pueden subir conjuntos de datos e iniciar ejecuciones.
+Cualquier miembro puede abrir **Eval** y leer las ejecuciones. Los editores, los
+administradores y los propietarios pueden subir conjuntos de datos e iniciar
+ejecuciones.
 
 ## Etapas
 
@@ -19,12 +20,14 @@ Admins y Owners pueden subir conjuntos de datos e iniciar ejecuciones.
 - **Fallback** hace que el proveedor propio del asistente no esté disponible y
   compara los modelos de reserva.
 - **Pre-flight** compara la decisión previa a la ejecución y su nivel de
-  confianza.
+  confianza. Solo Jev proporciona una confianza calibrada, por lo que solo Jev
+  puede enrutar un mensaje. Otros modelos muestran la decisión que tomarían.
 - **Reranker** compara las Sources que cada reranker coloca entre los seis
   primeros resultados.
 
-Cada etapa muestra únicamente los modelos que pueden ejecutarse con las
-conexiones de proveedores de la organización.
+Cada etapa muestra únicamente los modelos que pueden ejecutarla. Un modelo puede
+ejecutarse a través de una conexión de proveedor de la organización o a través
+de AI Gateway.
 
 ## Sube un conjunto de datos
 
@@ -40,8 +43,8 @@ Un conjunto de datos puede contener hasta 50 ejemplos. Cada ID de ejemplo debe
 ser único.
 
 Los campos de referencia son `answer_contains`, `flow_id`, `flow_name` y
-`source_url_contains`. Ciele los evalúa como texto literal. La precisión no es
-un juicio sobre el significado ni sobre los hechos.
+`source_url_contains`. Ciele los comprueba como texto literal. La precisión no
+es un juicio sobre el significado ni sobre los hechos.
 
 ## Inicia una ejecución
 
@@ -54,10 +57,10 @@ Una ejecución puede realizar hasta 24 ejecuciones. Una ejecución es un ejemplo
 con un modelo. Por ejemplo, 12 ejemplos con dos modelos suponen 24 ejecuciones.
 
 La ejecución finaliza antes de que la página muestre sus resultados. Una
-ejecución que se detiene antes de finalizar se muestra como failed. Ciele
-conserva los resultados que guardó antes de detenerse.
+ejecución que se detiene antes de finalizar aparece como failed. Ciele conserva
+los resultados que guardó antes de detenerse.
 
-## Lee los resultados
+## Consulta los resultados
 
 El panel de fiabilidad muestra seis gráficos para cada modelo:
 
@@ -66,18 +69,34 @@ El panel de fiabilidad muestra seis gráficos para cada modelo:
   recuperación.
 - **Tokens**, la entrada y la salida del modelo por ejemplo.
 - **Latency**, el tiempo medio por ejemplo.
-- **Autonomy**, los turnos que se completaron sin recurrir a una opción
-  alternativa ni a un rechazo.
+- **Autonomy**, los turnos que se completaron sin recurrir a un fallback ni a un
+  rechazo.
 - **Error rate**, las ejecuciones que presentaron un error técnico.
+
+Debajo de los gráficos, la tabla **Leaderboard** muestra una fila por cada
+modelo. El modelo más preciso aparece en primer lugar. Cuando dos modelos tienen
+la misma precisión, el modelo menos costoso aparece primero.
+
+- **Accuracy**, los ejemplos con salidas de referencia que el modelo acertó.
+- **Autonomy**, solo para las etapas que lo miden.
+- **Errors**, solo cuando un modelo presentaba un error técnico.
+- **€ / 1,000**, el coste estimado de 1000 ejemplos.
+- **Median** y **p95**, el tiempo por ejemplo. No se incluyen las ejecuciones
+  con error.
+- En la etapa **Classifier**, una columna por cada Flow de referencia. Cada
+  columna muestra el número de ejemplos correctos para ese Flow.
+
+La tabla muestra en negrita el coste más bajo y el tiempo mediano más bajo.
 
 Selecciona una fila en **Results by question** para comparar las respuestas, las
 Sources y los errores de cada modelo.
 
 ## Límites
 
-- Una ejecución busca en la Knowledge en tiempo real. Un cambio en Knowledge
+- Una ejecución busca en el Knowledge en tiempo real. Un cambio en Knowledge
   durante una ejecución puede alterar sus resultados.
 - Una ejecución no realiza acciones con efectos externos, como **Send email** o
   **API request**. Un Flow que contiene uno registra un error.
-- Las llamadas al modelo Eval utilizan las conexiones con los proveedores de la
-  organización y cuentan para su presupuesto.
+- Las llamadas al modelo Eval utilizan las conexiones con proveedores de la
+  Organización. Cuando ninguna conexión atiende a un modelo, la llamada utiliza
+  AI Gateway. Todas las llamadas cuentan para el presupuesto de la Organization.

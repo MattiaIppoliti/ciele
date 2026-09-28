@@ -1,0 +1,116 @@
+[
+  {
+    "id": "kn-17",
+    "inputs": {
+      "question": "Which built-in tools are off by default?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "fetch url",
+        "table"
+      ],
+      "source_url_contains": [
+        "/assistants/tools-and-skills"
+      ]
+    }
+  },
+  {
+    "id": "kn-18",
+    "inputs": {
+      "question": "How do I stop an API integration endpoint from writing the same record twice after a retry?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "idempotency"
+      ],
+      "source_url_contains": [
+        "/assistants/tools-and-skills"
+      ]
+    }
+  },
+  {
+    "id": "kn-19",
+    "inputs": {
+      "question": "When I duplicate an Assistant, what gets copied?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "flows"
+      ],
+      "source_url_contains": [
+        "/assistants"
+      ]
+    }
+  },
+  {
+    "id": "kn-20",
+    "inputs": {
+      "question": "What is the largest PDF, in pages, that Ciele accepts as a file source?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "000 pages"
+      ],
+      "source_url_contains": [
+        "/knowledge/files"
+      ]
+    }
+  },
+  {
+    "id": "kn-21",
+    "inputs": {
+      "question": "How many memories can a single Document keep in the Library?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "20"
+      ],
+      "source_url_contains": [
+        "/knowledge/library"
+      ]
+    }
+  },
+  {
+    "id": "kn-22",
+    "inputs": {
+      "question": "At what page limit does the Crawl4AI crawler stop?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "5",
+        "000"
+      ],
+      "source_url_contains": [
+        "/knowledge/websites"
+      ]
+    }
+  },
+  {
+    "id": "kn-23",
+    "inputs": {
+      "question": "Can I sign up for Ciele Cloud on my own, or how is it sold?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "sales"
+      ],
+      "source_url_contains": [
+        "/editions"
+      ]
+    }
+  },
+  {
+    "id": "kn-24",
+    "inputs": {
+      "question": "Come faccio a far scegliere al visitatore un modello diverso nella chat?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "model"
+      ],
+      "source_url_contains": [
+        "/assistants/general-settings"
+      ]
+    }
+  }
+]

@@ -532,8 +532,8 @@ export function EvalLibrary({
           <section className="rounded-xl border bg-card p-5">
             <h2 className="text-lg font-medium">Model catalog</h2>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              These models can be selected in Eval. Availability depends
-              on the organization’s AI connections and, for Jev and Voyage, AI Gateway.
+              These models can be selected in Eval. A model is available through
+              the organization’s AI connections or through AI Gateway.
             </p>
             {(canManageProviders || canManageCatalog) ? (
               <Link href="/settings/ai" className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline">

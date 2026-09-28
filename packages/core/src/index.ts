@@ -454,11 +454,14 @@ export { estimateCostEur } from "./pricing";
 export {
   EVALUATION_RUN_STALE_MS,
   EVALUATION_STAGES,
+  evaluationLeaderboard,
   gradeEvaluation,
   settleStaleEvaluationRun,
 } from "./evaluation";
 export type {
   EvaluationExample,
+  EvaluationLeaderboardFlow,
+  EvaluationLeaderboardRow,
   EvaluationStage,
   EvaluationCandidate,
   PlatformEvalModel,

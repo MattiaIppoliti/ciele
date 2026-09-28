@@ -11,18 +11,32 @@ description: Laden Sie eine Datei hoch oder fügen Sie Text hinzu, und wählen S
 4. Wählen Sie die Datei aus.
 5. Starten Sie die Ingestion.
 6. Warten Sie, bis der Status der Quelle **Ready** lautet.
-7. Testen Sie eine Antwort und ihre Citation.
+7. Testen Sie eine Antwort und ihre Quellenangabe.
 
 Ciele speichert die Originaldatei und extrahiert unterstützten Text für die
-Ingestion. Der Status „Source“ zeigt an, ob die Extraktion und die Indizierung
+Ingestion. Der Status Source zeigt an, ob die Extraktion und die Indizierung
 abgeschlossen sind.
+
+## Unterstützte Dateiformate
+
+Knowledge akzeptiert die folgenden Dateitypen, jeweils bis zu 25 MB:
+
+- PDF
+- Word (.docx)
+- PowerPoint (.pptx)
+- Excel (.xlsx)
+- Markdown, Text und CSV
+
+Ciele liest eine PowerPoint-Datei Folie für Folie und eine Excel-Datei Blatt für
+Blatt. Es behält den Text und die Zellwerte bei. Bilder, Formeln und
+Formatierungen werden nicht beibehalten.
 
 ## Dateien, die Ciele ablehnt
 
-Ciele überprüft vor dem Lesen eines Dokuments den Inhalt der Datei, nicht nur
-den Dateinamen. Es wird abgelehnt:
+Ciele überprüft vor dem Lesen eines Dokuments nicht nur den Dateinamen, sondern
+auch den Dateiinhalt. Es lehnt Folgendes ab:
 
-- eine Datei, deren Inhalt nicht mit ihrer Dateiendung übereinstimmt,
+- eine Datei, deren Inhalt nicht mit ihrer Dateierweiterung übereinstimmt,
   beispielsweise eine HTML-Seite mit dem Namen `.pdf`
 - ein Programm, unabhängig davon, wie die Datei heißt
 - eine Office-Datei, die ein Makroprojekt oder ein eingebettetes Objekt enthält
@@ -48,12 +62,12 @@ erscheinen.
 
 Löschen Sie die alte Source, bevor Sie sich auf einen Ersatz verlassen.
 Bestätigen Sie anschließend, dass die neue Source **Ready** ist und korrekte
-Zitate liefert.
+Zitationen liefert.
 
-Durch das Löschen einer Quelle werden deren Documents aus dem aktiven Suchindex
+Durch das Löschen einer Quelle werden deren Dokumente aus dem aktiven Suchindex
 entfernt.
 
-## Entfernen im Vergleich zu Löschen
+## Remove im Vergleich zu Delete
 
 Eine Datei-Quelle kann für mehr als einen Assistenten antworten. Der
 Assistant-Editor bietet daher zwei Operationen an.

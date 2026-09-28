@@ -1852,6 +1852,8 @@ export interface Db {
   /** Platform-owner additions to the built-in Eval chat-model catalog. */
   listPlatformEvalModels(): Promise<PlatformEvalModel[]>;
   addPlatformEvalModel(model: PlatformEvalModel): Promise<void>;
+  /** Removes one catalog addition; a model already gone is not an error. */
+  removePlatformEvalModel(provider: PlatformEvalModel["provider"], modelId: string): Promise<void>;
 
   // Skills (reusable org-level prompt templates). Plain CRUD lives on
   // `table("skills")` (ADR-0016 stage 3); only the delete stays named, the

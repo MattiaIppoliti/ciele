@@ -1,0 +1,86 @@
+[
+  {
+    "id": "kf-21",
+    "inputs": {
+      "question": "What internal extension do I call to report a security incident?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "4477"
+      ]
+    }
+  },
+  {
+    "id": "kf-46",
+    "inputs": {
+      "question": "Who manages the Hamburg warehouse?"
+    },
+    "reference_outputs": {}
+  },
+  {
+    "id": "kf-15",
+    "inputs": {
+      "question": "What was the Q3 2026 on-time delivery rate of WH-02?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "91.8"
+      ]
+    }
+  },
+  {
+    "id": "kf-37",
+    "inputs": {
+      "question": "Who has to approve a business trip estimated at 5,300 EUR?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Quiroga"
+      ]
+    }
+  },
+  {
+    "id": "kf-23",
+    "inputs": {
+      "question": "Which employees must use a hardware security key instead of the authenticator app?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "finance"
+      ]
+    }
+  },
+  {
+    "id": "kf-39",
+    "inputs": {
+      "question": "Qual è la diaria per un viaggio fuori dall'Unione europea?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "81"
+      ]
+    }
+  },
+  {
+    "id": "kf-08",
+    "inputs": {
+      "question": "What is the per diem for a trip outside the European Union?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "81"
+      ]
+    }
+  },
+  {
+    "id": "kf-33",
+    "inputs": {
+      "question": "How many more dock doors does Rotterdam have than Verona?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "18"
+      ]
+    }
+  }
+]

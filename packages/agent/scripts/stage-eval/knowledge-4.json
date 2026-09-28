@@ -1,0 +1,87 @@
+[
+  {
+    "id": "kf-05",
+    "inputs": {
+      "question": "How often must forklift certification be renewed?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "36"
+      ]
+    }
+  },
+  {
+    "id": "kf-48",
+    "inputs": {
+      "question": "Qual è la politica sui cani in ufficio?"
+    },
+    "reference_outputs": {}
+  },
+  {
+    "id": "kf-16",
+    "inputs": {
+      "question": "How much does the new automated sorter at WH-03 cost?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "2.4"
+      ]
+    }
+  },
+  {
+    "id": "kf-41",
+    "inputs": {
+      "question": "Quanto costa spedire un pacco di 3 kg in Svizzera, tariffa base?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "19",
+        "7"
+      ]
+    }
+  },
+  {
+    "id": "kf-20",
+    "inputs": {
+      "question": "What is the minimum password length?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "14"
+      ]
+    }
+  },
+  {
+    "id": "kf-19",
+    "inputs": {
+      "question": "How much is the dangerous goods surcharge?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "24.5"
+      ]
+    }
+  },
+  {
+    "id": "kf-27",
+    "inputs": {
+      "question": "What is the base rate to ship a 12 kg parcel from Verona to Lyon?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "17.8"
+      ]
+    }
+  },
+  {
+    "id": "kf-44",
+    "inputs": {
+      "question": "Can a customer in Norway have a return collected from their home?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "courier"
+      ]
+    }
+  }
+]

@@ -393,8 +393,9 @@ function createTooltipFormatter(ctx: OptionBuildContext) {
           seriesName?: string;
           value?: number | string;
         };
-        // Internal series (the stack-gap spacers) never surface in the tooltip.
-        if (String(p.seriesId ?? "").startsWith("__")) return "";
+        // Internal series (the stack-gap spacers) never surface in the tooltip,
+        // nor does a series with no value on this row (null data, see below).
+        if (String(p.seriesId ?? "").startsWith("__") || p.value == null) return "";
         const key = p.seriesId ?? p.seriesName ?? "";
         const item = config[key];
         const colorsCount = item ? getColorsCount(item) : 1;
@@ -439,7 +440,9 @@ function buildBarSeries(ctx: OptionBuildContext): BarSeriesOption[] {
       id: key,
       name: typeof config[key]?.label === "string" ? config[key]?.label : key,
       type: "bar",
-      data: data.map((row) => Number(row[key]) || 0),
+      // null stays null: "no bar on this row", which is how one series per
+      // category gives each bar its own colour.
+      data: data.map((row) => (row[key] === null ? null : Number(row[key]) || 0)),
       stack: isStacked ? "total" : undefined,
       barGap: undefined,
       barCategoryGap: undefined,
@@ -493,7 +496,14 @@ function buildBarSeries(ctx: OptionBuildContext): BarSeriesOption[] {
       id: `__stackgap-${i}`,
       type: "bar",
       stack: "total",
-      data: data.map(() => gapUnits),
+      // Only between two real segments: a row whose neighbours are null (one
+      // series per category) gets no gap, or its bar would start off the axis.
+      data: data.map((_, row) =>
+        series[i]?.data?.[row] != null &&
+        series.slice(i + 1).some((next) => next.data?.[row] != null)
+          ? gapUnits
+          : 0,
+      ),
       itemStyle: { color: "transparent" },
       silent: true,
       tooltip: { show: false },

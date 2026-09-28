@@ -1,0 +1,74 @@
+[
+  {
+    "id": "rt-17",
+    "inputs": {
+      "question": "bye, have a nice day"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-18",
+    "inputs": {
+      "question": "Tell me about yourself"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-19",
+    "inputs": {
+      "question": "What can a Goal check?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-20",
+    "inputs": {
+      "question": "Good morning 👋"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-21",
+    "inputs": {
+      "question": "What topics do you cover?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-22",
+    "inputs": {
+      "question": "Does Ciele crawl login-protected websites?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-23",
+    "inputs": {
+      "question": "perfect, thank you"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-24",
+    "inputs": {
+      "question": "What is your purpose?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  }
+]

@@ -1,5 +1,5 @@
 import { MODEL_CATALOG, PROVIDER_NAMES } from "@agent-hub/agent/client";
-import { providerAvailability } from "@agent-hub/agent";
+import { availableModelSources } from "@agent-hub/agent";
 import { modelSelector } from "@agent-hub/core";
 import type {
   EvaluationCandidate,
@@ -73,18 +73,21 @@ export function allEvaluationModels(
   return chatModels;
 }
 
-/** Only models that the synthetic runner can reach on an unattended turn. */
+/**
+ * Only models that the synthetic runner can reach on an unattended turn: a key
+ * of the provider's own, or AI Gateway when it serves the model, the same
+ * routes `resolveChatModel` takes on a real turn.
+ */
 export function availableEvaluationModels(
   connections: ProviderConnection[],
   gatewayAvailable: boolean,
   extraModels: PlatformEvalModel[] = [],
 ): EvaluationModelOption[] {
-  const availability = providerAvailability(connections);
-  return allEvaluationModels(connections, extraModels).filter((model) => {
-    if (model.provider === "voyage" || model.provider === "typesafe") return gatewayAvailable;
-    const provider = availability[model.provider];
-    return provider.platform || provider.byok || provider.federated;
-  });
+  return allEvaluationModels(connections, extraModels).filter((model) =>
+    model.provider === "voyage" || model.provider === "typesafe"
+      ? gatewayAvailable
+      : availableModelSources(model.provider, model.modelId, connections).length > 0,
+  );
 }
 
 export function evaluationModelsForStage(

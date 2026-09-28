@@ -1,0 +1,74 @@
+[
+  {
+    "id": "rt-41",
+    "inputs": {
+      "question": "you're great"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-42",
+    "inputs": {
+      "question": "che cosa puoi fare per me?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-43",
+    "inputs": {
+      "question": "stop, I want a real person"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-44",
+    "inputs": {
+      "question": "What is the phone extension of the security desk?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-45",
+    "inputs": {
+      "question": "no worries"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-46",
+    "inputs": {
+      "question": "how do you work?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-47",
+    "inputs": {
+      "question": "can someone from support call me back?"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-48",
+    "inputs": {
+      "question": "what can I claim for meals on a domestic trip?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  }
+]

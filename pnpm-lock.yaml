@@ -349,6 +349,9 @@ importers:
       '@ai-sdk/provider':
         specifier: ^4.0.17
         version: 4.0.17
+      '@ai-sdk/provider-utils':
+        specifier: ^5.0.45
+        version: 5.0.45(zod@4.4.3)
       '@ai-sdk/typesafe-ai':
         specifier: ^3.0.4
         version: 3.0.4(zod@4.4.3)

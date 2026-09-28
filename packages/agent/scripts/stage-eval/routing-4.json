@@ -1,0 +1,74 @@
+[
+  {
+    "id": "rt-25",
+    "inputs": {
+      "question": "buongiorno!"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-26",
+    "inputs": {
+      "question": "what topics do you cover?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-27",
+    "inputs": {
+      "question": "I need a human to approve an exception to the travel policy"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-28",
+    "inputs": {
+      "question": "hi, how many days of leave do I get?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-29",
+    "inputs": {
+      "question": "that's all, thanks"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-30",
+    "inputs": {
+      "question": "introduce yourself"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-31",
+    "inputs": {
+      "question": "escalate this please"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-32",
+    "inputs": {
+      "question": "Tell me about the returns procedure"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  }
+]

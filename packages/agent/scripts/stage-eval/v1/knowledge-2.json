@@ -1,0 +1,118 @@
+[
+  {
+    "id": "kn-09",
+    "inputs": {
+      "question": "What is the default Slack history window for an Application import?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "180"
+      ],
+      "source_url_contains": [
+        "/knowledge/applications"
+      ]
+    }
+  },
+  {
+    "id": "kn-10",
+    "inputs": {
+      "question": "Which old Office formats can visitors not attach in the chat?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "doc",
+        "xls",
+        "ppt"
+      ],
+      "source_url_contains": [
+        "/assistants/general-settings"
+      ]
+    }
+  },
+  {
+    "id": "kn-11",
+    "inputs": {
+      "question": "Where does the Default behavior Flow sit in the Flow order?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "last"
+      ],
+      "source_url_contains": [
+        "/getting-started/core-concepts"
+      ]
+    }
+  },
+  {
+    "id": "kn-12",
+    "inputs": {
+      "question": "What is a Publication in Ciele?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "snapshot"
+      ],
+      "source_url_contains": [
+        "/getting-started/core-concepts"
+      ]
+    }
+  },
+  {
+    "id": "kn-13",
+    "inputs": {
+      "question": "Which expectations can a Goal check an answer against?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "cite",
+        "contains"
+      ],
+      "source_url_contains": [
+        "/assistants/goals"
+      ]
+    }
+  },
+  {
+    "id": "kn-14",
+    "inputs": {
+      "question": "What happens when a Goal fails its check?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "alert"
+      ],
+      "source_url_contains": [
+        "/assistants/goals"
+      ]
+    }
+  },
+  {
+    "id": "kn-15",
+    "inputs": {
+      "question": "Where on the page can I place the widget launcher?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "left",
+        "right"
+      ],
+      "source_url_contains": [
+        "/assistants/appearance"
+      ]
+    }
+  },
+  {
+    "id": "kn-16",
+    "inputs": {
+      "question": "Dove collego il token Apify della mia organizzazione?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "crawling"
+      ],
+      "source_url_contains": [
+        "/knowledge/websites"
+      ]
+    }
+  }
+]

@@ -11,11 +11,25 @@ description: Carica un file o aggiungi del testo e scegli quali Assistenti rispo
 4. Seleziona il file.
 5. Avvia l'ingestione.
 6. Attendi fino a quando lo stato di Source è **Ready**.
-7. Prova una risposta e la sua citazione.
+7. Verifica una risposta e la sua citazione.
 
 Ciele memorizza il file originale ed estrae il testo supportato per
 l'ingestione. Lo stato Source indica se l'estrazione e l'indicizzazione sono
 state completate.
+
+## File supportati
+
+Knowledge accetta questi tipi di file, fino a 25 MB ciascuno:
+
+- PDF
+- Word (.docx)
+- PowerPoint (.pptx)
+- Excel (.xlsx)
+- Markdown, testo e CSV
+
+Ciele legge un file PowerPoint una diapositiva alla volta e un file Excel un
+foglio alla volta. Conserva il testo e i valori delle celle. Non conserva
+immagini, formule né formattazione.
 
 ## File che Ciele rifiuta
 
@@ -28,8 +42,8 @@ nome del file. Rifiuta:
 - un file di Office che contiene un progetto macro o un oggetto incorporato
 - un PDF con più di 2000 pagine
 
-Salva il documento senza macro o oggetti incorporati, oppure dividi un PDF lungo
-e caricalo di nuovo.
+Salva il documento senza macro né oggetti incorporati, oppure dividi un PDF
+lungo e caricalo di nuovo.
 
 ## Aggiungi il testo incollato
 
@@ -44,7 +58,7 @@ separato.
 Usa un nome di Source stabile. Il nome può comparire nelle citazioni dei
 Visitor.
 
-## Sostituisci i contenuti obsoleti
+## Sostituisci il contenuto obsoleto
 
 Elimina la vecchia Source prima di affidarti a una sostituzione. Quindi verifica
 che la nuova Source sia **Ready** e produca citazioni corrette.

@@ -1,6 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
+import { Experimental_EvaluationLanguageModel as EvaluationLanguageModel } from "@ai-sdk/provider-utils/experimental-evaluation";
 import { createGateway, rerank } from "ai";
 import {
   estimateCostEur,
@@ -19,6 +20,7 @@ import type { Db } from "@agent-hub/db";
 import { classifyIntent, runAssistantChat } from "./engine";
 import { buildKnowledgeSearcher } from "./retrieval";
 import { estimateRerankTokens } from "./rerank";
+import { gatewayModelId } from "./catalog";
 import { createTurnSession } from "./session";
 import { getRuntimeHost } from "./host";
 import { resolveChatModel, resolveProviderCredential } from "./models";
@@ -65,7 +67,9 @@ export async function evaluateCase(input: {
   const credential =
     candidate.provider === "typesafe" || candidate.provider === "voyage"
       ? ("platform" as const)
-      : resolveProviderCredential(candidate.provider, connections)?.kind;
+      : // With the Gateway, as the chat stages resolve the model: a candidate
+        // only the platform's Gateway key serves is still platform spend.
+        resolveProviderCredential(candidate.provider, connections, { gateway: true })?.kind;
   const admission = await admitAiSpend({
     db,
     organizationId: assistant.organizationId,
@@ -402,7 +406,8 @@ export async function evaluateCase(input: {
   };
 }
 
-function evaluationModel(
+/** Exported for its test; the barrel does not re-export it. */
+export function evaluationModel(
   candidate: EvaluationCandidate,
   connections: ProviderConnection[],
 ) {
@@ -424,9 +429,30 @@ function evaluationModel(
       calibrated: true,
     };
   }
-  const credential = resolveProviderCredential(candidate.provider, connections);
+  // With the Gateway, as the chat stages resolve a candidate: a model only AI
+  // Gateway serves is wrapped the way the providers' own SDKs wrap theirs, so
+  // the adapter backend reads it like any other uncalibrated model.
+  const credential = resolveProviderCredential(candidate.provider, connections, {
+    gateway: true,
+  });
   if (!credential || !("apiKey" in credential) || !credential.apiKey)
     throw new Error("No credential is available for this provider.");
+  if ("route" in credential && credential.route === "gateway") {
+    const gatewayId = gatewayModelId(candidate.provider, candidate.modelId);
+    if (!gatewayId)
+      throw new Error("AI Gateway does not serve this model.");
+    return {
+      model: new EvaluationLanguageModel({
+        model: createGateway({ apiKey: credential.apiKey }).languageModel(gatewayId),
+        provider: "gateway.evaluation",
+      }),
+      backend: "adapter" as const,
+      provider: candidate.provider,
+      modelId: candidate.modelId,
+      credentialKind: credential.kind,
+      calibrated: false,
+    };
+  }
   const model =
     candidate.provider === "anthropic"
       ? createAnthropic({ apiKey: credential.apiKey }).evaluationModel(

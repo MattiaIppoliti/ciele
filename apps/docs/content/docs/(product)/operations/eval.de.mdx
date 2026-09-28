@@ -5,13 +5,13 @@ description: Vergleichen Sie zwei oder drei Modelle in einer Stufe eines Assista
 
 **Eval** führt die gleichen Fragen durch zwei oder drei Modelle und vergleicht
 die Ergebnisse. Ein Eval-Lauf testet eine einzelne Stufe eines Assistants. Es
-wird keine Conversation erstellt, daher wird sie weder in der Inbox noch in den
+wird keine Conversation erstellt, daher wird sie weder im Inbox noch in den
 Insights angezeigt.
 
 Jedes Mitglied kann **Eval** öffnen und Runs lesen. Editors, Admins und Owners
 können Datensätze hochladen und Runs starten.
 
-## Phasen
+## Stages
 
 - **Answer** vergleicht die Antwort, die zitierten Sources und die
   Antwortqualität jedes Modells.
@@ -19,20 +19,23 @@ können Datensätze hochladen und Runs starten.
 - **Orchestration** führt den gesamten Turn mit jedem Modell als Classifier aus.
 - **Fallback** macht den eigenen Provider des Assistants nicht verfügbar und
   vergleicht die Reservemodelle.
-- **Pre-flight** vergleicht die Pre-Flight-Entscheidung und deren Konfidenzwert.
-- **Reranker** vergleicht die Sources, die jeder Reranker in die
-  Top-6-Ergebnisse aufnimmt.
+- **Pre-flight** vergleicht die Pre-Flight-Entscheidung und deren Konfidenz. Nur
+  Jev liefert eine kalibrierte Konfidenz, daher kann nur Jev eine Nachricht
+  weiterleiten. Andere Modelle zeigen die Entscheidung, die sie treffen würden.
+- **Reranker** vergleicht die Sources, die jeder Reranker unter den ersten sechs
+  Ergebnissen platziert.
 
-Jede Stufe zeigt nur die Modelle an, die mit den Provider-Verbindungen der
-Organisation ausgeführt werden können.
+Jede Stufe zeigt nur die Modelle an, die sie ausführen können. Ein Modell kann
+über eine Provider-Verbindung der Organisation oder über das AI Gateway
+ausgeführt werden.
 
-## Einen Datensatz hochladen
+## Dataset hochladen
 
 1. Öffnen Sie **Eval** und wählen Sie die Registerkarte **Datasets** aus.
 2. Wählen Sie **Download example format** aus, um das JSON-Format zu erhalten.
 3. Geben Sie für jede Frage ein Beispiel an. Jedes Beispiel hat ein `id` und ein
    `inputs.question`.
-4. Optional können Sie `reference_outputs` hinzufügen. Ciele verwendet diese, um
+4. Optional können Sie `reference_outputs` hinzufügen. Ciele verwendet sie, um
    die Genauigkeit zu messen.
 5. Geben Sie einen Namen ein, wählen Sie die Datei aus und wählen Sie
    **Upload**.
@@ -47,19 +50,19 @@ keine Beurteilung von Bedeutung oder von Fakten.
 ## Einen Run starten
 
 1. Wählen Sie die Registerkarte **Runs** aus.
-2. Wählen Sie einen Assistant, einen Dataset und eine Stage aus.
+2. Wählen Sie einen Assistant, einen Datensatz und eine Stage aus.
 3. Wählen Sie zwei oder drei Modelle aus.
 4. Wählen Sie **Start run** aus.
 
-Ein Run kann bis zu 24 Ausführungen umfassen. Eine Ausführung ist ein Beispiel
-mit einem Modell. Beispielsweise ergeben 12 Beispiele mit zwei Modellen 24
+Ein Run kann bis zu 24 Executions umfassen. Eine Ausführung ist ein Beispiel mit
+einem Modell. Zum Beispiel ergeben 12 Beispiele mit zwei Modellen 24
 Ausführungen.
 
 Der Run endet, bevor die Seite ihre Ergebnisse anzeigt. Ein Run, der vor dem
 Abschluss abgebrochen wird, wird als failed angezeigt. Ciele behält die
-Ergebnisse, die es vor dem Stopp gespeichert hat.
+Ergebnisse, die es vor dem Abbruch gespeichert hat.
 
-## Die Ergebnisse lesen
+## Lesen Sie die Ergebnisse
 
 Das Reliability Dashboard zeigt für jedes Modell sechs Diagramme an:
 
@@ -72,15 +75,34 @@ Das Reliability Dashboard zeigt für jedes Modell sechs Diagramme an:
 - **Error rate**, die Ausführungen, bei denen ein technischer Fehler aufgetreten
   ist.
 
+Unter den Diagrammen zeigt die Tabelle **Leaderboard** für jedes Modell eine
+Zeile an. Das genaueste Modell steht an erster Stelle. Wenn zwei Modelle die
+gleiche Genauigkeit aufweisen, wird das kostengünstigere Modell zuerst
+aufgeführt.
+
+- **Accuracy**, die Beispiele mit Referenzausgaben, die das Modell korrekt
+  gelöst hat.
+- **Autonomy**, nur für die Stages, die dies messen.
+- **Errors**, nur wenn bei einem Modell ein technischer Fehler aufgetreten ist.
+- **€ / 1,000**, die geschätzten Kosten für 1.000 Beispiele.
+- **Median** und **p95**, die Zeit pro Beispiel. Ausführungen mit einem Fehler
+  werden nicht berücksichtigt.
+- In der Phase **Classifier** gibt es eine Spalte für jeden Referenz-Flow. Jede
+  Spalte zeigt die Anzahl der korrekten Beispiele für diesen Flow an.
+
+Die Tabelle zeigt die niedrigsten Kosten und die niedrigste Medianzeit
+fettgedruckt.
+
 Wählen Sie eine Zeile in **Results by question** aus, um die Antworten, die
-Sources und die Errors jedes Modells zu vergleichen.
+Sources und die Fehler der einzelnen Modelle zu vergleichen.
 
 ## Einschränkungen
 
-- Ein Run durchsucht das Live-Knowledge. Eine Änderung an Knowledge während
+- Ein Run durchsucht die Live-Knowledge. Eine Änderung an Knowledge während
   eines Runs kann dessen Ergebnisse verändern.
 - Ein Run führt keine Aktionen mit externen Auswirkungen aus, wie z. B. **Send
   email** oder **API request**. Ein Flow, der einen enthält, protokolliert einen
   Fehler.
-- Aufrufe des Eval-Modells nutzen die Provider-Verbindungen der Organisation und
-  werden auf deren Budget angerechnet.
+- Eval-Modellaufrufe verwenden die Provider-Verbindungen der Organisation. Wenn
+  keine Verbindung ein Modell bedient, verwendet der Aufruf AI Gateway. Alle
+  Aufrufe werden auf das Budget der Organisation angerechnet.

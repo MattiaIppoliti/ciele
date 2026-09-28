@@ -1,0 +1,7 @@
+code,city,country,manager,capacity_pallets,dock_doors,weekday_hours,saturday_hours,cold_storage
+WH-01,Verona,IT,Paolo Benedetti,18400,22,06:00-22:00,07:00-13:00,yes
+WH-02,Lyon,FR,Camille Dufresne,12750,16,06:00-20:00,closed,no
+WH-03,Rotterdam,NL,Joost de Wit,31200,40,00:00-24:00,00:00-24:00,yes
+WH-04,Poznan,PL,Agnieszka Wrobel,15900,18,05:00-21:00,06:00-14:00,no
+WH-05,Zaragoza,ES,Lucia Ferrer,9800,12,07:00-19:00,closed,yes
+WH-06,Lisbon,PT,Rui Carvalho,7300,9,07:00-19:00,08:00-12:00,no

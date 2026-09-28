@@ -162,3 +162,110 @@ export function gradeEvaluation(
   if (!checks.length) return null;
   return !output.error && checks.every(Boolean);
 }
+
+/** One reference Flow of the dataset, with how many examples expect it. */
+export interface EvaluationLeaderboardFlow {
+  key: string;
+  label: string;
+  examples: number;
+}
+
+/** One candidate's summary line; ratios are 0..1, null when not measured. */
+export interface EvaluationLeaderboardRow {
+  candidate: EvaluationCandidate;
+  accuracy: number | null;
+  autonomy: number | null;
+  errorRate: number;
+  eurPer1000: number;
+  medianMs: number | null;
+  p95Ms: number | null;
+  /** Correct examples per Flow, aligned with `flows`. */
+  flowCorrect: number[];
+}
+
+function referenceFlowKey(
+  reference: EvaluationExample["reference_outputs"],
+): string | null {
+  return reference.flow_id ?? reference.flow_name?.toLocaleLowerCase() ?? null;
+}
+
+/** Nearest-rank percentile over an ascending list. */
+function percentile(sorted: number[], p: number): number | null {
+  if (!sorted.length) return null;
+  return sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)]!;
+}
+
+function ratio(values: Array<boolean | null>): number | null {
+  const measured = values.filter((value) => value !== null);
+  return measured.length
+    ? measured.filter(Boolean).length / measured.length
+    : null;
+}
+
+/**
+ * The run's leaderboard: one row per candidate, most accurate first and
+ * cheapest first among equals. Latency percentiles leave out executions that
+ * errored, because how fast a call fails says nothing about the model.
+ */
+export function evaluationLeaderboard(run: EvaluationRun): {
+  flows: EvaluationLeaderboardFlow[];
+  rows: EvaluationLeaderboardRow[];
+} {
+  const flows = new Map<string, EvaluationLeaderboardFlow>();
+  const flowOf = new Map<string, string>();
+  for (const example of run.examples) {
+    const key = referenceFlowKey(example.reference_outputs);
+    if (!key) continue;
+    flowOf.set(example.id, key);
+    const flow = flows.get(key);
+    if (flow) flow.examples += 1;
+    else
+      flows.set(key, {
+        key,
+        label:
+          example.reference_outputs.flow_name ??
+          run.results.find((result) => result.flowId === key)?.flowName ??
+          key,
+        examples: 1,
+      });
+  }
+  const flowList = [...flows.values()];
+  const key = (candidate: EvaluationCandidate) =>
+    `${candidate.provider}:${candidate.modelId}`;
+
+  const rows = run.candidates.map((candidate): EvaluationLeaderboardRow => {
+    const results = run.results.filter(
+      (result) => key(result.candidate) === key(candidate),
+    );
+    const latencies = results
+      .filter((result) => !result.error)
+      .map((result) => result.latencyMs)
+      .sort((a, b) => a - b);
+    const cost = results.reduce((sum, result) => sum + result.costEur, 0);
+    return {
+      candidate,
+      accuracy: ratio(results.map((result) => result.accuracy)),
+      autonomy: ratio(results.map((result) => result.autonomous)),
+      errorRate: results.length
+        ? results.filter((result) => result.error !== null).length /
+          results.length
+        : 0,
+      eurPer1000: results.length ? (1000 * cost) / results.length : 0,
+      medianMs: percentile(latencies, 0.5),
+      p95Ms: percentile(latencies, 0.95),
+      flowCorrect: flowList.map(
+        (flow) =>
+          results.filter(
+            (result) =>
+              result.accuracy === true &&
+              flowOf.get(result.exampleId) === flow.key,
+          ).length,
+      ),
+    };
+  });
+  rows.sort(
+    (a, b) =>
+      (b.accuracy ?? -1) - (a.accuracy ?? -1) || a.eurPer1000 - b.eurPer1000,
+  );
+  return { flows: flowList, rows };
+}

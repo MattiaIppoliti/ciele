@@ -1,0 +1,115 @@
+[
+  {
+    "id": "kn-01",
+    "inputs": {
+      "question": "How many pages does the built-in website crawler stop at?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "30"
+      ],
+      "source_url_contains": [
+        "/knowledge/websites"
+      ]
+    }
+  },
+  {
+    "id": "kn-02",
+    "inputs": {
+      "question": "What is the maximum size of a file a visitor can attach in the chat window?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "8"
+      ],
+      "source_url_contains": [
+        "/assistants/general-settings"
+      ]
+    }
+  },
+  {
+    "id": "kn-03",
+    "inputs": {
+      "question": "How long can a voice recording last before it stops on its own?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "60"
+      ],
+      "source_url_contains": [
+        "/assistants/general-settings"
+      ]
+    }
+  },
+  {
+    "id": "kn-04",
+    "inputs": {
+      "question": "How many long-term memories can one signed-in visitor hold?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "200"
+      ],
+      "source_url_contains": [
+        "/data/long-term-memory"
+      ]
+    }
+  },
+  {
+    "id": "kn-05",
+    "inputs": {
+      "question": "How long must a conversation stay quiet before its memories are promoted?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "15"
+      ],
+      "source_url_contains": [
+        "/data/long-term-memory"
+      ]
+    }
+  },
+  {
+    "id": "kn-06",
+    "inputs": {
+      "question": "Which columns does the CSV need when I import FAQs?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "question",
+        "answer"
+      ],
+      "source_url_contains": [
+        "/knowledge/faqs"
+      ]
+    }
+  },
+  {
+    "id": "kn-07",
+    "inputs": {
+      "question": "Quale licenza usa il core dell'edizione open source?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "AGPL"
+      ],
+      "source_url_contains": [
+        "/editions"
+      ]
+    }
+  },
+  {
+    "id": "kn-08",
+    "inputs": {
+      "question": "Quante memorie a lungo termine può avere al massimo un visitatore autenticato?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "200"
+      ],
+      "source_url_contains": [
+        "/data/long-term-memory"
+      ]
+    }
+  }
+]

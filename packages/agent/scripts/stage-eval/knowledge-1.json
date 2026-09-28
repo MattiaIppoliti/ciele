@@ -1,0 +1,90 @@
+[
+  {
+    "id": "kf-40",
+    "inputs": {
+      "question": "Chi gestisce il magazzino di Saragozza?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Ferrer"
+      ]
+    }
+  },
+  {
+    "id": "kf-17",
+    "inputs": {
+      "question": "How many agency staff were in the headcount at the end of September 2026?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "212"
+      ]
+    }
+  },
+  {
+    "id": "kf-09",
+    "inputs": {
+      "question": "What is the nightly hotel cap in Frankfurt?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "180"
+      ]
+    }
+  },
+  {
+    "id": "kf-22",
+    "inputs": {
+      "question": "Which USB drive is allowed on company laptops?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Vault"
+      ]
+    }
+  },
+  {
+    "id": "kf-18",
+    "inputs": {
+      "question": "What is the base rate for a 5-20 kg parcel to Zone C?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "22.6"
+      ]
+    }
+  },
+  {
+    "id": "kf-03",
+    "inputs": {
+      "question": "Within how many days of the expense must a claim be submitted?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "45"
+      ]
+    }
+  },
+  {
+    "id": "kf-07",
+    "inputs": {
+      "question": "Who handles reports sent to the ethics address?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Varga"
+      ]
+    }
+  },
+  {
+    "id": "kf-10",
+    "inputs": {
+      "question": "What justification code is needed for a late travel booking?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "LB-2"
+      ]
+    }
+  }
+]

@@ -1,0 +1,89 @@
+[
+  {
+    "id": "kf-47",
+    "inputs": {
+      "question": "What is the base rate for Zone E?"
+    },
+    "reference_outputs": {}
+  },
+  {
+    "id": "kf-34",
+    "inputs": {
+      "question": "Which warehouse had the best on-time delivery in Q3 2026, and who manages it?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Joost"
+      ]
+    }
+  },
+  {
+    "id": "kf-32",
+    "inputs": {
+      "question": "What is the combined pallet capacity of all warehouses that have cold storage?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "59",
+        "400"
+      ]
+    }
+  },
+  {
+    "id": "kf-01",
+    "inputs": {
+      "question": "How many days of paid annual leave do full-time employees get?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "27"
+      ]
+    }
+  },
+  {
+    "id": "kf-30",
+    "inputs": {
+      "question": "How much per diem does an employee receive for a 3-day trip to Frankfurt this month?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "222"
+      ]
+    }
+  },
+  {
+    "id": "kf-31",
+    "inputs": {
+      "question": "What is the maximum hotel reimbursement for a 4-night stay in London?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "840"
+      ]
+    }
+  },
+  {
+    "id": "kf-14",
+    "inputs": {
+      "question": "What is the pallet capacity of the Rotterdam warehouse?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "31",
+        "200"
+      ]
+    }
+  },
+  {
+    "id": "kf-35",
+    "inputs": {
+      "question": "Who owns the improvement plan for the warehouse with the most damaged shipments in Q3, and what is the deadline?"
+    },
+    "reference_outputs": {
+      "answer_contains": [
+        "Ferrer",
+        "December"
+      ]
+    }
+  }
+]

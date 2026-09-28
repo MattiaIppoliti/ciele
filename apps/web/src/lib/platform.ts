@@ -101,6 +101,14 @@ export function addPlatformEvalModel(model: PlatformEvalModel): Promise<void> {
   return getWidgetDb().addPlatformEvalModel(model);
 }
 
+/** Remove one catalog addition. Callers MUST have checked isPlatformOwner first. */
+export function removePlatformEvalModel(
+  provider: PlatformEvalModel["provider"],
+  modelId: string,
+): Promise<void> {
+  return getWidgetDb().removePlatformEvalModel(provider, modelId);
+}
+
 /**
  * The Organizations a platform-level Alert goes to: those a platform owner is
  * a Member of. A fact about the decision model or the platform's own jobs is

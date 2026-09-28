@@ -13,10 +13,10 @@ Any member can open **Eval** and read runs. Editors, Admins, and Owners can uplo
 - **Classifier** compares which Flow each model selects.
 - **Orchestration** runs the complete turn with each model as the classifier.
 - **Fallback** makes the Assistant's own provider unavailable and compares the reserve models.
-- **Pre-flight** compares the pre-flight decision and its confidence.
+- **Pre-flight** compares the pre-flight decision and its confidence. Only Jev gives calibrated confidence, so only Jev can route a message. Other models show the decision they would take.
 - **Reranker** compares the Sources that each reranker puts in the top six results.
 
-Each stage shows only the models that can run it with the Organization's provider connections.
+Each stage shows only the models that can run it. A model can run through a provider connection of the Organization or through AI Gateway.
 
 ## Upload a dataset
 
@@ -52,10 +52,21 @@ The reliability dashboard shows six charts for each model:
 - **Autonomy**, the turns that completed without a fallback or a refusal.
 - **Error rate**, the executions that had a technical error.
 
+Under the charts, the **Leaderboard** table shows one row for each model. The most accurate model is first. When two models have the same accuracy, the less expensive model is first.
+
+- **Accuracy**, the examples with reference outputs that the model got correct.
+- **Autonomy**, only for the stages that measure it.
+- **Errors**, only when a model had a technical error.
+- **€ / 1,000**, the estimated cost of 1,000 examples.
+- **Median** and **p95**, the time per example. Executions with an error are not included.
+- On the **Classifier** stage, one column for each reference Flow. Each column shows the number of correct examples for that Flow.
+
+The table shows the lowest cost and the lowest median time in bold.
+
 Select a row in **Results by question** to compare the answers, the Sources, and the errors of each model.
 
 ## Limits
 
 - A run searches the live Knowledge. A change to Knowledge during a run can change its results.
 - A run does not do actions with external effects, such as **Send email** or **API request**. A Flow that contains one records an error.
-- Eval model calls use the Organization's provider connections and count toward its budget.
+- Eval model calls use the provider connections of the Organization. When no connection serves a model, the call uses AI Gateway. All calls count toward the budget of the Organization.

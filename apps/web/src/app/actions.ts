@@ -236,6 +236,7 @@ import type { InboxConversationDetail } from "@ciele/ops";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv, serializeFaqCsv } from "@/lib/faq-csv";
 import {
   addPlatformEvalModel,
+  removePlatformEvalModel,
   isPlatformOwner,
   listPlatformEvalModels,
   setPlatformSystemPrompt,
@@ -558,6 +559,28 @@ export async function addPlatformModelAction(
   }
   // Every model picker reads the catalog: settings, Eval, the Assistant
   // editor and the Teammate pages.
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Takes one model out of the shared catalog, so no picker offers it again. An
+ * Assistant or Teammate already set to it keeps its stored model ID.
+ * Platform-owner only.
+ */
+export async function removePlatformModelAction(
+  input: z.input<typeof platformModelIdentity>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await requireSession();
+  if (!isPlatformOwner(session.email))
+    return { ok: false, error: "Only a Ciele platform admin can remove models." };
+  const parsed = platformModelIdentity.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Choose a valid model." };
+  try {
+    await removePlatformEvalModel(parsed.data.provider, parsed.data.modelId);
+  } catch (error) {
+    return { ok: false, error: thrownMessage(error, "Could not remove the model.") };
+  }
   revalidatePath("/", "layout");
   return { ok: true };
 }

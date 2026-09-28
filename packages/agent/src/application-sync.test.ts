@@ -80,6 +80,33 @@ describe("Application Import synchronization", () => {
     ).toEqual([]);
   });
 
+  it("names a Db failure, which supabase-js throws as a plain object, in the Alert", async () => {
+    const { applicationImport } = await configuredImport();
+    const connector: ApplicationConnector = {
+      provider: "salesforce",
+      async discoverScopes() {
+        return { scopes: [] };
+      },
+      async synchronize() {
+        throw { message: "permission denied for table sources", code: "42501" };
+      },
+    };
+
+    await expect(
+      syncApplicationImport({
+        db,
+        organizationId: DEMO_ORG.id,
+        importId: applicationImport.id,
+        connectors: { salesforce: connector },
+      })
+    ).rejects.toMatchObject({ code: "42501" });
+    expect(
+      (await db.listAlerts(DEMO_ORG.id)).find(
+        (alert) => alert.sourceKey === `application-import:${applicationImport.id}`
+      )?.detail
+    ).toContain("permission denied for table sources");
+  });
+
   it("stops a run whose lease was lost during the provider call before it writes anything", async () => {
     const { applicationImport } = await configuredImport();
     const connector: ApplicationConnector = {

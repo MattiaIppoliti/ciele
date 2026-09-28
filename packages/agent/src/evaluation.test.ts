@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { getMockDb, resetMockDb } from "@agent-hub/db";
-import { evaluateCase } from "./evaluation";
+import { evaluateCase, evaluationModel } from "./evaluation";
 
 const previousKey = process.env.OPENAI_API_KEY;
 afterEach(() => {
@@ -105,5 +105,31 @@ describe("synthetic evaluation", () => {
         })
       ).conversations,
     ).toHaveLength(before.conversations.length);
+  });
+});
+
+describe("pre-flight evaluation model", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("wraps a chat model only AI Gateway serves, as an uncalibrated adapter", () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key-no-network");
+    const resolved = evaluationModel({ provider: "openai", modelId: "gpt-6-luna" }, []);
+    expect(resolved).toMatchObject({
+      backend: "adapter",
+      provider: "openai",
+      modelId: "gpt-6-luna",
+      credentialKind: "platform",
+      calibrated: false,
+    });
+    expect(resolved.model.provider).toBe("gateway.evaluation");
+  });
+
+  it("refuses a provider with neither a key nor a Gateway", () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("AI_GATEWAY_API_KEY", "");
+    expect(() => evaluationModel({ provider: "openai", modelId: "gpt-6-luna" }, [])).toThrow(
+      "No credential is available for this provider.",
+    );
   });
 });

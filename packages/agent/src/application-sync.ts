@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { sealSecret, type ApplicationSyncRun } from "@agent-hub/core";
+import { sealSecret, thrownMessage, type ApplicationSyncRun } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type {
   ApplicationArtifact,
@@ -475,7 +475,9 @@ export async function syncApplicationImport(
     }
     return run;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Application sync failed";
+    // A Db failure arrives as supabase-js's plain `{ message, code }` object,
+    // not an Error; reading only Errors hid every one behind the fallback.
+    const message = thrownMessage(error, "Application sync failed");
     if (organizationByteLimit !== null) {
       try {
         const activeMappings = await db.listApplicationSources(importId);

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "rt-01",
+    "inputs": {
+      "question": "hey"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-02",
+    "inputs": {
+      "question": "what can you do?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-03",
+    "inputs": {
+      "question": "I want to talk to a person"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-04",
+    "inputs": {
+      "question": "Can you help me find the per diem for Germany?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-05",
+    "inputs": {
+      "question": "thx!"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-06",
+    "inputs": {
+      "question": "who built you?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-07",
+    "inputs": {
+      "question": "operator please"
+    },
+    "reference_outputs": {
+      "flow_name": "Human Help Needed"
+    }
+  },
+  {
+    "id": "rt-08",
+    "inputs": {
+      "question": "thanks! and what is the fuel surcharge?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  }
+]

@@ -120,6 +120,8 @@ const KNOWLEDGE_ORIGINAL_MAX_BYTES = 25 * 1024 * 1024;
 const KNOWLEDGE_FILE_CONTENT_TYPES: Record<string, string> = {
   pdf: "application/pdf",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   txt: "text/plain",
   text: "text/plain",
   md: "text/plain",
@@ -141,7 +143,7 @@ export function validateKnowledgeFile(file: {
   size: number;
 }): { ok: true } | { ok: false; error: string } {
   if (!knowledgeFileExtension(file.name)) {
-    return { ok: false, error: "Upload a PDF, Word (.docx), Markdown, or text file" };
+    return { ok: false, error: "Upload a PDF, Word, PowerPoint, Excel, Markdown, or text file" };
   }
   if (file.size === 0) {
     return { ok: false, error: "The file is empty" };
@@ -176,9 +178,12 @@ export async function uploadKnowledgeOriginal(
     id: input.id,
   });
 
+  // The bytes, not the File: supabase-js sends a Blob body as multipart with
+  // the Blob's own type and ignores `contentType`, so a browser's
+  // `text/markdown` for a .md file reached the bucket allowlist and was refused.
   const { error } = await client.storage
     .from(KNOWLEDGE_ORIGINALS_BUCKET)
-    .upload(path, input.file, {
+    .upload(path, await input.file.arrayBuffer(), {
       cacheControl: "0",
       contentType:
         KNOWLEDGE_FILE_CONTENT_TYPES[

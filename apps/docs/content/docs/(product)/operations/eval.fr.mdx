@@ -4,15 +4,15 @@ description: Comparez deux ou trois modèles sur une même étape d'un Assistant
 ---
 
 **Eval** soumet les mêmes questions à deux ou trois modèles et compare les
-résultats. Une exécution Eval teste une étape d'un Assistant. Il ne crée aucune
-Conversation ; par conséquent, il n'apparaît ni dans l'Inbox ni dans les
-Insights.
+résultats. Une exécution Eval teste une étape d'un Assistant. Elle ne crée
+aucune Conversation ; par conséquent, elle n'apparaît ni dans l'Inbox ni dans
+les Insights.
 
 Tout membre peut ouvrir **Eval** et consulter les exécutions. Les Editors, les
 Admins et les Owners peuvent importer des jeux de données et lancer des
 exécutions.
 
-## Étapes
+## Stages
 
 - **Answer** compare la réponse, les Sources citées et la qualité de la réponse
   de chaque modèle.
@@ -21,12 +21,16 @@ exécutions.
   classificateur.
 - **Fallback** rend le fournisseur propre de l'Assistant indisponible et compare
   les modèles de réserve.
-- **Pre-flight** compare la décision de pré-vol et son niveau de confiance.
+- **Pre-flight** compare la décision de pré-vol et son niveau de confiance. Seul
+  Jev fournit un niveau de confiance calibré ; par conséquent, seul Jev peut
+  acheminer un message. Les autres modèles indiquent la décision qu'ils
+  prendraient.
 - **Reranker** compare les Sources que chaque reranker place dans les six
   premiers résultats.
 
-Chaque étape affiche uniquement les modèles qui peuvent l'exécuter avec les
-connexions aux fournisseurs de l'organisation.
+Chaque étape affiche uniquement les modèles qui peuvent l'exécuter. Un modèle
+peut s'exécuter via une connexion fournisseur de l'organisation ou via AI
+Gateway.
 
 ## Importer un jeu de données
 
@@ -43,7 +47,7 @@ Un jeu de données peut contenir jusqu'à 50 exemples. Chaque ID d'exemple doit
 
 Les champs de référence sont `answer_contains`, `flow_id`, `flow_name` et
 `source_url_contains`. Ciele les vérifie en tant que texte littéral.
-L'exactitude n'est pas un jugement portant sur le sens ni sur les faits.
+L'exactitude n'est pas un jugement portant sur le sens ou sur les faits.
 
 ## Démarrer une exécution
 
@@ -69,8 +73,24 @@ Le tableau de bord de fiabilité affiche six graphiques pour chaque modèle :
   récupération.
 - **Tokens**, l'entrée et la sortie du modèle par exemple.
 - **Latency**, le temps moyen par exemple.
-- **Autonomy**, les tours qui se sont terminés sans fallback ni refus.
+- **Autonomy**, les tours qui se sont terminés sans fallback ni refusal.
 - **Error rate**, les exécutions qui ont rencontré une erreur technique.
+
+Sous les graphiques, le tableau **Leaderboard** affiche une ligne pour chaque
+modèle. Le modèle le plus précis apparaît en premier. Lorsque deux modèles
+présentent la même précision, le modèle le moins coûteux est placé en premier.
+
+- **Accuracy**, les exemples avec des sorties de référence que le modèle a
+  traités correctement.
+- **Autonomy**, uniquement pour les étapes qui le mesurent.
+- **Errors**, uniquement lorsqu'un modèle a rencontré une erreur technique.
+- **€ / 1 000**, le coût estimé pour 1 000 exemples.
+- **Median** et **p95**, le temps par exemple. Les exécutions comportant une
+  erreur ne sont pas incluses.
+- À l'étape **Classifier**, une colonne pour chaque Flow de référence. Chaque
+  colonne indique le nombre d'exemples corrects pour ce Flow.
+
+Le tableau indique en gras le coût le plus bas et le temps médian le plus court.
 
 Sélectionnez une ligne dans **Results by question** pour comparer les réponses,
 les Sources et les erreurs de chaque modèle.
@@ -78,10 +98,12 @@ les Sources et les erreurs de chaque modèle.
 ## Limites
 
 - Une exécution effectue une recherche dans la Knowledge en temps réel. Une
-  modification apportée à la Knowledge pendant une exécution peut en modifier
-  les résultats.
+  modification apportée à Knowledge pendant une exécution peut modifier ses
+  résultats.
 - Une exécution n'effectue pas d'actions ayant des effets externes, telles que
   **Send email** ou **API request**. Un Flow qui en contient un enregistre une
   erreur.
-- Les appels au modèle Eval utilisent les connexions aux fournisseurs de
-  l'organisation et sont comptabilisés dans son budget.
+- Les appels du modèle Eval utilisent les connexions aux fournisseurs de
+  l'Organisation. Lorsqu'aucune connexion ne dessert un modèle, l'appel utilise
+  AI Gateway. Tous les appels sont comptabilisés dans le budget de
+  l'Organisation.

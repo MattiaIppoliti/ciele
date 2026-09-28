@@ -465,24 +465,22 @@ function providerConfigFields(
             </SelectContent>
           </Select>
         </div>
-        <fieldset className="min-w-0 space-y-2">
-          <legend className="text-sm leading-none font-medium">
-            Data categories (optional)
-          </legend>
-          <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
-            {scopesLoading && (
-              <p role="status" className="p-2 text-sm">
-                Loading categories…
-              </p>
-            )}
-            {categories.map((scope) => (
-              <label key={scope.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm">
-                <input type="checkbox" checked={selected.has(scope.id)} onChange={() => toggleCsv("dataCategories", scope.id)} />
-                <span className="min-w-0 [overflow-wrap:anywhere]">{scope.label}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        {/* An org without data categories has nothing to filter by. */}
+        {categories.length > 0 && (
+          <fieldset className="min-w-0 space-y-2">
+            <legend className="text-sm leading-none font-medium">
+              Data categories (optional)
+            </legend>
+            <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
+              {categories.map((scope) => (
+                <label key={scope.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm">
+                  <input type="checkbox" checked={selected.has(scope.id)} onChange={() => toggleCsv("dataCategories", scope.id)} />
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{scope.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
       </>
     );
   }

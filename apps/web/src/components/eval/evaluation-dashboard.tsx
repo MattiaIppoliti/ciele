@@ -1,17 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -26,8 +17,15 @@ import {
 import { modelSelector, type EvaluationResult, type EvaluationRun } from "@agent-hub/core";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { EvaluationLeaderboard } from "@/components/eval/evaluation-leaderboard";
+import { ChartSkeleton } from "@/components/insights/dashboard/dashboard-kit";
+import { RANK_COLORS } from "@/components/insights/dashboard/palette";
 
-const PALETTE = ["#4f8fea", "#8b5cf6", "#10b981"];
+const MetricBars = dynamic(() => import("./evaluation-bars").then((m) => m.MetricBars), {
+  ssr: false,
+  loading: () => <ChartSkeleton className="h-44" />,
+});
+
 const METRICS = [
   {
     key: "accuracy",
@@ -106,6 +104,7 @@ function candidateStats(results: EvaluationResult[]) {
 
 type CandidateStats = ReturnType<typeof candidateStats> & {
   key: string;
+  label: string;
   color: string;
   candidate: EvaluationRun["candidates"][number];
 };
@@ -121,9 +120,10 @@ function MetricChart({
   const rows = stats
     .filter((row) => row[metric.key] !== null)
     .map((row) => ({
-      name: row.candidate.modelId,
+      key: `m${stats.indexOf(row)}`,
+      model: row.label,
       value: row[metric.key] as number,
-      fill: row.color,
+      color: row.color,
     }));
   const Icon = metric.icon;
   return (
@@ -132,27 +132,14 @@ function MetricChart({
         <Icon className="size-4 text-muted-foreground" /> {metric.title}
       </h3>
       <p className="mt-1 text-xs text-muted-foreground">{metric.note}</p>
-      <div className="mt-3 h-40 w-full">
+      <div className="mt-3 w-full">
         {rows.length ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis
-                type="number"
-                tickFormatter={(value: number) => number(value, metric.unit)}
-                fontSize={11}
-              />
-              <YAxis dataKey="name" type="category" width={120} fontSize={11} />
-              <Tooltip formatter={(value) => number(Number(value), metric.unit)} />
-              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={28}>
-                {rows.map((row) => (
-                  <Cell key={row.name} fill={row.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <MetricBars
+            rows={rows}
+            format={(value) => number(value, metric.unit)}
+          />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">
             Not measured for this stage.
           </div>
         )}
@@ -161,14 +148,22 @@ function MetricChart({
   );
 }
 
-export function EvaluationDashboard({ run }: { run: EvaluationRun }) {
+export function EvaluationDashboard({
+  run,
+  labels,
+}: {
+  run: EvaluationRun;
+  /** Display names by model selector; a model missing here shows its ID. */
+  labels: Record<string, string>;
+}) {
   const dataset = { name: run.datasetName, examples: run.examples };
   const assistantName = run.assistantName;
   const [selected, setSelected] = useState<string | null>(null);
   const stats: CandidateStats[] = run.candidates.map((candidate, index) => ({
     candidate,
     key: candidateKey(candidate),
-    color: PALETTE[index % PALETTE.length]!,
+    color: RANK_COLORS[index % RANK_COLORS.length]!,
+    label: labels[candidateKey(candidate)] ?? candidate.modelId,
     ...candidateStats(
       run.results.filter(
         (result) => candidateKey(result.candidate) === candidateKey(candidate),
@@ -217,13 +212,8 @@ export function EvaluationDashboard({ run }: { run: EvaluationRun }) {
         {stats.map((row) => (
           <div key={row.key} className="rounded-xl border bg-card p-4">
             <div className="flex items-center gap-2">
-              <span
-                className="size-2.5 rounded-full"
-                style={{ background: row.color }}
-              />
-              <span className="text-sm font-medium">
-                {row.candidate.modelId}
-              </span>
+              <span className="size-2.5 rounded-full" style={{ background: row.color }} />
+              <span className="text-sm font-medium">{row.label}</span>
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
               {row.candidate.provider} ·{" "}
@@ -263,6 +253,7 @@ export function EvaluationDashboard({ run }: { run: EvaluationRun }) {
           ))}
         </div>
       </section>
+      <EvaluationLeaderboard run={run} labels={labels} />
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="border-b px-5 py-4">
           <h2 className="font-medium">Results by question</h2>

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "rt-09",
+    "inputs": {
+      "question": "ok got it"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-10",
+    "inputs": {
+      "question": "What kinds of questions can you answer?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-11",
+    "inputs": {
+      "question": "What license does the open-source edition use?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-12",
+    "inputs": {
+      "question": "Are you a bot or a real person?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-13",
+    "inputs": {
+      "question": "grazie mille"
+    },
+    "reference_outputs": {
+      "flow_name": "Basic Interaction"
+    }
+  },
+  {
+    "id": "rt-14",
+    "inputs": {
+      "question": "I need to talk to a human"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  },
+  {
+    "id": "rt-15",
+    "inputs": {
+      "question": "Cosa sai fare?"
+    },
+    "reference_outputs": {
+      "flow_name": "Assistant Information"
+    }
+  },
+  {
+    "id": "rt-16",
+    "inputs": {
+      "question": "Come importo le FAQ da un file CSV?"
+    },
+    "reference_outputs": {
+      "flow_name": "Default behavior"
+    }
+  }
+]
