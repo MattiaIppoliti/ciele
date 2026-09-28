@@ -8,18 +8,27 @@ import { Skeleton } from "@agent-hub/ui";
  */
 export default function AssistantOverviewLoading() {
   return (
-    <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8" aria-busy="true">
-      <Skeleton className="h-80 rounded-xl" />
+    <div
+      className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8"
+      role="status"
+      aria-busy="true"
+    >
+      {/* A skeleton is silent to a screen reader; this is what it hears. */}
+      <span className="sr-only">Loading assistant…</span>
+      {/* Heights measured on the demo Overview (production build): the status
+          card, Setup / Activity / Quality, Flows beside Knowledge, Recent
+          conversations. They follow data, so these are typical, not exact. */}
+      <Skeleton className="h-124 rounded-xl" />
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={`row-${i}`} className="h-64 rounded-xl" />
-        ))}
+        <Skeleton className="h-44.5 rounded-xl" />
+        <Skeleton className="h-94.5 rounded-xl" />
+        <Skeleton className="h-57 rounded-xl" />
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-72 rounded-xl" />
-        <Skeleton className="h-72 rounded-xl" />
+        <Skeleton className="h-64.5 rounded-xl" />
+        <Skeleton className="h-42 rounded-xl" />
       </div>
-      <Skeleton className="mt-6 h-72 rounded-xl" />
+      <Skeleton className="mt-6 h-29.5 rounded-xl" />
     </div>
   );
 }

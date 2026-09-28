@@ -3,8 +3,8 @@ title: API v1
 description: Appelez l'API d'administration actuelle de Ciele à l'aide d'une clé API d'organisation.
 ---
 
-L'API Ciele utilise JSON sur HTTP. Toutes les routes de la version 1 commencent
-par `/api/v1`.
+L'API Ciele utilise JSON sur HTTP. Tous les itinéraires de la version 1
+commencent par `/api/v1`.
 
 [Ouvrez la référence API interactive](/api-reference) pour parcourir toutes les
 opérations publiques par domaine. Téléchargez le contrat OpenAPI actuel à cet
@@ -53,7 +53,7 @@ Les codes d'état courants sont :
 | --- | --- |
 | `400` | Le corps de la requête est mal formé ou un fichier requis est manquant. |
 | `401` | La clé est manquante, non valide ou révoquée. |
-| `403` | Le rôle de la clé n'autorise pas l'opération. |
+| `403` | La clé Role n'autorise pas l'opération. |
 | `404` | La ressource n'existe pas dans l'organisation. |
 | `409` | La requête entre en conflit avec l'état actuel. |
 | `422` | L'entrée analysée échoue à la validation. |
@@ -61,8 +61,8 @@ Les codes d'état courants sont :
 ## Pagination
 
 Utilisez les paramètres de pagination indiqués pour chaque opération. Les listes
-basées sur un curseur renvoient `nextCursor`. Passez-le en tant que `cursor`
-lors de la requête suivante.
+basées sur un curseur renvoient `nextCursor`. Transmettez-le en tant que
+`cursor` lors de la requête suivante.
 
 ## Nouvelles tentatives sécurisées
 
@@ -84,12 +84,11 @@ l'ensemble complet et actuel des opérations.
 - Inbox : consulter, exporter, épingler, annoter, évaluer et supprimer des
   Conversations.
 - Améliorations : lister, lire et mettre à jour les éléments.
-- Entities and Memories : gérez les données typées de l'organisation et
-  l'effacement des mémoires selon le périmètre défini.
+- Memories : inspectez les paramètres et effectuez un effacement de la mémoire
+  dans un périmètre défini.
 - SSO : gérez les revendications d'identité, les paramètres de connexion, la
   validation et la déconnexion.
-- Help Desks : gérez les desks, les canaux d'escalade, l'ordonnancement et
-  ServiceNow.
+- Help Desks : gérez les desks, les canaux d'escalade, l'ordre et ServiceNow.
 - Teammates : gérez les Teammates IA et consultez vos propres conversations avec
   les Teammates.
 - Projets : gérez les Projets auxquels les Teammates sont associés, ainsi que

@@ -32,13 +32,8 @@ import { GET as getConversation } from "@/app/api/v1/conversations/[id]/route";
 import { GET as listImprovements } from "@/app/api/v1/improvements/route";
 import { PATCH as patchImprovement } from "@/app/api/v1/improvements/[id]/route";
 import { GET as whoami } from "@/app/api/v1/whoami/route";
-import { GET as listEntities, POST as postEntity } from "@/app/api/v1/entities/route";
-import { PATCH as patchEntity } from "@/app/api/v1/entities/[id]/route";
-import { POST as importRecords } from "@/app/api/v1/entities/[id]/records/import/route";
-import { POST as queryRecords } from "@/app/api/v1/entities/[id]/records/query/route";
 import { GET as memorySettings, PATCH as patchMemorySettings } from "@/app/api/v1/memories/settings/route";
 import { GET as listMemorySubjects } from "@/app/api/v1/memories/subjects/route";
-import { GET as getAssistantEntities, PATCH as patchAssistantEntities } from "@/app/api/v1/assistants/[id]/entities/route";
 import { GET as getSsoIdentity, PATCH as patchSsoIdentity } from "@/app/api/v1/sso/identity/route";
 import { GET as listInvites } from "@/app/api/v1/invites/route";
 
@@ -351,79 +346,7 @@ describe("improvements over /api/v1 (#625)", () => {
   });
 });
 
-describe("Entities and Memories over /api/v1 (#663–#667)", () => {
-  it("creates/imports/queries typed Records and gates writes by API-key role", async () => {
-    const viewer = await mintKey("viewer");
-    const editor = await mintKey("editor");
-    const input = {
-      name: "API Orders",
-      attributes: [
-        { key: "order_id", label: "Order ID", type: "text" },
-        { key: "delayed", label: "Delayed", type: "boolean" },
-      ],
-      keyAttribute: "order_id",
-      scope: "shared",
-    };
-    expect((await postEntity(req("/api/v1/entities", viewer, { method: "POST", body: input }))).status).toBe(403);
-    expect((await postEntity(req("/api/v1/entities", editor, {
-      method: "POST",
-      body: { ...input, name: "   " },
-    }))).status).toBe(422);
-    const entityResponse = await postEntity(req("/api/v1/entities", editor, { method: "POST", body: input }));
-    expect(entityResponse.status).toBe(201);
-    const entity = await entityResponse.json();
-    expect((await patchEntity(
-      req(`/api/v1/entities/${entity.id}`, editor, {
-        method: "PATCH",
-        body: { name: "   " },
-      }),
-      params(entity.id)
-    )).status).toBe(422);
-
-    const imported = await importRecords(
-      req(`/api/v1/entities/${entity.id}/records/import`, editor, {
-        method: "POST",
-        body: { csv: "order_id,delayed\nA-1,true\nA-2,false\n" },
-      }),
-      params(entity.id)
-    );
-    expect(await imported.json()).toMatchObject({ upserted: 2, rejected: [] });
-    const queried = await queryRecords(
-      req(`/api/v1/entities/${entity.id}/records/query`, viewer, {
-        method: "POST",
-        body: { filters: { delayed: true } },
-      }),
-      params(entity.id)
-    );
-    expect((await queried.json()).data.map((record: { key: string }) => record.key)).toEqual(["A-1"]);
-    expect((await listEntities(req("/api/v1/entities", viewer))).status).toBe(200);
-
-    const assistant = await makeAssistant(editor, "Entity-enabled Assistant");
-    await getMockDb().updateAssistant(assistant.id, {
-      tools: { builtIns: { fetchUrl: true } },
-    });
-    const selection = await patchAssistantEntities(
-      req(`/api/v1/assistants/${assistant.id}/entities`, editor, {
-        method: "PATCH",
-        body: { entityIds: [entity.id] },
-      }),
-      params(assistant.id)
-    );
-    expect(await selection.json()).toEqual({ entityIds: [entity.id] });
-    expect(
-      await (
-        await getAssistantEntities(
-          req(`/api/v1/assistants/${assistant.id}/entities`, viewer),
-          params(assistant.id)
-        )
-      ).json()
-    ).toEqual({ entityIds: [entity.id] });
-    expect((await getMockDb().getAssistant(assistant.id))?.tools).toEqual({
-      builtIns: { fetchUrl: true },
-      entities: [entity.id],
-    });
-  });
-
+describe("Memories and SSO identity over /api/v1 (#664–#667)", () => {
   it("reads memory settings for viewers and limits changes to admins", async () => {
     const viewer = await mintKey("viewer");
     const admin = await mintKey("admin");

@@ -529,6 +529,15 @@ against the latest Publication; a failing Goal raises an auto-resolving Alert. F
 **quarantined**, never deleted.
 _Avoid_: test, check (generic).
 
+**Guardrail**:
+One entry in an Assistant's ordered list of checks around every Visitor turn. An **input**
+Guardrail (length limit, moderation, regular expression, topic restriction) reads the Visitor's
+message before any Flow routes it, and the first that blocks ends the turn on its own reply; a
+`log` Guardrail only records the hit in the turn trace. A **stream** Guardrail hides the text a
+model writes between two markers, on the wire and in the saved message alike. Travels in the
+Publication snapshot. Never applied to Teammate turns or to verbatim Message text.
+_Avoid_: filter, policy, moderation (one type of Guardrail, not the concept).
+
 **Answer Verdict**:
 The independent verifier's one-line judgment (pass/fail + reason) on a generative answer, graded
 fresh-context from (question, answer, cited Document content) by a cheap-tier model; one Verdict per

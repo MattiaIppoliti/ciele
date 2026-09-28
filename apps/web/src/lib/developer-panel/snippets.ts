@@ -35,11 +35,10 @@ export interface RenderedSnippet {
 }
 
 const IRREGULAR: Record<string, string> = {
-  entities: "entity",
   memories: "memory",
 };
 
-/** "help-desks" → "helpDesk", "api-keys" → "apiKey", "entities" → "entity". */
+/** "help-desks" → "helpDesk", "api-keys" → "apiKey", "memories" → "memory". */
 function singularCamel(segment: string): string {
   const singular =
     IRREGULAR[segment] ??

@@ -1,5 +1,2 @@
-import { RouteSkeleton } from "@/components/route-skeleton";
-
-export default function LibraryLoading() {
-  return <RouteSkeleton variant="list" />;
-}
+// The index only redirects to /library/websites, so it waits in the tab's shape.
+export { default } from "./[tab]/loading";

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Assistant } from "@agent-hub/core";
+import { RollRow } from "@/components/motion/roll-in-text";
 import { Clock, GalleryVerticalEnd, LayoutGrid, Search } from "lucide-react";
 import { ArrowDownAZ, ListFilter } from "lucide-react";
 import { Button } from "@agent-hub/ui";
@@ -153,8 +154,8 @@ export function AssistantsPageClient({
         {view === "grid" ? (
           <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
             {filtered.map((assistant, index) => (
+              <RollRow key={assistant.id} index={index}>
               <div
-                key={assistant.id}
                 // Bento rhythm: every 6th card spans two columns → rows of
                 // [2+1] then [1+1+1].
                 className={index % 6 === 0 ? "md:col-span-2" : "col-span-1"}
@@ -167,19 +168,21 @@ export function AssistantsPageClient({
                   hasPersistentHover={index === 0}
                 />
               </div>
+              </RollRow>
             ))}
           </div>
         ) : (
           <div className="bg-card mt-6 divide-y rounded-xl border shadow-xs">
             {filtered.map((assistant, index) => (
+              <RollRow key={assistant.id} index={index}>
               <AssistantCard
-                key={assistant.id}
                 assistant={assistant}
                 canEdit={canCreate}
                 canDelete={canDelete}
                 view="list"
                 hasPersistentHover={index === 0}
               />
+              </RollRow>
             ))}
           </div>
         )}

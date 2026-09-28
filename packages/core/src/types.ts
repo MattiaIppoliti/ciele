@@ -1,3 +1,4 @@
+import type { AssistantGuardrail, GuardrailTraceEntry } from "./guardrails";
 import type { TriageEvidence } from "./document-triage";
 import type { Reversibility } from "./approval-gate";
 import type { ModelRef, ModelSource } from "./model-choice";
@@ -855,8 +856,6 @@ export interface AssistantTools {
   builtIns?: Partial<Record<BuiltInToolName, boolean>>;
   /** Opt-in interactive knowledge practice, disabled unless explicitly enabled. */
   studyMode?: StudyModeSettings;
-  /** Entity schemas selected for generated Record-retrieval tools. */
-  entities?: string[];
 }
 
 /** Declared type of a catalogued endpoint parameter, shown to the model. */
@@ -1055,89 +1054,6 @@ export type SkillSnapshot = Pick<
   Skill,
   "id" | "name" | "description" | "prompt" | "starter"
 >;
-
-// ---------------------------------------------------------------------------
-// Entities + Records: org-level structured business data (#663).
-
-export type EntityAttributeType = "text" | "number" | "date" | "boolean";
-
-export interface EntityAttribute {
-  key: string;
-  label: string;
-  type: EntityAttributeType;
-}
-
-export type EntityScope = "shared" | "user";
-
-export interface Entity {
-  id: string;
-  organizationId: string;
-  name: string;
-  description: string;
-  attributes: EntityAttribute[];
-  keyAttribute: string;
-  scope: EntityScope;
-  identityAttribute: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type EntityRecordValue = string | number | boolean | null;
-
-export interface EntityRecord {
-  id: string;
-  entityId: string;
-  key: string;
-  values: Record<string, EntityRecordValue>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface EntityInput {
-  name: string;
-  description?: string;
-  attributes: EntityAttribute[];
-  keyAttribute: string;
-  scope: EntityScope;
-  identityAttribute?: string | null;
-}
-
-export type EntitySnapshot = Pick<
-  Entity,
-  "id" | "name" | "description" | "attributes" | "scope" | "identityAttribute"
->;
-
-export interface EntityRecordQuery {
-  filters?: Record<string, EntityRecordValue>;
-  search?: string;
-  limit?: number;
-}
-
-export interface EntitySyncConfig {
-  entityId: string;
-  url: string;
-  sealedHeaders: string | null;
-  cadenceHours: number;
-  prune: boolean;
-  mapping: Record<string, string>;
-  lastSyncedAt: string | null;
-}
-
-export type EntitySyncConfigInput = Omit<
-  EntitySyncConfig,
-  "entityId" | "lastSyncedAt"
->;
-
-export interface EntitySyncRun {
-  id: string;
-  entityId: string;
-  status: "succeeded" | "failed";
-  upserted: number;
-  pruned: number;
-  rejected: string[];
-  error: string | null;
-  finishedAt: string;
-}
 
 export interface Memory {
   id: string;
@@ -1860,6 +1776,12 @@ export interface Assistant {
    * per org (see {@link SsoConnection}).
    */
   requireSignIn: boolean;
+  /**
+   * Checks around every Visitor turn, in the admin's order (see guardrails.ts).
+   * Optional because Publication snapshots written before it existed have no
+   * key; absent and empty both mean no guardrails.
+   */
+  guardrails?: AssistantGuardrail[];
   createdAt: string;
   updatedAt: string;
 }
@@ -1889,6 +1811,7 @@ export interface PublicationConfig {
     | "quickReplies"
     | "answeringStyle"
     | "simplifiedThinking"
+    | "guardrails"
     | "chatLauncherEnabled"
     | "modelProvider"
     | "modelId"
@@ -1906,8 +1829,6 @@ export interface PublicationConfig {
   collections: Array<{ id: string; name: string }>;
   /** Attached Skills frozen at publish time (older snapshots lack it). */
   skills?: SkillSnapshot[];
-  /** Entity schemas frozen at publish time; Record values remain live. */
-  entities?: EntitySnapshot[];
 }
 
 export interface Publication {
@@ -2411,7 +2332,6 @@ export type BackgroundJobKind =
   | "draft_goal_proposal"
   | "promote_memories"
   | "distill_agent_memory"
-  | "sync_entity_records"
   | "sync_application_import"
   /** Human review (#841): deliver the request, then resume or halt the Flow. */
   | "deliver_review_request"
@@ -3486,6 +3406,12 @@ export interface StoredTurnTrace {
    * from an unshadowed one on that screen.
    */
   preflight?: PreflightTraceRecord;
+  /**
+   * The input guardrails that did not simply pass: blocked, logged, or could
+   * not run. Beside `steps` for the pre-flight's reason: a Visitor must not
+   * learn which rule fired or that one was watching.
+   */
+  guardrails?: GuardrailTraceEntry[];
 }
 
 /**
@@ -4598,6 +4524,7 @@ export type AssistantPatch = Partial<
     | "quickReplies"
     | "answeringStyle"
     | "simplifiedThinking"
+    | "guardrails"
     | "chatLauncherEnabled"
     | "modelProvider"
     | "modelId"

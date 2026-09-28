@@ -1257,34 +1257,6 @@
       "createdAt"
     ]
   },
-  "get /assistants/{id}/entities": {
-    "type": "object",
-    "properties": {
-      "entityIds": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "required": [
-      "entityIds"
-    ]
-  },
-  "patch /assistants/{id}/entities": {
-    "type": "object",
-    "properties": {
-      "entityIds": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "required": [
-      "entityIds"
-    ]
-  },
   "get /assistants/{id}/flows-agent/conversations/{conversationId}": {
     "type": "object",
     "properties": {
@@ -1762,6 +1734,10 @@
                         "wouldRoute",
                         "routedFlowId"
                       ]
+                    },
+                    "guardrails": {
+                      "type": "array",
+                      "items": {}
                     }
                   },
                   "required": [
@@ -6547,6 +6523,10 @@
                         "wouldRoute",
                         "routedFlowId"
                       ]
+                    },
+                    "guardrails": {
+                      "type": "array",
+                      "items": {}
                     }
                   },
                   "required": [
@@ -7147,6 +7127,10 @@
                         "wouldRoute",
                         "routedFlowId"
                       ]
+                    },
+                    "guardrails": {
+                      "type": "array",
+                      "items": {}
                     }
                   },
                   "required": [
@@ -8663,6 +8647,10 @@
                         "wouldRoute",
                         "routedFlowId"
                       ]
+                    },
+                    "guardrails": {
+                      "type": "array",
+                      "items": {}
                     }
                   },
                   "required": [
@@ -9662,560 +9650,6 @@
     "required": [
       "data",
       "nextCursor"
-    ]
-  },
-  "post /entities/{id}/records/import": {
-    "type": "object",
-    "properties": {
-      "upserted": {
-        "type": "number"
-      },
-      "rejected": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "required": [
-      "upserted",
-      "rejected"
-    ]
-  },
-  "post /entities/{id}/records/query": {
-    "type": "object",
-    "properties": {
-      "data": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "entityId": {
-              "type": "string"
-            },
-            "key": {
-              "type": "string"
-            },
-            "values": {
-              "type": "object",
-              "additionalProperties": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "boolean",
-                    "const": false
-                  },
-                  {
-                    "type": "boolean",
-                    "const": true
-                  }
-                ]
-              }
-            },
-            "createdAt": {
-              "type": "string"
-            },
-            "updatedAt": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "entityId",
-            "key",
-            "values",
-            "createdAt",
-            "updatedAt"
-          ]
-        }
-      }
-    },
-    "required": [
-      "data"
-    ]
-  },
-  "get /entities/{id}/records": {
-    "type": "object",
-    "properties": {
-      "data": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "entityId": {
-              "type": "string"
-            },
-            "key": {
-              "type": "string"
-            },
-            "values": {
-              "type": "object",
-              "additionalProperties": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "boolean",
-                    "const": false
-                  },
-                  {
-                    "type": "boolean",
-                    "const": true
-                  }
-                ]
-              }
-            },
-            "createdAt": {
-              "type": "string"
-            },
-            "updatedAt": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "entityId",
-            "key",
-            "values",
-            "createdAt",
-            "updatedAt"
-          ]
-        }
-      },
-      "total": {
-        "type": "number"
-      }
-    },
-    "required": [
-      "data",
-      "total"
-    ]
-  },
-  "get /entities/{id}": {
-    "type": "object",
-    "properties": {
-      "id": {
-        "type": "string"
-      },
-      "organizationId": {
-        "type": "string"
-      },
-      "name": {
-        "type": "string"
-      },
-      "description": {
-        "type": "string"
-      },
-      "attributes": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "key": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "type": {
-              "oneOf": [
-                {
-                  "type": "string",
-                  "const": "number"
-                },
-                {
-                  "type": "string",
-                  "const": "boolean"
-                },
-                {
-                  "type": "string",
-                  "const": "date"
-                },
-                {
-                  "type": "string",
-                  "const": "text"
-                }
-              ]
-            }
-          },
-          "required": [
-            "key",
-            "label",
-            "type"
-          ]
-        }
-      },
-      "keyAttribute": {
-        "type": "string"
-      },
-      "scope": {
-        "oneOf": [
-          {
-            "type": "string",
-            "const": "user"
-          },
-          {
-            "type": "string",
-            "const": "shared"
-          }
-        ]
-      },
-      "identityAttribute": {
-        "oneOf": [
-          {
-            "type": "null"
-          },
-          {
-            "type": "string"
-          }
-        ]
-      },
-      "createdAt": {
-        "type": "string"
-      },
-      "updatedAt": {
-        "type": "string"
-      }
-    },
-    "required": [
-      "id",
-      "organizationId",
-      "name",
-      "description",
-      "attributes",
-      "keyAttribute",
-      "scope",
-      "identityAttribute",
-      "createdAt",
-      "updatedAt"
-    ]
-  },
-  "patch /entities/{id}": {
-    "type": "object",
-    "properties": {
-      "id": {
-        "type": "string"
-      },
-      "organizationId": {
-        "type": "string"
-      },
-      "name": {
-        "type": "string"
-      },
-      "description": {
-        "type": "string"
-      },
-      "attributes": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "key": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "type": {
-              "oneOf": [
-                {
-                  "type": "string",
-                  "const": "number"
-                },
-                {
-                  "type": "string",
-                  "const": "boolean"
-                },
-                {
-                  "type": "string",
-                  "const": "date"
-                },
-                {
-                  "type": "string",
-                  "const": "text"
-                }
-              ]
-            }
-          },
-          "required": [
-            "key",
-            "label",
-            "type"
-          ]
-        }
-      },
-      "keyAttribute": {
-        "type": "string"
-      },
-      "scope": {
-        "oneOf": [
-          {
-            "type": "string",
-            "const": "user"
-          },
-          {
-            "type": "string",
-            "const": "shared"
-          }
-        ]
-      },
-      "identityAttribute": {
-        "oneOf": [
-          {
-            "type": "null"
-          },
-          {
-            "type": "string"
-          }
-        ]
-      },
-      "createdAt": {
-        "type": "string"
-      },
-      "updatedAt": {
-        "type": "string"
-      }
-    },
-    "required": [
-      "id",
-      "organizationId",
-      "name",
-      "description",
-      "attributes",
-      "keyAttribute",
-      "scope",
-      "identityAttribute",
-      "createdAt",
-      "updatedAt"
-    ]
-  },
-  "get /entities": {
-    "type": "object",
-    "properties": {
-      "data": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "organizationId": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "description": {
-              "type": "string"
-            },
-            "attributes": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "key": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "oneOf": [
-                      {},
-                      {},
-                      {},
-                      {}
-                    ]
-                  }
-                },
-                "required": [
-                  "key",
-                  "label",
-                  "type"
-                ]
-              }
-            },
-            "keyAttribute": {
-              "type": "string"
-            },
-            "scope": {
-              "oneOf": [
-                {
-                  "type": "string",
-                  "const": "user"
-                },
-                {
-                  "type": "string",
-                  "const": "shared"
-                }
-              ]
-            },
-            "identityAttribute": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "string"
-                }
-              ]
-            },
-            "createdAt": {
-              "type": "string"
-            },
-            "updatedAt": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "organizationId",
-            "name",
-            "description",
-            "attributes",
-            "keyAttribute",
-            "scope",
-            "identityAttribute",
-            "createdAt",
-            "updatedAt"
-          ]
-        }
-      },
-      "nextCursor": {
-        "oneOf": [
-          {
-            "type": "null"
-          },
-          {
-            "type": "string"
-          }
-        ]
-      }
-    },
-    "required": [
-      "data",
-      "nextCursor"
-    ]
-  },
-  "post /entities": {
-    "type": "object",
-    "properties": {
-      "id": {
-        "type": "string"
-      },
-      "organizationId": {
-        "type": "string"
-      },
-      "name": {
-        "type": "string"
-      },
-      "description": {
-        "type": "string"
-      },
-      "attributes": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "key": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "type": {
-              "oneOf": [
-                {
-                  "type": "string",
-                  "const": "number"
-                },
-                {
-                  "type": "string",
-                  "const": "boolean"
-                },
-                {
-                  "type": "string",
-                  "const": "date"
-                },
-                {
-                  "type": "string",
-                  "const": "text"
-                }
-              ]
-            }
-          },
-          "required": [
-            "key",
-            "label",
-            "type"
-          ]
-        }
-      },
-      "keyAttribute": {
-        "type": "string"
-      },
-      "scope": {
-        "oneOf": [
-          {
-            "type": "string",
-            "const": "user"
-          },
-          {
-            "type": "string",
-            "const": "shared"
-          }
-        ]
-      },
-      "identityAttribute": {
-        "oneOf": [
-          {
-            "type": "null"
-          },
-          {
-            "type": "string"
-          }
-        ]
-      },
-      "createdAt": {
-        "type": "string"
-      },
-      "updatedAt": {
-        "type": "string"
-      }
-    },
-    "required": [
-      "id",
-      "organizationId",
-      "name",
-      "description",
-      "attributes",
-      "keyAttribute",
-      "scope",
-      "identityAttribute",
-      "createdAt",
-      "updatedAt"
     ]
   },
   "get /flows/{id}": {
@@ -16290,7 +15724,8 @@
                         "iteration": {},
                         "iterationLimit": {},
                         "terminal": {},
-                        "preflight": {}
+                        "preflight": {},
+                        "guardrails": {}
                       },
                       "required": [
                         "steps",
@@ -17981,10 +17416,6 @@
           },
           {
             "type": "string",
-            "const": "entities"
-          },
-          {
-            "type": "string",
             "const": "memories"
           },
           {
@@ -19643,11 +19074,11 @@
           },
           {
             "type": "string",
-            "const": "rejected"
+            "const": "approved"
           },
           {
             "type": "string",
-            "const": "approved"
+            "const": "rejected"
           },
           {
             "type": "string",
@@ -19886,11 +19317,11 @@
           },
           {
             "type": "string",
-            "const": "rejected"
+            "const": "approved"
           },
           {
             "type": "string",
-            "const": "approved"
+            "const": "rejected"
           },
           {
             "type": "string",
@@ -20134,11 +19565,11 @@
                 },
                 {
                   "type": "string",
-                  "const": "rejected"
+                  "const": "approved"
                 },
                 {
                   "type": "string",
-                  "const": "approved"
+                  "const": "rejected"
                 },
                 {
                   "type": "string",
@@ -21505,6 +20936,10 @@
                         "wouldRoute",
                         "routedFlowId"
                       ]
+                    },
+                    "guardrails": {
+                      "type": "array",
+                      "items": {}
                     }
                   },
                   "required": [

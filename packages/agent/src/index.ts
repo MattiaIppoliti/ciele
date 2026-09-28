@@ -150,10 +150,6 @@ export { summariseDocument } from "./summarise-document";
 // backfills automatically, so this is the lever the console offers instead.
 export { enqueueStaleDocumentMemoryExtractions } from "./jobs";
 
-// Synced Record ingestion (#670): "sync now" enqueue for the
-// sync_entity_records job kind (the due-scan + drain ride finalizeDueCrawls).
-export { enqueueEntitySyncJob } from "./jobs";
-
 // Which crawler providers the current environment can run, drives the admin
 // Website Source crawler picker (e.g. Crawl4AI is only offered when its worker
 // is configured). Never carries the underlying credentials.

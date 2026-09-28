@@ -5,9 +5,9 @@ description: Localisez l'application open source actuelle, ainsi que les package
 
 ## Applications
 
-| Path | Responsabilité |
+| Chemin | Responsabilité |
 | --- | --- |
-| `apps/web` | Administrator console, runtime des widgets, pages publiques, actions serveur et API v1. |
+| `apps/web` | Administrator console, runtime des widgets, pages publiques, actions serveur et API v1. |
 | `apps/docs` | Application de documentation Fumadocs et pipeline de traduction. |
 | `apps/desktop` | Ciele Desktop : l'écran de connexion et l'assistant de configuration locale guidée. |
 
@@ -17,11 +17,11 @@ description: Localisez l'application open source actuelle, ainsi que les package
 | --- | --- |
 | `packages/core` | Types de domaines, règles Flow pures, valeurs par défaut, conditions et logique d'analyse. |
 | `packages/db` | Interfaces de persistance, stockage simulé et implémentation Supabase. |
-| `packages/agent` | Exécution des turns, fournisseurs de modèles, outils Knowledge, ingestion et évaluation. |
-| `packages/ops` | Opérations d'organisation partagées utilisées par les actions de la console et l'API v1. |
+| `packages/agent` | Exécution des tours, fournisseurs de modèles, outils Knowledge, ingestion et évaluation. |
+| `packages/ops` | Opérations d'organisation partagée utilisées par les actions de la console et l'API v1. |
 | `packages/client` | Client typé pour l'API v1. |
 | `packages/cli` | Interface de terminal au-dessus du client typé. |
-| `packages/mcp` | Serveur MCP sur le client typé : un outil d'identité et seize outils de domaine. |
+| `packages/mcp` | Serveur MCP sur le client typé : un outil d'identité et quinze outils de domaine. |
 | `packages/ui` | Composants d'interface utilisateur partagés. |
 | `packages/charts` | Visualisations d'analyses partagées. |
 
@@ -35,11 +35,11 @@ description: Localisez l'application open source actuelle, ainsi que les package
 
 ## Orientation des dépendances
 
-Les règles pures doivent se trouver dans `packages/core`. Le comportement de
+Les règles pures doivent figurer dans `packages/core`. Le comportement de
 persistance relève de `packages/db`.
 
 Les mutations réutilisables doivent se trouver dans `packages/ops`. Le
-comportement du modèle et de la récupération appartient à `packages/agent`.
+comportement du modèle et de la récupération relève de `packages/agent`.
 
 Les adaptateurs de surface dans `apps/web`, `packages/cli` et `packages/mcp` ne
 doivent pas créer de comportement de domaine distinct.

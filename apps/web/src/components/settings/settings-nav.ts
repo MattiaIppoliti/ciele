@@ -120,10 +120,6 @@ export const SETTINGS_API_DOMAINS: Record<string, ApiV1Domain[]> = {
   ai: ["providers", "memories"],
   "api-keys": ["api-keys"],
   usage: ["usage"],
-  // A live, RLS-scoped route that the tab rail does not list yet, Entities are
-  // reachable by URL only. Claiming it here is what gives that page a panel;
-  // getting it into the rail is a separate question.
-  data: ["entities"],
 };
 
 /**

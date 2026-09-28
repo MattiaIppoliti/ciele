@@ -1,9 +1,9 @@
 ---
 title: Strumenti e competenze
-description: Gestisci gli strumenti di runtime e associa istruzioni riutilizzabili a un Assistente.
+description: Controlla gli strumenti di runtime e associa istruzioni riutilizzabili a un Assistente.
 ---
 
-Apri un Assistente e seleziona **Tools & Skills**. Questa sezione controlla le
+Apri un Assistant e seleziona **Tools & Skills**. Questa sezione controlla le
 funzionalità di runtime e le istruzioni riutilizzabili.
 
 ## Strumenti integrati
@@ -15,11 +15,11 @@ funzionalità di runtime e le istruzioni riutilizzabili.
 | Fetch URL | Off | Legge un URL quando il runtime seleziona lo strumento. |
 | Show a table | Off | Mostra i dati in una tabella quando il runtime seleziona lo strumento. |
 
-La funzionalità Search knowledge è sempre disponibile. Puoi abilitare o
-disabilitare gli altri strumenti integrati.
+Search knowledge è sempre disponibile. Puoi abilitare o disabilitare gli altri
+strumenti integrati.
 
 Show a table organizza i fatti che l'Assistente ha trovato in questa risposta.
-Non calcola i valori. La tabella viene visualizzata sopra la risposta scritta e
+Non calcola i valori. La tabella viene visualizzata sopra la risposta scritta, e
 la trascrizione dell'Inbox mostra la stessa tabella.
 
 L'Assistente può aggiungere una domanda di follow-up a una riga. Il Visitor
@@ -51,7 +51,7 @@ Gli esercizi richiedono materiale pertinente nella Knowledge dell'Assistente. Se
 non viene trovato alcun materiale, l'Assistente ti chiede un argomento
 supportato o del materiale di studio.
 
-| Formato | Come risponde il Visitor |
+| Format | Come risponde il Visitor |
 | --- | --- |
 | Multiple choice | Seleziona una sola opzione. Non è disponibile alcuna risposta a testo libero. |
 | Trascina le parole | Trascina o seleziona una parola per completare uno spazio vuoto per ogni domanda. |
@@ -62,47 +62,25 @@ supportato o del materiale di studio.
 massimo cinque domande distinte basate sulle Knowledge recuperate.
 
 Seleziona **Check** per salvare una risposta. Ciele mostra se la risposta è
-corretta, qual è la risposta corretta e una spiegazione. Una risposta inviata
-non può essere modificata. Le flashcard accettano le varianti ortografiche
-definite al momento della creazione dell'esercizio.
+corretta, qual è la risposta corretta e una spiegazione. Non puoi modificare una
+risposta già inviata. Le flashcard accettano le varianti ortografiche definite
+al momento della creazione dell'esercizio.
 
 La Inbox mostra le domande, le risposte inviate, le risposte corrette e il
-punteggio. Gli esercizi non completati mostrano quante domande sono rimaste
-senza risposta. Gli esercizi vengono eseguiti all'interno della chat. Non
-necessitano di un lettore H5P esterno.
-
-## Connetti dati strutturati
-
-La sezione **Data** elenca le Entità importate tramite **Settings → Data**.
-Seleziona ogni Entità che questo Assistente può interrogare.
-
-Ogni Entity selezionata mette a disposizione uno strumento di filtro esatto.
-Un'Entity con attributi di testo fornisce anche uno strumento di ricerca per
-parole chiave.
-
-Le Shared Entities sono disponibili per ogni Visitor servito dall'Assistant. Le
-Entità con ambito utente richiedono un
-[identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim)
-verificato.
-
-La selezione dell'Entity e lo schema vengono inclusi nello snapshot della
-Publication successiva. Il contenuto del record rimane attivo dopo la
-Publication.
-
-Consulta [Entities and Records](/data/entities-and-records) per informazioni su
-importazioni CSV, scelte dell'ambito e filtri di identità.
+punteggio. Gli esercizi non completati mostrano quante domande sono ancora senza
+risposta. Gli esercizi vengono eseguiti all'interno della chat. Non necessitano
+di un lettore H5P esterno.
 
 ## Configura un'integrazione API
 
-Un Assistente può utilizzare una sola integrazione API registrata.
-L'integrazione contiene un base URL, una credenziale protetta e degli endpoint
-descritti.
+Un Assistant può utilizzare una sola integrazione API registrata. L'integrazione
+contiene un URL di base, una credenziale protetta ed endpoint descritti.
 
-Per ciascun endpoint, definisci il metodo, il percorso, lo scopo, i parametri e
-la forma della risposta. Il runtime convalida ogni percorso richiesto
+Per ogni endpoint, definisci il metodo, il percorso, lo scopo, i parametri e la
+forma della risposta. Il runtime convalida ogni percorso richiesto
 confrontandolo con questo catalogo.
 
-L'agente può esaminare i dettagli dell'endpoint prima di inviare una richiesta.
+L'agent può esaminare i dettagli dell'endpoint prima di inviare una richiesta.
 Le risposte di grandi dimensioni rimangono disponibili tramite letture a
 finestra.
 
@@ -121,16 +99,16 @@ modulo dell'endpoint, indica dove la tua API legge la chiave:
 - `header:Idempotency-Key` invia la chiave in un header della richiesta.
 - `body:request_id` invia la chiave nel corpo JSON.
 
-Usa il nome che la tua API legge. Ciele non tenta di indovinare questo nome. API
+Usa il nome che la tua API legge. Ciele non cerca di indovinare questo nome. API
 diverse leggono nomi diversi.
 
 Ciele genera una chiave per ogni chiamata. Un nuovo tentativo della stessa
 chiamata invia la stessa chiave. Una chiamata diversa invia una chiave diversa.
-La tua API può quindi considerare le due richieste come una singola operazione
-di scrittura.
+La tua API può quindi considerare le due richieste come un'unica operazione di
+scrittura.
 
 Anche la tua API deve fare la sua parte. Deve memorizzare la chiave e restituire
-il primo risultato quando rileva nuovamente la chiave.
+il primo risultato quando la vede di nuovo.
 
 <Callout title="An endpoint with no key is not protected">
 If you give no key, a retry of the call can write two times. A `GET` endpoint does not need a key, because a read does not change data.
@@ -138,32 +116,33 @@ If you give no key, a retry of the call can write two times. A `GET` endpoint do
 
 ## Associa una Skill dell'organizzazione
 
-Una Skill è un modello di istruzioni riutilizzabile. Un'organizzazione può
+Una Skill è un modello di istruzioni riutilizzabile. Un'Organization può
 associare la stessa Skill a più Assistenti.
 
 1. Apri **Tools & Skills**.
 2. Trova la Organization Skill richiesta.
-3. Collega la Skill all'Assistente.
+3. Associa la Skill all'Assistente.
 4. Verifica il risultato in Preview.
 5. Pubblica l'Assistente quando il risultato è corretto.
 
 Le modifiche alle Skill sono immediatamente disponibili in Preview. Il Widget
 pubblicato utilizza l'ultimo snapshot di Publication.
 
-### Consenti agli utenti di avviare una Skill dalla finestra di chat
+### Consenti alle persone di avviare una Skill dalla finestra di chat
 
 Una Skill può avere un **Opening line**. Scrivilo dal punto di vista della
-persona che chiede, non dell'Assistente.
+persona che fa la domanda, non dell'Assistente.
 
 La finestra di chat mostra un menu **/** con ogni Skill che ha una opening line.
-Quando l'utente seleziona una Skill, la finestra di chat inserisce la opening
-line nella casella del messaggio. Puoi modificare il testo prima di inviarlo.
+Quando l'utente seleziona una Skill, la finestra di chat inserisce la frase di
+apertura nella casella del messaggio. Puoi modificare il testo prima di
+inviarlo.
 
-Se la opening line è vuota, la Skill non viene visualizzata nel menu **/**. Il
-prompt della Skill continua ad applicarsi a ogni risposta.
+Se la **opening line** è vuota, la **Skill** non viene visualizzata nel menu
+**/**. Il prompt della Skill continua ad applicarsi a ogni risposta.
 
 Pubblica l'Assistente dopo aver scritto una opening line. Il Widget utilizza
-l'ultimo snapshot della Publication.
+l'ultimo snapshot di Publication.
 
 ## Gli allegati e la Knowledge non sono la stessa cosa
 
@@ -182,8 +161,8 @@ Per rendere permanente un file, aggiungilo invece in **Library**.
 ## Verifica la configurazione
 
 Poni una domanda che richieda ciascuno degli strumenti abilitati. Prima di
-pubblicare, controlla il pannello Thinking e le Sources.
+pubblicare, controlla il pannello Thinking e la sezione Sources.
 
-Per i dati strutturati, esegui un test di ricerca esatta per attributo e una
-ricerca testuale. Verifica l'accesso con ambito utente utilizzando due account
-diversi con cui hai effettuato l'accesso.
+Per i dati strutturati, prova una ricerca esatta per attributo e una ricerca
+testuale. Verifica l'accesso con ambito utente utilizzando due account diversi
+con cui hai effettuato l'accesso.

@@ -97,7 +97,7 @@ export function LibraryHeader({
         }
         className="px-4 sm:px-6"
       >
-        <TabsList aria-label="Library tabs" className="bg-muted">
+        <TabsList aria-label="Library tabs">
           {KNOWLEDGE_TAB_SLUGS.map((slug) => {
             const summary = tabSummaries[slug];
             const health =

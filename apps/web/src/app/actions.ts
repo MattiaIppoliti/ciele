@@ -39,10 +39,6 @@ import type {
   RecrawlSchedule,
   Role,
   Skill,
-  Entity,
-  EntityInput,
-  EntityRecord,
-  EntitySyncRun,
   SkillInput,
   SkillPatch,
   SourceStatus,
@@ -74,7 +70,6 @@ import {
   embedConcept,
   revokeApplicationConnectionCredentials,
   enqueueDraftProposalJob,
-  enqueueEntitySyncJob,
   enqueueIngestJob,
   extractSourceText,
   finalizeWebsiteCrawl,
@@ -121,7 +116,6 @@ import {
   evaluationRunSchema,
   startEvaluationRunOp,
   acceptSuggestedFixOp,
-  configureEntitySyncOp,
   dismissSuggestedFixOp,
   addSourceOp,
   createAssistantOp,
@@ -144,7 +138,6 @@ import {
   syncApplicationImportNowOp,
   updateApplicationImportConfigurationOp,
   createFlowOp,
-  createEntityOp,
   createHelpDeskOp,
   createSupportChannelOp,
   connectServiceNowOp,
@@ -152,7 +145,6 @@ import {
   createAssistantGoalOp,
   deleteAssistantOp,
   deleteFlowOp,
-  deleteEntityOp,
   deleteHelpDeskOp,
   deleteSupportChannelOp,
   deleteSkillOp,
@@ -164,8 +156,6 @@ import {
   unlinkSourcesOp,
   duplicateAssistantOp,
   importFaqsOp,
-  importEntityRecordsOp,
-  listEntityRecordsOp,
   listSubjectMemoriesOp,
   publishAssistantOp,
   requestApplicationReconsentOp,
@@ -180,7 +170,6 @@ import {
   republishOp,
   unpublishAssistantOp,
   updateAssistantOp,
-  updateEntityOp,
   updateHelpDeskOp,
   updateSupportChannelOp,
   updateSkillOp,
@@ -2414,176 +2403,6 @@ export async function deleteGoalAction(
 /** "Mark resolved": marks the alert resolved by the current member. */
 export async function resolveAlertAction(alertId: string): Promise<void> {
   await runOperation(resolveAlertOp, { id: alertId });
-}
-
-// --- Entities + Records (org structured data, #663) ---------------------------
-
-/**
- * Guard shared by every Entity mutation: RLS already walls off other orgs on
- * Supabase, but the mock store has no RLS, resolve the Entity and check the
- * Organization explicitly so both implementations behave identically.
- */
-async function requireOrgEntity(
-  db: Db,
-  organizationId: string,
-  entityId: string
-): Promise<Entity> {
-  const entity = await db.table("entities").get(entityId);
-  if (!entity || entity.organizationId !== organizationId) {
-    throw new Error("Entity not found");
-  }
-  return entity;
-}
-
-export async function createEntityAction(
-  input: EntityInput
-): Promise<{ entity?: Entity; error?: string }> {
-  try {
-    return { entity: await runOperation(createEntityOp, input) };
-  } catch (error) {
-    return { error: thrownMessage(error, "Could not create the Entity") };
-  }
-}
-
-export async function updateEntityAction(
-  entityId: string,
-  patch: { name?: string; description?: string }
-): Promise<void> {
-  await runOperation(updateEntityOp, { id: entityId, patch });
-}
-
-export async function deleteEntityAction(entityId: string): Promise<void> {
-  await runOperation(deleteEntityOp, { id: entityId });
-}
-
-export interface EntityImportReport {
-  upserted: number;
-  rejected: string[];
-  error?: string;
-}
-
-/**
- * CSV import (#663): parse + validate against the Entity's schema, then
- * upsert idempotently by the key attribute. Bad rows are reported and
- * skipped; a header-level problem rejects the whole file.
- */
-export async function importEntityRecordsAction(
-  entityId: string,
-  csvText: string
-): Promise<EntityImportReport> {
-  return runOperation(importEntityRecordsOp, { entityId, csv: csvText });
-}
-
-/** The client-facing sync source shape (#670): sealed headers never leave the server. */
-export interface EntitySyncStatus {
-  config:
-    | {
-        url: string;
-        cadenceHours: number;
-        prune: boolean;
-        mapping: Record<string, string>;
-        hasHeaders: boolean;
-        lastSyncedAt: string | null;
-      }
-    | null;
-  runs: EntitySyncRun[];
-}
-
-export async function getEntitySyncStatusAction(
-  entityId: string
-): Promise<EntitySyncStatus> {
-  const { db, session } = await requireMember("member");
-  await requireOrgEntity(db, session.organization.id, entityId);
-  const [config, runs] = await Promise.all([
-    db.getEntitySyncConfig(entityId),
-    db.listEntitySyncRuns(entityId, 5),
-  ]);
-  return {
-    config: config
-      ? {
-          url: config.url,
-          cadenceHours: config.cadenceHours,
-          prune: config.prune,
-          mapping: config.mapping,
-          hasHeaders: Boolean(config.sealedHeaders),
-          lastSyncedAt: config.lastSyncedAt,
-        }
-      : null,
-    runs,
-  };
-}
-
-/**
- * Configure an Entity's REST/JSON sync source (#670). Auth headers are
- * sealed before storage (like other stored secrets); an empty header list
- * keeps any previously sealed headers, since the client never sees them.
- */
-export async function saveEntitySyncConfigAction(
-  entityId: string,
-  input: {
-    url: string;
-    headers: Array<{ name: string; value: string }>;
-    /** Explicitly drop previously sealed headers (they're otherwise kept). */
-    clearHeaders?: boolean;
-    cadenceHours: number;
-    prune: boolean;
-    mapping: Record<string, string>;
-  }
-): Promise<{ error?: string }> {
-  // A refused source is a result, not a throw: Next strips a thrown message in
-  // production, and this one tells the admin what to fix.
-  try {
-    await runOperation(configureEntitySyncOp, { entityId, ...input });
-    return {};
-  } catch (error) {
-    if (error instanceof OperationError && error.code === "invalid_input") {
-      return { error: error.message };
-    }
-    // runOperation parses with the operation's schema before running it.
-    if (error instanceof ZodError) {
-      return { error: error.issues[0]?.message ?? "Check the sync settings." };
-    }
-    throw error;
-  }
-}
-
-/**
- * "Sync now" (#670): enqueues the same durable job the cron sweep runs.
- * Authorization happens on the caller's RLS-scoped db; the enqueue (and the
- * `after()` accelerator that drains it) runs on the service-role db, because
- * the job ledger and run reports are operated by the job layer, not by
- * member sessions, exactly as the cron sweep does.
- */
-export async function syncEntityNowAction(entityId: string): Promise<void> {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "dataEntities" }] },
-    async ({ db, session }) => {
-      const entity = await requireOrgEntity(db, session.organization.id, entityId);
-      const config = await db.getEntitySyncConfig(entityId);
-      if (!config) throw new Error("Configure a sync source first");
-      await enqueueEntitySyncJob(
-        {
-          entityId,
-          organizationId: entity.organizationId,
-          force: true,
-        },
-        { db: getWidgetDb() }
-      );
-    }
-  );
-}
-
-/** Records browser read (paged), any member of the Entity's org. */
-export async function listEntityRecordsAction(
-  entityId: string,
-  opts?: { limit?: number; offset?: number }
-): Promise<{ records: EntityRecord[]; total: number }> {
-  const result = await runOperation(listEntityRecordsOp, {
-    entityId,
-    limit: opts?.limit,
-    offset: opts?.offset,
-  });
-  return { records: result.data, total: result.total };
 }
 
 /**

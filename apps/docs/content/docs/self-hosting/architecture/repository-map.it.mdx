@@ -13,21 +13,21 @@ description: Individua l'attuale applicazione open-source, i pacchetti, i worker
 
 ## Pacchetti condivisi
 
-| Path | Responsibility |
+| Percorso | Responsabilità |
 | --- | --- |
 | `packages/core` | Tipi di dominio, regole Flow pure, valori predefiniti, condizioni e logica di analisi. |
 | `packages/db` | Interfacce di persistenza, mock storage e implementazione di Supabase. |
 | `packages/agent` | Esecuzione dei turni, provider di modelli, strumenti Knowledge, ingestion e valutazione. |
 | `packages/ops` | Operazioni dell'organizzazione condivisa utilizzate dalle azioni della console e dall'API v1. |
-| `packages/client` | Client tipizzato per API v1. |
+| `packages/client` | Typed client per API v1. |
 | `packages/cli` | Interfaccia a riga di comando basata sul client tipizzato. |
-| `packages/mcp` | Server MCP sul client tipizzato: uno strumento di identità e sedici strumenti di dominio. |
+| `packages/mcp` | MCP server sul typed client: uno strumento di identità e quindici strumenti di dominio. |
 | `packages/ui` | Componenti condivisi dell'interfaccia utente. |
-| `packages/charts` | Visualizzazioni analitiche condivise. |
+| `packages/charts` | Visualizzazioni di analisi condivise. |
 
 ## Servizi e infrastruttura
 
-| Path | Responsabilità |
+| Path | Responsibility |
 | --- | --- |
 | `services/crawl4ai` | Configurazione facoltativa del crawler con rendering JavaScript. |
 | `supabase/migrations` | Modifiche allo schema del database in ordine. |
@@ -42,4 +42,4 @@ Le mutazioni riutilizzabili appartengono a `packages/ops`. Il comportamento del
 modello e del recupero appartiene a `packages/agent`.
 
 Gli adattatori di superficie in `apps/web`, `packages/cli` e `packages/mcp` non
-devono creare comportamenti di dominio separati.
+devono creare un comportamento di dominio separato.

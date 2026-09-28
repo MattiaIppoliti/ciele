@@ -1,47 +1,47 @@
 ---
 title: Ziele
-description: Planen Sie wiederholbare Überprüfungen für wichtige Antworten des Assistenten.
+description: Planen Sie wiederholbare Prüfungen für wichtige Antworten des Assistenten.
 ---
 
-Ein Ziel stellt eine wiederkehrende Frage und prüft die Antwort anhand
-deterministischer Erwartungen. Ein fehlgeschlagenes Ziel löst eine Warnung aus.
+Ein Goal stellt eine festgelegte Frage und überprüft die Antwort anhand
+deterministischer Erwartungen. Ein fehlgeschlagenes Goal erzeugt einen Alert.
 
-## Erstellen Sie ein Ziel
+## Ein Ziel erstellen
 
-1. Öffnen Sie einen Assistenten.
-2. Wählen Sie **Goals**.
-3. Wählen Sie **Create Goal**.
+1. Öffnen Sie einen Assistant.
+2. Wählen Sie **Goals** aus.
+3. Wählen Sie **Add** im Abschnitt **Goals** aus.
 4. Geben Sie die Frage ein, die Ciele stellen muss.
 5. Fügen Sie eine oder mehrere Erwartungen hinzu.
 6. Speichern Sie das Ziel.
 
 ## Verfügbare Erwartungen
 
-| Erwartung | Überprüfung |
+| Expectation | Check |
 | --- | --- |
-| Muss eine Quelle zitieren | Die Antwort enthält mindestens eine Quellenangabe. |
-| Zitierte URL enthält | Eine zitierte URL enthält den konfigurierten Text. |
-| Antwort enthält | Die Antwort enthält jedes konfigurierte Textfragment. |
-| Nicht-Fallback-Antwort | Die Laufzeit hat ihr Fallback-Ergebnis nicht zurückgegeben. |
+| Must cite a source | Die Antwort enthält mindestens eine Quellenangabe. |
+| Cited URL contains | Eine angegebene URL enthält den konfigurierten Text. |
+| Answer contains | Die Antwort enthält jedes konfigurierte Textfragment. |
+| Non-fallback answer | Die Runtime hat ihr Fallback-Ergebnis nicht zurückgegeben. |
 
-Ciele prüft immer, ob eine Nicht-Fallback-Antwort vorliegt. Weitere Erwartungen
-hängen von der Zielkonfiguration ab.
+Ciele überprüft stets, ob eine Nicht-Fallback-Antwort vorliegt. Weitere
+Erwartungen hängen von der Konfiguration des Goals ab.
 
-## Zielstatus
+## Status des Ziels
 
-Ein aktives Ziel wird nach seinem Zeitplan ausgeführt. Ciele kann ein Ziel nach
-wiederholten Ausführungsproblemen unter Quarantäne stellen.
+Ein aktives Goal wird gemäß seinem Zeitplan ausgeführt. Ciele kann ein Goal nach
+wiederholten Ausführungsproblemen in Quarantäne setzen.
 
-Ein in Quarantäne gestelltes Ziel wird nicht mehr gemäß seinem normalen Zeitplan
-ausgeführt. Überprüfen Sie das Ziel und die zugehörige Warnung, bevor Sie es
-erneut aktivieren.
+Ein unter Quarantäne gestelltes Goal setzt seinen normalen Zeitplan nicht fort.
+Überprüfen Sie das Goal und den zugehörigen Alert, bevor Sie es erneut
+aktivieren.
 
-## Überprüfen Sie einen Fehler
+## Einen Fehler überprüfen
 
 1. Öffnen Sie **Alerts**.
-2. Wählen Sie den Goal-Fehler aus.
+2. Wählen Sie den Ziel-Fehler aus.
 3. Überprüfen Sie die Antwort und die nicht erfüllte Erwartung.
-4. Korrigieren Sie das Wissen, den Flow oder das Ziel.
-5. Führen Sie das Ziel erneut aus.
+4. Korrigieren Sie Knowledge, Flow oder Goal.
+5. Führen Sie das Goal erneut aus.
 
-Ziele verwenden genaue Prüfungen. Sie verwenden keinen offenen Modell-Grader.
+Goals verwenden exakte Prüfungen. Sie verwenden keinen offenen Model Grader.

@@ -91,8 +91,6 @@ export function webOperationPorts(
       },
       cancelSync: (importId, reason) => getWidgetDb().cancelApplicationSyncJobs(importId, reason),
     },
-    listPublicationEntities: (organizationId) =>
-      db.table("entities").list({ organizationId }),
     /**
      * Runs an action the approval gate stopped, once a Member approved it
      * (#958).
@@ -172,7 +170,6 @@ export function webOperationPorts(
             },
             flows: config.flows,
             skills: config.skills ?? [],
-            entities: config.entities ?? [],
             connections: await db.listProviderConnections(opts.organizationId),
             organizationId: opts.organizationId,
             subjectType: "member",

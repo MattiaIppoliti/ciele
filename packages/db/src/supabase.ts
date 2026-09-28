@@ -25,6 +25,7 @@ import type {
   ApplicationSource,
   ApplicationSyncRun,
   Assistant,
+  AssistantGuardrail,
   AssistantGoal,
   AssistantTools,
   BackgroundJob,
@@ -40,11 +41,6 @@ import type {
   Conversation,
   ConversationMetadata,
   DashboardFacts,
-  Entity,
-  EntityRecord,
-  EntityRecordValue,
-  EntitySyncConfig,
-  EntitySyncRun,
   ExportJob,
   Flow,
   FlowAction,
@@ -162,7 +158,6 @@ import {
   type DbTableName,
   type DbTableRow,
 } from "./table-access";
-import { entityRecordValuesEqual } from "./entity-records";
 import {
   decodeInboxCursor,
   encodeInboxCursor,
@@ -291,6 +286,8 @@ interface AssistantRow {
   quick_replies: QuickReplyButton[] | null;
   answering_style: string | null;
   simplified_thinking: boolean | null;
+  /** Absent until `20260928200000_assistant_guardrails` lands. */
+  guardrails?: AssistantGuardrail[] | null;
   chat_launcher_enabled: boolean;
   model_provider: Provider;
   model_id: string;
@@ -686,72 +683,6 @@ function toMemory(row: MemoryRow): Memory {
   return rowToDomain(row as unknown as Record<string, unknown>) as unknown as Memory;
 }
 
-interface EntityRecordRow {
-  id: string;
-  entity_id: string;
-  record_key: string;
-  values: Record<string, EntityRecordValue>;
-  created_at: string;
-  updated_at: string;
-}
-
-function toEntityRecord(row: EntityRecordRow): EntityRecord {
-  return {
-    id: row.id,
-    entityId: row.entity_id,
-    key: row.record_key,
-    values: row.values ?? {},
-    createdAt: row.created_at,
-    updatedAt: row.updated_at ?? row.created_at,
-  };
-}
-
-interface EntitySyncConfigRow {
-  entity_id: string;
-  url: string;
-  sealed_headers: string | null;
-  cadence_hours: number;
-  prune: boolean;
-  mapping: Record<string, string> | null;
-  last_synced_at: string | null;
-}
-
-function toEntitySyncConfig(row: EntitySyncConfigRow): EntitySyncConfig {
-  return {
-    entityId: row.entity_id,
-    url: row.url,
-    sealedHeaders: row.sealed_headers,
-    cadenceHours: row.cadence_hours,
-    prune: row.prune,
-    mapping: row.mapping ?? {},
-    lastSyncedAt: row.last_synced_at,
-  };
-}
-
-interface EntitySyncRunRow {
-  id: string;
-  entity_id: string;
-  status: "succeeded" | "failed";
-  upserted: number;
-  pruned: number;
-  rejected: string[] | null;
-  error: string | null;
-  finished_at: string;
-}
-
-function toEntitySyncRun(row: EntitySyncRunRow): EntitySyncRun {
-  return {
-    id: row.id,
-    entityId: row.entity_id,
-    status: row.status,
-    upserted: row.upserted,
-    pruned: row.pruned,
-    rejected: row.rejected ?? [],
-    error: row.error,
-    finishedAt: row.finished_at,
-  };
-}
-
 function toStoredMessage(row: MessageRow): StoredMessage {
   return {
     id: row.id,
@@ -1105,6 +1036,7 @@ function toAssistant(row: AssistantRow): Assistant {
     quickReplies: row.quick_replies ?? [],
     answeringStyle: row.answering_style ?? "",
     simplifiedThinking: row.simplified_thinking ?? false,
+    guardrails: row.guardrails ?? [],
     chatLauncherEnabled: row.chat_launcher_enabled,
     modelProvider: row.model_provider ?? "anthropic",
     modelId: row.model_id ?? "claude-opus-4-8",
@@ -1997,7 +1929,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
             "aiDisclaimer", "suggestedQuestions", "quickReplies", "answeringStyle",
             "chatLauncherEnabled", "modelProvider", "modelId", "modelSource",
             "allowedModels", "attachmentsEnabled", "voice", "style", "allowedDomains", "helpDeskSettings",
-            "tools", "requireSignIn", "simplifiedThinking",
+            "tools", "requireSignIn", "simplifiedThinking", "guardrails",
           ]),
           updated_at: new Date().toISOString(),
         })
@@ -6942,87 +6874,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       ));
     },
 
-    // --- Entities + Records (#663) ---------------------------------------
-
-    async upsertEntityRecords(entityId, rows) {
-      if (rows.length === 0) return 0;
-      // Manual upsert (select → update/insert) instead of ON CONFLICT: the
-      // update path must never rewrite the row id, and chunked IN-filters
-      // keep statements bounded for large imports.
-      const CHUNK = 200;
-      const now = new Date().toISOString();
-      let written = 0;
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const chunk = rows.slice(i, i + CHUNK);
-        const keys = chunk.map((r) => r.key);
-        const existing = must(await client
-          .from("entity_records")
-          .select("id, record_key, values")
-          .eq("entity_id", entityId)
-          .in("record_key", keys));
-        const byKey = new Map(
-          (existing as Array<{
-            id: string;
-            record_key: string;
-            values: Record<string, EntityRecordValue>;
-          }>).map((r) => [
-            r.record_key,
-            r,
-          ])
-        );
-        for (const row of chunk) {
-          const existingRow = byKey.get(row.key);
-          if (existingRow) {
-            if (entityRecordValuesEqual(existingRow.values, row.values)) continue;
-            must(await client
-              .from("entity_records")
-              .update({ values: row.values, updated_at: now })
-              .eq("id", existingRow.id));
-          } else {
-            must(await client.from("entity_records").insert({
-              id: shortId(),
-              entity_id: entityId,
-              record_key: row.key,
-              values: row.values,
-            }));
-          }
-          written += 1;
-        }
-      }
-      return written;
-    },
-
-    async listEntityRecords(entityId, opts) {
-      const limit = opts?.limit ?? 50;
-      const offset = opts?.offset ?? 0;
-      const data = must(await client
-        .from("entity_records")
-        .select()
-        .eq("entity_id", entityId)
-        .order("record_key", { ascending: true })
-        .range(offset, offset + limit - 1));
-      return (data as EntityRecordRow[]).map(toEntityRecord);
-    },
-
-    async countEntityRecords(entityId) {
-      const { count, error } = await client
-        .from("entity_records")
-        .select("id", { count: "exact", head: true })
-        .eq("entity_id", entityId);
-      if (error) throw error;
-      return count ?? 0;
-    },
-
-    async queryEntityRecords(entityId, query) {
-      const data = must(await client.rpc("query_entity_records", {
-        p_entity_id: entityId,
-        p_filters: query.filters ?? {},
-        p_search: query.search?.trim() || null,
-        p_limit: query.limit ?? 20,
-      }));
-      return (data as EntityRecordRow[]).map(toEntityRecord);
-    },
-
     // --- Long-term memories (#664) ---------------------------------------
 
     async getMemoryEnabled(organizationId) {
@@ -7118,163 +6969,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return data ? toMemory(data as MemoryRow) : null;
     },
 
-    // --- Synced Record ingestion (#670) ---------------------------------
-
-    async getEntitySyncConfig(entityId) {
-      const data = must(await client
-        .from("entity_sync_configs")
-        .select("*")
-        .eq("entity_id", entityId)
-        .maybeSingle());
-      return data ? toEntitySyncConfig(data as EntitySyncConfigRow) : null;
-    },
-
-    async upsertEntitySyncConfig(entityId, input) {
-      const data = must(await client
-        .from("entity_sync_configs")
-        .upsert(
-          {
-            entity_id: entityId,
-            url: input.url,
-            sealed_headers: input.sealedHeaders ?? null,
-            cadence_hours: input.cadenceHours,
-            prune: input.prune,
-            mapping: input.mapping,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "entity_id" }
-        )
-        .select()
-        .single());
-      return toEntitySyncConfig(data as EntitySyncConfigRow);
-    },
-
-    async markEntitySynced(entityId, at) {
-      must(await client
-        .from("entity_sync_configs")
-        .update({ last_synced_at: at })
-        .eq("entity_id", entityId));
-    },
-
-    async listDueEntitySyncConfigs(now) {
-      const data = must(await client
-        .from("entity_sync_configs")
-        .select("entity_id, cadence_hours, last_synced_at, entities!inner(organization_id)"));
-      const due: Array<{ entityId: string; organizationId: string }> = [];
-      for (const row of data as unknown as Array<{
-        entity_id: string;
-        cadence_hours: number;
-        last_synced_at: string | null;
-        entities: { organization_id: string };
-      }>) {
-        if (row.last_synced_at) {
-          const nextAt =
-            new Date(row.last_synced_at).getTime() + row.cadence_hours * 3_600_000;
-          if (nextAt > new Date(now).getTime()) continue;
-        }
-        due.push({
-          entityId: row.entity_id,
-          organizationId: row.entities.organization_id,
-        });
-      }
-      return due;
-    },
-
-    async recordEntitySyncRun(entityId, run) {
-      const data = must(await client
-        .from("entity_sync_runs")
-        .insert({
-          id: shortId(),
-          // Same reason as `memories` below: `now()` resolves to the same
-          // instant for runs recorded back to back, and `id` is random, so the
-          // newest-first listing needs an explicitly monotonic stamp to order
-          // by. Postgres' clock would otherwise decide the contract by coin flip.
-          finished_at: new Date(monotonicNow()).toISOString(),
-          entity_id: entityId,
-          status: run.status,
-          upserted: run.upserted,
-          pruned: run.pruned,
-          rejected: run.rejected,
-          error: run.error ?? null,
-        })
-        .select()
-        .single());
-      return toEntitySyncRun(data as EntitySyncRunRow);
-    },
-
-    async commitEntitySync(input) {
-      const { data, error } = await client.rpc("commit_entity_sync", {
-        p_entity_id: input.entityId,
-        p_expected_last_synced_at: input.expectedLastSyncedAt,
-        p_rows: input.rows,
-        p_prune: input.prune,
-        p_rejected: input.rejected,
-        p_at: input.at,
-      });
-      if (error) {
-        if (!isSchemaLagError(error)) throw error;
-        const config = await this.getEntitySyncConfig(input.entityId);
-        if (!config || config.lastSyncedAt !== input.expectedLastSyncedAt) {
-          return this.recordEntitySyncRun(input.entityId, {
-            status: "failed",
-            upserted: 0,
-            pruned: 0,
-            rejected: input.rejected,
-            error: "Superseded by a newer sync",
-          });
-        }
-        const upserted = await this.upsertEntityRecords(input.entityId, input.rows);
-        const pruned =
-          input.prune && input.rows.length > 0
-            ? await this.pruneEntityRecords(
-                input.entityId,
-                input.rows.map((row) => row.key),
-              )
-            : 0;
-        const run = await this.recordEntitySyncRun(input.entityId, {
-          status: "succeeded",
-          upserted,
-          pruned,
-          rejected: input.rejected,
-          error: null,
-        });
-        await this.markEntitySynced(input.entityId, input.at);
-        return run;
-      }
-      const row = (data as EntitySyncRunRow[] | null)?.[0];
-      if (!row) throw new Error("Entity sync commit returned no run");
-      return toEntitySyncRun(row);
-    },
-
-    async listEntitySyncRuns(entityId, limit = 20) {
-      const data = must(await client
-        .from("entity_sync_runs")
-        .select("*")
-        .eq("entity_id", entityId)
-        .order("finished_at", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(limit));
-      return (data as EntitySyncRunRow[]).map(toEntitySyncRun);
-    },
-
-    async pruneEntityRecords(entityId, seenKeys) {
-      const rows = must(await client
-        .from("entity_records")
-        .select("id, record_key")
-        .eq("entity_id", entityId));
-      const seen = new Set(seenKeys);
-      const stale = (rows as Array<{ id: string; record_key: string }>)
-        .filter((r) => !seen.has(r.record_key))
-        .map((r) => r.id);
-      if (stale.length > 0) {
-        must(await client
-          .from("entity_records")
-          .delete()
-          .in("id", stale));
-      }
-      return stale.length;
-    },
-
     async listMemorySubjects(organizationId) {
       const data = must(await client
         .from("memories")
@@ -7342,22 +7036,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return finalizePage(mapped, limit, (last) =>
         JSON.stringify([last.lastMemoryAt, last.subjectId])
       );
-    },
-
-    async listEntitiesPage(organizationId, input) {
-      const limit = clampPageLimit(input.limit);
-      let query = client
-        .from("entities")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("id", { ascending: true })
-        .limit(limit + 1);
-      if (input.cursor) query = query.gt("id", input.cursor);
-      const data = must(await query);
-      const mapped = (data ?? []).map(
-        (row) => rowToDomain(row) as unknown as Entity
-      );
-      return finalizePage(mapped, limit, (entity) => entity.id);
     },
 
     async deleteSubjectMemories({ organizationId, subjectId }) {

@@ -16,33 +16,42 @@ export interface TimelineView {
    * reading position to claim and the first one stays lit, as before.
    */
   remaining: number | null;
+  /** The box's whole scroll travel, null exactly when `remaining` is. */
+  travel: number | null;
 }
 
 /**
  * Which section the rail should emphasize: the last one whose top has crossed
- * the activation line.
+ * the activation line, and the first one at the top of the page.
  *
- * The line **drops toward the bottom of the box over the final stretch**, and
- * that is the whole point of this module. A fixed line at 30% of the viewport
- * is unreachable for whatever sits in the last 70% of the last screenful: the
- * page runs out of scroll before those tops get there, so the closing sections
- * stayed grey no matter how far down you read, which is what the Tools page
- * looked like from the Data heading onwards.
+ * The line **drops toward the bottom of the box over the final stretch**. A
+ * fixed line at 30% of the viewport is unreachable for whatever sits in the
+ * last 70% of the last screenful: the page runs out of scroll before those
+ * tops get there, so the closing sections stayed grey no matter how far down
+ * you read.
  *
- * Making the line `bottom - remaining` once that is lower than the fixed one
- * keeps the crossing monotonic: a scroll of d pixels moves a section's top up
- * by d and the line down by d, so each section crosses exactly once and lights
- * in order rather than snapping at the last pixel of travel.
+ * The stretch is the last `bottom - line` pixels of travel, or the whole travel
+ * when the page scrolls less than that. On a long page the line then moves one
+ * pixel per pixel scrolled, which keeps each crossing monotonic. On a short
+ * one (Guardrails, Publish) it moves faster but still starts at the fixed
+ * line: the earlier `bottom - remaining` put it most of the way down before
+ * any scroll, and the third section lit on arrival.
  */
 export function activeSectionId(
   sections: readonly SectionTop[],
   view: TimelineView
 ): string | null {
   if (sections.length === 0) return null;
-  const line =
-    view.remaining === null
-      ? view.line
-      : Math.max(view.line, view.bottom - view.remaining);
+  let line = view.line;
+  if (view.remaining !== null && view.travel !== null && view.travel > 0) {
+    const scrolled = view.travel - view.remaining;
+    // At the top, the page is being read from its first section.
+    if (scrolled <= 1) return sections[0].id;
+    const drop = Math.max(0, view.bottom - view.line);
+    const stretch = Math.min(drop, view.travel);
+    const into = scrolled - (view.travel - stretch);
+    if (stretch > 0 && into > 0) line += drop * Math.min(1, into / stretch);
+  }
   let active = sections[0].id;
   for (const section of sections) {
     if (section.top <= line) active = section.id;

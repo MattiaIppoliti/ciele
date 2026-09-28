@@ -3,18 +3,17 @@
 The ciele MCP server: let an AI agent (Claude, or any MCP client) operate
 your Organization over `/api/v1`, on the SaaS or a self-hosted deployment.
 
-Fourteen coarse tools, grouped by domain, each with an `action` discriminator:
+Sixteen coarse tools, grouped by domain, each with an `action` discriminator:
 
 | Tool | Actions |
 |---|---|
 | `ciele_identity` | deployment meta + the key's org and role |
-| `manage_assistants` | ask (the published answer + Sources; creates a Conversation) · list · get · create · update · delete · duplicate · get_entities · set_entities |
+| `manage_assistants` | ask (the published answer + Sources; creates a Conversation) · list · get · create · update · delete · duplicate |
 | `manage_flows` | catalog · list · get · create · draft · validate · runs · agent_thread · agent_conversation · update · delete · reorder |
 | `manage_knowledge` | search (passages + Sources, no answer; read-only) · list_collections · list_sources · get_source · add_text · add_url · add_file · add_org_text · add_org_url · add_org_file · delete_source · recrawl · add_faq · import_faqs |
 | `publish_assistant` | status · publish · unpublish · republish |
 | `read_inbox` | list · get · export · pin · unpin · feedback · message_feedback · delete |
 | `manage_improvements` | list · get · update |
-| `manage_entities` | list · get · create · update · delete · list_records · query_records · import_records |
 | `manage_memories` | settings · enable · disable · subjects · list · delete · wipe |
 | `manage_sso` | status · set_identity · validate · connection · connect · disconnect |
 | `manage_teammates` | list · get · create · update · delete · conversations · conversation · grants · set_grants · routines · add_routine · update_routine · delete_routine · memory · set_memory · provision |

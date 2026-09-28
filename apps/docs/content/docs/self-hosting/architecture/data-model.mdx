@@ -7,7 +7,7 @@ description: Understand the main tenant, configuration, Knowledge, and Conversat
 
 An Organization is the primary tenant. Members join an Organization with one Role.
 
-Organization-owned records include Assistants, Teammates, Entities, Memories, Help Desks, provider connections, API keys, Skills, Improvements, Goals, Alerts, and usage records.
+Organization-owned records include Assistants, Teammates, Memories, Help Desks, provider connections, API keys, Skills, Improvements, Goals, Alerts, and usage records.
 
 Teammate records include Projects, memory documents, Routines, and group threads. A group thread keeps its own messages, not Conversations.
 
@@ -30,10 +30,6 @@ flowchart TB
 A Publication stores an immutable Assistant configuration snapshot. Draft records remain editable after Publication.
 
 A Flow stores one trigger, condition configuration, and ordered actions. Runtime validation enforces valid trigger and action pairs.
-
-An Assistant selects Entity schemas for its next Publication. The schema snapshot controls generated tools, while each query reads current Records.
-
-Shared Entities expose common Organization data. User-scoped Entities name one identity attribute for server-bound filtering.
 
 ## Knowledge ownership
 

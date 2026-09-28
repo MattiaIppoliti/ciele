@@ -35,13 +35,16 @@ export {
 // warn threshold). The runtime's enterprise registry re-exports these; new
 // code should import them from here.
 export * from "./billing";
-export { coerceEntityValue } from "./entity-values";
 export { applicationConnectionOwnerType } from "./application-connections";
 
 // Open Knowledge Format v0.2: the Concept frontmatter vocabulary and the
 // read-time derivations over it (trust tier, lifecycle status, staleness).
 // Never re-implement these rules, derive through them (ADR-0002).
 export * from "./okf";
+
+// Guardrails (per-Assistant input checks and the stream marker suppressor):
+// the shapes, their validation and every check that needs no I/O.
+export * from "./guardrails";
 
 // --- Derivations: curated, because these modules have internals ------------
 

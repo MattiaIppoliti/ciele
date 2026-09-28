@@ -1,47 +1,44 @@
 ---
-title: Boîte de réception
-description: Inspectez les conversations, les sources, les traces d'exécution et les métadonnées de session.
+title: Inbox
+description: Inspectez les Conversations, les Sources, les traces d'exécution et les métadonnées de session.
 ---
 
-La boîte de réception stocke les interventions du visiteur et de l'assistant.
-Ouvrez une conversation pour examiner la transcription exacte qui a été
-enregistrée.
+La boîte de réception stocke les tours de parole du Visiteur et de l'Assistant.
+Ouvrez une Conversation pour examiner la transcription exacte qui a été stockée.
 
 ## Liste des conversations
 
 Utilisez la recherche et les filtres disponibles pour affiner la liste. Chaque
-ligne identifie l'activité récente et l'état actuel de la conversation.
+ligne indique l'activité récente et l'état actuel de la Conversation.
 
-Une session qui ne contient que des notifications proactives est marquée du
-symbole **Notification only**. Elle devient une Conversation normale dès qu'un
-Visiteur répond.
+Une session qui ne contient que des Notifications proactives porte le marqueur
+**Notification only**. Elle devient une Conversation normale dès qu'un Visiteur
+répond.
 
 ## Détail de la conversation
 
 La vue détaillée peut afficher :
 
 - Messages du visiteur et de l'assistant
-- le flux qui a géré un tour
+- le Flow qui a géré un tour
 - citations de sources nommées
-- Commentaires des visiteurs
-- état de remontée
+- Commentaires du visiteur
+- état de l'escalade
 - métadonnées de lancement et de l'appareil
 - le sujet SSO vérifié et la revendication d'identité configurée
-- informations Thinking stockées lorsque le rôle du membre autorise l'accès
+- informations de Thinking stockées lorsque le rôle du membre autorise l'accès
 
-Les actions de type Verbatim Message et les réponses de type Basic ne
-contiennent pas de trace Thinking. Les réponses de la recherche dans la base de
-connaissances peuvent contenir des événements relatifs aux outils et à la
-progression.
+Les actions Verbatim Message et les réponses Basic ne contiennent pas de trace
+Thinking. Les réponses de recherche dans la base de connaissances peuvent
+contenir des événements liés aux outils et à la progression.
 
-Les outils Generated Entity apparaissent également dans la trace. Leurs
-événements indiquent quelles données d'organisation en direct ont servi de
-support à la réponse.
+Les appels d'intégration d'API apparaissent également dans la trace. Leurs
+événements indiquent quel endpoint a pris en charge la réponse.
 
-## Créez un travail de qualité
+## Produire un travail de qualité
 
-Utilisez l'action d'amélioration disponible lorsqu'une réponse doit être
-corrigée. Le nouvel élément renvoie au message de conversation concerné.
+Utilisez l'action Improvement disponible lorsqu'une réponse doit être corrigée.
+Le nouvel élément renvoie au message de Conversation concerné.
 
 Utilisez [Exports](/operations/exports) lorsque vous avez besoin
-d'enregistrements structurés en dehors de la boîte de réception.
+d'enregistrements structurés en dehors de l'Inbox.

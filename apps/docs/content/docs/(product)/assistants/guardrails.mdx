@@ -1,0 +1,62 @@
+---
+title: Guardrails
+description: Check what Visitors send and hide marked text in Assistant answers.
+---
+
+A Guardrail is a check that runs on every Visitor message or on every streamed answer. Each Assistant has its own ordered list of Guardrails.
+
+## Guardrail types
+
+| Type | Runs on | Check |
+| --- | --- | --- |
+| **Input length limit** | Visitor message | The message has more characters or tokens than the limit. Ciele counts one token for each four characters. |
+| **Regular expression** | Visitor message | The message matches the pattern. |
+| **Moderation** | Visitor message | The OpenAI moderation model flags the message. You can select the categories that block. |
+| **Restrict to topic** | Visitor message | A model finds that the main topic of the message is not in your list. |
+| **Sensitive content in stream** | Answer | Text between a start marker and a stop marker does not show. |
+
+## Create a Guardrail
+
+1. Open an Assistant.
+2. Select **Guardrails**.
+3. Find the section for the Guardrail type.
+4. Select **Add** in that section.
+5. Complete the fields for the type.
+6. Write the message that the Visitor sees.
+7. Select **Add guardrail** to save it.
+
+Changes affect Preview immediately. The live widget changes only after publication.
+
+## Input Guardrails
+
+Input Guardrails run before a Flow receives the message. Ciele runs them in the order of the sections on the page. The two exact checks run before the two checks that use a model.
+
+In a section with more than one Guardrail, use the arrows to change their order.
+
+The first Guardrail that blocks stops the turn. The Visitor sees the Guardrail message, and no Flow runs. The checks that follow do not run.
+
+Set **When it fires** to one of these values:
+
+- **Block the message** stops the turn and shows the Guardrail message.
+- **Only log it in the Inbox trace** records the result and continues the turn. Use this value to test a new Guardrail on real traffic.
+
+**Moderation** and **Restrict to topic** use a model. Set **If the check cannot run** to control a timeout or a missing provider connection:
+
+- **Let the message through** keeps the Assistant available.
+- **Block the message** keeps the check strict.
+
+**Moderation** requires an OpenAI provider connection in the Organization. The form shows a warning when there is no OpenAI provider connection.
+
+## Stream Guardrails
+
+**Sensitive content in stream** changes the answer while the model writes it. Text between the markers does not go to the Visitor and does not go into the transcript. The Guardrail message shows one time in place of each hidden section.
+
+If the model does not write the stop marker, the rest of the answer stays hidden.
+
+Ciele does not apply this Guardrail to verbatim **Message** actions. An administrator writes that text.
+
+## Review results
+
+Open the Conversation in **Inbox**. A turn that a Guardrail blocked shows the flow marker `Guardrail:` and the Guardrail name. A badge on the answer shows each Guardrail that blocked, logged, or could not run.
+
+The Visitor does not see which Guardrail fired.

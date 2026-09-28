@@ -163,7 +163,7 @@ export function ImproveAnswerDialog({
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
-          <TabsList aria-label="Improvement source" className="bg-muted">
+          <TabsList aria-label="Improvement source">
             {(
               [
                 ["create", "Create New Improvement"],

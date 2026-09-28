@@ -1,5 +1,5 @@
-import { RouteSkeleton } from "@/components/route-skeleton";
+import { FlowBuilderSkeleton } from "@/components/assistant/flow-builder-skeleton";
 
 export default function FlowBuilderLoading() {
-  return <RouteSkeleton variant="form" />;
+  return <FlowBuilderSkeleton />;
 }

@@ -8,7 +8,7 @@ mêmes outils.
 
 - Le **hosted endpoint** est `POST /api/mcp` sur votre déploiement. Tout client
   qui accepte une URL MCP distante peut l'utiliser.
-- Le **local server** est un processus `stdio` que le client démarre en tant que
+- Le **local server** est un processus `stdio` que le client lance en tant que
   processus enfant.
 
 Privilégiez le **hosted endpoint**. Il ne nécessite aucun clonage, pas de
@@ -28,12 +28,12 @@ interfaces client et les formats de configuration peuvent évoluer.
 | OpenCode | Oui | Oui |
 | GitHub Copilot dans VS Code | Oui | Oui |
 | GitHub Copilot CLI | Oui | Oui |
-| ChatGPT web | Oui | Aucun processus local |
+| ChatGPT web | Oui | Pas de processus local |
 | Pi | Aucune procédure intégrée | Aucune procédure intégrée |
 
 ## Se connecter au point de terminaison hébergé
 
-1. Créez une [clé API](/developers/api-keys) pour un viewer.
+1. Créez une [API key](/developers/api-keys) pour un viewer.
 2. Communiquez au client l'URL de l'endpoint de votre déploiement.
 3. Configurez l'en-tête `Authorization` comme `Bearer <key>`.
 
@@ -42,12 +42,12 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-Le point de terminaison hébergé n'a pas d'option lecture seule : ses
+Le point de terminaison hébergé n'a pas d'option en lecture seule : ses
 autorisations correspondent au Role de la clé. Cependant, une clé Viewer n'est
-pas un agent en lecture seule : la consultation des conversations est considérée
-comme de la curation, ce qui lui permet d'épingler une conversation, de laisser
-un commentaire et d'en supprimer une. Utilisez un serveur stdio local avec
-`CIELE_MCP_READ_ONLY=1` lorsque l'agent ne doit absolument rien modifier.
+pas un agent en lecture seule : l'examen des conversations est considéré comme
+de la curation, ce qui lui permet d'épingler une conversation, de laisser un
+commentaire et de supprimer une conversation. Utilisez un serveur stdio local
+avec `CIELE_MCP_READ_ONLY=1` lorsque l'agent ne doit absolument rien modifier.
 
 ## Préparer une connexion locale
 
@@ -71,7 +71,7 @@ claude mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Ouvrez `/mcp` dans Claude Code. Vérifiez que le serveur `ciele` affiche dix-sept
+Ouvrez `/mcp` dans Claude Code. Vérifiez que le serveur `ciele` affiche seize
 outils.
 
 Consultez le
@@ -137,9 +137,8 @@ Ouvrez **Settings > MCP**. Activez `ciele` et examinez chaque appel d'outil
 demandé.
 
 Consultez le
-[guide MCP de Cursor](https://docs.cursor.com/context/model-context-protocol)
-pour obtenir des informations sur la configuration globale et la sécurité du
-client.
+[Cursor MCP guide](https://docs.cursor.com/context/model-context-protocol) pour
+obtenir des informations sur la configuration globale et la sécurité du client.
 
 ## OpenCode
 
@@ -239,7 +238,7 @@ List all Ciele Assistants. For each Assistant, list its enabled Flows.
 Identify duplicate or unclear Flow names. Do not change data.
 ```
 
-Utilisez cette invite pour examiner l'ingestion des connaissances :
+Utilisez cette invite pour examiner l'ingestion de connaissances :
 
 ```text
 List the Sources linked to Assistant <assistant-id>.

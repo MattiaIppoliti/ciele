@@ -1,8 +1,6 @@
 import type {
   AssistantGoal,
   CookieConsentRecord,
-  Entity,
-  EntityInput,
   EvaluationDataset,
   EvaluationRun,
   GoalExpectations,
@@ -66,11 +64,6 @@ export interface DbTableMap {
     row: EvaluationRun;
     insert: Pick<EvaluationRun, "organizationId" | "assistantId" | "assistantName" | "assistantModel" | "datasetId" | "datasetName" | "examples" | "stage" | "candidates">;
     update: Partial<Pick<EvaluationRun, "status" | "results" | "error">>;
-  };
-  entities: {
-    row: Entity;
-    insert: EntityInput & { organizationId: string };
-    update: Partial<Pick<Entity, "name" | "description">>;
   };
   /**
    * Append-only consent evidence. `update` and `delete` exist on the accessor
@@ -383,13 +376,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     id: "shortId",
     defaults: { status: "running", results: [], error: null },
     ascending: false,
-    touchesUpdatedAt: true,
-  },
-  entities: {
-    table: "entities",
-    id: "shortId",
-    defaults: { description: "", identityAttribute: null },
-    ascending: true,
     touchesUpdatedAt: true,
   },
   cookieConsentRecords: {

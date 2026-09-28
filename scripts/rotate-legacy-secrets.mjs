@@ -35,9 +35,9 @@ export const SEALED_TEXT_COLUMNS = [
   { table: "provider_connections", column: "encrypted_key" },
   { table: "sso_connections", column: "encrypted_secret" },
   { table: "assistant_api_integrations", column: "encrypted_credential" },
-  // Written by `sealSecret` in apps/web/src/app/actions.ts (the entity sync
-  // settings action seals the header list as one JSON blob); read back by
-  // `openSecret` in packages/agent/src/entity-sync.ts.
+  // The retired Entities feature sealed each sync source's header list here as
+  // one JSON blob. Nothing reads it any more, but the rows stay in the
+  // database, so a key rotation still has to re-seal them.
   { table: "entity_sync_configs", column: "sealed_headers" },
   { table: "application_connections", column: "sealed_credentials" },
 ];

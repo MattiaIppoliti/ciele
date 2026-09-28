@@ -22,10 +22,6 @@ import type {
   FlowPatch,
   HttpFlowRun,
   ImprovementPatch,
-  Entity,
-  EntityInput,
-  EntityRecord,
-  EntityRecordQuery,
   HelpDesk,
   KnowledgeCollection,
   Memory,
@@ -392,12 +388,6 @@ export class CieleClient {
       input: { question: string; conversationId?: string }
     ): Promise<AssistantAnswer> =>
       this.request("POST", `/assistants/${id}/ask`, { body: input }),
-    entities: (id: string): Promise<{ entityIds: string[] }> =>
-      this.request("GET", `/assistants/${encodeURIComponent(id)}/entities`),
-    setEntities: (id: string, entityIds: string[]): Promise<{ entityIds: string[] }> =>
-      this.request("PATCH", `/assistants/${encodeURIComponent(id)}/entities`, {
-        body: { entityIds },
-      }),
     skills: (id: string): Promise<{ data: Skill[] }> =>
       this.request("GET", `/assistants/${encodeURIComponent(id)}/skills`),
     setSkills: (id: string, skillIds: string[]): Promise<{ data: Skill[] }> =>
@@ -717,43 +707,6 @@ export class CieleClient {
       this.request("GET", `/improvements/${id}`),
     update: (id: string, patch: ImprovementPatch): Promise<unknown> =>
       this.request("PATCH", `/improvements/${id}`, { body: patch }),
-  };
-
-  readonly entities = {
-    list: (params: ListParams = {}): Promise<Page<Entity>> =>
-      this.request("GET", "/entities", { query: { ...params } }),
-    get: (id: string): Promise<Entity> =>
-      this.request("GET", `/entities/${encodeURIComponent(id)}`),
-    create: (input: EntityInput): Promise<Entity> =>
-      this.request("POST", "/entities", { body: input }),
-    update: (
-      id: string,
-      patch: { name?: string; description?: string }
-    ): Promise<Entity> =>
-      this.request("PATCH", `/entities/${encodeURIComponent(id)}`, { body: patch }),
-    delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/entities/${encodeURIComponent(id)}`),
-    listRecords: (
-      entityId: string,
-      params: { limit?: number; offset?: number } = {}
-    ): Promise<{ data: EntityRecord[]; total: number }> =>
-      this.request("GET", `/entities/${encodeURIComponent(entityId)}/records`, {
-        query: params,
-      }),
-    queryRecords: (
-      entityId: string,
-      query: EntityRecordQuery
-    ): Promise<{ data: EntityRecord[] }> =>
-      this.request("POST", `/entities/${encodeURIComponent(entityId)}/records/query`, {
-        body: query,
-      }),
-    importRecords: (
-      entityId: string,
-      csv: string
-    ): Promise<{ upserted: number; rejected: string[] }> =>
-      this.request("POST", `/entities/${encodeURIComponent(entityId)}/records/import`, {
-        body: { csv },
-      }),
   };
 
   readonly memories = {

@@ -1,0 +1,83 @@
+---
+title: Guardrails
+description: Comprueba lo que envían los visitantes y oculta el texto marcado en las respuestas del asistente.
+---
+
+Un Guardrail es una comprobación que se ejecuta en cada mensaje de un Visitor o
+en cada respuesta transmitida en flujo. Cada asistente tiene su propia lista
+ordenada de Guardrails.
+
+## Tipos de Guardrails
+
+| Tipo | Se ejecuta en | Comprobación |
+| --- | --- | --- |
+| **Input length limit** | Visitor message | El mensaje tiene más caracteres o tokens de los permitidos por el límite. Ciele cuenta un token por cada cuatro caracteres. |
+| **Regular expression** | Visitor message | El mensaje coincide con el patrón. |
+| **Moderation** | Visitor message | El modelo de moderación de OpenAI marca el mensaje. Puedes seleccionar las categorías que bloquean. |
+| **Restrict to topic** | Visitor message | Un modelo detecta que el tema principal del mensaje no está en tu lista. |
+| **Sensitive content in stream** | Answer | El texto situado entre un marcador de inicio y un marcador de fin no se muestra. |
+
+## Crea una barrera de seguridad
+
+1. Abre un asistente.
+2. Selecciona **Guardrails**.
+3. Busca la sección correspondiente al tipo de Guardrail.
+4. Selecciona **Add** en esa sección.
+5. Rellena los campos correspondientes al tipo.
+6. Escribe el mensaje que verá el Visitor.
+7. Selecciona **Add guardrail** para guardarlo.
+
+Los cambios se reflejan inmediatamente en Preview. El widget en tiempo real solo
+cambia después de la publicación.
+
+## Barreras de entrada
+
+Los Input Guardrails se ejecutan antes de que un Flow reciba el mensaje. Ciele
+los ejecuta en el orden de las secciones de la página. Las dos comprobaciones
+exactas se ejecutan antes de las dos comprobaciones que utilizan un modelo.
+
+En una sección con más de un Guardrail, usa las flechas para cambiar su orden.
+
+La primera Guardrail que bloquea detiene el turno. El Visitor ve el mensaje del
+Guardrail y no se ejecuta ningún Flow. Las comprobaciones siguientes no se
+ejecutan.
+
+Establece **When it fires** en uno de estos valores:
+
+- **Block the message** detiene el turno y muestra el mensaje de Guardrail.
+- **Only log it in the Inbox trace** registra el resultado y continúa con el
+  turno. Usa este valor para probar una nueva protección (Guardrail) con tráfico
+  real.
+
+**Moderation** y **Restrict to topic** utilizan un modelo. Establece **If the
+check cannot run** para controlar un tiempo de espera agotado o una conexión con
+el proveedor ausente:
+
+- **Let the message through** mantiene disponible al Asistente.
+- **Block the message** mantiene la comprobación estricta.
+
+**Moderation** requiere una conexión con un proveedor de OpenAI en la
+organización. El formulario muestra una advertencia cuando no hay conexión con
+el proveedor de OpenAI.
+
+## Guardarraíles de flujo
+
+**Sensitive content in stream** cambia la respuesta mientras el modelo la
+escribe. El texto entre los marcadores no se muestra al Visitor ni se incluye en
+la transcripción. El mensaje de Guardrail se muestra una sola vez en lugar de
+cada sección oculta.
+
+Si el modelo no escribe el marcador de parada, el resto de la respuesta
+permanece oculto.
+
+Ciele no aplica este Guardrail a las acciones **Message** textuales. Un
+administrador escribe ese texto.
+
+## Revisa los resultados
+
+Abre la conversación en **Inbox**. Un turno que un Guardrail ha bloqueado
+muestra el marcador de flujo `Guardrail:` y el nombre del Guardrail. Una
+insignia en la respuesta muestra cada Guardrail que bloqueó, registró o no pudo
+ejecutarse.
+
+El Visitor no ve qué Guardrail se ha activado.

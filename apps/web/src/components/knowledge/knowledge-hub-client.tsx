@@ -27,7 +27,7 @@ import {
   Upload,
 } from "lucide-react";
 import { ScanTextIcon } from "@/components/ui/icons/scan-text";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import {
   ApplicationKnowledgePanel,
@@ -576,9 +576,9 @@ export function KnowledgeHubClient({
                     </TableCell>
                   </TableRow>
                 )}
-                {items.map((item) => (
+                {items.map((item, index) => (
+                  <RollRow key={item.id} index={index}>
                   <TableRowMenu
-                    key={item.id}
                     title={item.name}
                     onOpen={
                       canEdit ? () => selection.selectForMenu(item.id) : undefined
@@ -656,12 +656,12 @@ export function KnowledgeHubClient({
                             href={libraryDocumentsHref(item.kind, item.id)}
                             label={item.name}
                           >
-                            <span className="block truncate">{item.name}</span>
+                            <span className="block truncate"><RollInText text={item.name} /></span>
                           </TableOpenCell>
                         </TableCell>
                         <TableCell className="text-muted-foreground align-top">
                           <span className="block truncate">
-                            {item.answerPreview || "—"}
+                            <RollInText text={item.answerPreview || "—"} />
                           </span>
                         </TableCell>
                       </>
@@ -686,7 +686,7 @@ export function KnowledgeHubClient({
                               href={libraryDocumentsHref(item.kind, item.id)}
                               className="press-text block truncate font-medium hover:underline"
                             >
-                              {item.name}
+                              <RollInText text={item.name} />
                             </Link>
                             {tab === "websites" && item.config.url && (
                               <a
@@ -696,7 +696,7 @@ export function KnowledgeHubClient({
                                 className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
                               >
                                 <span className="truncate">
-                                  {item.config.url}
+                                  <RollInText text={item.config.url} />
                                 </span>
                                 <ExternalLink className="size-3 shrink-0" />
                               </a>
@@ -712,7 +712,7 @@ export function KnowledgeHubClient({
                           className="text-primary press-text font-medium hover:underline tabular-nums"
                         >
                           <RollingNumber value={item.conceptCount} />{" "}
-                          {item.conceptCount === 1 ? "Document" : "Documents"}
+                          <RollInText text={item.conceptCount === 1 ? "Document" : "Documents"} />
                         </Link>
                       </TableCell>
                     )}
@@ -735,7 +735,7 @@ export function KnowledgeHubClient({
                     {tab === "files" && (
                       <TableCell className="text-muted-foreground text-sm">
                         <span className="flex items-center gap-1.5">
-                          {directAccessSummary(item.linkedAssistants)}
+                          <RollInText text={directAccessSummary(item.linkedAssistants)} />
                           {canEdit && (
                             <Button
                               variant="ghost"
@@ -759,7 +759,7 @@ export function KnowledgeHubClient({
                       <StatusBadge status={item.status} />
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                      {formatWhen(item.updatedAt)}
+                      <RollInText text={formatWhen(item.updatedAt)} />
                     </TableCell>
                     <TableCell>
                       <TableActions>
@@ -828,6 +828,7 @@ export function KnowledgeHubClient({
                     </TableCell>
                   </TableRow>
                   </TableRowMenu>
+                  </RollRow>
                 ))}
               </TableBody>
             </Table>

@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { RollInText, RollRow } from "./roll-in-text";
 
 export type SortDirection = "asc" | "desc";
 export interface SortState {
@@ -61,7 +62,8 @@ function alignText(align: TableColumn<unknown>["align"]) {
 function readCell<T>(row: T, column: TableColumn<T>): ReactNode {
   if (column.cell) return column.cell(row);
   const value = column.accessor?.(row);
-  return value == null ? "" : String(value);
+  // A plain value rolls when it changes, and rolls in on the first rows.
+  return value == null ? "" : <RollInText text={String(value)} />;
 }
 
 function compare(a: unknown, b: unknown): number {
@@ -176,9 +178,9 @@ export function Table<T>({
               </TableCell>
             </TableRow>
           ) : (
-            sortedRows.map((entry) => (
+            sortedRows.map((entry, index) => (
+              <RollRow key={entry.id} index={index}>
               <TableRow
-                key={entry.id}
                 style={{ height: 56 }}
                 className="border-border/60 last:border-b-0"
               >
@@ -195,6 +197,7 @@ export function Table<T>({
                   </TableCell>
                 ))}
               </TableRow>
+              </RollRow>
             ))
           )}
         </TableBody>

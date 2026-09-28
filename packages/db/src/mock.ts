@@ -1,4 +1,3 @@
-import { entityRecordValuesEqual } from "./entity-records";
 import { capPerSource, lexicalScore, lexicalTokens } from "./hybrid-search";
 import {
   compareInboxConversation,
@@ -39,10 +38,6 @@ import type {
   DashboardFacts,
   DefaultFlowSpec,
   DueCompostAssistant,
-  Entity,
-  EntityRecord,
-  EntitySyncConfig,
-  EntitySyncRun,
   ExportJob,
   Flow,
   FlowInput,
@@ -396,11 +391,6 @@ interface MockStore {
   skills: Map<string, Skill>;
   /** assistantId → ordered attached skill ids. */
   assistantSkills: Map<string, string[]>;
-  entities: Map<string, Entity>;
-  entityRecords: Map<string, EntityRecord>;
-  /** Per-Entity sync sources + run reports (#670). */
-  entitySyncConfigs: Map<string, EntitySyncConfig>;
-  entitySyncRuns: Map<string, EntitySyncRun>;
   /** Long-term memories (#664), keyed by memory id. */
   memories: Map<string, Memory>;
   /** `${organizationId}:${subjectId}` → latest complete memory erasure. */
@@ -669,10 +659,6 @@ function emptyStore(): MockStore {
     publications: new Map(),
     skills: new Map(),
     assistantSkills: new Map(),
-    entities: new Map(),
-    entityRecords: new Map(),
-    entitySyncConfigs: new Map(),
-    entitySyncRuns: new Map(),
     memories: new Map(),
     memoryErasedAt: new Map(),
     memoryEnabled: new Set(),
@@ -2082,7 +2068,6 @@ const MOCK_TABLE_STORES: {
 } = {
   evaluationDatasets: () => getStore().evaluationDatasets,
   evaluationRuns: () => getStore().evaluationRuns,
-  entities: () => getStore().entities,
   cookieConsentRecords: () => getStore().cookieConsentRecords,
   skills: () => getStore().skills,
   teammates: () => getStore().teammates,
@@ -2124,9 +2109,6 @@ const MOCK_CASCADES: Partial<
     }[]
   >
 > = {
-  entities: [
-    { rows: () => getStore().entityRecords as Map<string, unknown>, column: "entityId" },
-  ],
   teammates: [
     {
       rows: () => getStore().teammateGrants as Map<string, unknown>,
@@ -3899,10 +3881,6 @@ export const mockDb: Db = {
       typeof payload.improvementId === "string"
         ? getStore().improvements.get(payload.improvementId)
         : null;
-    const entity =
-      typeof payload.entityId === "string"
-        ? getStore().entities.get(payload.entityId)
-        : null;
     const conversation =
       typeof payload.conversationId === "string"
         ? getStore().conversations.get(payload.conversationId)
@@ -3932,8 +3910,6 @@ export const mockDb: Db = {
       throw new Error("Background job Collection not found");
     if (typeof payload.improvementId === "string" && !improvement)
       throw new Error("Background job Improvement not found");
-    if (typeof payload.entityId === "string" && !entity)
-      throw new Error("Background job Entity not found");
     if (typeof payload.conversationId === "string" && !conversation)
       throw new Error("Background job Conversation not found");
     if (typeof payload.sourceId === "string" && !payloadSource)
@@ -3984,7 +3960,6 @@ export const mockDb: Db = {
       payloadAssistant?.organizationId,
       payloadConceptCollection?.organizationId,
       improvement?.organizationId,
-      entity?.organizationId,
       conversationOrganization(conversation),
       conversationOrganization(messageConversation),
       payloadTeammate?.organizationId,
@@ -7755,84 +7730,6 @@ export const mockDb: Db = {
     getStore().assistantSkills.set(assistantId, [...skillIds]);
   },
 
-  // --- Entities + Records (#663) ----------------------------------------
-
-  async upsertEntityRecords(entityId, rows) {
-    const store = getStore();
-    const now = new Date().toISOString();
-    const byKey = new Map(
-      [...store.entityRecords.values()]
-        .filter((r) => r.entityId === entityId)
-        .map((r) => [r.key, r])
-    );
-    let written = 0;
-    for (const row of rows) {
-      const existing = byKey.get(row.key);
-      if (existing) {
-        if (entityRecordValuesEqual(existing.values, row.values)) continue;
-        store.entityRecords.set(existing.id, {
-          ...existing,
-          values: row.values,
-          updatedAt: now,
-        });
-        written += 1;
-      } else {
-        const record: EntityRecord = {
-          id: shortId(),
-          entityId,
-          key: row.key,
-          values: row.values,
-          createdAt: now,
-          updatedAt: now,
-        };
-        store.entityRecords.set(record.id, record);
-        byKey.set(record.key, record);
-        written += 1;
-      }
-    }
-    return written;
-  },
-
-  async listEntityRecords(entityId, opts) {
-    const limit = opts?.limit ?? 50;
-    const offset = opts?.offset ?? 0;
-    return [...getStore().entityRecords.values()]
-      .filter((r) => r.entityId === entityId)
-      .sort((a, b) => (a.key < b.key ? -1 : 1))
-      .slice(offset, offset + limit);
-  },
-
-  async countEntityRecords(entityId) {
-    return [...getStore().entityRecords.values()].filter(
-      (r) => r.entityId === entityId
-    ).length;
-  },
-
-  async queryEntityRecords(entityId, query) {
-    const filters = Object.entries(query.filters ?? {});
-    const search = query.search?.trim().toLowerCase();
-    const textKeys = new Set(
-      (getStore().entities.get(entityId)?.attributes ?? [])
-        .filter((attribute) => attribute.type === "text")
-        .map((attribute) => attribute.key)
-    );
-    return [...getStore().entityRecords.values()]
-      .filter((r) => r.entityId === entityId)
-      .filter((r) => filters.every(([key, value]) => r.values[key] === value))
-      .filter(
-        (r) =>
-          !search ||
-          Object.entries(r.values).some(
-            ([key, value]) =>
-              textKeys.has(key) &&
-              value != null &&
-              String(value).toLowerCase().includes(search)
-          )
-      )
-      .sort((a, b) => (a.key < b.key ? -1 : 1))
-      .slice(0, query.limit ?? 20);
-  },
-
   // --- Long-term memories (#664) ----------------------------------------
 
   async getMemoryEnabled(organizationId) {
@@ -7904,67 +7801,6 @@ export const mockDb: Db = {
     return getStore().memories.get(id) ?? null;
   },
 
-  // --- Synced Record ingestion (#670) ------------------------------------
-
-  async getEntitySyncConfig(entityId) {
-    return getStore().entitySyncConfigs.get(entityId) ?? null;
-  },
-
-  async upsertEntitySyncConfig(entityId, input) {
-    const store = getStore();
-    const existing = store.entitySyncConfigs.get(entityId);
-    const config: EntitySyncConfig = {
-      entityId,
-      url: input.url,
-      sealedHeaders: input.sealedHeaders ?? null,
-      cadenceHours: input.cadenceHours,
-      prune: input.prune,
-      mapping: { ...input.mapping },
-      lastSyncedAt: existing?.lastSyncedAt ?? null,
-    };
-    store.entitySyncConfigs.set(entityId, config);
-    return config;
-  },
-
-  async markEntitySynced(entityId, at) {
-    const store = getStore();
-    const config = store.entitySyncConfigs.get(entityId);
-    if (config) store.entitySyncConfigs.set(entityId, { ...config, lastSyncedAt: at });
-  },
-
-  async listDueEntitySyncConfigs(now) {
-    const store = getStore();
-    const due: Array<{ entityId: string; organizationId: string }> = [];
-    for (const config of store.entitySyncConfigs.values()) {
-      const entity = store.entities.get(config.entityId);
-      if (!entity) continue;
-      if (config.lastSyncedAt) {
-        const nextAt =
-          new Date(config.lastSyncedAt).getTime() +
-          config.cadenceHours * 3_600_000;
-        if (nextAt > new Date(now).getTime()) continue;
-      }
-      due.push({ entityId: config.entityId, organizationId: entity.organizationId });
-    }
-    return due;
-  },
-
-  async recordEntitySyncRun(entityId, run) {
-    const store = getStore();
-    const record: EntitySyncRun = {
-      id: shortId(),
-      entityId,
-      status: run.status,
-      upserted: run.upserted,
-      pruned: run.pruned,
-      rejected: [...run.rejected],
-      error: run.error ?? null,
-      finishedAt: new Date(monotonicNow()).toISOString(),
-    };
-    store.entitySyncRuns.set(record.id, record);
-    return record;
-  },
-
   async createApplicationSyncJobIfAbsent(input) {
     const activeJobs = [...getStore().backgroundJobs.values()].filter(
       (job) =>
@@ -7998,66 +7834,6 @@ export const mockDb: Db = {
         });
       }
     }
-  },
-
-  async commitEntitySync(input) {
-    const store = getStore();
-    const config = store.entitySyncConfigs.get(input.entityId);
-    if (!config) throw new Error("Entity sync config not found");
-    if (config.lastSyncedAt !== input.expectedLastSyncedAt) {
-      return this.recordEntitySyncRun(input.entityId, {
-        status: "failed",
-        upserted: 0,
-        pruned: 0,
-        rejected: input.rejected,
-        error: "Superseded by a newer sync",
-      });
-    }
-    const upserted = await this.upsertEntityRecords(input.entityId, input.rows);
-    const pruned =
-      input.prune && input.rows.length > 0
-        ? await this.pruneEntityRecords(
-            input.entityId,
-            input.rows.map((row) => row.key)
-          )
-        : 0;
-    store.entitySyncConfigs.set(input.entityId, {
-      ...config,
-      lastSyncedAt: input.at,
-    });
-    return this.recordEntitySyncRun(input.entityId, {
-      status: "succeeded",
-      upserted,
-      pruned,
-      rejected: input.rejected,
-      error: null,
-    });
-  },
-
-  async listEntitySyncRuns(entityId, limit = 20) {
-    return [...getStore().entitySyncRuns.values()]
-      .filter((r) => r.entityId === entityId)
-      // Newest first, `id` breaking a tie, matching the adapter's
-      // `finished_at desc, id desc`. The stamps are monotonic, so the
-      // tiebreaker never fires here; it keeps the two sorts one rule.
-      .sort(
-        (a, b) =>
-          b.finishedAt.localeCompare(a.finishedAt) || b.id.localeCompare(a.id)
-      )
-      .slice(0, limit);
-  },
-
-  async pruneEntityRecords(entityId, seenKeys) {
-    const store = getStore();
-    const seen = new Set(seenKeys);
-    let removed = 0;
-    for (const [id, record] of store.entityRecords) {
-      if (record.entityId !== entityId) continue;
-      if (seen.has(record.key)) continue;
-      store.entityRecords.delete(id);
-      removed += 1;
-    }
-    return removed;
   },
 
   async listMemorySubjects(organizationId) {
@@ -8113,15 +7889,6 @@ export const mockDb: Db = {
       : ordered;
     return finalizePage(remaining.slice(0, limit + 1), limit, (last) =>
       JSON.stringify([last.lastMemoryAt, last.subjectId])
-    );
-  },
-
-  async listEntitiesPage(organizationId, input) {
-    return pageById(
-      [...getStore().entities.values()].filter(
-        (entity) => entity.organizationId === organizationId
-      ),
-      input
     );
   },
 

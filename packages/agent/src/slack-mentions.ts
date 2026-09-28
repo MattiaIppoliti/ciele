@@ -572,7 +572,6 @@ async function answer(
     },
     flows: config.flows,
     skills: config.skills ?? [],
-    entities: config.entities ?? [],
     connections,
     organizationId: connection.organizationId,
     subjectType: "visitor",

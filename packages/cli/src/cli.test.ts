@@ -204,16 +204,10 @@ describe("ciele CLI", () => {
   });
 
   it("an empty list reads as (none), never as a blank line", async () => {
-    const { deps, out } = harness(({ url }) =>
-      url.includes("/entities")
-        ? { json: { entityIds: [] } }
-        : { json: { data: [] } }
-    );
+    const { deps, out } = harness(() => ({ json: { data: [] } }));
     const key = ["--api-key", "ciele_sk_test"];
-    expect(await runCli(["assistants", "get-entities", "a1", ...key], deps)).toBe(EXIT.ok);
-    expect(out[0]).toBe("(none)");
     expect(await runCli(["assistants", "get-skills", "a1", ...key], deps)).toBe(EXIT.ok);
-    expect(out[1]).toBe("(none)");
+    expect(out[0]).toBe("(none)");
   });
 
   it("api-integrations get says there is none instead of printing null", async () => {
@@ -237,7 +231,7 @@ describe("ciele CLI", () => {
               api: "ciele",
               apiVersion: 1,
               serverVersion: "0.40.0",
-              domains: ["assistants", "entities", "memories", "sso"],
+              domains: ["assistants", "memories", "sso"],
             },
           }
         : { json: WHOAMI }
@@ -258,7 +252,7 @@ describe("ciele CLI", () => {
       baseUrl: "http://127.0.0.1:3000",
       apiVersion: 1,
       serverVersion: "0.40.0",
-      domains: ["assistants", "entities", "memories", "sso"],
+      domains: ["assistants", "memories", "sso"],
       organizationId: "org-1",
       role: "editor",
       keyId: "k-1",

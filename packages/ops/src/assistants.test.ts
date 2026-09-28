@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Role } from "@agent-hub/core";
+import { defaultGuardrail } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import {
   askAssistantOp,
@@ -225,5 +226,20 @@ describe("a model pinned to a source", () => {
   it("refuses a source nobody defined, and a personal subscription", () => {
     for (const modelSource of ["carrier_pigeon", "subscription"])
       expect(assistantPatchSchema.safeParse({ modelSource }).success).toBe(false);
+  });
+});
+
+describe("Guardrails settings", () => {
+  const regex = { ...defaultGuardrail("regexp_guardrail", "r1"), pattern: "\\d{16}" };
+  it("accepts a valid list and refuses one a turn could not enforce", () => {
+    expect(assistantPatchSchema.safeParse({ guardrails: [regex] }).success).toBe(true);
+    expect(assistantPatchSchema.safeParse({ guardrails: [] }).success).toBe(true);
+    for (const invalid of [
+      [{ ...regex, pattern: "(unclosed" }],
+      [{ ...regex, type: "jailbreak_detector" }],
+      [regex, { ...regex }],
+      [{ ...defaultGuardrail("sensitive_content_stream", "s"), startMarker: "<x>" }],
+      "not a list",
+    ]) expect(assistantPatchSchema.safeParse({ guardrails: invalid }).success).toBe(false);
   });
 });

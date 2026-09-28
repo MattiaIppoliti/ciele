@@ -724,50 +724,15 @@ describe("improvements commands", () => {
   });
 });
 
-describe("entities and records commands", () => {
-  it("creates an Entity from JSON and imports Records from CSV", async () => {
-    const dir = tmp();
-    const entityPath = join(dir, "orders.json");
-    const csvPath = join(dir, "orders.csv");
-    writeFileSync(entityPath, JSON.stringify({
-      name: "Orders",
-      description: "Customer orders",
-      attributes: [
-        { key: "order_id", label: "Order ID", type: "text" },
-        { key: "status", label: "Status", type: "text" },
-      ],
-      keyAttribute: "order_id",
-      scope: "shared",
-    }));
-    writeFileSync(csvPath, "order_id,status\nA-1,delayed\n");
-    const { deps, calls } = harness(() => ({ json: { id: "e1", upserted: 1, rejected: [] } }));
-
-    expect(await runCli(["entities", "create", "--file", entityPath], deps)).toBe(EXIT.ok);
-    expect(JSON.parse(calls[0].body!).name).toBe("Orders");
-    expect(await runCli(["records", "import", "e1", "--file", csvPath], deps)).toBe(EXIT.ok);
-    expect(JSON.parse(calls[1].body!)).toEqual({
-      csv: "order_id,status\nA-1,delayed\n",
-    });
-  });
-
-  it("queries typed Record filters from a JSON file", async () => {
-    const dir = tmp();
-    const queryPath = join(dir, "query.json");
-    writeFileSync(queryPath, JSON.stringify({ filters: { delayed: true }, limit: 20 }));
-    const { deps, calls } = harness(() => ({ json: { data: [] } }));
-    expect(await runCli(["records", "query", "e1", "--file", queryPath], deps)).toBe(EXIT.ok);
-    expect(calls[0].url).toContain("/entities/e1/records/query");
-    expect(JSON.parse(calls[0].body!)).toEqual({ filters: { delayed: true }, limit: 20 });
-  });
-
+describe("--file JSON input", () => {
   it("sends a --file holding a bare number instead of exiting with it", async () => {
     const dir = tmp();
-    const queryPath = join(dir, "query.json");
-    writeFileSync(queryPath, "5");
-    const { deps, calls } = harness(() => ({ json: { data: [] } }));
-    expect(await runCli(["records", "query", "e1", "--file", queryPath], deps)).toBe(EXIT.ok);
+    const skillPath = join(dir, "skill.json");
+    writeFileSync(skillPath, "5");
+    const { deps, calls } = harness(() => ({ json: { id: "s1" } }));
+    expect(await runCli(["skills", "create", "--file", skillPath], deps)).toBe(EXIT.ok);
     expect(calls[0].body).toBe("5");
-    expect(await runCli(["records", "query", "e1"], deps)).toBe(EXIT.usage);
+    expect(await runCli(["skills", "create"], deps)).toBe(EXIT.usage);
     expect(calls).toHaveLength(1);
   });
 });
@@ -786,14 +751,7 @@ describe("memories commands", () => {
   });
 });
 
-describe("Assistant Entity selection and SSO identity commands", () => {
-  it("sets Entity ids without replacing the Assistant's other tools", async () => {
-    const { deps, calls } = harness(() => ({ json: { entityIds: ["e1", "e2"] } }));
-    expect(await runCli(["assistants", "set-entities", "a1", "--ids", "e1,e2"], deps)).toBe(EXIT.ok);
-    expect(calls[0].url).toContain("/assistants/a1/entities");
-    expect(JSON.parse(calls[0].body!)).toEqual({ entityIds: ["e1", "e2"] });
-  });
-
+describe("SSO identity commands", () => {
   it("sets and clears the verified SSO identity claim", async () => {
     const { deps, calls } = harness(({ body }) => ({
       json: JSON.parse(body ?? "{}"),

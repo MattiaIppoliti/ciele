@@ -21,6 +21,7 @@ import {
 } from "@/lib/improvements";
 import { ImprovementContextMenu } from "./improvement-context-menu";
 import type { ImprovementLanes } from "./use-improvement-lanes";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 
 interface CardProps extends React.HTMLAttributes<HTMLElement> {
@@ -68,14 +69,14 @@ function ImprovementCard({
         <CardContent className="flex flex-col gap-2.5">
           <div className="flex items-start justify-between gap-2">
             <span className="line-clamp-2 text-sm font-medium">
-              {item.title}
+              <RollInText text={item.title} />
             </span>
             {item.priority !== "none" && (
               <span
                 className={`inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-2xs font-medium ${pri.chip}`}
               >
                 <pri.icon className="size-3" />
-                {pri.label}
+                <RollInText text={pri.label} />
               </span>
             )}
           </div>
@@ -84,7 +85,7 @@ function ImprovementCard({
             <div className="flex flex-wrap gap-1">
               {item.tags.slice(0, 3).map((t) => (
                 <Badge key={t} variant="outline" className="max-w-full shrink text-2xs">
-                  <span className="truncate">{t}</span>
+                  <span className="truncate"><RollInText text={t} /></span>
                 </Badge>
               ))}
             </div>
@@ -94,7 +95,7 @@ function ImprovementCard({
             <span
               className={`rounded-md border px-1.5 py-0.5 font-mono text-2xs ${improvementKeyClass(item.status)}`}
             >
-              {improvementKey(item.seq)}
+              <RollInText text={improvementKey(item.seq)} />
             </span>
             <div className="flex items-center gap-2">
               {item.messageCount > 0 && (
@@ -106,7 +107,7 @@ function ImprovementCard({
               {item.dueDate && (
                 <span className="inline-flex items-center gap-1 whitespace-nowrap tabular-nums">
                   <CalendarClock className="size-3.5" />
-                  {formatDay(item.dueDate)}
+                  <RollInText text={formatDay(item.dueDate)} />
                 </span>
               )}
               {assigneeEmail ? (
@@ -214,9 +215,11 @@ export function ImprovementsKanban({
                         : "Nothing here."}
                 </p>
               ) : (
-                items.map((i) => (
+                // Lanes sit side by side, so the budget is per lane: the top
+                // cards of every lane are on screen together.
+                items.map((i, index) => (
+                  <RollRow key={i.id} index={index}>
                   <ImprovementContextMenu
-                    key={i.id}
                     item={i}
                     members={members}
                     tagOptions={tagOptions}
@@ -234,6 +237,7 @@ export function ImprovementsKanban({
                       onOpen={() => onOpen(i.id)}
                     />
                   </ImprovementContextMenu>
+                  </RollRow>
                 ))
               )}
             </div>

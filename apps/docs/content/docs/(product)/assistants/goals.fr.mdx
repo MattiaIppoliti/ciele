@@ -1,47 +1,47 @@
 ---
 title: Objectifs
-description: Planifiez des vérifications récurrentes pour les réponses importantes de l'Assistant.
+description: Planifiez des vérifications reproductibles pour les réponses importantes de l'Assistant.
 ---
 
-Un objectif pose une question récurrente et vérifie la réponse par rapport à des
-attentes déterministes. Un objectif qui échoue génère une alerte.
+Un Goal pose une question permanente et vérifie la réponse par rapport à des
+attentes déterministes. Un Goal en échec génère une Alert.
 
-## Créez un objectif
+## Créer un objectif
 
 1. Ouvrez un Assistant.
 2. Sélectionnez **Goals**.
-3. Sélectionnez **Create Goal**.
+3. Sélectionnez **Add** dans la section **Goals**.
 4. Saisissez la question que Ciele doit poser.
 5. Ajoutez une ou plusieurs attentes.
-6. Enregistrez l'objectif.
+6. Enregistrez le Goal.
 
 ## Attentes disponibles
 
-| Attente | Vérification |
+| Expectation | Check |
 | --- | --- |
 | Doit citer une source | La réponse contient au moins une citation de source. |
-| L'URL citée contient | Une URL citée contient le texte configuré. |
-| La réponse contient | La réponse contient chaque fragment de texte configuré. |
-| Réponse sans solution de secours | Le moteur d'exécution n'a pas renvoyé son résultat de secours. |
+| Cited URL contains | Une URL citée contient le texte configuré. |
+| Answer contains | La réponse contient chacun des fragments de texte configurés. |
+| Non-fallback answer | Le runtime n'a pas renvoyé son résultat de secours. |
 
-Ciele vérifie toujours qu'il n'y a pas de réponse de secours. Les autres
-attentes dépendent de la configuration de l'objectif.
+Ciele vérifie toujours qu'il s'agit d'une réponse non fallback. Les autres
+attentes dépendent de la configuration de l'objectif (Goal).
 
 ## Statut de l'objectif
 
-Un objectif actif s'exécute selon son calendrier. Ciele peut mettre un objectif
+Un Goal actif s'exécute selon son propre calendrier. Ciele peut mettre un Goal
 en quarantaine après des problèmes d'exécution répétés.
 
-Un objectif mis en quarantaine ne poursuit pas son programme normal. Examinez
-l'objectif et son alerte avant de le réactiver.
+Un Goal mis en quarantaine n'exécute pas son programme habituel. Examinez le
+Goal et son Alert avant de le réactiver.
 
 ## Examiner un échec
 
 1. Ouvrez **Alerts**.
 2. Sélectionnez l'échec de l'objectif.
 3. Examinez la réponse et l'attente non satisfaite.
-4. Corrigez la Connaissance, le Flux ou l'Objectif.
-5. Exécutez à nouveau l'objectif.
+4. Corrigez la Knowledge, le Flow ou le Goal.
+5. Exécutez à nouveau le Goal.
 
-Les objectifs utilisent des vérifications exactes. Ils n'utilisent pas de
-correcteur de modèle ouvert.
+Les objectifs utilisent des vérifications exactes. Ils n'utilisent pas
+d'évaluateur de modèle à réponse ouverte.

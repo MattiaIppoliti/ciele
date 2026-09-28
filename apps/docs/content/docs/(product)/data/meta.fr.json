@@ -1,8 +1,7 @@
 {
-  "title": "Données et mémoire",
+  "title": "Mémoire",
   "pages": [
     "index",
-    "entities-and-records",
     "long-term-memory"
   ]
 }

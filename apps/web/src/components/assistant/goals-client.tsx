@@ -8,7 +8,8 @@ import {
   deleteGoalAction,
   updateGoalAction,
 } from "@/app/actions";
-import { Badge } from "@agent-hub/ui";
+import { Badge, Card } from "@agent-hub/ui";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { Button } from "@agent-hub/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@agent-hub/ui";
@@ -73,7 +74,7 @@ function GoalForm({
 }) {
   const id = useId();
   return (
-    <div className="grid gap-3 rounded-lg border p-4">
+    <div className="bg-background/40 grid gap-3 rounded-lg border p-4">
       <div className="grid gap-1.5">
         <Label htmlFor={`${id}-question`}>Question</Label>
         <Textarea
@@ -121,10 +122,6 @@ function GoalForm({
         />
         The answer must cite at least one Source
       </label>
-      <p className="text-muted-foreground text-xs">
-        “The answer is not the ‘couldn&apos;t find an answer’ fallback” is
-        always checked.
-      </p>
       <div className="flex gap-2">
         <Button size="sm" onClick={onSave} disabled={saving || !draft.question.trim()}>
           <RollInText text={saving ? "Saving…" : saveLabel} />
@@ -179,164 +176,192 @@ export function GoalsClient({
     });
   };
 
+  const full = goals.length >= cap;
+
   return (
-    <div className="mt-6 grid gap-4">
-      {goals.length === 0 && !adding && (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-sm">
-          No goals yet. Add the questions that matter most, like pricing or policies, and they&apos;ll be re-checked on a schedule.
-        </p>
-      )}
-
-      {goals.map((goal) =>
-        editingId === goal.id ? (
-          <GoalForm
-            key={goal.id}
-            draft={editDraft}
-            setDraft={setEditDraft}
-            saving={busy(goal.id)}
-            saveLabel="Save goal"
-            onCancel={() => setEditingId(null)}
-            onSave={() =>
-              run(
-                goal.id,
-                () =>
-                  updateGoalAction(assistantId, goal.id, {
-                    question: editDraft.question,
-                    expectations: expectationsFromDraft(editDraft),
-                  }),
-                "Goal saved",
-                () => setEditingId(null)
-              )
-            }
-          />
-        ) : (
-          <div key={goal.id} className="flex items-start justify-between gap-4 rounded-lg border p-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="min-w-0 font-medium break-words">{goal.question}</span>
-                {goal.status === "quarantined" && (
-                  <Badge variant="outline">Quarantined</Badge>
-                )}
-                {goal.lastResult === "pass" && <Badge>Passing</Badge>}
-                {goal.lastResult === "fail" && (
-                  <Badge variant="destructive">Failing</Badge>
-                )}
-                {goal.lastResult === null && (
-                  <Badge variant="secondary">Not run yet</Badge>
-                )}
+    <div className="pt-6 pb-24">
+      <SectionTimeline>
+        <TimelineSection title="Goals">
+          <Card size="sm" className="gap-4 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold">Questions your business depends on</h2>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Each one is asked again on a schedule against the latest publish.{" "}
+                  <span className="tabular-nums">
+                    <RollingNumber value={goals.length} />/{formatCount(cap)}
+                  </span>{" "}
+                  used.
+                </p>
               </div>
-              <p className="text-muted-foreground mt-1 text-xs break-words">
-                {[
-                  goal.expectations.mustCiteSources ? "must cite a Source" : null,
-                  goal.expectations.expectedSourceUrl
-                    ? `Source URL contains “${goal.expectations.expectedSourceUrl}”`
-                    : null,
-                  goal.expectations.mustContain?.length
-                    ? `answer contains: ${goal.expectations.mustContain.join(", ")}`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "no extra expectations"}
-                {goal.lastRunAt &&
-                  ` · last run ${formatDateTime(goal.lastRunAt)}`}
-                {goal.lastResult === "fail" && goal.lastDetail
-                  ? ` · ${goal.lastDetail}`
-                  : ""}
-              </p>
+              {canEdit && !adding && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  disabled={full}
+                  title={full ? `An Assistant can have ${formatCount(cap)} goals.` : undefined}
+                  onClick={() => setAdding(true)}
+                >
+                  Add
+                </Button>
+              )}
             </div>
-            {canEdit && (
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setEditingId(goal.id);
-                    setEditDraft(draftFromGoal(goal));
-                  }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={busy(goal.id)}
-                  onClick={() =>
-                    run(
-                      goal.id,
-                      () =>
-                        updateGoalAction(assistantId, goal.id, {
-                          status:
-                            goal.status === "active" ? "quarantined" : "active",
-                        }),
-                      goal.status === "active" ? "Goal quarantined" : "Goal reactivated"
-                    )
-                  }
-                >
-                  <RollInText text={goal.status === "active" ? "Quarantine" : "Reactivate"} />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive"
-                  disabled={busy(goal.id)}
-                  onClick={() =>
-                    confirmDelete({
-                      title: "Delete this goal?",
-                      description: `“${goal.question}” stops being checked on its schedule.`,
-                      onConfirm: async () => {
-                        await deleteGoalAction(assistantId, goal.id);
-                        toast.success("Goal deleted");
-                      },
-                    })
-                  }
-                >
-                  Delete
-                </Button>
-              </div>
-            )}
-          </div>
-        )
-      )}
 
-      {canEdit &&
-        (adding ? (
-          <GoalForm
-            draft={draft}
-            setDraft={setDraft}
-            saving={busy("new")}
-            saveLabel="Add goal"
-            onCancel={() => setAdding(false)}
-            onSave={() =>
-              run(
-                "new",
-                () =>
-                  createGoalAction(assistantId, {
-                    question: draft.question,
-                    expectations: expectationsFromDraft(draft),
-                  }),
-                "Goal added",
-                () => {
-                  setAdding(false);
-                  setDraft(EMPTY_DRAFT);
+            {goals.length === 0 && !adding && (
+              <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
+                No goals yet. Add the questions that matter most, like pricing or policies.
+              </p>
+            )}
+
+            {goals.length > 0 && (
+              <ul className="divide-y rounded-lg border">
+                {goals.map((goal) =>
+                  editingId === goal.id ? (
+                    <li key={goal.id} className="p-2">
+                      <GoalForm
+                        draft={editDraft}
+                        setDraft={setEditDraft}
+                        saving={busy(goal.id)}
+                        saveLabel="Save goal"
+                        onCancel={() => setEditingId(null)}
+                        onSave={() =>
+                          run(
+                            goal.id,
+                            () =>
+                              updateGoalAction(assistantId, goal.id, {
+                                question: editDraft.question,
+                                expectations: expectationsFromDraft(editDraft),
+                              }),
+                            "Goal saved",
+                            () => setEditingId(null)
+                          )
+                        }
+                      />
+                    </li>
+                  ) : (
+                    <li
+                      key={goal.id}
+                      className="flex flex-col gap-3 p-3 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-0 font-medium break-words">{goal.question}</span>
+                          {goal.status === "quarantined" && <Badge variant="outline">Quarantined</Badge>}
+                          {goal.lastResult === "pass" && <Badge>Passing</Badge>}
+                          {goal.lastResult === "fail" && <Badge variant="destructive">Failing</Badge>}
+                          {goal.lastResult === null && <Badge variant="secondary">Not run yet</Badge>}
+                        </div>
+                        <p className="text-muted-foreground mt-0.5 text-xs break-words">
+                          {[
+                            goal.expectations.mustCiteSources ? "must cite a Source" : null,
+                            goal.expectations.expectedSourceUrl
+                              ? `Source URL contains “${goal.expectations.expectedSourceUrl}”`
+                              : null,
+                            goal.expectations.mustContain?.length
+                              ? `answer contains: ${goal.expectations.mustContain.join(", ")}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "no extra expectations"}
+                          {goal.lastRunAt && ` · last run ${formatDateTime(goal.lastRunAt)}`}
+                          {goal.lastResult === "fail" && goal.lastDetail ? ` · ${goal.lastDetail}` : ""}
+                        </p>
+                      </div>
+                      {canEdit && (
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingId(goal.id);
+                              setEditDraft(draftFromGoal(goal));
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy(goal.id)}
+                            onClick={() =>
+                              run(
+                                goal.id,
+                                () =>
+                                  updateGoalAction(assistantId, goal.id, {
+                                    status: goal.status === "active" ? "quarantined" : "active",
+                                  }),
+                                goal.status === "active" ? "Goal quarantined" : "Goal reactivated"
+                              )
+                            }
+                          >
+                            <RollInText text={goal.status === "active" ? "Quarantine" : "Reactivate"} />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            disabled={busy(goal.id)}
+                            onClick={() =>
+                              confirmDelete({
+                                title: "Delete this goal?",
+                                description: `“${goal.question}” stops being checked on its schedule.`,
+                                onConfirm: async () => {
+                                  await deleteGoalAction(assistantId, goal.id);
+                                  toast.success("Goal deleted");
+                                },
+                              })
+                            }
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+                  )
+                )}
+              </ul>
+            )}
+
+            {canEdit && adding && (
+              <GoalForm
+                draft={draft}
+                setDraft={setDraft}
+                saving={busy("new")}
+                saveLabel="Add goal"
+                onCancel={() => setAdding(false)}
+                onSave={() =>
+                  run(
+                    "new",
+                    () =>
+                      createGoalAction(assistantId, {
+                        question: draft.question,
+                        expectations: expectationsFromDraft(draft),
+                      }),
+                    "Goal added",
+                    () => {
+                      setAdding(false);
+                      setDraft(EMPTY_DRAFT);
+                    }
+                  )
                 }
-              )
-            }
-          />
-        ) : (
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => setAdding(true)}
-              disabled={goals.length >= cap}
-            >
-              Add goal (
-              <span className="tabular-nums">
-                <RollingNumber value={goals.length} />/{formatCount(cap)}
-              </span>
-              )
-            </Button>
-          </div>
-        ))}
+              />
+            )}
+          </Card>
+        </TimelineSection>
+
+        <TimelineSection title="How goals are checked">
+          <Card size="sm" className="gap-3 p-4">
+            <h2 className="text-base font-semibold">Exact checks, no model grader</h2>
+            <ul className="text-muted-foreground grid gap-1.5 text-sm">
+              <li>Every run checks that the answer is not the &ldquo;couldn&apos;t find an answer&rdquo; fallback.</li>
+              <li>The expectations you add on a goal are checked on top of that.</li>
+              <li>A failing goal raises an Alert, which clears when the goal passes again.</li>
+              <li>A goal that keeps failing to run is quarantined, never deleted. Reactivate it once it is fixed.</li>
+            </ul>
+          </Card>
+        </TimelineSection>
+      </SectionTimeline>
       {confirmDeleteModal}
     </div>
   );

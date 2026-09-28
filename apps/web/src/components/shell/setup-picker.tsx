@@ -9,6 +9,7 @@ import { formatDay } from "@/lib/format";
 import { fuzzyFilter } from "@/lib/fuzzy";
 import { canAutoFocus } from "@/lib/auto-focus";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 
 /** One row of the picker: an assistant plus the two facts the list shows. */
 export interface SetupPickerAssistant {
@@ -38,7 +39,7 @@ function StatusTag({ active }: { active: boolean }) {
           : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
       )}
     >
-      {active ? "Active" : "Inactive"}
+      <RollInText text={active ? "Active" : "Inactive"} />
     </span>
   );
 }
@@ -114,12 +115,16 @@ function AssistantItem({
           {/* A row title, not a section heading: the rows sit under the
               list's own h2/h3. */}
           <p className="text-foreground mb-1.5 truncate text-base leading-none font-semibold">
-            {assistant.title}
+            <RollInText text={assistant.title} />
           </p>
           <p className="text-muted-foreground truncate text-sm leading-none">
-            {assistant.nickname
-              ? `${assistant.nickname} · Updated ${formatDay(assistant.updatedAt)}`
-              : `Updated ${formatDay(assistant.updatedAt)}`}
+            <RollInText
+              text={
+                assistant.nickname
+                  ? `${assistant.nickname} · Updated ${formatDay(assistant.updatedAt)}`
+                  : `Updated ${formatDay(assistant.updatedAt)}`
+              }
+            />
           </p>
         </div>
         <StatusTag active={assistant.active} />
@@ -241,13 +246,10 @@ export function SetupPicker({
             },
           }}
         >
-          {filteredActive.map((assistant) => (
-            <AssistantItem
-              key={`active-${assistant.id}`}
-              assistant={assistant}
-              href={href(assistant.id)}
-              reduce={reduce}
-            />
+          {filteredActive.map((assistant, index) => (
+            <RollRow key={`active-${assistant.id}`} index={index}>
+              <AssistantItem assistant={assistant} href={href(assistant.id)} reduce={reduce} />
+            </RollRow>
           ))}
         </motion.div>
         {filteredActive.length === 0 && (
@@ -392,13 +394,10 @@ export function SetupPicker({
                 },
               }}
             >
-              {filteredAll.map((assistant) => (
-                <AssistantItem
-                  key={`all-${assistant.id}`}
-                  assistant={assistant}
-                  href={href(assistant.id)}
-                  reduce={reduce}
-                />
+              {filteredAll.map((assistant, index) => (
+                <RollRow key={`all-${assistant.id}`} index={index}>
+                  <AssistantItem assistant={assistant} href={href(assistant.id)} reduce={reduce} />
+                </RollRow>
               ))}
             </motion.div>
             {isExpanded && filteredAll.length === 0 && (

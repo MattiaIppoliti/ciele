@@ -77,7 +77,6 @@ describe("runtime public interface", () => {
       "embedConcept",
       "enqueueApplicationSyncJob",
       "enqueueDraftProposalJob",
-      "enqueueEntitySyncJob",
       "enqueueIngestJob",
       "enqueueReviewResumptionJob",
       // Slack mention replies (#857): enqueue from the signed route, the

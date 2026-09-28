@@ -14,6 +14,7 @@ import {
   Phone,
   Plane,
   Settings,
+  ShieldCheck,
   SlidersHorizontal,
   Telescope,
   Workflow,
@@ -181,6 +182,14 @@ export const SETUP_SECTIONS: SetupSection[] = [
     slug: "goals",
     icon: Compass,
     apiDomains: ["goals"],
+  },
+  // Guardrails save through the Assistant itself (`assistants.update`), so
+  // the Developer Panel shows the assistants domain here.
+  {
+    label: "Guardrails",
+    slug: "guardrails",
+    icon: ShieldCheck,
+    apiDomains: ["assistants"],
   },
   {
     label: "Assistant Help Desks",

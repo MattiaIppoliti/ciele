@@ -11,8 +11,8 @@ strumenti.
 - Il **local server** è un processo `stdio` che il client avvia come processo
   figlio.
 
-Dai la preferenza all'endpoint ospitato. Non richiede alcun checkout, né Node.js
-sulla macchina client, né un percorso da mantenere aggiornato.
+Preferisci l'endpoint ospitato. Non richiede alcun checkout, né Node.js sulla
+macchina client, né un percorso da mantenere aggiornato.
 
 Questa pagina riflette la documentazione client verificata il 6 agosto 2026. Le
 interfacce client e i formati di configurazione possono cambiare.
@@ -23,7 +23,7 @@ interfacce client e i formati di configurazione possono cambiare.
 | --- | :---: | :---: |
 | Claude Code | Sì | Sì |
 | Codex CLI, app Codex ed estensione Codex per IDE | Sì | Sì |
-| ChatGPT desktop app | Sì | Sì |
+| App desktop ChatGPT | Sì | Sì |
 | Cursor | Sì | Sì |
 | OpenCode | Sì | Sì |
 | GitHub Copilot in VS Code | Sì | Sì |
@@ -35,7 +35,7 @@ interfacce client e i formati di configurazione possono cambiare.
 
 1. Crea una [API key](/developers/api-keys) per un viewer.
 2. Fornisci al client l'URL dell'endpoint per la tua distribuzione.
-3. Configura l'intestazione `Authorization` come `Bearer <key>`.
+3. Configura l'header `Authorization` come `Bearer <key>`.
 
 ```bash
 claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
@@ -71,7 +71,7 @@ claude mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Apri `/mcp` in Claude Code. Verifica che il server `ciele` mostri diciassette
+Apri `/mcp` in Claude Code. Verifica che il server `ciele` mostri sedici
 strumenti.
 
 Consulta la
@@ -166,7 +166,7 @@ Aggiungi questo server a `opencode.json`:
 Esegui `opencode2 mcp list` per verificare la connessione.
 
 Consulta la [OpenCode MCP guide](https://opencode.ai/v2/docs/mcp-servers) per lo
-schema dell'attuale versione 2.
+schema della versione 2 corrente.
 
 ## GitHub Copilot in VS Code
 
@@ -202,7 +202,8 @@ suo output quando una connessione non riesce.
 
 Consulta la
 [VS Code MCP guide](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
-per informazioni sui percorsi di configurazione e sui controlli di affidabilità.
+per informazioni sui percorsi di configurazione e sui controlli di
+attendibilità.
 
 ## CLI di GitHub Copilot
 
@@ -215,8 +216,9 @@ Puoi anche iniziare con questo comando:
 copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Aggiungi le tre variabili di ambiente di Ciele tramite la configurazione MCP di
-Copilot. Non inserire la chiave API nel controllo del codice sorgente.
+Aggiungi le tre variabili di ambiente Ciele tramite la configurazione MCP di
+Copilot. Non inserire la chiave API nel sistema di controllo del codice
+sorgente.
 
 Consulta la
 [GitHub Copilot CLI MCP guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)
@@ -266,7 +268,7 @@ Summarize the current live version. Do not publish or unpublish anything.
 Read the proposed tool input before you approve it. API Roles and MCP read-only mode are independent controls.
 </Callout>
 
-## Client senza processo locale
+## Client senza un processo locale
 
 ChatGPT web non può avviare un server `stdio` locale. Invece, puntalo
 all'endpoint ospitato. Il deployment deve essere raggiungibile dalla rete

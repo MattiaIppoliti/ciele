@@ -1,4 +1,5 @@
 import { Suspense, cache } from "react";
+import { devKey } from "@/lib/dev-key";
 import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationDock } from "@/components/notifications/notification-dock";
 import { ShellProvider } from "@/components/shell/shell-provider";
@@ -66,44 +67,49 @@ export default function AdminLayout({
       <FeedbackProvider>
       <TooltipProvider delay={300}>
         <ShellProvider assistants={assistants}>
+          {/* The siblings below are keyed in development only, for the root
+              layout's reason (lib/dev-key.ts). */}
           <div className="bg-background text-foreground flex h-full">
             <a
+              key={devKey("skip-link")}
               href="#main-content"
               className="bg-foreground text-background focus-visible:ring-ring sr-only rounded-md px-3 py-2 text-sm font-medium shadow-lg focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus-visible:ring-2 focus-visible:ring-offset-2"
             >
               Skip to main content
             </a>
             <Suspense
+              key={devKey("sidebar")}
               fallback={
                 <div className="hidden w-60 shrink-0 border-r lg:block" />
               }
             >
               <SidebarLoader />
             </Suspense>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <Suspense fallback={<div className="h-14 shrink-0 border-b" />}>
+            <div key={devKey("workspace")} className="flex min-w-0 flex-1 flex-col">
+              <Suspense key={devKey("top-bar")} fallback={<div className="h-14 shrink-0 border-b" />}>
                 <TopBarLoader />
               </Suspense>
               {/* Managed edition only: inert on a self-host (#444). */}
-              <Suspense fallback={null}>
+              <Suspense key={devKey("activation-banner")} fallback={null}>
                 <ActivationBannerLoader />
               </Suspense>
               {/* The workspace and its right rail. The rail has one occupant
                   at a time (#754): the Developer Panel here, or the Assistant
                   editor's live Preview, which docks inside `main` from the
                   assistant layout. */}
-              <div className="flex min-h-0 flex-1">
+              <div key={devKey("content")} className="flex min-h-0 flex-1">
                 <main
+                  key={devKey("main")}
                   id="main-content"
                   tabIndex={-1}
                   className="bg-content min-h-0 flex-1 overflow-hidden focus:outline-none"
                 >
                   <StaticIcons>{children}</StaticIcons>
                 </main>
-                <DeveloperPanelLauncher />
+                <DeveloperPanelLauncher key={devKey("developer-panel")} />
               </div>
             </div>
-            <Suspense fallback={null}>
+            <Suspense key={devKey("notification-dock")} fallback={null}>
               <NotificationDockLoader />
             </Suspense>
           </div>

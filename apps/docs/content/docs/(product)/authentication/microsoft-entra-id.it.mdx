@@ -1,18 +1,18 @@
 ---
 title: Microsoft Entra ID
-description: Configura la connessione OpenID Connect corrente per l'accesso dei visitatori.
+description: Configura la connessione OpenID Connect corrente per l'accesso dei Visitor.
 ---
 
-Microsoft Entra ID è il provider di identità disponibile per i visitatori.
+Microsoft Entra ID è l'identity provider disponibile per i Visitor.
 
 ## Crea l'applicazione Entra
 
 1. Registra un'applicazione web riservata in Microsoft Entra ID.
-2. Aggiungi l'URL di callback di Ciele indicato nel modulo del provider.
+2. Aggiungi il Ciele callback URL indicato nel modulo del provider.
 3. Crea un client secret.
-4. Registra l'ID tenant e l'ID client.
+4. Registra il tenant ID e il client ID.
 
-Utilizza l'URL di callback esatto. Uno schema, un host, un percorso o una porta
+Usa l'URL di callback esatto. Uno schema, un host, un percorso o una porta
 diversi impediscono la risposta di autorizzazione.
 
 ## Configura Ciele
@@ -20,51 +20,51 @@ diversi impediscono la risposta di autorizzazione.
 1. Apri **Settings**.
 2. Apri la configurazione dell'autenticazione dei visitatori.
 3. Seleziona **Microsoft Entra ID**.
-4. Inserisci l'ID tenant.
-5. Inserisci l'ID client.
+4. Inserisci il tenant ID.
+5. Inserisci il client ID.
 6. Inserisci il client secret.
-7. Scegli un **Identity claim** quando le funzionalità per visitatore lo
-   richiedono.
+7. Scegli un **Identity claim** quando le funzionalità per singolo visitatore ne
+   richiedono uno.
 8. Salva la connessione.
 
-Ciele utilizza il flusso del codice di autorizzazione con Proof Key for Code
-Exchange (PKCE).
+Ciele utilizza il flusso authorization-code con Proof Key for Code Exchange
+(PKCE).
 
-## Scegli un claim di identità
+## Scegli un identity claim
 
-L'impostazione predefinita è **Off, subject only**. Ciele quindi memorizza il
-soggetto OIDC opaco senza un identificatore leggibile dall'uomo.
+Il valore predefinito è **Off, subject only**. Ciele memorizza quindi il
+soggetto OIDC opaco senza un identificatore leggibile da parte di un essere
+umano.
 
-Scegli **Email address** o **Username (preferred_username claim)** quando un
-Assistente deve associare i Visitatori che hanno effettuato l'accesso ai
-[Record con ambito utente](/data/entities-and-records#protect-user-scoped-records).
+Scegli **Email address** o **Username (preferred_username claim)** quando una
+funzionalità per singolo visitatore richiede un identificatore leggibile. Ad
+esempio, un'integrazione API può inviare il valore come `{{identity.claim}}`.
 
-Ciele verifica l'attestazione selezionata all'interno del token ID firmato. Il
-server lo porta nella Conversazione e nel turno di runtime.
+Ciele verifica il claim selezionato all'interno dell'ID token firmato. Il server
+lo trasferisce nella Conversation e nel turno di runtime.
 
-Un corpo di richiesta o un input dello strumento del modello non possono
-sostituire il valore verificato. Una claim configurata mancante disabilita le
-funzionalità che la richiedono per quel Visitatore.
+Un request body o un input dello strumento del modello non possono sostituire il
+valore verificato. L'assenza di un claim configurato disabilita le funzionalità
+che lo richiedono per quel Visitor.
 
-Ricollega Entra per modificare il claim. Ciele richiede gli ambiti del profilo e
-dell'e-mail quando una claim è abilitata.
+Riconnetti la connessione Entra per modificare il claim. Ciele richiede gli
+ambiti profile ed email quando è abilitato un claim.
 
-## Impostazione server richiesta
+## Impostazione del server obbligatoria
 
-Imposta `APP_ENCRYPTION_KEY` sulla distribuzione di Ciele. Ciele utilizza questa
-chiave per proteggere il cookie del gate di autenticazione e i segreti
+Imposta `APP_ENCRYPTION_KEY` sull'implementazione di Ciele. Ciele utilizza
+questa chiave per proteggere il cookie del gate di autenticazione e i segreti
 memorizzati.
 
 ## Verifica la connessione
 
-1. Richiedi l'autenticazione su una bozza di Assistente.
-2. Apri l'anteprima in una sessione del browser senza aver effettuato l'accesso.
-3. Completa l'accesso a Microsoft.
+1. Richiedi l'autenticazione su una bozza di Assistant.
+2. Apri Preview in una sessione del browser in cui hai effettuato il sign-out.
+3. Completa l'accesso con Microsoft.
 4. Verifica che la chat diventi disponibile.
-5. Verifica che un'altra organizzazione non possa riutilizzare il cookie gate.
-6. Avvia una conversazione e verifica che la Posta in arrivo mostri il soggetto
-   che ha effettuato l'accesso.
+5. Verifica che un'altra Organization non possa riutilizzare il gate cookie.
+6. Avvia una Conversation e verifica che l'Inbox mostri il soggetto connesso.
 
-Testa un'Entità con ambito utente quando è abilitata un'attestazione di
-identità. Verifica che un altro Visitatore che ha effettuato l'accesso non possa
-recuperare i Record del primo Visitatore.
+Quando è abilitata una dichiarazione di identità, testa un endpoint di
+integrazione API che utilizza `{{identity.claim}}`. Verifica che ogni Visitor
+connesso riceva solo i propri dati.

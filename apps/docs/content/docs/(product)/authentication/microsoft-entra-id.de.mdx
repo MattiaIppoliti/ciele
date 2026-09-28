@@ -1,72 +1,71 @@
 ---
 title: Microsoft Entra ID
-description: Konfigurieren Sie die aktuelle OpenID-Connect-Verbindung für die Besucher-Anmeldung.
+description: Konfigurieren Sie die aktuelle OpenID Connect-Verbindung für die Anmeldung von Besuchern.
 ---
 
-Microsoft Entra ID ist der verfügbare Identitätsanbieter für Besucher.
+Microsoft Entra ID ist der verfügbare Identity Provider für Besucher.
 
-## Erstellen Sie die Entra-Anwendung
+## Die Entra-Anwendung erstellen
 
 1. Registrieren Sie eine vertrauliche Webanwendung in Microsoft Entra ID.
-2. Fügen Sie die im Anbieterformular angezeigte Ciele-Callback-URL hinzu.
-3. Erstellen Sie einen geheimen Clientschlüssel.
-4. Notieren Sie die Mandanten-ID und die Client-ID.
+2. Fügen Sie die im Provider-Formular angezeigte Ciele-Callback-URL hinzu.
+3. Erstellen Sie ein Client Secret.
+4. Notieren Sie die Tenant ID und die Client ID.
 
-Verwenden Sie die genaue Callback-URL. Ein anderes Schema, ein anderer Host, ein
+Verwenden Sie die exakte Callback-URL. Ein anderes Schema, ein anderer Host, ein
 anderer Pfad oder ein anderer Port verhindert die Autorisierungsantwort.
 
 ## Ciele konfigurieren
 
 1. Öffnen Sie **Settings**.
-2. Öffnen Sie die Konfiguration für die Besucherauthentifizierung.
-3. Wählen Sie **Microsoft Entra ID**.
-4. Geben Sie die Mandanten-ID ein.
+2. Öffnen Sie die Konfiguration der Besucherauthentifizierung.
+3. Wählen Sie **Microsoft Entra ID** aus.
+4. Geben Sie die Tenant ID ein.
 5. Geben Sie die Client-ID ein.
-6. Geben Sie das Client-Geheimnis ein.
-7. Wählen Sie einen **Identity claim**, wenn Funktionen pro Besucher einen
-   erfordern.
+6. Geben Sie das Client Secret ein.
+7. Wählen Sie ein **Identity claim**, wenn Funktionen auf Besucherbasis eines
+   benötigen.
 8. Speichern Sie die Verbindung.
 
-Ciele verwendet den Autorisierungscode-Flow mit Proof Key for Code Exchange
+Ciele verwendet den Authorization-Code-Flow mit Proof Key for Code Exchange
 (PKCE).
 
-## Wählen Sie einen Identitätsanspruch aus
+## Wählen Sie einen Identity Claim aus
 
-Der Standardwert ist **Off, subject only**. Ciele speichert dann das
-undurchsichtige OIDC-Subjekt ohne eine für Menschen lesbare Kennung.
+Die Standardeinstellung ist **Off, subject only**. Ciele speichert dann das
+undurchsichtige OIDC-Subject ohne einen für Menschen lesbaren Bezeichner.
 
 Wählen Sie **Email address** oder **Username (preferred_username claim)**, wenn
-ein Assistent angemeldete Besucher mit
-[benutzerbezogenen Datensätzen](/data/entities-and-records#protect-user-scoped-records)
-abgleichen muss.
+eine Funktion pro Besucher eine lesbare Kennung benötigt. Beispielsweise kann
+eine API-Integration den Wert als `{{identity.claim}}` senden.
 
-Ciele verifiziert den ausgewählten Anspruch innerhalb des signierten ID-Tokens.
-Der Server überträgt ihn in die Konversations- und Laufzeitphase.
+Ciele überprüft den ausgewählten Claim innerhalb des signierten ID-Tokens. Der
+Server überträgt es in die Conversation und den Runtime-Turn.
 
-Ein Anforderungstext oder eine Eingabe des Modellierungstools können den
-verifizierten Wert nicht ersetzen. Ein fehlender konfigurierter Anspruch
-deaktiviert Funktionen, die ihn für diesen Besucher erfordern.
+Ein Request Body oder eine Eingabe des Model Tools kann den verifizierten Wert
+nicht ersetzen. Ein fehlender konfigurierter Claim deaktiviert Funktionen, die
+ihn für diesen Visitor benötigen.
 
-Stellen Sie die Entra-Verbindung erneut her, um den Anspruch zu ändern. Ciele
-fordert die Bereiche „Profile“ und „E-Mail“ an, wenn ein Anspruch aktiviert ist.
+Stellen Sie die Entra-Verbindung erneut her, um den Claim zu ändern. Ciele
+fordert die Scopes „profile“ und „email“ an, wenn ein Claim aktiviert ist.
 
 ## Erforderliche Servereinstellung
 
-Legen Sie `APP_ENCRYPTION_KEY` für die Ciele-Bereitstellung fest. Ciele
-verwendet diesen Schlüssel, um das Authentication-Gate-Cookie und gespeicherte
-Geheimnisse zu schützen.
+Legen Sie `APP_ENCRYPTION_KEY` in der Ciele-Bereitstellung fest. Ciele verwendet
+diesen Schlüssel, um das Authentication-Gate-Cookie und die gespeicherten
+Secrets zu schützen.
 
-## Testen Sie die Verbindung
+## Verbindung testen
 
-1. Authentifizierung für einen Entwurfs-Assistenten anfordern.
-2. Öffnen Sie die Vorschau in einer Browser-Sitzung, in der Sie abgemeldet sind.
+1. Fordern Sie die Authentifizierung für einen Entwurf eines Assistenten an.
+2. Öffnen Sie Preview in einer abgemeldeten Browsersitzung.
 3. Schließen Sie die Microsoft-Anmeldung ab.
-4. Vergewissern Sie sich, dass der Chat verfügbar wird.
-5. Vergewissern Sie sich, dass eine andere Organisation das Gate-Cookie nicht
+4. Bestätigen Sie, dass der Chat verfügbar wird.
+5. Stellen Sie sicher, dass eine andere Organisation das Gate-Cookie nicht
    wiederverwenden kann.
-6. Starten Sie eine Konversation und vergewissern Sie sich, dass im Posteingang
-   der angemeldete Benutzer angezeigt wird.
+6. Starten Sie eine Conversation und vergewissern Sie sich, dass die Inbox den
+   angemeldeten Subject anzeigt.
 
-Testen Sie eine auf Benutzerebene beschränkte Entität, wenn ein
-Identitätsanspruch aktiviert ist. Vergewissern Sie sich, dass ein anderer
-angemeldeter Besucher die Datensätze des ersten Besuchers nicht abrufen kann.
+Wenn eine Identitätsanspruchsregel aktiviert ist, testen Sie einen
+API-Integrationsendpunkt, der `{{identity.claim}}` verwendet. Bestätigen Sie,
+dass jeder angemeldete Visitor nur seine eigenen Daten erhält.

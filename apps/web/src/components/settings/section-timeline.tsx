@@ -77,6 +77,7 @@ export function SectionTimeline({ children }: { children: ReactNode }) {
             // is the one position this whole rule exists for.
             remaining:
               scrolled.travel > 1 ? Math.max(0, scrolled.remaining) : null,
+            travel: scrolled.travel > 1 ? scrolled.travel : null,
           }
         )
       );

@@ -107,7 +107,7 @@ export function KnowledgeScopePicker({
           setQuery("");
         }}
       >
-        <TabsList aria-label="Knowledge to search" className="bg-muted">
+        <TabsList aria-label="Knowledge to search">
           {SCOPE_TABS.map((slug) => (
             <TabsTrigger key={slug} value={slug} className="gap-2">
               {SCOPE_TAB_LABELS[slug]}

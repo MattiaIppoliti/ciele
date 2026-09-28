@@ -11,9 +11,9 @@ capacidades en tiempo de ejecución y las instrucciones reutilizables.
 | Herramienta | Predeterminado | Comportamiento actual |
 | --- | :---: | --- |
 | Search knowledge | Activado | Busca en la Knowledge conectada y devuelve respuestas con citas. |
-| Session memory | Activada | Utiliza la información de la sesión de conversación actual. |
+| Session memory | Activada | Utiliza información de la sesión de conversación actual. |
 | Fetch URL | Off | Lee una URL cuando el entorno de ejecución selecciona la herramienta. |
-| Show a table | Off | Muestra los datos en una tabla cuando el entorno de ejecución selecciona la herramienta. |
+| Show a table | Off | Muestra datos en una tabla cuando el entorno de ejecución selecciona la herramienta. |
 
 La herramienta Search knowledge está siempre disponible. Puedes habilitar o
 deshabilitar las demás herramientas integradas.
@@ -44,8 +44,7 @@ añade un tema y, a continuación, envía la solicitud.
 Cuando está habilitado, **Study Mode** también aparece en **Flows**. Su botón de
 ajustes abre esta sección. Desactiva el modo de estudio en **Tools & Skills**.
 El Flow no tiene un conmutador independiente. Las solicitudes del menú Study
-exercises van directamente a este Flow. Aparece un icono de birrete de
-graduación en Thinking.
+exercises van directamente a este Flow. Aparece un icono de birrete en Thinking.
 
 Los ejercicios necesitan material relevante en la Knowledge del Assistant. Si no
 se encuentra ningún material, el Asistente te pide un tema admitido o material
@@ -53,7 +52,7 @@ de estudio.
 
 | Formato | Cómo responde el Visitor |
 | --- | --- |
-| Opción múltiple | Selecciona una opción. No hay disponible ninguna respuesta de texto libre. |
+| Multiple choice | Selecciona una opción. No hay disponible ninguna respuesta de texto libre. |
 | Arrastra las palabras | Arrastra o selecciona una palabra para completar un espacio en blanco por pregunta. |
 | Verdadero / Falso | Selecciona una de las dos opciones. |
 | Flashcards | Escribe la palabra que falta o una frase corta. |
@@ -63,43 +62,20 @@ máximo cinco preguntas distintas basadas en el Knowledge recuperado.
 
 Selecciona **Check** para guardar una respuesta. Ciele te muestra si es
 correcta, la respuesta correcta y una explicación. No puedes modificar una
-respuesta una vez enviada. Las tarjetas de memoria (flashcards) aceptan las
-variantes ortográficas definidas cuando se creó el ejercicio.
+respuesta ya enviada. Las tarjetas de memoria (flashcards) aceptan las variantes
+ortográficas definidas cuando se creó el ejercicio.
 
 La Inbox muestra las preguntas, las respuestas enviadas, las respuestas
 correctas y la puntuación. Los ejercicios sin terminar muestran cuántas
 preguntas quedan sin responder. Los ejercicios se ejecutan dentro del chat. No
 necesitan un reproductor H5P externo.
 
-## Conectar datos estructurados
-
-La sección **Data** enumera las Entidades importadas a través de **Settings →
-Data**. Selecciona cada Entidad a la que este Asistente puede realizar
-consultas.
-
-Cada Entity seleccionada ofrece una herramienta de filtrado exacto. Una entidad
-con atributos de texto también ofrece una herramienta de búsqueda por palabras
-clave.
-
-Las Shared Entities están disponibles para todos los Visitors atendidos por el
-Assistant. Las Entidades con ámbito de usuario requieren una
-[identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim)
-verificada.
-
-La selección de la entidad y el esquema pasan a formar parte de la siguiente
-instantánea de la publicación. El contenido de los registros permanece activo
-después de la Publicación.
-
-Consulta [Entities and Records](/data/entities-and-records) para obtener
-información sobre las importaciones CSV, las opciones de ámbito y el filtrado de
-identidades.
-
 ## Configura una integración de API
 
 Un asistente puede utilizar una integración de API registrada. La integración
 contiene una URL base, una credencial protegida y endpoints descritos.
 
-Para cada endpoint, define el método, la ruta, el propósito, los parámetros y la
+Para cada endpoint, define el método, la ruta, la finalidad, los parámetros y la
 estructura de la respuesta. El entorno de ejecución valida cada ruta solicitada
 frente a este catálogo.
 
@@ -128,8 +104,7 @@ diferentes nombres.
 
 Ciele genera una clave para cada llamada. Al reintentar la misma llamada, se
 envía la misma clave. Una llamada diferente envía una clave diferente. Tu API
-puede entonces considerar las dos solicitudes como una única operación de
-escritura.
+puede entonces ver las dos solicitudes como una única operación de escritura.
 
 Tu API también debe hacer su parte. Debe almacenar la clave y devolver el primer
 resultado cuando vuelva a ver la clave.
@@ -144,7 +119,7 @@ Una Skill es una plantilla de instrucciones reutilizable. Una organización pued
 asociar la misma Skill a varios asistentes.
 
 1. Abre **Tools & Skills**.
-2. Busca la Organization Skill necesaria.
+2. Busca la Skill de organización necesaria.
 3. Asocia la Skill al Assistant.
 4. Prueba el resultado en Preview.
 5. Publica el asistente cuando el resultado sea correcto.
@@ -155,7 +130,7 @@ Widget publicado utiliza la última instantánea de Publication.
 ### Permite que los usuarios inicien una Skill desde la ventana de chat
 
 Una Skill puede tener un **Opening line**. Escríbelo como la persona que
-pregunta, no como el asistente.
+pregunta, no como el Asistente.
 
 La ventana de chat muestra un menú **/** con cada Skill que tiene una frase de
 apertura. Cuando seleccionas una Skill, la ventana de chat escribe la frase de
@@ -173,7 +148,7 @@ Tanto un archivo adjunto como una Knowledge Source se convierten en texto, y
 Ciele los lee con el mismo extractor. Lo que ocurre a continuación es diferente.
 
 Una Knowledge Source es permanente. Ciele almacena su texto, lo indexa y el
-Asistente puede citarlo en todas las conversaciones posteriores.
+asistente puede citarlo en todas las conversaciones posteriores.
 
 Un archivo adjunto pertenece a su conversación. Ciele lo lee una sola vez,
 descarta los bytes y nunca lo añade a la Library. Ninguna otra conversación lo

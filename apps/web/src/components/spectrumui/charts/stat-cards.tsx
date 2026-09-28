@@ -4,7 +4,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import {
-  ChartState,
   DOWN,
   EASE,
   Keyframes,
@@ -293,17 +292,49 @@ export function StatCards({
   bare = false,
 }: StatCardsProps) {
   const reduce = usePrefersReducedMotion();
+  const gridClass = cn('grid', bare ? 'gap-0' : 'gap-3', COLUMN_CLASS[columns]);
+  // Ciele: the loading state keeps the grid's own shape, one placeholder per
+  // card at the height a card last rendered at. The upstream block swapped in
+  // a fixed 168px chart skeleton, four across, so a two-column grid of four or
+  // eight cards grew by a row or three the moment a filter change landed.
+  const gridRef = React.useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = React.useState<number | null>(null);
+  React.useLayoutEffect(() => {
+    if (loading) return;
+    const first = gridRef.current?.firstElementChild as HTMLElement | null;
+    if (first) setCardHeight(first.offsetHeight);
+  }, [loading, cards.length]);
 
   return (
     <div className={cn('w-full', seriesVarsClassName, className)}>
       <Keyframes />
-      <ChartState loading={loading} height={168}>
-        <div className={cn('grid', bare ? 'gap-0' : 'gap-3', COLUMN_CLASS[columns])}>
+      {loading ? (
+        <div aria-busy="true" aria-live="polite" className={gridClass}>
+          {cards.map((card, index) => (
+            <div
+              key={card.label}
+              aria-hidden
+              className={cn(
+                'rounded-md bg-black/[0.06] dark:bg-white/[0.08]',
+                !bare && 'rounded-xl',
+              )}
+              style={{
+                height: cardHeight ?? 129,
+                animation: reduce
+                  ? undefined
+                  : `spectrum-sk-pulse 1.5s ease-in-out ${index * 120}ms infinite alternate`,
+              }}
+            />
+          ))}
+          <span className="sr-only">Loading chart data</span>
+        </div>
+      ) : (
+        <div ref={gridRef} className={gridClass}>
           {cards.map((card, index) => (
             <StatCard key={card.label} card={card} index={index} reduce={reduce} bare={bare} />
           ))}
         </div>
-      </ChartState>
+      )}
     </div>
   );
 }

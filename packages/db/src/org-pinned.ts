@@ -49,7 +49,6 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "setMemoryEnabled",
   "listMemorySubjects",
   "listMemorySubjectsPage",
-  "listEntitiesPage",
   "getSsoConnection",
   "setSsoConnection",
   "setSsoConnectionValidation",
@@ -193,9 +192,6 @@ const teammateOwner: OwnerResolver = async (inner, id) =>
 const channelOwner: OwnerResolver = async (inner, id) =>
   (await inner.table("teammateChannels").get(id))?.organizationId ?? null;
 
-const entityOwner: OwnerResolver = async (inner, id) =>
-  (await inner.table("entities").get(id))?.organizationId ?? null;
-
 /** Rows only reachable by membership in an org-scoped list. */
 const listedIn =
   (
@@ -294,10 +290,6 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   getImprovementAssociationPage: improvementOwner,
   getImprovementProposal: improvementOwner,
   // generic-table rows
-  upsertEntityRecords: entityOwner,
-  listEntityRecords: entityOwner,
-  countEntityRecords: entityOwner,
-  queryEntityRecords: entityOwner,
   deleteSkill: skillOwner,
   // help desks + support channels
   updateHelpDesk: helpDeskOwner,
@@ -371,7 +363,6 @@ export const TABLE_EXPOSURE: TableExposureMap = {
   evaluationRuns: {
     hidden: "Console-only synthetic experiments. API keys cannot start model spend through the generic table accessor.",
   },
-  entities: "pinned",
   skills: "pinned",
   projects: "pinned",
   // AI Teammates (#768), their governance (#770), their routines (#772) and

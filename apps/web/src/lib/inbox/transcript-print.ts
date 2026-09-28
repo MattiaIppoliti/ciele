@@ -30,7 +30,7 @@ function detailRows(conversation: InboxConversation): Array<[string, string]> {
     ["Conversation ID", conversation.id],
     ["Assistant", conversation.assistantTitle],
     ["Started", conversation.createdAt],
-    ["Course", conversation.collectionName ?? "N/A"],
+    ["Collection", conversation.collectionName ?? "N/A"],
     ["User", meta.userName ?? meta.userEmail ?? conversation.subjectId],
     ["Role", meta.userRole ?? "N/A"],
     ["Language", meta.language ?? "N/A"],

@@ -199,7 +199,7 @@ export function EvalLibrary({
         </div>
       </header>
       <Tabs value={tab} onValueChange={(value) => setTab(value as "runs" | "datasets" | "models")}>
-        <TabsList aria-label="Eval tabs" className="bg-muted">
+        <TabsList aria-label="Eval tabs">
           <TabsTrigger value="runs">Runs</TabsTrigger>
           <TabsTrigger value="datasets">Datasets</TabsTrigger>
           <TabsTrigger value="models">Models</TabsTrigger>

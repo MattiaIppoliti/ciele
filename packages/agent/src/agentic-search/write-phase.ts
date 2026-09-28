@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import type { LanguageModel, ModelMessage } from "ai";
+import type { LanguageModel, ModelMessage, ToolResultPart } from "ai";
 import type { ChatReplyPart, RuntimeEvent } from "../types";
 import { recordStreamUsage } from "../usage";
 import { errorMessageOf } from "../telemetry";
@@ -95,6 +95,60 @@ export function resolveWriteEnding(
   };
 }
 
+/**
+ * The gather transcript as a toolless call can read it. The write phase
+ * declares no tools, and an Anthropic request with `tool_use`/`tool_result`
+ * blocks but no `tools` is either rejected or, on a route that keeps the call
+ * alive, stripped of them, which is how Sonnet came to write "I haven't
+ * retrieved any documentation" with the answering page in its own Sources
+ * (Eval, 28 Sep 2026). So every call and result becomes text here, verbatim,
+ * untrusted fences included: the model still writes from what it saw, in the
+ * one shape every provider carries.
+ */
+export function writePhaseMessages(messages: ModelMessage[]): ModelMessage[] {
+  return messages.flatMap((message): ModelMessage[] => {
+    if (message.role === "tool") {
+      const text = message.content
+        .flatMap((part) => (part.type === "tool-result" ? [toolResultText(part)] : []))
+        .join("\n\n");
+      return text ? [{ role: "user", content: text }] : [];
+    }
+    if (message.role !== "assistant" || typeof message.content === "string") {
+      return [message];
+    }
+    // Reasoning parts go: a signed thinking block belongs to the tool exchange
+    // it was produced in, and that exchange no longer exists as blocks.
+    const text = message.content
+      .flatMap((part) =>
+        part.type === "text"
+          ? [part.text]
+          : part.type === "tool-call"
+            ? [`[Called ${part.toolName} with ${JSON.stringify(part.input)}]`]
+            : []
+      )
+      .filter((t) => t.trim())
+      .join("\n\n");
+    return text ? [{ role: "assistant", content: text }] : [];
+  });
+}
+
+function toolResultText(part: ToolResultPart): string {
+  const output = part.output;
+  const body =
+    output.type === "text" || output.type === "error-text"
+      ? output.value
+      : output.type === "json" || output.type === "error-json"
+        ? JSON.stringify(output.value)
+        : output.type === "content"
+          ? output.value
+              .map((item) => (item.type === "text" ? item.text : `[${item.type} omitted]`))
+              .join("\n")
+          : JSON.stringify(output);
+  // Said in the result itself: this user-role text came from a tool this
+  // assistant called, never from the Visitor.
+  return `[Result of your ${part.toolName} call, returned by the system, not written by the user]\n${body}`;
+}
+
 export async function runWritePhase(
   input: WritePhaseInput
 ): Promise<WritePhaseResult> {
@@ -102,7 +156,7 @@ export async function runWritePhase(
   const write = streamText({
     model: input.chatModel,
     system: input.system,
-    messages: input.messages,
+    messages: writePhaseMessages(input.messages),
     abortSignal: input.signal,
   });
 

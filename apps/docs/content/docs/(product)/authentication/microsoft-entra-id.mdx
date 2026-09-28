@@ -31,7 +31,7 @@ Ciele uses the authorization-code flow with Proof Key for Code Exchange (PKCE).
 
 The default is **Off, subject only**. Ciele then stores the opaque OIDC subject without a human-readable identifier.
 
-Choose **Email address** or **Username (preferred_username claim)** when an Assistant must match signed-in Visitors to [user-scoped Records](/data/entities-and-records#protect-user-scoped-records).
+Choose **Email address** or **Username (preferred_username claim)** when a per-Visitor feature needs a readable identifier. For example, an API integration can send the value as `{{identity.claim}}`.
 
 Ciele verifies the selected claim inside the signed ID token. The server carries it into the Conversation and runtime turn.
 
@@ -52,4 +52,4 @@ Set `APP_ENCRYPTION_KEY` on the Ciele deployment. Ciele uses this key to protect
 5. Confirm that another Organization cannot reuse the gate cookie.
 6. Start a Conversation and confirm that the Inbox shows the signed-in subject.
 
-Test one user-scoped Entity when an identity claim is enabled. Confirm that another signed-in Visitor cannot retrieve the first Visitor's Records.
+When an identity claim is enabled, test one API integration endpoint that uses `{{identity.claim}}`. Confirm that each signed-in Visitor receives only their own data.

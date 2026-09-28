@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import { Skeleton } from "@agent-hub/ui";
 import { LibraryHeader } from "@/components/knowledge/library-header";
 import { requirePageMember } from "@/lib/authz";
 import { KNOWLEDGE_TAB_KINDS, KNOWLEDGE_TAB_SLUGS } from "@/lib/knowledge-hub";
@@ -15,11 +16,26 @@ export const dynamic = "force-dynamic";
  * per bucket with `pageSize: 0`, so navigation never hydrates a row it will
  * not draw.
  */
-export default async function LibraryLayout({
+export default function LibraryLayout({
   children,
 }: {
   children: ReactNode;
 }) {
+  // Not async, and nothing awaited here: a layout's own awaits sit above this
+  // segment's loading.tsx, so the tab skeletons could only appear once the
+  // counts were in (the Next docs' "loading.js will not show a fallback" for a
+  // layout that reads runtime data). The header streams in its own boundary.
+  return (
+    <div className="flex h-full flex-col">
+      <Suspense fallback={<LibraryHeaderSkeleton />}>
+        <LibraryHeaderLoader />
+      </Suspense>
+      {children}
+    </div>
+  );
+}
+
+async function LibraryHeaderLoader() {
   const { organizationId, db } = await requirePageMember();
   const [applicationHealthSummary, ...navPages] = await Promise.all([
     db.getApplicationHealthSummary(organizationId),
@@ -33,17 +49,33 @@ export default async function LibraryLayout({
   ]);
 
   return (
-    <div className="flex h-full flex-col">
-      <LibraryHeader
-        tabSummaries={Object.fromEntries(
-          KNOWLEDGE_TAB_SLUGS.map((slug, i) => [
-            slug,
-            { total: navPages[i].total, statusCounts: navPages[i].statusCounts },
-          ])
-        )}
-        applicationHealthSummary={applicationHealthSummary}
-      />
-      {children}
+    <LibraryHeader
+      tabSummaries={Object.fromEntries(
+        KNOWLEDGE_TAB_SLUGS.map((slug, i) => [
+          slug,
+          { total: navPages[i].total, statusCounts: navPages[i].statusCounts },
+        ])
+      )}
+      applicationHealthSummary={applicationHealthSummary}
+    />
+  );
+}
+
+/** The title and the tab rail, at LibraryHeader's padding. */
+function LibraryHeaderSkeleton() {
+  return (
+    <div className="shrink-0" aria-hidden>
+      <header className="flex flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
+        <Skeleton className="h-8 w-28" />
+      </header>
+      <div className="px-4 sm:px-6">
+        <Skeleton className="h-10 w-96 max-w-full rounded-lg" />
+      </div>
+      {/* The tab intro keeps a two-line floor (min-h-10), so this does too. */}
+      <div className="mt-3 min-h-10 max-w-3xl space-y-1.5 px-4 sm:px-6">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
     </div>
   );
 }

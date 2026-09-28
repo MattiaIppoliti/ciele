@@ -73,7 +73,7 @@ Per-page CLI/cURL/MCP snippets (#754/#755). Three conventions decide whether it 
 - **One list.** `EndpointSpec` in `src/lib/api-v1/openapi.ts` carries `domain`, `capability`, `cli`
   and `mcp` beside the fields the OpenAPI document already read (the document builder ignores the new
   four). The MCP *tool name* lives on the domain in `src/lib/developer-panel/domains.ts`, because the
-  16 coarse tools map onto the 22 domains (`API_V1_DOMAINS` in `src/lib/api-v1/meta.ts`)
+  16 coarse tools map onto the 23 domains (`API_V1_DOMAINS` in `src/lib/api-v1/meta.ts`)
   many-to-one; only the `action` is per-endpoint. Per-domain
   copy (titles, agent prompts, docs links) lives there too, so `buildOpenApiDocument` never carries
   UI strings.
@@ -142,6 +142,15 @@ identity, the one exception to the product's `soft`: a Visitor on somebody else'
 choose Ciele, so the bar for adding a cue there is higher than in the console. Decorative mocks and
 demos sit under `data-foley-silent`.
 
+**Dynamic text rolls through Scritto** (`components/motion/roll-in-text.tsx`, `RollingNumber` for
+counts). Anything that can change while the page is open goes through `RollInText`: a status badge,
+a count, a timestamp, a name that can be renamed, a label that switches (Save → Saved). Static copy
+(descriptions, help text, paragraphs) stays plain, because every glyph becomes its own span and a
+paragraph loses its kerning and wraps only between words. In a table, list or card grid wrap each
+row in `<RollRow index={i}>`: the first `ROLL_ENTRANCE_ROWS` (10) roll in when the list appears, later
+rows render plainly, and every cell rolls whenever its value changes. The shared `motion/table.tsx`
+does this for its rows and rolls a plain `accessor` value on its own.
+
 Reduced motion substitutes, it does not delete: the sheet cross-fades instead of sliding, `press`
 swaps its scale for an opacity change. The **animated icon set** (`ciele-animated-icons`, via
 `components/ui/animated-icon`) is deliberately left running under `prefers-reduced-motion`: those
@@ -202,9 +211,20 @@ Nineteen of forty-five console segments were bare before this.
   `components/widget/widget-skeleton.tsx` for the embedded widget. A boundary is
   then a four-line file. `src/lib/route-skeleton.test.ts` server-renders all of
   them, because a skeleton that throws turns a slow navigation into an error page.
+- **Unless the shape is wrong.** A shared variant is only right when the page
+  has its geometry: `form` and `grid` are full-width and left-aligned, so a
+  centred `max-w-2xl` column or a page with a side rail jumps when it streams
+  in. Those mirror the page's own container classes instead (the review, SETUP
+  picker, Flow builder, help desk and Improvement detail boundaries).
+  `src/lib/loading-render.test.ts` server-renders every `loading.tsx`, so a
+  hand-written one is held to the same bar.
+- **A `loading.tsx` also wraps the nested layouts below it**, not only its own
+  page. `assistants/loading.tsx` is what paints while `[id]/layout.tsx` awaits
+  the Assistant, before any section's own boundary can mount, so it has to be
+  shaped like an Assistant, not like the list it sits beside.
 
 Routes whose shape is genuinely distinctive (Inbox's three panes, the assistant
-editor) keep their own hand-written skeleton instead.
+editor) keep their own hand-written skeleton too.
 
 ## Boundaries the linter enforces
 

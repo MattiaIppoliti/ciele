@@ -7,7 +7,7 @@ La commande `ciele` utilise les mêmes opérations d'API que la console
 d'administration. La CLI prend en charge le service hébergé ainsi que les
 installations auto-hébergées.
 
-## Configuration requise
+## Prérequis
 
 - Utilisez Node.js 22.6 ou une version ultérieure.
 - Créez une [clé API d'organisation](/developers/api-keys).
@@ -142,8 +142,8 @@ ciele knowledge search "How do I connect Salesforce?" --json
 ```
 
 Avec `--assistant`, la recherche utilise uniquement les Sources liées à cet
-Assistant. Sans cela, la recherche utilise l'ensemble de la Library. `--json`
-présente les résultats avec leur rang, leur score et leurs ID.
+Assistant. Sans cela, la recherche s'appuie sur l'ensemble de la Library.
+`--json` présente les résultats avec leur rang, leur score et leurs ID.
 
 ### Poser une question à un Assistant
 
@@ -155,14 +155,14 @@ ciele assistants ask <assistant-id> "How do I connect Salesforce?"
 ciele assistants ask <assistant-id> "And ServiceNow?" --conversation <conversation-id>
 ```
 
-Utilisez `--conversation` avec l'ID d'une réponse antérieure pour poursuivre
-cette Conversation. Seule la clé API qui a initié une Conversation peut la
+Utilisez `--conversation` avec l'ID d'une réponse précédente pour poursuivre
+cette Conversation. Seule la clé API qui a démarré une Conversation peut la
 poursuivre. Avec un ID différent, la question démarre une nouvelle Conversation.
 
-Chaque question utilise un tour de modèle et crée une Conversation. La Inbox
-l'affiche avec l'étiquette **API key** lorsque vous réglez le filtre **Staff
-conversations** sur **Include staff** ou **Staff only**. La commande se termine
-avec un code d'erreur lorsque l'Assistant n'a pas pu répondre.
+Chaque question utilise un tour de modèle et crée une Conversation. La boîte de
+réception l'affiche avec l'étiquette **API key** lorsque vous réglez le filtre
+**Staff conversations** sur **Include staff** ou **Staff only**. La commande se
+termine avec un code d'erreur lorsque l'Assistant n'a pas pu répondre.
 
 ## Commandes de Flow
 
@@ -170,12 +170,13 @@ avec un code d'erreur lorsque l'Assistant n'a pas pu répondre.
 
 `ciele flows catalog` affiche les déclencheurs, les actions et les types de
 conditions de ce déploiement Ciele. Il indique également quelles actions chaque
-déclencheur autorise. Lisez-le avant d'écrire un fichier Flow. Le serveur refuse
-un trigger, une action ou un type de condition qui ne figure pas dans la liste.
+déclencheur autorise. Lisez-le avant de rédiger un fichier Flow. Le serveur
+refuse un trigger, une action ou un type de condition qui ne figure pas dans la
+liste.
 
-C'est le déploiement qui fournit cette réponse, et non la CLI. Une version plus
-ancienne de la CLI utilisée avec une version plus récente de Ciele affiche les
-nouvelles listes.
+C'est le déploiement qui fournit cette réponse, et non la CLI. Une CLI plus
+ancienne utilisée avec une version plus récente de Ciele affiche les nouvelles
+listes.
 
 ```bash
 ciele flows catalog
@@ -194,8 +195,8 @@ ciele flows validate <assistant-id> --file flow.json --rationale "own flow"
 
 Utilisez-les principalement pour une raison : lorsqu'un Flow écrit dans un
 connecteur, Ciele ajoute une action de revue humaine avant cette écriture. Ces
-deux commandes vous montrent l'action ajoutée. Un enregistrement effectue cette
-opération en mode silencieux.
+deux commandes vous montrent l'action ajoutée. Un enregistrement le fait de
+manière silencieuse.
 
 ### Observer un flux HTTP
 
@@ -231,11 +232,11 @@ données. Les autres commandes Teammate nécessitent le rôle Editor.
 
 Un Teammate peut avoir un maximum de cinq Routines.
 
-### Configurer un Teammate en une seule commande
+### Configurer un coéquipier en une seule commande
 
 `teammates create` crée un coéquipier qui répond aux questions. Il ne peut pas
-agir et n'effectue aucun travail en mode autonome. `teammates provision` exécute
-les trois étapes ensemble.
+agir et n'effectue aucun travail en mode non supervisé. `teammates provision`
+exécute les trois étapes ensemble.
 
 ```bash
 ciele teammates provision --name "Triage" \
@@ -243,9 +244,9 @@ ciele teammates provision --name "Triage" \
   --routine "Triage new feedback:daily:8"
 ```
 
-L'ordre est le suivant : create, puis grant, puis schedule. Si une étape échoue,
-la commande vous indique où elle s'est arrêtée. Le teammate reste utilisable
-jusqu'à ce stade.
+L'ordre est : create, puis grant, puis schedule. Si une étape échoue, la
+commande vous indique où elle s'est arrêtée. Le teammate reste utilisable
+jusqu'à ce point.
 
 Une clé sans le rôle Admin peut créer le collègue. Elle ne peut pas accorder un
 domaine. La commande indique ensuite qu'elle s'est arrêtée à l'étape grants.
@@ -278,7 +279,6 @@ ciele conversations list --assistant <assistant-id>
 ciele conversations pin <conversation-id>
 ciele messages feedback <message-id> --value -1
 ciele improvements list
-ciele entities list
 ciele memories subjects
 ciele help-desks list
 ciele teammates list
@@ -309,5 +309,5 @@ export CIELE_BASE_URL="https://ciele.example.edu"
 ciele publish status "$ASSISTANT_ID" --json
 ```
 
-Stockez toutes les valeurs dans le secret store du CI. N'écrivez pas de clé dans
-un fichier de workflow.
+Stockez toutes les valeurs dans le magasin de secrets CI. N'écrivez pas de clé
+dans un fichier de workflow.

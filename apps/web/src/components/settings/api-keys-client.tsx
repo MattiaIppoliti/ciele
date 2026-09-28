@@ -106,9 +106,9 @@ export function ApiKeysClient({
             <KeyRound className="text-foreground/70 size-4" />
           </span>
           <div className="min-w-0">
-            <p className="truncate font-medium">{key.name}</p>
+            <p className="truncate font-medium"><RollInText text={key.name} /></p>
             <p className="text-muted-foreground truncate font-mono text-xs">
-              {key.secretHint}…
+              <RollInText text={`${key.secretHint}…`} />
             </p>
           </div>
         </div>
@@ -122,7 +122,7 @@ export function ApiKeysClient({
       width: "14%",
       cell: (key) => (
         <Badge variant="outline" className="capitalize">
-          {key.role}
+          <RollInText text={key.role} />
         </Badge>
       ),
     },
@@ -134,7 +134,7 @@ export function ApiKeysClient({
       width: "16%",
       hideBelowSm: true,
       cell: (key) => (
-        <span className="text-muted-foreground">{formatDay(key.createdAt)}</span>
+        <span className="text-muted-foreground"><RollInText text={formatDay(key.createdAt)} /></span>
       ),
     },
     {
@@ -146,7 +146,7 @@ export function ApiKeysClient({
       hideBelowSm: true,
       cell: (key) => (
         <span className="text-muted-foreground">
-          {key.lastUsedAt ? formatDay(key.lastUsedAt) : "Never"}
+          <RollInText text={key.lastUsedAt ? formatDay(key.lastUsedAt) : "Never"} />
         </span>
       ),
     },

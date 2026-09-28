@@ -20,7 +20,6 @@ describe("org-pinned table exposure", () => {
   it("exposes exactly the tables an /api/v1 route or the api-surface gate reaches", () => {
     expect([...pinnedTableNames()].sort()).toEqual([
       "assistantGoals",
-      "entities",
       "httpFlowRuns",
       "knowledgeMemories",
       "projects",

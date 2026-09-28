@@ -192,9 +192,9 @@ export function AssistantCard({
         </div>
         {avatar}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{assistant.title}</p>
+          <p className="truncate text-sm font-medium"><RollInText text={assistant.title} /></p>
           <p className="text-muted-foreground truncate text-xs">
-            {assistant.nickname || assistant.description || assistant.id}
+            <RollInText text={assistant.nickname || assistant.description || assistant.id} />
           </p>
         </div>
         <p className="text-muted-foreground hidden shrink-0 text-xs sm:block">
@@ -257,10 +257,12 @@ export function AssistantCard({
 
       <CardContent className="relative space-y-2">
         <h3 className="text-[0.9375rem] font-medium tracking-tight break-words text-pretty">
-          {assistant.title}
-          <span className="text-muted-foreground ml-2 text-xs font-normal">
-            {assistant.nickname}
-          </span>
+          <RollInText text={assistant.title} />
+          {assistant.nickname && (
+            <span className="text-muted-foreground ml-2 text-xs font-normal">
+              <RollInText text={assistant.nickname} />
+            </span>
+          )}
         </h3>
         <p className="text-muted-foreground line-clamp-2 min-h-10 text-sm leading-snug">
           {assistant.description || "No description yet."}

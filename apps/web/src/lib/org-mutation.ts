@@ -108,7 +108,6 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
   // Feedback on a message, a deleted Conversation, an escalation: all of it
   // is what the overview counts.
   inbox: { paths: () => [{ path: "/inbox" }], insights: true },
-  dataEntities: { paths: () => [{ path: "/settings/data" }], insights: false },
   // The conversation rail lives in `/teammates`'s layout, so it has to be the
   // layout that expires: a Member who creates a teammate from inside another
   // thread would otherwise keep the rail they arrived with.

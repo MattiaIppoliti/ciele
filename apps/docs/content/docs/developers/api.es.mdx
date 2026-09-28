@@ -1,6 +1,6 @@
 ---
 title: API v1
-description: Llama a la API de administración de Ciele actual con una clave de API de organización.
+description: Llama a la API de administración actual de Ciele con una clave de API de organización.
 ---
 
 La API de Ciele utiliza JSON sobre HTTP. Todas las rutas de la versión 1
@@ -10,7 +10,7 @@ comienzan con `/api/v1`.
 las operaciones públicas por dominio. Descarga allí el contrato OpenAPI actual
 en formato JSON o YAML.
 
-## Descubre la implementación
+## Descubre el despliegue
 
 Utiliza estos endpoints públicos antes de generar un cliente:
 
@@ -36,7 +36,7 @@ Ciele.
 
 ## Errores de respuesta
 
-Los errores utilizan una única envolvente JSON:
+Los errores utilizan una única envoltura JSON:
 
 ```json
 {
@@ -67,7 +67,7 @@ siguiente solicitud.
 ## Reintentos seguros
 
 Las rutas de mutación pueden aceptar un encabezado `Idempotency-Key`. Reutiliza
-el mismo valor solo cuando vuelvas a intentar la misma operación lógica.
+el mismo valor únicamente cuando vuelvas a intentar la misma operación lógica.
 
 ## Dominios comunes
 
@@ -75,15 +75,15 @@ Estos son ejemplos. La [API reference](/api-reference) enumera el conjunto
 completo y actual de operaciones.
 
 - Assistants: listar, leer, crear, actualizar, duplicar y eliminar.
-- Flujos: list, read, create, update, reorder y delete.
+- Flujos: listar, leer, crear, actualizar, reordenar y eliminar.
 - Knowledge: gestiona Collections, Sources, FAQs y los enlaces del asistente en
   cada Source.
 - Publicación: consulta el estado, publica, anula la publicación y restaura una
   publicación.
 - Inbox: revisa, exporta, ancla, anota, valora y elimina Conversations.
-- Mejoras: enumera, lee y actualiza elementos.
-- Entidades y recuerdos: gestiona los datos tipados de la organización y el
-  borrado de recuerdos con ámbito definido.
+- Mejoras: lista, lee y actualiza elementos.
+- Memories: revisa la configuración y realiza el borrado de Memory con un ámbito
+  específico.
 - SSO: gestiona las afirmaciones de identidad, la configuración de conexión, la
   validación y la desconexión.
 - Help Desks: gestiona los desks, los canales de escalado, el orden y
@@ -94,10 +94,10 @@ completo y actual de operaciones.
   sus documentos de Project.
 - Reviews: enumera, lee y toma decisiones sobre las solicitudes de revisión
   humana.
-- Channels: lee y da forma a los canales de Teammates en los que participas, así
-  como a sus listas de miembros. No hay ningún endpoint para enviar un mensaje:
-  un mensaje inicia una cadena de respuestas de los compañeros de equipo, y esa
-  cadena se ejecuta en la consola.
+- Channels: lee y da forma a los canales de compañeros de equipo en los que
+  participas, así como a sus listas de miembros. No hay ningún endpoint para
+  enviar un mensaje: un mensaje inicia una cadena de respuestas de los
+  compañeros de equipo, y esa cadena se ejecuta en la consola.
 - Configuration: gestiona Skills, Assistant Goals y Alerts operativas.
 - Organization: gestiona la configuración, los Members, las Invites y las claves
   API.
@@ -105,8 +105,8 @@ completo y actual de operaciones.
   conexiones con los proveedores de modelos.
 - Uso: consulta los contadores del plan y quién ha gastado los créditos de una
   ventana. Solo lectura. El desglose del gasto mantiene separadas sus
-  dimensiones. Una respuesta indica tanto al compañero de equipo que ejecutó la
-  acción como al compañero que la solicitó, por lo que sumar las dimensiones
+  dimensiones. Una respuesta menciona tanto al compañero de equipo que ejecutó
+  la acción como al compañero que la solicitó, por lo que sumar las dimensiones
   cuenta esa respuesta dos veces. La compra de créditos no tiene un endpoint:
   una compra corresponde a una pantalla en la que una persona confirma un
   importe.

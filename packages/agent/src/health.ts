@@ -58,8 +58,6 @@ export const alertKeys = {
    * only after repeated fail-open searches, cleared by the next reranked one.
    */
   rerank: (organizationId: string) => `rerank:${organizationId}`,
-  /** Per-Entity Record sync lifecycle (sync failed / recovered, #670). */
-  entitySync: (entityId: string) => `entity-sync:${entityId}`,
   /**
    * Memory extraction, per Source (#930). One key for the Source rather than
    * one per Document: a crawl that cannot extract usually cannot extract any

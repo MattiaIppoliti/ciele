@@ -12,7 +12,8 @@ import type {
 } from "@agent-hub/core";
 import { Columns3, Download, GalleryVerticalEnd, MessageSquare, Search } from "lucide-react";
 import { ChevronDown, ChevronRight, ListFilter } from "lucide-react";
-import { Button } from "@agent-hub/ui";
+import { Button, Skeleton } from "@agent-hub/ui";
+import { ImprovementDetailSkeleton } from "./improvement-detail-skeleton";
 import { listImprovementsPageAction } from "@/app/actions";
 import { toast } from "@/lib/toast";
 import {
@@ -54,13 +55,34 @@ import {
 } from "@/lib/improvements";
 import { ImprovementContextMenu } from "./improvement-context-menu";
 import { useImprovementLanes } from "./use-improvement-lanes";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 
 // Opened only after a click, so it never renders on the server anyway; the
-// dynamic import keeps the detail view out of the board's first bundle.
-const ImprovementDrawer = dynamic(() =>
-  import("./improvement-drawer").then((module) => module.ImprovementDrawer),
+// dynamic import keeps the detail view out of the board's first bundle. The
+// fallback is the drawer's own frame (DetailDrawer's 760px default and 44px
+// toolbar) over the detail's skeleton, so the click answers before the chunk
+// arrives rather than after.
+const ImprovementDrawer = dynamic(
+  () => import("./improvement-drawer").then((module) => module.ImprovementDrawer),
+  {
+    loading: () => (
+      <aside
+        className="bg-background shadow-strong fixed inset-y-0 right-0 z-50 flex w-[760px] max-w-full flex-col border-l"
+        role="status"
+        aria-busy="true"
+      >
+        <span className="sr-only">Loading improvement…</span>
+        <div className="flex h-11 shrink-0 items-center justify-end gap-1 px-3">
+          <Skeleton className="size-8" />
+          <Skeleton className="size-8" />
+        </div>
+        <div className="min-h-0 flex-1">
+          <ImprovementDetailSkeleton variant="drawer" />
+        </div>
+      </aside>
+    ),
+  },
 );
 // Native drag-and-drop reads `dataTransfer` and pointer state the server does
 // not have, and the list view is the default, so the Kanban is client-only.
@@ -396,6 +418,10 @@ export function ImprovementsBoard({
       ? `Export ${format} (filtered)`
       : `Export ${format} (${totalCount})`;
 
+  // One count across the lanes, so "the first ten rows roll in" means the
+  // first ten on the board rather than ten in every open lane.
+  let boardRow = 0;
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
@@ -629,8 +655,8 @@ export function ImprovementsBoard({
                         const pri = priorityMeta(i.priority);
                         const drag = lanes.dragProps(i.id);
                         return (
+                          <RollRow key={i.id} index={boardRow++}>
                           <ImprovementContextMenu
-                            key={i.id}
                             item={i}
                             members={members}
                             tagOptions={tagOptions}
@@ -660,10 +686,10 @@ export function ImprovementsBoard({
                               <span
                                 className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-xs ${improvementKeyClass(i.status)}`}
                               >
-                                {improvementKey(i.seq)}
+                                <RollInText text={improvementKey(i.seq)} />
                               </span>
                               <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                                {i.title}
+                                <RollInText text={i.title} />
                               </span>
                               {i.messageCount > 0 && (
                                 <span className="text-muted-foreground inline-flex items-center gap-1 text-xs tabular-nums">
@@ -672,7 +698,7 @@ export function ImprovementsBoard({
                                 </span>
                               )}
                               <span className="text-muted-foreground hidden text-xs sm:inline">
-                                Created {formatDay(i.createdAt)}
+                                <RollInText text={`Created ${formatDay(i.createdAt)}`} />
                               </span>
                               {i.tags.length > 0 ? (
                                 <span className="hidden gap-1 md:flex">
@@ -681,7 +707,7 @@ export function ImprovementsBoard({
                                       key={t}
                                       className="max-w-32 truncate rounded-full border px-2 py-0.5 text-2xs"
                                     >
-                                      {t}
+                                      <RollInText text={t} />
                                     </span>
                                   ))}
                                 </span>
@@ -695,7 +721,7 @@ export function ImprovementsBoard({
                                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium ${pri.chip}`}
                                 >
                                   <pri.icon className="size-3" />
-                                  {pri.label}
+                                  <RollInText text={pri.label} />
                                 </span>
                               )}
                               {email ? (
@@ -713,6 +739,7 @@ export function ImprovementsBoard({
                               )}
                             </Link>
                           </ImprovementContextMenu>
+                          </RollRow>
                         );
                       })}
                       <LaneFooter paging={paging} />

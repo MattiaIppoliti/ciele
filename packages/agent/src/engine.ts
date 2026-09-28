@@ -485,8 +485,6 @@ export async function runAssistantChat(options: Pick<ActionContext,
   | "alreadyClarified"
   | "longTermMemory"
   | "searchMemories"
-  | "entities"
-  | "queryEntityRecords"
   | "connectorRuntime"
   | "reviewRuntime"
   | "countOperation"
@@ -597,8 +595,6 @@ export async function runAssistantChat(options: Pick<ActionContext,
     skills = [],
     longTermMemory,
     searchMemories,
-    entities = [],
-    queryEntityRecords,
     connectorRuntime,
     reviewRuntime,
     countOperation,
@@ -742,8 +738,6 @@ export async function runAssistantChat(options: Pick<ActionContext,
     skills,
     longTermMemory,
     searchMemories,
-    entities,
-    queryEntityRecords,
     connectorRuntime,
     reviewRuntime,
     countOperation,

@@ -86,12 +86,6 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpPrompt:
       "List the Improvements that are still to do and raise the priority of any that have happened more than once.",
   },
-  entities: {
-    title: "Entities API",
-    mcpTool: "manage_entities",
-    mcpPrompt:
-      "Show me the Entities in this Organization and how many Records each one holds.",
-  },
   memories: {
     title: "Memory API",
     mcpTool: "manage_memories",

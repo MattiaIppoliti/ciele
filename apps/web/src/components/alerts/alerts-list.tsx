@@ -16,7 +16,7 @@ import {
 } from "@agent-hub/ui";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { formatDateTime } from "@/lib/format";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { replaceFilterParams } from "@/lib/url-state";
 import {
@@ -102,7 +102,7 @@ export function AlertsList({
         onValueChange={(value) => setTab(value as Tab)}
         className="mt-4 px-4 sm:px-6"
       >
-        <TabsList aria-label="Alert status" className="bg-muted">
+        <TabsList aria-label="Alert status">
           {tabs.map((t) => (
             <TabsTrigger key={t.value} value={t.value}>
               {t.label}
@@ -146,16 +146,16 @@ export function AlertsList({
               </div>
             </div>
             <div role="rowgroup">
-              {visible.map((alert) => (
+              {visible.map((alert, index) => (
+                <RollRow key={alert.id} index={index}>
                 <div
-                  key={alert.id}
                   role="row"
                   className={`border-border flex flex-col gap-2 border-t px-4 py-3 text-sm lg:grid lg:items-center lg:gap-3 ${COLUMNS}`}
                 >
                   <div role="cell" className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">{TYPE_LABELS[alert.type]}</Badge>
-                      <span className="truncate font-medium">{alert.title}</span>
+                      <Badge variant="outline"><RollInText text={TYPE_LABELS[alert.type]} /></Badge>
+                      <span className="truncate font-medium"><RollInText text={alert.title} /></span>
                     </div>
                     <p className="text-muted-foreground mt-0.5 text-xs [overflow-wrap:anywhere] lg:truncate">
                       {alert.detail}
@@ -167,11 +167,11 @@ export function AlertsList({
                   >
                     <span role="cell" className="text-muted-foreground text-xs">
                       <span className="lg:hidden">Detected: </span>
-                      {formatDateTime(alert.detectedAt)}
+                      <RollInText text={formatDateTime(alert.detectedAt)} />
                     </span>
                     <span role="cell" className="text-muted-foreground text-xs">
                       <span className="lg:hidden">Resolved: </span>
-                      {alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "N/A"}
+                      <RollInText text={alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "N/A"} />
                     </span>
                   </div>
                   <span role="cell">
@@ -191,9 +191,9 @@ export function AlertsList({
                         disabled={pending}
                         onClick={() => resolve(alert.id)}
                       >
-                        {pending && resolvingId === alert.id
-                          ? "Resolving…"
-                          : "Mark resolved"}
+                        <RollInText
+                          text={pending && resolvingId === alert.id ? "Resolving…" : "Mark resolved"}
+                        />
                       </Button>
                     )}
                     <Button
@@ -206,6 +206,7 @@ export function AlertsList({
                     </Button>
                   </div>
                 </div>
+                </RollRow>
               ))}
             </div>
           </div>

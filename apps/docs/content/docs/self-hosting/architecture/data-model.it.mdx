@@ -1,16 +1,16 @@
 ---
 title: Modello dati
-description: Comprendi le relazioni tra tenant principale, configurazione, Knowledge e Conversation.
+description: Comprendi le relazioni tra il tenant principale, la configurazione, la Knowledge e la Conversation.
 ---
 
 ## Proprietà del tenant
 
 Un'Organization è il tenant principale. I membri si uniscono a un'Organization
-con un solo Role.
+con un unico Role.
 
 I record di proprietà dell'organizzazione includono Assistants, Teammates,
-Entities, Memories, Help Desks, connessioni ai provider, API keys, Skills,
-Improvements, Goals, Alerts e record di utilizzo.
+Memories, Help Desks, connessioni ai provider, API keys, Skills, Improvements,
+Goals, Alerts e record di utilizzo.
 
 I record dei Teammate includono Projects, documenti di memoria, Routines e
 thread di gruppo. Un group thread conserva i propri messaggi, non le
@@ -33,24 +33,17 @@ flowchart TB
 />
 
 Una Publication memorizza uno snapshot immutabile della configurazione di un
-Assistant. I record delle bozze rimangono modificabili anche dopo la
+Assistant. I record di tipo Draft rimangono modificabili anche dopo la
 Publication.
 
 Un Flow memorizza un trigger, la configurazione delle condizioni e le azioni
 ordinate. La convalida in fase di runtime impone coppie valide di trigger e
-azioni.
-
-Un Assistant seleziona gli schemi delle Entity per la sua prossima Publication.
-Lo snapshot dello schema controlla gli strumenti generati, mentre ogni query
-legge i Record correnti.
-
-Le Shared Entities espongono i dati comuni dell'Organization. Le Entità con
-ambito utente indicano un attributo di identità per il filtraggio lato server.
+action.
 
 ## Proprietà della conoscenza
 
 <Mermaid
-  title="È un link, non una Collection, a decidere cosa cerca un Assistant"
+  title="È un link, non una Collection, a decidere cosa cerca un Assistente"
   chart={`
 flowchart TB
   ORG["Organization"]
@@ -66,14 +59,14 @@ flowchart TB
 />
 
 La Knowledge appartiene all'Organization. Una Collection è un contenitore, non
-un proprietario, e non decide quale Assistente risponde da una Source.
+un proprietario, e non decide quale Assistant risponde da una Source.
 
-È il collegamento Assistant-to-Source a farlo. Il modulo di Retrieval legge il
+È il collegamento Assistant-to-Source a farlo. Il modulo di recupero legge il
 set di collegamenti, quindi una Source non collegata non risponde a nessuno. Il
-collegamento prevede anche l'accesso diretto per ogni Assistente.
+link fornisce anche l'accesso diretto per ogni Assistente.
 
-Eliminando un Assistente, i suoi collegamenti vengono rimossi e tutte le Source
-restano al loro posto.
+L'eliminazione di un Assistente rimuove i suoi collegamenti e lascia tutte le
+Source al loro posto.
 
 ## Dati della conversazione
 
@@ -84,27 +77,28 @@ Una Teammate Conversation è una chat interna di un Member. Non viene
 visualizzata in Inbox né in Insights. I messaggi memorizzano le parti digitate
 per testo, citazioni, pulsanti, tracce e altre risposte.
 
-Lo stato della sessione registra anche l'invio proattivo delle notifiche. Una
+Lo stato della sessione registra anche l'invio proattivo delle Notification. Una
 Notification non crea un messaggio Visitor.
 
 Le Long-term Memories appartengono a una Organization e a un soggetto SSO
 verificato. Memorizzano un fatto persistente, un embedding, i timestamp e la
 provenienza della Conversation di origine.
 
-Il runtime limita ogni soggetto a 200 memorie. L'eliminazione rimuove un fatto
-dalle future iniezioni di prompt e dalle ricerche nella memoria.
+Il runtime limita ciascun soggetto a 200 memorie. L'eliminazione rimuove un
+fatto dalle future operazioni di prompt injection e dalle ricerche nella
+memoria.
 
 ## Credenziali programmatiche
 
-Un record di chiave API appartiene a un'Organizzazione e memorizza un hash
-segreto, un Role, il creator e lo stato di revoca. Il segreto in chiaro non
-viene memorizzato.
+Un record di API-key appartiene a un'Organization e memorizza un hash segreto,
+un Role, il creator e lo stato di revoca. Il segreto in chiaro non viene
+memorizzato.
 
 ## Isolamento
 
 L'accesso autenticato alla console utilizza la sicurezza a livello di riga, ove
-applicabile. I percorsi dei Service-role devono aggiungere un limite esplicito
-all'Organization.
+applicabile. I percorsi dei ruoli di servizio devono aggiungere un limite
+esplicito dell'Organization.
 
-API v1 utilizza l'Organization risolta dalla chiave API. Non accetta come
+L'API v1 utilizza l'Organization risolta dalla chiave API. Non accetta come
 autorità un'Organization selezionata dal chiamante.

@@ -126,6 +126,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCount, formatDateTime, formatDay } from "@/lib/format";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { canAutoFocus } from "@/lib/auto-focus";
 import { downloadFile } from "@/lib/download";
 import { applyMarkdownCommand, type MarkdownCommand } from "@/lib/markdown-toolbar";
@@ -2587,29 +2588,6 @@ export function KnowledgeClient({
   const [mode, setMode] = useState<KnowledgeMode>(initialMode);
   const [isPending, startTransition] = useTransition();
   const tabsId = useId();
-  const tabRefs = useRef<Partial<Record<KnowledgeMode, HTMLButtonElement | null>>>({});
-
-  // Arrow keys walk the tabs (WAI-ARIA tabs pattern, automatic activation),
-  // so only the selected tab sits in the Tab order.
-  function onTabKeyDown(event: React.KeyboardEvent) {
-    const index = MODES.findIndex((m) => m.id === mode);
-    const next =
-      event.key === "ArrowRight"
-        ? (index + 1) % MODES.length
-        : event.key === "ArrowLeft"
-          ? (index - 1 + MODES.length) % MODES.length
-          : event.key === "Home"
-            ? 0
-            : event.key === "End"
-              ? MODES.length - 1
-              : null;
-    if (next === null) return;
-    event.preventDefault();
-    const target = MODES[next]!.id;
-    setMode(target);
-    tabRefs.current[target]?.focus();
-  }
-
   function reembed() {
     startTransition(async () => {
       try {
@@ -2670,39 +2648,25 @@ export function KnowledgeClient({
       )}
       {selected ? (
         <>
-          {/* Mode tabs */}
-          <div
-            role="tablist"
-            aria-label="Knowledge types"
-            onKeyDown={onTabKeyDown}
-            className="bg-muted/60 inline-flex rounded-xl border p-1"
-          >
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                ref={(el) => {
-                  tabRefs.current[m.id] = el;
-                }}
-                type="button"
-                role="tab"
-                id={`${tabsId}-tab-${m.id}`}
-                aria-selected={mode === m.id}
-                aria-controls={`${tabsId}-panel`}
-                tabIndex={mode === m.id ? 0 : -1}
-                onClick={() => setMode(m.id)}
-                className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                  mode === m.id ? "text-primary bg-primary/10 shadow-xs dark:bg-primary/20" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          {/* The Library's pill rail, so the two knowledge surfaces switch
+              tabs the same way. Its arrow-key handling replaces the one this
+              component used to carry. Only the active panel renders: the
+              rail's own TabsContent keeps every panel mounted, and five
+              knowledge tables at once is not a cost worth paying. */}
+          <Tabs value={mode} onValueChange={(value) => setMode(value as KnowledgeMode)}>
+            <TabsList aria-label="Knowledge types">
+              {MODES.map((m) => (
+                <TabsTrigger key={m.id} value={m.id}>
+                  {m.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
           <div
             role="tabpanel"
             id={`${tabsId}-panel`}
-            aria-labelledby={`${tabsId}-tab-${mode}`}
+            aria-label={MODES.find((m) => m.id === mode)?.label}
           >
           {mode === "websites" && (
             <WebsitesTab

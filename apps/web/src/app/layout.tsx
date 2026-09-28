@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+import { devKey } from "@/lib/dev-key";
 import type { Metadata, Viewport } from "next";
 import { Sorts_Mill_Goudy, Host_Grotesk, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
@@ -100,16 +102,19 @@ export default function RootLayout({
           viewport (URL bar hidden), so a `h-screen` app shell hides its own
           bottom row behind the browser chrome until the user scrolls. */}
       <body className="app-backdrop h-dvh overflow-hidden font-sans">
+        {/* Keyed in development only, see lib/dev-key.ts: React's dev-only key
+            check misfires on these static siblings when the payload streams
+            them as separate chunks. */}
         {/* Both must stay in the root layout, see theme-script.tsx. */}
-        <ThemeScript />
-        <AuthHintScript />
-        {children}
-        <Toasts />
+        <ThemeScript key={devKey("theme-script")} />
+        <AuthHintScript key={devKey("auth-hint-script")} />
+        {process.env.NODE_ENV === "production" ? children : <Fragment key="page">{children}</Fragment>}
+        <Toasts key={devKey("toasts")} />
         {/* Owns the consent banner *and* the Vercel analytics scripts, which it
             renders only once the visitor has allowed the analytics category,
             see components/cookie-consent/cookie-consent-ui.tsx. Mounting the
             trackers here unconditionally is what the banner exists to prevent. */}
-        <CookieConsent />
+        <CookieConsent key={devKey("cookie-consent")} />
       </body>
     </html>
   );

@@ -1144,7 +1144,7 @@ export function ChannelPanel({
                   everywhere; it scrolls with edge chevrons when the drawer is
                   narrower than its tabs. */}
               <Tabs value="setup" className="mt-6">
-                <TabsList aria-label="Channel setup mode" className="bg-muted">
+                <TabsList aria-label="Channel setup mode">
                   {tabsForKind(state.kind).map((t) => (
                     <TabsTrigger
                       key={t.key}
@@ -1258,7 +1258,7 @@ export function ChannelPanel({
                 onValueChange={(value) => setTab(value as EditTab)}
                 className="mt-5"
               >
-                <TabsList aria-label="Channel settings section" className="bg-muted">
+                <TabsList aria-label="Channel settings section">
                   {tabsForKind(channel.kind).map((t) => (
                     <TabsTrigger key={t.key} value={t.key}>
                       {t.label}

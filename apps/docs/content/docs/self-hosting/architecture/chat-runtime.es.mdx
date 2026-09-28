@@ -1,12 +1,12 @@
 ---
-title: Entorno de ejecución del chat
-description: Comprende el envío actual del desencadenante, el enrutamiento del flujo, las condiciones y las acciones ordenadas.
+title: Tiempo de ejecución del chat
+description: Comprende el envío de desencadenantes actual, el enrutamiento de flujos, las condiciones y las acciones ordenadas.
 ---
 
 ## Ruta del mensaje
 
 <Mermaid
-  title="Cómo llega un mensaje de visitante a las partes de respuesta almacenadas"
+  title="Cómo llega un mensaje de un visitante a las partes de respuesta almacenadas"
   chart={`
 flowchart TB
   MSG["Visitor message"]
@@ -25,68 +25,65 @@ flowchart TB
 `}
 />
 
-Las acciones leen como entradas la identidad verificada, los registros de
-entidad y la memoria a largo plazo. No son etapas del enrutador, por lo que no
-aparecen en la imagen.
+La identidad verificada y la memoria a largo plazo son entradas que las acciones
+leen. No son etapas del enrutador, por lo que la imagen no las incluye.
 
 `messageFlowCandidates` proporciona candidatos a ambos motores de enrutamiento.
-Este límite evita que las condiciones objetivas produzcan resultados de
-enrutamiento diferentes.
+Este límite evita que las condiciones objetivas generen resultados diferentes en
+el enrutador.
 
 El contexto de la conversación proporciona ejemplos semánticos para la
 clasificación. No actúa como una puerta booleana independiente.
 
 ## Contexto vinculado a la identidad
 
-Una puerta SSO de widget válida proporciona un sujeto con ámbito de
-organización. Una afirmación verificada opcional puede coincidir con los
-registros de entidad con ámbito de usuario.
+Una puerta de SSO de Widget válida proporciona un sujeto con ámbito de
+organización. Una afirmación verificada opcional añade un identificador legible
+a ese sujeto.
 
-Las Entidades seleccionadas producen herramientas generadas de filtro y búsqueda
-de texto. Las herramientas con ámbito de usuario omiten el atributo de identidad
-de la entrada orientada al modelo.
+Un endpoint de integración de API puede anclar un parámetro a
+`{{identity.subject}}` o a `{{identity.claim}}`. El servidor rellena el valor
+verificado después de validar la entrada de la herramienta.
 
-El servidor añade el filtro de identidad verificada después de validar la
-entrada de la herramienta. El modelo no puede omitirlo ni anularlo.
+El modelo no puede omitir ni anular un valor de identidad anclado.
 
-En el primer turno de una nueva conversación, el entorno de ejecución puede
-inyectar hasta cinco recuerdos relevantes a largo plazo. Una herramienta de
-búsqueda de memoria integrada se encarga de la recuperación posterior.
+En el primer turno de una nueva Conversation, el entorno de ejecución puede
+inyectar hasta cinco recuerdos a largo plazo relevantes. Una herramienta de
+búsqueda en la memoria integrada se encarga de la recuperación posterior.
 
-Ambas rutas de memoria requieren el conmutador Organization y un sujeto SSO
-verificado.
+Ambas rutas de memoria requieren que esté activado el conmutador Organization y
+que haya un sujeto de SSO verificado.
 
-## Acceso directo de cortesía
+## Atajo de cortesía
 
-El flujo de interacción básico integrado puede gestionar un breve mensaje de
-cortesía antes de la clasificación de intenciones. Un flujo personalizado
-anterior que cumpla los requisitos sigue teniendo prioridad.
+El flujo de interacción básico integrado puede gestionar un mensaje breve
+únicamente de cortesía antes de la clasificación de intenciones. Un Flow
+personalizado elegible anterior sigue teniendo prioridad.
 
-El atajo no se activa después de una pregunta del Asistente ni para un mensaje
-que contenga una solicitud de información.
+El atajo no se activa después de una pregunta del asistente ni en el caso de un
+mensaje que contenga una solicitud de información.
 
 ## Ruta proactiva
 
-La incrustación informa sobre la carga de la página, el tiempo de permanencia y
-los eventos de apertura del chat. El servidor valida el disparador configurado y
-el estado de entrega.
+El elemento incrustado informa sobre la carga de la página, el tiempo de
+permanencia y los eventos de apertura del chat. El servidor valida el
+desencadenante configurado y el estado de entrega.
 
-Un flujo proactivo contiene una acción de notificación y ninguna condición. La
-acción emite el contenido configurado sin una llamada al modelo.
+Un Flow proactivo contiene una acción Notification y ninguna condición. La
+acción emite el contenido configurado sin realizar una llamada al modelo.
 
 ## Ejecución de la acción
 
-Las acciones se ejecutan en el orden almacenado. Cada acción devuelve partes de
-respuesta estructuradas o un efecto silencioso.
+Las acciones se ejecutan en el orden en que están almacenadas. Cada acción
+devuelve partes de respuesta estructuradas o un efecto silencioso.
 
-El trabajo generativo se mantiene dentro de la respuesta básica, la búsqueda de
-conocimiento, los seguimientos generados y las rutas de recomendación
-compatibles.
+El trabajo generativo se mantiene dentro de Basic reply, Search knowledge, los
+Follow-ups generados y las rutas de recomendación admitidas.
 
-## Traspaso
+## Transferencia
 
-Handover carga un Asistente de destino publicado en la misma Organización.
-Ejecuta el mensaje del visitante a través de ese destino una vez.
+Handover carga un asistente de destino publicado en la misma organización. Hace
+pasar el mensaje del visitante por ese asistente de destino una sola vez.
 
 La ejecución de destino ignora otro traspaso. Esta regla evita una cadena de
-Asistentes ilimitada.
+asistentes sin límite.

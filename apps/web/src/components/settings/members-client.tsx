@@ -159,11 +159,13 @@ export function MembersClient({
           />
           <div className="min-w-0">
             <p className="truncate font-medium">
-              {row.name}
+              <RollInText text={row.name} />
               {row.isSelf && <span className="text-muted-foreground"> (you)</span>}
             </p>
             {row.email && row.email !== row.name ? (
-              <p className="text-muted-foreground truncate text-xs">{row.email}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                <RollInText text={row.email} />
+              </p>
             ) : null}
           </div>
         </div>
@@ -177,9 +179,9 @@ export function MembersClient({
       width: "14%",
       cell: (row) =>
         row.status === "active" ? (
-          <Badge variant="secondary">Active</Badge>
+          <Badge variant="secondary"><RollInText text="Active" /></Badge>
         ) : (
-          <Badge variant="outline">Pending</Badge>
+          <Badge variant="outline"><RollInText text="Pending" /></Badge>
         ),
     },
     {
@@ -190,7 +192,7 @@ export function MembersClient({
       width: "18%",
       hideBelowSm: true,
       cell: (row) => (
-        <span className="text-muted-foreground">{formatDay(row.since)}</span>
+        <span className="text-muted-foreground"><RollInText text={formatDay(row.since)} /></span>
       ),
     },
     {

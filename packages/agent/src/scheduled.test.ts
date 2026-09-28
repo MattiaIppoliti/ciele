@@ -99,7 +99,6 @@ function stubDb(overrides: Partial<Db>): Db {
       apiIdempotencyKeys: 0,
       sourceGenerations: 0,
     }),
-    listDueEntitySyncConfigs: vi.fn().mockResolvedValue([]),
     listDueApplicationImports: vi.fn().mockResolvedValue([]),
     // Routines are the tick's fifth drain (#772); nothing due by default.
     listDueRoutineCandidates: vi.fn().mockResolvedValue([]),
@@ -370,7 +369,6 @@ describe("finalizeDueCrawls", () => {
       jobs: NO_JOBS,
       proposals: NO_JOBS,
       memories: NO_JOBS,
-      entitySyncs: { ...NO_JOBS, enqueued: 0 },
       applicationSyncs: { ...NO_JOBS, enqueued: 0 },
       crawls: { swept: CRAWL_FINALIZE_BATCH_SIZE, settled: 0 },
     });

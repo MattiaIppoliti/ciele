@@ -325,28 +325,13 @@ export {
 } from "./crawlers";
 
 export {
-  configureEntitySyncOp,
-  createEntityOp,
-  deleteEntityOp,
   deleteMemoryOp,
-  entityInputSchema,
-  ENTITY_IMPORT_MAX_ROWS,
-  entityPatchSchema,
-  entityRecordQuerySchema,
-  getEntityOp,
-  getAssistantEntitiesOp,
   getMemorySettingsOp,
   getSsoIdentityOp,
-  importEntityRecordsOp,
-  listEntitiesPageOp,
-  listEntityRecordsOp,
   listMemorySubjectsPageOp,
   listSubjectMemoriesOp,
-  queryEntityRecordsOp,
   setMemorySettingsOp,
-  setAssistantEntitiesOp,
   setSsoIdentityOp,
-  updateEntityOp,
   validateSsoIdentityOp,
   wipeSubjectMemoriesOp,
 } from "./data";

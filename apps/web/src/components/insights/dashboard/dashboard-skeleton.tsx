@@ -2,12 +2,14 @@ import { Skeleton } from "@agent-hub/ui";
 
 /**
  * The streaming boundary both dashboards share, inside insights/layout.tsx so
- * the sub-nav stays painted: header controls, the stat cards (two across: four rows
+ * the pill rail stays painted: header controls, the stat cards (two across: four rows
  * on Observability, two on Costs), then a full-width chart and a card pair.
  */
 export function DashboardSkeleton({ statRows }: { statRows: 2 | 4 }) {
   return (
-    <div className="flex min-h-full flex-col" aria-busy="true">
+    <div className="flex min-h-full flex-col" role="status" aria-busy="true">
+      {/* A skeleton is silent to a screen reader; this is what it hears. */}
+      <span className="sr-only">Loading dashboard…</span>
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <Skeleton className="h-8 w-40" />
         <div className="ml-auto flex items-center gap-2">

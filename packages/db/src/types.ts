@@ -51,13 +51,6 @@ import type {
   DashboardFacts,
   DueCompostAssistant,
   DueRecrawlClaim,
-  Entity,
-  EntityRecord,
-  EntityRecordQuery,
-  EntityRecordValue,
-  EntitySyncConfig,
-  EntitySyncConfigInput,
-  EntitySyncRun,
   ExportJob,
   ExportJobFormat,
   ExportJobKind,
@@ -1864,22 +1857,6 @@ export interface Db {
   /** Replaces the assistant's attached-skill set (ordered). */
   setAssistantSkills(assistantId: string, skillIds: string[]): Promise<void>;
 
-  // Entity CRUD is mechanical and lives at table("entities") (ADR-0016).
-  // Record ingestion/query methods remain behavioural seams.
-  upsertEntityRecords(
-    entityId: string,
-    rows: Array<{ key: string; values: Record<string, EntityRecordValue> }>
-  ): Promise<number>;
-  listEntityRecords(
-    entityId: string,
-    opts?: { limit?: number; offset?: number }
-  ): Promise<EntityRecord[]>;
-  countEntityRecords(entityId: string): Promise<number>;
-  queryEntityRecords(
-    entityId: string,
-    query: EntityRecordQuery
-  ): Promise<EntityRecord[]>;
-
   getMemoryEnabled(organizationId: string): Promise<boolean>;
   setMemoryEnabled(organizationId: string, enabled: boolean): Promise<void>;
   upsertMemories(
@@ -1898,41 +1875,12 @@ export interface Db {
     organizationId: string,
     input: { limit: number; cursor?: string | null }
   ): Promise<{ items: MemorySubjectSummary[]; nextCursor: string | null }>;
-  listEntitiesPage(
-    organizationId: string,
-    input: { limit: number; cursor?: string | null }
-  ): Promise<{ items: Entity[]; nextCursor: string | null }>;
   deleteMemory(id: string): Promise<void>;
   deleteSubjectMemories(subject: MemorySubjectRef): Promise<void>;
   searchMemories(
     subject: MemorySubjectRef,
     query: { embedding: number[] | null; text: string; limit?: number }
   ): Promise<MemorySearchResult[]>;
-
-  getEntitySyncConfig(entityId: string): Promise<EntitySyncConfig | null>;
-  upsertEntitySyncConfig(
-    entityId: string,
-    input: EntitySyncConfigInput
-  ): Promise<EntitySyncConfig>;
-  markEntitySynced(entityId: string, at: string): Promise<void>;
-  listDueEntitySyncConfigs(
-    now: string
-  ): Promise<Array<{ entityId: string; organizationId: string }>>;
-  recordEntitySyncRun(
-    entityId: string,
-    run: Omit<EntitySyncRun, "id" | "entityId" | "finishedAt">
-  ): Promise<EntitySyncRun>;
-  /** Atomically replaces one fetched sync snapshot and records its run. */
-  commitEntitySync(input: {
-    entityId: string;
-    expectedLastSyncedAt: string | null;
-    rows: Array<{ key: string; values: Record<string, EntityRecordValue> }>;
-    prune: boolean;
-    rejected: string[];
-    at: string;
-  }): Promise<EntitySyncRun>;
-  listEntitySyncRuns(entityId: string, limit?: number): Promise<EntitySyncRun[]>;
-  pruneEntityRecords(entityId: string, seenKeys: string[]): Promise<number>;
 
   // Generic table access (ADR-0016): the seam the plain CRUD passthroughs
   // above migrate onto. Only tables in DbTableMap are reachable; behavioural

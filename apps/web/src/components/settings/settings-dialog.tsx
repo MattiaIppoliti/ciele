@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowUpRight, Check, ChevronDown, X } from "lucide-react";
 import Link from "next/link";
@@ -51,8 +51,10 @@ export function SettingsDialog({
   children,
 }: {
   /** Owners and admins may open the Organization scope; everyone else only sees
-   * the personal scope, and the org routes redirect them back to it. */
-  canManageOrg: boolean;
+   * the personal scope, and the org routes redirect them back to it. A promise
+   * so the layout never awaits the session: an await there sits above every
+   * settings tab's loading.tsx and would hold the dialog shut until it lands. */
+  canManageOrg: Promise<boolean>;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -65,7 +67,20 @@ export function SettingsDialog({
   const dialogTitle = activeTab?.label ?? scopeTitle(scope);
   // Leaving the personal scope for the Organization one is only offered where
   // there is something to manage; the reverse is always available.
-  const showCross = scope === "personal" ? canManageOrg : true;
+  // Hidden until the role is known, so a Member never sees a link they would
+  // only be redirected back from; only the personal scope waits on it.
+  const [mayManageOrg, setMayManageOrg] = useState(false);
+  useEffect(() => {
+    let live = true;
+    canManageOrg.then(
+      (value) => live && setMayManageOrg(value),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [canManageOrg]);
+  const showCross = scope === "personal" ? mayManageOrg : true;
 
   const navigateAway = useCallback(() => {
     // One back step leaves the dialog because switching tabs *replaces* the

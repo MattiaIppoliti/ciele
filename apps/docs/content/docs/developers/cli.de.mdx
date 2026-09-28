@@ -4,12 +4,12 @@ description: Verwalten Sie Ciele über ein Terminal oder einen automatisierten J
 ---
 
 Der Befehl `ciele` verwendet dieselben API-Operationen wie die
-Administratorkonsole. Die CLI unterstützt den gehosteten Service sowie
+Administrator-Konsole. Die CLI unterstützt den gehosteten Service sowie
 selbstgehostete Installationen.
 
 ## Voraussetzungen
 
-- Verwenden Sie Node.js 22.6 oder höher.
+- Verwenden Sie Node.js 22.6 oder eine höhere Version.
 - Erstellen Sie einen [Organization API key](/developers/api-keys).
 
 ## Installieren
@@ -53,7 +53,7 @@ ciele doctor
 Der Befehl `login` validiert den Schlüssel, bevor er `~/.ciele/config.json`
 schreibt. Auf unterstützten Systemen ist der Dateimodus `0600`.
 
-Die CLI löst einen Schlüssel in dieser Reihenfolge auf:
+Die CLI löst einen Schlüssel in folgender Reihenfolge auf:
 
 1. Die Option `--api-key`.
 2. Die Umgebungsvariable `CIELE_API_KEY`.
@@ -71,7 +71,7 @@ erhalten.
 | --- | --- |
 | `0` | Der Vorgang wurde abgeschlossen. |
 | `1` | Der Server hat einen Fehler zurückgegeben. |
-| `2` | Die Eingabe des Befehls ist ungültig. |
+| `2` | Die Befehlseingabe ist ungültig. |
 | `3` | Authentication failed. |
 
 `ciele doctor` überprüft die API-Erkennung, die API-Kompatibilität, den
@@ -111,10 +111,10 @@ ciele sources add-org --text "Opening hours are 09:00 to 17:00." --assistants <a
 Geben Sie eines von `--url`, `--file` oder `--text` an. Der Befehl benötigt
 `--assistants` aus demselben Grund wie die anderen add-Befehle.
 
-### Quellenlinks
+### Quellenverknüpfungen
 
 Eine Source beantwortet Anfragen für die mit ihr verknüpften Assistants. Diese
-Befehle lesen und ändern die Verknüpfungen.
+Befehle lesen und ändern die Links.
 
 ```bash
 ciele sources list-org
@@ -128,7 +128,7 @@ zwar über alle Assistants hinweg.
 `sources link` ersetzt den Link-Satz. Eine leere Liste entfernt alle
 Verknüpfungen, und die Source hört auf zu antworten.
 
-`sources direct-access` entscheidet, ob dieser eine Assistant einem Visitor die
+`sources direct-access` legt fest, ob dieser eine Assistant einem Visitor die
 Originaldatei zur Verfügung stellen darf.
 
 ### Das Wissen durchsuchen
@@ -162,18 +162,17 @@ Conversation fortzusetzen. Nur der API-Schlüssel, mit dem eine Conversation
 gestartet wurde, kann sie fortsetzen. Mit einer anderen ID startet die Frage
 eine neue Conversation.
 
-Jede Frage verbraucht einen Model Turn und erzeugt eine Conversation. Die Inbox
+Jede Frage verwendet einen Model-Turn und erstellt eine Conversation. Die Inbox
 zeigt es mit dem Label **API key** an, wenn Sie den Filter **Staff
 conversations** auf **Include staff** oder **Staff only** setzen. Der Befehl
-wird mit einem Fehlercode beendet, wenn der Assistent keine Antwort geben
-konnte.
+wird mit einem Fehlercode beendet, wenn der Assistant nicht antworten konnte.
 
 ## Flow-Befehle
 
 ### Erfahren Sie, was ein Flow enthalten kann
 
 `ciele flows catalog` zeigt die Trigger, die Actions und die Condition-Arten
-dieser Ciele-Bereitstellung an. Es zeigt auch, welche Actions jeder Trigger
+dieser Ciele-Bereitstellung an. Es zeigt auch, welche Aktionen jeder Trigger
 zulässt. Lesen Sie es, bevor Sie eine Flow-Datei schreiben. Der Server lehnt
 einen Trigger, eine Action oder eine Condition-Art ab, die nicht in der Liste
 enthalten ist.
@@ -188,7 +187,7 @@ ciele flows catalog
 ### Überprüfen Sie einen Flow, bevor Sie ihn speichern
 
 `flows draft` überprüft eine Änderung an einem Flow. `flows validate` überprüft
-einen vollständigen Flow. Keiner der beiden Befehle speichert irgendetwas. Beide
+einen vollständigen Flow. Keiner der beiden Befehle speichert etwas. Beide
 zeigen Ihnen den Flow an, den Ciele speichern würde.
 
 ```bash
@@ -210,16 +209,16 @@ Aufruf.
 ciele flows runs <flow-id> --limit 20
 ```
 
-Conversations umfassen diese Runs nicht, da ein eingehender Anruf keine
+Conversations beinhalten diese Runs nicht, da ein eingehender Aufruf keine
 Conversation ist.
 
 ## Befehle für Teammates
 
 ### Einem Teammate seine Fähigkeiten zuweisen
 
-Ein neues KI-Teammitglied kann Fragen beantworten. Er kann erst handeln, wenn
-Sie ihm eine Domain zuweisen, und er erledigt keine unbeaufsichtigte Arbeit, bis
-Sie ihm eine Routine zuweisen.
+Ein neuer KI-Teammate kann Fragen beantworten. Er kann erst handeln, wenn Sie
+ihm eine Domain zuweisen, und er erledigt keine unbeaufsichtigte Arbeit, bis Sie
+ihm eine Routine zuweisen.
 
 ```bash
 ciele teammates grants <teammate-id>
@@ -229,15 +228,15 @@ ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --
 ```
 
 `set-grants` sendet jedes Mal den vollständigen Satz von Domains. `--domains ""`
-entfernt sie alle. Dieser Befehl erfordert einen API-Schlüssel mit der Rolle
-„Admin“ oder einer höheren Rolle, da er einem Agenten erlaubt, Ihre Daten zu
-ändern. Die anderen Teammate-Befehle erfordern die Rolle „Editor“.
+entfernt sie alle. Für diesen Befehl ist ein API-Schlüssel mit der Rolle „Admin“
+oder einer höheren Rolle erforderlich, da er einem Agenten erlaubt, Ihre Daten
+zu ändern. Die anderen Teammate-Befehle erfordern die Rolle Editor.
 
 Ein Teammate kann maximal fünf Routines haben.
 
-### Richten Sie ein Teammember mit einem einzigen Befehl ein
+### Richten Sie ein Teammitglied mit einem einzigen Befehl ein
 
-`teammates create` erstellt einen Teammate, der Fragen beantwortet. Er kann
+`teammates create` erstellt ein Teammitglied, das Fragen beantwortet. Er kann
 nicht handeln und erledigt keine unbeaufsichtigte Arbeit. `teammates provision`
 führt die drei Schritte gemeinsam aus.
 
@@ -247,13 +246,13 @@ ciele teammates provision --name "Triage" \
   --routine "Triage new feedback:daily:8"
 ```
 
-Die Reihenfolge lautet: create, dann grant, dann schedule. Wenn ein Schritt
+Die Reihenfolge ist: create, dann grant, dann schedule. Wenn ein Schritt
 fehlschlägt, teilt Ihnen der Befehl mit, wo er abgebrochen wurde. Bis zu diesem
 Punkt bleibt der Teammate nutzbar.
 
 Ein Schlüssel ohne die Rolle „Admin Role“ kann den Teammate erstellen. Es kann
 keine Domain gewähren. Der Befehl meldet dann, dass er beim Schritt „grants“
-angehalten hat.
+abgebrochen hat.
 
 ### Projekte und Speicher
 
@@ -285,7 +284,6 @@ ciele conversations list --assistant <assistant-id>
 ciele conversations pin <conversation-id>
 ciele messages feedback <message-id> --value -1
 ciele improvements list
-ciele entities list
 ciele memories subjects
 ciele help-desks list
 ciele teammates list

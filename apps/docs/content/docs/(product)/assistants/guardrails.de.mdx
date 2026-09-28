@@ -1,0 +1,85 @@
+---
+title: Guardrails
+description: Überprüfen Sie, was Besucher senden, und blenden Sie markierten Text in den Antworten des Assistenten aus.
+---
+
+Eine Guardrail ist eine Prüfung, die bei jeder Nachricht eines Visitors oder bei
+jeder gestreamten Antwort ausgeführt wird. Jeder Assistant verfügt über eine
+eigene, geordnete Liste von Guardrails.
+
+## Guardrail-Typen
+
+| Type | Runs on | Check |
+| --- | --- | --- |
+| **Input length limit** | Visitor message | Die Nachricht enthält mehr Zeichen oder Tokens als zulässig. Ciele zählt für jeweils vier Zeichen ein Token. |
+| **Regular expression** | Visitor message | Die Nachricht entspricht dem Muster. |
+| **Moderation** | Visitor message | Das OpenAI-Moderationsmodell meldet die Nachricht. Sie können die Kategorien auswählen, die blockieren. |
+| **Restrict to topic** | Visitor message | Ein Modell stellt fest, dass das Hauptthema der Nachricht nicht in Ihrer Liste enthalten ist. |
+| **Sensitive content in stream** | Answer | Text zwischen einem Startmarker und einem Stopmarker wird nicht angezeigt. |
+
+## Eine Guardrail erstellen
+
+1. Öffnen Sie einen Assistant.
+2. Wählen Sie **Guardrails** aus.
+3. Suchen Sie den Abschnitt für den Guardrail-Typ.
+4. Wählen Sie **Add** in diesem Abschnitt aus.
+5. Füllen Sie die Felder für den Typ aus.
+6. Verfassen Sie die Nachricht, die der Visitor sieht.
+7. Wählen Sie **Add guardrail** aus, um es zu speichern.
+
+Änderungen wirken sich sofort auf die Vorschau aus. Das Live-Widget ändert sich
+erst nach der Veröffentlichung.
+
+## Eingabe-Guardrails
+
+Input Guardrails werden ausgeführt, bevor ein Flow die Nachricht erhält. Ciele
+führt sie in der Reihenfolge der Abschnitte auf der Seite aus. Die beiden
+exakten Prüfungen werden vor den beiden Prüfungen ausgeführt, die ein Modell
+verwenden.
+
+Verwenden Sie in einem Abschnitt mit mehreren Guardrails die Pfeile, um deren
+Reihenfolge zu ändern.
+
+Die erste Guardrail, die blockiert, stoppt den Turn. Der Visitor sieht die
+Guardrail-Meldung, und es wird kein Flow ausgeführt. Die nachfolgenden Prüfungen
+werden nicht ausgeführt.
+
+Setzen Sie **When it fires** auf einen der folgenden Werte:
+
+- **Block the message** unterbricht den Turn und zeigt die Guardrail-Meldung an.
+- **Only log it in the Inbox trace** protokolliert das Ergebnis und setzt den
+  Turn fort. Verwenden Sie diesen Wert, um eine neue Guardrail mit echtem
+  Traffic zu testen.
+
+**Moderation** und **Restrict to topic** verwenden ein Modell. Legen Sie **If
+the check cannot run** fest, um ein Timeout oder eine fehlende
+Provider-Verbindung zu steuern:
+
+- **Let the message through** hält den Assistant verfügbar.
+- **Block the message** sorgt dafür, dass die Prüfung streng bleibt.
+
+**Moderation** erfordert eine OpenAI-Provider-Verbindung in der Organisation.
+Das Formular zeigt eine Warnung an, wenn keine OpenAI-Provider-Verbindung
+besteht.
+
+## Stream Guardrails
+
+**Sensitive content in stream** ändert die Antwort, während das Modell sie
+schreibt. Der Text zwischen den Markern wird weder an den Visitor gesendet noch
+in das Transkript aufgenommen. Die Guardrail-Meldung wird einmal anstelle jedes
+ausgeblendeten Abschnitts angezeigt.
+
+Wenn das Modell den Stop-Marker nicht schreibt, bleibt der Rest der Antwort
+ausgeblendet.
+
+Ciele wendet diese Guardrail nicht auf wörtliche **Message**-Aktionen an. Ein
+Administrator schreibt diesen Text.
+
+## Ergebnisse überprüfen
+
+Öffnen Sie die Conversation in **Inbox**. Ein Turn, der von einer Guardrail
+blockiert wurde, zeigt den Flow-Marker `Guardrail:` und den Namen der Guardrail
+an. Ein Badge auf der Antwort zeigt jede Guardrail an, die blockiert hat,
+protokolliert wurde oder nicht ausgeführt werden konnte.
+
+Der Visitor sieht nicht, welche Guardrail ausgelöst wurde.

@@ -1871,7 +1871,7 @@ function NodePanel({
       </div>
 
       <Tabs defaultValue="configure" className="flex min-h-0 flex-1 flex-col">
-        <TabsList aria-label="Flow node view" className="bg-muted" wrapperClassName="mx-4 mt-3 w-auto">
+        <TabsList aria-label="Flow node view" wrapperClassName="mx-4 mt-3 w-auto">
           <TabsTrigger value="configure">Configure</TabsTrigger>
           <TabsTrigger value="run">Run node</TabsTrigger>
         </TabsList>

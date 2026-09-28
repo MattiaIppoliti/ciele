@@ -27,7 +27,6 @@ import { runTrustMaterialization } from "./trust";
 import { drainTurnEffects } from "./effects";
 import { runDueAnswerVerifications } from "./verifier";
 import {
-  enqueueDueEntitySyncs,
   enqueueDueApplicationSyncs,
   type RunDueJobsResult,
   runDueJobs,
@@ -129,7 +128,6 @@ export interface FinalizeDueCrawlsReport {
   memories: RunDueJobsResult;
   /** Teammate Agent-layer distillation (#771). */
   agentMemories: RunDueJobsResult;
-  entitySyncs: RunDueJobsResult & { enqueued: number };
   applicationSyncs: RunDueJobsResult & { enqueued: number };
   crawls: { swept: number; settled: number; results: FinalizedCrawlResult[] };
   backlog: Awaited<ReturnType<Db["getWorkQueueHealth"]>>;
@@ -195,7 +193,6 @@ const JOB_QUEUES = [
   { key: "proposals", kind: "draft_improvement_proposal", suffix: "-proposals", limit: 10 },
   { key: "memories", kind: "promote_memories", suffix: "-memories", limit: 20 },
   { key: "agentMemories", kind: "distill_agent_memory", suffix: "-agent-memory", limit: 20 },
-  { key: "entitySyncs", kind: "sync_entity_records", suffix: "-entity-sync", limit: 10 },
   { key: "applicationSyncs", kind: "sync_application_import", suffix: "-application-sync", limit: 10 },
 ] as const;
 
@@ -227,10 +224,10 @@ export async function finalizeDueCrawls(
     .getWorkQueueHealth(observedAt.toISOString())
     .catch(emptyBacklog);
   alertOnOldQueueWork(backlogBeforeDrain, observedAt);
-  const [entityEnqueued, applicationEnqueued] = await Promise.all([
-    enqueueDueEntitySyncs({ db }, options.now),
-    enqueueDueApplicationSyncs({ db }, options.now),
-  ]);
+  const applicationEnqueued = await enqueueDueApplicationSyncs(
+    { db },
+    options.now
+  );
   const effects = { claimed: 0, succeeded: 0, failed: 0, superseded: 0 };
   const emptyJobs = (): RunDueJobsResult => ({
     claimed: 0,
@@ -326,7 +323,6 @@ export async function finalizeDueCrawls(
     proposals: totals.proposals,
     memories: totals.memories,
     agentMemories: totals.agentMemories,
-    entitySyncs: { ...totals.entitySyncs, enqueued: entityEnqueued.enqueued },
     applicationSyncs: {
       ...totals.applicationSyncs,
       enqueued: applicationEnqueued.enqueued,

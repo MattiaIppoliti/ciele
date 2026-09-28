@@ -4,7 +4,6 @@ import { z } from "zod";
 import type {
   ApiIntegration,
   Assistant,
-  EntitySnapshot,
   KnowledgeSearchResult,
   ReferralCandidate,
 } from "@agent-hub/core";
@@ -14,7 +13,6 @@ import { fencedForTurn } from "./untrusted-content";
 import type { TurnSession } from "./session";
 import type {
   ChatReplyPart,
-  EntityRecordsFetcher,
   KnowledgeDocument,
   KnowledgeSearcher,
   MemorySearcher,
@@ -22,7 +20,6 @@ import type {
   TeammateActionTool,
   ToolSubject,
 } from "./types";
-import { entityToolSpecs } from "./entity-tools";
 import {
   MAX_SEARCH_PASSES,
   readyToAnswerTool,
@@ -82,8 +79,6 @@ export interface ToolRuntimeContext {
   callId?: string;
   searchKnowledge?: KnowledgeSearcher;
   searchMemories?: MemorySearcher;
-  entities?: EntitySnapshot[];
-  queryEntityRecords?: EntityRecordsFetcher;
   toolSubject?: ToolSubject;
   /**
    * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
@@ -972,37 +967,6 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   for (const action of ctx.teammateActions ?? []) {
     const spec = teammateActionSpec(action);
     if (!toolset[spec.name]) toolset[spec.name] = instrumentAction(spec, ctx);
-  }
-  if (ctx.queryEntityRecords) {
-    const subject = ctx.toolSubject;
-    // Record-grounded answers cite like knowledge- and API-grounded ones: an
-    // answered Entity query lands its stable citation in the collector.
-    const cite = (source: KnowledgeSearchResult) => ctx.usedSources.push(source);
-    for (const entity of ctx.entities ?? []) {
-      const specs: RuntimeToolSpec[] =
-        entity.scope === "shared"
-          ? entityToolSpecs(entity, ctx.queryEntityRecords, null, { cite })
-          : subject?.type === "sso" && subject.claimValue
-            ? entityToolSpecs(
-                entity,
-                ctx.queryEntityRecords,
-                { value: subject.claimValue },
-                { cite }
-              )
-            : subject?.type === "member"
-              ? entityToolSpecs(entity, ctx.queryEntityRecords, null, {
-                  crossRecord: true,
-                  cite,
-                })
-              : [];
-      for (const spec of specs) {
-        const suffix = entity.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
-        const name = toolset[spec.name] ? `${spec.name}_${suffix}` : spec.name;
-        if (!toolset[name]) {
-          toolset[name] = instrumentAction({ ...spec, name }, ctx);
-        }
-      }
-    }
   }
   // The terminal tool: mandatory when a turn has a terminal declaration to
   // make. Not instrumented: declaring you are done spends no iteration, and its

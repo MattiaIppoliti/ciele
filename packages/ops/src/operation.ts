@@ -7,7 +7,6 @@ import type {
   DecisionBooleanAnswer,
   DecisionConfidence,
   DecisionScoreAnswer,
-  Entity,
   EvaluationCandidate,
   EvaluationExample,
   EvaluationResult,
@@ -203,8 +202,6 @@ export interface OperationPorts {
     evidence: { title: string; question: string; answer: string };
     candidates: readonly { id: string; title: string }[];
   }): Promise<TriageDecisionAnswers | null>;
-  /** Read the org's Entities when freezing a Publication snapshot. */
-  listPublicationEntities?(organizationId: string): Promise<Entity[]>;
   /**
    * Grant a system Teammate its one domain at creation (#838). A port because
    * the grant table's RLS is admin-only (#770) while the Flow Canvas is an

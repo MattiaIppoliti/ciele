@@ -111,10 +111,9 @@ describe("Developer Panel domain claims (#754)", () => {
     expect(apiDomainsForPath("/settings/api-keys")).toEqual(["api-keys"]);
     expect(apiDomainsForPath("/settings/ai")).toEqual(["providers", "memories"]);
     // Organization settings live on the "general" tab, not a route called
-    // /settings/organization; Entities live on a route the tab rail does not
-    // list yet. Both readings are pinned here so neither drifts silently.
+    // /settings/organization. The reading is pinned here so it cannot drift
+    // silently.
     expect(apiDomainsForPath("/settings/general")).toEqual(["organization"]);
-    expect(apiDomainsForPath("/settings/data")).toEqual(["entities"]);
     // Usage became programmatic in #853: two read-only endpoints, so the tab
     // that shows them gets the panel that explains how to call them.
     expect(apiDomainsForPath("/settings/usage")).toEqual(["usage"]);

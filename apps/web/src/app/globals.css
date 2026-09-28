@@ -71,6 +71,7 @@
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+  --color-tabs-track: var(--tabs-track);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -185,6 +186,10 @@
   --secondary: #f1f1f1;
   --secondary-foreground: oklch(0.205 0 0);
   --muted: #f1f1f1;
+  /* The track behind a tab switcher's pill: a step darker than muted, so the
+     rail reads as a recess the pill sits in. Derived, so every palette's own
+     muted carries it. */
+  --tabs-track: color-mix(in oklab, var(--muted), black 7%);
   /* 0.556 measured 4.34:1 on the #f5f5f5 ground, under the 4.5:1 floor for
      normal text, and this token carries ~1000 usages (350 of them at 12px or
      smaller). 0.52 lands at ~5.0:1 and still reads clearly secondary against
@@ -285,6 +290,7 @@
   --secondary: #191919;
   --secondary-foreground: oklch(0.985 0 0);
   --muted: #191919;
+  --tabs-track: color-mix(in oklab, var(--muted), black 40%);
   --muted-foreground: oklch(0.708 0 0);
   --accent: #191919;
   --accent-foreground: oklch(0.985 0 0);

@@ -20,7 +20,7 @@ Client-Schnittstellen und Konfigurationsformate können sich ändern.
 
 ## Kompatibilität
 
-| Client | Hosted endpoint | Local `stdio` |
+| Client | Hosted endpoint | Lokal `stdio` |
 | --- | :---: | :---: |
 | Claude Code | Ja | Ja |
 | Codex CLI, Codex App und Codex IDE-Erweiterung | Ja | Ja |
@@ -43,16 +43,17 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-Der gehostete Endpoint hat keinen Schalter für den reinen Lesezugriff: Seine
-Berechtigungen entsprechen der Role des Schlüssels. Ein Viewer-Schlüssel ist
-jedoch kein reiner Read-only-Agent – das Überprüfen von Konversationen gilt als
-Curation, sodass er eine Konversation anheften, Feedback hinterlassen und eine
-Konversation löschen kann. Verwenden Sie einen lokalen stdio-Server mit
-`CIELE_MCP_READ_ONLY=1`, wenn der Agent überhaupt nichts ändern darf.
+Der gehostete Endpoint verfügt über keinen Schalter für den reinen Lesezugriff:
+Seine Berechtigungen ergeben sich aus der Role des Schlüssels. Ein
+Viewer-Schlüssel ist jedoch kein reiner Read-only-Agent – das Überprüfen von
+Konversationen gilt als Curation, sodass er eine Konversation anheften, Feedback
+hinterlassen und eine Konversation löschen kann. Verwenden Sie einen lokalen
+stdio-Server mit `CIELE_MCP_READ_ONLY=1`, wenn der Agent überhaupt nichts ändern
+darf.
 
 ## Eine lokale Verbindung vorbereiten
 
-1. Installieren Sie Node.js 22.6 oder eine höhere Version.
+1. Installieren Sie Node.js 22.6 oder höher.
 2. Klonen Sie das Ciele-Repository.
 3. Erstellen Sie einen Viewer-[API key](/developers/api-keys).
 4. Ermitteln Sie den absoluten Pfad zu `packages/mcp/bin/ciele-mcp.mjs`.
@@ -72,8 +73,8 @@ claude mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Öffnen Sie `/mcp` in Claude Code. Überprüfen Sie, ob der `ciele`-Server siebzehn
-Tools anzeigt.
+Öffnen Sie `/mcp` in Claude Code. Vergewissern Sie sich, dass der `ciele`-Server
+sechzehn Tools anzeigt.
 
 Weitere Informationen zu Client-Optionen und Konfigurationsbereichen finden Sie
 im [Claude Code MCP guide](https://docs.anthropic.com/en/docs/claude-code/mcp).
@@ -108,7 +109,7 @@ CIELE_MCP_READ_ONLY = "1"
 ```
 
 Führen Sie `codex mcp list` aus oder öffnen Sie `/mcp`, um die Verbindung zu
-prüfen.
+überprüfen.
 
 Siehe den [Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp) für die
 aktuellen Client-Einstellungen.
@@ -268,7 +269,7 @@ Read the proposed tool input before you approve it. API Roles and MCP read-only 
 
 ## Clients ohne lokalen Prozess
 
-ChatGPT Web kann keinen lokalen `stdio`-Server starten. Richten Sie es
+ChatGPT Web kann keinen lokalen `stdio` Server starten. Richten Sie es
 stattdessen auf den gehosteten Endpoint. Die Bereitstellung muss über das
 öffentliche Internet erreichbar sein, was bei einem lokalen Ciele Desktop-Stack
 nicht der Fall ist.

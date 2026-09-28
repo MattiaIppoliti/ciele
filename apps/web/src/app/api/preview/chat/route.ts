@@ -51,11 +51,10 @@ export async function POST(request: NextRequest) {
     return new Response("Not found", { status: 404 });
   }
 
-  const [flows, connections, skills, orgEntities, personal] = await Promise.all([
+  const [flows, connections, skills, personal] = await Promise.all([
     db.listFlows(assistant.id),
     db.listProviderConnections(session.organization.id),
     db.listAssistantSkills(assistant.id),
-    db.table("entities").list({ organizationId: session.organization.id }),
     // This Member's own subscription, if the org allows it and they paired a
     // device. The same resolution the Teammate chat runs (#769).
     resolvePersonalSubscription({
@@ -66,12 +65,6 @@ export async function POST(request: NextRequest) {
       origin: request.nextUrl.origin,
     }),
   ]);
-  // Live counterpart of the Publication's entity snapshot (#665): the
-  // assistant's selected shared Entities, re-read per message like flows.
-  const selectedEntityIds = assistant.tools?.entities ?? [];
-  const entities = orgEntities.filter(
-    (e) => selectedEntityIds.includes(e.id)
-  );
   const localModelPreference = resolveLocalPreviewModelPreference(
     body.modelPreference,
     personal.providers
@@ -109,7 +102,6 @@ export async function POST(request: NextRequest) {
     assistant: effectiveAssistant,
     flows,
     skills,
-    entities,
     connections,
     organizationId: session.organization.id,
     subjectType: "member",

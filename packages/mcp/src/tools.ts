@@ -84,11 +84,8 @@ const READ_ACTIONS = new Set([
   "get_source",
   "export",
   "export_faqs",
-  "query_records",
-  "list_records",
   "subjects",
   "settings",
-  "get_entities",
   // Teammates (#768): reading one Member's own thread mutates nothing.
   "conversations",
   "conversation",
@@ -129,9 +126,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_assistants",
       description:
-        "Ask an Assistant a question with `ask` (id + question): it answers as its published widget would, Flows and knowledge search included, and returns the answer with the Sources it cited; pass the returned conversationId to ask a follow-up. It creates a Conversation, so read-only mode refuses it; to read the knowledge without an answer use manage_knowledge `search`. Also list, read, create, update, duplicate or delete the Organization's Assistants, and get/set their selected Entities without replacing other tool settings. `list` supports limit/cursor; `update` takes a `patch` object; `delete` is permanent and needs an admin-tier key.",
+        "Ask an Assistant a question with `ask` (id + question): it answers as its published widget would, Flows and knowledge search included, and returns the answer with the Sources it cited; pass the returned conversationId to ask a follow-up. It creates a Conversation, so read-only mode refuses it; to read the knowledge without an answer use manage_knowledge `search`. Also list, read, create, update, duplicate or delete the Organization's Assistants. `list` supports limit/cursor; `update` takes a `patch` object; `delete` is permanent and needs an admin-tier key.",
       schema: {
-        action: z.enum(["ask", "list", "get", "create", "update", "delete", "duplicate", "get_entities", "set_entities"]),
+        action: z.enum(["ask", "list", "get", "create", "update", "delete", "duplicate"]),
         id: z.string().optional().describe("Assistant id (ask/get/update/delete/duplicate)"),
         question: z.string().optional().describe("What to ask the Assistant (ask)"),
         conversationId: z
@@ -144,7 +141,6 @@ export function buildTools(client: CieleClient): CieleTool[] {
         patch: z.record(z.string(), z.unknown()).optional().describe("Fields to change (update)"),
         limit: z.number().optional(),
         cursor: z.string().optional(),
-        entityIds: z.array(z.string()).optional().describe("Selected Entity ids (set_entities)"),
       },
       mutates: byAction,
       run: async (args) => {
@@ -175,13 +171,6 @@ export function buildTools(client: CieleClient): CieleTool[] {
               question: need(args, "question"),
               conversationId: (args.conversationId as string | undefined) || undefined,
             });
-          case "get_entities":
-            return client.assistants.entities(need(args, "id"));
-          case "set_entities":
-            if (!Array.isArray(args.entityIds)) {
-              throw new ToolInputError('"entityIds" is required for set_entities');
-            }
-            return client.assistants.setEntities(need(args, "id"), args.entityIds as string[]);
           default:
             throw new ToolInputError(`Unknown action "${args.action}"`);
         }
@@ -455,53 +444,6 @@ export function buildTools(client: CieleClient): CieleTool[] {
       },
     },
     {
-      name: "manage_entities",
-      description:
-        "Manage Organization Entities and their typed Records. Read actions: list/get/list_records/query_records. Write actions: create/update/delete/import_records. User-scoped record access here is an admin operation; Widget runtime identity filtering remains server-enforced.",
-      schema: {
-        action: z.enum(["list", "get", "create", "update", "delete", "list_records", "query_records", "import_records"]),
-        id: z.string().optional().describe("Entity id for get/update/delete"),
-        entityId: z.string().optional().describe("Entity id for Record actions"),
-        entity: z.record(z.string(), z.unknown()).optional().describe("EntityInput for create"),
-        patch: z.record(z.string(), z.unknown()).optional().describe("name/description for update"),
-        query: z.record(z.string(), z.unknown()).optional().describe("filters/search/limit for query_records"),
-        csvText: z.string().optional().describe("CSV content for import_records"),
-        limit: z.number().optional(),
-        cursor: z.string().optional(),
-        offset: z.number().optional(),
-      },
-      mutates: byAction,
-      run: async (args) => {
-        switch (args.action) {
-          case "list":
-            return client.entities.list({ limit: args.limit as number | undefined, cursor: args.cursor as string | undefined });
-          case "get":
-            return client.entities.get(need(args, "id"));
-          case "create":
-            if (!args.entity) throw new ToolInputError('"entity" is required for create');
-            return client.entities.create(args.entity as never);
-          case "update":
-            if (!args.patch) throw new ToolInputError('"patch" is required for update');
-            return client.entities.update(need(args, "id"), args.patch as never);
-          case "delete":
-            await client.entities.delete(need(args, "id"));
-            return { deleted: args.id };
-          case "list_records":
-            return client.entities.listRecords(need(args, "entityId"), {
-              limit: args.limit as number | undefined,
-              offset: args.offset as number | undefined,
-            });
-          case "query_records":
-            if (!args.query) throw new ToolInputError('"query" is required for query_records');
-            return client.entities.queryRecords(need(args, "entityId"), args.query as never);
-          case "import_records":
-            return client.entities.importRecords(need(args, "entityId"), need(args, "csvText"));
-          default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
-        }
-      },
-    },
-    {
       name: "manage_memories",
       description:
         "Inspect long-term-memory settings and subjects, or perform erasure. Read actions: settings/subjects/list. Write actions: enable/disable/delete/wipe. Subject and memory access stays Organization-scoped on the server.",
@@ -539,7 +481,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_sso",
       description:
-        "Inspect or configure the Organization's verified SSO identity claim, the prerequisite for user-scoped Entity tools. `status` is read-only; `set_identity` sets a claim name or clears it with null. Configuration requires an admin-tier key and resets SSO validation.",
+        "Inspect or configure the Organization's verified SSO identity claim, the value an API Integration request can pin with {{identity.claim}}. `status` is read-only; `set_identity` sets a claim name or clears it with null. Configuration requires an admin-tier key and resets SSO validation.",
       schema: {
         action: z.enum(["status", "set_identity", "validate", "connection", "connect", "disconnect"]),
         identityClaim: z.string().nullable().optional(),

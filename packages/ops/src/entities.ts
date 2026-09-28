@@ -37,8 +37,6 @@ export type MutatedEntity =
   | { kind: "improvement"; id: string }
   /** The conversation Inbox. */
   | { kind: "inbox" }
-  /** The org Entities + Records data page (#663). */
-  | { kind: "dataEntities" }
   /** The org-level Knowledge hub (PRD #726). */
   | { kind: "knowledgeHub" }
   /** The AI Teammates roster (#768). */

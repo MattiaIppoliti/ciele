@@ -20,9 +20,6 @@ import {
   flowInputSchema,
   flowPatchSchema,
   improvementPatchSchema,
-  entityInputSchema,
-  entityPatchSchema,
-  entityRecordQuerySchema,
   connectServiceNowOp,
   helpDeskInputSchema,
   helpDeskPatchSchema,
@@ -187,8 +184,6 @@ const routineBody = z.object({
   hour: z.number().int().min(0).max(23).optional(),
 });
 const memorySettingsBody = z.object({ enabled: z.boolean() });
-const entityImportBody = z.object({ csv: z.string() });
-const assistantEntitiesBody = z.object({ entityIds: z.array(z.string()) });
 const ssoIdentityBody = z.object({ identityClaim: z.string().nullable() });
 const assistantSkillsBody = z.object({ skillIds: z.array(z.string()) });
 const goalBody = z.object({
@@ -285,25 +280,6 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     idempotent: true,
     cli: "ciele assistants duplicate {assistantId}",
     mcp: '{"action":"duplicate","id":"{assistantId}"}',
-  },
-  {
-    method: "get",
-    path: "/assistants/{id}/entities",
-    domain: "assistants",
-    capability: "member",
-    summary: "Get the Assistant's selected Entities",
-    cli: "ciele assistants get-entities {assistantId}",
-    mcp: '{"action":"get_entities","id":"{assistantId}"}',
-  },
-  {
-    method: "patch",
-    path: "/assistants/{id}/entities",
-    domain: "assistants",
-    capability: "edit",
-    summary: "Replace the Assistant's selected Entities",
-    body: assistantEntitiesBody,
-    cli: "ciele assistants set-entities {assistantId} --ids {entityId}",
-    mcp: '{"action":"set_entities","id":"{assistantId}","entityIds":["{entityId}"]}',
   },
 
   // Flows (#621)
@@ -789,84 +765,6 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: improvementPatchSchema,
     cli: "ciele improvements update {improvementId} --priority high",
     mcp: '{"action":"update","id":"{improvementId}","patch":{"priority":"high"}}',
-  },
-
-  // Organization data (#663, #665, #667)
-  {
-    method: "get",
-    path: "/entities",
-    domain: "entities",
-    capability: "member",
-    summary: "List Organization Entities",
-    cli: "ciele entities list",
-    mcp: '{"action":"list"}',
-  },
-  {
-    method: "post",
-    path: "/entities",
-    domain: "entities",
-    capability: "edit",
-    summary: "Create an Entity",
-    body: entityInputSchema,
-    cli: "ciele entities create --file entity.json",
-    mcp: '{"action":"create","entity":{"name":"Product","scope":"shared","keyAttribute":"sku","attributes":[{"key":"sku","label":"SKU","type":"text"}]}}',
-  },
-  {
-    method: "get",
-    path: "/entities/{id}",
-    domain: "entities",
-    capability: "member",
-    summary: "One Entity",
-    cli: "ciele entities get {entityId}",
-    mcp: '{"action":"get","id":"{entityId}"}',
-  },
-  {
-    method: "patch",
-    path: "/entities/{id}",
-    domain: "entities",
-    capability: "edit",
-    summary: "Update an Entity",
-    body: entityPatchSchema,
-    cli: 'ciele entities update {entityId} --name "Products"',
-    mcp: '{"action":"update","id":"{entityId}","patch":{"name":"Products"}}',
-  },
-  {
-    method: "delete",
-    path: "/entities/{id}",
-    domain: "entities",
-    capability: "edit",
-    summary: "Delete an Entity and its Records",
-    cli: "ciele entities delete {entityId} --yes",
-    mcp: '{"action":"delete","id":"{entityId}"}',
-  },
-  {
-    method: "get",
-    path: "/entities/{id}/records",
-    domain: "entities",
-    capability: "member",
-    summary: "Browse an Entity's Records",
-    cli: "ciele records list {entityId} --limit 50",
-    mcp: '{"action":"list_records","entityId":"{entityId}","limit":50}',
-  },
-  {
-    method: "post",
-    path: "/entities/{id}/records/query",
-    domain: "entities",
-    capability: "member",
-    summary: "Filter or search typed Records",
-    body: entityRecordQuerySchema,
-    cli: "ciele records query {entityId} --file query.json",
-    mcp: '{"action":"query_records","entityId":"{entityId}","query":{}}',
-  },
-  {
-    method: "post",
-    path: "/entities/{id}/records/import",
-    domain: "entities",
-    capability: "edit",
-    summary: "Import and idempotently upsert Records from CSV",
-    body: entityImportBody,
-    cli: "ciele records import {entityId} --file records.csv",
-    mcp: '{"action":"import_records","entityId":"{entityId}","csvText":"id,name\\n…"}',
   },
 
   // Long-term memory management (#664, #666)
@@ -1799,12 +1697,7 @@ const QUERY_PARAMETERS: Record<string, ReturnType<typeof queryParam>[]> = {
   "get /assistants": cursorQuery,
   "get /conversations": [...cursorQuery, queryParam("assistantId", "string", "Limit results to one Assistant.")],
   "get /improvements": cursorQuery,
-  "get /entities": cursorQuery,
   "get /memories/subjects": cursorQuery,
-  "get /entities/{id}/records": [
-    queryParam("limit", "integer", "Maximum records to return."),
-    queryParam("offset", "integer", "Number of records to skip."),
-  ],
   "get /flows/{id}/runs": [queryParam("limit", "integer", "Maximum recent runs to return.")],
   "get /assistants/{id}/flows-agent/thread": [queryParam("flowId", "string", "Omit to read the new-Flow canvas thread.")],
   "get /knowledge/sources": [
@@ -1840,7 +1733,6 @@ const CREATED_RESPONSES = new Set([
   "post /channels",
   "post /collections/{id}/faqs",
   "post /collections/{id}/sources",
-  "post /entities",
   "post /help-desks/{id}/channels",
   "post /help-desks",
   "post /invites",

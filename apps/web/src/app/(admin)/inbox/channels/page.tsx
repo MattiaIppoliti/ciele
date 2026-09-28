@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Hash } from "lucide-react";
 import { listOrgChannelsOp } from "@ciele/ops";
 import { runOperation } from "@/lib/operations";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +48,9 @@ export default async function InboxChannelsPage() {
         </div>
       ) : (
         <ul className="divide-y border-t">
-          {channels.map((summary) => (
-            <li key={summary.channel.id}>
+          {channels.map((summary, index) => (
+            <RollRow key={summary.channel.id} index={index}>
+            <li>
               <Link
                 href={`/inbox/channels/${summary.channel.id}`}
                 className="hover:bg-muted flex items-center gap-3 px-6 py-3"
@@ -57,21 +58,20 @@ export default async function InboxChannelsPage() {
                 <Hash className="text-muted-foreground size-4 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {summary.channel.name}
+                    <RollInText text={summary.channel.name} />
                   </p>
                   <p className="text-muted-foreground truncate text-xs">
-                    {summary.lastMessagePreview ||
-                      "Nothing said in here yet"}
+                    <RollInText text={summary.lastMessagePreview || "Nothing said in here yet"} />
                   </p>
                 </div>
                 <p className="text-muted-foreground shrink-0 text-xs">
-                  {summary.memberIds.length}{" "}
-                  {summary.memberIds.length === 1 ? "person" : "people"} ·{" "}
-                  {summary.teammateIds.length}{" "}
-                  {summary.teammateIds.length === 1 ? "teammate" : "teammates"}
+                  <RollInText
+                    text={`${summary.memberIds.length} ${summary.memberIds.length === 1 ? "person" : "people"} · ${summary.teammateIds.length} ${summary.teammateIds.length === 1 ? "teammate" : "teammates"}`}
+                  />
                 </p>
               </Link>
             </li>
+            </RollRow>
           ))}
         </ul>
       )}

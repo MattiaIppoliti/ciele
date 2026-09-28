@@ -474,7 +474,6 @@ describe("runDueJobs (generic ledger)", () => {
       "resume_reviewed_conversation",
       "resume_webhook_conversation",
       "sync_application_import",
-      "sync_entity_records",
     ]);
     expect(result).toEqual({
       claimed: 0,

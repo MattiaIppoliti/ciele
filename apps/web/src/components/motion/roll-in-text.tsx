@@ -2,7 +2,7 @@
 
 import type { Scritto } from "@scritto/core";
 import { useReducedMotion } from "motion/react";
-import { createElement, useLayoutEffect, useRef } from "react";
+import { createContext, createElement, useContext, useLayoutEffect, useRef } from "react";
 import { isInitialCommit } from "./page-reveal";
 
 /**
@@ -34,19 +34,53 @@ function loadScritto(): Promise<unknown> {
  * to a line: every glyph becomes its own span, so kerning and ligatures are
  * off inside it and it only wraps between words.
  */
+/**
+ * How many rows of a table, list or card grid roll their text in when it
+ * appears. Past this the rows are below the fold or late enough in the cascade
+ * that nobody watches them build, and a few hundred cells each rolling from
+ * blank is work for no one; they still roll whenever a value changes.
+ */
+export const ROLL_ENTRANCE_ROWS = 10;
+
+/** Whether the row at `index` rolls its text in when the list appears. */
+export function rollsInAt(index: number): boolean {
+  return index < ROLL_ENTRANCE_ROWS;
+}
+
+const RollEntrance = createContext(true);
+
+/**
+ * Wrap each row of a list so every `RollInText` inside it knows whether it may
+ * roll in: the first `ROLL_ENTRANCE_ROWS` do, later ones appear as plain text
+ * and roll only on change. Cells then need no index of their own.
+ */
+export function RollRow({ index, children }: { index: number; children: React.ReactNode }) {
+  return (
+    <RollEntrance.Provider value={rollsInAt(index)}>{children}</RollEntrance.Provider>
+  );
+}
+
 export function RollInText({
   text,
   className,
   duration = TITLE_ROLL_MS,
+  entrance: entranceProp,
 }: {
   text: string;
   className?: string;
   /** Roll length in ms; read once, when the element takes over. */
   duration?: number;
+  /**
+   * Whether it rolls in from blank on mount. Defaults to the enclosing
+   * `RollRow`'s answer, or yes outside one. A change of `text` rolls either way.
+   */
+  entrance?: boolean;
 }) {
   const host = useRef<HTMLSpanElement>(null);
   const latest = useRef(text);
   const reduce = useReducedMotion() ?? false;
+  const inherited = useContext(RollEntrance);
+  const mayEnter = entranceProp ?? inherited;
   /** Whether the element has taken over drawing the text. */
   const live = useRef(false);
 
@@ -62,7 +96,9 @@ export function RollInText({
     // rolling it in would flash. The exception is a page still hidden by a
     // pending PageReveal: nobody has seen the title yet.
     const entrance =
-      !reduce && !(isInitialCommit() && !span.closest('[data-page-reveal="pending"]'));
+      mayEnter &&
+      !reduce &&
+      !(isInitialCommit() && !span.closest('[data-page-reveal="pending"]'));
     // An entrance starts from nothing, so the title waits unseen for the
     // element instead of showing and then vanishing when it takes over.
     if (entrance) span.style.opacity = "0";

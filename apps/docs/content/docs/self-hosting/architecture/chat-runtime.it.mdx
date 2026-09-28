@@ -1,12 +1,12 @@
 ---
 title: Runtime della chat
-description: Comprendi l'attuale invio dei trigger, il routing del flusso, le condizioni e le azioni ordinate.
+description: Comprendi l'attuale dispatch dei trigger, il routing dei flussi, le condizioni e le azioni ordinate.
 ---
 
 ## Percorso del messaggio
 
 <Mermaid
-  title="Come un messaggio di un Visitatore raggiunge le parti di risposta memorizzate"
+  title="Come un messaggio di un Visitor raggiunge le parti di risposta memorizzate"
   chart={`
 flowchart TB
   MSG["Visitor message"]
@@ -25,66 +25,67 @@ flowchart TB
 `}
 />
 
-L'identità verificata, i record delle entità e la memoria a lungo termine sono
-input letti dalle azioni. Non sono fasi del router, quindi l'immagine le omette.
+L'identità verificata e la memoria a lungo termine sono input che le azioni
+leggono. Non sono fasi del router, quindi l'immagine le omette.
 
-`messageFlowCandidates` fornisce candidati a entrambi i motori di routing.
-Questo limite impedisce che condizioni oggettive producano risultati di routing
-diversi.
+`messageFlowCandidates` fornisce i candidati a entrambi i motori di routing.
+Questo confine impedisce che le condizioni oggettive producano risultati diversi
+del router.
 
 Il contesto della conversazione fornisce esempi semantici per la
 classificazione. Non funge da gate booleano indipendente.
 
-## Contesto legato all'identità
+## Contesto vincolato all'identità
 
-Un gate SSO Widget valido fornisce un soggetto con ambito Organization. Un claim
-verificato facoltativo può corrispondere a Entity Record con ambito utente.
+Un gate SSO del widget valido fornisce un soggetto con ambito Organization. Una
+claim verificata facoltativa aggiunge un identificatore leggibile a quel
+soggetto.
 
-Le Entità selezionate producono strumenti generati di filtro e ricerca testuale.
-Gli strumenti con ambito utente omettono l'attributo identity dall'input rivolto
-al modello.
+Un endpoint di integrazione API può associare un parametro a
+`{{identity.subject}}` o `{{identity.claim}}`. Il server inserisce il valore
+verificato dopo aver convalidato l'input dello strumento.
 
-Il server aggiunge il filtro di identità verificata dopo aver convalidato
-l'input dello strumento. Il modello non può ometterlo o sovrascriverlo.
+Il modello non può omettere né sovrascrivere un valore di identità bloccato.
 
-Al primo turno di una nuova Conversazione, il runtime può inserire fino a cinque
-memorie a lungo termine pertinenti. Uno strumento di ricerca integrato nella
-memoria consente il richiamo successivo.
+Al primo turno di una nuova Conversation, il runtime può iniettare fino a cinque
+long-term memories rilevanti. Uno strumento di ricerca nella memoria integrato
+consente il richiamo successivo.
 
 Entrambi i percorsi di memoria richiedono l'attivazione dell'opzione
 Organization e un soggetto SSO verificato.
 
-## Scorciatoia di cortesia
+## Scorciatoia per i messaggi di cortesia
 
 Il flusso di interazione di base integrato può gestire un breve messaggio di
-cortesia prima della classificazione dell'intento. Un Flow personalizzato idoneo
-precedente ha comunque la priorità.
+sola cortesia prima della classificazione dell'intento. Un Flow personalizzato
+idoneo definito in precedenza ha comunque la priorità.
 
 La scorciatoia non si attiva dopo una domanda dell'Assistente o per un messaggio
 che contiene una richiesta di informazioni.
 
 ## Percorso proattivo
 
-L'embed riporta gli eventi di caricamento della pagina, tempo di permanenza e
-apertura della chat. Il server convalida il trigger configurato e lo stato di
-consegna.
+L'embed registra gli eventi di caricamento della pagina, di tempo di permanenza
+e di apertura della chat. Il server convalida il trigger configurato e lo stato
+di consegna.
 
-Un Flow proattivo contiene un'azione di Notifica e nessuna condizione. L'azione
-emette il contenuto configurato senza una chiamata al modello.
+Un Flow proattivo contiene una sola azione Notification e nessuna condizione.
+L'azione emette il contenuto configurato senza effettuare una chiamata al
+modello.
 
 ## Esecuzione dell'azione
 
 Le azioni vengono eseguite nell'ordine memorizzato. Ogni azione restituisce
-parti di risposta strutturate o un effetto silenzioso.
+parti di risposta strutturate oppure un effetto silenzioso.
 
-Il lavoro generativo rimane all'interno di Basic reply, Search knowledge,
-Follow-up generati e percorsi di raccomandazione supportati.
+Il lavoro generativo rimane all'interno di Basic reply, Search knowledge, dei
+Follow-up generati e dei percorsi di raccomandazione supportati.
 
-## Passaggio di consegne
+## Handover
 
-Handover carica un Assistente di destinazione pubblicato nella stessa
-Organizzazione. Esegue una sola volta il messaggio del Visitatore attraverso
-quell'assistente di destinazione.
+Handover carica un Assistant di destinazione pubblicato nella stessa
+Organization. Esegue il messaggio del Visitor attraverso quel target una sola
+volta.
 
-L'esecuzione di destinazione ignora un altro passaggio di consegne. Questa
-regola impedisce una catena di Assistenti illimitata.
+L'esecuzione di destinazione ignora un altro handover. Questa regola impedisce
+una catena di Assistenti senza limiti.

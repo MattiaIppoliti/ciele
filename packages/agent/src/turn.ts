@@ -4,7 +4,6 @@ import type {
   Assistant,
   ConversationMetadata,
   ConversationSubject,
-  EntitySnapshot,
   Flow,
   FlowTrigger,
   PreflightTraceRecord,
@@ -34,7 +33,9 @@ import {
   proactiveFlowCandidates,
   reviewTemplateVariables,
   standingContextSections,
+  streamGuardrails,
   teammateRuntimeAssistant,
+  type GuardrailTraceEntry,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
@@ -55,6 +56,7 @@ import {
   runApprovalGate,
 } from "./approval-gate";
 import { resolveDecisionModel } from "./decision-model";
+import { runInputGuardrails, suppressPart, suppressingEmit } from "./guardrails";
 import { contactLabel, faqAnswerParts } from "./actions";
 import type { UntrustedEnvelope } from "./untrusted-content";
 import { summarizeTurnUsage, turnUsageAttribution } from "./usage";
@@ -164,12 +166,6 @@ interface ConversationTurnBaseInput {
   untrustedContext?: readonly UntrustedEnvelope[];
   /** Attached Skills, a Publication snapshot (widget) or live rows (preview). */
   skills?: SkillSnapshot[];
-  /**
-   * Selected shared Entities (#665): a Publication snapshot (widget) or
-   * live rows (preview). Each yields auto-generated retrieval tools whose
-   * Record content is always read live through `db`.
-   */
-  entities?: EntitySnapshot[];
   connections: ProviderConnection[];
   organizationId: string;
   /**
@@ -1142,7 +1138,10 @@ export async function streamConversationTurn(
         controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       };
       const observer = createTurnObserver(forward);
-      const emit = observer.emit;
+      // Stream guardrails rewrite text on its way to the observer, so the
+      // wire, the trace and the saved message all see the same words.
+      const streamRules = streamGuardrails(input.assistant?.guardrails);
+      const emit = suppressingEmit(observer.emit, streamRules);
       emit({ type: "turn", conversationId });
       // A Human review closed while the Visitor was away (#841): the outcome
       // was persisted as an assistant message after their last one, and this
@@ -1159,6 +1158,9 @@ export async function streamConversationTurn(
        * normal completion) ends here, so the persistence/telemetry contract
        * has a single home.
        */
+      // The input guardrails that did not simply pass (set below, read by
+      // finishTurn), so every path that persists carries them.
+      let guardrailTrace: GuardrailTraceEntry[] = [];
       const finishTurn = async (turn: {
         parts: ChatReplyPart[];
         flowId: string | null;
@@ -1180,9 +1182,9 @@ export async function streamConversationTurn(
       }): Promise<void> => {
         // The audit part is persistence-only: never emitted on the wire (the
         // live Thinking panel already streamed each call).
-        const parts = turn.observation?.partsAreAudited
-          ? turn.parts
-          : observer.partsWithAudit(turn.parts);
+        const parts = (
+          turn.observation?.partsAreAudited ? turn.parts : observer.partsWithAudit(turn.parts)
+        ).map((part) => suppressPart(part, streamRules));
         const observedTrace =
           turn.observation?.trace ?? prepareTraceForStorage(observer.trace);
         // A turn that did no agentic work stores a null trace, and a Flow whose
@@ -1194,9 +1196,16 @@ export async function streamConversationTurn(
         // trace with no steps renders nothing at all (`thinking-panel.tsx`
         // returns null for it), so a shadowed turn still looks exactly like an
         // unshadowed one.
-        const storedTrace = turn.preflight
+        const withPreflight = turn.preflight
           ? { ...(observedTrace ?? { steps: [], searchCount: 0 }), preflight: turn.preflight }
           : observedTrace;
+        // Guardrail hits make a trace the same way, and for the same reason:
+        // a turn a guardrail blocked did no agentic work, and the record of
+        // which one fired must not go missing with the empty trace.
+        const storedTrace =
+          guardrailTrace.length > 0
+            ? { ...(withPreflight ?? { steps: [], searchCount: 0 }), guardrails: guardrailTrace }
+            : withPreflight;
 
         // The Conversation's running pre-flight signals (#956), folded from
         // this turn's record. Written beside the trace rather than from it,
@@ -1376,6 +1385,49 @@ export async function streamConversationTurn(
             return;
           }
         }
+        // Input guardrails (guardrails.ts): the Assistant's own checks on the
+        // Visitor's message, before any Flow routes it and before the turn
+        // queues for a slot, so a blocked message never waits for one. The
+        // FAQ quick reply above is exempt on purpose: its text is the
+        // curated question on a button the admin wrote, not the Visitor's.
+        // A Teammate turn has no guardrails; its subject Assistant is
+        // synthetic, so this reads the input's own Assistant.
+        if (input.assistant?.guardrails?.length) {
+          const guarded = await runInputGuardrails(input.assistant.guardrails, message, {
+            connections: input.connections,
+            keyResolution: input.keyResolution,
+            decisionModel: resolveDecisionModel(
+              assistant.modelProvider,
+              input.connections,
+              input.keyResolution ?? {}
+            ),
+            signal,
+            recordUsage: (event) => spentGateUsage.push(event),
+          });
+          guardrailTrace = guarded.checks.filter((check) => check.outcome !== "pass");
+          if (guarded.blocked) {
+            const flowName = `Guardrail: ${guarded.blocked.name}`;
+            emit({ type: "flow", flowId: null, flowName, isDefault: false });
+            const textPart: ChatReplyPart = {
+              type: "text",
+              action: "guardrail",
+              text: guarded.blocked.message,
+            };
+            emit({ type: "part", part: textPart });
+            await finishTurn({
+              parts: [textPart],
+              flowId: null,
+              flowName,
+              afterPersist: async (messageId) => {
+                // A topic check is spend of the turn that ran it, blocked or not.
+                usageSettled = true;
+                const rows = spentGateUsage.map((u) => usageRow(u, messageId, usageSpenders));
+                if (rows.length > 0) await spendAdmission.settle(rows);
+              },
+            });
+            return;
+          }
+        }
         // Concurrency admission (`turn-concurrency.ts`): the first model call
         // is below, so this is where a turn takes its slot. After every gate
         // that answers without a model (budget, activation, study, FAQ), so a
@@ -1546,11 +1598,6 @@ export async function streamConversationTurn(
           skills: input.skills,
           longTermMemory,
           searchMemories,
-          // Entity tools (#665): the tool SET comes from the snapshot/live
-          // config; Record CONTENT reads live through the turn's db.
-          entities: input.entities,
-          queryEntityRecords: (entityId, query) =>
-            db.queryEntityRecords(entityId, query),
           // Connector actions (#839) read the Connection live and may mark it
           // for reauthorization; a personal Connection is allowed only on the
           // operator surfaces, the same line ADR-0007 draws for provider keys.
@@ -1582,7 +1629,7 @@ export async function streamConversationTurn(
           // than one per outbound call.
           countOperation: (event) => operationCounts.push(event),
           resumeFrom: resumeCursor(input, input.flows ?? []),
-          // Entity tool policy input (#667): the verified subject type and
+          // Tool policy input (#667): the verified subject type and
           // claim decide which tool variants exist, never the model.
           toolSubject: {
             type: subjectType,

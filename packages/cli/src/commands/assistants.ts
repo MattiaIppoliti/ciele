@@ -114,21 +114,6 @@ export async function assistants(
       );
       return answer.error ? EXIT.error : EXIT.ok;
     }
-    case "get-entities": {
-      if (!rest[0]) return usage(deps, "assistants get-entities <id>");
-      const selection = await client.assistants.entities(rest[0]);
-      emit(lines(selection.entityIds), selection);
-      return EXIT.ok;
-    }
-    case "set-entities": {
-      if (!rest[0] || str(flags.ids) === undefined) {
-        return usage(deps, "assistants set-entities <id> --ids <entityId,…>");
-      }
-      const entityIds = csv(str(flags.ids) ?? "");
-      const selection = await client.assistants.setEntities(rest[0], entityIds);
-      emit(`Selected ${selection.entityIds.length} Entities`, selection);
-      return EXIT.ok;
-    }
     case "get-skills": {
       if (!rest[0]) return usage(deps, "assistants get-skills <id>");
       const result = await client.assistants.skills(rest[0]);
@@ -145,6 +130,6 @@ export async function assistants(
       return EXIT.ok;
     }
     default:
-      return usage(deps, "assistants <ask|list|get|create|update|delete|duplicate|get-entities|set-entities|get-skills|set-skills>");
+      return usage(deps, "assistants <ask|list|get|create|update|delete|duplicate|get-skills|set-skills>");
   }
 }

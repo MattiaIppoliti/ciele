@@ -11,7 +11,6 @@ import {
 import { ingestSource, type SourceConceptDraft } from "./ingest";
 import { MEMORY_QUIET_MS, promoteConversationMemories } from "./memories";
 import { distillAgentLearning } from "./agent-learnings";
-import { runEntitySync } from "./entity-sync";
 import {
   type ApplicationConnectorRegistry,
 } from "./application-connectors";
@@ -461,40 +460,6 @@ export async function enqueueAgentMemoryJob(
 }
 
 // ---------------------------------------------------------------------------
-// sync_entity_records, one Record sync run for an Entity's REST/JSON source
-// (#670). The handler itself no-ops duplicate sweep enqueues (cadence check)
-// and missing configs; genuine fetch/map/db failures record a failed run,
-// raise the Alert, and rethrow so the ledger applies backoff/retry.
-// ---------------------------------------------------------------------------
-
-const ENTITY_SYNC_KIND = "sync_entity_records" as const;
-
-type EntitySyncJob = {
-  kind: typeof ENTITY_SYNC_KIND;
-  entityId: string;
-  organizationId: string;
-  /** "Sync now" bypasses the cadence check. */
-  force?: boolean;
-};
-
-const entitySyncHandler: JobHandler = {
-  async perform(record, deps) {
-    const payload = record.payload as Partial<EntitySyncJob>;
-    if (!payload.entityId || !payload.organizationId) {
-      throw new Error("Invalid entity-sync job payload");
-    }
-    await runEntitySync({
-      db: deps.db,
-      entityId: payload.entityId,
-      organizationId: payload.organizationId,
-      force: payload.force ?? false,
-    });
-  },
-  // No onTerminalFailure: every failed attempt already recorded a run and
-  // raised the keyed Alert; the next successful run auto-resolves it.
-};
-
-// ---------------------------------------------------------------------------
 // sync_application_import, materializes external read-only content as Sources.
 // Provider pagination/normalization belongs to the Connector; this handler
 // contributes the operation to the one durable ledger lifecycle.
@@ -832,7 +797,6 @@ const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   draft_goal_proposal: goalProposalHandler,
   promote_memories: promoteMemoriesHandler,
   distill_agent_memory: distillAgentMemoryHandler,
-  sync_entity_records: entitySyncHandler,
   sync_application_import: applicationSyncHandler,
   // Human review (#841): delivery, then continuation or halt.
   deliver_review_request: deliverReviewRequestHandler,
@@ -1135,47 +1099,6 @@ export async function enqueueMemoryPromotionJob(
   getRuntimeHost().scheduleAfterResponse(() =>
     runDueJobs(deps, { kinds: [PROMOTE_MEMORIES_KIND], limit: 5 })
   );
-}
-
-/**
- * Enqueues one Entity sync run (#670). "Sync now" passes force: true to
- * bypass the cadence check; the cron sweep enqueues without it, so a
- * duplicate enqueue inside the window resolves to a handler no-op.
- */
-export async function enqueueEntitySyncJob(
-  job: { entityId: string; organizationId: string; force?: boolean },
-  deps: JobDeps
-): Promise<void> {
-  await deps.db.createBackgroundJob({
-    organizationId: job.organizationId,
-    kind: ENTITY_SYNC_KIND,
-    payload: { kind: ENTITY_SYNC_KIND, ...job },
-    nextRunAt: new Date().toISOString(),
-  });
-  getRuntimeHost().scheduleAfterResponse(() =>
-    runDueJobs(deps, { kinds: [ENTITY_SYNC_KIND], limit: 3 })
-  );
-}
-
-/**
- * The cron sweep's enqueue source (#670): every configured sync whose
- * cadence has elapsed gets a job row. Rides the existing cron surface, no
- * new scheduler.
- */
-export async function enqueueDueEntitySyncs(
-  deps: JobDeps,
-  now: Date = new Date()
-): Promise<{ enqueued: number }> {
-  const due = await deps.db.listDueEntitySyncConfigs(now.toISOString());
-  for (const item of due) {
-    await deps.db.createBackgroundJob({
-      organizationId: item.organizationId,
-      kind: ENTITY_SYNC_KIND,
-      payload: { kind: ENTITY_SYNC_KIND, ...item },
-      nextRunAt: now.toISOString(),
-    });
-  }
-  return { enqueued: due.length };
 }
 
 /** Enqueues one manual or scheduled Application Import sync. */

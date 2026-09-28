@@ -321,7 +321,7 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
           }}
           className="shrink-0 border-b px-3 py-2"
         >
-          <TabsList aria-label="Snippet format" className="bg-muted">
+          <TabsList aria-label="Snippet format">
             {SNIPPET_TABS.map((tab) => (
               <TabsTrigger key={tab} value={tab} className="px-3 py-1 text-xs">
                 {SNIPPET_TAB_LABELS[tab]}

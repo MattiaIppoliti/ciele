@@ -12,7 +12,7 @@ import { Button } from "@agent-hub/ui";
 import { formatCount, formatDateTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { EmptyState } from "@/components/ui/empty-state";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 
 export interface ExportRow {
   id: string;
@@ -122,21 +122,19 @@ export function ExportsClient({
           />
         ) : (
           <ul className="divide-border overflow-hidden rounded-xl border divide-y">
-            {rows.map((row) => (
-              <li
-                key={row.id}
-                className="flex flex-wrap items-center gap-3 px-4 py-3"
-              >
+            {rows.map((row, index) => (
+              <RollRow key={row.id} index={index}>
+              <li className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <FileText className="text-muted-foreground size-5 shrink-0" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {row.name ?? KIND_LABELS[row.kind]}
+                    <RollInText text={row.name ?? KIND_LABELS[row.kind]} />
                   </p>
                   <p className="text-muted-foreground truncate text-xs">
-                    {KIND_LABELS[row.kind]} · {row.format.toUpperCase()}
+                    <RollInText text={`${KIND_LABELS[row.kind]} · ${row.format.toUpperCase()}`} />
                   </p>
                   <p className="text-muted-foreground truncate text-xs">
-                    Requested {formatDateTime(row.createdAt)} UTC
+                    <RollInText text={`Requested ${formatDateTime(row.createdAt)} UTC`} />
                   </p>
                   {row.status === "error" && row.error && (
                     <p className="text-destructive mt-0.5 text-xs break-words">
@@ -176,6 +174,7 @@ export function ExportsClient({
                   </span>
                 )}
               </li>
+              </RollRow>
             ))}
           </ul>
         )}

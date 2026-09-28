@@ -2,13 +2,19 @@ import { z } from "zod";
 import { allowedModelsSchema, modelSourceSchema } from "./model-allow-list";
 import type {
   Assistant,
+  AssistantGuardrail,
   AssistantPatch,
   FlowInput,
   HelpDeskSettings,
   Provider,
   QuickReplyButton,
 } from "@agent-hub/core";
-import { externalLinkUrl, sortFlows } from "@agent-hub/core";
+import {
+  GUARDRAIL_TYPES,
+  externalLinkUrl,
+  guardrailListProblem,
+  sortFlows,
+} from "@agent-hub/core";
 import { OperationError, defineOperation } from "./operation";
 
 /**
@@ -95,6 +101,25 @@ export const assistantPatchSchema = z
       if (!parsed.success) ctx.addIssue({ code: "custom", message: "Study Mode needs at least one distinct supported format and instructions up to 10000 characters.", path: ["studyMode"] });
     }),
     requireSignIn: z.boolean(),
+    // Deep-validated, unlike the other structured config: a guardrail runs on
+    // every Visitor message, and a regex that does not compile or a stream rule
+    // with no stop marker is a broken guarantee, not a cosmetic slip.
+    guardrails: z
+      .custom<AssistantGuardrail[]>(
+        (v) =>
+          Array.isArray(v) &&
+          v.every(
+            (g) =>
+              typeof g === "object" &&
+              g !== null &&
+              (GUARDRAIL_TYPES as readonly string[]).includes((g as { type?: unknown }).type as string)
+          ),
+        "Unknown guardrail type"
+      )
+      .superRefine((guardrails, ctx) => {
+        const problem = guardrailListProblem(guardrails);
+        if (problem) ctx.addIssue({ code: "custom", message: problem });
+      }),
   })
   .partial() satisfies z.ZodType<AssistantPatch, AssistantPatch>;
 

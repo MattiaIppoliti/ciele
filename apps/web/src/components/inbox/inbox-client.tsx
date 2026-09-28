@@ -76,7 +76,7 @@ import { reviewDecisionLabel } from "@/lib/review-status";
 import { EmptyState } from "@/components/ui/empty-state";
 import { conversationSummaryCsv } from "@/lib/inbox/conversation-export";
 import { downloadFile } from "@/lib/download";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { isPlainClick } from "@/lib/plain-click";
@@ -282,7 +282,8 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
     <div className="min-w-0">
       <p className="text-muted-foreground text-xs">{label}</p>
       <p className="truncate text-sm" title={value ?? undefined}>
-        {value || "N/A"}
+        {/* Selecting another conversation rolls each value to the new one. */}
+        <RollInText text={value || "N/A"} />
       </p>
     </div>
   );
@@ -1314,11 +1315,11 @@ export function InboxClient({
               description="Nothing matches the current filters."
             />
           )}
-          {conversations.map((c) => (
+          {conversations.map((c, index) => (
             // A link, so Cmd/Ctrl/middle-click opens the conversation in a new
             // tab; a plain click selects it in place.
+            <RollRow key={c.id} index={index}>
             <a
-              key={c.id}
               href={conversationHref(c.id)}
               data-conversation-row={c.id}
               aria-current={selectedId === c.id ? "page" : undefined}
@@ -1336,10 +1337,10 @@ export function InboxClient({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">
-                  {subjectName(c)}
+                  <RollInText text={subjectName(c)} />
                 </span>
                 <span className="text-muted-foreground block truncate text-xs">
-                  {c.title || "Untitled conversation"}
+                  <RollInText text={c.title || "Untitled conversation"} />
                 </span>
                 {/* The assistant spoke first and nobody answered, a nudge, not a
                     conversation. Marked so the queue isn't padded with these. */}
@@ -1350,14 +1351,15 @@ export function InboxClient({
                 )}
                 {c.collectionName && (
                   <span className="mt-1 inline-block max-w-full truncate rounded-full border px-2 py-0.5 text-2xs font-medium">
-                    {c.collectionName}
+                    <RollInText text={c.collectionName} />
                   </span>
                 )}
                 <span className="text-muted-foreground mt-1 block text-xs">
-                  {formatDay(c.updatedAt)}
+                  <RollInText text={formatDay(c.updatedAt)} />
                 </span>
               </span>
             </a>
+            </RollRow>
           ))}
           {nextCursor && (
             <Button
@@ -1557,6 +1559,16 @@ export function InboxClient({
                           <ShieldAlert className="size-3.5" /> Refusal
                         </span>
                       )}
+                      {m.trace?.guardrails?.map((hit) => (
+                        <span
+                          key={`guardrail-${hit.id}`}
+                          title={hit.detail}
+                          className="text-muted-foreground inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium"
+                        >
+                          <ShieldAlert className="size-3.5" />
+                          {hit.name}: {hit.outcome === "unavailable" ? "could not run" : hit.outcome}
+                        </span>
+                      ))}
                       {terminalBadge(trace?.terminal) && (
                         <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium">
                           {terminalBadge(trace?.terminal)}
@@ -1686,9 +1698,9 @@ export function InboxClient({
                   label="Timestamp"
                   value={formatDateTime(selected.createdAt)}
                 />
-                <DetailRow label="Course" value={selected.collectionName} />
+                <DetailRow label="Collection" value={selected.collectionName} />
               </div>
-              <DetailRow label="Course ID" value={selected.collectionId} />
+              <DetailRow label="Collection ID" value={selected.collectionId} />
               <DetailRow label="Conversation ID" value={selected.id} />
             </Card>
 

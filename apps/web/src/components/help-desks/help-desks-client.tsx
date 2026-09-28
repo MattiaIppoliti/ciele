@@ -19,7 +19,7 @@ import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { isRedirectError } from "@/components/ui/confirm-delete-modal";
 import { formatCount } from "@/lib/format";
@@ -301,9 +301,9 @@ export function HelpDesksClient({
         </EmptyState>
       ) : (
       <div className="grid grid-cols-1 gap-4 border-t px-6 py-6 lg:grid-cols-2">
-        {desks.map((desk) => (
+        {desks.map((desk, index) => (
+          <RollRow key={desk.id} index={index}>
           <Card
-            key={desk.id}
             size="sm"
             className="items-start gap-3 p-4"
           >
@@ -311,7 +311,7 @@ export function HelpDesksClient({
               href={`/help-desks/${desk.id}`}
               className="text-primary max-w-full text-lg font-bold break-words underline underline-offset-4 hover:opacity-70"
             >
-              {desk.name}
+              <RollInText text={desk.name} />
             </Link>
             <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed break-words">
               {desk.description || "No description yet."}
@@ -325,6 +325,7 @@ export function HelpDesksClient({
               Manage Desk
             </Button>
           </Card>
+          </RollRow>
         ))}
 
         {canEdit && (

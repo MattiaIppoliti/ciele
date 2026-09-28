@@ -344,7 +344,7 @@ export function TabsList({
           role={isTablist ? "tablist" : "group"}
           aria-orientation={isTablist ? "horizontal" : undefined}
           aria-label={ariaLabel}
-          className={cn("inline-flex w-max items-center gap-1 rounded-full bg-card p-1", className)}
+          className={cn("bg-tabs-track inline-flex w-max items-center gap-1 rounded-full p-1", className)}
         >
           {children}
         </div>

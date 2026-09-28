@@ -1,12 +1,13 @@
 import { Skeleton } from "@agent-hub/ui";
 
-type AssistantSectionLoadingVariant =
+export type AssistantSectionLoadingVariant =
   | "preview"
   | "general"
   | "knowledge"
   | "flows"
   | "tools"
   | "goals"
+  | "guardrails"
   | "help-desks"
   | "style"
   | "authentication"
@@ -53,7 +54,7 @@ function ListRowSkeleton() {
 
 function GeneralSkeleton() {
   return (
-    <div className="space-y-8 pt-8 pb-24">
+    <div className="space-y-8 pt-10 pb-24">
       <CardSkeleton rows={0} />
       <FieldSkeleton />
       <FieldSkeleton />
@@ -96,11 +97,15 @@ function KnowledgeSkeleton() {
 }
 
 function FlowsSkeleton() {
+  // The list opens under a one-line lead (29px) rather than straight into rows.
   return (
-    <div className="mt-6 space-y-4">
-      {[0, 1, 2].map((row) => (
-        <ListRowSkeleton key={row} />
-      ))}
+    <div className="mt-8">
+      <Skeleton className="h-8 w-72 max-w-full" />
+      <div className="mt-6 space-y-4">
+        {[0, 1, 2].map((row) => (
+          <ListRowSkeleton key={row} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -231,6 +236,7 @@ const SECTION_BODY: Record<
   flows: FlowsSkeleton,
   tools: ToolsSkeleton,
   goals: GoalsSkeleton,
+  guardrails: GoalsSkeleton,
   "help-desks": HelpDesksSkeleton,
   style: StyleSkeleton,
   authentication: AuthenticationSkeleton,
@@ -249,7 +255,9 @@ export function AssistantSectionLoading({
 }) {
   const SectionBody = SECTION_BODY[variant];
   const wide = variant === "knowledge" || variant === "flows";
-  const showHeaderAction = variant === "flows";
+  // No section header carries an action today; Flows' "New flow" lives in
+  // the list, not beside the title.
+  const showHeaderAction = false;
 
   // The preview fills its route rather than sitting in a scrolling document,
   // so it gets a height-filling column and a one-line header instead of the
@@ -274,16 +282,21 @@ export function AssistantSectionLoading({
 
   return (
     <div
-      className={`mx-auto ${wide ? "max-w-4xl" : "max-w-3xl"} px-5 py-6 sm:px-8 sm:py-8`}
+      className={`mx-auto ${wide ? "max-w-4xl" : "max-w-3xl"} px-5 py-6 sm:px-8 sm:py-10`}
       role="status"
       aria-busy="true"
       aria-label="Loading assistant section"
     >
       <span className="sr-only">Loading…</span>
-      <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0 flex-1">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="mt-2 h-4 w-3/4 max-w-xl" />
+      {/* SectionHeading: the 4rem icon tile beside a text-2xl title and a
+          text-sm description. */}
+      <div className="flex items-center justify-between gap-6">
+        <div className="flex min-w-0 flex-1 items-center gap-5">
+          <Skeleton className="size-16 shrink-0 rounded-2xl" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="mt-1 h-5 w-3/4 max-w-xl" />
+          </div>
         </div>
         {showHeaderAction && <Skeleton className="h-10 w-28 shrink-0" />}
       </div>

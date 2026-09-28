@@ -1,14 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { openSecret, type Role } from "@agent-hub/core";
+import { describe, expect, it } from "vitest";
+import type { Role } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import type { OperationContext } from "./operation";
-import { OperationError } from "./operation";
 import { setOrgBudgetOp } from "./organization";
-import { configureEntitySyncOp } from "./data";
 
 /**
- * Two Settings mutations that kept their rules in a server action until they
- * became operations: the daily AI budget and an Entity's sync source.
+ * A Settings mutation that kept its rules in a server action until it became
+ * an operation: the daily AI budget.
  */
 
 const ctx = (organizationId = DEMO_ORG.id): OperationContext => ({
@@ -63,82 +61,5 @@ describe("setOrgBudgetOp", () => {
 
   it("is an admin's setting", () => {
     expect(setOrgBudgetOp.capability).toBe("manageMembers");
-  });
-});
-
-describe("configureEntitySyncOp", () => {
-  beforeEach(() => vi.stubEnv("APP_ENCRYPTION_KEY", "test-key"));
-  afterEach(() => vi.unstubAllEnvs());
-
-  async function entity(organizationId = DEMO_ORG.id) {
-    return getMockDb().table("entities").insert({
-      organizationId,
-      name: "Orders",
-      description: "",
-      attributes: [{ key: "order_id", label: "Order ID", type: "text" }],
-      keyAttribute: "order_id",
-      scope: "shared",
-      identityAttribute: null,
-    });
-  }
-
-  const base = {
-    url: "https://erp.example/orders",
-    headers: [] as { name: string; value: string }[],
-    cadenceHours: 6,
-    prune: false,
-    mapping: { order_id: "id" },
-  };
-
-  it("seals the headers and keeps them when a later save sends none", async () => {
-    const { id } = await entity();
-    await configureEntitySyncOp.run(ctx(), {
-      ...base,
-      entityId: id,
-      headers: [
-        { name: "Authorization", value: "Bearer secret-token" },
-        { name: "  ", value: "dropped" },
-      ],
-    });
-    const sealed = (await getMockDb().getEntitySyncConfig(id))?.sealedHeaders;
-    expect(sealed).not.toContain("secret-token");
-    expect(JSON.parse(openSecret(sealed!))).toEqual([
-      { name: "Authorization", value: "Bearer secret-token" },
-    ]);
-
-    const kept = await configureEntitySyncOp.run(ctx(), { ...base, entityId: id, cadenceHours: 12 });
-    expect(kept.sealedHeaders).toBe(sealed);
-    expect(kept.cadenceHours).toBe(12);
-
-    const cleared = await configureEntitySyncOp.run(ctx(), {
-      ...base,
-      entityId: id,
-      clearHeaders: true,
-    });
-    expect(cleared.sealedHeaders).toBeNull();
-  });
-
-  it("syncs at most hourly, in whole hours, daily when unset", async () => {
-    const { id } = await entity();
-    const run = (cadenceHours: number) =>
-      configureEntitySyncOp.run(ctx(), { ...base, entityId: id, cadenceHours });
-    expect((await run(0.2)).cadenceHours).toBe(1);
-    expect((await run(5.9)).cadenceHours).toBe(5);
-    expect((await run(0)).cadenceHours).toBe(24);
-  });
-
-  it("refuses a source that is not an http(s) URL, and another Organization's Entity", async () => {
-    const { id } = await entity();
-    await expect(
-      configureEntitySyncOp.run(ctx(), { ...base, entityId: id, url: "not a url" }),
-    ).rejects.toMatchObject({ code: "invalid_input", message: "Enter a valid URL." });
-    await expect(
-      configureEntitySyncOp.run(ctx(), { ...base, entityId: id, url: "ftp://erp.example/x" }),
-    ).rejects.toMatchObject({ message: "The sync source must be an http(s) URL." });
-    const foreign = await entity("org_other");
-    await expect(
-      configureEntitySyncOp.run(ctx(), { ...base, entityId: foreign.id }),
-    ).rejects.toBeInstanceOf(OperationError);
-    expect(await getMockDb().getEntitySyncConfig(foreign.id)).toBeNull();
   });
 });

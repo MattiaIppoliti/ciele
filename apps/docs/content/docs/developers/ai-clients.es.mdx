@@ -19,11 +19,11 @@ Esta página refleja la documentación del cliente revisada el 6 de agosto de
 
 ## Compatibilidad
 
-| Cliente | Endpoint alojado | `stdio` local |
+| Cliente | Hosted endpoint | Local `stdio` |
 | --- | :---: | :---: |
 | Claude Code | Sí | Sí |
 | Codex CLI, aplicación Codex y extensión Codex para IDE | Sí | Sí |
-| Aplicación de escritorio ChatGPT | Sí | Sí |
+| Aplicación de escritorio de ChatGPT | Sí | Sí |
 | Cursor | Sí | Sí |
 | OpenCode | Sí | Sí |
 | GitHub Copilot en VS Code | Sí | Sí |
@@ -34,7 +34,7 @@ Esta página refleja la documentación del cliente revisada el 6 de agosto de
 ## Conéctate al endpoint alojado
 
 1. Crea una [API key](/developers/api-keys) para un visor.
-2. Proporciona al cliente la URL del endpoint de tu implementación.
+2. Proporciona al cliente la URL del endpoint de tu despliegue.
 3. Configura la cabecera `Authorization` como `Bearer <key>`.
 
 ```bash
@@ -71,7 +71,7 @@ claude mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Abre `/mcp` en Claude Code. Confirma que el servidor `ciele` muestre diecisiete
+Abre `/mcp` en Claude Code. Confirma que el servidor `ciele` muestre dieciséis
 herramientas.
 
 Consulta la
@@ -167,7 +167,7 @@ Añade este servidor a `opencode.json`:
 Ejecuta `opencode2 mcp list` para comprobar la conexión.
 
 Consulta la [OpenCode MCP guide](https://opencode.ai/v2/docs/mcp-servers) para
-conocer el esquema actual de la versión 2.
+ver el esquema actual de la versión 2.
 
 ## GitHub Copilot en VS Code
 
@@ -217,10 +217,10 @@ copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
 Añade las tres variables de entorno de Ciele a través de la configuración de MCP
-de Copilot. No incluyas la clave de API en el control de código fuente.
+de Copilot. No incluyas la clave de API en el control de versiones.
 
 Consulta la
-[GitHub Copilot CLI MCP guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)
+[guía de MCP de la CLI de GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)
 para conocer el formato de configuración actual.
 
 ## Prompts copiables

@@ -1,17 +1,17 @@
 ---
 title: Modèle de données
-description: Comprenez les relations principales entre le tenant, la configuration, la Knowledge et la Conversation.
+description: Comprenez les relations entre le tenant principal, la configuration, la Knowledge et la Conversation.
 ---
 
 ## Propriété du tenant
 
 Une Organization est le tenant principal. Les membres rejoignent une
-Organisation avec un seul Role.
+Organization avec un seul Role.
 
 Les enregistrements appartenant à l'organisation comprennent les Assistants, les
-Teammates, les Entities, les Memories, les Help Desks, les connexions aux
-fournisseurs, les clés API, les Skills, les Improvements, les Goals, les Alerts
-et les enregistrements d'utilisation.
+Teammates, les Memories, les Help Desks, les connexions aux fournisseurs, les
+clés API, les Skills, les Improvements, les Goals, les Alerts et les
+enregistrements d'utilisation.
 
 Les enregistrements des Teammates comprennent les Projects, les documents de
 mémoire, les Routines et les fils de discussion de groupe. Un fil de discussion
@@ -34,19 +34,12 @@ flowchart TB
 />
 
 Une Publication stocke un instantané immuable de la configuration d'un
-Assistant. Les enregistrements de type Draft restent modifiables après la
+Assistant. Les enregistrements de brouillons restent modifiables après la
 Publication.
 
 Un Flow stocke un déclencheur, une configuration de condition et des actions
-ordonnées. La validation à l'exécution impose des paires trigger-action valides.
-
-Un Assistant sélectionne les schémas d'entités pour sa prochaine Publication.
-L'instantané du schéma contrôle les outils générés, tandis que chaque requête
-lit les Records actuels.
-
-Les Shared Entities exposent les données communes de l'Organization. Les Entités
-à portée utilisateur désignent un attribut d'identité pour le filtrage côté
-serveur.
+ordonnées. La validation à l'exécution impose des paires déclencheur-action
+valides.
 
 ## Propriété des connaissances
 
@@ -82,12 +75,13 @@ place.
 Une Conversation appartient à un Assistant ou à un Teammate, jamais aux deux.
 Une Conversation d'Assistant suit une session de Visiteur.
 
-Une Conversation de collègue est un chat interne d'un Member. Elle n'apparaît ni
-dans Inbox ni dans Insights. Les messages stockent les parties saisies pour le
-texte, les citations, les boutons, les traces et d'autres réponses.
+Une Conversation de coéquipier est une discussion interne d'un Member. Elle
+n'apparaît ni dans Inbox ni dans Insights. Les messages stockent les parties
+saisies pour le texte, les citations, les boutons, les traces et autres
+réponses.
 
 L'état de la session enregistre également la remise proactive des Notifications.
-Une Notification ne crée pas de message de Visiteur.
+Une Notification ne crée pas de message Visitor.
 
 Les Long-term Memories appartiennent à une seule Organization et à un sujet SSO
 vérifié. Ils stockent un fait durable, un embedding, des horodatages et la
@@ -97,17 +91,17 @@ L'environnement d'exécution limite chaque sujet à 200 mémoires. La suppressio
 retire un fait des futures injections de prompt et des recherches dans la
 mémoire.
 
-## Identifiants programmatiques
+## Identifiants d'authentification programmatiques
 
 Un enregistrement de clé API appartient à une Organisation et stocke un hachage
-secret, un Role, le créateur et l'état de révocation. Le secret en clair n'est
-pas stocké.
+secret, un Role, le créateur et l'état de révocation. Le secret en texte brut
+n'est pas stocké.
 
 ## Isolation
 
-L'accès authentifié à la console utilise la sécurité au niveau des lignes, le
-cas échéant. Les chemins de Service-role doivent ajouter une limite
-d'Organization explicite.
+L'accès authentifié à la console utilise la sécurité au niveau des lignes
+lorsque cela est applicable. Les chemins des rôles de service doivent ajouter
+une limite d'organisation explicite.
 
-L'API v1 utilise l'Organisation déterminée à partir de la clé API. Elle
-n'accepte pas une Organization sélectionnée par l'appelant comme autorité.
+L'API v1 utilise l'organisation déterminée à partir de la clé API. Elle
+n'accepte pas une Organisation sélectionnée par l'appelant comme autorité.

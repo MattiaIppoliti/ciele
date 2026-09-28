@@ -1,5 +1,5 @@
 {
-  "title": "Referencia de API",
+  "title": "Referencia de la API",
   "description": "Todas las operaciones públicas de la API de Ciele",
   "icon": "Braces",
   "root": true,
@@ -12,7 +12,6 @@
     "publish",
     "inbox",
     "improvements",
-    "entities",
     "memories",
     "projects",
     "sso",

@@ -8,18 +8,18 @@ description: Machen Sie sich mit den Beziehungen zwischen dem Hauptmandanten, de
 Eine Organization ist der primäre Tenant. Mitglieder treten einer Organization
 mit einer Role bei.
 
-Zu den Datensätzen im Besitz der Organisation gehören Assistants, Teammates,
-Entities, Memories, Help Desks, Provider Connections, API Keys, Skills,
-Improvements, Goals, Alerts und Usage Records.
+Zu den der Organisation gehörenden Datensätzen zählen Assistants, Teammates,
+Memories, Help Desks, Provider Connections, API Keys, Skills, Improvements,
+Goals, Alerts sowie Nutzungsdatensätze.
 
-Zu den Teammate-Datensätzen gehören Projects, Memory-Dokumente, Routines und
-Group-Threads. Ein Group Thread speichert seine eigenen Nachrichten, nicht
+Zu den Datensätzen von Teammates gehören Projects, Memory-Dokumente, Routines
+und Group Threads. Ein Gruppen-Thread speichert seine eigenen Nachrichten, nicht
 Conversations.
 
 ## Konfiguration des Assistenten
 
 <Mermaid
-  title="Ein Assistant ist Eigentümer seines Routings und seiner Snapshots"
+  title="Ein Assistant besitzt sein Routing und seine Snapshots"
   chart={`
 flowchart TB
   ORG["Organization"]
@@ -36,21 +36,14 @@ Eine Publication speichert einen unveränderlichen Snapshot der
 Assistant-Konfiguration. Draft-Datensätze bleiben auch nach der Publication
 bearbeitbar.
 
-Ein Flow speichert einen Trigger, eine Konfiguration der Bedingungen sowie
-geordnete Actions. Die Laufzeitvalidierung stellt sicher, dass nur gültige Paare
-aus Trigger und Aktion verwendet werden.
-
-Ein Assistant wählt Entity-Schemas für seine nächste Publication aus. Der
-Schema-Snapshot steuert die generierten Tools, während jede Abfrage die
-aktuellen Records liest.
-
-Shared Entities stellen gemeinsame Daten der Organisation bereit. User-scoped
-Entities geben ein Identitätsattribut für die serverseitige Filterung an.
+Ein Flow speichert einen Trigger, eine Bedingungskonfiguration und geordnete
+Aktionen. Die Runtime-Validierung stellt sicher, dass nur gültige Paare aus
+Trigger und Action verwendet werden.
 
 ## Eigentum an Wissen
 
 <Mermaid
-  title="Ein Link, nicht eine Collection, bestimmt, wonach ein Assistant sucht."
+  title="Ein Link, nicht eine Collection, bestimmt, wonach ein Assistent sucht."
   chart={`
 flowchart TB
   ORG["Organization"]
@@ -69,31 +62,31 @@ Wissen gehört der Organisation. Eine Collection ist ein Container, kein
 Eigentümer, und sie entscheidet nicht, welcher Assistant aus einer Source
 antwortet.
 
-Die Verknüpfung „Assistant-to-Source“ bestimmt dies. Retrieval liest den
-Link-Satz aus, sodass eine nicht verknüpfte Source niemandem antwortet. Die
-Verknüpfung umfasst außerdem den Direct-Zugriff pro Assistenten.
+Die Verknüpfung „Assistant-to-Source“ tut dies. Retrieval liest den Link-Satz
+aus, sodass eine nicht verknüpfte Source niemandem antwortet. Die Verknüpfung
+umfasst zudem den Direct-Zugriff pro Assistenten.
 
 Wenn Sie einen Assistant löschen, werden dessen Verknüpfungen entfernt, während
-alle Sources unverändert bestehen bleiben.
+alle Sources an ihrem Platz bleiben.
 
 ## Konversationsdaten
 
 Eine Conversation gehört zu einem Assistant oder zu einem Teammate, niemals zu
-beiden. Eine Assistant Conversation verfolgt eine einzelne Visitor-Sitzung.
+beiden. Eine Assistant Conversation erfasst eine einzelne Visitor-Sitzung.
 
 Eine Teammate Conversation ist ein interner Chat eines Members. Sie wird weder
 in der Inbox noch in den Insights angezeigt. Messages speichern eingegebene
-Elemente für Text, Zitate, Buttons, Traces und andere Antworten.
+Teile für Text, Zitate, Buttons, Traces und andere Antworten.
 
 Der Session-Status erfasst auch die proaktive Zustellung von Notifications. Eine
 Notification erzeugt keine Visitor-Nachricht.
 
-Langzeiterinnerungen gehören zu einer Organisation und einem verifizierten
+Long-term Memories gehören zu einer Organisation und einem verifizierten
 SSO-Subject. Sie speichern eine dauerhafte Tatsache, eine Einbettung,
-Zeitstempel und die Herkunft der Quell-Conversation.
+Zeitstempel und die Provenienz der Quell-Conversation.
 
-Die Runtime begrenzt jeden Subject auf 200 Memories. Durch das Löschen wird eine
-Information aus zukünftigen Prompt-Injektionen und Memory-Suchen entfernt.
+Die Runtime begrenzt jedes Subject auf 200 Memories. Durch das Löschen wird eine
+Tatsache aus zukünftigen Prompt-Injektionen und Memory-Suchen entfernt.
 
 ## Programmatische Anmeldeinformationen
 
@@ -101,10 +94,10 @@ Ein API-Schlüssel-Datensatz gehört zu einer Organisation und speichert einen
 geheimen Hash, die Role, den Creator sowie den Revocation-Status. Das im
 Klartext vorliegende Secret wird nicht gespeichert.
 
-## Isolation
+## Isolierung
 
 Der authentifizierte Zugriff auf die Konsole verwendet gegebenenfalls
-Row-Level-Security. Service-Rollen-Pfade müssen eine explizite
+Row-Level-Security. Service-Rollenpfade müssen eine explizite
 Organization-Grenze hinzufügen.
 
 API v1 verwendet die anhand des API-Schlüssels aufgelöste Organization. Es

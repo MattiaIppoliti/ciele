@@ -14,7 +14,6 @@ import { collections, faqs, knowledge, sources } from "./commands/knowledge.ts";
 import { publish } from "./commands/publish.ts";
 import { conversations, messages } from "./commands/inbox.ts";
 import { improvements } from "./commands/improvements.ts";
-import { entities, records } from "./commands/entities.ts";
 import { memories } from "./commands/memories.ts";
 import { sso } from "./commands/sso.ts";
 import { helpDesks } from "./commands/help-desks.ts";
@@ -44,8 +43,6 @@ const COMMAND_GROUPS: Record<
   conversations,
   messages,
   improvements,
-  entities,
-  records,
   memories,
   sso,
   "help-desks": helpDesks,
@@ -152,9 +149,7 @@ Commands:
   assistants create --title <t> [--nickname] [--description]
   assistants update <id> [--file patch.json|--title|--nickname|--description|--answering-style]
   assistants delete <id> --yes
-  assistants get-entities <id>
   assistants ask <id> "<question>" [--conversation <id>]  Published answer + Sources
-  assistants set-entities <id> --ids <entityId,…>
   assistants get-skills <id>
   assistants set-skills <id> --ids <skillId,…>
 
@@ -199,13 +194,6 @@ Commands:
   improvements list [--limit] [--cursor]
   improvements get <id>
   improvements update <id> [--status|--priority|--assignee|--due|--title|--description|--tags]
-
-  entities list|get|delete [<id>] [--yes]
-  entities create --file <entity.json>
-  entities update <id> [--name|--description]
-  records list <entityId> [--limit] [--offset]
-  records query <entityId> --file <query.json>
-  records import <entityId> --file <records.csv>
 
   memories status|enable|disable|subjects
   memories list <subjectId>

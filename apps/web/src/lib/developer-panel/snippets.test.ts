@@ -55,7 +55,6 @@ describe("path variable names", () => {
     expect(pathVariableName("/flows/{id}", "id")).toBe("flowId");
     expect(pathVariableName("/assistants/{id}/flows", "id")).toBe("assistantId");
     expect(pathVariableName("/collections/{id}/sources", "id")).toBe("collectionId");
-    expect(pathVariableName("/entities/{id}/records", "id")).toBe("entityId");
   });
 
   it("camel-cases a hyphenated resource", () => {
@@ -76,7 +75,7 @@ describe("path variable names", () => {
   it("keeps an irregular plural readable rather than guessing", () => {
     // "-es" and "-ies" are the only two plurals the /api/v1 paths contain;
     // anything else falls back to trimming a single trailing "s".
-    expect(pathVariableName("/entities/{id}", "id")).toBe("entityId");
+    expect(pathVariableName("/memories/{id}", "id")).toBe("memoryId");
     expect(pathVariableName("/improvements/{id}", "id")).toBe("improvementId");
   });
 });

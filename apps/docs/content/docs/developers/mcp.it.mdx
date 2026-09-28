@@ -12,13 +12,13 @@ registrano gli stessi tool.
 - Il **local server** è un processo `stdio` che avvii da un checkout del
   repository.
 
-Ogni chiamata a uno strumento raggiunge l'Organization tramite `/api/v1`,
-pertanto un'operazione ha un unico percorso di esecuzione, indipendentemente dal
+Ogni chiamata a uno strumento raggiunge l'Organization tramite `/api/v1`, quindi
+un'operazione ha un unico percorso di esecuzione, indipendentemente dal
 trasporto che l'ha richiesta.
 
 ## Endpoint ospitato
 
-Ogni deployment di Ciele espone l'endpoint dal proprio origin. Ciò include il
+Ogni deployment di Ciele espone l'endpoint dalla propria origine. Ciò include il
 servizio ospitato, un self-host Docker e lo stack locale di Ciele Desktop.
 L'endpoint non richiede alcuna configurazione.
 
@@ -27,7 +27,7 @@ https://ciele.example.edu/api/mcp
 ```
 
 Esegui l'autenticazione con una
-[chiave API dell'organizzazione](/developers/api-keys) nell'intestazione
+[chiave API dell'organizzazione](/developers/api-keys) nell'header
 `Authorization`:
 
 ```text
@@ -48,16 +48,16 @@ revisione fin dallo scambio iniziale, quindi un client che non è passato a
 `2026-07-28` continua a funzionare.
 
 La revisione `2026-07-28` ha rimosso le sessioni di protocollo. Ogni richiesta è
-indipendente, pertanto l'endpoint ospitato non necessita di sticky routing né di
-un session store.
+indipendente, quindi l'endpoint ospitato non necessita di sticky routing né di
+un archivio di sessione.
 
 ## Server `stdio` locale
 
 ### Requisiti
 
-- Utilizza Node.js 22.6 o versioni successive.
+- Usa Node.js 22.6 o versioni successive.
 - Clona il repository di Ciele.
-- Crea una [chiave API dell'organizzazione](/developers/api-keys).
+- Crea una [Organization API key](/developers/api-keys).
 - Utilizza un client MCP in grado di avviare un server `stdio` locale.
 
 Avvia questo programma dal repository:
@@ -97,30 +97,29 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `publish_assistant` | Leggi lo stato, pubblica, annulla la pubblicazione o ripristina una pubblicazione. |
 | `read_inbox` | Elenca, leggi, esporta, appunta, annota, valuta o elimina le Conversations. Elenca, leggi e decidi le richieste di revisione umana. |
 | `manage_improvements` | Elenca, leggi o aggiorna gli Improvements. |
-| `manage_entities` | Gestisci le Organization Entities e i Records tipizzati. |
 | `manage_memories` | Verifica le impostazioni ed esegui la cancellazione della memoria con ambito definito. |
-| `manage_sso` | Gestisci le attestazioni di identità e la connessione SSO dell'organizzazione. |
+| `manage_sso` | Gestisci le identity claim e la connessione SSO dell'organizzazione. |
 | `manage_help_desks` | Gestisci Help Desk, canali, ordinamento e ServiceNow. |
 | `manage_teammates` | Gestisci gli AI Teammate, i loro grant, le loro Routine e la loro memoria. `provision` esegue la configurazione completa con una sola azione. |
-| `manage_projects` | Gestisci i progetti e il documento di memoria di ciascun progetto. |
+| `manage_projects` | Gestisci i Projects e il memory document di ciascun Project. |
 | `manage_channels` | Leggi e modella i canali dei teammate in cui sei presente. |
 | `manage_configuration` | Gestisci Skills, la selezione delle Assistant Skills, Goals e Alerts. |
-| `manage_organization` | Gestisci le impostazioni dell'organizzazione, i Members, gli Invites e le API keys. Consulta i contatori di utilizzo e gli elementi di spesa del piano. |
+| `manage_organization` | Gestisci le impostazioni dell'organizzazione, i Members, gli Invites e le API keys. Leggi i contatori di utilizzo e gli elementi di spesa del piano. |
 | `manage_integrations` | Gestisci le integrazioni API dell'Assistente e i provider di modelli. |
 
-Il server registra diciassette strumenti: uno strumento di identità e sedici
+Il server registra sedici strumenti: uno strumento di identità e quindici
 strumenti di dominio. Ogni strumento di dominio utilizza un campo `action` per
 le proprie operazioni.
 
 La modalità di sola lettura classifica ogni azione. Consente le azioni list,
-read, status, query, search ed export, mentre rifiuta le mutazioni.
+read, status, query, search ed export, mentre rifiuta le mutation.
 
 ## Cerca nella knowledge base
 
 L'azione `search` di `manage_knowledge` trova i passaggi che corrispondono a una
-domanda. Ogni risultato riporta il testo del passaggio, il titolo del Documento,
-il nome della Source e, se presente, l'URL. Ciele non genera una risposta. Il
-tuo client AI scrive la risposta e cita le Sources.
+domanda. Ogni risultato fornisce il testo del passaggio, il titolo del
+Documento, il nome della Source e, se presente, l'URL. Ciele non genera una
+risposta. Il tuo client di IA scrive la risposta e cita le Sources.
 
 ```json
 { "action": "search", "query": "How do I connect Salesforce?", "assistantId": "<assistant-id>" }
@@ -128,15 +127,15 @@ tuo client AI scrive la risposta e cita le Sources.
 
 Con `assistantId`, la ricerca utilizza solo le Sources collegate a
 quell'Assistant. Senza di essa, la ricerca utilizza l'intera Library
-dell'Organization. Una viewer key può eseguire ricerche e la modalità di sola
+dell'Organization. Una chiave viewer può eseguire ricerche e la modalità di sola
 lettura lo consente. Una ricerca non crea una Conversation, quindi non compare
 né nell'Inbox né in Insights. Ogni chiave API può eseguire 60 ricerche in un
 minuto.
 
 ## Chiedi a un Assistente
 
-L'azione `ask` di `manage_assistants` invia una domanda a un Assistente e
-restituisce la sua risposta insieme alle Sources che ha citato. Usalo quando il
+L'azione `ask` di `manage_assistants` invia una domanda a un Assistant e
+restituisce la sua risposta insieme alle Sources che ha citato. Usala quando il
 client deve mostrare la risposta di Ciele, non la propria risposta.
 
 ```json
@@ -152,11 +151,11 @@ Conversation.
 
 Ogni domanda crea una Conversation. Insights non lo conteggia. L'Inbox lo mostra
 con l'etichetta **API key** quando imposti il filtro **Staff conversations** su
-**Include staff** o **Staff only**. La domanda utilizza un model turn nelle
-Provider Connections dell'Organization. Per questo motivo, la modalità di sola
-lettura rifiuta `ask`. Ogni chiave API può porre 20 domande in un minuto. Una
-risposta può richiedere un po' di tempo, perché l'Assistente può eseguire più di
-una ricerca.
+**Include staff** o **Staff only**. La domanda utilizza un turno del modello
+sulle Provider Connections dell'Organization. Per questo motivo, la modalità di
+sola lettura rifiuta `ask`. Ogni chiave API può porre 20 domande in un minuto.
+Una risposta può richiedere un po' di tempo, perché l'Assistente può eseguire
+più di una ricerca.
 
 Consulta [AI clients](/developers/ai-clients) per la configurazione di ciascun
 client supportato.

@@ -1,5 +1,5 @@
-import { RouteSkeleton } from "@/components/route-skeleton";
+import { SettingsPanelSkeleton } from "@/components/settings/settings-panel-skeleton";
 
 export default function SettingsUsageLoading() {
-  return <RouteSkeleton variant="list" />;
+  return <SettingsPanelSkeleton variant="list" />;
 }

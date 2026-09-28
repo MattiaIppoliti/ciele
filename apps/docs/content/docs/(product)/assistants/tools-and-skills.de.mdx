@@ -3,7 +3,7 @@ title: Tools und Skills
 description: Steuern Sie Runtime-Tools und verknüpfen Sie wiederverwendbare Anweisungen mit einem Assistenten.
 ---
 
-Öffnen Sie einen Assistant und wählen Sie **Tools & Skills** aus. In diesem
+Öffnen Sie einen Assistant und wählen Sie **Tools & Skills**. In diesem
 Abschnitt werden die Laufzeitfunktionen und wiederverwendbaren Anweisungen
 gesteuert.
 
@@ -19,9 +19,9 @@ gesteuert.
 Search knowledge ist immer verfügbar. Sie können die anderen integrierten Tools
 aktivieren oder deaktivieren.
 
-Show a table ordnet Fakten an, die der Assistant in dieser Antwort gefunden hat.
+Show a table ordnet Fakten an, die der Assistent in dieser Antwort gefunden hat.
 Es berechnet keine Werte. Die Tabelle wird über der schriftlichen Antwort
-angezeigt, und das Inbox-Transkript zeigt dieselbe Tabelle.
+angezeigt, und im Inbox-Transkript wird dieselbe Tabelle dargestellt.
 
 Der Assistant kann einer Zeile eine Folgefrage hinzufügen. Der Visitor wählt die
 Zeile aus, um diese Frage zu stellen. Das Inbox-Transkript zeigt diese Zeilen
@@ -42,7 +42,7 @@ Der Chat-Editor zeigt eine Schaltfläche **Study exercises** an. Wählen Sie ein
 Format aus, fügen Sie ein Thema hinzu und senden Sie dann die Anfrage.
 
 Wenn aktiviert, wird **Study Mode** auch in **Flows** angezeigt. Die
-Schaltfläche Settings öffnet diesen Abschnitt. Deaktivieren Sie den Study Mode
+Schaltfläche „Settings“ öffnet diesen Abschnitt. Deaktivieren Sie den Study Mode
 in **Tools & Skills**. Der Flow hat keinen separaten Schalter. Anfragen aus dem
 Menü „Study exercises“ gehen direkt an diesen Flow. In Thinking wird ein Symbol
 mit einer Doktorhut-Kappe angezeigt.
@@ -59,48 +59,28 @@ unterstützten Thema oder nach Lernmaterial.
 | Flashcards | Geben Sie das fehlende Wort oder eine kurze Formulierung ein. |
 
 **Choose for me** wählt ein aktiviertes Format aus. Jede Übung enthält höchstens
-fünf verschiedene Fragen, die auf dem abgerufenen Wissen basieren.
+fünf verschiedene Fragen, die auf dem abgerufenen Knowledge basieren.
 
 Wählen Sie **Check** aus, um eine Antwort zu speichern. Ciele zeigt an, ob die
 Antwort richtig ist, gibt die richtige Antwort an und liefert eine Erklärung.
-Eine bereits übermittelte Antwort kann nicht mehr geändert werden. Flashcards
-akzeptieren die Schreibvarianten, die bei der Erstellung der Übung definiert
-wurden.
+Eine einmal abgegebene Antwort kann nicht mehr geändert werden. Flashcards
+akzeptieren die Rechtschreibvarianten, die bei der Erstellung der Übung
+definiert wurden.
 
 Die Inbox zeigt die Fragen, die eingereichten Antworten, die richtigen Antworten
-und die Punktzahl an. Unvollendete Übungen zeigen an, wie viele Fragen noch
-unbeantwortet sind. Die Übungen werden innerhalb des Chats ausgeführt. Sie
-benötigen keinen externen H5P-Player.
-
-## Strukturierte Daten verbinden
-
-Im Abschnitt **Data** werden die über **Settings → Data** importierten Entitäten
-aufgelistet. Wählen Sie jede Entität aus, die dieser Assistent abfragen darf.
-
-Jede ausgewählte Entity stellt ein Tool für die exakte Filterung bereit. Eine
-Entität mit Textattributen stellt außerdem ein Tool zur Stichwortsuche bereit.
-
-Shared Entities stehen jedem Visitor zur Verfügung, der vom Assistant bedient
-wird. Entities mit Benutzerumfang erfordern einen verifizierten
-[identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim).
-
-Die Auswahl der Entitäten und das Schema werden in den nächsten Snapshot der
-Veröffentlichung übernommen. Der Inhalt der Datensätze bleibt nach der
-Veröffentlichung aktiv.
-
-Siehe [Entities and Records](/data/entities-and-records) für Informationen zu
-CSV-Importen, Auswahlmöglichkeiten für den Geltungsbereich und zur
-Identitätsfilterung.
+und die Punktzahl an. Bei unvollständigen Übungen wird angezeigt, wie viele
+Fragen noch unbeantwortet sind. Die Übungen werden innerhalb des Chats
+ausgeführt. Sie benötigen keinen externen H5P-Player.
 
 ## Eine API-Integration konfigurieren
 
 Ein Assistant kann eine registrierte API-Integration verwenden. Die Integration
-enthält eine Basis-URL, eine geschützte Anmeldeinformation und beschriebene
+enthält eine Basis-URL, geschützte Anmeldeinformationen und beschriebene
 Endpunkte.
 
 Definieren Sie für jeden Endpoint die Methode, den Pfad, den Zweck, die
-Parameter und das Response-Format. Die Runtime überprüft jeden angeforderten
-Pfad anhand dieses Katalogs.
+Parameter und das Antwortformat. Die Runtime überprüft jeden angeforderten Pfad
+anhand dieses Katalogs.
 
 Der Agent kann die Details des Endpunkts prüfen, bevor er eine Anfrage sendet.
 Große Antworten bleiben über windowed reads verfügbar.
@@ -124,9 +104,9 @@ Geben Sie im Endpoint-Formular an, wo Ihre API den Schlüssel liest:
 Verwenden Sie den Namen, den Ihre API liest. Ciele errät diesen Namen nicht.
 Verschiedene APIs lesen unterschiedliche Namen aus.
 
-Ciele erstellt für jeden Aufruf einen eigenen Schlüssel. Bei einem erneuten
-Versuch desselben Aufrufs wird derselbe Schlüssel gesendet. Ein anderer Aufruf
-sendet einen anderen Schlüssel. Ihre API kann die beiden Anfragen dann als einen
+Ciele erstellt für jeden Aufruf einen Schlüssel. Bei einer Wiederholung
+desselben Aufrufs wird derselbe Schlüssel gesendet. Ein anderer Aufruf sendet
+einen anderen Schlüssel. Ihre API kann die beiden Anfragen dann als einen
 einzigen Schreibvorgang betrachten.
 
 Ihre API muss ebenfalls ihren Beitrag leisten. Sie muss den Schlüssel speichern
@@ -139,31 +119,30 @@ If you give no key, a retry of the call can write two times. A `GET` endpoint do
 ## Eine Organisations-Skill hinzufügen
 
 Eine Skill ist eine wiederverwendbare Anweisungsvorlage. Eine Organisation kann
-dieselbe Skill mehreren Assistenten zuordnen.
+dieselbe Skill an mehrere Assistants anhängen.
 
 1. Öffnen Sie **Tools & Skills**.
-2. Suchen Sie die gewünschte Organization Skill.
+2. Suchen Sie die erforderliche Organization Skill.
 3. Fügen Sie die Skill dem Assistant hinzu.
 4. Testen Sie das Ergebnis in Preview.
 5. Veröffentlichen Sie den Assistant, wenn das Ergebnis korrekt ist.
 
-Änderungen an Skills sind in Preview sofort verfügbar. Das veröffentlichte
-Widget verwendet den letzten Publication-Snapshot.
+Skill-Änderungen sind in Preview sofort verfügbar. Das veröffentlichte Widget
+verwendet den letzten Publication-Snapshot.
 
 ### Ermöglichen Sie es Nutzern, eine Skill aus dem Chat-Fenster heraus zu starten
 
 Eine Skill kann ein **Opening line** haben. Schreiben Sie es aus der Perspektive
-der fragenden Person, nicht aus der des Assistenten.
+der Person, die die Frage stellt, nicht aus der des Assistenten.
 
 Das Chat-Fenster zeigt ein **/**-Menü mit jeder Skill, die eine Eröffnungszeile
-hat. Wenn der Benutzer eine Skill auswählt, schreibt das Chat-Fenster die
-Opening Line in das Nachrichtenfeld. Sie können den Text bearbeiten, bevor Sie
-ihn senden.
+hat. Wenn Sie eine Skill auswählen, schreibt das Chat-Fenster die Opening Line
+in das Nachrichtenfeld. Sie können den Text bearbeiten, bevor Sie ihn senden.
 
 Wenn die Opening Line leer ist, wird die Skill nicht im **/**-Menü angezeigt.
 Der Skill-Prompt gilt weiterhin für jede Antwort.
 
-Veröffentlichen Sie den Assistant, nachdem Sie eine Eröffnungszeile verfasst
+Veröffentlichen Sie den Assistenten, nachdem Sie eine Eröffnungszeile verfasst
 haben. Das Widget verwendet den letzten Snapshot der Veröffentlichung.
 
 ## Anhänge und Knowledge sind nicht dasselbe
@@ -171,7 +150,7 @@ haben. Das Widget verwendet den letzten Snapshot der Veröffentlichung.
 Sowohl ein Anhang als auch eine Knowledge Source werden zu Text, und Ciele liest
 beide mit demselben Extractor. Was danach geschieht, ist anders.
 
-Eine Knowledge Source ist dauerhaft. Ciele speichert den Text, indiziert ihn,
+Eine Knowledge Source ist permanent. Ciele speichert den Text, indiziert ihn,
 und der Assistant kann ihn in jeder späteren Konversation zitieren.
 
 Ein Anhang gehört zu seiner Konversation. Ciele liest es einmal, verwirft die
@@ -183,9 +162,9 @@ hinzu.
 
 ## Testen Sie die Konfiguration
 
-Stellen Sie eine Frage, die jedes aktivierte Tool erfordert. Überprüfen Sie vor
-der Veröffentlichung das Panel „Thinking“ und die „Sources“.
+Stellen Sie eine Frage, die jedes aktivierte Tool erfordert. Überprüfen Sie das
+Thinking-Panel und die Sources, bevor Sie veröffentlichen.
 
-Testen Sie bei strukturierten Daten eine exakte Attributsuche sowie eine
-Textsuche. Testen Sie den auf Benutzerumfang beschränkten Zugriff mit zwei
+Bei strukturierten Daten testen Sie eine exakte Attributsuche sowie eine
+Textsuche. Testen Sie den auf Benutzer*innenumfang beschränkten Zugriff mit zwei
 verschiedenen angemeldeten Konten.

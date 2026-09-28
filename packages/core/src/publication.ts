@@ -1,6 +1,5 @@
 import type {
   Assistant,
-  Entity,
   Flow,
   KnowledgeCollection,
   PublicationConfig,
@@ -20,14 +19,7 @@ export function buildPublicationConfig(
   assistant: Assistant,
   flows: Flow[],
   collections: KnowledgeCollection[],
-  skills: SkillSnapshot[] = [],
-  /**
-   * The Entities the assistant selected (#665, #667). Shared-scope ones are
-   * available to every turn; user-scoped ones reach the Widget only when the
-   * turn carries a verified identity claim, the runtime's registration
-   * policy enforces that, the snapshot just carries the schema.
-   */
-  entities: Entity[] = []
+  skills: SkillSnapshot[] = []
 ): PublicationConfig {
   return {
     assistant: {
@@ -43,6 +35,9 @@ export function buildPublicationConfig(
       quickReplies: assistant.quickReplies,
       answeringStyle: assistant.answeringStyle,
       simplifiedThinking: assistant.simplifiedThinking,
+      // Only when set, so a snapshot of an Assistant with none is the object it
+      // was before guardrails existed.
+      ...(assistant.guardrails?.length ? { guardrails: structuredClone(assistant.guardrails) } : {}),
       chatLauncherEnabled: assistant.chatLauncherEnabled,
       modelProvider: assistant.modelProvider,
       modelId: assistant.modelId,
@@ -66,14 +61,6 @@ export function buildPublicationConfig(
       description: s.description,
       prompt: s.prompt,
       starter: s.starter ?? "",
-    })),
-    entities: entities.map((e) => ({
-      id: e.id,
-      name: e.name,
-      description: e.description,
-      attributes: e.attributes,
-      scope: e.scope,
-      identityAttribute: e.identityAttribute,
     })),
   };
 }

@@ -155,7 +155,6 @@ export async function POST(
     assistant,
     flows: config.flows,
     skills: config.skills ?? [],
-    entities: config.entities ?? [],
     connections,
     organizationId: config.assistant.organizationId,
     subjectType: subject.type,

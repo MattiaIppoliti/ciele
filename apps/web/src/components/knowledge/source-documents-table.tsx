@@ -33,6 +33,8 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { setDocumentsExcludedAction } from "@/app/actions";
 import { toast } from "@/lib/toast";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { copyToClipboard } from "@/lib/clipboard";
 import {
   relativeTimeLabel,
@@ -249,11 +251,11 @@ export function SourceDocumentsTable({
               </TableCell>
             </TableRow>
           )}
-          {documents.map((document) => {
+          {documents.map((document, index) => {
             const status = sourceDocumentStatus(document);
             return (
+              <RollRow key={document.id} index={index}>
               <TableRowMenu
-                key={document.id}
                 title={document.title}
                 onOpen={
                   canEdit ? () => selection.selectForMenu(document.id) : undefined
@@ -309,7 +311,7 @@ export function SourceDocumentsTable({
                       href={sourceDocumentHref(basePath, document.id, params)}
                       className="press-text block truncate font-medium hover:underline"
                     >
-                      {document.title}
+                      <RollInText text={document.title} />
                     </Link>
                     {document.resourceUrl ? (
                       <a
@@ -318,21 +320,21 @@ export function SourceDocumentsTable({
                         rel="noreferrer"
                         className="text-muted-foreground hover:text-foreground block truncate text-xs"
                       >
-                        {document.resourceUrl}
+                        <RollInText text={document.resourceUrl} />
                       </a>
                     ) : (
                       <span className="text-muted-foreground block truncate text-xs">
-                        {document.path}
+                        <RollInText text={document.path} />
                       </span>
                     )}
                   </TableOpenCell>
                 </TableCell>
                 <TableCell className="text-muted-foreground tabular-nums">
-                  {memoryCounts[document.path] ?? 0}
+                  <RollingNumber value={memoryCounts[document.path] ?? 0} />
                 </TableCell>
                 <TableCell>
                   <Badge tone={sourceDocumentTone(status)}>
-                    {sourceDocumentStatusLabel(status)}
+                    <RollInText text={sourceDocumentStatusLabel(status)} />
                   </Badge>
                 </TableCell>
                 <TableCell
@@ -340,10 +342,14 @@ export function SourceDocumentsTable({
                   title={new Date(document.createdAt).toISOString()}
                   suppressHydrationWarning
                 >
+                  {/* Plain on purpose: server and client can word this
+                      differently, and RollInText would copy it into an
+                      aria-label the suppression above does not cover. */}
                   {relativeTimeLabel(document.createdAt, now)}
                 </TableCell>
               </TableRow>
               </TableRowMenu>
+              </RollRow>
             );
           })}
         </TableBody>

@@ -284,26 +284,9 @@ export function describeDbContract(
         expect(await db.listSourceAssistantLinks(source.id)).toHaveLength(1);
       });
 
-      it("org-pins Entity Records and Memory erasure for API-key callers (#663–#667)", async () => {
+      it("org-pins Memory erasure for API-key callers (#664)", async () => {
         const pinned = createOrgPinnedDb(db, ctx.organizationId);
         const foreignPinned = createOrgPinnedDb(db, ctx.foreignOrganizationId);
-        const entity = await pinned.table("entities").insert({
-          organizationId: ctx.foreignOrganizationId,
-          name: "Pinned records",
-          attributes: [{ key: "id", label: "ID", type: "text" }],
-          keyAttribute: "id",
-          scope: "shared",
-        });
-        expect(entity.organizationId).toBe(ctx.organizationId);
-        await pinned.upsertEntityRecords(entity.id, [
-          { key: "one", values: { id: "one" } },
-        ]);
-        expect(await pinned.countEntityRecords(entity.id)).toBe(1);
-        expect(await foreignPinned.table("entities").get(entity.id)).toBeNull();
-        await expect(foreignPinned.listEntityRecords(entity.id)).rejects.toThrowError(
-          OrgPinnedDbError
-        );
-
         await pinned.setMemoryEnabled(ctx.foreignOrganizationId, true);
         expect(await pinned.getMemoryEnabled(ctx.foreignOrganizationId)).toBe(true);
         await db.upsertMemories(
@@ -1567,334 +1550,6 @@ export function describeDbContract(
         const offset = all.findIndex((item) => item.id === run.id);
         expect(await runs.list({ organizationId: ctx.organizationId }, { orderBy: "createdAt", ascending: true, limit: 1, offset })).toEqual([finished]);
         expect(await runs.list({ organizationId: ctx.foreignOrganizationId })).not.toContainEqual(finished);
-      });
-    });
-
-    describe("entities & records (#663)", () => {
-      const orderEntity = () =>
-        db.table("entities").insert({
-          organizationId: ctx.organizationId,
-          name: "Orders",
-          description: "Customer orders",
-          attributes: [
-            { key: "order_id", label: "Order ID", type: "text" },
-            { key: "status", label: "Status", type: "text" },
-            { key: "total", label: "Total", type: "number" },
-          ],
-          keyAttribute: "order_id",
-          scope: "user",
-          identityAttribute: "order_id",
-        });
-
-      it("round-trips an Entity and scopes lists to the organization", async () => {
-        const entity = await orderEntity();
-        expect(entity.scope).toBe("user");
-        expect(entity.identityAttribute).toBe("order_id");
-        expect(entity.attributes).toHaveLength(3);
-
-        const listed = await db.table("entities").list({
-          organizationId: ctx.organizationId,
-        });
-        expect(listed.some((e) => e.id === entity.id)).toBe(true);
-        // Another organization's scope never surfaces this entity.
-        expect(
-          (await db.table("entities").list({
-            organizationId: ctx.foreignOrganizationId,
-          })).some(
-            (e) => e.id === entity.id
-          )
-        ).toBe(false);
-
-        const renamed = await db.table("entities").update(entity.id, {
-          name: "Sales",
-        });
-        expect(renamed.name).toBe("Sales");
-        expect(renamed.keyAttribute).toBe("order_id");
-      });
-
-      it("pages Entities with a durable database cursor", async () => {
-        await orderEntity();
-        await orderEntity();
-        const first = await db.listEntitiesPage(ctx.organizationId, { limit: 1 });
-        const second = await db.listEntitiesPage(ctx.organizationId, {
-          limit: 1,
-          cursor: first.nextCursor,
-        });
-        expect(first.items).toHaveLength(1);
-        expect(second.items).toHaveLength(1);
-        expect(second.items[0]?.id).not.toBe(first.items[0]?.id);
-        await db.table("entities").delete(first.items[0]!.id);
-        const afterDeletion = await db.listEntitiesPage(ctx.organizationId, {
-          limit: 1,
-          cursor: first.nextCursor,
-        });
-        expect(afterDeletion.items[0]?.id).toBe(second.items[0]?.id);
-      });
-
-      it("upserts records idempotently by key and pages them", async () => {
-        const entity = await orderEntity();
-        const first = await db.upsertEntityRecords(entity.id, [
-          { key: "A-1", values: { order_id: "A-1", status: "shipped", total: 10 } },
-          { key: "A-2", values: { order_id: "A-2", status: "delayed", total: 25 } },
-        ]);
-        expect(first).toBe(2);
-        expect(await db.countEntityRecords(entity.id)).toBe(2);
-        const originalIds = (await db.listEntityRecords(entity.id)).map((r) => r.id);
-
-        // Re-import: same keys, one changed value, no duplicates, stable ids.
-        const changed = await db.upsertEntityRecords(entity.id, [
-          { key: "A-1", values: { order_id: "A-1", status: "refunded", total: 10 } },
-          { key: "A-2", values: { order_id: "A-2", status: "delayed", total: 25 } },
-        ]);
-        expect(changed).toBe(1);
-        const after = await db.listEntityRecords(entity.id);
-        expect(after).toHaveLength(2);
-        expect(after.map((r) => r.id).sort()).toEqual([...originalIds].sort());
-        expect(after.find((r) => r.key === "A-1")?.values.status).toBe("refunded");
-
-        const unchanged = await db.upsertEntityRecords(entity.id, [
-          { key: "A-1", values: { order_id: "A-1", status: "refunded", total: 10 } },
-          { key: "A-2", values: { order_id: "A-2", status: "delayed", total: 25 } },
-        ]);
-        expect(unchanged).toBe(0);
-
-        // Paging is key-ordered.
-        const page = await db.listEntityRecords(entity.id, { limit: 1, offset: 1 });
-        expect(page.map((r) => r.key)).toEqual(["A-2"]);
-      });
-
-      it("queries records by typed equality filters and keyword search (#665)", async () => {
-        const entity = await orderEntity();
-        await db.upsertEntityRecords(entity.id, [
-          { key: "Q-1", values: { order_id: "Q-1", status: "shipped", total: 10 } },
-          { key: "Q-2", values: { order_id: "Q-2", status: "delayed", total: 25 } },
-          { key: "Q-3", values: { order_id: "Q-3", status: "shipped", total: 25 } },
-        ]);
-
-        // Equality filter on a text attribute.
-        const shipped = await db.queryEntityRecords(entity.id, {
-          filters: { status: "shipped" },
-        });
-        expect(shipped.map((r) => r.key)).toEqual(["Q-1", "Q-3"]);
-
-        // Typed (number) equality composes with the text filter.
-        const shipped25 = await db.queryEntityRecords(entity.id, {
-          filters: { status: "shipped", total: 25 },
-        });
-        expect(shipped25.map((r) => r.key)).toEqual(["Q-3"]);
-
-        // Case-insensitive keyword search over the record's values.
-        const delayed = await db.queryEntityRecords(entity.id, {
-          search: "DELAY",
-        });
-        expect(delayed.map((r) => r.key)).toEqual(["Q-2"]);
-
-        // Search is deliberately limited to attributes declared as text.
-        expect(
-          await db.queryEntityRecords(entity.id, { search: "25" })
-        ).toHaveLength(0);
-
-        // No match → empty, never an error.
-        expect(
-          await db.queryEntityRecords(entity.id, { filters: { status: "lost" } })
-        ).toHaveLength(0);
-
-        // Limit caps the key-ordered result.
-        const capped = await db.queryEntityRecords(entity.id, { limit: 2 });
-        expect(capped.map((r) => r.key)).toEqual(["Q-1", "Q-2"]);
-      });
-
-      it("scopes a user-scoped query to one identity value alongside other filters (#667)", async () => {
-        // The runtime binds the Entity's identity attribute to the turn's
-        // verified claim; this is the query path that binding rides on,
-        // combined identity + attribute filters, and identity + search.
-        const entity = await db.table("entities").insert({
-          organizationId: ctx.organizationId,
-          name: "User orders",
-          description: "Orders owned by a signed-in user",
-          attributes: [
-            { key: "order_id", label: "Order ID", type: "text" },
-            { key: "status", label: "Status", type: "text" },
-            { key: "customer_email", label: "Customer email", type: "text" },
-          ],
-          keyAttribute: "order_id",
-          scope: "user",
-          identityAttribute: "customer_email",
-        });
-        await db.upsertEntityRecords(entity.id, [
-          { key: "U-1", values: { order_id: "U-1", status: "delayed", customer_email: "me@example.com" } },
-          { key: "U-2", values: { order_id: "U-2", status: "delayed", customer_email: "other@example.com" } },
-          { key: "U-3", values: { order_id: "U-3", status: "shipped", customer_email: "me@example.com" } },
-        ]);
-
-        const mine = await db.queryEntityRecords(entity.id, {
-          filters: { customer_email: "me@example.com", status: "delayed" },
-        });
-        expect(mine.map((r) => r.key)).toEqual(["U-1"]);
-
-        // Keyword search composes with the identity filter: the other
-        // subject's delayed order stays unreachable.
-        const searched = await db.queryEntityRecords(entity.id, {
-          search: "delayed",
-          filters: { customer_email: "me@example.com" },
-        });
-        expect(searched.map((r) => r.key)).toEqual(["U-1"]);
-      });
-
-      it("round-trips a sync source config and stamps runs (#670)", async () => {
-        const entity = await orderEntity();
-        expect(await db.getEntitySyncConfig(entity.id)).toBeNull();
-
-        const config = await db.upsertEntitySyncConfig(entity.id, {
-          url: "https://api.example.com/orders",
-          sealedHeaders: "sealed-blob",
-          cadenceHours: 6,
-          prune: true,
-          mapping: { orderNumber: "order_id" },
-        });
-        expect(config).toMatchObject({
-          entityId: entity.id,
-          url: "https://api.example.com/orders",
-          sealedHeaders: "sealed-blob",
-          cadenceHours: 6,
-          prune: true,
-          mapping: { orderNumber: "order_id" },
-          lastSyncedAt: null,
-        });
-
-        // Re-upsert replaces fields but keeps the cadence anchor.
-        await db.markEntitySynced(entity.id, "2026-08-08T10:00:00.000Z");
-        const updated = await db.upsertEntitySyncConfig(entity.id, {
-          url: "https://api.example.com/v2/orders",
-          sealedHeaders: null,
-          cadenceHours: 24,
-          prune: false,
-          mapping: {},
-        });
-        expect(updated.url).toBe("https://api.example.com/v2/orders");
-        expect(updated.lastSyncedAt).toBe("2026-08-08T10:00:00.000Z");
-
-        const run = await db.recordEntitySyncRun(entity.id, {
-          status: "succeeded",
-          upserted: 3,
-          pruned: 1,
-          rejected: ["row 2: total is not a number"],
-          error: null,
-        });
-        expect(run.entityId).toBe(entity.id);
-        expect(run.finishedAt).toBeTruthy();
-        await db.recordEntitySyncRun(entity.id, {
-          status: "failed",
-          upserted: 0,
-          pruned: 0,
-          rejected: [],
-          error: "HTTP 500",
-        });
-        const runs = await db.listEntitySyncRuns(entity.id);
-        expect(runs).toHaveLength(2);
-        expect(runs[0].status).toBe("failed"); // newest first
-      });
-
-      it("commits a complete sync snapshot once per observed config version", async () => {
-        const entity = await orderEntity();
-        await db.upsertEntitySyncConfig(entity.id, {
-          url: "https://api.example.com/orders",
-          sealedHeaders: null,
-          cadenceHours: 24,
-          prune: true,
-          mapping: {},
-        });
-        await db.upsertEntityRecords(entity.id, [
-          { key: "old", values: { order_id: "old", status: "stale", total: 1 } },
-        ]);
-
-        const committed = await db.commitEntitySync({
-          entityId: entity.id,
-          expectedLastSyncedAt: null,
-          rows: [
-            { key: "new", values: { order_id: "new", status: "fresh", total: 2 } },
-          ],
-          prune: true,
-          rejected: [],
-          at: "2026-08-29T12:00:00.000Z",
-        });
-        expect(committed).toMatchObject({
-          status: "succeeded",
-          upserted: 1,
-          pruned: 1,
-        });
-        expect((await db.listEntityRecords(entity.id)).map((row) => row.key)).toEqual([
-          "new",
-        ]);
-
-        const staleWriter = await db.commitEntitySync({
-          entityId: entity.id,
-          expectedLastSyncedAt: null,
-          rows: [
-            { key: "old", values: { order_id: "old", status: "stale", total: 1 } },
-          ],
-          prune: true,
-          rejected: [],
-          at: "2026-08-29T12:00:01.000Z",
-        });
-        expect(staleWriter).toMatchObject({
-          status: "failed",
-          error: "Superseded by a newer sync",
-          upserted: 0,
-          pruned: 0,
-        });
-        expect((await db.listEntityRecords(entity.id)).map((row) => row.key)).toEqual([
-          "new",
-        ]);
-      });
-
-      it("lists due syncs across cadence windows (#670)", async () => {
-        const fresh = await orderEntity();
-        const stale = await orderEntity();
-        const never = await orderEntity();
-        const input = {
-          url: "https://api.example.com/x",
-          sealedHeaders: null,
-          cadenceHours: 12,
-          prune: false,
-          mapping: {},
-        };
-        await db.upsertEntitySyncConfig(fresh.id, input);
-        await db.upsertEntitySyncConfig(stale.id, input);
-        await db.upsertEntitySyncConfig(never.id, input);
-        await db.markEntitySynced(fresh.id, "2026-08-08T09:00:00.000Z");
-        await db.markEntitySynced(stale.id, "2026-08-07T00:00:00.000Z");
-
-        const due = await db.listDueEntitySyncConfigs("2026-08-08T12:00:00.000Z");
-        const ids = due.map((d) => d.entityId);
-        expect(ids).toContain(stale.id); // cadence elapsed
-        expect(ids).toContain(never.id); // never ran
-        expect(ids).not.toContain(fresh.id); // within its window
-        const staleDue = due.find((d) => d.entityId === stale.id);
-        expect(staleDue?.organizationId).toBe(ctx.organizationId);
-      });
-
-      it("prunes Records unseen in the latest run, and only those (#670)", async () => {
-        const entity = await orderEntity();
-        await db.upsertEntityRecords(entity.id, [
-          { key: "P-1", values: { order_id: "P-1", status: "open", total: 1 } },
-          { key: "P-2", values: { order_id: "P-2", status: "open", total: 2 } },
-          { key: "P-3", values: { order_id: "P-3", status: "open", total: 3 } },
-        ]);
-        const removed = await db.pruneEntityRecords(entity.id, ["P-1", "P-3"]);
-        expect(removed).toBe(1);
-        const kept = (await db.listEntityRecords(entity.id)).map((r) => r.key);
-        expect(kept.sort()).toEqual(["P-1", "P-3"]);
-      });
-
-      it("deleting an Entity removes its Records", async () => {
-        const entity = await orderEntity();
-        await db.upsertEntityRecords(entity.id, [
-          { key: "B-1", values: { order_id: "B-1", status: "open", total: 5 } },
-        ]);
-        await db.table("entities").delete(entity.id);
-        expect(await db.table("entities").get(entity.id)).toBeNull();
-        expect(await db.countEntityRecords(entity.id)).toBe(0);
       });
     });
 
@@ -5427,9 +5082,9 @@ export function describeDbContract(
         });
         const input = {
           id: `reconcile-${shortId()}`,
-          kind: "sync_entity_records" as const,
+          kind: "promote_memories" as const,
           payload: {
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             collectionId: collection.id,
           },
         };
@@ -5446,9 +5101,9 @@ export function describeDbContract(
           name: "Source-less Job Collection",
         });
         const job = await db.createBackgroundJob({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           payload: {
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             collectionId: collection.id,
           },
         });
@@ -5465,9 +5120,9 @@ export function describeDbContract(
         await expect(
           db.createBackgroundJob({
             organizationId: ctx.foreignOrganizationId,
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             payload: {
-              kind: "sync_entity_records",
+              kind: "promote_memories",
               collectionId: collection.id,
             },
           })
@@ -5511,9 +5166,9 @@ export function describeDbContract(
 
         await expect(db.createBackgroundJob({
           organizationId: ctx.organizationId,
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           payload: {
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             collectionId: second.id,
             conceptId: concept.id,
           },
@@ -5531,10 +5186,10 @@ export function describeDbContract(
           kind: "text",
         });
         const job = await db.createBackgroundJob({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           sourceId: source.id,
           payload: {
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             assistantId: assistant.id,
             collectionId: collection.id,
             sourceId: source.id,
@@ -5545,7 +5200,7 @@ export function describeDbContract(
 
         const claim = (workerId: string) =>
           systemDb.claimBackgroundJobs({
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             workerId,
             now: "2026-07-09T10:01:00.000Z",
             staleBefore: "2026-07-09T09:45:00.000Z",
@@ -5579,13 +5234,13 @@ export function describeDbContract(
           kind: "text",
         });
         const job = await db.createBackgroundJob({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           sourceId: source.id,
-          payload: { kind: "sync_entity_records" },
+          payload: { kind: "promote_memories" },
           nextRunAt: "2026-07-09T10:00:00.000Z",
         });
         const [expiredLease] = await systemDb.claimBackgroundJobs({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           workerId: "expired-worker",
           now: "2026-07-09T10:01:00.000Z",
           staleBefore: "2026-07-09T09:45:00.000Z",
@@ -5593,7 +5248,7 @@ export function describeDbContract(
         });
         expect(expiredLease?.leaseToken).toBeTruthy();
         const reclaimed = await systemDb.claimBackgroundJobs({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           workerId: "current-worker",
           now: "2026-07-09T10:20:00.000Z",
           staleBefore: "2026-07-09T10:05:00.000Z",
@@ -5638,9 +5293,9 @@ export function describeDbContract(
           kind: "text",
         });
         const job = await db.createBackgroundJob({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           sourceId: source.id,
-          payload: { kind: "sync_entity_records" },
+          payload: { kind: "promote_memories" },
           maxAttempts: 3,
           nextRunAt: "2026-07-09T10:00:00.000Z",
         });
@@ -5650,7 +5305,7 @@ export function describeDbContract(
           ["worker-3", "2026-07-09T10:40:00.000Z", "2026-07-09T10:25:00.000Z"],
         ]) {
           await expect(systemDb.claimBackgroundJobs({
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             workerId: workerId!,
             now: now!,
             staleBefore: staleBefore!,
@@ -5659,7 +5314,7 @@ export function describeDbContract(
         }
 
         const terminal = await systemDb.claimTerminalBackgroundJobs({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           workerId: "worker-4",
           now: "2026-07-09T11:00:00.000Z",
           staleBefore: "2026-07-09T10:45:00.000Z",
@@ -6000,25 +5655,25 @@ export function describeDbContract(
           kind: "text",
         });
         const oldJob = await db.createBackgroundJob({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           sourceId: source.id,
           payload: {
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             collectionId: collection.id,
           },
           nextRunAt: "1990-01-01T00:00:00.000Z",
         });
         const activeJob = await db.createBackgroundJob({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           sourceId: source.id,
           payload: {
-            kind: "sync_entity_records",
+            kind: "promote_memories",
             collectionId: collection.id,
           },
           nextRunAt: "1991-01-01T00:00:00.000Z",
         });
         const [claimedJob] = await systemDb.claimBackgroundJobs({
-          kind: "sync_entity_records",
+          kind: "promote_memories",
           workerId: "retention-job",
           now: "2000-01-01T00:00:00.000Z",
           staleBefore: "1999-01-01T00:00:00.000Z",

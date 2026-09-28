@@ -12,7 +12,6 @@ export const API_V1_DOMAINS = [
   "publish",
   "inbox",
   "improvements",
-  "entities",
   "memories",
   "projects",
   "sso",

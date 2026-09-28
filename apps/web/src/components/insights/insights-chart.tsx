@@ -262,7 +262,7 @@ export function UsageCard({
           <Tabs value={tab} onValueChange={(value) => selectTab(value as Tab)}>
             {/* Library's pill rail: every section switcher in the console is
                 the same control. */}
-            <TabsList aria-label="Usage chart view" className="bg-muted">
+            <TabsList aria-label="Usage chart view">
               {TABS.map((t) => (
                 <TabsTrigger key={t.id} value={t.id}>
                   {t.label}

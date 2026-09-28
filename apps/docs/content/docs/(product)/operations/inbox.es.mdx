@@ -1,44 +1,45 @@
 ---
 title: Bandeja de entrada
-description: Inspecciona conversaciones, fuentes, trazas de tiempo de ejecución y metadatos de sesión.
+description: Revisa las conversaciones, las fuentes, los rastreos de ejecución y los metadatos de las sesiones.
 ---
 
 La bandeja de entrada almacena los turnos del visitante y del asistente. Abre
-una conversación para revisar la transcripción exacta que se ha guardado.
+una Conversation para revisar la transcripción exacta almacenada.
 
 ## Lista de conversaciones
 
 Utiliza la búsqueda y los filtros disponibles para acotar la lista. Cada fila
-identifica la actividad reciente y el estado actual de la conversación.
+identifica la actividad reciente y el estado actual de la Conversation.
 
-Una sesión que contiene solo notificaciones proactivas tiene el marcador
-**Notification only**. Se convierte en una conversación normal después de que un
-visitante responda.
+Una sesión que contiene únicamente Notifications proactivas lleva el marcador
+**Notification only**. Se convierte en una Conversation normal cuando un Visitor
+responde.
 
 ## Detalle de la conversación
 
-La vista detallada puede mostrar:
+La vista de detalles puede mostrar:
 
 - Mensajes del visitante y del asistente
-- el flujo que gestionó un turno
-- Citas de fuentes con nombre
-- Comentarios de los visitantes
-- estado de escalada
-- metadatos de lanzamiento y de dispositivo
-- el sujeto SSO verificado y la notificación de identidad configurada
-- información de Thinking almacenada cuando el rol de miembro permite el acceso
+- el Flow que gestionó un turno
+- citas de fuentes con nombre
+- Comentarios del visitante
+- estado de escalamiento
+- metadatos de lanzamiento y del dispositivo
+- el sujeto de SSO verificado y la reclamación de identidad configurada
+- información de Thinking almacenada cuando el Role del miembro permite el
+  acceso
 
-Las acciones de Verbatim Message y las respuestas Basic no contienen un rastro
-de Thinking. Las respuestas de búsqueda de conocimiento pueden contener eventos
-de herramienta y de progreso.
+Las acciones de Verbatim Message y las Basic replies no contienen un registro de
+Thinking. Las respuestas de búsqueda en la base de conocimientos pueden contener
+eventos de herramientas y de progreso.
 
-Las herramientas de Entidad generada también aparecen en el seguimiento. Sus
-eventos muestran qué datos activos de la Organización respaldaron la respuesta.
+Las llamadas de integración de la API también aparecen en el seguimiento. Sus
+eventos muestran qué endpoint admitió la respuesta.
 
-## Crea un trabajo de calidad
+## Crea trabajo de calidad
 
-Utiliza la acción de mejora disponible cuando sea necesario corregir una
-respuesta. El nuevo elemento enlaza con el mensaje de la conversación afectado.
+Utiliza la acción Improvement disponible cuando una respuesta necesite
+corrección. El nuevo elemento enlaza con el mensaje de la Conversation afectado.
 
-Utiliza [Exports](/operations/exports) cuando necesites registros estructurados
-fuera de la bandeja de entrada.
+Usa [Exports](/operations/exports) cuando necesites registros estructurados
+fuera de la Bandeja de entrada.

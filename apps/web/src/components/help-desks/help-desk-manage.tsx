@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ChannelKind, HelpDesk, SupportChannel } from "@agent-hub/core";
@@ -14,12 +15,9 @@ import {
   reorderSupportChannelsAction,
   updateHelpDeskAction,
 } from "@/app/actions";
-import {
-  ChannelPanel,
-  type ChannelPanelState,
-} from "@/components/help-desks/channel-panel";
+import type { ChannelPanelState } from "@/components/help-desks/channel-panel";
 import { TicketingIntegrationSection } from "@/components/help-desks/ticketing-integration";
-import { Button } from "@agent-hub/ui";
+import { Button, Skeleton } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +30,47 @@ import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { discardChangesRequest, useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 import { isPlainClick } from "@/lib/plain-click";
+
+// Opened only after a click on a channel or "Add channel", so it never renders
+// on the server anyway. Its editor, form builder, availability scheduler and
+// the country and timezone lists stay out of the desk page's first bundle.
+// The fallback is the sheet's own frame at its 480px default width (a literal:
+// importing PANEL_MIN_WIDTH would pull the module back into this bundle), so
+// the first click answers at once instead of after the chunk arrives.
+const ChannelPanel = dynamic(
+  () => import("@/components/help-desks/channel-panel").then((module) => module.ChannelPanel),
+  {
+    loading: () => (
+      <aside
+        className="bg-background fixed inset-y-0 right-0 z-50 flex w-[480px] max-w-full flex-col border-l shadow-xl"
+        role="status"
+        aria-busy="true"
+      >
+        <span className="sr-only">Loading channel…</span>
+        {/* Measured against the open sheet: 22px padding, the 29px back /
+            title / close line, the 37px tab list, then label, hint and field
+            groups 22px apart. */}
+        <div className="px-6 pt-6">
+          <div className="flex h-8 items-center gap-3">
+            <Skeleton className="h-5 w-12" />
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="ml-auto size-8 rounded-md" />
+          </div>
+          <Skeleton className="mt-6 h-10 w-full rounded-lg" />
+          <div className="mt-8 space-y-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i}>
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="mt-1 h-5 w-3/4" />
+                <Skeleton className="mt-2 h-11 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+    ),
+  },
+);
 
 function errorMessage(error: unknown, fallback: string): string {
   if (isRedirectError(error)) throw error;

@@ -22,11 +22,11 @@ Show a table organise les faits que l'Assistant a trouvés dans cette réponse. 
 ne calcule pas de valeurs. Le tableau s'affiche au-dessus de la réponse écrite,
 et la transcription de l'Inbox présente le même tableau.
 
-L'Assistant peut ajouter une question complémentaire à une ligne. Le Visitor
+L'Assistant peut ajouter une question de suivi à une ligne. Le Visitor
 sélectionne la ligne pour poser cette question. La transcription de l'Inbox
 affiche ces lignes, mais un Member ne peut pas les sélectionner.
 
-## Activer le mode d'étude
+## Activer le mode Étude
 
 **Study Mode** est désactivé par défaut. Activez-le pour permettre aux Visiteurs
 de s'exercer sur la Knowledge de l'Assistant grâce à des exercices interactifs.
@@ -66,28 +66,9 @@ soumise ne peut pas être modifiée. Les flashcards acceptent les variantes
 orthographiques définies lors de la création de l'exercice.
 
 La Inbox affiche les questions, les réponses soumises, les bonnes réponses et le
-score. Les exercices non terminés indiquent le nombre de questions qui restent
-sans réponse. Les exercices s'exécutent dans le chat. Ils n'ont pas besoin d'un
+score. Les exercices non terminés indiquent le nombre de questions restées sans
+réponse. Les exercices s'exécutent dans le chat. Ils n'ont pas besoin d'un
 lecteur H5P externe.
-
-## Connecter des données structurées
-
-La section **Data** répertorie les Entités importées via **Settings → Data**.
-Sélectionnez chaque Entité que cet Assistant peut interroger.
-
-Chaque Entité sélectionnée fournit un outil de filtrage exact. Une entité dotée
-d'attributs texte fournit également un outil de recherche par mot-clé.
-
-Les Shared Entities sont accessibles à chaque Visitor pris en charge par
-l'Assistant. Les Entités à portée utilisateur nécessitent une
-[revendication d'identité](/authentication/microsoft-entra-id#choose-an-identity-claim)
-vérifiée.
-
-La sélection de l'entité et le schéma sont intégrés au prochain instantané de
-publication. Le contenu des enregistrements reste actif après la Publication.
-
-Consultez [Entities and Records](/data/entities-and-records) pour en savoir plus
-sur les importations CSV, les choix de portée et le filtrage des identités.
 
 ## Configurer une intégration d'API
 
@@ -139,7 +120,7 @@ Une Skill est un modèle d'instruction réutilisable. Une Organisation peut
 associer une même Skill à plusieurs Assistants.
 
 1. Ouvrez **Tools & Skills**.
-2. Recherchez la Skill d'organisation requise.
+2. Recherchez la **Skill** d'organisation requise.
 3. Associez la Skill à l'Assistant.
 4. Testez le résultat dans Preview.
 5. Publiez l'Assistant lorsque le résultat est correct.
@@ -154,11 +135,11 @@ personne qui pose la question, et non de celui de l'Assistant.
 
 La fenêtre de discussion affiche un menu **/** avec chaque Skill qui dispose
 d'une phrase d'ouverture. Lorsque l'utilisateur sélectionne une Skill, la
-fenêtre de discussion insère la phrase d'ouverture dans la zone de message. Vous
-pouvez modifier le texte avant de l'envoyer.
+fenêtre de discussion inscrit la phrase d'ouverture dans la zone de message.
+Vous pouvez modifier le texte avant de l'envoyer.
 
 Si la phrase d'ouverture est vide, la Skill n'apparaît pas dans le menu **/**.
-L'invite de la Skill continue de s'appliquer à chaque réponse.
+Le prompt de la Skill continue de s'appliquer à chaque réponse.
 
 Publiez l'Assistant après avoir rédigé une phrase d'ouverture. Le Widget utilise
 le dernier instantané de Publication.
@@ -172,7 +153,7 @@ Une Knowledge Source est permanente. Ciele stocke son texte, l'indexe, et
 l'Assistant peut le citer dans toutes les conversations ultérieures.
 
 Une pièce jointe appartient à sa conversation. Ciele le lit une seule fois, en
-ignore les octets et ne l'ajoute jamais à la Library. Aucune autre conversation
+jette les octets et ne l'ajoute jamais à la Library. Aucune autre conversation
 ne le voit.
 
 Pour rendre un fichier permanent, ajoutez-le plutôt dans **Library**.

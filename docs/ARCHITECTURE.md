@@ -270,9 +270,10 @@ only the OSS chain. Grouped:
   `concept_chunks` (`embedding vector(1536)`, **HNSW** `vector_cosine_ops` index), plus
   `assistant_sources`, the M:N link that decides which Assistant answers from a Source. RPC
   `match_chunks_linked`.
-- **Structured data**: `entities` (typed schema, key attribute, shared or user-scoped) →
-  `entity_records` (live `data` jsonb, unique key per Entity). Selected Entity schemas enter
-  `assistants.tools` and Publications; Record values do not.
+- **Retired tables**: `entities`, `entity_records`, `entity_sync_configs` and `entity_sync_runs`
+  held the Entities feature (typed business data exposed as generated chat tools). The feature is
+  removed and API Integrations replace it. The tables stay in the schema, unread, because no
+  migration drops them.
 - **Conversations**: `conversations` (subject member|visitor|sso, optional verified identity claim,
   `metadata` jsonb, `pinned`),
   `messages` (`content` jsonb parts, `flow_id`/`flow_name`, `feedback` −1|0|1).
@@ -486,10 +487,6 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
   written back **after** the assistant message persists and only when a tool marked it dirty. The
   `remember` built-in appends capped (20), deduped facts (≤500 chars) that the next turn injects as
   its session-memory layer.
-- **Identity-bound Entity tools** (`entity-tools.ts`): an Assistant's selected Entity schemas
-  generate exact-filter tools and, when text attributes exist, search tools. Shared tools query live
-  Records. User-scoped tools remove the identity attribute from model-facing input and add the
-  verified Widget SSO claim server-side; a missing claim means the tool is not registered.
 - **Long-term memory** (`memories.ts` + durable `promote_memories` jobs): after a Conversation stays
   quiet for 15 minutes, the classifier tier can extract durable Visitor facts, embed them, remove
   exact duplicates, and cap each Organization/SSO subject at 200. The first turn of a later
@@ -545,7 +542,7 @@ Browser renders stream incrementally; feedback via POST /api/widget/{id}/feedbac
 
 Steps 2–4, the **Conversation Turn** (see context.md), live in one module,
 `packages/agent/src/turn.ts`: verified-subject threading, get-or-create conversation, history assembly,
-Knowledge, Entity, and memory-tool wiring,
+Knowledge and memory-tool wiring,
 user/assistant message persistence, deferred-effects application, and the ndjson stream framing
 (`NDJSON_HEADERS` + one JSON `RuntimeEvent` per line). The two chat entrypoints are thin adapters
 over this seam and differ only in what they feed it.
@@ -697,8 +694,8 @@ differ in theming/interactivity for other reply parts but not for citations.
 ## 9. Publishing model (immutable snapshots)
 
 `publishAssistantAction` captures a **`Publication`**: a versioned, immutable jsonb snapshot of the
-assistant config + all flows + collection references. Selected Entity schemas also enter the
-snapshot, but Entity Record values remain live so imports do not require another Publication. The
+assistant config + all flows + collection references. Snapshots published before the Entities
+feature was removed still carry an `entities` key, and the runtime ignores it. The
 snapshot's field selection lives in one
 tested place, **`buildPublicationConfig(assistant, flows, collections)`** (`packages/db/publication.ts`),
 so a newly-added `Assistant` field can't silently be omitted from new Publications (a unit test asserts
@@ -767,7 +764,7 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   empty Knowledge Scope, `remember` on, `fetchUrl` and `renderTable` opt-in,
   plus the API catalogue triad and the two windowed readers when an integration and a document
   reader are wired; a Teammate turn adds its granted-action tools, the two memory writes and, with
-  colleagues to name, `referToTeammate`), generated Entity tools with server-bound identity filters,
+  colleagues to name, `referToTeammate`),
   opt-in SSO long-term-memory promotion and recall, org Skills layered into the prompt and
   snapshotted into Publications, turn sessions with a `remember` memory layer, and the bounded
   search budget. **[target]** an MCP tool *provider*, the registry seam exists, the client does not.

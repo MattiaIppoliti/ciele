@@ -1,6 +1,6 @@
 {
   "title": "API-Referenz",
-  "description": "Alle öffentlichen API-Operationen von Ciele",
+  "description": "Jede öffentliche Ciele-API-Operation",
   "icon": "Braces",
   "root": true,
   "pages": [
@@ -12,7 +12,6 @@
     "publish",
     "inbox",
     "improvements",
-    "entities",
     "memories",
     "projects",
     "sso",

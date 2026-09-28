@@ -1,15 +1,15 @@
 ---
 title: Modelo de datos
-description: Comprende las relaciones principales entre el inquilino principal, la configuración, Knowledge y Conversation.
+description: Comprende las relaciones entre el inquilino principal, la configuración, Knowledge y Conversation.
 ---
 
-## Propiedad del inquilino
+## Titularidad del inquilino
 
 Una Organization es el inquilino principal. Los miembros se unen a una
 Organization con un único Role.
 
 Los registros propiedad de la organización incluyen Assistants, Teammates,
-Entities, Memories, Help Desks, conexiones con proveedores, claves API, Skills,
+Memories, Help Desks, conexiones con proveedores, API keys, Skills,
 Improvements, Goals, Alerts y registros de uso.
 
 Los registros de Teammate incluyen Projects, documentos de memoria, Routines y
@@ -38,20 +38,12 @@ Publication.
 
 Un Flow almacena un desencadenante, la configuración de las condiciones y las
 acciones ordenadas. La validación en tiempo de ejecución garantiza que los pares
-de trigger y action sean válidos.
+de desencadenantes y acciones sean válidos.
 
-Un asistente selecciona los esquemas de entidad para su próxima publicación. La
-instantánea del esquema controla las herramientas generadas, mientras que cada
-consulta lee los Records actuales.
-
-Las Shared Entities exponen datos comunes de la Organization. Las Entities con
-ámbito de usuario designan un atributo de identidad para el filtrado en el
-servidor.
-
-## Titularidad del conocimiento
+## Propiedad del conocimiento
 
 <Mermaid
-  title="Un enlace, no una Collection, decide qué busca un asistente"
+  title="Un enlace, no una Collection, determina qué busca un asistente."
   chart={`
 flowchart TB
   ORG["Organization"]
@@ -69,13 +61,12 @@ flowchart TB
 El conocimiento pertenece a la Organización. Una Collection es un contenedor, no
 un propietario, y no decide qué Assistant responde a partir de una Source.
 
-Es el enlace de asistente a fuente el que lo determina. El módulo de
-recuperación lee el conjunto de enlaces, por lo que una Source no enlazada no
-responde a nadie. El enlace también proporciona acceso directo específico para
-cada asistente.
+Eso lo hace el enlace de Asistente a Fuente. El proceso de recuperación lee el
+conjunto de enlaces, por lo que una Source sin enlazar no responde a nadie. El
+enlace también proporciona acceso directo por asistente.
 
-Al eliminar un asistente, se suprimen sus enlaces y todas las fuentes se
-mantienen en su sitio.
+Al eliminar un asistente, se suprimen sus enlaces y todas las fuentes permanecen
+donde están.
 
 ## Datos de la conversación
 
@@ -83,25 +74,25 @@ Una Conversation pertenece a un Assistant o a un Teammate, nunca a ambos. Una
 Conversation de Assistant hace seguimiento de una única sesión de Visitor.
 
 Una Teammate Conversation es un chat interno de un Member. No aparece en Inbox
-ni en Insights. Los mensajes almacenan las partes escritas correspondientes a
-texto, citas, botones, trazas y otras respuestas.
+ni en Insights. Los mensajes almacenan partes escritas para texto, citas,
+botones, trazas y otras respuestas.
 
 El estado de la sesión también registra la entrega proactiva de notificaciones.
 Una Notification no crea un mensaje de Visitor.
 
-Los Long-term Memories pertenecen a una Organization y a un sujeto de SSO
-verificado. Almacenan un hecho persistente, un «embedding», marcas de tiempo y
-la procedencia de la conversación de origen.
+Los recuerdos a largo plazo pertenecen a una Organization y a un sujeto de SSO
+verificado. Almacenan un hecho duradero, un «embedding», marcas de tiempo y la
+procedencia de la conversación de origen.
 
 El tiempo de ejecución limita cada sujeto a 200 recuerdos. La eliminación hace
-que un hecho deje de estar disponible para futuras inyecciones de indicaciones y
+que un hecho deje de estar disponible para futuras inyecciones de *prompts* y
 búsquedas en la memoria.
 
 ## Credenciales programáticas
 
-Un registro de clave API pertenece a una Organization y almacena un hash
-secreto, un Role, el creador y el estado de revocación. El secreto en texto
-plano no se almacena.
+Un registro de clave API pertenece a una Organización y almacena un hash
+secreto, un Rol, el creador y el estado de revocación. El secreto en texto plano
+no se almacena.
 
 ## Aislamiento
 
@@ -109,5 +100,5 @@ El acceso autenticado a la consola utiliza seguridad a nivel de fila cuando
 procede. Las rutas de los roles de servicio deben añadir un límite explícito de
 Organization.
 
-La API v1 utiliza la Organization resuelta a partir de la clave API. No acepta
-como autoridad una Organization seleccionada por el llamante.
+La API v1 utiliza la Organization determinada a partir de la clave de API. No
+acepta como autoridad una Organization seleccionada por el llamante.

@@ -1,12 +1,12 @@
 ---
 title: Chat-Laufzeit
-description: Verstehen Sie den aktuellen Trigger-Dispatch, das Flow-Routing, die Bedingungen und die geordneten Aktionen.
+description: Machen Sie sich mit der aktuellen Trigger-Auslösung, dem Flow-Routing, den Bedingungen und den geordneten Aktionen vertraut.
 ---
 
 ## Nachrichtenpfad
 
 <Mermaid
-  title="Wie eine Besuchernachricht gespeicherte Antwortteile erreicht"
+  title="Wie eine Nachricht eines Besuchers gespeicherte Antwortteile erreicht"
   chart={`
 flowchart TB
   MSG["Visitor message"]
@@ -25,67 +25,66 @@ flowchart TB
 `}
 />
 
-Verifizierte Identität, Entity Records und Langzeitgedächtnis sind Eingaben, die
-die Aktionen lesen. Sie sind keine Phasen des Routers, daher werden sie in der
-Abbildung nicht dargestellt.
+Verified identity und long-term memory sind Eingaben, die von den Actions
+gelesen werden. Sie sind keine Phasen des Routers, daher lässt die Abbildung sie
+aus.
 
 `messageFlowCandidates` liefert Kandidaten an beide Routing-Engines. Diese
-Grenze verhindert, dass objektive Bedingungen zu unterschiedlichen
-Router-Ergebnissen führen.
+Grenze verhindert, dass objektive Bedingungen zu unterschiedlichen Ergebnissen
+des Routers führen.
 
-Der Konversationskontext liefert semantische Beispiele für die Klassifizierung.
-Es fungiert nicht als unabhängiges Boolesches Gate.
+Der Gesprächskontext liefert semantische Beispiele für die Klassifizierung. Es
+fungiert nicht als unabhängiges Boolesches Gate.
 
-## Identitätsgebundener Kontext
+## An die Identität gebundener Kontext
 
-Ein gültiges Widget-SSO-Gate liefert ein Subjekt im Bereich der Organisation.
-Ein optionaler verifizierter Anspruch kann mit Entity Records auf Benutzerebene
-übereinstimmen.
+Ein gültiges Widget-SSO-Gate liefert ein Subject mit
+Organisation-Geltungsbereich. Ein optionaler verifizierter Claim fügt diesem
+Subject einen lesbaren Identifier hinzu.
 
-Ausgewählte Entitäten erzeugen generierte Filter- und Textsuchwerkzeuge. Tools
-im Benutzerbereich lassen das Identitätsattribut in der modellseitigen Eingabe
-weg.
+Ein API-Integrationsendpunkt kann einen Parameter an `{{identity.subject}}` oder
+`{{identity.claim}}` pinnen. Der Server trägt den verifizierten Wert ein,
+nachdem er die Tool-Eingabe validiert hat.
 
-Der Server fügt den Filter für die verifizierte Identität hinzu, nachdem er die
-Eingabe des Tools validiert hat. Das Modell kann ihn weder auslassen noch
+Das Modell kann einen gepinnten Identitätswert weder auslassen noch
 überschreiben.
 
-Beim ersten Zug einer neuen Konversation kann die Laufzeitumgebung bis zu fünf
-relevante Langzeiterinnerungen injizieren. Ein integriertes Speichersuchwerkzeug
-ermöglicht den späteren Abruf.
+Beim ersten Zug einer neuen Conversation kann die Runtime bis zu fünf relevante
+Long-Term Memories injizieren. Ein integriertes Tool zur Speichersuche deckt das
+spätere Abrufen ab.
 
-Für beide Speicherpfade sind der Schalter „Organization“ und ein verifizierter
-SSO-Benutzer erforderlich.
+Beide Speicherpfade erfordern den Schalter „Organization“ und einen
+verifizierten SSO-Subject.
 
-## Höflichkeits-Shortcut
+## Tastenkürzel für Höflichkeitsnachrichten
 
-Der integrierte Basic Interaction Flow kann eine kurze, reine
-Höflichkeitsnachricht vor der Intent Classification verarbeiten. Ein früherer
-berechtigter benutzerdefinierter Flow hat weiterhin Priorität.
+Der integrierte Basic Interaction Flow kann eine kurze, rein höfliche Nachricht
+vor der Intent Classification verarbeiten. Ein früherer, infrage kommender
+benutzerdefinierter Flow hat weiterhin Vorrang.
 
-Die Shortcut wird nicht aktiviert nach einer Frage des Assistenten oder bei
-einer Nachricht, die eine Informationsanfrage enthält.
+Der Shortcut wird nicht aktiviert, wenn eine Frage des Assistenten gestellt
+wurde oder wenn eine Nachricht eine Informationsanfrage enthält.
 
 ## Proaktiver Pfad
 
-Die Einbettung meldet Seitenlade-, Verweilzeit- und Chat-Öffnungsereignisse. Der
-Server validiert den konfigurierten Trigger und den Zustellstatus.
+Das Embed erfasst Ereignisse wie Page Load, Dwell Time und Chat-Open. Der Server
+validiert den konfigurierten Trigger und den Delivery-Status.
 
-Ein proaktiver Flow enthält eine Benachrichtigungsaktion und keine Bedingungen.
-Die Aktion gibt konfigurierten Inhalt ohne Modellaufruf aus.
+Ein proaktiver Flow enthält eine Notification-Aktion und keine Bedingungen. Die
+Aktion gibt den konfigurierten Inhalt ohne einen Modellaufruf aus.
 
-## Ausführung von Aktionen
+## Ausführung der Aktion
 
 Aktionen werden in der gespeicherten Reihenfolge ausgeführt. Jede Aktion gibt
-strukturierte Antwortteile oder einen stillen Effekt zurück.
+strukturierte Antwortteile zurück oder hat eine stille Wirkung.
 
-Generative Arbeit bleibt innerhalb von Basic Reply, Search Knowledge,
+Generative Arbeit bleibt innerhalb von Basic reply, Search knowledge,
 generierten Follow-ups und unterstützten Empfehlungspfaden.
 
-## Übergabe
+## Handover
 
 Handover lädt einen veröffentlichten Ziel-Assistenten in derselben Organisation.
-Sie führt die Besuchernachricht einmal durch diesen Zielassistenten.
+Es führt die Visitor-Nachricht einmal durch diesen Ziel-Assistenten.
 
 Die Zielausführung ignoriert eine weitere Übergabe. Diese Regel verhindert eine
-unbegrenzte Assistant-Kette.
+unbegrenzte Kette von Assistenten.

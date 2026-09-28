@@ -54,8 +54,6 @@ ciele assistants update <id> --file patch.json      # any AssistantPatch field
 ciele assistants update <id> [--title …] [--answering-style …]
 ciele assistants duplicate <id>        # config + flows; knowledge stays
 ciele assistants delete <id> --yes
-ciele assistants get-entities <id>
-ciele assistants set-entities <id> --ids products,opening-hours
 ```
 
 ### Flows (the router)
@@ -127,17 +125,9 @@ ciele improvements update <id> --status in_progress --priority high \
 # --priority none / --assignee "" / --due "" clear the field
 ```
 
-### Entities, Records, and long-term memory
+### Long-term memory
 
 ```bash
-ciele entities list
-ciele entities create --file entity.json
-ciele entities update <id> --name "Orders"
-ciele entities delete <id> --yes
-ciele records list <entityId> [--limit 50] [--offset 0]
-ciele records query <entityId> --file query.json
-ciele records import <entityId> --file records.csv
-
 ciele memories status
 ciele memories enable                         # admin+ key
 ciele memories subjects

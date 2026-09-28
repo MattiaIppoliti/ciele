@@ -34,7 +34,7 @@ export function InsightsNav() {
         })
       }
     >
-      <TabsList aria-label="Insights tabs" className="bg-muted">
+      <TabsList aria-label="Insights tabs">
         {ITEMS.map((item) => (
           <TabsTrigger key={item.href} value={item.href} href={item.href}>
             {item.label}

@@ -1,56 +1,27 @@
 ---
-title: Daten und Speicher
-description: Stützen Sie Antworten auf strukturierte Records und erinnern Sie sich über mehrere Conversations hinweg an angemeldete Visitors.
+title: Speicher
+description: Merken Sie sich angemeldete Besucher über alle Conversations hinweg, die unter der Kontrolle der Organisation stehen.
 ---
 
-import { Brain, Database } from 'lucide-react';
+import { Brain } from 'lucide-react';
 
-Ciele kann Organization Records mit dauerhaften Fakten über angemeldete Visitors
-kombinieren. Diese Funktionen verwenden eine verifizierte Identität und bleiben
-unter der Kontrolle der Organisation.
-
-<Mermaid
-  title="Records werden erst dann zu Tools, wenn Sie sie veröffentlichen"
-  chart={`
-flowchart TB
-  DATA["Entity schema and imported Records"]
-  SELECT["Select the Entity in Tools & Skills"]
-  PUB["Publish the Assistant"]
-  TOOLS["Lookup tools the Assistant can call"]
-  TRACE["Calls appear in Thinking and the Inbox"]
-  DATA --> SELECT
-  SELECT --> PUB
-  PUB --> TOOLS
-  TOOLS --> TRACE
-`}
-/>
-
-Die Publication bestimmt, welche Entity-Tools vorhanden sind. Record-Werte
-bleiben aktiv, sodass ein späterer CSV-Import Antworten ändern kann, ohne dass
-eine weitere Publication erforderlich ist.
-
-Eine Entity mit Benutzerumfang benötigt einen verifizierten Identitätsnachweis.
-Der Server fügt diesen Filter hinzu, nachdem er die Tool-Eingabe validiert hat,
-sodass ein Modell ihn weder entfernen noch einen anderen Visitor benennen kann.
-
-Long-term memory ist eine separate Funktion mit einem eigenen Lebenszyklus. Es
-ist nicht von Entities abhängig. Siehe
-[Long-term memory](/data/long-term-memory).
+Ciele kann dauerhafte Fakten über angemeldete Besucher speichern. Diese Funktion
+verwendet eine verifizierte Identität und bleibt unter der Kontrolle der
+Organisation.
 
 <Cards>
-  <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
   <Card icon={<Brain />} title="Long-term memory" href="/data/long-term-memory" description="Enable durable facts, inspect recall, and erase stored memories." />
 </Cards>
 
 ## Zwei Arten von Speicher
 
-**Session memory** gehört zu einer Conversation. Es folgt einem Visitor nicht in
-eine neue Conversation.
+**Session memory** gehört zu einer Conversation. Es folgt einem Besucher nicht
+in eine neue Conversation.
 
-**Long-term memory** gehört zu einem verifizierten SSO-Subject innerhalb einer
+**Long-term memory** gehört zu einem verifizierten SSO-Subjekt innerhalb einer
 Organisation. Es kann spätere Conversations unterstützen, wenn die Organisation
 dies aktiviert.
 
 <Callout title="Signed-in Visitors only">
-Anonymous Visitors never receive user-scoped Entity tools. They also never produce or recall long-term memories.
+Anonymous Visitors never produce or recall long-term memories.
 </Callout>

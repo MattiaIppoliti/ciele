@@ -12,9 +12,6 @@ import type {
   ChannelMessage,
   ConversationSubject,
   Reversibility,
-  EntityRecord,
-  EntityRecordQuery,
-  EntitySnapshot,
   Flow,
   FlowAction,
   FlowButtonIcon,
@@ -49,9 +46,10 @@ export type { ReferralCandidate } from "@agent-hub/core";
 export type ChatReplyPart =
   /**
    * `fallback` = error/limit copy; `refusal` = the model declined on safety
-   * grounds (persisted, queryable marker, never a knowledge gap).
+   * grounds (persisted, queryable marker, never a knowledge gap); `guardrail`
+   * = an input guardrail blocked the message and this is its reply.
    */
-  | { type: "text"; action: FlowAction | "fallback" | "refusal"; text: string }
+  | { type: "text"; action: FlowAction | "fallback" | "refusal" | "guardrail"; text: string }
   | {
       type: "help_desk";
       action: "suggest_help_desk" | "show_button";
@@ -498,7 +496,7 @@ export type ChannelEvent =
  * Who a turn verifiably speaks for (#667/#668/#669, ADR-0020): resolved
  * server-side from the session or the sealed SSO gate cookie, never from
  * request bodies or model output. The tool-registration policy reads it to
- * decide which Entity/custom-tool variants exist in the turn.
+ * decide which tool variants exist in the turn.
  */
 export interface ToolSubject {
   type: ConversationSubject;
@@ -510,12 +508,6 @@ export interface ToolSubject {
 
 /** Mid-conversation long-term memory recall (#664), pre-scoped to the turn's subject. */
 export type MemorySearcher = (query: string) => Promise<Array<{ text: string }>>;
-
-/** Live Entity-Record read for the auto-generated Entity tools (#665). */
-export type EntityRecordsFetcher = (
-  entityId: string,
-  query: EntityRecordQuery
-) => Promise<EntityRecord[]>;
 
 export interface HistoryMessage {
   role: "user" | "assistant";
@@ -762,14 +754,6 @@ export interface ActionContext {
    * presence is what registers the tool.
    */
   searchMemories?: MemorySearcher;
-  /**
-   * Selected shared Entities (#665): the Publication snapshot on the widget,
-   * live rows in Preview. With `queryEntityRecords`, each yields the
-   * auto-generated retrieval tools.
-   */
-  entities?: EntitySnapshot[];
-  /** Live Record read for the Entity tools, bound over the turn's Db. */
-  queryEntityRecords?: EntityRecordsFetcher;
   /**
    * What the Connector action needs from the host (#839): the Application
    * Connection row and the two writes a call may make. Absent leaves the

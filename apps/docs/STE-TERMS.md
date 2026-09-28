@@ -22,6 +22,7 @@ Use these terms in English public documentation. Preserve exact interface labels
 | Help Desk | A configured group of human contact channels. | support desk |
 | Improvement | A tracked answer-quality work item. | issue, task |
 | Goal | A scheduled deterministic answer check. | evaluation |
+| Guardrail | A check on each Visitor message or streamed answer. | filter, policy |
 | Alert | A detected problem that requires review. | warning |
 | Notification | A proactive, verbatim Assistant message. | nudge, announcement |
 | API key | An Organization-scoped programmatic credential. | token |

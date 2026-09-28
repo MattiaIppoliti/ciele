@@ -6,10 +6,11 @@ import type {
   ImprovementAssociationPage,
   ImprovementProposal,
 } from "@agent-hub/core";
-import { Button, Skeleton } from "@agent-hub/ui";
+import { Button } from "@agent-hub/ui";
 import { DetailDrawer } from "@/components/ui/detail-drawer";
 import { getImprovementDetailAction } from "@/app/actions";
 import { ImprovementDetail } from "./improvement-detail";
+import { ImprovementDetailSkeleton } from "./improvement-detail-skeleton";
 
 interface Detail {
   improvement: Improvement;
@@ -108,14 +109,9 @@ export function ImprovementDrawer({
               </Button>
             </div>
           ) : (
-            <div className="space-y-4 px-6 py-5">
+            <div aria-busy="true">
               <span className="sr-only">Loading improvement…</span>
-              <div aria-hidden className="space-y-4">
-                <Skeleton className="h-7 w-64" />
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-28 w-full" />
-                <Skeleton className="h-48 w-full" />
-              </div>
+              <ImprovementDetailSkeleton variant="drawer" />
             </div>
           )}
         </div>
