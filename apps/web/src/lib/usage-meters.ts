@@ -5,6 +5,7 @@ import {
   type UsageMeterSnapshot,
   type UsageWindowName,
 } from "@agent-hub/agent";
+import { countLabel } from "@/lib/pagination";
 
 /**
  * Turns a plan's meters into what the Usage page draws (#509).
@@ -174,7 +175,7 @@ export function resetLabel(to: string, now: string): string {
   // half days is "in 4 days", saying 5 would send an admin away for longer
   // than the window actually needs.
   const plural = (n: number, unit: string) =>
-    `Resets in ${n} ${unit}${n === 1 ? "" : "s"} · ${stamp} UTC`;
+    `Resets in ${countLabel(n, unit)} · ${stamp} UTC`;
   if (ms < 3_600_000) return plural(Math.floor(ms / 60_000), "minute");
   if (ms < 86_400_000) return plural(Math.floor(ms / 3_600_000), "hour");
   return plural(Math.floor(ms / 86_400_000), "day");

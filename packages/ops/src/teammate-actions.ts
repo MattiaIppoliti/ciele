@@ -396,7 +396,9 @@ export async function runTeammateAction(
     (candidate) => candidate.operation.name === operationName
   );
   if (!spec) {
-    throw new OperationError("invalid_input", actionRefusal(domainOf(operationName)));
+    // `improvements.fix.accept` → `improvements`, for the refusal sentence.
+    const domain = operationName.split(".")[0] ?? operationName;
+    throw new OperationError("invalid_input", actionRefusal(domain));
   }
   const input = spec.operation.input.parse(rawInput);
   const result = await spec.operation.run(ctx, input);
@@ -406,9 +408,4 @@ export async function runTeammateAction(
     entities: spec.operation.entities(input, result),
     result,
   };
-}
-
-/** `improvements.fix.accept` → `improvements`, for the refusal sentence. */
-function domainOf(operationName: string): string {
-  return operationName.split(".")[0] ?? operationName;
 }

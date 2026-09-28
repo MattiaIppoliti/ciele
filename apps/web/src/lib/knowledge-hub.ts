@@ -5,7 +5,7 @@ import type {
   OrgKnowledgeSourceSort,
   SourceStatus,
 } from "@agent-hub/core";
-import { clampPageSize } from "@/lib/pagination";
+import { clampPageSize, countLabel } from "@/lib/pagination";
 
 /**
  * Pure derivations for the Library and the assistant editor's Knowledge
@@ -93,6 +93,13 @@ export const KNOWLEDGE_TAB_INTROS: Record<KnowledgeTabSlug, string> = {
   faqs: "Add sets of questions and answers to fine tune AI responses.",
 };
 
+/** A Source table's status-column filter rows, in menu order. */
+export const SOURCE_STATUS_OPTIONS = [
+  { value: "ready", label: "Ready" },
+  { value: "processing", label: "Processing" },
+  { value: "error", label: "Error" },
+] as const;
+
 /**
  * Sub-nav health dot rollup: error > processing > ready; null (no dot) for an
  * empty tab.
@@ -110,7 +117,7 @@ export function tabHealth(
 export function directAccessSummary(links: AssistantSourceLink[]): string {
   const on = links.filter((l) => l.directAccess).length;
   if (on === 0) return "No direct access";
-  return on === 1 ? "1 assistant" : `${on} assistants`;
+  return countLabel(on, "assistant");
 }
 
 /** Human label for the hub's Type column. */
@@ -322,9 +329,7 @@ export function bulkRemovalChoice(input: {
   secondaryLabel?: string;
 } {
   const one = input.count === 1;
-  const what = `${input.count} ${
-    one ? input.noun : (input.pluralNoun ?? `${input.noun}s`)
-  }`;
+  const what = countLabel(input.count, input.noun, input.pluralNoun);
   if (input.sharedCount === 0) {
     return {
       mode: "delete",

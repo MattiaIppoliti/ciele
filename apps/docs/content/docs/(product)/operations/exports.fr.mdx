@@ -1,44 +1,69 @@
 ---
 title: Exportations
-description: Créez et téléchargez des exportations structurées de Conversations.
+description: Créez et téléchargez des rapports Insights et des exportations de conversations.
 ---
 
-Les exportations créent des enregistrements téléchargeables pour les
-conversations sélectionnées. Ciele génère l'exportation en tâche de fond.
+Ciele propose deux types d'exportation. Un export Insights est un fichier de
+rapport contenant vos mesures Insights. Un export de Conversations contient les
+enregistrements complets des Conversations sélectionnées.
 
-## Créez une exportation
+## Créer un export Insights
 
 1. Ouvrez **Insights**.
 2. Sélectionnez **Exports**.
-3. Sélectionnez l'étendue d'exportation Conversations ou l'étendue d'exportation
-   disponible.
-4. Lancez l'exportation.
-5. Attendez que le statut de la tâche soit prêt.
-6. Téléchargez le fichier avant l'expiration de son lien.
+3. Sélectionnez **New export**.
+4. Saisissez un nom dans **Export name**.
+5. Définissez les filtres pour le rapport : la plage de dates, l'Assistant,
+   **Aggregated**, **Feedback** et **Escalated**.
+6. Sélectionnez le type d'exportation.
+7. Sélectionnez le type de fichier : **CSV**, **JSON** ou **XLSX**.
+8. Sélectionnez **Create**.
 
-Le téléchargement utilise une URL signée à durée limitée. Lancez une nouvelle
-exportation lorsque le lien n'est plus valide.
+Ciele génère le fichier en tant que tâche en arrière-plan. L'exportation
+apparaît dans la liste avec son nom, son type et son type de fichier. Lorsque le
+statut est **Ready**, sélectionnez **Download**.
 
-## Exporter le contenu
+Les filtres sont identiques à ceux de la page Insights. Un export et la page
+Insights affichent les mêmes chiffres pour les mêmes filtres.
 
-Chaque enregistrement de conversation utilise le format d'exportation actuel à
+## Types d'exportation des Insights
+
+- **Aggregated insights** : chaque série de graphiques, avec une ligne pour
+  chaque jour, chaque semaine ou chaque mois.
+- **Datapoints** : les indicateurs principaux pour la période, avec une ligne
+  pour chaque indicateur. Une mesure sans données pour la plage concernée
+  présente une cellule vide.
+- **Languages** : le nombre de Conversations pour chaque langue dans laquelle
+  les Visiteurs ont écrit.
+
+**Shortcut button clicks** s'affiche dans la liste, mais vous ne pouvez pas le
+sélectionner. Ciele n'enregistre pas encore ces clics.
+
+## Téléchargements
+
+Ciele vérifie votre accès chaque fois que vous téléchargez un fichier. Ciele
+enregistre également chaque téléchargement.
+
+## Contenu de l'exportation des conversations
+
+Chaque enregistrement de Conversation utilise le format d'exportation actuel à
 29 champs. L'enregistrement comprend des informations sur la conversation,
-l'assistant, le visiteur, la session et le résultat.
+l'Assistant, le visiteur, la session et le résultat.
 
-Les détails du raisonnement dépendent de la clé API ou du rôle du rôle du
-membre. Un rôle de niveau inférieur ne peut pas demander le raisonnement masqué
-via une option d'exportation.
+Les détails du raisonnement dépendent de l'API-key ou du Role du membre. Un Role
+de niveau inférieur ne peut pas demander le raisonnement masqué via une option
+d'exportation.
 
-## Accès API et CLI
+## Accès à l'API et à la CLI
 
-L'API accepte les ID de conversation sélectionnés à l'adresse
+L'API accepte les Conversation IDs sélectionnés à l'adresse
 `POST /api/v1/conversations/export`.
 
-La CLI peut écrire le même format d'enregistrement dans un fichier :
+La CLI peut écrire la même structure d'enregistrement dans un fichier :
 
 ```bash
 ciele conversations export <conversation-id> --out export.json
 ```
 
-L'outil MCP `read_inbox` peut également demander une exportation. Son action
-d'exportation reste disponible en mode MCP en lecture seule.
+L'outil MCP `read_inbox` peut également demander un export. Son action
+d'exportation reste disponible en mode lecture seule MCP.

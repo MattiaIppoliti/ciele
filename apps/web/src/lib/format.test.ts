@@ -3,7 +3,9 @@ import {
   formatCount,
   formatDateTime,
   formatDay,
+  formatEur,
   formatPercent,
+  formatShortDay,
   formatStat,
   formatTime,
 } from "./format";
@@ -13,6 +15,7 @@ describe("UTC date formatting", () => {
     const timestamp = "2026-07-03T07:44:00.000Z";
 
     expect(formatDay(timestamp)).toBe("03 Jul 2026");
+    expect(formatShortDay(timestamp)).toBe("3 Jul");
     expect(formatDateTime(timestamp)).toBe("03 Jul 26 07:44");
   });
 
@@ -45,5 +48,14 @@ describe("stat formatting", () => {
   it("spells a 0-100 rate with one percent sign and no space", () => {
     expect(formatPercent(42)).toBe("42%");
     expect(formatPercent(12.34)).toBe("12.3%");
+  });
+});
+
+describe("euro formatting", () => {
+  it("prints a fixed number of decimals, two by default", () => {
+    expect(formatEur(1234.5)).toBe("€1,234.50");
+    expect(formatEur(15)).toBe("€15.00");
+    expect(formatEur(0.025, 3)).toBe("€0.025");
+    expect(formatEur(0.03, 3)).toBe("€0.030");
   });
 });

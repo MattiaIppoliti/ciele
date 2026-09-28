@@ -6,7 +6,6 @@ import {
 } from "@/lib/consent-log";
 
 // Writes a per-visitor audit row; never cached, never prerendered.
-export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;

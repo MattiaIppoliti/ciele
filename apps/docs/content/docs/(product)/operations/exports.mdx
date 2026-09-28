@@ -1,22 +1,38 @@
 ---
 title: Exports
-description: Create and download structured Conversation exports.
+description: Create and download Insights reports and Conversation exports.
 ---
 
-Exports create downloadable records for selected Conversations. Ciele builds the export as a background job.
+Ciele has two types of export. An Insights export is a report file of your Insights measures. A Conversation export contains the full records of selected Conversations.
 
-## Create an export
+## Create an Insights export
 
 1. Open **Insights**.
 2. Select **Exports**.
-3. Select the Conversations or available export scope.
-4. Start the export.
-5. Wait until the job status is ready.
-6. Download the file before its link expires.
+3. Select **New export**.
+4. Type a name in **Export name**.
+5. Set the filters for the report: the date range, the Assistant, **Aggregated**, **Feedback**, and **Escalated**.
+6. Select the export type.
+7. Select the file type: **CSV**, **JSON**, or **XLSX**.
+8. Select **Create**.
 
-The download uses a time-limited signed URL. Start a new export when the link is no longer valid.
+Ciele builds the file as a background job. The export shows in the list with its name, type, and file type. When the status is **Ready**, select **Download**.
 
-## Export content
+The filters are the same as on the Insights page. An export and the Insights page show the same numbers for the same filters.
+
+## Insights export types
+
+- **Aggregated insights**: every chart series, with one row for each day, week, or month.
+- **Datapoints**: the headline measures for the range, with one row for each measure. A measure with no data for the range has an empty cell.
+- **Languages**: the number of Conversations for each language that Visitors wrote in.
+
+**Shortcut button clicks** shows in the list but you cannot select it. Ciele does not record these clicks yet.
+
+## Downloads
+
+Ciele checks your access each time you download a file. Ciele also records each download.
+
+## Conversation export content
 
 Each Conversation record uses the current 29-field export format. The record includes conversation, Assistant, visitor, session, and outcome information.
 

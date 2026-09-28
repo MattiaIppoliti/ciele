@@ -81,18 +81,12 @@ function portsFor(host: SetupHost): SetupPorts {
 }
 
 let ports: SetupPorts | null = null;
-let portsAreFake: boolean | null = null;
 
-/** One set of ports per run, shared by the wizard and the stack controller. */
+/**
+ * One set of ports per run, shared by the wizard and the stack controller.
+ * Both are handed the same host, whose `fakePorts` is fixed at launch.
+ */
 export function setupPorts(host: SetupHost): SetupPorts {
-  // The memo would otherwise hand a caller asking for real ports the fakes a
-  // previous caller created (or the reverse) without a word.
-  if (ports && portsAreFake !== host.fakePorts) {
-    throw new Error(
-      `The ports were already created with fakePorts=${String(portsAreFake)} and cannot change mid-run.`,
-    );
-  }
-  portsAreFake = host.fakePorts;
   ports ??= portsFor(host);
   return ports;
 }

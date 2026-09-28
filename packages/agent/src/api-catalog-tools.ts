@@ -353,26 +353,34 @@ const queryApiSpec: RuntimeToolSpec = {
   },
 };
 
+/** The character window both windowed reads take. */
+const windowBounds = {
+  from: z.number().optional().describe("First character to read (default 0)"),
+  to: z
+    .number()
+    .optional()
+    .describe(
+      `Character to read up to; at most ${MAX_READ_WINDOW_CHARS} characters come back per call`
+    ),
+};
+
+/** Both windowed reads report the same way. */
+const summarizeWindow: RuntimeToolSpec["summarize"] = (output) => {
+  const o = output as { error?: string; from?: number; to?: number; totalLength?: number };
+  if (o?.error) return o.error;
+  return `Read characters ${o?.from}-${o?.to} of ${o?.totalLength}`;
+};
+
 const readApiResponseSpec: RuntimeToolSpec = {
   name: "readApiResponse",
   description:
     "Read more of a large API response, by the handle a previous queryApi returned. Returns the requested character window plus the response's total length.",
   inputSchema: z.object({
     handle: z.string().describe("The handle from queryApi, e.g. api_1"),
-    from: z.number().optional().describe("First character to read (default 0)"),
-    to: z
-      .number()
-      .optional()
-      .describe(
-        `Character to read up to; at most ${MAX_READ_WINDOW_CHARS} characters come back per call`
-      ),
+    ...windowBounds,
   }),
   label: (input) => `Reading more from API response ${String(input.handle ?? "")}`,
-  summarize: (output) => {
-    const o = output as { error?: string; from?: number; to?: number; totalLength?: number };
-    if (o?.error) return o.error;
-    return `Read characters ${o?.from}-${o?.to} of ${o?.totalLength}`;
-  },
+  summarize: summarizeWindow,
   async execute(input, ctx) {
     const handle = String(input.handle ?? "").trim();
     const stored = ctx.apiResponses?.get(handle);
@@ -398,7 +406,7 @@ const readApiResponseSpec: RuntimeToolSpec = {
   },
 };
 
-const readKnowledgeSourceSpec: RuntimeToolSpec = {
+export const READ_KNOWLEDGE_SOURCE_SPEC: RuntimeToolSpec = {
   name: "readKnowledgeSource",
   description:
     "Read a knowledge document in character windows, by the sourceId a knowledge search returned. Use it when a search result is cut off mid-answer and you need the surrounding text. Returns the window plus the document's total length.",
@@ -406,24 +414,14 @@ const readKnowledgeSourceSpec: RuntimeToolSpec = {
     sourceId: z
       .string()
       .describe("The sourceId from a searchKnowledge result"),
-    from: z.number().optional().describe("First character to read (default 0)"),
-    to: z
-      .number()
-      .optional()
-      .describe(
-        `Character to read up to; at most ${MAX_READ_WINDOW_CHARS} characters come back per call`
-      ),
+    ...windowBounds,
   }),
   label: (input) => {
     const from = Number(input.from ?? 0);
     const to = input.to === undefined ? from + MAX_READ_WINDOW_CHARS : Number(input.to);
     return `Reading characters ${from}-${to} from source ${String(input.sourceId ?? "")}`;
   },
-  summarize: (output) => {
-    const o = output as { error?: string; from?: number; to?: number; totalLength?: number };
-    if (o?.error) return o.error;
-    return `Read characters ${o?.from}-${o?.to} of ${o?.totalLength}`;
-  },
+  summarize: summarizeWindow,
   async execute(input, ctx) {
     const sourceId = String(input.sourceId ?? "").trim();
     if (!sourceId) return { error: "No sourceId was given." };
@@ -469,5 +467,3 @@ export const API_CATALOG_SPECS: RuntimeToolSpec[] = [
   queryApiSpec,
   readApiResponseSpec,
 ];
-
-export const READ_KNOWLEDGE_SOURCE_SPEC = readKnowledgeSourceSpec;

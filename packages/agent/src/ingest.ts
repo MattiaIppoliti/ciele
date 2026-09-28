@@ -323,27 +323,25 @@ export async function embedConcept(options: {
   // next healthy batch. Best-effort: alerting never breaks ingestion (#312).
   const signalsHealth =
     mode === "error" || (mode === "ok" && chunks.length > 0);
-  if (signalsHealth) {
-    if (assistant) {
-      const key = alertKeys.embedding(options.assistantId);
-      await signalHealth(
-        options.db,
-        assistant.organizationId,
-        mode === "error"
-          ? {
-              key,
-              healthy: false,
-              alert: {
-                type: "ingestion",
-                title: "Knowledge embedding failed",
-                detail:
-                  "The embedding provider call failed while indexing knowledge; the affected content is searchable only lexically until it is re-embedded (Knowledge → Re-embed).",
-              },
-            }
-          : { key, healthy: true },
-        "ingest"
-      );
-    }
+  if (signalsHealth && assistant) {
+    const key = alertKeys.embedding(options.assistantId);
+    await signalHealth(
+      options.db,
+      assistant.organizationId,
+      mode === "error"
+        ? {
+            key,
+            healthy: false,
+            alert: {
+              type: "ingestion",
+              title: "Knowledge embedding failed",
+              detail:
+                "The embedding provider call failed while indexing knowledge; the affected content is searchable only lexically until it is re-embedded (Knowledge → Re-embed).",
+            },
+          }
+        : { key, healthy: true },
+      "ingest"
+    );
   }
 }
 
@@ -546,25 +544,28 @@ export async function beginWebsiteCrawl(options: {
     }
 
     const crawlOptions = crawlOptionsFromConfig(config, crawlCredential);
+    // Everything the previous run left on the config is cleared, or it would
+    // come back with the spread: a fresh crawl showed "0/20" off the last
+    // run's total.
+    const freshRun = {
+      resolvedCrawlerProvider,
+      crawlCredential,
+      crawlBlockedReason: undefined,
+      crawlEscalated: undefined,
+      crawlRunId: undefined,
+      crawlDatasetId: undefined,
+      crawlIngestCursor: undefined,
+      crawlIngestGenerationId: undefined,
+      crawlIngestExpectedGenerationId: undefined,
+      crawlIngestedPages: undefined,
+      crawlTotalPages: undefined,
+      crawlStagedPages: undefined,
+      crawlRemoteProgress: undefined,
+    };
     await db.updateSource(sourceId, {
       status: "processing",
       error: "",
-      config: {
-        ...config,
-        resolvedCrawlerProvider,
-        crawlCredential,
-        crawlBlockedReason: undefined,
-        crawlEscalated: undefined,
-        crawlRunId: undefined,
-        crawlDatasetId: undefined,
-        crawlIngestCursor: undefined,
-        crawlIngestGenerationId: undefined,
-        crawlIngestExpectedGenerationId: undefined,
-        crawlIngestedPages: undefined,
-        crawlTotalPages: undefined,
-        crawlStagedPages: undefined,
-        crawlRemoteProgress: undefined,
-      },
+      config: { ...config, ...freshRun },
     });
     const { runId, datasetId } = await websiteCrawlerAdapter(
       resolvedCrawlerProvider
@@ -579,21 +580,9 @@ export async function beginWebsiteCrawl(options: {
       error: "",
       config: {
         ...config,
-        resolvedCrawlerProvider,
-        crawlCredential,
-        crawlBlockedReason: undefined,
-        crawlEscalated: undefined,
+        ...freshRun,
         crawlRunId: runId,
         crawlDatasetId: datasetId,
-        crawlIngestCursor: undefined,
-        crawlIngestGenerationId: undefined,
-        crawlIngestExpectedGenerationId: undefined,
-        crawlIngestedPages: undefined,
-        // The previous crawl's counts would otherwise come back with the
-        // spread above: a fresh crawl showed "0/20" off the last run's total.
-        crawlTotalPages: undefined,
-        crawlStagedPages: undefined,
-        crawlRemoteProgress: undefined,
         crawlStartedAt: new Date().toISOString(),
       },
     });
@@ -1084,57 +1073,10 @@ export async function finalizeWebsiteCrawl(options: {
 }
 
 /**
- * Stages a complete Source generation, then flips retrieval with one database
- * compare-and-swap. Old and new Concepts may coexist physically, but only one
- * complete generation is active. A failed or superseded writer deletes only
- * its own inactive generation and can never damage last-good knowledge.
- */
-export async function replaceSourceKnowledge(options: {
-  db: Db;
-  collectionId: string;
-  sourceId: string;
-  /** Persists and embeds the full new set under the supplied generation. */
-  persistNewSet: (generationId: string) => Promise<"persisted" | "aborted">;
-  /** Optional ownership check (e.g. lease renewal) run before knowledge writes. */
-  checkpoint?: () => Promise<boolean>;
-  generationId?: string;
-  expectedActiveGenerationId?: string;
-  /** Optional job-fenced cutover used by durable Source ingestion. */
-  commitGeneration?: (input: {
-    sourceId: string;
-    expectedActiveGenerationId: string;
-    generationId: string;
-  }) => Promise<boolean>;
-  /** Keep inactive work so a reclaimed durable job can resume it. */
-  preserveStagedOnAbort?: boolean;
-}): Promise<"committed" | "aborted"> {
-  const { db, collectionId, sourceId, persistNewSet, checkpoint } = options;
-  return replaceSourceGeneration({
-    db,
-    sourceId,
-    persistNewSet,
-    checkpoint,
-    generation: {
-      ...(options.generationId
-        ? { generationId: options.generationId }
-        : {}),
-      ...(options.expectedActiveGenerationId
-        ? { expectedActiveGenerationId: options.expectedActiveGenerationId }
-        : {}),
-    },
-    commitGeneration: options.commitGeneration,
-    preserveStagedOnAbort: options.preserveStagedOnAbort,
-    onCommitted: async (generationId) => {
-      await enqueueActiveSourceMemories(db, { collectionId, sourceId, generationId });
-    },
-  });
-}
-
-/**
  * Full ingestion pipeline: draft verbatim Concepts → persist → mark Source ready.
  * Knowledge replacement is atomic: a re-ingest keeps the Source's last-good
  * Concepts live until the full new set commits, and a failure never destroys
- * them (see `replaceSourceKnowledge`); callers must not pre-delete.
+ * them (see `replaceSourceGeneration`); callers must not pre-delete.
  * Also owns the operational-health signal for this Source (parity with the
  * website-crawl producer in `finalizeWebsiteCrawl`): a failure raises an
  * `ingestion` Alert keyed to the source (deduped/refreshed on repeat
@@ -1187,8 +1129,8 @@ export async function ingestSource(options: {
       source.config.sourceIngestExpectedGenerationId ??
       source.activeGenerationId;
     let cursor = attempt?.cursor ?? source.config.sourceIngestCursor ?? 0;
-    if (!options.initializeAttempt && !source.config.sourceIngestGenerationId) {
-      await db.updateSource(source.id, {
+    const saveCursor = () =>
+      db.updateSource(source.id, {
         config: {
           ...source.config,
           sourceIngestGenerationId: generationId,
@@ -1196,16 +1138,26 @@ export async function ingestSource(options: {
           sourceIngestCursor: cursor,
         },
       });
+    if (!options.initializeAttempt && !source.config.sourceIngestGenerationId) {
+      await saveCursor();
     }
     const replacement =
       source.activeGenerationId === generationId
         ? "committed"
-        : await replaceSourceKnowledge({
+        : await replaceSourceGeneration({
             db,
-            collectionId,
             sourceId: source.id,
-            generationId,
-            expectedActiveGenerationId,
+            generation: {
+              ...(generationId ? { generationId } : {}),
+              ...(expectedActiveGenerationId ? { expectedActiveGenerationId } : {}),
+            },
+            onCommitted: async (committedId) => {
+              await enqueueActiveSourceMemories(db, {
+                collectionId,
+                sourceId: source.id,
+                generationId: committedId,
+              });
+            },
             preserveStagedOnAbort: true,
             commitGeneration: options.commitGeneration,
             checkpoint: options.renewLease
@@ -1234,14 +1186,7 @@ export async function ingestSource(options: {
                     return "aborted";
                   }
                 } else {
-                  await db.updateSource(source.id, {
-                    config: {
-                      ...source.config,
-                      sourceIngestGenerationId: generationId,
-                      sourceIngestExpectedGenerationId: expectedActiveGenerationId,
-                      sourceIngestCursor: cursor,
-                    },
-                  });
+                  await saveCursor();
                 }
               }
               return "persisted";

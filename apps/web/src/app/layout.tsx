@@ -104,7 +104,7 @@ export default function RootLayout({
         <ThemeScript />
         <AuthHintScript />
         {children}
-        <Toasts position="top-center" />
+        <Toasts />
         {/* Owns the consent banner *and* the Vercel analytics scripts, which it
             renders only once the visitor has allowed the analytics category,
             see components/cookie-consent/cookie-consent-ui.tsx. Mounting the

@@ -1,7 +1,7 @@
 "use client";
 
 import { Pipette } from "lucide-react";
-import { type HTMLAttributes, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
 import {
@@ -19,37 +19,25 @@ import {
   hexToHsv,
   hsvToHex,
 } from "@/lib/color";
-import { cn } from "@/lib/utils";
 
 /**
  * Self-contained HSV color picker in the shadcn style: saturation/value square
- * + hue bar + alpha bar + an output-format switch (HEX/RGB/CSS/HSL) and an
+ * + hue bar + an output-format switch (HEX/RGB/CSS/HSL) and an
  * eyedropper. Dependency-free by design, the repo ships neither the `color`
  * package nor a slider primitive, so the conversions live in `@/lib/color` (the
  * testable layer) and drag handling lives here.
  *
- * Controlled by a hex string: `#RRGGBB` while opaque, `#RRGGBBAA` once alpha
- * drops below 100, so an opaque brand color round-trips through storage
- * unchanged. Pass `alpha={false}` where translucency makes no sense.
+ * Controlled by a hex string: `#RRGGBB` while opaque, `#RRGGBBAA` when the
+ * incoming value carries alpha (kept, but there is no control for it), so an
+ * opaque brand color round-trips through storage unchanged.
  */
 
-export type ColorPickerProps = Omit<
-  HTMLAttributes<HTMLDivElement>,
-  "onChange"
-> & {
+export type ColorPickerProps = {
   value: string;
   onChange: (hex: string) => void;
-  /** Show the alpha slider and the alpha column of the format row. */
-  alpha?: boolean;
 };
 
-export function ColorPicker({
-  value,
-  onChange,
-  alpha = true,
-  className,
-  ...props
-}: ColorPickerProps) {
+export function ColorPicker({ value, onChange }: ColorPickerProps) {
   // HSV is the interaction source of truth so hue/saturation survive round-trips
   // through an achromatic hex (e.g. black keeping its hue). We resync it during
   // render when the controlled `value` moves to a color we didn't just emit,
@@ -80,12 +68,9 @@ export function ColorPicker({
   };
 
   return (
-    <div className={cn("flex w-60 flex-col gap-3", className)} {...props}>
+    <div className="flex w-60 flex-col gap-3">
       <Saturation hsv={hsv} onChange={commit} />
       <Hue hue={hsv.h} onChange={(h) => commit({ ...hsv, h })} />
-      {alpha ? (
-        <Alpha hsv={hsv} onChange={(a) => commit({ ...hsv, a })} />
-      ) : null}
 
       <div className="flex items-center gap-2">
         <EyeDropperButton
@@ -151,19 +136,6 @@ export function ColorPicker({
             className="h-8 font-mono text-xs"
           />
         )}
-        {alpha && format !== "css" ? (
-          <div className="relative shrink-0">
-            <Input
-              aria-label="Alpha"
-              readOnly
-              value={Math.round(hsv.a)}
-              className="h-8 w-14 pr-5 font-mono text-xs"
-            />
-            <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs">
-              %
-            </span>
-          </div>
-        ) : null}
       </div>
     </div>
   );
@@ -262,26 +234,6 @@ function Hue({
       }}
     >
       <Thumb left={(hue / 360) * 100} />
-    </div>
-  );
-}
-
-function Alpha({ hsv, onChange }: { hsv: Hsv; onChange: (a: number) => void }) {
-  const handlers = usePointerArea((x) => onChange(Math.round(x * 100)));
-  const opaque = hsvToHex({ ...hsv, a: 100 });
-
-  return (
-    <div
-      {...handlers}
-      className="relative h-3 w-full touch-none cursor-ew-resize rounded-full bg-[repeating-conic-gradient(#d4d4d4_0_25%,transparent_0_50%)] bg-[length:8px_8px]"
-    >
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: `linear-gradient(90deg, transparent, ${opaque})`,
-        }}
-      />
-      <Thumb left={hsv.a} />
     </div>
   );
 }

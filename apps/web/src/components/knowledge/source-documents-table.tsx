@@ -266,9 +266,16 @@ export function SourceDocumentsTable({
                   {
                     label: "Copy ID",
                     icon: Copy,
-                    onSelect: () => {
-                      void navigator.clipboard?.writeText(document.id);
-                      toast.success("ID copied.");
+                    onSelect: async () => {
+                      // Only claim the copy once the clipboard took it.
+                      try {
+                        await navigator.clipboard.writeText(document.id);
+                        toast.success("ID copied.");
+                      } catch {
+                        toast.error(
+                          "Could not copy the ID. Check the browser allows clipboard access."
+                        );
+                      }
                     },
                   },
                   canEdit &&

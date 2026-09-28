@@ -1,22 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  rollupUsageDaily: vi.fn(),
+  rollupUsageCatchUp: vi.fn(),
 }));
 
 vi.mock("@/lib/widget-db", () => ({
-  getWidgetDb: () => ({ rollupUsageDaily: mocks.rollupUsageDaily }),
+  getWidgetDb: () => ({ rollupUsageCatchUp: mocks.rollupUsageCatchUp }),
 }));
 
-import { GET, ROLLUP_WINDOW_DAYS } from "./route";
+import { GET, ROLLUP_MAX_CATCH_UP_DAYS } from "./route";
 
 describe("GET /api/cron/rollup-usage", () => {
   const originalSecret = process.env.CRON_SECRET;
 
   beforeEach(() => {
     process.env.CRON_SECRET = "cron-secret";
-    mocks.rollupUsageDaily.mockReset();
-    mocks.rollupUsageDaily.mockResolvedValue(4);
+    mocks.rollupUsageCatchUp.mockReset();
+    mocks.rollupUsageCatchUp.mockResolvedValue(4);
   });
 
   afterEach(() => {
@@ -29,7 +29,7 @@ describe("GET /api/cron/rollup-usage", () => {
       new Request("https://ciele.app/api/cron/rollup-usage")
     );
     expect(response.status).toBe(401);
-    expect(mocks.rollupUsageDaily).not.toHaveBeenCalled();
+    expect(mocks.rollupUsageCatchUp).not.toHaveBeenCalled();
   });
 
   it("503s when the cron secret is not configured", async () => {
@@ -40,19 +40,19 @@ describe("GET /api/cron/rollup-usage", () => {
       })
     );
     expect(response.status).toBe(503);
-    expect(mocks.rollupUsageDaily).not.toHaveBeenCalled();
+    expect(mocks.rollupUsageCatchUp).not.toHaveBeenCalled();
   });
 
-  it("rolls up the bounded window when authorized", async () => {
+  it("catches up from the last closed day when authorized", async () => {
     const response = await GET(
       new Request("https://ciele.app/api/cron/rollup-usage", {
         headers: { authorization: "Bearer cron-secret" },
       })
     );
-    expect(mocks.rollupUsageDaily).toHaveBeenCalledWith(ROLLUP_WINDOW_DAYS);
+    expect(mocks.rollupUsageCatchUp).toHaveBeenCalledWith(ROLLUP_MAX_CATCH_UP_DAYS);
     await expect(response.json()).resolves.toEqual({
       upserted: 4,
-      windowDays: ROLLUP_WINDOW_DAYS,
+      maxCatchUpDays: ROLLUP_MAX_CATCH_UP_DAYS,
     });
   });
 });

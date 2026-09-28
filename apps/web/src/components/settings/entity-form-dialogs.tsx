@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createEntityAction, updateEntityAction } from "@/app/actions";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 type DialogProps = { open: boolean; onClose: () => void };
 type DraftAttribute = { key: string; label: string; type: EntityAttributeType };
@@ -46,6 +47,17 @@ export function EditEntityDialog({
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(entity.name);
   const [description, setDescription] = useState(entity.description);
+  // Each opening starts from the stored values: a Cancel, or a rename saved
+  // elsewhere, must not leave the last draft in the fields. Adjusted during
+  // render rather than in an effect, so the stale draft never paints.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setName(entity.name);
+      setDescription(entity.description);
+    }
+  }
 
   const save = () =>
     startTransition(async () => {
@@ -87,7 +99,9 @@ export function EditEntityDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} disabled={isPending || !name.trim()}>Save</Button>
+          <Button onClick={save} disabled={isPending || !name.trim()}>
+            <RollInText text={isPending ? "Saving…" : "Save"} />
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -115,14 +129,20 @@ export function CreateEntityDialog({ open, onClose }: DialogProps) {
 
   const submit = () =>
     startTransition(async () => {
-      const result = await createEntityAction({
-        name,
-        description,
-        attributes: attributes.filter((attribute) => attribute.key.trim()),
-        keyAttribute,
-        scope,
-        identityAttribute: scope === "user" ? identityAttribute : null,
-      });
+      let result: Awaited<ReturnType<typeof createEntityAction>>;
+      try {
+        result = await createEntityAction({
+          name,
+          description,
+          attributes: attributes.filter((attribute) => attribute.key.trim()),
+          keyAttribute,
+          scope,
+          identityAttribute: scope === "user" ? identityAttribute : null,
+        });
+      } catch {
+        toast.error("Couldn't create the entity. Please try again.");
+        return;
+      }
       if (result.error) {
         toast.error(result.error);
         return;
@@ -204,7 +224,9 @@ export function CreateEntityDialog({ open, onClose }: DialogProps) {
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={submit} disabled={isPending || !name.trim()}>Create entity</Button>
+          <Button onClick={submit} disabled={isPending || !name.trim()}>
+            <RollInText text={isPending ? "Creating…" : "Create entity"} />
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

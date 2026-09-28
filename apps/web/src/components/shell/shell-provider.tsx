@@ -27,6 +27,7 @@ import {
   type RightRailOccupant,
 } from "@/components/shell/right-rail-occupant";
 import type { SnippetTab } from "@/lib/developer-panel/types";
+import { isTypingTarget } from "@/lib/typing-target";
 
 interface ShellContextValue {
   /** Streamed from the server — resolve via {@link useShellAssistants}. */
@@ -83,16 +84,6 @@ export function useShell(): ShellContextValue {
  */
 export function useShellAssistants(): AssistantSummary[] {
   return use(useShell().assistants);
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    target.isContentEditable
-  );
 }
 
 /**

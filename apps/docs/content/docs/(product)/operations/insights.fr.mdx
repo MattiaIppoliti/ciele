@@ -1,6 +1,6 @@
 ---
 title: Insights
-description: Examinez les métriques actuelles relatives aux conversations, aux réponses, aux remontées, aux commentaires et aux notifications.
+description: Consultez les métriques actuelles relatives aux conversations, aux réponses, aux remontées, aux retours et aux notifications.
 ---
 
 Insights calcule les métriques de l'organisation à partir des événements
@@ -9,36 +9,123 @@ Assistant pour modifier l'ensemble de données.
 
 ## Aperçu actuel
 
-La vue d'ensemble peut inclure les indicateurs suivants :
+L'aperçu peut inclure les indicateurs suivants :
 
-- Conversations et visiteurs uniques
+- Conversations et Visiteurs uniques
 - Réponses de l'IA
-- Taux de résolution de l'IA
+- Taux de résolution par l'IA
 - évaluations des réponses et données de satisfaction client
-- escalades
-- réponses par conversation
+- remontées (escalations)
+- réponses par Conversation
+- questions per Conversation : le nombre de messages envoyés par le Visiteur
+- durée moyenne d'une Conversation : le temps écoulé entre le début d'une
+  Conversation et son dernier message
 - langues et taux d'engagement
-- commentaires et mesures de notation
+- mesures relatives aux retours et à la notation
 - Notifications envoyées
 
 Les cartes exactes dépendent des données disponibles pour la période
 sélectionnée.
 
+Le graphique **Conversation depth** indique la durée moyenne des Conversations
+et le nombre de questions par Conversation pour chaque jour, chaque semaine ou
+chaque mois. Ciele place chaque Conversation dans la période au cours de
+laquelle elle a débuté. Une Conversation qui se poursuit après la fin de la
+période conserve sa durée totale.
+
+## Coûts et observabilité
+
+Deux tableaux de bord indiquent le coût de l'IA de votre organisation et ses
+performances. **Costs** présente les dépenses et l'utilisation.
+**Observability** présente la fiabilité, la vitesse et la qualité des réponses.
+
+Les deux tableaux de bord utilisent les mêmes filtres. Sélectionnez une plage de
+dates, puis sélectionnez **All**, **Assistants**, **Teammates** ou **Internal**.
+
+- **Assistants** affiche le trafic des widgets et de l'aperçu, ainsi que les
+  flux HTTP entrants.
+- **Teammates** affiche les chats des AI Teammates, les tours de parole dans les
+  canaux et les Routines.
+- **Internal** affiche l'activité de la plateforme : indexation, tâches
+  planifiées et appels provenant des clés API et de MCP.
+
+Lorsque **All** ou **Assistants** est sélectionné, vous pouvez également
+sélectionner un Assistant.
+
+Chaque tableau de bord commence par des cartes de statistiques. Une carte
+affiche une valeur pour la période, une courbe de ses valeurs quotidiennes et
+l'évolution par rapport à la période précédente. La période précédente a la même
+durée et se termine la veille du début de la plage. Déplacez le pointeur le long
+de la courbe pour lire la valeur de chaque jour.
+
+### Coûts
+
+- dépenses estimées, coût par tour, appels au modèle et tokens
+- dépenses estimées par jour, ventilées par surface
+- la part des dépenses pour chaque surface au cours de chaque période
+- un calendrier de l'utilisation des tokens par jour
+- dépenses par modèle et par étape du pipeline
+
+Les dépenses sont une estimation en euros. Ciele le calcule à partir du nombre
+de tokens et des prix catalogue. Il ne s'agit pas d'une facture.
+
+### Observabilité
+
+- turns terminés, taux de réussite, turns échoués et appels d'outils par turn
+- latence par tour : médiane, 95e percentile, histogramme et tendance
+  quotidienne
+- **Answer accuracy** : la part des réponses de l'Assistant validées par le
+  vérificateur
+- **Autonomy** : la part des conversations de visiteurs qui n'ont pas été
+  transférées à un service d'assistance
+- les classes d'erreurs les plus fréquentes
+- les cinq Flows les plus utilisés, classés les uns par rapport aux autres par
+  jour ou par semaine
+
+**Answer accuracy** et **Autonomy** s'appliquent uniquement aux Assistants. Pour
+**Teammates** et **Internal**, ces indicateurs ne s'affichent pas.
+
+### Remarques
+
+Les jours sont des jours UTC. Un appel de modèle enregistré avant l'attribution
+de la surface n'a pas de surface. Il est comptabilisé dans **All** en tant que
+**Unattributed**, et dans aucune autre surface.
+
+Utilisez **Export CSV** pour télécharger une ligne pour chaque jour de la plage.
+Pour un fichier de rapport offrant davantage d'options, utilisez
+[Exports](/operations/exports).
+
+## Actualité des données
+
+Insights conserve l'aperçu calculé et les tableaux de bord pendant un maximum de
+cinq minutes pour chaque Organisation et chaque ensemble de filtres. Chaque
+membre de l'organisation lit les mêmes données stockées.
+
+Toute modification apportée par un membre dans la console (à un Assistant, à une
+Conversation ou à une Amélioration) efface immédiatement l'aperçu stocké. Le
+trafic des widgets (nouvelles Conversations, évaluations des réponses, scores de
+satisfaction, remontées) atteint les chiffres en moins de cinq minutes.
+
+Pour forcer un nouveau calcul avant la fin des cinq minutes, envoyez
+`DELETE /api/insights` depuis une session de navigateur connectée. La réponse
+est `204` et la prochaine lecture recalcule l'aperçu. Tout Member de
+l'Organization peut envoyer cette requête.
+
 ## Comptage des notifications
 
-Une notification n'est pas une réponse de l'IA. Une session en mode Notification
-uniquement n'augmente pas les KPI de Conversation ni ceux de réponse.
+Une notification n'est pas une réponse de l'IA. Une session « Notification
+uniquement » n'augmente pas les KPI Conversation ni ceux des réponses.
 
-La mesure **Notifications Sent** et sa série de graphiques enregistrent
-séparément la livraison proactive.
+La mesure **Notifications Sent** et ses séries de graphiques enregistrent la
+livraison proactive séparément.
 
 ## Examiner un changement
 
-1. Sélectionnez la plage de dates requise et l'Assistant.
-2. Identifiez la métrique qui a changé.
-3. Ouvrez la boîte de réception avec la même portée.
-4. Lisez des conversations représentatives.
-5. Créez des améliorations pour les problèmes de réponses exploitables.
+1. Sélectionnez la plage de dates souhaitée et l'Assistant.
+2. Identifiez l'indicateur qui a changé.
+3. Ouvrez l'Inbox avec le même scope.
+4. Lisez des Conversations représentatives.
+5. Créez des Improvements pour les problèmes de réponses exploitables.
 
-Utilisez [Exports](/operations/exports) pour les enregistrements de conversation
-structurés.
+Utilisez [Exports](/operations/exports) pour obtenir des enregistrements
+structurés des Conversations.

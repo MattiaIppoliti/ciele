@@ -12,6 +12,7 @@ import type {
   Source,
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
+import type { KnowledgeMode } from "@/lib/knowledge-mode";
 import {
   ApplicationKnowledgePanel,
 } from "@/components/knowledge/application-knowledge-panel";
@@ -24,7 +25,7 @@ import {
   nextCrawlDue,
 } from "@agent-hub/core";
 
-import { conceptProvenanceView } from "@/lib/okf-provenance";
+import { conceptProvenanceView, type ConceptProvenanceView } from "@/lib/okf-provenance";
 import { assistantDocumentsHref } from "@/lib/source-documents";
 import { Bold, CloudUpload, Download, Copy, ExternalLink, Heading1, Heading2, Heading3, Heading4, Italic, Plus, RefreshCw, RemoveFormatting, TextQuote, Trash2, Unlink } from "lucide-react";
 import { ChevronDown, Code, FileUp, Globe, Info, Link2, List, ListOrdered, Maximize2, Minus, Pencil, Redo2, Undo2 } from "lucide-react";
@@ -33,7 +34,12 @@ import {
   useConfirmDelete,
   type ConfirmDeleteRequest,
 } from "@/components/ui/confirm-delete-modal";
-import { bulkRemovalChoice, sourceRemovalChoice, tabSources } from "@/lib/knowledge-hub";
+import {
+  bulkRemovalChoice,
+  SOURCE_STATUS_OPTIONS,
+  sourceRemovalChoice,
+  tabSources,
+} from "@/lib/knowledge-hub";
 import { ingestionStarted } from "@/lib/ingestion-bus";
 import { toast } from "@/lib/toast";
 import {
@@ -41,14 +47,14 @@ import {
   createFaqAction,
   reembedKnowledgeAction,
   deleteConceptAction,
-  deleteSourceAction,
+  deleteOrgSourceAction,
   unlinkSourceAction,
   unlinkSourcesAction,
   deleteConceptsAction,
   deleteOrgSourcesAction,
   importFaqsAction,
   pollWebsiteCrawlAction,
-  recrawlWebsiteSourceAction,
+  recrawlSourceAction,
   reprocessSourceAction,
   retrySourceIngestAction,
   setRecrawlScheduleAction,
@@ -116,10 +122,15 @@ import {
   type RowSelection,
 } from "@/components/ui/table-selection";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateTime, formatDay } from "@/lib/format";
+import { formatCount, formatDateTime, formatDay } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { canAutoFocus } from "@/lib/auto-focus";
+import { downloadFile } from "@/lib/download";
+import { applyMarkdownCommand, type MarkdownCommand } from "@/lib/markdown-toolbar";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
-type Mode = "websites" | "documents" | "applications" | "faqs" | "concepts";
+type Mode = KnowledgeMode;
 
 const MODES: Array<{ id: Mode; label: string }> = [
   { id: "websites", label: "Websites" },
@@ -130,22 +141,64 @@ const MODES: Array<{ id: Mode; label: string }> = [
 ];
 
 function StatusBadge({ source }: { source: Source }) {
-  if (source.status === "ready")
-    return (
-      <Badge variant="outline" className="text-muted-foreground gap-1.5 rounded-full bg-muted/40">
-        <span className="size-1.5 rounded-full bg-foreground" /> READY
-      </Badge>
-    );
-  if (source.status === "error")
-    return (
-      <Badge tone="red" title={source.error}>
-        ERROR
-      </Badge>
-    );
+  // One Badge for every status, children in fixed slots, so React keeps the
+  // same RollInText across a change and Processing… rolls into READY rather
+  // than being swapped out for a new element.
+  const status = source.status;
+  const label =
+    status === "ready" ? "READY" : status === "error" ? "ERROR" : "Processing…";
   return (
-    <Badge variant="outline" className="rounded-full">
-      <span className="animate-pulse">Processing…</span>
+    <Badge
+      variant={status === "error" ? "default" : "outline"}
+      tone={status === "error" ? "red" : "none"}
+      title={status === "error" ? source.error : undefined}
+      className={
+        status === "ready"
+          ? "text-muted-foreground gap-1.5 rounded-full bg-muted/40"
+          : status === "error"
+            ? undefined
+            : "rounded-full"
+      }
+    >
+      {status === "ready" && <span className="size-1.5 rounded-full bg-foreground" />}
+      <RollInText
+        text={label}
+        className={
+          status === "processing" ? "animate-pulse motion-reduce:animate-none" : undefined
+        }
+      />
     </Badge>
+  );
+}
+
+/** "12/100": the count rolls as it changes, the limit stays put. */
+function CharCount({ count, max }: { count: number; max: number }) {
+  return (
+    <span className="tabular-nums">
+      <RollingNumber value={count} />/{formatCount(max)}
+    </span>
+  );
+}
+
+/**
+ * The clipboard can refuse (no permission, an insecure origin), so the toast
+ * waits for the write instead of announcing a copy that never happened.
+ */
+async function copyToClipboard(text: string, done: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(done);
+  } catch {
+    toast.error("Could not copy to the clipboard");
+  }
+}
+
+/** `n Documents`, pluralised, the count rolling. */
+function DocumentCount({ count }: { count: number }) {
+  return (
+    <>
+      <RollingNumber value={count} /> {count === 1 ? "Document" : "Documents"}
+    </>
   );
 }
 
@@ -160,17 +213,24 @@ function crawlScheduleHint(source: Source): string {
 
 function Collapsible({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
   return (
     <div className="bg-muted/50 rounded-xl">
       <button
         type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
         onClick={() => setOpen(!open)}
         className="text-primary flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold"
       >
         <ChevronDown className={`size-4 transition-transform ${open ? "" : "-rotate-90"}`} />
         {title}
       </button>
-      {open && <div className="space-y-3 px-4 pb-4">{children}</div>}
+      {open && (
+        <div id={panelId} className="space-y-3 px-4 pb-4">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -206,13 +266,13 @@ function websiteFormDefaults(
 function WebsiteConfigFields({
   form,
   setForm,
-  crawl4aiAvailable = false,
-  apifyAvailable = false,
+  crawl4aiAvailable,
+  apifyAvailable,
 }: {
   form: WebsiteFormInput;
   setForm: (f: WebsiteFormInput) => void;
-  crawl4aiAvailable?: boolean;
-  apifyAvailable?: boolean;
+  crawl4aiAvailable: boolean;
+  apifyAvailable: boolean;
 }) {
   const id = useId();
   return (
@@ -231,7 +291,9 @@ function WebsiteConfigFields({
           placeholder="Enter name of website"
           required
         />
-        <p className="text-muted-foreground text-right text-xs">{form.name.length}/100</p>
+        <p className="text-muted-foreground text-right text-xs">
+          <CharCount count={form.name.length} max={100} />
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -250,7 +312,9 @@ function WebsiteConfigFields({
           placeholder="https://example.com"
           required
         />
-        <p className="text-muted-foreground text-right text-xs">{form.url.length}/300</p>
+        <p className="text-muted-foreground text-right text-xs">
+          <CharCount count={form.url.length} max={300} />
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -309,7 +373,9 @@ function WebsiteConfigFields({
             placeholder={"https://example.com/docs/**"}
             rows={3}
           />
-          <p className="text-muted-foreground text-right text-xs">{(form.includeGlobs ?? "").length}/2000</p>
+          <p className="text-muted-foreground text-right text-xs">
+            <CharCount count={(form.includeGlobs ?? "").length} max={2000} />
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor={`${id}-exclude`}>Negative Search Filters</Label>
@@ -322,7 +388,9 @@ function WebsiteConfigFields({
             placeholder={"https://example.com/blog/**"}
             rows={3}
           />
-          <p className="text-muted-foreground text-right text-xs">{(form.excludeGlobs ?? "").length}/2000</p>
+          <p className="text-muted-foreground text-right text-xs">
+            <CharCount count={(form.excludeGlobs ?? "").length} max={2000} />
+          </p>
         </div>
       </Collapsible>
 
@@ -378,23 +446,19 @@ function WebsiteConfigFields({
           />
         </div>
         <div className="space-y-2">
-          <Label>Max pages to crawl</Label>
+          <Label htmlFor={`${id}-max-pages`}>Max pages to crawl</Label>
           <p className="text-muted-foreground text-xs">
             Up to 30 pages run locally, up to 5,000 on Crawl4AI, more on Apify. No limit crawls the whole site on your own Apify account.
           </p>
           <div className="flex items-center gap-4">
-            <Input
-              type="number"
-              min={1}
-              max={100_000}
-              aria-label="Max pages to crawl"
-              disabled={isUnlimitedPages(form.maxPages)}
-              value={
-                isUnlimitedPages(form.maxPages) ? "" : (form.maxPages ?? DEFAULT_PAGE_BUDGET)
+            <PageBudgetInput
+              id={`${id}-max-pages`}
+              budget={
+                isUnlimitedPages(form.maxPages)
+                  ? null
+                  : (form.maxPages ?? DEFAULT_PAGE_BUDGET)
               }
-              placeholder="No limit"
-              onChange={(e) => setForm({ ...form, maxPages: Number(e.target.value) })}
-              className="w-32"
+              onBudgetChange={(maxPages) => setForm({ ...form, maxPages })}
             />
             <label className="flex items-center gap-2 text-sm">
               <Switch
@@ -431,6 +495,54 @@ function WebsiteConfigFields({
   );
 }
 
+/**
+ * The page budget as typed text. `NO_PAGE_LIMIT` is 0, so `Number("")` from a
+ * cleared field used to switch on an unlimited crawl the Organization pays
+ * for. Only a whole number of at least one reaches the form; anything else
+ * (empty, mid-edit) stays local and the last valid budget stands, restored to
+ * the field on blur. Unlimited is the switch's job alone.
+ */
+function PageBudgetInput({
+  id,
+  budget,
+  onBudgetChange,
+}: {
+  id: string;
+  /** null while the "No page limit" switch is on. */
+  budget: number | null;
+  onBudgetChange: (pages: number) => void;
+}) {
+  const shown = budget === null ? "" : String(budget);
+  const [text, setText] = useState(shown);
+  const [synced, setSynced] = useState(shown);
+  // The switch (or a reset) moved the budget from outside: show that.
+  if (shown !== synced) {
+    setSynced(shown);
+    setText(shown);
+  }
+  return (
+    <Input
+      id={id}
+      type="number"
+      inputMode="numeric"
+      min={1}
+      max={100_000}
+      disabled={budget === null}
+      value={text}
+      placeholder="No limit"
+      onChange={(e) => {
+        const next = e.target.value;
+        setText(next);
+        const pages = Number(next);
+        if (next.trim() !== "" && Number.isInteger(pages) && pages >= 1) {
+          onBudgetChange(pages);
+        }
+      }}
+      onBlur={() => setText(shown)}
+      className="w-32"
+    />
+  );
+}
 
 /** Header shared by the view/edit dialogs: "Entire website" · N Documents · URL. */
 function SourceSummary({
@@ -441,25 +553,27 @@ function SourceSummary({
   documentCount: number;
 }) {
   return (
-    <DialogDescription className="flex flex-wrap items-center gap-3">
+    <DialogDescription className="flex min-w-0 flex-wrap items-center gap-3">
       <Badge variant="outline" className="rounded-full">
         Entire website
       </Badge>
-      <span>{documentCount} Documents</span>
+      <span>
+        <DocumentCount count={documentCount} />
+      </span>
       {source.config.url && (
         <a
           href={source.config.url}
           target="_blank"
           rel="noreferrer"
-          className="text-primary inline-flex items-center gap-1 hover:underline"
+          className="text-primary inline-flex min-w-0 items-center gap-1 hover:underline"
         >
-          {source.config.url} <ExternalLink className="size-3" />
+          <span className="min-w-0 break-all">{source.config.url}</span>
+          <ExternalLink className="size-3 shrink-0" />
         </a>
       )}
     </DialogDescription>
   );
 }
-
 
 function WebsiteEditDialog({
   assistantId,
@@ -476,19 +590,42 @@ function WebsiteEditDialog({
   crawl4aiAvailable: boolean;
   apifyAvailable: boolean;
 }) {
-  const [form, setForm] = useState<WebsiteFormInput>(websiteFormDefaults(source));
+  const [initial] = useState(() => websiteFormDefaults(source));
+  const [form, setForm] = useState<WebsiteFormInput>(initial);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+
+  const { leave } = useUnsavedChanges({
+    dirty,
+    confirmDelete,
+    description: "The edits to this website are not saved yet.",
+  });
+
+  function requestClose() {
+    if (isPending) return;
+    leave(onClose);
+  }
 
   function save() {
     startTransition(async () => {
-      await updateWebsiteSourceAction(assistantId, source.id, form);
+      try {
+        await updateWebsiteSourceAction(assistantId, source.id, form);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not update the website"
+        );
+        return;
+      }
       toast.success("Knowledge source updated");
       onClose();
     });
   }
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <>
+    {confirmDeleteModal}
+    <Dialog open onOpenChange={(o) => !o && requestClose()}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit knowledge source: {source.name}</DialogTitle>
@@ -505,18 +642,18 @@ function WebsiteEditDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={requestClose} disabled={isPending}>
             Cancel
           </Button>
           <Button onClick={save} disabled={isPending} className="font-semibold">
-            {isPending ? "Updating…" : "Update"}
+            <RollInText text={isPending ? "Updating…" : "Update"} />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
-
 
 /**
  * Binds `sourceRemovalChoice` to the two actions: unlink for a shared Source,
@@ -535,7 +672,7 @@ function removeSourceRequest(args: {
   const remove = () =>
     choice.mode === "unlink"
       ? unlinkSourceAction(args.assistantId, args.sourceId)
-      : deleteSourceAction(args.assistantId, args.sourceId);
+      : deleteOrgSourceAction(args.sourceId);
   return {
     title:
       choice.mode === "unlink" ? (
@@ -548,7 +685,7 @@ function removeSourceRequest(args: {
     onConfirm: remove,
     secondaryLabel: choice.secondaryLabel,
     onSecondary: choice.secondaryLabel
-      ? () => deleteSourceAction(args.assistantId, args.sourceId)
+      ? () => deleteOrgSourceAction(args.sourceId)
       : undefined,
   };
 }
@@ -723,7 +860,7 @@ function WebsitesTab({
     startTransition(async () => {
       try {
         if (source.kind === "website") {
-          await recrawlWebsiteSourceAction(assistantId, collectionId, source.id);
+          await recrawlSourceAction(source.id);
           ingestionStarted();
           toast.success("Website re-crawled");
         } else {
@@ -762,7 +899,9 @@ function WebsitesTab({
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             Websites
-            <Badge variant="secondary">{websiteSources.length}</Badge>
+            <Badge variant="secondary">
+              <RollingNumber value={websiteSources.length} />
+            </Badge>
           </h2>
           <p className="text-muted-foreground text-sm">
             Add your organization&apos;s main website or links to additional
@@ -795,7 +934,7 @@ function WebsitesTab({
           <div className="flex justify-end">
             <Button type="submit" disabled={isPending} className="px-5 font-semibold">
               <Plus className="size-4" />
-              {isPending ? "Starting crawl…" : "Add Website"}
+              <RollInText text={isPending ? "Starting crawl…" : "Add Website"} />
             </Button>
           </div>
         </form>
@@ -854,11 +993,7 @@ function WebsitesTab({
                   kind: "options",
                   value: statusFilter,
                   anyLabel: "Any status",
-                  options: [
-                    { value: "ready", label: "Ready" },
-                    { value: "processing", label: "Processing" },
-                    { value: "error", label: "Error" },
-                  ],
+                  options: SOURCE_STATUS_OPTIONS,
                   onChange: setStatusFilter,
                 }}
               />
@@ -892,6 +1027,17 @@ function WebsitesTab({
             )}
             {paged.items.map((source) => {
               const documentCount = documentsOf(source).length;
+              const remove = () =>
+                confirmDelete(
+                  removeSourceRequest({
+                    assistantId,
+                    sourceId: source.id,
+                    name: source.name,
+                    sharedWith: sharedWith[source.id],
+                    deleteLabel: "Delete website",
+                    deleteEffect: "The website and every page crawled from it go.",
+                  })
+                );
               return (
                 <TableRowMenu
                   key={source.id}
@@ -906,10 +1052,7 @@ function WebsitesTab({
                   {
                     label: "Copy ID",
                     icon: Copy,
-                    onSelect: () => {
-                      void navigator.clipboard?.writeText(source.id);
-                      toast.success("ID copied.");
-                    },
+                    onSelect: () => void copyToClipboard(source.id, "ID copied."),
                   },
                     {
                       label:
@@ -929,18 +1072,7 @@ function WebsitesTab({
                       label: "Remove from this assistant",
                       icon: Unlink,
                       destructive: true,
-                      onSelect: () =>
-                        confirmDelete(
-                          removeSourceRequest({
-                            assistantId,
-                            sourceId: source.id,
-                            name: source.name,
-                            sharedWith: sharedWith[source.id],
-                            deleteLabel: "Delete website",
-                            deleteEffect:
-                              "The website and every page crawled from it go.",
-                          })
-                        ),
+                      onSelect: remove,
                     },
                   ]}
                 >
@@ -969,9 +1101,12 @@ function WebsitesTab({
                           href={source.config.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-muted-foreground inline-flex max-w-full items-center gap-1 truncate text-xs hover:underline"
+                          className="text-muted-foreground inline-flex max-w-full items-center gap-1 text-xs hover:underline"
                         >
-                          {source.config.url} <ExternalLink className="size-3 shrink-0" />
+                          {/* truncate needs a block box, so it sits on the text
+                              and not on the inline-flex link around it. */}
+                          <span className="min-w-0 truncate">{source.config.url}</span>
+                          <ExternalLink className="size-3 shrink-0" />
                         </a>
                         <span className="text-muted-foreground block text-[0.7rem] capitalize">
                           Crawler: {source.config.crawlerProvider ?? "auto"}
@@ -988,6 +1123,16 @@ function WebsitesTab({
                           </span>
                         ) : null}
                       </span>
+                    )}
+                    {/* The reason used to live only in the badge's tooltip,
+                        which touch and keyboard never reach. */}
+                    {source.status === "error" && source.error && (
+                      <p
+                        className="text-destructive ml-6 line-clamp-2 text-xs break-words"
+                        title={source.error}
+                      >
+                        {source.error}
+                      </p>
                     )}
                     </TableOpenCell>
                   </TableCell>
@@ -1006,7 +1151,7 @@ function WebsitesTab({
                       className="text-primary press-text text-sm font-semibold hover:underline"
                       title="Open this Source's Documents"
                     >
-                      {documentCount} Documents
+                      <DocumentCount count={documentCount} />
                     </Link>
                   </TableCell>
                   <TableCell>
@@ -1070,22 +1215,19 @@ function WebsitesTab({
                         variant="ghost"
                         size="icon-sm"
                         data-destructive=""
-                        aria-label="Delete website"
-                        onClick={() =>
-                          confirmDelete(
-                            removeSourceRequest({
-                              assistantId,
-                              sourceId: source.id,
-                              name: source.name,
-                              sharedWith: sharedWith[source.id],
-                              deleteLabel: "Delete website",
-                              deleteEffect:
-                                "The website and every page crawled from it go.",
-                            })
-                          )
+                        // A shared Source is unlinked, not deleted, so the
+                        // button says which of the two it will offer.
+                        aria-label={
+                          (sharedWith[source.id] ?? []).length > 0
+                            ? "Remove website from this assistant"
+                            : "Delete website"
                         }
+                        onClick={remove}
                       >
-                        <AnimatedIcon icon={Trash2} size={14} />
+                        <AnimatedIcon
+                          icon={(sharedWith[source.id] ?? []).length > 0 ? Unlink : Trash2}
+                          size={14}
+                        />
                       </Button>
                     </TableActions>
                   </TableCell>
@@ -1201,7 +1343,6 @@ function DocumentsTab({
         Upload files for the assistant to answer from.
       </p>
       <FileUpload
-        variant="centered"
         value={uploads}
         onValueChange={setUploads}
         accept=".pdf,.docx,.md,.txt,.markdown"
@@ -1274,11 +1415,7 @@ function DocumentsTab({
                   kind: "options",
                   value: statusFilter,
                   anyLabel: "Any status",
-                  options: [
-                    { value: "ready", label: "Ready" },
-                    { value: "processing", label: "Processing" },
-                    { value: "error", label: "Error" },
-                  ],
+                  options: SOURCE_STATUS_OPTIONS,
                   onChange: setStatusFilter,
                 }}
               />
@@ -1297,7 +1434,19 @@ function DocumentsTab({
                 </TableCell>
               </TableRow>
             )}
-            {paged.items.map((source) => (
+            {paged.items.map((source) => {
+              const remove = () =>
+                confirmDelete(
+                  removeSourceRequest({
+                    assistantId,
+                    sourceId: source.id,
+                    name: source.name,
+                    sharedWith: sharedWith[source.id],
+                    deleteLabel: "Delete document",
+                    deleteEffect: "The document and everything indexed from it go.",
+                  })
+                );
+              return (
               <TableRowMenu
                 key={source.id}
                 title={source.name}
@@ -1311,27 +1460,13 @@ function DocumentsTab({
                 {
                   label: "Copy ID",
                   icon: Copy,
-                  onSelect: () => {
-                    void navigator.clipboard?.writeText(source.id);
-                    toast.success("ID copied.");
-                  },
+                  onSelect: () => void copyToClipboard(source.id, "ID copied."),
                 },
                   {
                     label: "Remove from this assistant",
                     icon: Unlink,
                     destructive: true,
-                    onSelect: () =>
-                      confirmDelete(
-                        removeSourceRequest({
-                          assistantId,
-                          sourceId: source.id,
-                          name: source.name,
-                          sharedWith: sharedWith[source.id],
-                          deleteLabel: "Delete document",
-                          deleteEffect:
-                            "The document and everything indexed from it go.",
-                        })
-                      ),
+                    onSelect: remove,
                   },
                 ]}
               >
@@ -1355,7 +1490,10 @@ function DocumentsTab({
                     <span className="truncate">{source.name}</span>
                   </span>
                   {source.status === "error" && source.error && (
-                    <p className="text-destructive ml-6 truncate text-xs">
+                    <p
+                      className="text-destructive ml-6 line-clamp-2 text-xs break-words"
+                      title={source.error}
+                    >
                       {source.error}
                     </p>
                   )}
@@ -1388,25 +1526,15 @@ function DocumentsTab({
                       />
                     )}
                     <DeleteSourceButton
-                      onClick={() =>
-                        confirmDelete(
-                          removeSourceRequest({
-                            assistantId,
-                            sourceId: source.id,
-                            name: source.name,
-                            sharedWith: sharedWith[source.id],
-                            deleteLabel: "Delete document",
-                            deleteEffect:
-                              "The document and everything indexed from it go.",
-                          })
-                        )
-                      }
+                      unlinks={(sharedWith[source.id] ?? []).length > 0}
+                      onClick={remove}
                     />
                   </TableActions>
                 </TableCell>
               </TableRow>
               </TableRowMenu>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </TableCard>
@@ -1486,30 +1614,31 @@ function ReprocessSourceButton({
   );
 }
 
-function DeleteSourceButton({ onClick }: { onClick: () => void }) {
+function DeleteSourceButton({
+  onClick,
+  unlinks,
+}: {
+  onClick: () => void;
+  /** A shared Source is unlinked from this assistant, not deleted. */
+  unlinks: boolean;
+}) {
   return (
     <Button
       variant="ghost"
       size="icon-sm"
       data-destructive=""
-      aria-label="Delete document"
+      aria-label={unlinks ? "Remove document from this assistant" : "Delete document"}
       onClick={onClick}
     >
-      <AnimatedIcon icon={Trash2} size={14} />
+      <AnimatedIcon icon={unlinks ? Unlink : Trash2} size={14} />
     </Button>
   );
 }
 
 /* -------------------------------- FAQs tab -------------------------------- */
 
-/** One answer-toolbar command over the markdown textarea. */
-type FaqToolbarCommand =
-  | { wrap: string; wrapEnd?: string }
-  | { prefix: string }
-  | { transform: (selected: string) => string };
-
 const FAQ_TOOLBAR: Array<
-  Array<{ label: string; Icon: typeof Bold; command: FaqToolbarCommand }>
+  Array<{ label: string; Icon: typeof Bold; command: MarkdownCommand }>
 > = [
   [
     { label: "Bold", Icon: Bold, command: { wrap: "**" } },
@@ -1559,16 +1688,37 @@ function FaqDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const [question, setQuestion] = useState(faq?.frontmatter.title ?? "");
-  const [answer, setAnswer] = useState(faq?.body ?? "");
+  const initialQuestion = faq?.frontmatter.title ?? "";
+  const initialAnswer = faq?.body ?? "";
+  const [question, setQuestion] = useState(initialQuestion);
+  const [answer, setAnswer] = useState(initialAnswer);
   const [showErrors, setShowErrors] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  const questionRef = useRef<HTMLInputElement>(null);
   const answerRef = useRef<HTMLTextAreaElement>(null);
   // Char-granular undo/redo over the answer, like the reference editor.
   const undoStack = useRef<string[]>([]);
   const redoStack = useRef<string[]>([]);
 
   const questionMissing = !question.trim();
+  const answerMissing = !answer.trim();
+  const questionInvalid = showErrors && questionMissing;
+  const answerInvalid = showErrors && answerMissing;
+  const dirty = question !== initialQuestion || answer !== initialAnswer;
+
+  const { leave } = useUnsavedChanges({
+    dirty: open && dirty,
+    confirmDelete,
+    description: faq
+      ? "The edits to this FAQ are not saved yet."
+      : "This FAQ has not been added yet.",
+  });
+
+  function requestClose() {
+    if (isPending) return;
+    leave(onClose);
+  }
 
   function setAnswerTracked(next: string) {
     undoStack.current.push(answer);
@@ -1591,29 +1741,20 @@ function FaqDialog({
     setAnswer(next);
   }
 
-  function applyCommand(command: FaqToolbarCommand) {
+  function applyCommand(command: MarkdownCommand) {
     const el = answerRef.current;
     if (!el) return;
     const { selectionStart, selectionEnd, value } = el;
-    const selected = value.slice(selectionStart, selectionEnd);
-    let next: string;
-    if ("wrap" in command) {
-      const end = command.wrapEnd ?? command.wrap;
-      next = value.slice(0, selectionStart) + command.wrap + selected + end + value.slice(selectionEnd);
-    } else if ("prefix" in command) {
-      const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
-      next = value.slice(0, lineStart) + command.prefix + value.slice(lineStart);
-    } else {
-      next = value.slice(0, selectionStart) + command.transform(selected) + value.slice(selectionEnd);
-    }
-    setAnswerTracked(next);
+    setAnswerTracked(applyMarkdownCommand(value, selectionStart, selectionEnd, command));
     requestAnimationFrame(() => el.focus());
   }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (questionMissing || !answer.trim()) {
+    if (questionMissing || answerMissing) {
       setShowErrors(true);
+      // Land on the first field that needs fixing, not on a silent form.
+      (questionMissing ? questionRef : answerRef).current?.focus();
       return;
     }
     startTransition(async () => {
@@ -1632,7 +1773,12 @@ function FaqDialog({
         }
         toast.success("FAQ updated");
       } else {
-        await createFaqAction(assistantId, collectionId, question, answer);
+        try {
+          await createFaqAction(assistantId, collectionId, question, answer);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Could not add the FAQ");
+          return;
+        }
         toast.success("FAQ added");
       }
       onClose();
@@ -1640,7 +1786,9 @@ function FaqDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <>
+    {confirmDeleteModal}
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{faq ? "Edit FAQ Knowledge" : "Add New FAQ Knowledge"}</DialogTitle>
@@ -1653,22 +1801,26 @@ function FaqDialog({
             </Label>
             <Input
               id="faq-q"
+              ref={questionRef}
               value={question}
               onChange={(e) => setQuestion(e.target.value.slice(0, 1000))}
               placeholder="Enter the question or title of your content.."
               autoFocus={!faq && canAutoFocus()}
-              aria-invalid={showErrors && questionMissing}
+              aria-invalid={questionInvalid}
+              aria-describedby={questionInvalid ? "faq-q-error" : undefined}
               className={
-                showErrors && questionMissing
+                questionInvalid
                   ? "border-destructive placeholder:text-destructive/70 focus-visible:ring-destructive/30"
                   : undefined
               }
             />
             <div className="flex items-center justify-between text-xs">
-              <span className="text-destructive">
-                {showErrors && questionMissing ? "Question is required" : ""}
+              <span id="faq-q-error" className="text-destructive">
+                {questionInvalid ? "Question is required" : ""}
               </span>
-              <span className="text-muted-foreground">{question.length}/1000</span>
+              <span className="text-muted-foreground">
+                <CharCount count={question.length} max={1000} />
+              </span>
             </div>
           </div>
           <div className="space-y-2">
@@ -1710,30 +1862,44 @@ function FaqDialog({
                 value={answer}
                 onChange={(e) => setAnswerTracked(e.target.value)}
                 placeholder="Enter your answer or content here.."
+                aria-invalid={answerInvalid}
+                aria-describedby={answerInvalid ? "faq-a-error" : undefined}
                 rows={12}
                 className="resize-none rounded-t-none border-0 shadow-none focus-visible:ring-0"
               />
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-destructive">
-                {showErrors && !answer.trim() ? "Answer is required" : ""}
+              <span id="faq-a-error" className="text-destructive">
+                {answerInvalid ? "Answer is required" : ""}
               </span>
-              <span className="text-muted-foreground">{answer.length}/20000</span>
+              <span className="text-muted-foreground">
+                <CharCount count={answer.length} max={20000} />
+              </span>
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={requestClose} disabled={isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={isPending} className="font-semibold">
-              {isPending ? "Saving…" : faq ? "Save FAQ" : "Add FAQ Knowledge"}
+              <RollInText
+                text={isPending ? "Saving…" : faq ? "Save FAQ" : "Add FAQ Knowledge"}
+              />
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
+
+/** "12.3 kB": the chosen CSV's size, grouped and unit-labelled by Intl. */
+const FILE_SIZE_KB = new Intl.NumberFormat("en-US", {
+  style: "unit",
+  unit: "kilobyte",
+  maximumFractionDigits: 1,
+});
 
 /** The "Import FAQs" CSV modal, click-to-upload / drag-drop, two-column contract. */
 function ImportFaqsDialog({
@@ -1838,10 +2004,10 @@ function ImportFaqsDialog({
             </p>
             <p className="text-muted-foreground mt-0.5 text-sm">CSV file.</p>
             {file && (
-              <p className="mt-3 text-sm font-medium">
+              <p className="mt-3 max-w-full min-w-0 text-sm font-medium break-all">
                 {file.name}{" "}
-                <span className="text-muted-foreground">
-                  ({(file.size / 1024).toFixed(1)} KB)
+                <span className="text-muted-foreground whitespace-nowrap">
+                  ({FILE_SIZE_KB.format(file.size / 1024)})
                 </span>
               </p>
             )}
@@ -1874,7 +2040,7 @@ function ImportFaqsDialog({
             disabled={!file || isPending}
             className="font-semibold"
           >
-            {isPending ? "Uploading…" : "Upload"}
+            <RollInText text={isPending ? "Uploading…" : "Upload"} />
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1898,7 +2064,6 @@ function FaqsTab({
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Concept | null>(null);
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
-  const [isPending, startTransition] = useTransition();
 
   const order = useClientSort();
   const filtered = order.sorted(
@@ -1928,7 +2093,7 @@ function FaqsTab({
         removeSourceRequest({
           assistantId,
           sourceId: faq.sourceId,
-          name: faq.frontmatter.title ?? "this FAQ",
+          name: faq.frontmatter.title || "this FAQ",
           sharedWith: shared,
           deleteLabel: "Delete FAQ",
           deleteEffect: "The question and its answer go.",
@@ -1938,13 +2103,18 @@ function FaqsTab({
     }
     confirmDelete({
       title: "Delete this FAQ?",
-      description: `“${faq.frontmatter.title ?? "This FAQ"}” and its answer go. This cannot be undone.`,
+      description: `“${faq.frontmatter.title || "This FAQ"}” and its answer go. This cannot be undone.`,
       confirmLabel: "Delete FAQ",
-      onConfirm: () =>
-        startTransition(async () => {
-          await deleteConceptAction(assistantId, faq.id);
-        }),
+      // Returned, not wrapped in a transition: the modal awaits it to show
+      // progress and to toast a failure.
+      onConfirm: () => deleteConceptAction(assistantId, faq.id),
     });
+  }
+
+  /** Open the FAQ dialog on one FAQ, or on a blank one with `null`. */
+  function openFaq(faq: Concept | null) {
+    setEditing(faq);
+    setDialogOpen(true);
   }
 
   const paged = useClientPage(filtered);
@@ -1985,12 +2155,7 @@ function FaqsTab({
         answer: f.body,
       }))
     );
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "faqs.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(csv, "text/csv", "faqs.csv");
   }
 
   return (
@@ -1999,7 +2164,9 @@ function FaqsTab({
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             Questions and Answers
-            <Badge variant="secondary">{faqs.length}</Badge>
+            <Badge variant="secondary">
+              <RollingNumber value={faqs.length} />
+            </Badge>
           </h2>
           <p className="text-muted-foreground text-sm">Add sets of questions and answers to fine tune AI responses.</p>
         </div>
@@ -2019,12 +2186,7 @@ function FaqsTab({
               <Plus className="size-4" /> New FAQ <ChevronDown className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  setEditing(null);
-                  setDialogOpen(true);
-                }}
-              >
+              <DropdownMenuItem onClick={() => openFaq(null)}>
                 <Plus className="size-4" /> Single Q&amp;A
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setImportOpen(true)}>
@@ -2057,7 +2219,6 @@ function FaqsTab({
           <Button
             variant="outline"
             size="sm"
-            disabled={isPending}
             onClick={() => {
               const { ids, sourceIds, sharedCount } = selected;
               const one = ids.length === 1;
@@ -2098,14 +2259,11 @@ function FaqsTab({
             }}
           >
             {selected.sharedCount > 0 ? (
-              <>
-                <Unlink className="mr-1.5 size-4" /> Remove
-              </>
+              <Unlink className="mr-1.5 size-4" />
             ) : (
-              <>
-                <Trash2 className="mr-1.5 size-4" /> Delete
-              </>
+              <Trash2 className="mr-1.5 size-4" />
             )}
+            <RollInText text={selected.sharedCount > 0 ? "Remove" : "Delete"} />
           </Button>
         </TableBulkBar>
         <Table fixed empty={filtered.length === 0}>
@@ -2155,9 +2313,7 @@ function FaqsTab({
                 </TableCell>
               </TableRow>
             )}
-            {paged.items.map((faq) => {
-              const trust = conceptProvenanceView(faq.frontmatter);
-              return (
+            {paged.items.map((faq) => (
                 <TableRowMenu
                   key={faq.id}
                   title={faq.frontmatter.title ?? faq.path}
@@ -2166,24 +2322,17 @@ function FaqsTab({
                     {
                       label: "Edit FAQ",
                       icon: Pencil,
-                      onSelect: () => {
-                        setEditing(faq);
-                        setDialogOpen(true);
-                      },
+                      onSelect: () => openFaq(faq),
                     },
                     {
                       label: "Copy answer",
                       icon: Copy,
-                      onSelect: () => {
-                        void navigator.clipboard?.writeText(faq.body);
-                        toast.success("Answer copied.");
-                      },
+                      onSelect: () => void copyToClipboard(faq.body, "Answer copied."),
                     },
                     {
                       label: "Delete FAQ",
                       icon: Trash2,
                       destructive: true,
-                      disabled: isPending,
                       onSelect: () => removeFaq(faq),
                     },
                   ]}
@@ -2199,8 +2348,11 @@ function FaqsTab({
                     label={faq.frontmatter.title ?? faq.path}
                   />
                   <TableCell className="align-top">
-                    <span className="block truncate text-sm font-medium">
-                      {faq.frontmatter.title}
+                    <span
+                      className="block truncate text-sm font-medium"
+                      title={faq.frontmatter.title || faq.path}
+                    >
+                      {faq.frontmatter.title || faq.path}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground align-top">
@@ -2212,14 +2364,7 @@ function FaqsTab({
                           an accepted Suggested Fix is agent-drafted but human-reviewed,
                           a hand-typed FAQ is neither. Unverified stays unlabelled, since
                           a badge on every row would carry no signal. */}
-                      {trust.tier !== "unverified" && (
-                        <Badge
-                          variant={trust.tier === "human-reviewed" ? "default" : "secondary"}
-                          className="shrink-0 rounded-full"
-                        >
-                          {trust.trustLabel}
-                        </Badge>
-                      )}
+                      <TrustTierBadge view={conceptProvenanceView(faq.frontmatter)} />
                       <Badge variant="outline" className="text-muted-foreground gap-1.5 rounded-full bg-muted/40">
                         READY
                       </Badge>
@@ -2231,10 +2376,7 @@ function FaqsTab({
                         variant="ghost"
                         size="icon-sm"
                         aria-label="Edit FAQ"
-                        onClick={() => {
-                          setEditing(faq);
-                          setDialogOpen(true);
-                        }}
+                        onClick={() => openFaq(faq)}
                       >
                         <Pencil className="size-3.5" />
                       </Button>
@@ -2243,7 +2385,6 @@ function FaqsTab({
                         size="icon-sm"
                         data-destructive=""
                         aria-label="Delete FAQ"
-                        disabled={isPending}
                         onClick={() => removeFaq(faq)}
                       >
                         <AnimatedIcon icon={Trash2} size={14} />
@@ -2252,8 +2393,7 @@ function FaqsTab({
                   </TableCell>
                 </TableRow>
                 </TableRowMenu>
-              );
-            })}
+            ))}
           </TableBody>
         </Table>
       </TableCard>
@@ -2281,28 +2421,54 @@ function FaqsTab({
 
 /* ----------------------------- Concept browser ---------------------------- */
 
+/** A Concept's OKF trust tier; unverified stays unlabelled. */
+function TrustTierBadge({ view }: { view: ConceptProvenanceView }) {
+  if (view.tier === "unverified") return null;
+  return (
+    <Badge
+      variant={view.tier === "human-reviewed" ? "default" : "secondary"}
+      className="shrink-0 rounded-full"
+    >
+      {view.trustLabel}
+    </Badge>
+  );
+}
+
+/**
+ * Provenance timestamps are whatever the producer stamped, usually ISO. A
+ * parseable one reads as a date; anything else is shown as written rather
+ * than as "Invalid Date".
+ */
+function readableInstant(value: string): string {
+  return Number.isNaN(Date.parse(value)) ? value : formatDateTime(value);
+}
+
 function ConceptCard({ assistantId, concept }: { assistantId: string; concept: Concept }) {
   const [open, setOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const provenance = conceptProvenanceView(concept.frontmatter);
+  const detailsId = useId();
   return (
-    <div className={`rounded-xl border ${isPending ? "opacity-50" : ""}`}>
+    <div className="rounded-xl border">
       {confirmDeleteModal}
       <div className="flex items-center gap-2 px-4 py-2.5">
-        <button type="button" onClick={() => setOpen(!open)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={detailsId}
+          onClick={() => setOpen(!open)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
           <ChevronDown className={`size-4 shrink-0 transition-transform ${open ? "" : "-rotate-90"}`} />
-          <code className="text-muted-foreground shrink-0 font-mono text-xs">{concept.path}</code>
+          <code
+            className="text-muted-foreground max-w-[40%] truncate font-mono text-xs"
+            title={concept.path}
+          >
+            {concept.path}
+          </code>
           <span className="truncate text-sm font-medium">{concept.frontmatter.title ?? concept.path}</span>
         </button>
-        {provenance.tier !== "unverified" && (
-          <Badge
-            variant={provenance.tier === "human-reviewed" ? "default" : "secondary"}
-            className="shrink-0 rounded-full"
-          >
-            {provenance.trustLabel}
-          </Badge>
-        )}
+        <TrustTierBadge view={provenance} />
         {provenance.showStatus && (
           <Badge variant="secondary" className="shrink-0 rounded-full capitalize">
             {provenance.status}
@@ -2321,10 +2487,7 @@ function ConceptCard({ assistantId, concept }: { assistantId: string; concept: C
               title: "Delete this concept?",
               description: `“${concept.frontmatter.title ?? concept.path}” leaves this assistant's knowledge. This cannot be undone.`,
               confirmLabel: "Delete concept",
-              onConfirm: () =>
-                startTransition(async () => {
-                  await deleteConceptAction(assistantId, concept.id);
-                }),
+              onConfirm: () => deleteConceptAction(assistantId, concept.id),
             })
           }
         >
@@ -2332,7 +2495,7 @@ function ConceptCard({ assistantId, concept }: { assistantId: string; concept: C
         </Button>
       </div>
       {open && (
-        <div className="border-t px-4 py-3">
+        <div id={detailsId} className="border-t px-4 py-3">
           {concept.frontmatter.description && (
             <p className="text-muted-foreground mb-2 text-xs italic">{concept.frontmatter.description}</p>
           )}
@@ -2342,7 +2505,7 @@ function ConceptCard({ assistantId, concept }: { assistantId: string; concept: C
                 <dt className="font-medium">Generated by</dt>
                 <dd className="font-mono break-all">
                   {provenance.generatedBy}
-                  {provenance.generatedAt ? ` · ${provenance.generatedAt}` : ""}
+                  {provenance.generatedAt ? ` · ${readableInstant(provenance.generatedAt)}` : ""}
                 </dd>
               </>
             )}
@@ -2351,7 +2514,7 @@ function ConceptCard({ assistantId, concept }: { assistantId: string; concept: C
                 <dt className="font-medium">Verified by</dt>
                 <dd className="font-mono break-all">
                   {provenance.verifiedBy}
-                  {provenance.verifiedAt ? ` · ${provenance.verifiedAt}` : ""}
+                  {provenance.verifiedAt ? ` · ${readableInstant(provenance.verifiedAt)}` : ""}
                 </dd>
               </>
             )}
@@ -2398,10 +2561,10 @@ export function KnowledgeClient({
   sources,
   concepts,
   sharedWith,
-  crawl4aiAvailable = false,
-  apifyAvailable = false,
-  apifyOrgConnected = false,
-  nullEmbeddingCount = 0,
+  crawl4aiAvailable,
+  apifyAvailable,
+  apifyOrgConnected,
+  nullEmbeddingCount,
   applicationConnections,
   applicationImports,
   applicationOperationalState,
@@ -2410,6 +2573,7 @@ export function KnowledgeClient({
   canEditApplications,
   canManageApplicationConnections,
   applicationOAuthAvailability,
+  initialMode = "websites",
 }: {
   assistantId: string;
   selected: KnowledgeCollection | null;
@@ -2420,12 +2584,12 @@ export function KnowledgeClient({
    * the shared Sources, where removing here unlinks instead of deleting.
    */
   sharedWith: Record<string, string[]>;
-  crawl4aiAvailable?: boolean;
-  apifyAvailable?: boolean;
+  crawl4aiAvailable: boolean;
+  apifyAvailable: boolean;
   /** The Organization connected its own Apify account (Settings → Crawling). */
-  apifyOrgConnected?: boolean;
+  apifyOrgConnected: boolean;
   /** Concepts whose chunks miss embeddings (lexical-only until re-embedded). */
-  nullEmbeddingCount?: number;
+  nullEmbeddingCount: number;
   applicationConnections: PublicApplicationConnection[];
   applicationImports: ApplicationImport[];
   applicationOperationalState: Record<
@@ -2437,10 +2601,53 @@ export function KnowledgeClient({
   canEditApplications: boolean;
   canManageApplicationConnections: boolean;
   applicationOAuthAvailability: ApplicationOAuthAvailability;
+  /** `?mode=` on the route, so a drill-down's breadcrumb returns to its tab. */
+  initialMode?: Mode;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("websites");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [isPending, startTransition] = useTransition();
+  const tabsId = useId();
+  const tabRefs = useRef<Partial<Record<Mode, HTMLButtonElement | null>>>({});
+
+  // Arrow keys walk the tabs (WAI-ARIA tabs pattern, automatic activation),
+  // so only the selected tab sits in the Tab order.
+  function onTabKeyDown(event: React.KeyboardEvent) {
+    const index = MODES.findIndex((m) => m.id === mode);
+    const next =
+      event.key === "ArrowRight"
+        ? (index + 1) % MODES.length
+        : event.key === "ArrowLeft"
+          ? (index - 1 + MODES.length) % MODES.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? MODES.length - 1
+              : null;
+    if (next === null) return;
+    event.preventDefault();
+    const target = MODES[next]!.id;
+    setMode(target);
+    tabRefs.current[target]?.focus();
+  }
+
+  function reembed() {
+    startTransition(async () => {
+      try {
+        const { pending, reembedded } = await reembedKnowledgeAction(assistantId);
+        const noun = (n: number) => `concept${n === 1 ? "" : "s"}`;
+        if (reembedded === pending) {
+          toast.success(`Re-embedded ${formatCount(reembedded)} ${noun(reembedded)}`);
+        } else {
+          toast.warning(
+            `Re-embedded ${formatCount(reembedded)} of ${formatCount(pending)} ${noun(pending)}`
+          );
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Re-embed failed");
+      }
+    });
+  }
 
   // Ingestion runs off the request path (Ingestion Jobs); poll while any
   // Source is still processing so its status settles without a manual reload.
@@ -2476,24 +2683,33 @@ export function KnowledgeClient({
             variant="outline"
             size="sm"
             disabled={isPending}
-            onClick={() =>
-              startTransition(async () => {
-                await reembedKnowledgeAction(assistantId);
-              })
-            }
+            onClick={reembed}
           >
-            {isPending ? "Re-embedding…" : "Re-embed"}
+            <RollInText text={isPending ? "Re-embedding…" : "Re-embed"} />
           </Button>
         </div>
       )}
       {selected ? (
         <>
           {/* Mode tabs */}
-          <div className="bg-muted/60 inline-flex rounded-xl border p-1">
+          <div
+            role="tablist"
+            aria-label="Knowledge types"
+            onKeyDown={onTabKeyDown}
+            className="bg-muted/60 inline-flex rounded-xl border p-1"
+          >
             {MODES.map((m) => (
               <button
                 key={m.id}
+                ref={(el) => {
+                  tabRefs.current[m.id] = el;
+                }}
                 type="button"
+                role="tab"
+                id={`${tabsId}-tab-${m.id}`}
+                aria-selected={mode === m.id}
+                aria-controls={`${tabsId}-panel`}
+                tabIndex={mode === m.id ? 0 : -1}
                 onClick={() => setMode(m.id)}
                 className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
                   mode === m.id ? "text-primary bg-primary/10 shadow-xs dark:bg-primary/20" : "text-muted-foreground hover:text-foreground"
@@ -2504,6 +2720,11 @@ export function KnowledgeClient({
             ))}
           </div>
 
+          <div
+            role="tabpanel"
+            id={`${tabsId}-panel`}
+            aria-labelledby={`${tabsId}-tab-${mode}`}
+          >
           {mode === "websites" && (
             <WebsitesTab
               assistantId={assistantId}
@@ -2549,7 +2770,7 @@ export function KnowledgeClient({
             <div className="space-y-2">
               {/* Reader-facing copy: no internal vocabulary, no ADR numbers. */}
               <p className="text-muted-foreground text-sm">
-                {nonFaqConcepts.length} concept
+                {formatCount(nonFaqConcepts.length)} concept
                 {nonFaqConcepts.length === 1 ? "" : "s"} this assistant can
                 cite, each one traceable to the source it came from and to who
                 wrote or reviewed it.
@@ -2559,6 +2780,7 @@ export function KnowledgeClient({
               ))}
             </div>
           )}
+          </div>
         </>
       ) : (
         <p className="text-muted-foreground text-sm">

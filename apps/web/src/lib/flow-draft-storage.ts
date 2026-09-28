@@ -1,5 +1,6 @@
 import { HTTP_FLOW_METHODS, type HttpFlowMethod } from "@agent-hub/core";
 import type { FlowDraft } from "@/lib/flow-editor";
+import { countLabel } from "@/lib/pagination";
 
 /**
  * A Flow draft kept in the browser between visits (#837).
@@ -137,9 +138,9 @@ export function draftSavedLabel(savedAt: string, now: Date): string {
   const seconds = Math.max(0, Math.round((now.getTime() - then) / 1000));
   if (seconds < 45) return "Draft saved just now";
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `Draft saved ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  if (minutes < 60) return `Draft saved ${countLabel(minutes, "minute")} ago`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `Draft saved ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  if (hours < 24) return `Draft saved ${countLabel(hours, "hour")} ago`;
   const days = Math.round(hours / 24);
-  return `Draft saved ${days} day${days === 1 ? "" : "s"} ago`;
+  return `Draft saved ${countLabel(days, "day")} ago`;
 }

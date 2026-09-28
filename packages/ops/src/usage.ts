@@ -34,11 +34,11 @@ const DEFAULT_WINDOW_DAYS = 30;
 const MAX_WINDOW_DAYS = 366;
 
 /** Resolve the optional bounds into a validated half-open window. */
-export function resolveUsageWindow(
-  input: { from?: string; to?: string },
-  now: Date = new Date()
-): { from: string; to: string } {
-  const to = input.to ? new Date(input.to) : now;
+export function resolveUsageWindow(input: {
+  from?: string;
+  to?: string;
+}): { from: string; to: string } {
+  const to = input.to ? new Date(input.to) : new Date();
   const from = input.from
     ? new Date(input.from)
     : new Date(to.getTime() - DEFAULT_WINDOW_DAYS * 24 * 60 * 60 * 1000);

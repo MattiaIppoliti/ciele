@@ -5,16 +5,16 @@ import {
   CONNECTOR_FILENAME,
   CONNECTOR_SHA256,
   connectorInstallationScope,
-  normalizeConnectorOrigin,
 } from "./local-connector-installer";
+import { normalizeSafeOrigin } from "./safe-origin";
 
-describe("normalizeConnectorOrigin", () => {
+describe("normalizeSafeOrigin for the connector installer", () => {
   it.each([
     ["https://ciele.example.com", "https://ciele.example.com"],
     ["http://localhost:3000", "http://localhost:3000"],
     ["http://127.0.0.1:3000", "http://127.0.0.1:3000"],
   ])("accepts %s", (input, expected) => {
-    expect(normalizeConnectorOrigin(input)).toBe(expected);
+    expect(normalizeSafeOrigin(input)).toBe(expected);
   });
 
   it.each([
@@ -23,7 +23,7 @@ describe("normalizeConnectorOrigin", () => {
     "https://user:password@ciele.example.com",
     "http://ciele.example.com",
   ])("rejects unsafe origin %s", (origin) => {
-    expect(() => normalizeConnectorOrigin(origin)).toThrow();
+    expect(() => normalizeSafeOrigin(origin)).toThrow();
   });
 });
 

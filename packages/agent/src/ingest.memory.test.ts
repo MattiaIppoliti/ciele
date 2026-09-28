@@ -146,7 +146,7 @@ describe("memory extraction enqueue", () => {
   });
 
   it("follows a file's ingest as it follows a crawl", async () => {
-    // Pasted text, files and FAQs commit through `replaceSourceKnowledge`,
+    // Pasted text, files and FAQs commit through `replaceSourceGeneration`,
     // not the crawl finaliser. The memories must not depend on which door the
     // knowledge came in by.
     const db = getMockDb();

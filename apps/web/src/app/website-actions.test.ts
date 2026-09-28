@@ -13,7 +13,7 @@ vi.mock("@/lib/authz", () => ({
 import { requireMember } from "@/lib/authz";
 import {
   addWebsiteSourceAction,
-  recrawlWebsiteSourceAction,
+  recrawlSourceAction,
   updateWebsiteSourceAction,
 } from "./actions";
 
@@ -106,7 +106,7 @@ describe("Website Source actions", () => {
   });
 
   it("starts manual re-crawls with fresh run metadata", async () => {
-    const { assistant, collection } = await seed("action-recrawl-provider");
+    const { collection } = await seed("action-recrawl-provider");
     const source = await db.createSource({
       collectionId: collection.id,
       name: "Docs",
@@ -120,11 +120,7 @@ describe("Website Source actions", () => {
       },
     });
 
-    await recrawlWebsiteSourceAction(
-      assistant.id,
-      collection.id,
-      source.id
-    );
+    await recrawlSourceAction(source.id);
 
     expect((await db.getSource(source.id))?.config).toMatchObject({
       resolvedCrawlerProvider: "local",

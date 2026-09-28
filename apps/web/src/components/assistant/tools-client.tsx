@@ -36,6 +36,8 @@ import { Label } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 /**
  * Tools & Skills SETUP section: which built-in agent tools the assistant runs
@@ -106,7 +108,7 @@ export function ToolsClient({
   skills: initialSkills,
   attachedSkillIds,
   integration,
-  entities = [],
+  entities,
   canEdit,
 }: {
   assistantId: string;
@@ -115,14 +117,17 @@ export function ToolsClient({
   attachedSkillIds: string[];
   /** The assistant's API integration, credential redacted (spec #559). */
   integration: ApiIntegrationView | null;
-  entities?: Entity[];
+  entities: Entity[];
   canEdit: boolean;
 }) {
   const [tools, setTools] = useState<AssistantTools>(initialTools);
   const [skills, setSkills] = useState<Skill[]>(initialSkills);
   const [attached, setAttached] = useState<string[]>(attachedSkillIds);
   const [skillDraft, setSkillDraft] = useState<SkillDraft | null>(null);
+  /** The draft as the dialog opened, so closing can tell whether anything changed. */
+  const [skillOpened, setSkillOpened] = useState<SkillDraft | null>(null);
   const [, startTransition] = useTransition();
+  const [skillPending, startSkillTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   // Rapid consecutive saves must not clobber each other, patch on the latest.
@@ -130,21 +135,32 @@ export function ToolsClient({
   const latestAttached = useRef(attached);
 
   function saveTools(next: AssistantTools, message: string) {
+    const previous = latestTools.current;
     latestTools.current = next;
     setTools(next);
     startTransition(async () => {
-      await updateAssistantAction(assistantId, { tools: next });
-      toast.success(message);
+      try {
+        await updateAssistantAction(assistantId, { tools: next });
+        toast.success(message);
+      } catch {
+        // Roll back only when no later toggle has landed on top of this one;
+        // otherwise the newer state is the one on screen and in flight.
+        if (latestTools.current === next) {
+          latestTools.current = previous;
+          setTools(previous);
+        }
+        toast.error("Could not save the change");
+      }
     });
   }
 
-  function toggleBuiltIn(name: BuiltInToolName, on: boolean) {
+  function toggleBuiltIn(item: (typeof BUILT_INS)[number], on: boolean) {
     saveTools(
       {
         ...latestTools.current,
-        builtIns: { ...latestTools.current.builtIns, [name]: on },
+        builtIns: { ...latestTools.current.builtIns, [item.name]: on },
       },
-      `${name} ${on ? "enabled" : "disabled"}`
+      `${item.title} ${on ? "enabled" : "disabled"}`
     );
   }
 
@@ -162,11 +178,20 @@ export function ToolsClient({
   }
 
   function saveAttached(next: string[], message: string) {
+    const previous = latestAttached.current;
     latestAttached.current = next;
     setAttached(next);
     startTransition(async () => {
-      await setAssistantSkillsAction(assistantId, next);
-      toast.success(message);
+      try {
+        await setAssistantSkillsAction(assistantId, next);
+        toast.success(message);
+      } catch {
+        if (latestAttached.current === next) {
+          latestAttached.current = previous;
+          setAttached(previous);
+        }
+        toast.error("Could not update the attached skills");
+      }
     });
   }
 
@@ -184,45 +209,68 @@ export function ToolsClient({
       toast.error("Skill name and prompt are required");
       return;
     }
-    startTransition(async () => {
-      if (draft.id) {
-        await updateSkillAction(assistantId, draft.id, {
-          name,
-          description: draft.description.trim(),
-          prompt: draft.prompt,
-          starter: draft.starter.trim(),
-        });
-        setSkills((prev) =>
-          prev.map((s) =>
-            s.id === draft.id
-              ? {
-                  ...s,
-                  name,
-                  description: draft.description.trim(),
-                  prompt: draft.prompt,
-                  starter: draft.starter.trim(),
-                }
-              : s
-          )
+    startSkillTransition(async () => {
+      try {
+        await persistSkill(draft, name);
+        // Closed only once saved, so a failure leaves the draft to retry.
+        closeSkill();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not save the skill"
         );
-        toast.success("Skill updated");
-      } else {
-        const skill = await createSkillAction(
-          {
-            name,
-            description: draft.description.trim(),
-            prompt: draft.prompt,
-            starter: draft.starter.trim(),
-          },
-          assistantId
-        );
-        setSkills((prev) => [...prev, skill]);
-        latestAttached.current = [...latestAttached.current, skill.id];
-        setAttached(latestAttached.current);
-        toast.success("Skill created and attached");
       }
     });
+  }
+
+  async function persistSkill(draft: SkillDraft, name: string) {
+    const fields = {
+      name,
+      description: draft.description.trim(),
+      prompt: draft.prompt,
+      starter: draft.starter.trim(),
+    };
+    if (draft.id) {
+      await updateSkillAction(draft.id, fields);
+      setSkills((prev) => prev.map((s) => (s.id === draft.id ? { ...s, ...fields } : s)));
+      toast.success("Skill updated");
+    } else {
+      const skill = await createSkillAction(fields, assistantId);
+      setSkills((prev) => [...prev, skill]);
+      latestAttached.current = [...latestAttached.current, skill.id];
+      setAttached(latestAttached.current);
+      toast.success("Skill created and attached");
+    }
+  }
+
+  function openSkill(draft: SkillDraft) {
+    setSkillDraft(draft);
+    setSkillOpened(draft);
+  }
+
+  function closeSkill() {
     setSkillDraft(null);
+    setSkillOpened(null);
+  }
+
+  const skillDirty =
+    skillDraft !== null &&
+    skillOpened !== null &&
+    (skillDraft.name !== skillOpened.name ||
+      skillDraft.description !== skillOpened.description ||
+      skillDraft.prompt !== skillOpened.prompt ||
+      skillDraft.starter !== skillOpened.starter);
+
+  const { leave: leaveSkill } = useUnsavedChanges({
+    dirty: skillDirty,
+    confirmDelete,
+    description: skillDraft?.id
+      ? "The edits to this skill are not saved yet."
+      : "This skill has not been created yet.",
+  });
+
+  function requestCloseSkill() {
+    if (skillPending) return;
+    leaveSkill(closeSkill);
   }
 
   // A Skill belongs to the Organization, so deleting it detaches it from every
@@ -232,19 +280,17 @@ export function ToolsClient({
       title: "Delete this skill?",
       description: `“${skill.name}” is deleted for the whole organization and detached from every assistant that uses it. This cannot be undone.`,
       confirmLabel: "Delete skill",
-      onConfirm: () => deleteSkillNow(skill),
-    });
-  }
-
-  function deleteSkillNow(skill: Skill) {
-    startTransition(async () => {
-      await deleteSkillAction(assistantId, skill.id);
-      setSkills((prev) => prev.filter((s) => s.id !== skill.id));
-      latestAttached.current = latestAttached.current.filter(
-        (id) => id !== skill.id
-      );
-      setAttached(latestAttached.current);
-      toast.success("Skill deleted");
+      // Returns the promise so the confirm modal shows it pending and toasts a
+      // failure; a transition here would resolve before the delete did.
+      onConfirm: async () => {
+        await deleteSkillAction(skill.id);
+        setSkills((prev) => prev.filter((s) => s.id !== skill.id));
+        latestAttached.current = latestAttached.current.filter(
+          (id) => id !== skill.id
+        );
+        setAttached(latestAttached.current);
+        toast.success("Skill deleted");
+      },
     });
   }
 
@@ -273,8 +319,8 @@ export function ToolsClient({
                     : (tools.builtIns?.[item.name] ?? item.defaultOn)
                 }
                 disabled={!canEdit || item.locked}
-                aria-label={`Enable ${item.name}`}
-                onCheckedChange={(on) => toggleBuiltIn(item.name, on)}
+                aria-label={`Enable ${item.title}`}
+                onCheckedChange={(on) => toggleBuiltIn(item, on)}
               />
             </div>
           ))}
@@ -337,7 +383,7 @@ export function ToolsClient({
             Reusable prompts. Attached skills are added to this assistant&apos;s instructions.
           </p>
           {canEdit && (
-            <Button variant="outline" size="sm" onClick={() => setSkillDraft(EMPTY_SKILL)}>
+            <Button variant="outline" size="sm" onClick={() => openSkill(EMPTY_SKILL)}>
               <AnimatedIcon icon={Plus} size={16} /> New skill
             </Button>
           )}
@@ -376,7 +422,7 @@ export function ToolsClient({
                       size="icon"
                       aria-label="Edit skill"
                       onClick={() =>
-                        setSkillDraft({
+                        openSkill({
                           id: skill.id,
                           name: skill.name,
                           description: skill.description,
@@ -408,7 +454,7 @@ export function ToolsClient({
       </SectionTimeline>
 
       {/* Skill dialog */}
-      <Dialog open={skillDraft !== null} onOpenChange={(open) => !open && setSkillDraft(null)}>
+      <Dialog open={skillDraft !== null} onOpenChange={(open) => !open && requestCloseSkill()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{skillDraft?.id ? "Edit skill" : "New skill"}</DialogTitle>
@@ -468,11 +514,22 @@ export function ToolsClient({
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSkillDraft(null)}>
+            <Button variant="outline" onClick={requestCloseSkill} disabled={skillPending}>
               Cancel
             </Button>
-            <Button onClick={() => skillDraft && commitSkill(skillDraft)}>
-              {skillDraft?.id ? "Save skill" : "Create skill"}
+            <Button
+              onClick={() => skillDraft && commitSkill(skillDraft)}
+              disabled={skillPending}
+            >
+              <RollInText
+                text={
+                  skillPending
+                    ? "Saving…"
+                    : skillDraft?.id
+                      ? "Save skill"
+                      : "Create skill"
+                }
+              />
             </Button>
           </DialogFooter>
         </DialogContent>

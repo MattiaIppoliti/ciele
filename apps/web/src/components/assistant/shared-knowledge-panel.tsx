@@ -30,7 +30,9 @@ export function SharedKnowledgePanel({
             className="flex items-center justify-between gap-3 px-4 py-3"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{item.name}</p>
+              <p className="truncate text-sm font-medium" title={item.name}>
+                {item.name}
+              </p>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 {item.conceptCount === 1
                   ? "1 concept"
@@ -43,6 +45,7 @@ export function SharedKnowledgePanel({
               </Badge>
               <Link
                 href={`/library/${knowledgeTabForKind(item.kind)}`}
+                aria-label={`Open ${item.name} in Library`}
                 className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
               >
                 Open in Library

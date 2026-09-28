@@ -1,8 +1,9 @@
 import { z } from "zod";
-import type { Assistant, Conversation, Teammate } from "@agent-hub/core";
+import type { Conversation, Teammate } from "@agent-hub/core";
 import { thrownMessage } from "@agent-hub/core";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
+import { requireAssistant } from "./assistants";
 
 /**
  * The Flows Agent (spec #836, #838): a system Teammate, one per Assistant,
@@ -27,14 +28,6 @@ const FLOWS_AGENT_ROLE = [
   "When you add a Connector action that writes to an external system, put a human_review action before it; the safe shape is the default and removing the gate is the Editor's call.",
   "After a tool call, tell the Editor in one or two sentences what you changed and why. Keep messages verbatim when the Editor gives exact wording.",
 ].join(" ");
-
-async function requireAssistant(ctx: OperationContext, id: string): Promise<Assistant> {
-  const assistant = await ctx.db.getAssistant(id);
-  if (!assistant || assistant.organizationId !== ctx.organizationId) {
-    throw new OperationError("not_found", "Assistant not found");
-  }
-  return assistant;
-}
 
 async function findFlowsAgent(
   ctx: OperationContext,

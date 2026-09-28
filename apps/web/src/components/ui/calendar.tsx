@@ -66,6 +66,9 @@ export function CalendarRange({
     <UiCalendar
       mode="range"
       numberOfMonths={2}
+      // Two months side by side already show the neighbouring days; drawing
+      // them again as outside days painted the same range twice.
+      showOutsideDays={false}
       selected={selected}
       defaultMonth={start}
       onSelect={(range: DateRange | undefined) => {

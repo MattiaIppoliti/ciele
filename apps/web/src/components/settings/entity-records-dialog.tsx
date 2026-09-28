@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Entity, EntityRecord } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
 import {
@@ -24,25 +24,42 @@ export function EntityRecordsDialog({
   const [records, setRecords] = useState<EntityRecord[] | null>(null);
   const [total, setTotal] = useState(0);
 
-  const load = () => {
-    setRecords(null);
+  // The parent opens this through `open`, and Base UI only calls
+  // `onOpenChange` for changes it makes itself, so loading from there never
+  // ran and the dialog sat on "Loading…". Reset while rendering the opening
+  // frame, fetch in an effect.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setRecords(null);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
     listEntityRecordsAction(entity.id, { limit: 50 })
       .then((result) => {
+        if (cancelled) return;
         setRecords(result.records);
         setTotal(result.total);
       })
-      .catch(() => toast.error("Couldn't load records."));
-  };
+      .catch(() => {
+        if (!cancelled) toast.error("Couldn't load records.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, entity.id]);
 
   return (
-    <Dialog open={open} onOpenChange={(next) => next ? load() : onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>“{entity.name}” records{total > 0 && ` (${total})`}</DialogTitle>
           <DialogDescription>{total > 50 ? "Showing the first 50, key-ordered." : "Key-ordered."}</DialogDescription>
         </DialogHeader>
         {records === null ? (
-          <p className="text-muted-foreground text-sm">Loading…</p>
+          <p role="status" className="text-muted-foreground text-sm">Loading…</p>
         ) : records.length === 0 ? (
           <p className="text-muted-foreground text-sm">No records yet, import a CSV to fill this entity.</p>
         ) : (
@@ -51,7 +68,13 @@ export function EntityRecordsDialog({
               <thead><tr className="border-b">
                 {entity.attributes.map((attribute) => (
                   <th key={attribute.key} className="px-2 py-1.5 font-medium">
-                    {attribute.label}{attribute.key === entity.keyAttribute && " 🔑"}
+                    {attribute.label}
+                    {attribute.key === entity.keyAttribute && (
+                      <>
+                        <span aria-hidden="true"> 🔑</span>
+                        <span className="sr-only"> (key)</span>
+                      </>
+                    )}
                   </th>
                 ))}
               </tr></thead>

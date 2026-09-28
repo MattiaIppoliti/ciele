@@ -11,6 +11,7 @@ import {
   mentionNotification,
   visibleNotifications,
 } from "@/lib/notifications";
+import { formatCount } from "@/lib/format";
 
 /** Cards the banner shows at once; the rest wait behind the count badge. */
 const VISIBLE_LIMIT = 3;
@@ -50,6 +51,8 @@ export function NotificationCenter({
   // that carries the same ids, so the set of seen ids is the whole rule.
   const { play } = useFeedback();
   const seen = useRef<Set<string> | null>(null);
+  // The chime is not heard by everyone; this is what a screen reader hears.
+  const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
     const ids = [
       ...alerts.map((alert) => `alert:${alert.id}`),
@@ -61,10 +64,19 @@ export function NotificationCenter({
       seen.current = new Set(ids);
       return;
     }
-    const arrived = ids.some((id) => !seen.current!.has(id));
+    const fresh = ids.filter((id) => !seen.current!.has(id));
     seen.current = new Set(ids);
-    if (arrived) play("arrive");
-  }, [alerts, mentions, play]);
+    if (fresh.length === 0) return;
+    play("arrive");
+    setAnnouncement(
+      arrivalAnnouncement({
+        alertCount: fresh.some((id) => id.startsWith("alert:"))
+          ? totalAlertCount
+          : 0,
+        mentionCount: fresh.filter((id) => id.startsWith("mention:")).length,
+      }),
+    );
+  }, [alerts, mentions, play, totalAlertCount]);
 
   const onAlertsPage = pathname.startsWith("/alerts");
 
@@ -83,7 +95,15 @@ export function NotificationCenter({
     });
   }, [alerts, mentions, dismissed, onAlertsPage, pathname]);
 
-  if (items.length === 0) return null;
+  // Mounted before anything arrives: a live region that appears together with
+  // its text is not announced.
+  const liveRegion = (
+    <p role="status" aria-live="polite" className="sr-only">
+      {announcement}
+    </p>
+  );
+
+  if (items.length === 0) return liveRegion;
 
   const shownAlerts = items.filter((item) => item.source === "alert").length;
   const hiddenAlerts = onAlertsPage ? 0 : totalAlertCount - shownAlerts;
@@ -102,6 +122,7 @@ export function NotificationCenter({
     // is hold the stack's own width. It still floats over the workspace, hence
     // pointer-events-auto on the stack itself.
     <div className="flex w-full justify-end">
+      {liveRegion}
       <NotificationStack
         items={items.map((item) => ({
           id: item.id,
@@ -110,7 +131,6 @@ export function NotificationCenter({
           description: item.description,
           trailing: item.tag,
         }))}
-        maxVisible={items.length}
         collapsedLabel={collapsedLabel(
           shownAlerts + hiddenAlerts,
           items.length,
@@ -123,12 +143,11 @@ export function NotificationCenter({
             : "Dismiss"
         }
         onViewAll={shownAlerts > 0 ? () => router.push("/alerts") : closeAll}
+        // A real link under the pointer, so Cmd-click and middle-click open
+        // the Alerts page in a new tab. The keyboard keeps `onViewAll`.
+        viewAllHref={shownAlerts > 0 ? "/alerts" : undefined}
         onClose={closeAll}
         className="pointer-events-auto shadow-lg"
-        classNames={{
-          trailing: "text-muted-foreground",
-          description: "line-clamp-2",
-        }}
       />
     </div>
   );
@@ -139,4 +158,30 @@ function collapsedLabel(alertCount: number, itemCount: number): string {
   if (alertCount === 1) return "alert needs attention";
   if (alertCount > 1) return "alerts need attention";
   return itemCount === 1 ? "notification" : "notifications";
+}
+
+/** "2 alerts need attention. 1 new mention", for the polite live region. */
+function arrivalAnnouncement({
+  alertCount,
+  mentionCount,
+}: {
+  alertCount: number;
+  mentionCount: number;
+}): string {
+  const parts: string[] = [];
+  if (alertCount > 0) {
+    parts.push(
+      alertCount === 1
+        ? "1 alert needs attention"
+        : `${formatCount(alertCount)} alerts need attention`,
+    );
+  }
+  if (mentionCount > 0) {
+    parts.push(
+      mentionCount === 1
+        ? "1 new mention"
+        : `${formatCount(mentionCount)} new mentions`,
+    );
+  }
+  return parts.join(". ");
 }

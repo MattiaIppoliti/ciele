@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import type { HumanReviewSettings, ReviewInputField, ReviewInputType } from "@agent-hub/core";
 import {
   DEFAULT_REVIEW_HALT_MESSAGE,
@@ -61,6 +62,18 @@ export function HumanReviewConfig({
   );
   const inputs = settings?.inputs ?? [];
   const issue = humanReviewSettingsIssue(settings);
+  // One prefix, a suffix per field: every visible label names its control.
+  const uid = useId();
+  const ids = {
+    title: `${uid}-title`,
+    message: `${uid}-message`,
+    assignees: `${uid}-assignees`,
+    channel: `${uid}-channel`,
+    slack: `${uid}-slack`,
+    expires: `${uid}-expires`,
+    waiting: `${uid}-waiting`,
+    halt: `${uid}-halt`,
+  };
 
   function connectMailbox() {
     const params = new URLSearchParams({ returnTo: window.location.pathname });
@@ -78,8 +91,9 @@ export function HumanReviewConfig({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>Title</Label>
+        <Label htmlFor={ids.title}>Title</Label>
         <Input
+          id={ids.title}
           value={settings?.title ?? ""}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder="Approve a refund"
@@ -87,8 +101,9 @@ export function HumanReviewConfig({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Message to the reviewer</Label>
+        <Label htmlFor={ids.message}>Message to the reviewer</Label>
         <Textarea
+          id={ids.message}
           value={settings?.message ?? ""}
           onChange={(e) => onChange({ message: e.target.value })}
           placeholder="A student is asking for a refund on {{workflow.message}}. Approve if the policy allows it."
@@ -100,8 +115,12 @@ export function HumanReviewConfig({
         </p>
       </div>
       <div className="space-y-1.5">
-        <Label>Assigned to</Label>
+        <Label htmlFor={ids.assignees}>Assigned to</Label>
         <ListInput
+          id={ids.assignees}
+          inputMode="email"
+          spellCheck={false}
+          autoComplete="off"
           values={settings?.assignees}
           onChange={(assignees) => onChange({ assignees })}
           placeholder="ann@campus.edu, bob@campus.edu"
@@ -113,8 +132,8 @@ export function HumanReviewConfig({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Channel</Label>
-        <div className="grid grid-cols-2 gap-1.5">
+        <Label id={ids.channel}>Channel</Label>
+        <div role="group" aria-labelledby={ids.channel} className="grid grid-cols-2 gap-1.5">
           {(["email", "slack"] as const).map((candidate) => (
             <button
               key={candidate}
@@ -180,8 +199,11 @@ export function HumanReviewConfig({
         </div>
       ) : (
         <div className="space-y-1.5">
-          <Label>Slack channel or person</Label>
+          <Label htmlFor={ids.slack}>Slack channel or person</Label>
           <Input
+            id={ids.slack}
+            spellCheck={false}
+            autoComplete="off"
             value={settings?.slackTarget ?? ""}
             onChange={(e) => onChange({ slackTarget: e.target.value })}
             placeholder="C0123456789 or U0123456789"
@@ -284,8 +306,9 @@ export function HumanReviewConfig({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label>Expires after (hours)</Label>
+          <Label htmlFor={ids.expires}>Expires after (hours)</Label>
           <Input
+            id={ids.expires}
             type="number"
             min={1}
             max={24 * 14}
@@ -296,8 +319,9 @@ export function HumanReviewConfig({
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label>While waiting, the visitor reads</Label>
+        <Label htmlFor={ids.waiting}>While waiting, the visitor reads</Label>
         <Textarea
+          id={ids.waiting}
           value={settings?.waitingMessage ?? ""}
           onChange={(e) => onChange({ waitingMessage: e.target.value })}
           placeholder={DEFAULT_REVIEW_WAITING_MESSAGE}
@@ -306,8 +330,9 @@ export function HumanReviewConfig({
         />
       </div>
       <div className="space-y-1.5">
-        <Label>If rejected or expired, the visitor reads</Label>
+        <Label htmlFor={ids.halt}>If rejected or expired, the visitor reads</Label>
         <Textarea
+          id={ids.halt}
           value={settings?.haltMessage ?? ""}
           onChange={(e) => onChange({ haltMessage: e.target.value })}
           placeholder={DEFAULT_REVIEW_HALT_MESSAGE}
@@ -315,7 +340,11 @@ export function HumanReviewConfig({
           className="bg-background"
         />
       </div>
-      {issue && <p className="text-destructive text-xs">{issue}</p>}
+      {issue && (
+        <p role="status" className="text-destructive text-xs">
+          {issue}
+        </p>
+      )}
     </div>
   );
 }
@@ -340,10 +369,10 @@ export function HumanReviewPreview({ draft }: { draft: FlowDraft }) {
         What {settings?.channel === "slack" ? "the Slack message" : "the email"} will say. Nothing is sent from here.
       </p>
       <div className="bg-muted/40 rounded-lg border p-3 text-sm">
-        <p className="font-medium">{text.subject}</p>
-        <pre className="mt-2 whitespace-pre-wrap font-sans text-xs">{text.body}</pre>
+        <p className="font-medium break-words">{text.subject}</p>
+        <pre className="mt-2 font-sans text-xs break-words whitespace-pre-wrap">{text.body}</pre>
       </div>
-      <p className="text-muted-foreground text-xs">
+      <p className="text-muted-foreground text-xs break-all">
         To: {(settings?.assignees ?? []).join(", ") || "(no assignees yet)"}
       </p>
     </div>

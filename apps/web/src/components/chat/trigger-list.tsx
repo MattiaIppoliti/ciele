@@ -3,6 +3,32 @@
 import type { ReactNode } from "react";
 
 /**
+ * The id of one row, for the textarea's `aria-activedescendant`: focus stays
+ * in the textarea while the arrows move, so this is how a screen reader hears
+ * which row the keyboard is on.
+ */
+export function triggerOptionId(listId: string, index: number): string {
+  return `${listId}-option-${index}`;
+}
+
+/**
+ * The attributes the composer's textarea takes while a list is open. A textarea
+ * cannot carry `role="combobox"` (or `aria-expanded`), so it stays a textbox
+ * and points at the list and its highlighted row instead.
+ */
+export function triggerInputProps(
+  listId: string,
+  open: boolean,
+  highlighted: number
+) {
+  return {
+    "aria-autocomplete": "list",
+    "aria-controls": open ? listId : undefined,
+    "aria-activedescendant": open ? triggerOptionId(listId, highlighted) : undefined,
+  } as const;
+}
+
+/**
  * The list a composer trigger opens, above the input.
  *
  * Presentational only; `useComposerTrigger` owns which token is open, who
@@ -10,6 +36,7 @@ import type { ReactNode } from "react";
  * control rather than three that grew separately.
  */
 export function TriggerList<T extends { id: string }>({
+  id,
   label,
   items,
   highlighted,
@@ -17,6 +44,8 @@ export function TriggerList<T extends { id: string }>({
   onPick,
   renderItem,
 }: {
+  /** Set to wire the list to its textarea; see `triggerInputProps`. */
+  id?: string;
   label: string;
   items: readonly T[];
   highlighted: number;
@@ -25,16 +54,19 @@ export function TriggerList<T extends { id: string }>({
   renderItem: (item: T) => ReactNode;
 }) {
   return (
-    <div
-      role="listbox"
-      aria-label={label}
-      className="bg-popover text-popover-foreground absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border shadow-lg"
-    >
-      <ul className="max-h-64 overflow-y-auto p-1.5">
+    <div className="bg-popover text-popover-foreground absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border shadow-lg">
+      <ul
+        id={id}
+        role="listbox"
+        aria-label={label}
+        className="max-h-64 overflow-y-auto p-1.5"
+      >
         {items.map((item, index) => (
-          <li key={item.id}>
+          <li key={item.id} role="none">
             <button
               type="button"
+              id={id ? triggerOptionId(id, index) : undefined}
+              tabIndex={-1}
               role="option"
               aria-selected={index === highlighted}
               // Mousedown would steal the textarea's focus (and with it the

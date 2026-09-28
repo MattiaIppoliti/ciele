@@ -50,29 +50,25 @@ const serverSnapshot = () => false;
 export interface BottomSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Heights (0-1 = fraction of viewport, or "auto"). First entry is default. */
-  snapPoints?: (number | "auto")[];
-  defaultSnap?: number;
+  /** Heights as fractions (0-1) of the viewport. First entry is default. */
+  snapPoints: number[];
   title?: string;
   description?: string;
   children?: ReactNode;
-  className?: string;
-  /** Min drag distance (px) past current snap to dismiss. */
-  dismissThreshold?: number;
 }
+
+/** Min drag distance (px) past the current snap to dismiss. */
+const DISMISS_THRESHOLD = 120;
 
 export function BottomSheet({
   open,
   onOpenChange,
-  snapPoints = [0.5, 0.92],
-  defaultSnap = 0,
+  snapPoints,
   title,
   description,
   children,
-  className,
-  dismissThreshold = 120,
 }: BottomSheetProps) {
-  const [snap, setSnap] = useState(defaultSnap);
+  const [snap, setSnap] = useState(0);
   // Non-null only between a drag release and the animation that follows it, so
   // the very next transition inherits the fling and every other one does not.
   const [releaseVelocity, setReleaseVelocity] = useState<number | null>(null);
@@ -89,9 +85,9 @@ export function BottomSheet({
   const descriptionId = useId();
 
   const closeSheet = useCallback(() => {
-    setSnap(defaultSnap);
+    setSnap(0);
     onOpenChange(false);
-  }, [defaultSnap, onOpenChange]);
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -203,13 +199,13 @@ export function BottomSheet({
     // from 20px in and a slow drag to 200px used to be judged by two unrelated
     // threshold ladders; both are now one projected landing point.
     const decision = sheetReleaseFor({
-      snapPoints: numericSnapPoints,
+      snapPoints,
       currentIndex: snap,
       viewportHeight:
         typeof window === "undefined" ? 0 : window.innerHeight,
       offset: info.offset.y,
       velocity,
-      dismissThreshold,
+      dismissThreshold: DISMISS_THRESHOLD,
     });
 
     if (decision.kind === "dismiss") {
@@ -228,16 +224,7 @@ export function BottomSheet({
     setSnap(decision.index);
   };
 
-  // "auto" has no fraction to project against; treat it as the tallest rung so
-  // the release maths still has a monotonic ladder to pick from.
-  const numericSnapPoints = snapPoints.map((point) =>
-    point === "auto" ? 0.92 : point,
-  );
-  const snapValue = snapPoints[snap];
-  const heightStyle =
-    snapValue === "auto"
-      ? { maxHeight: "92vh" }
-      : { height: `${snapValue * 100}vh` };
+  const heightStyle = { height: `${snapPoints[snap] * 100}vh` };
 
   // Portal to <body>: an ancestor with backdrop-filter or transform becomes
   // the containing block for fixed descendants, which would position the
@@ -247,7 +234,7 @@ export function BottomSheet({
   return createPortal(
     <AnimatePresence
       onExitComplete={() => {
-        setSnap(defaultSnap);
+        setSnap(0);
         setReleaseVelocity(null);
         previouslyFocusedRef.current?.focus();
         previouslyFocusedRef.current = null;
@@ -296,7 +283,6 @@ export function BottomSheet({
             className={cn(
               "pointer-events-auto absolute bottom-0 left-0 right-0 mx-auto flex max-w-2xl flex-col overflow-hidden rounded-t-3xl will-change-transform",
               "border border-border bg-background shadow-xl",
-              className,
             )}
             role="dialog"
             aria-modal="true"

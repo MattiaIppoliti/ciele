@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  DB_TABLE_SPECS,
   camelToSnakeKey,
   domainToRow,
+  patchRow,
   rowToDomain,
   snakeToCamelKey,
 } from "./table-access";
@@ -32,14 +32,12 @@ describe("table-access key mapping", () => {
     expect(domainToRow({ name: undefined, prompt: "p" })).toEqual({ prompt: "p" });
   });
 
-  it("rowToDomain passes values through verbatim, nulls included", () => {
-    expect(rowToDomain({ logo_url: null })).toEqual({ logoUrl: null });
+  it("patchRow keeps only the listed keys that are set, as columns", () => {
+    const patch = { logoUrl: null, name: undefined, extra: "not listed" };
+    expect(patchRow(patch, ["logoUrl", "name"])).toEqual({ logo_url: null });
   });
 
-  it("every table spec orders by a mechanical field name", () => {
-    for (const spec of Object.values(DB_TABLE_SPECS)) {
-      // The order column must survive the mechanical mapping round-trip.
-      expect(snakeToCamelKey(camelToSnakeKey(spec.orderBy))).toBe(spec.orderBy);
-    }
+  it("rowToDomain passes values through verbatim, nulls included", () => {
+    expect(rowToDomain({ logo_url: null })).toEqual({ logoUrl: null });
   });
 });

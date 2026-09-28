@@ -12,6 +12,7 @@ import {
   dedupCandidates,
   dedupMatch,
   findDuplicateImprovement,
+  isOpenImprovement,
   priorityFrom,
   mayAcceptSuggestedFix,
   messageText,
@@ -377,7 +378,7 @@ async function triageDecision(
   const ask = ctx.ports?.triageDecisions;
   if (!ask) return null;
   const open = board
-    .filter((item) => item.status !== "done" && item.status !== "archived")
+    .filter(isOpenImprovement)
     .map((item) => ({ id: item.id, title: item.title }));
   const candidates = dedupCandidates(evidence.title, open);
   try {
@@ -476,9 +477,7 @@ export const triageFeedbackOp = defineOperation({
         title === UNTITLED_TRIAGE_TITLE
           ? null
           : decided
-            ? decided.matchedId
-              ? board.find((item) => item.id === decided.matchedId) ?? null
-              : null
+            ? board.find((item) => item.id === decided.matchedId) ?? null
             : findDuplicateImprovement(title, board);
       if (twin) {
         result.deduped += 1;
@@ -538,7 +537,8 @@ function lastVisitorQuestion(
   flaggedId: string
 ): string {
   const index = messages.findIndex((message) => message.id === flaggedId);
-  const prior = [...messages.slice(0, index)]
+  const prior = messages
+    .slice(0, index)
     .reverse()
     .find((message) => message.role === "user");
   return messageText(prior?.content ?? [], " ").trim();

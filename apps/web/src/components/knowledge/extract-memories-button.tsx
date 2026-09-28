@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@agent-hub/ui";
 import { extractSourceMemoriesAction } from "@/app/actions";
 import { toast } from "@/lib/toast";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 /**
  * The backfill lever (#933): ask for memories over a Source's existing
@@ -49,7 +50,10 @@ export function ExtractMemoriesButton({
         })
       }
     >
-      {isPending ? "Queueing…" : "Extract memories"}
+      {/* "Queued" once accepted, so the disabled button says why it is. */}
+      <RollInText
+        text={isPending ? "Queueing…" : done ? "Queued" : "Extract memories"}
+      />
     </Button>
   );
 }

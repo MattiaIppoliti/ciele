@@ -7,7 +7,7 @@ import { CtaSection } from "@/components/marketing/cta-section";
 import { InstallCommand } from "@/components/marketing/install-command";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { SpotlightCard } from "@/components/marketing/spotlight-card";
-import { CodeBlock } from "@/components/ui/code-block";
+import { SelfHostInstall } from "@/components/marketing/self-host-install";
 import {
   INSTALL_SCRIPT_PATH,
   resolveDesktopPackageUrl,
@@ -275,53 +275,16 @@ export function DownloadContent() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
-            <CodeBlock tabs={INSTALL_TABS} />
-
-            <div className="border-border/70 bg-card/60 rounded-xl border p-6 backdrop-blur-sm">
-              <p className="text-foreground text-sm font-semibold">
-                What you provide
-              </p>
-              <ul className="mt-4 space-y-4">
-                {REQUIREMENTS.map((requirement) => (
-                  <li key={requirement.title}>
-                    <p className="text-foreground text-sm font-medium">
-                      {requirement.title}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                      {requirement.detail}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 flex flex-col gap-2">
-                <Button
-                  className={cn("h-9 w-full", CTA_CLASS)}
-                  variant="outline"
-                  nativeButton={false}
-                  render={
-                    <a
-                      href="https://docs.ciele.app/self-hosting"
-                      target="_blank"
-                      rel="noreferrer"
-                    />
-                  }
-                >
-                  <span>Read the full guide</span>
-                </Button>
-                <Button
-                  className={cn("h-9 w-full", CTA_CLASS)}
-                  variant="outline"
-                  nativeButton={false}
-                  render={
-                    <a href={SOURCE_URL} target="_blank" rel="noreferrer" />
-                  }
-                >
-                  <span>View the source</span>
-                </Button>
-              </div>
-            </div>
-          </div>
+          <SelfHostInstall
+            className="mt-10"
+            tabs={INSTALL_TABS}
+            requirements={REQUIREMENTS}
+            docs={{
+              href: "https://docs.ciele.app/self-hosting",
+              label: "Read the full guide",
+            }}
+            sourceUrl={SOURCE_URL}
+          />
 
           <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {STACK.map((piece) => (

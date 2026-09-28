@@ -17,7 +17,7 @@ export async function POST(
     feedback?: -1 | 0 | 1;
     reaction?: unknown;
   };
-  const hasReaction = Object.prototype.hasOwnProperty.call(body, "reaction");
+  const hasReaction = Object.hasOwn(body, "reaction");
   const reaction = isFeedbackReactionId(body.reaction) ? body.reaction : null;
   if (
     !body.messageId ||

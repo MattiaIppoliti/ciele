@@ -37,7 +37,9 @@ export function EntitySyncDialog({
   const [url, setUrl] = useState("");
   const [headersText, setHeadersText] = useState("");
   const [mappingText, setMappingText] = useState("");
-  const [cadenceHours, setCadenceHours] = useState(24);
+  // Text, not a number: clearing the field to type a new value used to snap
+  // it straight back to 24. Parsed and checked on save.
+  const [cadenceText, setCadenceText] = useState("24");
   const [prune, setPrune] = useState(false);
   const [clearHeaders, setClearHeaders] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -49,7 +51,7 @@ export function EntitySyncDialog({
         setStatus(next);
         if (!next.config) return;
         setUrl(next.config.url);
-        setCadenceHours(next.config.cadenceHours);
+        setCadenceText(String(next.config.cadenceHours));
         setPrune(next.config.prune);
         setMappingText(
           Object.entries(next.config.mapping)
@@ -83,7 +85,16 @@ export function EntitySyncDialog({
       })
       .filter((header): header is { name: string; value: string } => Boolean(header?.name));
 
-  const save = () =>
+  // Until the stored config arrives the fields hold defaults, and saving them
+  // would overwrite it.
+  const loading = status === null;
+
+  const save = () => {
+    const cadenceHours = Number(cadenceText.trim());
+    if (!Number.isInteger(cadenceHours) || cadenceHours < 1) {
+      toast.error("Enter the interval as a whole number of hours, 1 or more");
+      return;
+    }
     startTransition(async () => {
       try {
         const result = await saveEntitySyncConfigAction(entity.id, {
@@ -100,14 +111,19 @@ export function EntitySyncDialog({
         toast.error("Could not save the sync source");
       }
     });
+  };
 
   const syncNow = () =>
     startTransition(async () => {
       try {
         await syncEntityNowAction(entity.id);
         toast.success("Sync started, check back for the run report");
-      } catch {
-        toast.error("Save a sync source first");
+      } catch (error) {
+        toast.error(
+          error instanceof Error && error.message
+            ? error.message
+            : "Could not start the sync",
+        );
       }
     });
 
@@ -123,11 +139,11 @@ export function EntitySyncDialog({
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="sync-url">Endpoint URL</Label>
-            <Input id="sync-url" type="url" inputMode="url" autoComplete="off" spellCheck={false} value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://api.example.com/orders" />
+            <Input id="sync-url" disabled={loading} type="url" inputMode="url" autoComplete="off" spellCheck={false} value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://api.example.com/orders" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="sync-headers">Auth headers, one name: value per line{status?.config?.hasHeaders ? "; blank keeps current headers" : ""}</Label>
-            <Textarea id="sync-headers" spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" rows={2} value={headersText} onChange={(event) => setHeadersText(event.target.value)} placeholder="authorization: Bearer …" />
+            <Textarea id="sync-headers" disabled={loading} spellCheck={false} autoComplete="off" autoCapitalize="off" autoCorrect="off" rows={2} value={headersText} onChange={(event) => setHeadersText(event.target.value)} placeholder="authorization: Bearer …" />
             {status?.config?.hasHeaders && (
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox checked={clearHeaders} onCheckedChange={(value) => setClearHeaders(value === true)} />
@@ -137,15 +153,15 @@ export function EntitySyncDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="sync-mapping">Field mapping: jsonField -&gt; attributeKey, one per line</Label>
-            <Textarea id="sync-mapping" rows={2} value={mappingText} onChange={(event) => setMappingText(event.target.value)} placeholder={`orderNumber -> ${entity.keyAttribute}`} />
+            <Textarea id="sync-mapping" disabled={loading} spellCheck={false} rows={2} value={mappingText} onChange={(event) => setMappingText(event.target.value)} placeholder={`orderNumber -> ${entity.keyAttribute}`} />
           </div>
           <div className="flex items-center gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="sync-cadence">Every (hours)</Label>
-              <Input id="sync-cadence" type="number" min={1} className="w-24" value={cadenceHours} onChange={(event) => setCadenceHours(Number(event.target.value) || 24)} />
+              <Input id="sync-cadence" disabled={loading} type="number" inputMode="numeric" min={1} step={1} autoComplete="off" className="w-24" value={cadenceText} onChange={(event) => setCadenceText(event.target.value)} />
             </div>
             <label className="mt-5 flex items-center gap-2 text-sm">
-              <Checkbox checked={prune} onCheckedChange={(value) => setPrune(value === true)} />
+              <Checkbox disabled={loading} checked={prune} onCheckedChange={(value) => setPrune(value === true)} />
               Remove records missing from the source
             </label>
           </div>
@@ -154,7 +170,7 @@ export function EntitySyncDialog({
               <p className="font-medium">Recent runs</p>
               <ul className="mt-1 grid gap-1">
                 {status.runs.map((run) => (
-                  <li key={run.id} className="text-muted-foreground">
+                  <li key={run.id} className="text-muted-foreground break-words">
                     {formatDateTime(run.finishedAt)}, {run.status === "succeeded"
                       ? `${run.upserted} upserted${run.pruned ? `, ${run.pruned} pruned` : ""}${run.rejected.length ? `, ${run.rejected.length} rejected` : ""}`
                       : `failed: ${run.error}`}
@@ -168,7 +184,7 @@ export function EntitySyncDialog({
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Close</Button>
           <Button variant="outline" disabled={isPending || !status?.config} onClick={syncNow}>Sync now</Button>
-          <Button onClick={save} disabled={isPending || !url.trim()}>Save</Button>
+          <Button onClick={save} disabled={isPending || loading || !url.trim()}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { EXIT } from "../index.ts";
-import { table } from "../output.ts";
+import { lines, table } from "../output.ts";
 import { str, usage, type CommandContext, type FlagValue } from "./shared.ts";
 
 /**
@@ -319,5 +319,41 @@ export async function faqs(
     }
     default:
       return usage(deps, "faqs <add|add-org|import|import-org|export>");
+  }
+}
+
+/**
+ * `ciele knowledge search "<query>" [--assistant <id>]`: the passages that
+ * answer the query, each with the Document and Source it came from. Retrieval
+ * without an answer, so a script or a local model can quote and link them.
+ */
+export async function knowledge(
+  verb: string | undefined,
+  ctx: CommandContext
+): Promise<number> {
+  const { client, rest, flags, emit, deps } = ctx;
+  switch (verb) {
+    case "search": {
+      const query = rest.join(" ").trim();
+      if (!query) return usage(deps, 'knowledge search "<query>" [--assistant <id>]');
+      const data = await client.knowledge.search({
+        query,
+        assistantId: str(flags.assistant),
+      });
+      // `lines` prints the same `(none)` every other empty answer does.
+      const human = lines(
+        data.results.map((hit) =>
+          [
+            `${hit.rank}. ${hit.documentTitle}${hit.sourceName ? ` (${hit.sourceName})` : ""}`,
+            ...(hit.url ? [`   ${hit.url}`] : []),
+            `   ${hit.content.replace(/\s+/g, " ").trim()}`,
+          ].join("\n")
+        )
+      );
+      emit(human, data);
+      return EXIT.ok;
+    }
+    default:
+      return usage(deps, 'knowledge search "<query>" [--assistant <id>]');
   }
 }

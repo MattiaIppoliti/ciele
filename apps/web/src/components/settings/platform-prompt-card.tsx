@@ -9,6 +9,8 @@ import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useSettingsDirty } from "@/components/settings/settings-dirty";
 
 /**
  * The Ciele platform system prompt editor. Rendered ONLY for the platform
@@ -26,6 +28,7 @@ export function PlatformPromptCard({
   const [value, setValue] = useState(storedPrompt);
   const [isPending, startTransition] = useTransition();
   const dirty = value !== storedPrompt;
+  useSettingsDirty(dirty);
 
   function save() {
     startTransition(async () => {
@@ -63,11 +66,11 @@ export function PlatformPromptCard({
         className="mt-4 resize-y font-mono text-xs"
       />
       <div className="mt-3 flex items-center justify-end gap-3">
-        {dirty && (
-          <span className="text-muted-foreground text-sm">Unsaved changes</span>
-        )}
+        <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
+          {dirty && <RollInText text="Unsaved changes" />}
+        </span>
         <Button onClick={save} disabled={isPending || !dirty}>
-          {isPending ? "Saving…" : "Save platform prompt"}
+          <RollInText text={isPending ? "Saving…" : "Save platform prompt"} />
         </Button>
       </div>
     </Card>

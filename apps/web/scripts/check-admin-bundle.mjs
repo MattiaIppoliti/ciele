@@ -41,6 +41,21 @@ const routes = [
     entry: "[project]/apps/web/src/app/(admin)/insights/page",
     budgetKb: 50,
   },
+  {
+    // ECharts, Recharts' pie and the animated charts load per card after first
+    // paint (next/dynamic), so what these budgets count is the frame, the
+    // filters and the stat cards.
+    label: "Insights Costs",
+    manifest: "(admin)/insights/costs/page_client-reference-manifest.js",
+    entry: "[project]/apps/web/src/app/(admin)/insights/costs/page",
+    budgetKb: 50,
+  },
+  {
+    label: "Insights Observability",
+    manifest: "(admin)/insights/observability/page_client-reference-manifest.js",
+    entry: "[project]/apps/web/src/app/(admin)/insights/observability/page",
+    budgetKb: 50,
+  },
 ];
 
 function manifestOf(relativePath) {

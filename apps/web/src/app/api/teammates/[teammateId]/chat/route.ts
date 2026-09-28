@@ -10,7 +10,7 @@ import {
   sessionMetadata,
   streamConversationTurn,
 } from "@agent-hub/agent";
-import { getSession } from "@/lib/auth";
+import { getSession, profileName } from "@/lib/auth";
 import { getDb } from "@/lib/data";
 import { getRuntimeDb } from "@/lib/runtime-db";
 import { findVisibleTeammate } from "@/lib/teammates/access";
@@ -96,13 +96,6 @@ export async function POST(
     // open is a dead end, and one naming a private Teammate discloses it.
     db.table("teammates").list({ organizationId: session.organization.id }),
   ]);
-  const profileName =
-    [session.profile?.firstName, session.profile?.lastName]
-      .filter(Boolean)
-      .join(" ") ||
-    session.profile?.username ||
-    undefined;
-
   // Which model answers this message.
   //
   // Two selections can apply and they are not peers. The Member's own connected
@@ -141,7 +134,7 @@ export async function POST(
     attachments: openAttachments(body.attachments),
     metadata: {
       ...sessionMetadata(request.headers),
-      userName: profileName,
+      userName: profileName(session.profile),
       userEmail: session.email,
       userRole: session.role ?? undefined,
     },

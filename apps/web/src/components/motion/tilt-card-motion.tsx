@@ -26,7 +26,6 @@ export function TiltCard({
   max = 12,
   glare = true,
   glareOpacity = 0.15,
-  invert = false,
   className,
 }: TiltCardProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -49,9 +48,10 @@ export function TiltCard({
     const py = (event.clientY - rect.top) / rect.height;
     // CSS `rotateX` is right-handed about the +X axis and +Y points down, so a
     // positive angle brings the BOTTOM edge toward the viewer. Upstream's
-    // `0.5 - py` therefore pushes whichever edge the pointer is near away;
-    // `invert` swaps both axes so it comes forward instead.
-    const direction = invert ? -1 : 1;
+    // `0.5 - py` therefore pushes whichever edge the pointer is near away.
+    // Both axes are flipped here so that edge lifts toward the viewer instead,
+    // and the card reads as pressed down under the cursor, not pushed back.
+    const direction = -1;
     ry.set((px - 0.5) * max * direction);
     rx.set((0.5 - py) * max * direction);
     gx.set(px * 100);

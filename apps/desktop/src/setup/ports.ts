@@ -45,7 +45,7 @@ export interface ProbeResponse {
 
 export interface ProbePort {
   /** null when the host could not be reached at all, as opposed to answering badly. */
-  get(url: string, timeoutMs?: number): Promise<ProbeResponse | null>;
+  get(url: string): Promise<ProbeResponse | null>;
 }
 
 /**

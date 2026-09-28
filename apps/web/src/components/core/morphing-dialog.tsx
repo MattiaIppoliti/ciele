@@ -10,7 +10,6 @@ import {
   type Variant,
   useReducedMotion,
 } from "motion/react";
-import { XIcon } from "lucide-react";
 import React, {
   createContext,
   useCallback,
@@ -313,24 +312,18 @@ export function MorphingDialogContainer({
 export type MorphingDialogTitleProps = {
   children: React.ReactNode;
   className?: string;
-  style?: React.CSSProperties;
-  dialogTitle?: boolean;
 };
 
 export function MorphingDialogTitle({
   children,
   className,
-  style,
-  dialogTitle = false,
 }: MorphingDialogTitleProps) {
-  const { uniqueId, isOpen } = useMorphingDialog();
+  const { uniqueId } = useMorphingDialog();
 
   return (
     <motion.div
       layoutId={`dialog-title-container-${uniqueId}`}
-      id={dialogTitle && isOpen ? `motion-ui-morphing-dialog-title-${uniqueId}` : undefined}
       className={className}
-      style={style}
       layout
     >
       {children}
@@ -341,13 +334,11 @@ export function MorphingDialogTitle({
 export type MorphingDialogSubtitleProps = {
   children: React.ReactNode;
   className?: string;
-  style?: React.CSSProperties;
 };
 
 export function MorphingDialogSubtitle({
   children,
   className,
-  style,
 }: MorphingDialogSubtitleProps) {
   const { uniqueId } = useMorphingDialog();
 
@@ -355,7 +346,6 @@ export function MorphingDialogSubtitle({
     <motion.div
       layoutId={`dialog-subtitle-container-${uniqueId}`}
       className={className}
-      style={style}
     >
       {children}
     </motion.div>
@@ -364,33 +354,24 @@ export function MorphingDialogSubtitle({
 
 export type MorphingDialogDescriptionProps = {
   children: React.ReactNode;
-  className?: string;
-  disableLayoutAnimation?: boolean;
-  variants?: {
+  variants: {
     initial: Variant;
     animate: Variant;
     exit: Variant;
   };
 };
 
+/** Fades its content in and out with the dialog; no shared-layout morph. */
 export function MorphingDialogDescription({
   children,
-  className,
   variants,
-  disableLayoutAnimation,
 }: MorphingDialogDescriptionProps) {
   const { uniqueId } = useMorphingDialog();
 
   return (
     <motion.div
       key={`dialog-description-${uniqueId}`}
-      layoutId={
-        disableLayoutAnimation
-          ? undefined
-          : `dialog-description-content-${uniqueId}`
-      }
       variants={variants}
-      className={className}
       initial="initial"
       animate="animate"
       exit="exit"
@@ -401,46 +382,14 @@ export function MorphingDialogDescription({
   );
 }
 
-export type MorphingDialogImageProps = {
-  src: string;
-  alt: string;
-  className?: string;
-  style?: React.CSSProperties;
-};
-
-export function MorphingDialogImage({
-  src,
-  alt,
-  className,
-  style,
-}: MorphingDialogImageProps) {
-  const { uniqueId } = useMorphingDialog();
-
-  return (
-    <motion.img
-      src={src}
-      alt={alt}
-      className={className}
-      layoutId={`dialog-img-${uniqueId}`}
-      style={style}
-    />
-  );
-}
-
 export type MorphingDialogCloseProps = {
-  children?: React.ReactNode;
+  children: React.ReactNode;
   className?: string;
-  variants?: {
-    initial: Variant;
-    animate: Variant;
-    exit: Variant;
-  };
 };
 
 export function MorphingDialogClose({
   children,
   className,
-  variants,
 }: MorphingDialogCloseProps) {
   const { setIsOpen, uniqueId } = useMorphingDialog();
 
@@ -458,12 +407,8 @@ export function MorphingDialogClose({
         "absolute right-6 top-6 z-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background max-lg:min-h-11 max-lg:min-w-11",
         className,
       )}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={variants}
     >
-      {children || <XIcon size={24} />}
+      {children}
     </motion.button>
   );
 }

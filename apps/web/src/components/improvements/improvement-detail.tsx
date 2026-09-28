@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type {
   Improvement,
   ImprovementAssociationPage,
@@ -12,9 +12,10 @@ import type {
   StoredMessage,
 } from "@agent-hub/core";
 import { messageText } from "@agent-hub/core";
+import type { ChatReplyPart } from "@agent-hub/agent/client";
 
 import { ExternalLink, Plus, Search, Trash2, X } from "lucide-react";
-import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, SquareArrowOutUpRight } from "lucide-react";
+import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, Loader2, SquareArrowOutUpRight } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { FoldersIcon } from "@/components/ui/icons/folders";
@@ -29,7 +30,6 @@ import {
 } from "@/app/actions";
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { Badge, Button } from "@agent-hub/ui";
-import { playFeedback } from "@agent-hub/ui/feedback";
 import { Calendar } from "@/components/ui/calendar";
 import {
   isRedirectError,
@@ -57,29 +57,19 @@ import {
 import { memberDisplayName } from "@/lib/members";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { toast } from "@/lib/toast";
+import { unsavedEdits } from "./improvement-edits";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 interface MemberOption {
   userId: string;
   email: string;
 }
 
-function messageSources(content: unknown[]): Array<{
-  conceptTitle: string;
-  collectionName: string;
-  sourceName: string | null;
-}> {
-  for (const p of content) {
-    const part = p as {
-      type?: string;
-      sources?: Array<{
-        conceptTitle: string;
-        collectionName: string;
-        sourceName: string | null;
-      }>;
-    };
-    if (part.type === "sources") return part.sources ?? [];
-  }
-  return [];
+/** The citations an answer carries, from its stored `sources` reply part. */
+function messageSources(content: unknown[]) {
+  const part = (content as ChatReplyPart[]).find((p) => p.type === "sources");
+  return part?.type === "sources" ? (part.sources ?? []) : [];
 }
 
 function DetailRow({ label, value }: { label: string; value?: string | null }) {
@@ -209,59 +199,141 @@ export function ImprovementDetail({
   const projectName =
     projectOptions.find((project) => project.id === projectId)?.name ?? null;
 
-  function persist(patch: Parameters<typeof updateImprovementAction>[1]) {
+  /**
+   * What the server last accepted for the two free-text fields. The prop is
+   * the value at mount, so comparing against it after one save would resend
+   * an unchanged title and skip a revert back to the original. Moved ahead of
+   * the round trip (and rolled back on failure) so a blur followed by the
+   * unmount flush cannot send the same edit twice.
+   */
+  const saved = useRef({
+    title: improvement.title,
+    description: improvement.description,
+  });
+  /** Set by Escape so the blur it triggers discards instead of saving. */
+  const cancelTitle = useRef(false);
+  const latest = useRef({ title, description });
+  useEffect(() => {
+    latest.current = { title, description };
+  }, [title, description]);
+
+  function persist(
+    patch: Parameters<typeof updateImprovementAction>[1],
+    revert: () => void,
+  ) {
     startTransition(async () => {
       try {
         const updated = await updateImprovementAction(improvement.id, patch);
         onUpdated?.(updated);
       } catch {
+        // The field already shows the new value, so put back what the server
+        // still has and say so, rather than leave a change that never landed.
+        revert();
+        toast.error(`Could not update ${key}. Please try again.`);
         router.refresh();
       }
     });
   }
 
   function saveTitle() {
+    const previous = saved.current.title;
+    if (cancelTitle.current) {
+      cancelTitle.current = false;
+      setTitle(previous);
+      return;
+    }
     const trimmed = title.trim();
-    if (trimmed && trimmed !== improvement.title) persist({ title: trimmed });
-    else setTitle(improvement.title);
+    if (!trimmed || trimmed === previous) {
+      setTitle(previous);
+      return;
+    }
+    saved.current.title = trimmed;
+    persist({ title: trimmed }, () => {
+      saved.current.title = previous;
+      setTitle(previous);
+    });
   }
 
   function saveDescription() {
-    if (description !== improvement.description) persist({ description });
+    const previous = saved.current.description;
+    if (description === previous) return;
+    saved.current.description = description;
+    persist({ description }, () => {
+      saved.current.description = previous;
+      setDescription(previous);
+    });
   }
 
+  // Closing the drawer with Escape, or navigating away, unmounts the fields
+  // without a blur, which used to drop whatever was typed since the last one.
+  // The flush reads refs, so it sends the newest text, and it bypasses the
+  // transition because nothing is left on screen to roll back.
+  const onUpdatedRef = useRef(onUpdated);
+  useEffect(() => {
+    onUpdatedRef.current = onUpdated;
+  }, [onUpdated]);
+  useEffect(() => {
+    const id = improvement.id;
+    const refs = { saved, latest, onUpdatedRef };
+    return () => {
+      const patch = unsavedEdits(refs.saved.current, refs.latest.current);
+      if (!patch) return;
+      Object.assign(refs.saved.current, patch);
+      updateImprovementAction(id, patch)
+        .then((updated) => refs.onUpdatedRef.current?.(updated))
+        .catch(() => toast.error("Could not save your last edit."));
+    };
+  }, [improvement.id]);
+
+  // The full page can be left by closing the tab, which no unmount sees.
+  useEffect(() => {
+    if (variant !== "page") return;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (unsavedEdits(saved.current, latest.current)) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [variant]);
+
   function changeStatus(next: ImprovementStatus) {
+    const previous = status;
     setStatus(next);
-    persist({ status: next });
+    persist({ status: next }, () => setStatus(previous));
   }
   function changePriority(next: ImprovementPriority) {
+    const previous = priority;
     setPriority(next);
-    persist({ priority: next });
+    persist({ priority: next }, () => setPriority(previous));
   }
   function changeAssignee(next: string | null) {
+    const previous = assigneeId;
     setAssigneeId(next);
-    persist({ assigneeId: next });
+    persist({ assigneeId: next }, () => setAssigneeId(previous));
   }
   function changeDueDate(next: string | null) {
+    const previous = dueDate;
     setDueDate(next);
-    persist({ dueDate: next });
+    persist({ dueDate: next }, () => setDueDate(previous));
   }
   function changeProject(next: string | null) {
+    const previous = projectId;
     setProjectId(next);
-    persist({ projectId: next });
+    persist({ projectId: next }, () => setProjectId(previous));
   }
   function addTag() {
     const t = tagInput.trim();
     if (!t || tags.length >= 5 || tags.includes(t)) return;
+    const previous = tags;
     const next = [...tags, t];
     setTags(next);
     setTagInput("");
-    persist({ tags: next });
+    persist({ tags: next }, () => setTags(previous));
   }
   function removeTag(t: string) {
+    const previous = tags;
     const next = tags.filter((x) => x !== t);
     setTags(next);
-    persist({ tags: next });
+    persist({ tags: next }, () => setTags(previous));
   }
 
   function remove() {
@@ -330,6 +402,7 @@ export function ImprovementDetail({
 
   const current =
     associations[Math.min(page, Math.max(0, associations.length - 1))];
+  const sources = current ? messageSources(current.message.content) : [];
   const pri = priorityMeta(priority);
 
   return (
@@ -338,12 +411,20 @@ export function ImprovementDetail({
       <header className="shrink-0 px-6 pt-5 pb-4">
         {variant === "page" && (
           <div className="mb-3 flex items-center gap-2">
-            <nav className="text-muted-foreground flex items-center gap-1.5 text-sm">
-              <Link href="/improvements" className="hover:text-foreground">
+            <nav
+              aria-label="Breadcrumb"
+              className="text-muted-foreground flex items-center gap-1.5 text-sm"
+            >
+              <Link
+                href="/improvements"
+                className="hover:text-foreground press-text"
+              >
                 All Improvements
               </Link>
-              <ChevronRight className="size-3.5" />
-              <span className="text-foreground">View Improvement Item</span>
+              <ChevronRight className="size-3.5" aria-hidden />
+              <span className="text-foreground" aria-current="page">
+                View Improvement Item
+              </span>
             </nav>
           </div>
         )}
@@ -359,6 +440,10 @@ export function ImprovementDetail({
                 click the words and type. Auto-grows, so a long title wraps
                 instead of scrolling out of its own box. */}
             {canEdit ? (
+              <>
+              {/* The textarea is not a heading, so the page would have none;
+                  this one names it for a screen reader's heading list. */}
+              <h1 className="sr-only">{title || "Untitled improvement"}</h1>
               <Textarea
                 value={title}
                 rows={1}
@@ -374,7 +459,8 @@ export function ImprovementDetail({
                     e.currentTarget.blur();
                   }
                   if (e.key === "Escape") {
-                    setTitle(improvement.title);
+                    // The blur below would otherwise save what was typed.
+                    cancelTitle.current = true;
                     e.currentTarget.blur();
                   }
                 }}
@@ -384,6 +470,7 @@ export function ImprovementDetail({
                    a box drawn around the title rather than as an affordance. */
                 className="mt-1 min-h-0 resize-none border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight shadow-none focus-visible:ring-0 focus-visible:underline focus-visible:decoration-ring focus-visible:decoration-2 focus-visible:underline-offset-8 disabled:cursor-default disabled:bg-transparent disabled:opacity-100 md:text-2xl dark:bg-transparent"
               />
+              </>
             ) : (
               <h1 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h1>
             )}
@@ -401,7 +488,7 @@ export function ImprovementDetail({
                 disabled={status === "done"}
               >
                 <Check className="size-4" />
-                {status === "done" ? "Done" : "Mark as Done"}
+                <RollInText text={status === "done" ? "Done" : "Mark as Done"} />
               </Button>
               <Hint label="Delete improvement">
                 <Button
@@ -451,24 +538,33 @@ export function ImprovementDetail({
                 <div className="flex items-center gap-2 text-sm">
                   <button
                     type="button"
-                    aria-label="Previous"
+                    aria-label="Previous message"
                     disabled={page === 0}
                     onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    className="disabled:opacity-40"
+                    className="hover:bg-muted press-control rounded-md p-0.5 transition-colors disabled:opacity-40"
                   >
                     <ChevronLeft className="size-4" />
                   </button>
-                  <span className="text-muted-foreground text-xs tabular-nums">
-                    {page + 1} of {associationTotal}
+                  <span
+                    aria-live="polite"
+                    className="text-muted-foreground text-xs tabular-nums"
+                  >
+                    <RollingNumber value={page + 1} /> of{" "}
+                    <RollingNumber value={associationTotal} />
                   </span>
                   <button
                     type="button"
-                    aria-label="Next"
+                    aria-label="Next message"
+                    aria-busy={loadingAssociation || undefined}
                     disabled={page >= associationTotal - 1 || loadingAssociation}
                     onClick={() => void nextAssociation()}
-                    className="disabled:opacity-40"
+                    className="hover:bg-muted press-control rounded-md p-0.5 transition-colors disabled:opacity-40"
                   >
-                    <ChevronRight className="size-4" />
+                    {loadingAssociation ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <ChevronRight className="size-4" />
+                    )}
                   </button>
                 </div>
               )}
@@ -530,20 +626,19 @@ export function ImprovementDetail({
 
                 <div className="bg-card rounded-xl border p-4">
                   <h3 className="mb-2 font-semibold">Sources</h3>
-                  {messageSources(current.message.content).length === 0 ? (
+                  {sources.length === 0 ? (
                     <p className="text-muted-foreground text-sm">No sources</p>
                   ) : (
                     <div className="flex flex-col gap-1">
-                      {messageSources(current.message.content).map((s, i) => (
+                      {sources.map((s, i) => (
+                        // A citation carries no URL, so the chip is a label,
+                        // not a link, and draws no "opens elsewhere" icon.
                         <span
                           key={i}
-                          className="text-foreground/80 inline-flex items-center gap-1.5 truncate rounded-md border px-2.5 py-1 text-xs"
+                          className="text-foreground/80 truncate rounded-md border px-2.5 py-1 text-xs"
                         >
-                          <span className="truncate">
-                            {s.collectionName ? `${s.collectionName}, ` : ""}
-                            {s.conceptTitle}
-                          </span>
-                          <ExternalLink className="text-muted-foreground size-3 shrink-0" />
+                          {s.collectionName ? `${s.collectionName}, ` : ""}
+                          {s.conceptTitle}
                         </span>
                       ))}
                     </div>
@@ -629,8 +724,12 @@ export function ImprovementDetail({
           {/* Status */}
           <FieldPill label="Status">
             <Popover>
-              <PopoverTrigger className={PILL} disabled={!canEdit}>
-                {statusLabel(status)}
+              <PopoverTrigger
+                className={PILL}
+                disabled={!canEdit}
+                aria-label={`Status: ${statusLabel(status)}`}
+              >
+                <RollInText text={statusLabel(status)} />
               </PopoverTrigger>
               <PopoverContent align="end" className="w-48 p-1">
                 {IMPROVEMENT_STATUSES.map((s) => (
@@ -638,6 +737,7 @@ export function ImprovementDetail({
                     key={s.value}
                     render={<button type="button" />}
                     onClick={() => changeStatus(s.value)}
+                    aria-pressed={status === s.value}
                     className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
                   >
                     <span
@@ -655,10 +755,18 @@ export function ImprovementDetail({
           {/* Tags */}
           <FieldPill label="Tags">
             <Popover>
-              <PopoverTrigger className={PILL} disabled={!canEdit}>
-                {tags.length
-                  ? `${tags.length} tag${tags.length > 1 ? "s" : ""}`
-                  : "No tags"}
+              <PopoverTrigger
+                className={PILL}
+                disabled={!canEdit}
+                aria-label={`Tags: ${tags.length ? tags.join(", ") : "none"}`}
+              >
+                <RollInText
+                  text={
+                    tags.length
+                      ? `${tags.length} tag${tags.length > 1 ? "s" : ""}`
+                      : "No tags"
+                  }
+                />
               </PopoverTrigger>
               <PopoverContent align="end" className="w-64 p-3">
                 <p className="mb-0.5 text-sm font-medium">Select or add tags</p>
@@ -705,9 +813,13 @@ export function ImprovementDetail({
           {/* Priority */}
           <FieldPill label="Priority">
             <Popover>
-              <PopoverTrigger className={PILL} disabled={!canEdit}>
+              <PopoverTrigger
+                className={PILL}
+                disabled={!canEdit}
+                aria-label={`Priority: ${pri.label}`}
+              >
                 <pri.icon className={`size-3.5 ${pri.iconColor}`} />
-                {pri.label}
+                <RollInText text={pri.label} />
               </PopoverTrigger>
               <PopoverContent align="end" className="w-40 p-1">
                 {IMPROVEMENT_PRIORITIES.map((p) => (
@@ -715,6 +827,7 @@ export function ImprovementDetail({
                     key={p.value}
                     render={<button type="button" />}
                     onClick={() => changePriority(p.value)}
+                    aria-pressed={priority === p.value}
                     className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
                   >
                     <span
@@ -733,7 +846,13 @@ export function ImprovementDetail({
           {/* Assigned to */}
           <FieldPill label="Assigned to">
             <Popover>
-              <PopoverTrigger className={PILL} disabled={!canEdit}>
+              <PopoverTrigger
+                className={PILL}
+                disabled={!canEdit}
+                aria-label={`Assignee: ${
+                  assigneeEmail ? memberDisplayName(assigneeEmail) : "unassigned"
+                }`}
+              >
                 {assigneeEmail ? (
                   <>
                     <UserAvatar
@@ -763,6 +882,7 @@ export function ImprovementDetail({
                   <PopoverClose
                     render={<button type="button" />}
                     onClick={() => changeAssignee(null)}
+                    aria-pressed={assigneeId === null}
                     className="hover:bg-muted flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground"
                   >
                     Unassigned
@@ -772,6 +892,7 @@ export function ImprovementDetail({
                       key={m.userId}
                       render={<button type="button" />}
                       onClick={() => changeAssignee(m.userId)}
+                      aria-pressed={assigneeId === m.userId}
                       className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
                     >
                       <UserAvatar
@@ -797,7 +918,11 @@ export function ImprovementDetail({
           {/* Project (#771): which piece of work this belongs to. */}
           <FieldPill label="Project">
             <Popover>
-              <PopoverTrigger className={PILL} disabled={!canEdit}>
+              <PopoverTrigger
+                className={PILL}
+                disabled={!canEdit}
+                aria-label={`Project: ${projectName ?? "none"}`}
+              >
                 <AnimatedGlyph icon={FoldersIcon} size={14} />
                 {projectName ?? "Add to project"}
               </PopoverTrigger>
@@ -806,6 +931,7 @@ export function ImprovementDetail({
                   <PopoverClose
                     render={<button type="button" />}
                     onClick={() => changeProject(null)}
+                    aria-pressed={projectId === null}
                     className="hover:bg-muted text-muted-foreground flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm"
                   >
                     No project
@@ -815,6 +941,7 @@ export function ImprovementDetail({
                       key={project.id}
                       render={<button type="button" />}
                       onClick={() => changeProject(project.id)}
+                      aria-pressed={projectId === project.id}
                       className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
                     >
                       <span
@@ -848,7 +975,7 @@ export function ImprovementDetail({
                     className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
                   >
                     <Plus className="size-3.5" />
-                    Create new project...
+                    Create new project…
                   </PopoverClose>
                 </div>
               </PopoverContent>
@@ -858,7 +985,13 @@ export function ImprovementDetail({
           {/* Due Date */}
           <FieldPill label="Due Date">
             <Popover>
-              <PopoverTrigger className={PILL} disabled={!canEdit}>
+              <PopoverTrigger
+                className={PILL}
+                disabled={!canEdit}
+                aria-label={`Due date: ${
+                  dueDate ? formatDay(`${dueDate}T00:00:00.000Z`) : "none"
+                }`}
+              >
                 <CalendarIcon className="size-3.5" />
                 {dueDate ? formatDay(`${dueDate}T00:00:00.000Z`) : "None"}
               </PopoverTrigger>
@@ -871,7 +1004,7 @@ export function ImprovementDetail({
                   <button
                     type="button"
                     onClick={() => changeDueDate(null)}
-                    className="text-muted-foreground mt-2 w-full text-center text-xs hover:underline"
+                    className="text-muted-foreground press-text mt-2 w-full text-center text-xs hover:underline"
                   >
                     Clear due date
                   </button>
@@ -927,6 +1060,14 @@ function DetailGroup({
   );
 }
 
+/**
+ * A long conversation paints only the messages near the viewport; the
+ * intrinsic size is a guess at one short turn, and `auto` swaps in the real
+ * height once a message has rendered, so the scrollbar settles.
+ */
+const OFFSCREEN_MESSAGE =
+  "[content-visibility:auto] [contain-intrinsic-size:auto_3rem]";
+
 /** Compact conversation transcript; highlights the flagged assistant message. */
 function Transcript({
   transcript,
@@ -939,7 +1080,7 @@ function Transcript({
     <div className="space-y-2.5">
       {transcript.map((m) =>
         m.role === "user" ? (
-          <div key={m.id} className="flex justify-end">
+          <div key={m.id} className={`flex justify-end ${OFFSCREEN_MESSAGE}`}>
             <span className="bg-primary text-primary-foreground max-w-[80%] rounded-2xl rounded-tr-sm px-3 py-1.5 text-sm [overflow-wrap:anywhere]">
               {messageText(m.content)}
             </span>
@@ -947,11 +1088,11 @@ function Transcript({
         ) : (
           <div
             key={m.id}
-            className={
+            className={`${OFFSCREEN_MESSAGE} ${
               m.id === flaggedId
                 ? "border-primary/50 bg-primary/5 rounded-xl border p-3"
                 : "pl-3"
-            }
+            }`}
           >
             <p className="text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
               {messageText(m.content)}
@@ -981,6 +1122,12 @@ function SuggestedFix({
   const [pending, startTransition] = useTransition();
   const [dismissReason, setDismissReason] = useState("");
   const [dismissing, setDismissing] = useState(false);
+  // The prop only refreshes with the page, so the outcome is kept here too:
+  // without it Accept and Dismiss stayed on screen after they had worked.
+  const [decided, setDecided] = useState<{
+    status: "accepted" | "dismissed";
+    reason: string | null;
+  } | null>(null);
 
   if (!proposal) {
     return (
@@ -994,17 +1141,33 @@ function SuggestedFix({
     );
   }
 
-  const { payload, status } = proposal;
+  const { payload } = proposal;
+  const status = decided?.status ?? proposal.status;
+  const dismissedReason = decided ? decided.reason : proposal.dismissReason;
   const accept = () =>
     startTransition(async () => {
-      await acceptImprovementProposalAction(improvementId);
-      // Accepted into Knowledge: an outcome, so the outcome's cue (#817).
-      playFeedback("success");
+      try {
+        await acceptImprovementProposalAction(improvementId);
+        setDecided({ status: "accepted", reason: null });
+        // Accepted into Knowledge: an outcome, and the toast carries its cue (#817).
+        toast.success("Fix accepted and added as an FAQ.");
+      } catch {
+        toast.error("Could not accept the fix. Please try again.");
+      }
     });
   const dismiss = () =>
     startTransition(async () => {
-      await dismissImprovementProposalAction(improvementId, dismissReason);
-      setDismissing(false);
+      try {
+        await dismissImprovementProposalAction(improvementId, dismissReason);
+        setDecided({
+          status: "dismissed",
+          reason: dismissReason.trim() || null,
+        });
+        setDismissing(false);
+        toast.success("Fix dismissed.");
+      } catch {
+        toast.error("Could not dismiss the fix. Please try again.");
+      }
     });
 
   return (
@@ -1012,10 +1175,14 @@ function SuggestedFix({
       <div className="mb-2 flex items-center gap-2">
         <h2 className="font-semibold">Suggested fix</h2>
         {status === "accepted" && (
-          <Badge tone="green">Accepted</Badge>
+          <Badge tone="green">
+            <RollInText text="Accepted" />
+          </Badge>
         )}
         {status === "dismissed" && (
-          <Badge tone="gray">Dismissed</Badge>
+          <Badge tone="gray">
+            <RollInText text="Dismissed" />
+          </Badge>
         )}
       </div>
       <Card size="sm" className="gap-3 p-4">
@@ -1041,9 +1208,9 @@ function SuggestedFix({
             Drawn from: {payload.sources.map((s) => s.conceptTitle).join(", ")}
           </p>
         )}
-        {status === "dismissed" && proposal.dismissReason && (
+        {status === "dismissed" && dismissedReason && (
           <p className="text-muted-foreground text-xs">
-            Dismissed: {proposal.dismissReason}
+            Dismissed: {dismissedReason}
           </p>
         )}
         {status === "draft" && canEdit && (

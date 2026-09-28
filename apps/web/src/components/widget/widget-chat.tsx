@@ -62,6 +62,8 @@ import type { WidgetConversationSummary, WidgetMemory } from "./widget-history";
 import { ArrowRight, ExternalLink, Sparkles, X } from "lucide-react";
 import { Headphones, HelpCircle, Maximize2, Paperclip } from "lucide-react";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
+import { sentAtLabel } from "@/lib/format";
+import { visitorId } from "./visitor-id";
 
 const LazyChatMarkdown = lazy(async () => {
   const chatMarkdownModule = await import("@/components/chat/chat-markdown");
@@ -435,31 +437,6 @@ interface BotMsg extends TurnView {
 }
 
 type Msg = { role: "user"; text: string; sentAt: string | null } | BotMsg;
-
-/** "07 Jul, 14:32" â€” the hover timestamp on a sent message. */
-function sentAtLabel(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const day = date.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-  });
-  const time = date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${day}, ${time}`;
-}
-
-function visitorId(): string {
-  const key = "ciele-visitor";
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-  }
-  return id;
-}
 
 function emptyBot(): BotMsg {
   return {

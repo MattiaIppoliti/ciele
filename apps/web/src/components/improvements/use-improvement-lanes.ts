@@ -111,7 +111,17 @@ export function useImprovementLanes(
     });
   }
 
-  return { statusOf, draggingId, dropLane, dragProps, laneProps, release };
+  // `move` is the keyboard path too: the context menu's "Move to" calls it, so
+  // a lane change never needs a pointer that can drag.
+  return {
+    statusOf,
+    draggingId,
+    dropLane,
+    dragProps,
+    laneProps,
+    move,
+    release,
+  };
 }
 
 export type ImprovementLanes = ReturnType<typeof useImprovementLanes>;

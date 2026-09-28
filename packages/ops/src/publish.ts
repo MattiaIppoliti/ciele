@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Assistant, Flow } from "@agent-hub/core";
+import type { Flow } from "@agent-hub/core";
 import {
   buildPublicationConfig,
   connectorAction,
@@ -8,6 +8,7 @@ import {
 } from "@agent-hub/core";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
+import { requireAssistant } from "./assistants";
 import { assertHumanReviewFlowsPublishable } from "./reviews";
 
 /**
@@ -49,17 +50,6 @@ export async function assertConnectorFlowsPublishable(
  * about a new latest version through the `invalidatePublication` port so
  * live widgets flip without a Postgres round-trip per request.
  */
-
-async function requireAssistant(
-  ctx: OperationContext,
-  id: string
-): Promise<Assistant> {
-  const assistant = await ctx.db.getAssistant(id);
-  if (!assistant || assistant.organizationId !== ctx.organizationId) {
-    throw new OperationError("not_found", "Assistant not found");
-  }
-  return assistant;
-}
 
 const assistantIdSchema = z.object({ assistantId: z.string().min(1) });
 

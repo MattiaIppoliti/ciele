@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Assistant, Flow, FlowAction, FlowTrigger } from "@agent-hub/core";
+import type { Flow, FlowAction, FlowTrigger } from "@agent-hub/core";
 import {
   actionAllowedForTrigger,
   flowTriggerKind,
@@ -19,6 +19,7 @@ import {
 } from "./flow-schema";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
+import { requireAssistant } from "./assistants";
 
 export { flowInputSchema, flowPatchSchema, flowTriggerSchema } from "./flow-schema";
 
@@ -48,17 +49,6 @@ export function assertTriggerActions(
       `The "${invalid}" action cannot run on the "${trigger}" trigger.`
     );
   }
-}
-
-async function requireAssistant(
-  ctx: OperationContext,
-  id: string
-): Promise<Assistant> {
-  const assistant = await ctx.db.getAssistant(id);
-  if (!assistant || assistant.organizationId !== ctx.organizationId) {
-    throw new OperationError("not_found", "Assistant not found");
-  }
-  return assistant;
 }
 
 /** Flow id → Flow whose Assistant belongs to the caller's org, or not_found. */
@@ -281,9 +271,7 @@ export const listHttpFlowRunsOp = defineOperation({
   }),
   entities: () => [],
   run: async (ctx, { flowId, limit }) => {
-    const flow = await ctx.db.getFlow(flowId);
-    if (!flow) throw new OperationError("not_found", "Flow not found");
-    await requireAssistant(ctx, flow.assistantId);
+    await requireFlow(ctx, flowId);
     return ctx.db.table("httpFlowRuns").list({ flowId }, { limit });
   },
 });

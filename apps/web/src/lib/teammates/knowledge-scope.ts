@@ -1,4 +1,5 @@
 import type { SourceKind } from "@agent-hub/core";
+import { countLabel } from "@/lib/pagination";
 import {
   KNOWLEDGE_TAB_SLUGS,
   knowledgeTabForKind,
@@ -89,9 +90,6 @@ export function coveringCollectionName(
   );
 }
 
-const plural = (count: number, one: string, many: string) =>
-  `${count} ${count === 1 ? one : many}`;
-
 /**
  * What the scope does, in one sentence, for the picker's helper text.
  *
@@ -107,10 +105,10 @@ export function knowledgeScopeSummary(scope: {
 }): string {
   const parts: string[] = [];
   if (scope.collectionIds.length > 0) {
-    parts.push(plural(scope.collectionIds.length, "collection", "collections"));
+    parts.push(countLabel(scope.collectionIds.length, "collection"));
   }
   if (scope.sourceIds.length > 0) {
-    parts.push(plural(scope.sourceIds.length, "library item", "library items"));
+    parts.push(countLabel(scope.sourceIds.length, "library item"));
   }
   if (parts.length === 0) {
     return "Nothing selected: it answers from its role and says so when a question needs a source.";

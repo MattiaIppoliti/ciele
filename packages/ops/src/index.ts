@@ -25,6 +25,9 @@ export {
   createAssistantOp,
   deleteAssistantOp,
   duplicateAssistantOp,
+  askAssistantInput,
+  askAssistantOp,
+  ASK_QUESTION_MAX,
   getAssistantOp,
   listAssistantsOp,
   listAssistantsPageOp,
@@ -80,6 +83,8 @@ export {
   listDocumentMemoriesOp,
   forgetKnowledgeMemoryOp,
   restoreKnowledgeMemoryOp,
+  searchKnowledgeOp,
+  KNOWLEDGE_SEARCH_QUERY_MAX,
   listSourceDocumentsOp,
   updateOrgFaqOp,
   listOrgFaqsOp,
@@ -120,10 +125,13 @@ export type { ApplicationConnectionView } from "./applications";
 export {
   createApplicationImportOp,
   deleteApplicationImportOp,
+  listApplicationImportDocumentsOp,
   setApplicationImportAssistantsOp,
   setApplicationImportEnabledOp,
   syncApplicationImportNowOp,
   updateApplicationImportConfigurationOp,
+  APPLICATION_IMPORT_DOCUMENTS_PAGE_SIZE,
+  type ApplicationImportDocumentRow,
 } from "./application-imports";
 
 // Teammates domain (#768): the org's internal AI colleagues. Ownership and
@@ -289,6 +297,7 @@ export {
   removeMemberOp,
   revokeInviteOp,
   revokeOrgApiKeyOp,
+  setOrgBudgetOp,
   updateMemberRoleOp,
   updateOrganizationOp,
 } from "./organization";
@@ -319,6 +328,7 @@ export {
 } from "./crawlers";
 
 export {
+  configureEntitySyncOp,
   createEntityOp,
   deleteEntityOp,
   deleteMemoryOp,

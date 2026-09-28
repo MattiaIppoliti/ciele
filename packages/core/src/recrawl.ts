@@ -34,17 +34,6 @@ export function nextCrawlDue(
 }
 
 /**
- * A crawled page's effective re-crawl cadence: its own override when set,
- * otherwise the site-level schedule it inherits (null = inherit).
- */
-export function effectivePageSchedule(
-  pageSchedule: RecrawlSchedule | null,
-  siteSchedule: RecrawlSchedule
-): RecrawlSchedule {
-  return pageSchedule ?? siteSchedule;
-}
-
-/**
  * `maxPages: 0` on a Website Source means "no page limit": crawl until the
  * site runs out of pages. Only the managed crawler on the Organization's own
  * account honours it as unlimited; every other crawler runs to its own

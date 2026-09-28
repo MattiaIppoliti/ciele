@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { ChatReplyPart, TurnView } from "@agent-hub/agent/client";
 import type { FeedbackReactionId } from "@agent-hub/core";
 
@@ -34,7 +34,7 @@ import { toCitationItems } from "@/components/chat/citation-items";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import { SpeechPlayback } from "@/components/chat/speech-playback";
 import type { VoiceEndpoint } from "@/components/chat/voice-input-button";
-import { formatTime } from "@/lib/format";
+import { formatTime, sentAtLabel } from "@/lib/format";
 
 /**
  * The chat transcript, shared by the console's two chat surfaces (#768): the
@@ -54,26 +54,12 @@ import { formatTime } from "@/lib/format";
  * escalation panel, history.
  */
 
-/** "07 Jul, 14:32", the hover timestamp on a sent message. */
-function sentAtLabel(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const day = date.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-  });
-  const time = date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${day}, ${time}`;
-}
-
 function PartView({
   part,
   onSend,
   onOpenSupport,
   onAcceptReferral,
+  acceptingReferral = false,
   onDecideReview,
   onDecideApproval,
 }: {
@@ -86,12 +72,10 @@ function PartView({
    * card then renders without its button rather than with a dead one.
    */
   onAcceptReferral?: (part: TeammateReferralPart) => void;
+  /** True while an accepted referral opens, so a second click cannot race it. */
+  acceptingReferral?: boolean;
   onDecideReview?: (part: HumanReviewPart, decision: "approved" | "rejected") => void;
-  /** Runs, or declines, an action the approval gate stopped (#958). */
-  onDecideApproval?: (
-    part: ActionApprovalPart,
-    decision: "approved" | "rejected"
-  ) => void;
+  onDecideApproval?: DecideApproval;
 }) {
   // `text` and `sources` parts are rendered by the message body itself (a
   // beui StreamingResponse with the sources disclosure folded in), not here.
@@ -151,10 +135,11 @@ function PartView({
         {onAcceptReferral && (
           <button
             type="button"
-            className="text-primary text-sm font-semibold hover:underline"
+            disabled={acceptingReferral}
+            className="text-primary text-sm font-semibold hover:underline disabled:opacity-50 disabled:hover:no-underline"
             onClick={() => onAcceptReferral(part)}
           >
-            Continue with {part.teammateName} →
+            {acceptingReferral ? "Opening…" : `Continue with ${part.teammateName} →`}
           </button>
         )}
       </div>
@@ -181,7 +166,7 @@ function PartView({
             <p className="truncate text-sm font-medium">Waiting on {host}</p>
             <p className="text-muted-foreground text-xs">
               {part.simulated ? "Simulated turn. " : ""}
-              Until {formatTime(part.expiresAt)}
+              Until {formatTime(part.expiresAt)} UTC
             </p>
           </div>
         </div>
@@ -189,40 +174,7 @@ function PartView({
     );
   }
   if (part.type === "action_approval") {
-    // The approval gate (#958). Deliberately the same shape as the Human
-    // review card below: to a Member, "something is waiting for you" is one
-    // thing, whether a Flow paused or a colleague's action was stopped.
-    return (
-      <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
-        <div className="flex items-center gap-2">
-          <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
-            <ShieldQuestion className="size-4" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-medium">{part.title}</p>
-            <p className="text-muted-foreground text-xs">{part.label}</p>
-          </div>
-        </div>
-        {onDecideApproval && (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="text-primary text-sm font-semibold hover:underline"
-              onClick={() => onDecideApproval(part, "approved")}
-            >
-              Run it
-            </button>
-            <button
-              type="button"
-              className="text-muted-foreground text-sm font-semibold hover:underline"
-              onClick={() => onDecideApproval(part, "rejected")}
-            >
-              Don&apos;t
-            </button>
-          </div>
-        )}
-      </div>
-    );
+    return <ApprovalCard part={part} onDecide={onDecideApproval} />;
   }
   if (part.type === "human_review") {
     const closed = part.status !== "pending";
@@ -326,6 +278,7 @@ function PartView({
             src={part.url}
             title={iframeTitle}
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            loading="lazy"
             className="w-full"
             style={{ height: `${part.height ?? 30}${part.heightUnit ?? "vh"}` }}
           />
@@ -357,6 +310,78 @@ function PartView({
     );
   }
   return null;
+}
+
+/**
+ * Runs, or declines, an action the approval gate stopped (#958). Resolves true
+ * once the decision landed, false when it did not and the card should reopen.
+ */
+type DecideApproval = (
+  part: ActionApprovalPart,
+  decision: "approved" | "rejected"
+) => Promise<boolean>;
+
+/**
+ * The approval gate's card (#958). Deliberately the same shape as the Human
+ * review card: to a Member, "something is waiting for you" is one thing,
+ * whether a Flow paused or a colleague's action was stopped.
+ *
+ * The part carries no status, and a refresh does not rewrite the transcript the
+ * client already holds, so the decision is remembered here. Without it both
+ * buttons stayed live after the click and read as though nothing happened.
+ */
+function ApprovalCard({
+  part,
+  onDecide,
+}: {
+  part: ActionApprovalPart;
+  onDecide?: DecideApproval;
+}) {
+  const [state, setState] = useState<"open" | "deciding" | "approved" | "rejected">("open");
+  async function decide(decision: "approved" | "rejected") {
+    if (!onDecide || state !== "open") return;
+    setState("deciding");
+    setState((await onDecide(part, decision)) ? decision : "open");
+  }
+  return (
+    <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
+      <div className="flex items-center gap-2">
+        <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
+          <ShieldQuestion className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{part.title}</p>
+          <p className="text-muted-foreground text-xs">{part.label}</p>
+        </div>
+      </div>
+      {state === "approved" || state === "rejected" ? (
+        <p role="status" className="text-muted-foreground text-xs">
+          {state === "approved" ? "You approved this action." : "You declined this action."}
+        </p>
+      ) : (
+        onDecide && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={state === "deciding"}
+              className="text-primary text-sm font-semibold hover:underline disabled:opacity-50 disabled:hover:no-underline"
+              onClick={() => void decide("approved")}
+            >
+              Run it
+            </button>
+            <button
+              type="button"
+              disabled={state === "deciding"}
+              className="text-muted-foreground text-sm font-semibold hover:underline disabled:opacity-50 disabled:hover:no-underline"
+              onClick={() => void decide("rejected")}
+            >
+              Don&apos;t
+            </button>
+          </div>
+        )
+      )}
+    </div>
+  );
 }
 
 /**
@@ -445,6 +470,7 @@ export function ChatThread({
    * Decide a simulated Human review inline (#841): the Preview and the
    * Teammate chat pass one; the widget never sees a simulated request.
    */
+  acceptingReferral,
   onDecideReview,
   onDecideApproval,
   /**
@@ -464,12 +490,9 @@ export function ChatThread({
   onOpenSupport?: (helpDeskId?: string) => void;
   hasPersistentSupport?: boolean;
   onAcceptReferral?: (part: TeammateReferralPart) => void;
+  acceptingReferral?: boolean;
   onDecideReview?: (part: HumanReviewPart, decision: "approved" | "rejected") => void;
-  /** Runs, or declines, an action the approval gate stopped (#958). */
-  onDecideApproval?: (
-    part: ActionApprovalPart,
-    decision: "approved" | "rejected"
-  ) => void;
+  onDecideApproval?: DecideApproval;
   renderUserText?: (text: string) => ReactNode;
   speechPlayback?: VoiceEndpoint;
 }) {
@@ -494,9 +517,17 @@ export function ChatThread({
                     </MessageBubbleContent>
                   </MessageBubble>
                   {msg.sentAt && (
-                    <span className="text-muted-foreground/80 pointer-events-none absolute right-1 -bottom-4 text-2xs whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                      {sentAtLabel(msg.sentAt)}
-                    </span>
+                    <>
+                      {/* Shown on hover or keyboard focus; the sr-only twin
+                          carries it for a reader, who sees neither. */}
+                      <span
+                        aria-hidden="true"
+                        className="text-muted-foreground/80 pointer-events-none absolute right-1 -bottom-4 text-2xs whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+                      >
+                        {sentAtLabel(msg.sentAt)}
+                      </span>
+                      <span className="sr-only">Sent {sentAtLabel(msg.sentAt)}</span>
+                    </>
                   )}
                 </MessageContent>
               </Message>
@@ -513,6 +544,7 @@ export function ChatThread({
                   )
                 );
                 const feedback = msg.feedbackReaction ?? null;
+                const live = pending && i === messages.length - 1;
                 return (
                   <Message key={i} from="assistant">
                     <MessageContent className="gap-2">
@@ -523,7 +555,7 @@ export function ChatThread({
                         steps={msg.steps}
                         phase={msg.phase}
                         searchCount={msg.searchCount}
-                        active={pending && i === messages.length - 1}
+                        active={live}
                       />
                       {parts.map((part, j) => {
                         if (part.type === "text") {
@@ -532,9 +564,12 @@ export function ChatThread({
                             <StreamingResponse
                               key={j}
                               status="complete"
+                              // The surrounding log already announces the
+                              // turn; a second live region reads it twice.
+                              announce={false}
                               copyText={part.text}
                               showActions={isLast && Boolean(msg.id)}
-                              extraActions={isLast && speechPlayback && !(pending && i === messages.length - 1) ? (
+                              extraActions={isLast && speechPlayback && !live ? (
                                 <SpeechPlayback {...speechPlayback} text={parts.filter((item) => item.type === "text").map((item) => item.text).join("\n\n")} />
                               ) : null}
                               // A surface that cannot store a vote does not
@@ -569,15 +604,16 @@ export function ChatThread({
                             onSend={onSend}
                             onOpenSupport={onOpenSupport ?? (() => {})}
                             onAcceptReferral={onAcceptReferral}
-                        onDecideReview={onDecideReview}
-                        onDecideApproval={onDecideApproval}
+                            acceptingReferral={acceptingReferral}
+                            onDecideReview={onDecideReview}
+                            onDecideApproval={onDecideApproval}
                           />
                         );
                       })}
                       {msg.streamingText !== null && (
                         <StreamingResponse status="streaming">
                           <ChatMarkdown text={msg.streamingText} />
-                          <span className="animate-pulse">▍</span>
+                          <span aria-hidden="true" className="animate-pulse motion-reduce:animate-none">▍</span>
                         </StreamingResponse>
                       )}
                       {onVote && lastTextIndex === -1 && msg.id && parts.length > 0 && (

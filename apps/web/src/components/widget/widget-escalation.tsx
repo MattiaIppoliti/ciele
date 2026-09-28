@@ -19,6 +19,7 @@ import {
 import { channelAvailabilityNow } from "@/lib/channel-availability";
 import { ArrowRight, X } from "lucide-react";
 import { ChevronLeft, LoaderCircle } from "lucide-react";
+import { visitorId } from "./visitor-id";
 
 /**
  * What the widget shows once a channel form is submitted: the confirmation
@@ -28,16 +29,6 @@ import { ChevronLeft, LoaderCircle } from "lucide-react";
 interface WidgetConfirmation {
   text: string;
   mailto?: string | null;
-}
-
-function visitorId(): string {
-  const key = "ciele-visitor";
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-  }
-  return id;
 }
 
 /** One escalation-form input, rendered by the field's configured type. */

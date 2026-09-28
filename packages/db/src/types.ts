@@ -48,6 +48,7 @@ import type {
   CrawlFinalizeBatchClaim,
   CrawlFinalizeClaim,
   CurrentOrg,
+  DashboardFacts,
   DueCompostAssistant,
   DueRecrawlClaim,
   Entity,
@@ -174,10 +175,7 @@ export interface Db {
    * browsing an org with no membership row gets a synthetic 'owner' Role
    * (full access, not a real membership).
    */
-  getCurrentOrg(
-    preferredOrgId?: string,
-    authenticatedUserId?: string
-  ): Promise<CurrentOrg | null>;
+  getCurrentOrg(preferredOrgId?: string): Promise<CurrentOrg | null>;
   /**
    * Every Organization visible to the caller under RLS, for a regular
    * Member this is just their own org(s); for a platform superuser this is
@@ -233,7 +231,7 @@ export interface Db {
   touchApiKeyLastUsed(keyId: string): Promise<void>;
 
   // Profile (the signed-in caller's own, Settings > Profile)
-  getProfile(authenticatedUserId?: string): Promise<Profile | null>;
+  getProfile(): Promise<Profile | null>;
   updateProfile(patch: ProfilePatch): Promise<Profile>;
 
   // Assistants
@@ -404,7 +402,6 @@ export interface Db {
     assistantId: string,
     input: { name: string; description?: string }
   ): Promise<KnowledgeCollection>;
-  deleteCollection(id: string): Promise<void>;
   listSources(collectionId: string): Promise<Source[]>;
   /**
    * When the Collection has a legacy owning assistant, the new Source is
@@ -1334,7 +1331,8 @@ export interface Db {
    * the cutoff; content, feedback and timestamps stay. Idempotent, a cleared
    * trace never matches again. Returns how many messages were swept.
    */
-  clearExpiredTraces(organizationId: string, cutoffIso: string): Promise<number>;
+  /** At most `limit` messages per call, oldest first; call again while it returns `limit`. */
+  clearExpiredTraces(organizationId: string, cutoffIso: string, limit?: number): Promise<number>;
   /**
    * Every organization that opted into a transcript-retention window (#801,
    * CYB-12). Cross-org, the nightly sweep's read; organizations that kept the
@@ -1350,8 +1348,16 @@ export interface Db {
    */
   deleteExpiredConversations(
     organizationId: string,
-    cutoffIso: string
+    cutoffIso: string,
+    /** At most this many per call, oldest first; call again while it returns `limit`. */
+    limit?: number
   ): Promise<number>;
+  /**
+   * Deletes this organization's Visitor memories (#664) last updated before
+   * the cutoff: facts distilled from transcripts follow the transcripts'
+   * retention window. At most `limit` per call, oldest first.
+   */
+  deleteExpiredMemories(organizationId: string, cutoffIso: string, limit?: number): Promise<number>;
 
   // Insights (org-wide analytics)
   /**
@@ -1468,6 +1474,13 @@ export interface Db {
     teammateId?: string | null;
     /** The Member it is attributed to. */
     authorId?: string | null;
+    /**
+     * The `updatedAt` of the document the new body was written from, or null
+     * when the writer saw no document. A mismatch throws
+     * MemoryDocumentConflictError instead of overwriting. Omitted, the write
+     * is still a compare-and-set against the adapter's own read.
+     */
+    expectedUpdatedAt?: string | null;
   }): Promise<MemoryDocument>;
   /**
    * The write history, newest first.
@@ -1578,6 +1591,13 @@ export interface Db {
    */
   rollupUsageDaily(days?: number): Promise<number>;
   /**
+   * The rollup-usage cron's entry point: recomputes every day after the last
+   * one a run closed (at least the two-day window, at most `maxDays`), so a
+   * missed night heals on the next instead of leaving that day short for
+   * good. Service role. Returns rows upserted.
+   */
+  rollupUsageCatchUp(maxDays?: number): Promise<number>;
+  /**
    * The org's daily usage for the last `days` UTC days, split by call kind
    * (chat vs embedding) and credential kind: closed days from the rollup,
    * today aggregated live from the raw ledger. Newest day first.
@@ -1616,6 +1636,18 @@ export interface Db {
     from: string,
     to: string
   ): Promise<UsageSpenderRow[]>;
+  /**
+   * What the Insights Dashboard derives from, over an arbitrary `[from, to)`
+   * window: model calls, finished Conversation Turns (with a latency histogram
+   * bucket rather than raw durations), verifier verdicts and Visitor
+   * Conversations, each grouped by UTC day at a grain every Dashboard filter
+   * selects whole rows of. `computeUsageDashboard` does the pivots.
+   */
+  getOrgDashboardFacts(
+    organizationId: string,
+    from: string,
+    to: string
+  ): Promise<DashboardFacts>;
   /** The org's daily budget, or null when none is configured. */
   getOrgBudget(organizationId: string): Promise<OrgBudget | null>;
   /** Create or update the org's budget (admins only via RLS). */

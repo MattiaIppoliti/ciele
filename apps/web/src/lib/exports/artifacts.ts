@@ -6,7 +6,7 @@ import {
   type InsightsFilter,
 } from "@/lib/insights/report";
 import { uploadExportArtifact } from "@/lib/storage/exports";
-import { insightsOverviewToCsv } from "./insights-csv";
+import { EXPORT_KIND_LABELS, insightsExportTable, renderExportTable } from "./insights-export";
 import type { ExportArtifact } from "./run-export-jobs";
 
 /** Rebuilds the dashboard filter from the job's stored snapshot. */
@@ -20,23 +20,19 @@ function filterFromParams(params: Record<string, unknown>): InsightsFilter {
   return insightsFilterFromSearchParams(search);
 }
 
-/** The concrete render step wired into the cron worker. */
+/**
+ * The concrete render step wired into the cron worker. Every kind reads the
+ * same overview for the job's filter snapshot and keeps a different slice of
+ * it, so an export always agrees with the Insights page for the same filters.
+ */
 export async function renderExportArtifact(
   client: SupabaseClient,
   job: ExportJob
 ): Promise<ExportArtifact> {
-  switch (job.kind) {
-    case "insights_overview": {
-      const overview = await getInsightsOverview(
-        job.organizationId,
-        filterFromParams(job.params),
-        client
-      );
-      return { body: insightsOverviewToCsv(overview), format: "csv" };
-    }
-    default:
-      throw new Error(`Unsupported export kind: ${job.kind}`);
-  }
+  const overview = await getInsightsOverview(job.organizationId, filterFromParams(job.params), client);
+  const table = insightsExportTable(job.kind, overview);
+  const name = typeof job.params.name === "string" && job.params.name ? job.params.name : EXPORT_KIND_LABELS[job.kind];
+  return { body: await renderExportTable(job.format, table, name), format: job.format };
 }
 
 /** The concrete store step wired into the cron worker. */

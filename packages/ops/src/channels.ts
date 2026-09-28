@@ -15,7 +15,9 @@ import {
   mentionedTeammateIds,
   parseChannelMentions,
 } from "@agent-hub/core";
+import type { MutatedEntity } from "./entities";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
+import { viewerOf } from "./teammate-access";
 import {
   hydrateChannelRoster,
   hydrateChannelView,
@@ -60,8 +62,9 @@ interface ResolvedChannel {
   participants: TeammateChannelParticipant[];
 }
 
-function viewerOf(ctx: OperationContext) {
-  return { userId: ctx.userId, role: ctx.role };
+/** The thread and the roster beside it: what every change to one channel touches. */
+function channelEntities(id: string): MutatedEntity[] {
+  return [{ kind: "channel", id }, { kind: "channelList" }];
 }
 
 /**
@@ -126,16 +129,6 @@ async function requireManageableChannel(
       "Only whoever opened this channel, or an organization admin, can change it."
     );
   }
-  return resolved;
-}
-
-/** id → any channel in the org, for the two admin oversight reads. */
-async function requireOrgChannel(
-  ctx: OperationContext,
-  id: string
-): Promise<ResolvedChannel> {
-  const resolved = await loadChannel(ctx, id);
-  if (!resolved) throw new OperationError("not_found", "Channel not found");
   return resolved;
 }
 
@@ -283,10 +276,7 @@ export const updateChannelOp = defineOperation({
     id: z.string().min(1),
     patch: channelPatchSchema,
   }),
-  entities: ({ id }) => [
-    { kind: "channel" as const, id },
-    { kind: "channelList" as const },
-  ],
+  entities: ({ id }) => channelEntities(id),
   run: async (ctx, { id, patch }): Promise<TeammateChannel> => {
     await requireManageableChannel(ctx, id);
     if (patch.projectId) await requireLiveProject(ctx, patch.projectId);
@@ -307,10 +297,7 @@ export const deleteChannelOp = defineOperation({
   name: "channels.delete",
   capability: "member",
   input: idSchema,
-  entities: ({ id }) => [
-    { kind: "channel" as const, id },
-    { kind: "channelList" as const },
-  ],
+  entities: ({ id }) => channelEntities(id),
   run: async (ctx, { id }): Promise<void> => {
     await requireManageableChannel(ctx, id);
     await ctx.db.table("teammateChannels").delete(id);
@@ -417,10 +404,7 @@ export const addChannelMembersOp = defineOperation({
   name: "channels.members.add",
   capability: "member",
   input: z.object({ id: z.string().min(1), userIds: ID_LIST }),
-  entities: ({ id }) => [
-    { kind: "channel" as const, id },
-    { kind: "channelList" as const },
-  ],
+  entities: ({ id }) => channelEntities(id),
   run: async (ctx, { id, userIds }): Promise<void> => {
     const actor = requireActor(ctx);
     await requireInviter(ctx, id);
@@ -435,10 +419,7 @@ export const addChannelTeammatesOp = defineOperation({
   name: "channels.teammates.add",
   capability: "member",
   input: z.object({ id: z.string().min(1), teammateIds: ID_LIST }),
-  entities: ({ id }) => [
-    { kind: "channel" as const, id },
-    { kind: "channelList" as const },
-  ],
+  entities: ({ id }) => channelEntities(id),
   run: async (ctx, { id, teammateIds }): Promise<void> => {
     const actor = requireActor(ctx);
     await requireInviter(ctx, id);
@@ -459,10 +440,7 @@ export const removeChannelMemberOp = defineOperation({
   name: "channels.members.remove",
   capability: "member",
   input: z.object({ id: z.string().min(1), userId: z.string().min(1) }),
-  entities: ({ id }) => [
-    { kind: "channel" as const, id },
-    { kind: "channelList" as const },
-  ],
+  entities: ({ id }) => channelEntities(id),
   run: async (ctx, { id, userId }): Promise<void> => {
     const actor = requireActor(ctx);
     const resolved =
@@ -479,10 +457,7 @@ export const removeChannelTeammateOp = defineOperation({
   name: "channels.teammates.remove",
   capability: "member",
   input: z.object({ id: z.string().min(1), teammateId: z.string().min(1) }),
-  entities: ({ id }) => [
-    { kind: "channel" as const, id },
-    { kind: "channelList" as const },
-  ],
+  entities: ({ id }) => channelEntities(id),
   run: async (ctx, { id, teammateId }): Promise<void> => {
     const resolved = await requireManageableChannel(ctx, id);
     const seat = resolved.participants.find(
@@ -514,10 +489,7 @@ export const postChannelMessageOp = defineOperation({
     id: z.string().min(1),
     message: z.string().min(1).max(8000),
   }),
-  entities: ({ id }) => [
-    { kind: "channel" as const, id },
-    { kind: "channelList" as const },
-  ],
+  entities: ({ id }) => channelEntities(id),
   run: async (ctx, input): Promise<PostedChannelMessage> => {
     const actor = requireActor(ctx);
     const { channel, participants } = await requireChannel(ctx, input.id);
@@ -617,7 +589,8 @@ export const readOrgChannelOp = defineOperation({
   input: idSchema,
   entities: () => [],
   run: async (ctx, { id }): Promise<ChannelView> => {
-    const { channel, participants } = await requireOrgChannel(ctx, id);
-    return hydrateChannelView(ctx, channel, participants, false);
+    const resolved = await loadChannel(ctx, id);
+    if (!resolved) throw new OperationError("not_found", "Channel not found");
+    return hydrateChannelView(ctx, resolved.channel, resolved.participants, false);
   },
 });

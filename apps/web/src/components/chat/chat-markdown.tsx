@@ -84,13 +84,12 @@ export function ChatMarkdown({
           code: ({ children, className: codeClassName }) => {
             // react-markdown marks fenced blocks with a language- class; bare
             // inline code has none. Fenced blocks render through the beui
-            // CodeBlock (shiki highlighting, line numbers, copy feedback).
+            // CodeBlock (shiki highlighting, copy feedback).
             const block = /language-/.test(codeClassName ?? "");
             return block ? (
               <CodeBlock
                 code={String(children).replace(/\n$/, "")}
                 language={codeLanguage(codeClassName)}
-                showLineNumbers={false}
                 className="my-1 text-xs"
               />
             ) : (

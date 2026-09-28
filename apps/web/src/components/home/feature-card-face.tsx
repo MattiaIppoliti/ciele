@@ -13,13 +13,11 @@ import type { ReactNode } from "react";
 export interface Feature {
   title: string;
   body: string;
-  /** Screenshot of the matching surface inside the product. */
-  image?: string;
   /**
-   * Live mock rendered instead of `image` (e.g. an animated uploader). Receives
+   * Live mock of the matching surface (e.g. an animated uploader). Receives
    * `interactive`: false in the card face, true in the expanded dialog.
    */
-  visual?: (interactive: boolean) => ReactNode;
+  visual: (interactive: boolean) => ReactNode;
   details: string[];
 }
 
@@ -36,18 +34,9 @@ export function FeatureCardFace({ feature }: { feature: Feature }) {
         style={{ borderRadius: "15px" }}
         className="bg-card flex h-full flex-col overflow-hidden text-left"
       >
-        {feature.visual ? (
-          <div className="border-b">
-            <VisualSkeleton />
-          </div>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={feature.image ?? ""}
-            alt={`${feature.title} | Ciele`}
-            className="h-44 w-full border-b object-cover object-top"
-          />
-        )}
+        <div className="border-b">
+          <VisualSkeleton />
+        </div>
         <div className="flex grow flex-col p-5">
           <div className="flex grow flex-col">
             <h3 className="text-foreground font-medium">{feature.title}</h3>

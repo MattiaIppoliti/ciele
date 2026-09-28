@@ -3,8 +3,6 @@ import {
   resolveSourceUrl,
 } from "@/lib/self-host-install";
 
-export const runtime = "nodejs";
-
 /**
  * The public, unauthenticated self-host installer, served at `/install.sh` so
  * the pasted one-liner reads as an address rather than an API call. The route

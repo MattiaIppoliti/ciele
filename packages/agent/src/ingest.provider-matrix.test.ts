@@ -265,6 +265,39 @@ describe("Website crawler provider matrix", () => {
       expect(startCrawl4aiMock).not.toHaveBeenCalled();
       expect(startCrawlMock).not.toHaveBeenCalled();
     });
+
+    it("stages a large Crawl4AI result a window at a time and resumes where it stopped", async () => {
+      const db = getMockDb();
+      const { assistantId, collectionId, source } = await seed(db, "crawl4ai-windows", {
+        url: "https://x.edu",
+        crawlerProvider: "crawl4ai",
+        waitSecs: 2,
+        maxPages: 250,
+      });
+      startCrawl4aiMock.mockResolvedValue({ runId: "task-big", datasetId: "task-big" });
+      getCrawl4aiTaskMock.mockResolvedValue({
+        status: "COMPLETED",
+        results: pages(250).map((p) => ({
+          url: p.url,
+          markdown: p.text,
+          metadata: { title: p.title },
+        })),
+      });
+      await beginWebsiteCrawl({ db, sourceId: source.id });
+      const finalize = () =>
+        finalizeWebsiteCrawl({ db, assistantId, collectionId, sourceId: source.id });
+
+      // Each call stages one bounded window and checkpoints, instead of the
+      // whole result inside one function timeout.
+      expect(await finalize()).toBe("processing");
+      expect((await db.getSource(source.id))?.config.crawlIngestCursor).toBe("100");
+      expect(await finalize()).toBe("processing");
+      expect(await finalize()).toBe("ready");
+
+      const concepts = await db.listConcepts(collectionId);
+      expect(concepts).toHaveLength(250);
+      expect(new Set(concepts.map((c) => c.path)).size).toBe(250);
+    });
   });
 
   describe("initial and manual re-crawl take the same provider lifecycle", () => {

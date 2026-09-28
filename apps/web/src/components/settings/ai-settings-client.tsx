@@ -1,6 +1,15 @@
 ﻿"use client";
 
-import { useEffect, useState, useTransition } from "react";
+import {
+  type ChangeEvent,
+  type ComponentProps,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useEffect,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import type {
   AnthropicWifFederatedConfig,
@@ -52,6 +61,7 @@ import type {
   LocalSubscriptionStatus,
 } from "@agent-hub/agent/client";
 import { Switch } from "@/components/ui/motion-switch";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 const PROVIDER_LABELS: Record<Provider, string> = {
   anthropic: "Anthropic (Claude)",
@@ -99,6 +109,87 @@ function isOpenAiCompatibleConfig(
   return "kind" in config && config.kind === "openai_compatible";
 }
 
+const EMPTY_VERTEX = {
+  displayName: "",
+  projectId: "",
+  location: "europe-west4",
+  workloadIdentityAudience: "",
+  serviceAccountEmail: "",
+};
+const EMPTY_ANTHROPIC = {
+  displayName: "",
+  workloadIdentityAudience: "",
+  organizationId: "",
+  workspaceId: "",
+};
+const EMPTY_AZURE = {
+  displayName: "",
+  tenantId: "",
+  endpoint: "",
+  deployment: "",
+  clientId: "",
+  audience: "",
+};
+const EMPTY_COMPAT = {
+  displayName: "",
+  baseUrl: "",
+  apiKey: "",
+  chatModel: "",
+  embeddingModel: "",
+};
+
+type ConnectDialog = "key" | "vertex" | "anthropic" | "azure" | "compat";
+
+/** `value` + `onChange` for one string field of a form-state object. */
+function bindField<T extends Record<string, string>>(
+  form: T,
+  setForm: Dispatch<SetStateAction<T>>,
+) {
+  return (key: keyof T & string) => ({
+    value: form[key],
+    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setForm((f) => ({ ...f, [key]: value }));
+    },
+  });
+}
+
+/** A labelled input. Browser autofill is off: nothing in these dialogs is the viewer's own. */
+function Field({
+  id,
+  label,
+  ...input
+}: { id: string; label: ReactNode } & ComponentProps<typeof Input>) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} autoComplete="off" {...input} />
+    </div>
+  );
+}
+
+function ConnectFooter({
+  pending,
+  onCancel,
+  children,
+}: {
+  pending: boolean;
+  onCancel: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <DialogFooter>
+      {children}
+      <Button type="button" variant="outline" onClick={onCancel}>
+        Cancel
+      </Button>
+      <Button type="submit" disabled={pending}>
+        <RollInText text={pending ? "Connecting…" : "Connect"} />
+      </Button>
+    </DialogFooter>
+  );
+}
+
 export function AiSettingsClient({
   connections,
   canManage,
@@ -109,10 +200,6 @@ export function AiSettingsClient({
   connectorScope,
 }: {
   connections: ProviderConnection[];
-  availability: Record<
-    Provider,
-    { platform: boolean; byok: boolean; federated: boolean }
-  >;
   canManage: boolean;
   canEnablePersonalSubscriptions: boolean;
   personalSubscriptionsAllowed: boolean;
@@ -121,34 +208,23 @@ export function AiSettingsClient({
   connectorScope: string;
 }) {
   const router = useRouter();
-  const [keyDialogOpen, setKeyDialogOpen] = useState(false);
+  const [dialog, setDialog] = useState<ConnectDialog | null>(null);
+  const dialogProps = (name: ConnectDialog) => ({
+    open: dialog === name,
+    onOpenChange: (open: boolean) => setDialog(open ? name : null),
+  });
+  const closeDialog = () => setDialog(null);
   const [provider, setProvider] = useState<ApiKeyProvider>("anthropic");
   const [apiKey, setApiKey] = useState("");
   const [keyName, setKeyName] = useState("");
-  const [vertexDialogOpen, setVertexDialogOpen] = useState(false);
-  const [vertexDisplayName, setVertexDisplayName] = useState("");
-  const [vertexProjectId, setVertexProjectId] = useState("");
-  const [vertexLocation, setVertexLocation] = useState("europe-west4");
-  const [vertexAudience, setVertexAudience] = useState("");
-  const [vertexServiceAccount, setVertexServiceAccount] = useState("");
-  const [anthropicDialogOpen, setAnthropicDialogOpen] = useState(false);
-  const [anthropicDisplayName, setAnthropicDisplayName] = useState("");
-  const [anthropicAudience, setAnthropicAudience] = useState("");
-  const [anthropicOrgId, setAnthropicOrgId] = useState("");
-  const [anthropicWorkspaceId, setAnthropicWorkspaceId] = useState("");
-  const [azureDialogOpen, setAzureDialogOpen] = useState(false);
-  const [azureDisplayName, setAzureDisplayName] = useState("");
-  const [azureTenantId, setAzureTenantId] = useState("");
-  const [azureEndpoint, setAzureEndpoint] = useState("");
-  const [azureDeployment, setAzureDeployment] = useState("");
-  const [azureClientId, setAzureClientId] = useState("");
-  const [azureAudience, setAzureAudience] = useState("");
-  const [compatDialogOpen, setCompatDialogOpen] = useState(false);
-  const [compatDisplayName, setCompatDisplayName] = useState("");
-  const [compatBaseUrl, setCompatBaseUrl] = useState("");
-  const [compatApiKey, setCompatApiKey] = useState("");
-  const [compatChatModel, setCompatChatModel] = useState("");
-  const [compatEmbeddingModel, setCompatEmbeddingModel] = useState("");
+  const [vertex, setVertex] = useState(EMPTY_VERTEX);
+  const [anthropic, setAnthropic] = useState(EMPTY_ANTHROPIC);
+  const [azure, setAzure] = useState(EMPTY_AZURE);
+  const [compat, setCompat] = useState(EMPTY_COMPAT);
+  const vertexField = bindField(vertex, setVertex);
+  const anthropicField = bindField(anthropic, setAnthropic);
+  const azureField = bindField(azure, setAzure);
+  const compatField = bindField(compat, setCompat);
   const [compatTestResult, setCompatTestResult] =
     useState<OpenAiCompatibleTestResult | null>(null);
   const [isTestingCompat, startCompatTest] = useTransition();
@@ -233,121 +309,51 @@ export function AiSettingsClient({
     });
   }
 
-  function handleAddKey(e: React.FormEvent) {
+  /** Runs one connect action: its error, or success + reset + close. */
+  function submitConnect(
+    e: React.FormEvent,
+    run: () => Promise<{ error?: string } | undefined>,
+    success: string,
+    failure: string,
+    reset: () => void,
+  ) {
     e.preventDefault();
-    if (!apiKey.trim()) return;
     startTransition(async () => {
       try {
-        const result = await createProviderConnectionAction(
+        const result = await run();
+        if (result?.error) {
+          toast.error(result.error);
+          return;
+        }
+        toast.success(success);
+        reset();
+        closeDialog();
+      } catch {
+        toast.error(failure);
+      }
+    });
+  }
+
+  function handleAddKey(e: React.FormEvent) {
+    if (!apiKey.trim()) {
+      e.preventDefault();
+      return;
+    }
+    submitConnect(
+      e,
+      () =>
+        createProviderConnectionAction(
           provider,
           apiKey,
           keyName.trim() || CONNECTION_PROVIDER_LABELS[provider]
-        );
-        if (result?.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success("API key connected");
+        ),
+      "API key connected",
+      "Couldn't connect the API key",
+      () => {
         setApiKey("");
         setKeyName("");
-        setKeyDialogOpen(false);
-      } catch {
-        toast.error("Couldn't connect the API key");
       }
-    });
-  }
-
-  function handleAddGoogleVertex(e: React.FormEvent) {
-    e.preventDefault();
-    startTransition(async () => {
-      try {
-        const result = await createGoogleVertexFederatedConnectionAction({
-          displayName: vertexDisplayName,
-          projectId: vertexProjectId,
-          location: vertexLocation,
-          workloadIdentityAudience: vertexAudience,
-          serviceAccountEmail: vertexServiceAccount,
-        });
-        if (result?.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success("Google Vertex keyless auth connected");
-        setVertexDisplayName("");
-        setVertexProjectId("");
-        setVertexLocation("europe-west4");
-        setVertexAudience("");
-        setVertexServiceAccount("");
-        setVertexDialogOpen(false);
-      } catch {
-        toast.error("Couldn't connect Google Vertex keyless auth");
-      }
-    });
-  }
-
-  function handleAddAnthropicWif(e: React.FormEvent) {
-    e.preventDefault();
-    startTransition(async () => {
-      try {
-        const result = await createAnthropicWifFederatedConnectionAction({
-          displayName: anthropicDisplayName,
-          workloadIdentityAudience: anthropicAudience,
-          organizationId: anthropicOrgId,
-          workspaceId: anthropicWorkspaceId,
-        });
-        if (result?.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success("Anthropic WIF connected");
-        setAnthropicDisplayName("");
-        setAnthropicAudience("");
-        setAnthropicOrgId("");
-        setAnthropicWorkspaceId("");
-        setAnthropicDialogOpen(false);
-      } catch {
-        toast.error("Couldn't connect Anthropic WIF");
-      }
-    });
-  }
-
-  function handleAddAzureOpenAi(e: React.FormEvent) {
-    e.preventDefault();
-    startTransition(async () => {
-      try {
-        const result = await createAzureOpenAiFederatedConnectionAction({
-          displayName: azureDisplayName,
-          tenantId: azureTenantId,
-          endpoint: azureEndpoint,
-          deployment: azureDeployment,
-          clientId: azureClientId,
-          audience: azureAudience,
-        });
-        if (result?.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success("Azure OpenAI keyless auth connected");
-        setAzureDisplayName("");
-        setAzureTenantId("");
-        setAzureEndpoint("");
-        setAzureDeployment("");
-        setAzureClientId("");
-        setAzureAudience("");
-        setAzureDialogOpen(false);
-      } catch {
-        toast.error("Couldn't connect Azure OpenAI keyless auth");
-      }
-    });
-  }
-
-  function resetCompatForm() {
-    setCompatDisplayName("");
-    setCompatBaseUrl("");
-    setCompatApiKey("");
-    setCompatChatModel("");
-    setCompatEmbeddingModel("");
-    setCompatTestResult(null);
+    );
   }
 
   function handleTestCompat() {
@@ -355,38 +361,14 @@ export function AiSettingsClient({
     startCompatTest(async () => {
       try {
         const result = await testOpenAiCompatibleConnectionAction({
-          baseUrl: compatBaseUrl,
-          apiKey: compatApiKey || undefined,
-          chatModel: compatChatModel,
-          embeddingModel: compatEmbeddingModel || undefined,
+          baseUrl: compat.baseUrl,
+          apiKey: compat.apiKey || undefined,
+          chatModel: compat.chatModel,
+          embeddingModel: compat.embeddingModel || undefined,
         });
         setCompatTestResult(result);
       } catch {
         toast.error("Couldn't run the connection test");
-      }
-    });
-  }
-
-  function handleAddOpenAiCompatible(e: React.FormEvent) {
-    e.preventDefault();
-    startTransition(async () => {
-      try {
-        const result = await createOpenAiCompatibleConnectionAction({
-          displayName: compatDisplayName,
-          baseUrl: compatBaseUrl,
-          apiKey: compatApiKey || undefined,
-          chatModel: compatChatModel,
-          embeddingModel: compatEmbeddingModel || undefined,
-        });
-        if (result?.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success("OpenAI-compatible endpoint connected");
-        resetCompatForm();
-        setCompatDialogOpen(false);
-      } catch {
-        toast.error("Couldn't connect the endpoint");
       }
     });
   }
@@ -400,18 +382,15 @@ export function AiSettingsClient({
       description:
         "The stored credential is deleted. Anything that runs on it stops until it is connected again.",
       confirmLabel: "Disconnect",
-      onConfirm: () => disconnectNow(id, what),
-    });
-  }
-
-  function disconnectNow(id: string, what: string) {
-    startTransition(async () => {
-      try {
-        await deleteProviderConnectionAction(id);
-        toast.success(`${what} disconnected`);
-      } catch {
-        toast.error(`Couldn't disconnect the ${what.toLowerCase()}`);
-      }
+      onConfirm: () =>
+        startTransition(async () => {
+          try {
+            await deleteProviderConnectionAction(id);
+            toast.success(`${what} disconnected`);
+          } catch {
+            toast.error(`Couldn't disconnect the ${what.toLowerCase()}`);
+          }
+        }),
     });
   }
 
@@ -424,7 +403,7 @@ export function AiSettingsClient({
             <h2 className="text-base font-semibold">API keys</h2>
           </div>
           {canManage && (
-            <Button size="sm" onClick={() => setKeyDialogOpen(true)}>
+            <Button size="sm" onClick={() => setDialog("key")}>
               <AnimatedIcon icon={Plus} size={16} /> Connect
             </Button>
           )}
@@ -457,7 +436,7 @@ export function AiSettingsClient({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="Disconnect"
+                    aria-label={`Disconnect ${c.displayName || CONNECTION_PROVIDER_LABELS[c.provider]}`}
                     disabled={isPending}
                     onClick={() => handleDisconnect(c.id, "Key")}
                   >
@@ -477,7 +456,7 @@ export function AiSettingsClient({
             <h2 className="text-base font-semibold">OpenAI-compatible endpoints</h2>
           </div>
           {canManage && (
-            <Button size="sm" onClick={() => setCompatDialogOpen(true)}>
+            <Button size="sm" onClick={() => setDialog("compat")}>
               <AnimatedIcon icon={Plus} size={16} /> Connect
             </Button>
           )}
@@ -524,7 +503,7 @@ export function AiSettingsClient({
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label="Disconnect"
+                      aria-label={`Disconnect ${c.displayName || CONNECTION_PROVIDER_LABELS[c.provider]}`}
                       disabled={isPending}
                       onClick={() => handleDisconnect(c.id, "Endpoint")}
                     >
@@ -546,20 +525,20 @@ export function AiSettingsClient({
           </div>
           {canManage && (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => setVertexDialogOpen(true)}>
+              <Button size="sm" onClick={() => setDialog("vertex")}>
                 <AnimatedIcon icon={Plus} size={16} /> Google Vertex
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setAnthropicDialogOpen(true)}
+                onClick={() => setDialog("anthropic")}
               >
                 <AnimatedIcon icon={Plus} size={16} /> Anthropic WIF
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setAzureDialogOpen(true)}
+                onClick={() => setDialog("azure")}
               >
                 <AnimatedIcon icon={Plus} size={16} /> Azure OpenAI
               </Button>
@@ -628,7 +607,7 @@ export function AiSettingsClient({
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label="Disconnect keyless auth"
+                      aria-label={`Disconnect ${c.displayName || CONNECTION_PROVIDER_LABELS[c.provider]}`}
                       disabled={isPending}
                       onClick={() => handleDisconnect(c.id, "Keyless auth")}
                     >
@@ -715,7 +694,7 @@ export function AiSettingsClient({
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label="Remove retired subscription"
+                      aria-label={`Remove ${c.displayName || CONNECTION_PROVIDER_LABELS[c.provider]}`}
                       disabled={isPending}
                       onClick={() => handleDisconnect(c.id, "Retired subscription")}
                     >
@@ -729,7 +708,7 @@ export function AiSettingsClient({
         </Card>
       )}
 
-      <Dialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen}>
+      <Dialog {...dialogProps("key")}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Connect an API key</DialogTitle>
@@ -754,44 +733,28 @@ export function AiSettingsClient({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="api-key">API key</Label>
-              <Input
-                id="api-key"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
-                autoComplete="off"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="key-name">Display name (optional)</Label>
-              <Input
-                id="key-name"
-                value={keyName}
-                onChange={(e) => setKeyName(e.target.value)}
-                placeholder="e.g. Production billing key"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setKeyDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting…" : "Connect"}
-              </Button>
-            </DialogFooter>
+            <Field
+              id="api-key"
+              label="API key"
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-..."
+              required
+            />
+            <Field
+              id="key-name"
+              label="Display name (optional)"
+              value={keyName}
+              onChange={(e) => setKeyName(e.target.value)}
+              placeholder="e.g. Production billing key"
+            />
+            <ConnectFooter pending={isPending} onCancel={closeDialog} />
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={vertexDialogOpen} onOpenChange={setVertexDialogOpen}>
+      <Dialog {...dialogProps("vertex")}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Connect Google Vertex</DialogTitle>
@@ -800,80 +763,65 @@ export function AiSettingsClient({
               needs to mint short-lived Vertex credentials at runtime.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddGoogleVertex} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="vertex-name">Display name (optional)</Label>
-              <Input
-                id="vertex-name"
-                value={vertexDisplayName}
-                onChange={(e) => setVertexDisplayName(e.target.value)}
-                placeholder="e.g. Production Vertex"
-              />
-            </div>
+          <form
+            onSubmit={(e) =>
+              submitConnect(
+                e,
+                () => createGoogleVertexFederatedConnectionAction(vertex),
+                "Google Vertex keyless auth connected",
+                "Couldn't connect Google Vertex keyless auth",
+                () => setVertex(EMPTY_VERTEX)
+              )
+            }
+            className="space-y-4"
+          >
+            <Field
+              id="vertex-name"
+              label="Display name (optional)"
+              {...vertexField("displayName")}
+              placeholder="e.g. Production Vertex"
+            />
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="vertex-project">Project ID</Label>
-                <Input
-                  id="vertex-project"
-                  value={vertexProjectId}
-                  onChange={(e) => setVertexProjectId(e.target.value)}
-                  placeholder="ciele-prod"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="vertex-location">Location</Label>
-                <Input
-                  id="vertex-location"
-                  value={vertexLocation}
-                  onChange={(e) => setVertexLocation(e.target.value)}
-                  placeholder="europe-west4"
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="vertex-audience">WIF audience</Label>
-              <Input
-                id="vertex-audience"
-                value={vertexAudience}
-                onChange={(e) => setVertexAudience(e.target.value)}
-                placeholder="//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/ciele/providers/vercel"
+              <Field
+                id="vertex-project"
+                label="Project ID"
+                spellCheck={false}
+                {...vertexField("projectId")}
+                placeholder="ciele-prod"
+                required
+              />
+              <Field
+                id="vertex-location"
+                label="Location"
+                spellCheck={false}
+                {...vertexField("location")}
+                placeholder="europe-west4"
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="vertex-service-account">
-                Service account email (optional)
-              </Label>
-              <Input
-                id="vertex-service-account"
-                type="email"
-                inputMode="email"
-                autoComplete="off"
-                spellCheck={false}
-                value={vertexServiceAccount}
-                onChange={(e) => setVertexServiceAccount(e.target.value)}
-                placeholder="ciele-runtime@ciele-prod.iam.gserviceaccount.com"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setVertexDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting…" : "Connect"}
-              </Button>
-            </DialogFooter>
+            <Field
+              id="vertex-audience"
+              label="WIF audience"
+              spellCheck={false}
+              {...vertexField("workloadIdentityAudience")}
+              placeholder="//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/ciele/providers/vercel"
+              required
+            />
+            <Field
+              id="vertex-service-account"
+              label="Service account email (optional)"
+              type="email"
+              inputMode="email"
+              spellCheck={false}
+              {...vertexField("serviceAccountEmail")}
+              placeholder="ciele-runtime@ciele-prod.iam.gserviceaccount.com"
+            />
+            <ConnectFooter pending={isPending} onCancel={closeDialog} />
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={anthropicDialogOpen} onOpenChange={setAnthropicDialogOpen}>
+      <Dialog {...dialogProps("anthropic")}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Connect Anthropic WIF</DialogTitle>
@@ -881,65 +829,54 @@ export function AiSettingsClient({
               Workload Identity Federation settings for Anthropic API billing.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddAnthropicWif} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="anthropic-name">Display name (optional)</Label>
-              <Input
-                id="anthropic-name"
-                value={anthropicDisplayName}
-                onChange={(e) => setAnthropicDisplayName(e.target.value)}
-                placeholder="e.g. Anthropic enterprise WIF"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="anthropic-audience">WIF audience</Label>
-              <Input
-                id="anthropic-audience"
-                value={anthropicAudience}
-                onChange={(e) => setAnthropicAudience(e.target.value)}
-                placeholder="trusted identity provider audience"
-                required
-              />
-            </div>
+          <form
+            onSubmit={(e) =>
+              submitConnect(
+                e,
+                () => createAnthropicWifFederatedConnectionAction(anthropic),
+                "Anthropic WIF connected",
+                "Couldn't connect Anthropic WIF",
+                () => setAnthropic(EMPTY_ANTHROPIC)
+              )
+            }
+            className="space-y-4"
+          >
+            <Field
+              id="anthropic-name"
+              label="Display name (optional)"
+              {...anthropicField("displayName")}
+              placeholder="e.g. Anthropic enterprise WIF"
+            />
+            <Field
+              id="anthropic-audience"
+              label="WIF audience"
+              spellCheck={false}
+              {...anthropicField("workloadIdentityAudience")}
+              placeholder="trusted identity provider audience"
+              required
+            />
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="anthropic-org">Organization ID (optional)</Label>
-                <Input
-                  id="anthropic-org"
-                  value={anthropicOrgId}
-                  onChange={(e) => setAnthropicOrgId(e.target.value)}
-                  placeholder="org_..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="anthropic-workspace">
-                  Workspace ID (optional)
-                </Label>
-                <Input
-                  id="anthropic-workspace"
-                  value={anthropicWorkspaceId}
-                  onChange={(e) => setAnthropicWorkspaceId(e.target.value)}
-                  placeholder="wrkspc_..."
-                />
-              </div>
+              <Field
+                id="anthropic-org"
+                label="Organization ID (optional)"
+                spellCheck={false}
+                {...anthropicField("organizationId")}
+                placeholder="org_..."
+              />
+              <Field
+                id="anthropic-workspace"
+                label="Workspace ID (optional)"
+                spellCheck={false}
+                {...anthropicField("workspaceId")}
+                placeholder="wrkspc_..."
+              />
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAnthropicDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting…" : "Connect"}
-              </Button>
-            </DialogFooter>
+            <ConnectFooter pending={isPending} onCancel={closeDialog} />
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={azureDialogOpen} onOpenChange={setAzureDialogOpen}>
+      <Dialog {...dialogProps("azure")}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Connect Azure OpenAI</DialogTitle>
@@ -948,92 +885,77 @@ export function AiSettingsClient({
               Azure OpenAI. This is separate from direct OpenAI API keys.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddAzureOpenAi} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="azure-name">Display name (optional)</Label>
-              <Input
-                id="azure-name"
-                value={azureDisplayName}
-                onChange={(e) => setAzureDisplayName(e.target.value)}
-                placeholder="e.g. Enterprise Azure OpenAI"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="azure-endpoint">Endpoint</Label>
-              <Input
-                id="azure-endpoint"
-                type="url"
-                inputMode="url"
-                autoComplete="off"
+          <form
+            onSubmit={(e) =>
+              submitConnect(
+                e,
+                () => createAzureOpenAiFederatedConnectionAction(azure),
+                "Azure OpenAI keyless auth connected",
+                "Couldn't connect Azure OpenAI keyless auth",
+                () => setAzure(EMPTY_AZURE)
+              )
+            }
+            className="space-y-4"
+          >
+            <Field
+              id="azure-name"
+              label="Display name (optional)"
+              {...azureField("displayName")}
+              placeholder="e.g. Enterprise Azure OpenAI"
+            />
+            <Field
+              id="azure-endpoint"
+              label="Endpoint"
+              type="url"
+              inputMode="url"
+              spellCheck={false}
+              {...azureField("endpoint")}
+              placeholder="https://example.openai.azure.com"
+              required
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                id="azure-tenant"
+                label="Tenant ID"
                 spellCheck={false}
-                value={azureEndpoint}
-                onChange={(e) => setAzureEndpoint(e.target.value)}
-                placeholder="https://example.openai.azure.com"
+                {...azureField("tenantId")}
+                placeholder="00000000-0000-0000-0000-000000000000"
+                required
+              />
+              <Field
+                id="azure-deployment"
+                label="Deployment"
+                spellCheck={false}
+                {...azureField("deployment")}
+                placeholder="gpt-4.1"
                 required
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="azure-tenant">Tenant ID</Label>
-                <Input
-                  id="azure-tenant"
-                  value={azureTenantId}
-                  onChange={(e) => setAzureTenantId(e.target.value)}
-                  placeholder="00000000-0000-0000-0000-000000000000"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="azure-deployment">Deployment</Label>
-                <Input
-                  id="azure-deployment"
-                  value={azureDeployment}
-                  onChange={(e) => setAzureDeployment(e.target.value)}
-                  placeholder="gpt-4.1"
-                  required
-                />
-              </div>
+              <Field
+                id="azure-client"
+                label="Client ID (optional)"
+                spellCheck={false}
+                {...azureField("clientId")}
+                placeholder="managed identity client id"
+              />
+              <Field
+                id="azure-audience"
+                label="Audience (optional)"
+                spellCheck={false}
+                {...azureField("audience")}
+                placeholder="https://cognitiveservices.azure.com/.default"
+              />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="azure-client">Client ID (optional)</Label>
-                <Input
-                  id="azure-client"
-                  value={azureClientId}
-                  onChange={(e) => setAzureClientId(e.target.value)}
-                  placeholder="managed identity client id"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="azure-audience">Audience (optional)</Label>
-                <Input
-                  id="azure-audience"
-                  value={azureAudience}
-                  onChange={(e) => setAzureAudience(e.target.value)}
-                  placeholder="https://cognitiveservices.azure.com/.default"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAzureDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting…" : "Connect"}
-              </Button>
-            </DialogFooter>
+            <ConnectFooter pending={isPending} onCancel={closeDialog} />
           </form>
         </DialogContent>
       </Dialog>
 
       <Dialog
-        open={compatDialogOpen}
+        open={dialog === "compat"}
         onOpenChange={(open) => {
-          setCompatDialogOpen(open);
+          setDialog(open ? "compat" : null);
           if (!open) setCompatTestResult(null);
         }}
       >
@@ -1044,62 +966,66 @@ export function AiSettingsClient({
               Any OpenAI-compatible server. The key is optional and stored encrypted.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddOpenAiCompatible} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="compat-name">Display name (optional)</Label>
-              <Input
-                id="compat-name"
-                value={compatDisplayName}
-                onChange={(e) => setCompatDisplayName(e.target.value)}
-                placeholder="e.g. Campus Ollama"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="compat-base-url">Base URL</Label>
-              <Input
-                id="compat-base-url"
-                type="url"
-                inputMode="url"
-                autoComplete="off"
-                spellCheck={false}
-                value={compatBaseUrl}
-                onChange={(e) => setCompatBaseUrl(e.target.value)}
-                placeholder="http://localhost:11434/v1"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="compat-api-key">API key (optional)</Label>
-              <Input
-                id="compat-api-key"
-                type="password"
-                value={compatApiKey}
-                onChange={(e) => setCompatApiKey(e.target.value)}
-                placeholder="Leave empty for local servers"
-                autoComplete="off"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="compat-chat-model">Chat model</Label>
-              <Input
-                id="compat-chat-model"
-                value={compatChatModel}
-                onChange={(e) => setCompatChatModel(e.target.value)}
-                placeholder="llama3.1:8b"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="compat-embedding-model">
-                Embedding model (optional)
-              </Label>
-              <Input
-                id="compat-embedding-model"
-                value={compatEmbeddingModel}
-                onChange={(e) => setCompatEmbeddingModel(e.target.value)}
-                placeholder="nomic-embed-text"
-              />
-            </div>
+          <form
+            onSubmit={(e) =>
+              submitConnect(
+                e,
+                () =>
+                  createOpenAiCompatibleConnectionAction({
+                    ...compat,
+                    apiKey: compat.apiKey || undefined,
+                    embeddingModel: compat.embeddingModel || undefined,
+                  }),
+                "OpenAI-compatible endpoint connected",
+                "Couldn't connect the endpoint",
+                () => {
+                  setCompat(EMPTY_COMPAT);
+                  setCompatTestResult(null);
+                }
+              )
+            }
+            className="space-y-4"
+          >
+            <Field
+              id="compat-name"
+              label="Display name (optional)"
+              {...compatField("displayName")}
+              placeholder="e.g. Campus Ollama"
+            />
+            <Field
+              id="compat-base-url"
+              label="Base URL"
+              type="url"
+              inputMode="url"
+              spellCheck={false}
+              {...compatField("baseUrl")}
+              placeholder="http://localhost:11434/v1"
+              required
+            />
+            <Field
+              id="compat-api-key"
+              label="API key (optional)"
+              type="password"
+              {...compatField("apiKey")}
+              placeholder="Leave empty for local servers"
+            />
+            <Field
+              id="compat-chat-model"
+              label="Chat model"
+              spellCheck={false}
+              {...compatField("chatModel")}
+              placeholder="llama3.1:8b"
+              required
+            />
+            <Field
+              id="compat-embedding-model"
+              label="Embedding model (optional)"
+              spellCheck={false}
+              {...compatField("embeddingModel")}
+              placeholder="nomic-embed-text"
+            />
+            {/* Always mounted, so the result is announced when it arrives. */}
+            <div role="status" aria-live="polite">
             {compatTestResult && (
               <div className="space-y-1 rounded-lg border bg-muted/30 px-3 py-2 text-xs">
                 {compatTestResult.chat.ok ? (
@@ -1130,30 +1056,21 @@ export function AiSettingsClient({
                 )}
               </div>
             )}
-            <DialogFooter>
+            </div>
+            <ConnectFooter pending={isPending} onCancel={closeDialog}>
               <Button
                 type="button"
                 variant="outline"
                 disabled={
                   isTestingCompat ||
-                  !compatBaseUrl.trim() ||
-                  !compatChatModel.trim()
+                  !compat.baseUrl.trim() ||
+                  !compat.chatModel.trim()
                 }
                 onClick={handleTestCompat}
               >
-                {isTestingCompat ? "Testing…" : "Test connection"}
+                <RollInText text={isTestingCompat ? "Testing…" : "Test connection"} />
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCompatDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Connecting…" : "Connect"}
-              </Button>
-            </DialogFooter>
+            </ConnectFooter>
           </form>
         </DialogContent>
       </Dialog>

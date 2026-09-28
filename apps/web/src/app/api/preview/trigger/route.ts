@@ -10,7 +10,7 @@ import {
   sessionMetadata,
   streamConversationTurn,
 } from "@agent-hub/agent";
-import { getSession } from "@/lib/auth";
+import { getSession, profileName } from "@/lib/auth";
 import { getDb } from "@/lib/data";
 import { getRuntimeDb } from "@/lib/runtime-db";
 
@@ -80,11 +80,6 @@ export async function POST(request: NextRequest) {
     db.listProviderConnections(session.organization.id),
     db.listAssistantSkills(assistant.id),
   ]);
-  const profileName =
-    [session.profile?.firstName, session.profile?.lastName]
-      .filter(Boolean)
-      .join(" ") || session.profile?.username || undefined;
-
   const stream = await streamConversationTurn({
     db,
     systemDb: getRuntimeDb(db),
@@ -99,14 +94,11 @@ export async function POST(request: NextRequest) {
     collectionId: body.collectionId,
     message: "",
     trigger: body.trigger,
-    triggerContext: {
-      ...(typeof body.elapsedSeconds === "number"
-        ? { elapsedSeconds: body.elapsedSeconds }
-        : {}),
-    },
+    triggerContext:
+      typeof body.elapsedSeconds === "number" ? { elapsedSeconds: body.elapsedSeconds } : {},
     metadata: {
       ...sessionMetadata(request.headers),
-      userName: profileName,
+      userName: profileName(session.profile),
       userEmail: session.email,
       userRole: session.role ?? undefined,
     },

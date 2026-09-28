@@ -50,7 +50,7 @@ export async function PendingActivationBanner({
       </span>
       <Link
         href="/settings/billing"
-        className="font-medium underline underline-offset-4"
+        className="press-text hover:decoration-2 font-medium underline underline-offset-4"
       >
         {selfServe ? "Choose a plan" : "Talk to us"}
       </Link>

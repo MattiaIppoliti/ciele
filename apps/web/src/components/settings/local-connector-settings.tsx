@@ -47,7 +47,9 @@ import type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,
 } from "@agent-hub/agent/client";
-import { formatCount, formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * Dev-only direct-CLI controls (the local-subscription test flag). When
@@ -185,6 +187,13 @@ function ProviderRow({
   onAction: () => void;
   trailing?: ReactNode;
 }) {
+  const statusText = connected
+    ? "Connected"
+    : connecting
+      ? "Connecting"
+      : available
+        ? "Available"
+        : "Unavailable";
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-3">
       <ProviderBrandIcon provider={provider} className="text-muted-foreground size-6" />
@@ -192,14 +201,13 @@ function ProviderRow({
         <p className="font-medium">{label}</p>
         <p className="text-muted-foreground truncate text-xs">{detail}</p>
       </div>
-      <Badge variant="outline" className="rounded-full">
-        {connected
-          ? "Connected"
-          : connecting
-            ? "Connecting"
-            : available
-              ? "Available"
-              : "Unavailable"}
+      {/* The badge follows a 3s poll. Screen readers hear the change through
+          a plain-text live region; the rolled badge is for the eye. */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {label}: {statusText}
+      </span>
+      <Badge variant="outline" className="rounded-full" aria-hidden="true">
+        <RollInText text={statusText} />
       </Badge>
       {trailing}
       <Button
@@ -208,16 +216,16 @@ function ProviderRow({
         disabled={actionDisabled}
         onClick={onAction}
         aria-busy={actionBusy}
+        aria-label={
+          actionBusy
+            ? `${connected ? "Disconnecting" : "Connecting"} ${label}…`
+            : `${connected ? "Disconnect" : "Connect"} ${label}`
+        }
       >
         {actionBusy ? (
-          <>
-            <LoaderCircle className="size-4 animate-spin" />
-            <span className="sr-only">{connected ? "Disconnecting…" : "Connecting…"}</span>
-          </>
-        ) : connected ? (
-          "Disconnect"
+          <LoaderCircle className="size-4 animate-spin" />
         ) : (
-          "Connect"
+          <RollInText text={connected ? "Disconnect" : "Connect"} />
         )}
       </Button>
     </div>
@@ -260,8 +268,8 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
           <div className="bg-muted/60 mt-2 rounded-md px-2.5 py-2 text-xs">
             <p className="font-medium">Ciele Preview tokens</p>
             <p className="text-muted-foreground mt-0.5">
-              {formatCount(provider.tokenUsage.inputTokens)} input ·{" "}
-              {formatCount(provider.tokenUsage.outputTokens)} output
+              <RollingNumber value={provider.tokenUsage.inputTokens} /> input ·{" "}
+              <RollingNumber value={provider.tokenUsage.outputTokens} /> output
             </p>
             {provider.tokenUsage.updatedAt && (
               <p className="text-muted-foreground mt-0.5 text-2xs">
@@ -276,7 +284,9 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
               <div key={`${window.label}-${window.resetsAt ?? "unknown"}`}>
                 <div className="flex items-center justify-between text-sm">
                   <span>{window.label}</span>
-                  <span>{window.remainingPercent}% left</span>
+                  <span>
+                    <RollingNumber value={window.remainingPercent} format="percent" /> left
+                  </span>
                 </div>
                 <div className="bg-muted mt-1 h-1.5 overflow-hidden rounded-full">
                   <div
@@ -352,8 +362,10 @@ export function LocalConnectorSettings({
     return sanitizeConnectorStatus(body);
   }, [connectorRequest, pairing]);
 
-  const refreshStatus = useCallback(async () => {
-    if (pendingPreferenceWrites.current > 0) return;
+  /** False when the connector could not be read; the callers that react to
+   * that (the Refresh button) say so, the background ones stay quiet. */
+  const refreshStatus = useCallback(async (): Promise<boolean> => {
+    if (pendingPreferenceWrites.current > 0) return true;
     const generation = ++statusRequestGeneration.current;
     try {
       const nextStatus = await readStatus();
@@ -361,10 +373,24 @@ export function LocalConnectorSettings({
         if (nextStatus) setStatus(nextStatus);
         setChecking(false);
       }
+      return true;
     } catch {
       if (generation === statusRequestGeneration.current) setChecking(false);
+      return false;
     }
   }, [readStatus]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  async function refreshFromButton() {
+    setRefreshing(true);
+    try {
+      if (!(await refreshStatus())) {
+        toast.error("Could not reach Ciele Connector");
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   // The "Detecting" indicator must always terminate: if no poll settles it
   // (hung socket, connector that never answers), fall back to not-detected.
@@ -653,11 +679,14 @@ export function LocalConnectorSettings({
               onRefresh={status ? () => void refreshStatus() : undefined}
             />
           )}
-          {checking && (
-            <Badge variant="outline" className="rounded-full">
-              <LoaderCircle className="mr-1 size-3 animate-spin" /> Detecting
-            </Badge>
-          )}
+          <span role="status" aria-live="polite">
+            {checking && (
+              <Badge variant="outline" className="rounded-full">
+                <LoaderCircle className="mr-1 size-3 animate-spin" aria-hidden="true" />{" "}
+                Detecting
+              </Badge>
+            )}
+          </span>
         </div>
 
         {status && upgradeRequired && (
@@ -816,8 +845,14 @@ export function LocalConnectorSettings({
 
       {status && (
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => void refreshStatus()}>
-            <RotateCw className="size-4" /> Refresh connector
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={refreshing}
+            onClick={() => void refreshFromButton()}
+          >
+            <RotateCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
+            <RollInText text={refreshing ? "Refreshing…" : "Refresh connector"} />
           </Button>
         </div>
       )}

@@ -108,6 +108,7 @@ export function LocalSubscriptionConnect({
           store and are never copied into Ciele.
         </p>
 
+        <div role="status" aria-live="polite">
         {status?.connected ? (
           <p className="mt-6 text-sm font-medium">
             Connected{status.accountLabel ? ` as ${status.accountLabel}` : ""}.
@@ -122,6 +123,7 @@ export function LocalSubscriptionConnect({
             Checking the local provider CLI…
           </p>
         )}
+        </div>
 
         {error && (
           <p className="text-destructive mt-4 text-sm" role="alert">

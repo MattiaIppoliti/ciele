@@ -1,8 +1,8 @@
 "use client";
 // Source: https://beui.dev/components/motion/table (MIT)
 //
-// Ported down to the read-only surface this app needs: columns, sorting,
-// loading skeletons and an empty state. Upstream's row virtualization
+// Ported down to the read-only surface this app needs: columns, sorting and
+// an empty state. Upstream's row virtualization
 // (@tanstack/react-virtual), column resize/reorder, editable cells, row
 // selection and the row handle menu are left out, no caller wants them and
 // each pulls a dependency or a hook file. The prop names that survive keep
@@ -10,8 +10,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
-import { Skeleton } from "@agent-hub/ui";
+import { useMemo, useState } from "react";
 import {
   Table as TableRoot,
   TableBody,
@@ -47,17 +46,10 @@ export interface TableColumn<T> {
 export interface TableProps<T> {
   data: T[];
   columns: TableColumn<T>[];
-  getRowId?: (row: T, index: number) => string;
-  sort?: SortState | null;
-  defaultSort?: SortState | null;
-  onSortChange?: (sort: SortState | null) => void;
-  rowHeight?: number;
-  loading?: boolean;
-  skeletonRows?: number;
-  emptyState?: ReactNode;
+  getRowId: (row: T) => string;
+  emptyState: ReactNode;
   /** Drawn inside the card under a rule; normally a `<TablePagination />`. */
-  footer?: ReactNode;
-  className?: string;
+  footer: ReactNode;
 }
 
 function alignText(align: TableColumn<unknown>["align"]) {
@@ -91,35 +83,14 @@ export function Table<T>({
   data,
   columns,
   getRowId,
-  sort: sortProp,
-  defaultSort = null,
-  onSortChange,
-  rowHeight = 56,
-  loading = false,
-  skeletonRows = 3,
-  emptyState = "No data",
+  emptyState,
   footer,
-  className,
 }: TableProps<T>) {
   const reduce = useReducedMotion();
-  const [uncontrolledSort, setUncontrolledSort] = useState(defaultSort);
-  const sort = sortProp !== undefined ? sortProp : uncontrolledSort;
-
-  const toggleSort = useCallback(
-    (key: string) => {
-      const next = nextSort(sort, key);
-      if (sortProp === undefined) setUncontrolledSort(next);
-      onSortChange?.(next);
-    },
-    [sort, sortProp, onSortChange]
-  );
+  const [sort, setSort] = useState<SortState | null>(null);
 
   const rows = useMemo(
-    () =>
-      data.map((row, index) => ({
-        row,
-        id: getRowId ? getRowId(row, index) : String(index),
-      })),
+    () => data.map((row) => ({ row, id: getRowId(row) })),
     [data, getRowId]
   );
 
@@ -135,7 +106,7 @@ export function Table<T>({
   }, [rows, columns, sort]);
 
   return (
-    <TableCard footer={footer} className={className}>
+    <TableCard footer={footer}>
       <TableRoot>
         <colgroup>
           {columns.map((column) => (
@@ -169,7 +140,7 @@ export function Table<T>({
                   {column.sortable && column.accessor ? (
                     <button
                       type="button"
-                      onClick={() => toggleSort(column.key)}
+                      onClick={() => setSort(nextSort(sort, column.key))}
                       className="hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
                     >
                       {column.header}
@@ -196,86 +167,38 @@ export function Table<T>({
 
         <TableBody>
           {sortedRows.length === 0 ? (
-            loading ? (
-              <SkeletonRows
-                count={skeletonRows}
-                columns={columns}
-                rowHeight={rowHeight}
-              />
-            ) : (
-              <TableRow className="hover:bg-transparent">
-                <TableCell
-                  colSpan={columns.length}
-                  className="text-muted-foreground p-10 text-center"
-                >
-                  {emptyState}
-                </TableCell>
-              </TableRow>
-            )
+            <TableRow className="hover:bg-transparent">
+              <TableCell
+                colSpan={columns.length}
+                className="text-muted-foreground p-10 text-center"
+              >
+                {emptyState}
+              </TableCell>
+            </TableRow>
           ) : (
-            <>
-              {sortedRows.map((entry) => (
-                <TableRow
-                  key={entry.id}
-                  style={{ height: rowHeight }}
-                  className="border-border/60 last:border-b-0"
-                >
-                  {columns.map((column) => (
-                    <TableCell
-                      key={column.key}
-                      className={cn(
-                        "text-foreground",
-                        alignText(column.align),
-                        column.hideBelowSm && "hidden sm:table-cell"
-                      )}
-                    >
-                      {readCell(entry.row, column)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-              {loading ? (
-                <SkeletonRows
-                  count={skeletonRows}
-                  columns={columns}
-                  rowHeight={rowHeight}
-                />
-              ) : null}
-            </>
+            sortedRows.map((entry) => (
+              <TableRow
+                key={entry.id}
+                style={{ height: 56 }}
+                className="border-border/60 last:border-b-0"
+              >
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.key}
+                    className={cn(
+                      "text-foreground",
+                      alignText(column.align),
+                      column.hideBelowSm && "hidden sm:table-cell"
+                    )}
+                  >
+                    {readCell(entry.row, column)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
           )}
         </TableBody>
       </TableRoot>
     </TableCard>
-  );
-}
-
-function SkeletonRows<T>({
-  count,
-  columns,
-  rowHeight,
-}: {
-  count: number;
-  columns: TableColumn<T>[];
-  rowHeight: number;
-}) {
-  return (
-    <>
-      {Array.from({ length: count }, (_, i) => (
-        <TableRow
-          key={`skeleton-${i}`}
-          style={{ height: rowHeight }}
-          className="hover:bg-transparent"
-        >
-          {columns.map((column) => (
-            <TableCell
-              key={column.key}
-              className={cn(column.hideBelowSm && "hidden sm:table-cell")}
-            >
-              <Skeleton className="h-4 w-2/3" />
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </>
   );
 }

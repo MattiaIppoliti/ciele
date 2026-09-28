@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  decryptSecret,
-  encryptSecret,
-  isLegacyPlaintextSecret,
-  openSecret,
-  sealSecret,
-} from "./crypto";
+import { isLegacyPlaintextSecret, openSecret, sealSecret } from "./crypto";
 
 /**
  * Sealing is the only thing standing between a stored provider credential and
@@ -25,41 +19,41 @@ afterEach(() => {
   delete process.env.APP_ENCRYPTION_KEY;
 });
 
-describe("encryptSecret / decryptSecret", () => {
+describe("the AES-256-GCM seal", () => {
   it("round-trips a secret", () => {
-    expect(decryptSecret(encryptSecret("sk-live-1234"))).toBe("sk-live-1234");
+    expect(openSecret(sealSecret("sk-live-1234"))).toBe("sk-live-1234");
   });
 
   it("round-trips unicode and empty strings", () => {
-    expect(decryptSecret(encryptSecret("clé—🔐"))).toBe("clé—🔐");
-    expect(decryptSecret(encryptSecret(""))).toBe("");
+    expect(openSecret(sealSecret("clé—🔐"))).toBe("clé—🔐");
+    expect(openSecret(sealSecret(""))).toBe("");
   });
 
   it("produces a different ciphertext each time, the IV is fresh per call", () => {
-    const a = encryptSecret("same-input");
-    const b = encryptSecret("same-input");
+    const a = sealSecret("same-input");
+    const b = sealSecret("same-input");
     expect(a).not.toBe(b);
-    expect(decryptSecret(a)).toBe(decryptSecret(b));
+    expect(openSecret(a)).toBe(openSecret(b));
   });
 
   it("rejects a tampered ciphertext instead of returning wrong plaintext", () => {
-    const [iv, tag, data] = encryptSecret("sk-live-1234").split(".");
+    const [iv, tag, data] = sealSecret("sk-live-1234").split(".");
     const flipped = Buffer.from(data!, "base64");
     flipped[0] = flipped[0]! ^ 0xff;
     expect(() =>
-      decryptSecret(`${iv}.${tag}.${flipped.toString("base64")}`)
+      openSecret(`${iv}.${tag}.${flipped.toString("base64")}`)
     ).toThrow();
   });
 
   it("refuses to run without APP_ENCRYPTION_KEY", () => {
     delete process.env.APP_ENCRYPTION_KEY;
-    expect(() => encryptSecret("x")).toThrow(/APP_ENCRYPTION_KEY/);
+    expect(() => sealSecret("x")).toThrow(/APP_ENCRYPTION_KEY/);
   });
 
   it("cannot decrypt with a different key", () => {
-    const sealed = encryptSecret("sk-live-1234");
+    const sealed = sealSecret("sk-live-1234");
     process.env.APP_ENCRYPTION_KEY = "a-different-key";
-    expect(() => decryptSecret(sealed)).toThrow();
+    expect(() => openSecret(sealed)).toThrow();
   });
 });
 
@@ -85,5 +79,28 @@ describe("sealSecret / openSecret", () => {
     expect(openSecret("plain:sk-legacy")).toBe("sk-legacy");
     expect(isLegacyPlaintextSecret("plain:sk-legacy")).toBe(true);
     expect(isLegacyPlaintextSecret(sealSecret("sk-live-1234"))).toBe(false);
+  });
+});
+
+describe("key rotation", () => {
+  afterEach(() => {
+    delete process.env.APP_ENCRYPTION_KEY_PREVIOUS;
+  });
+
+  it("opens a value sealed under the previous key while the new one is current", () => {
+    const sealedUnderOld = sealSecret("sk-rotated");
+    process.env.APP_ENCRYPTION_KEY = "the-new-key";
+    process.env.APP_ENCRYPTION_KEY_PREVIOUS = KEY;
+    expect(openSecret(sealedUnderOld)).toBe("sk-rotated");
+    // New writes go under the current key only.
+    delete process.env.APP_ENCRYPTION_KEY_PREVIOUS;
+    expect(openSecret(sealSecret("sk-new"))).toBe("sk-new");
+  });
+
+  it("still refuses a value no configured key sealed", () => {
+    const sealed = sealSecret("sk-foreign");
+    process.env.APP_ENCRYPTION_KEY = "the-new-key";
+    process.env.APP_ENCRYPTION_KEY_PREVIOUS = "some-other-key";
+    expect(() => openSecret(sealed)).toThrow();
   });
 });

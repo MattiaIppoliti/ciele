@@ -71,6 +71,8 @@ function needLinkTargets(args: Record<string, unknown>): string[] {
 }
 
 const READ_ACTIONS = new Set([
+  // Knowledge search returns passages and stores nothing: no Conversation.
+  "search",
   "list",
   "get",
   "review_list",
@@ -127,10 +129,15 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_assistants",
       description:
-        "List, read, create, update, duplicate or delete the Organization's Assistants, and get/set their selected Entities without replacing other tool settings. `list` supports limit/cursor; `update` takes a `patch` object; `delete` is permanent and needs an admin-tier key.",
+        "Ask an Assistant a question with `ask` (id + question): it answers as its published widget would, Flows and knowledge search included, and returns the answer with the Sources it cited; pass the returned conversationId to ask a follow-up. It creates a Conversation, so read-only mode refuses it; to read the knowledge without an answer use manage_knowledge `search`. Also list, read, create, update, duplicate or delete the Organization's Assistants, and get/set their selected Entities without replacing other tool settings. `list` supports limit/cursor; `update` takes a `patch` object; `delete` is permanent and needs an admin-tier key.",
       schema: {
-        action: z.enum(["list", "get", "create", "update", "delete", "duplicate", "get_entities", "set_entities"]),
-        id: z.string().optional().describe("Assistant id (get/update/delete/duplicate)"),
+        action: z.enum(["ask", "list", "get", "create", "update", "delete", "duplicate", "get_entities", "set_entities"]),
+        id: z.string().optional().describe("Assistant id (ask/get/update/delete/duplicate)"),
+        question: z.string().optional().describe("What to ask the Assistant (ask)"),
+        conversationId: z
+          .string()
+          .optional()
+          .describe("A previous answer's conversationId, to continue that thread (ask)"),
         title: z.string().optional().describe("Title (create)"),
         nickname: z.string().optional(),
         description: z.string().optional(),
@@ -163,6 +170,11 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return { deleted: args.id };
           case "duplicate":
             return client.assistants.duplicate(need(args, "id"));
+          case "ask":
+            return client.assistants.ask(need(args, "id"), {
+              question: need(args, "question"),
+              conversationId: (args.conversationId as string | undefined) || undefined,
+            });
           case "get_entities":
             return client.assistants.entities(need(args, "id"));
           case "set_entities":
@@ -274,9 +286,10 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_knowledge",
       description:
-        "The Organization's knowledge: list org-wide items (list_org_sources, filter by kinds/status/assistant), list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources to a named Collection (add_text/add_url/add_file) or straight to the org Knowledge Library with no Collection id (add_org_text/add_org_url/add_org_file, which is what a newly created Assistant needs, since it has no Collection to name yet), replace a source's linked assistants (set_links), flip per-assistant direct access on a file (set_direct_access), delete a source, re-crawl a website source, add one FAQ (add_faq collection-scoped, add_org_faq org-level), bulk-import FAQs from CSV text, or export every FAQ as CSV (export_faqs). Every action that adds knowledge takes assistantIds: a Collection has no owner, so those links are the only thing that puts the knowledge in an Assistant's reach, and an empty set is refused.",
+        "The Organization's knowledge. To answer a question from it, use search: it returns the passages that match the query, each with its Document, Source and URL to cite, and generates no answer (pass assistantId to search only what that Assistant answers from, omit it to search the whole Library). The rest manages it: list org-wide items (list_org_sources, filter by kinds/status/assistant), list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources to a named Collection (add_text/add_url/add_file) or straight to the org Knowledge Library with no Collection id (add_org_text/add_org_url/add_org_file, which is what a newly created Assistant needs, since it has no Collection to name yet), replace a source's linked assistants (set_links), flip per-assistant direct access on a file (set_direct_access), delete a source, re-crawl a website source, add one FAQ (add_faq collection-scoped, add_org_faq org-level), bulk-import FAQs from CSV text, or export every FAQ as CSV (export_faqs). Every action that adds knowledge takes assistantIds: a Collection has no owner, so those links are the only thing that puts the knowledge in an Assistant's reach, and an empty set is refused.",
       schema: {
         action: z.enum([
+          "search",
           "list_collections",
           "list_sources",
           "list_org_sources",
@@ -297,7 +310,10 @@ export function buildTools(client: CieleClient): CieleTool[] {
           "import_org_faqs",
           "export_faqs",
         ]),
-        assistantId: z.string().optional().describe("Required for list_collections"),
+        assistantId: z
+          .string()
+          .optional()
+          .describe("Required for list_collections; narrows search to that Assistant's Sources"),
         collectionId: z
           .string()
           .optional()
@@ -328,10 +344,19 @@ export function buildTools(client: CieleClient): CieleTool[] {
         kinds: z.array(z.string()).optional().describe("Kind filter (list_org_sources)"),
         status: z.string().optional().describe("Status filter (list_org_sources)"),
         q: z.string().optional().describe("Name search (list_org_sources)"),
+        query: z
+          .string()
+          .optional()
+          .describe("The question to search the knowledge for (search)"),
       },
       mutates: byAction,
       run: async (args) => {
         switch (args.action) {
+          case "search":
+            return client.knowledge.search({
+              query: need(args, "query"),
+              assistantId: (args.assistantId as string | undefined) || undefined,
+            });
           case "list_collections":
             return client.knowledge.collections(need(args, "assistantId"));
           case "list_sources":

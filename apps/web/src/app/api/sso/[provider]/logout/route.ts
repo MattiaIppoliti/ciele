@@ -2,8 +2,6 @@ import type { NextRequest } from "next/server";
 import { logoutSsoFlow } from "@/lib/sso/handlers";
 import { isKnownProviderKind } from "@/lib/sso";
 
-export const runtime = "nodejs";
-
 async function handle(
   request: NextRequest,
   params: Promise<{ provider: string }>

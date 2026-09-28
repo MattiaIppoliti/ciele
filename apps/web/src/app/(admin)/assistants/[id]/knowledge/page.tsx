@@ -14,6 +14,7 @@ import {
   assistantScopedKnowledge,
   sharedAssistantNames,
 } from "@/lib/knowledge-hub";
+import { parseKnowledgeMode } from "@/lib/knowledge-mode";
 import { websiteCrawlerCapabilities } from "@agent-hub/agent";
 import { getAssistantCached } from "../get-assistant";
 
@@ -31,10 +32,10 @@ export default async function KnowledgePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ c?: string }>;
+  searchParams: Promise<{ c?: string; mode?: string }>;
 }) {
   const { id } = await params;
-  const { c } = await searchParams;
+  const { c, mode } = await searchParams;
   const { db, organizationId, role, session } = await requirePageMember();
   const assistant = await getAssistantCached(id);
   if (!assistant) notFound();
@@ -83,9 +84,12 @@ export default async function KnowledgePage({
   // shows every linked Source. The tabs above manage the ones in the selected
   // Collection; everything else linked to this assistant is listed read-only
   // below, so nothing it answers from is invisible here.
-  const linkedItems =
-    (
-      await db
+  //
+  // None of these four reads depends on another or on the selected
+  // Collection, so they share one round trip instead of four in a row.
+  const [linkedPage, nullEmbeddingIds, orgApify, operationalStates] =
+    await Promise.all([
+      db
         .listOrgKnowledgeSources(organizationId, {
           kinds: KNOWLEDGE_TAB_SLUGS.flatMap(
             (slug) => KNOWLEDGE_TAB_KINDS[slug]
@@ -94,24 +98,23 @@ export default async function KnowledgePage({
           page: 1,
           pageSize: LINKED_SOURCE_LIMIT,
         })
-        .catch(() => null)
-    )?.items ?? [];
+        .catch(() => null),
+      db.listNullEmbeddingConceptIds(id).catch(() => []),
+      // The org's own Apify token (Settings → Crawling) makes Apify selectable
+      // even when the platform has none. Fails closed to "no token" on a read
+      // error, the same answer the environment gives.
+      db.getCrawlerConnection(organizationId, "apify").catch(() => null),
+      db.listApplicationOperationalState(organizationId),
+    ]);
+  const linkedItems = linkedPage?.items ?? [];
   const linkedElsewhere = linkedItems
     .filter((item) => item.collectionId !== selected?.id)
     .slice(0, SHARED_KNOWLEDGE_LIMIT);
-  const nullEmbeddingCount = (
-    await db.listNullEmbeddingConceptIds(id).catch(() => [])
-  ).length;
+  const nullEmbeddingCount = nullEmbeddingIds.length;
   const crawlerCapabilities = websiteCrawlerCapabilities();
-  // The org's own Apify token (Settings → Crawling) makes Apify selectable
-  // even when the platform has none. Fails closed to "no token" on a read
-  // error, the same answer the environment gives.
-  const orgApify = await db
-    .getCrawlerConnection(organizationId, "apify")
-    .catch(() => null);
-  const applicationOperationalState = (
-    await db.listApplicationOperationalState(organizationId)
-  ).map((state) => [state.importId, state] as const);
+  const applicationOperationalState = operationalStates.map(
+    (state) => [state.importId, state] as const
+  );
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-6 sm:px-8 sm:py-10">
@@ -144,6 +147,7 @@ export default async function KnowledgePage({
         canEditApplications={canEdit(role)}
         canManageApplicationConnections={canPublish(role)}
         applicationOAuthAvailability={applicationOAuthAvailability()}
+        initialMode={parseKnowledgeMode(mode)}
       />
       <SharedKnowledgePanel items={linkedElsewhere} />
     </div>

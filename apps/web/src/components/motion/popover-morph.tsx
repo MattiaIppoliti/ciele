@@ -15,7 +15,6 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
@@ -46,41 +45,24 @@ function useMorphContext(component: string) {
 
 export interface MorphPopoverProps {
   children: ReactNode;
-  /** Controlled open state. */
-  open?: boolean;
-  /** Uncontrolled initial open state. */
-  defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  className?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 /**
  * A popover whose panel morphs open from the trigger corner: it's laid out at
  * full size but clipped to the corner nearest the trigger, then unclips as one
- * piece. Closes on outside pointer / Escape. Controlled or uncontrolled.
+ * piece. Closes on outside pointer / Escape. Controlled.
  */
 export function MorphPopover({
   children,
-  open: controlledOpen,
-  defaultOpen = false,
-  onOpenChange,
-  className,
+  open,
+  onOpenChange: setOpen,
 }: MorphPopoverProps) {
   const baseId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
-  const controlled = controlledOpen !== undefined;
-  const open = controlled ? controlledOpen : internalOpen;
-
-  const setOpen = useCallback(
-    (next: boolean) => {
-      if (!controlled) setInternalOpen(next);
-      onOpenChange?.(next);
-    },
-    [controlled, onOpenChange],
-  );
   const toggle = useCallback(() => setOpen(!open), [setOpen, open]);
 
   useEffect(() => {
@@ -123,7 +105,7 @@ export function MorphPopover({
 
   return (
     <MorphContext.Provider value={ctx}>
-      <div ref={rootRef} className={cn("relative inline-flex", className)}>
+      <div ref={rootRef} className="relative inline-flex">
         {children}
       </div>
     </MorphContext.Provider>
@@ -188,14 +170,15 @@ const MORPH_CLIP_TRANSITION = { duration: 0.32, ease: EASE_OUT } as const;
 
 export interface MorphPopoverContentProps {
   children: ReactNode;
-  side?: Side;
-  align?: Align;
-  /** Gap between trigger and panel, in px. Default 8. */
-  sideOffset?: number;
-  /** Panel corner radius, in px. Default 16. */
-  radius?: number;
+  side: Side;
+  align: Align;
   className?: string;
 }
+
+/** Gap between trigger and panel, in px. */
+const SIDE_OFFSET = 8;
+/** Panel corner radius, in px. */
+const RADIUS = 12;
 
 // SSR-safe mount detection without a mount effect: the server snapshot is
 // false, the client snapshot true, so the portal renders only after hydration.
@@ -203,10 +186,8 @@ const emptySubscribe = () => () => {};
 
 export function MorphPopoverContent({
   children,
-  side = "bottom",
-  align = "end",
-  sideOffset = 8,
-  radius = 16,
+  side,
+  align,
   className,
 }: MorphPopoverContentProps) {
   const { open, triggerId, contentId, triggerRef, contentRef } =
@@ -250,8 +231,8 @@ export function MorphPopoverContent({
     : 0;
   const top = layout
     ? side === "bottom"
-      ? layout.trigger.top + layout.trigger.height + sideOffset
-      : layout.trigger.top - layout.content.height - sideOffset
+      ? layout.trigger.top + layout.trigger.height + SIDE_OFFSET
+      : layout.trigger.top - layout.content.height - SIDE_OFFSET
     : 0;
 
   // Both directions travel between the exact same hidden/show states. Exit
@@ -266,11 +247,11 @@ export function MorphPopoverContent({
     ? undefined
     : {
         hidden: {
-          clipPath: clipHidden(side, align, radius),
+          clipPath: clipHidden(side, align, RADIUS),
           transition: MORPH_CLIP_TRANSITION,
         },
         show: {
-          clipPath: clipShown(radius),
+          clipPath: clipShown(RADIUS),
           transition: MORPH_CLIP_TRANSITION,
         },
       };
@@ -305,7 +286,7 @@ export function MorphPopoverContent({
             aria-labelledby={triggerId}
             tabIndex={-1}
             variants={clip}
-            style={{ borderRadius: radius }}
+            style={{ borderRadius: RADIUS }}
             className={cn(
               "overflow-hidden border border-border bg-background",
               className,

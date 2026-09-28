@@ -1,10 +1,15 @@
 import { z } from "zod";
-import type { ApplicationImport, ApplicationProvider } from "@agent-hub/core";
+import {
+  sourceDocumentStatus,
+  type ApplicationImport,
+  type ApplicationProvider,
+  type SourceDocumentStatus,
+} from "@agent-hub/core";
 import {
   normalizeApplicationImportConfig,
   validateApplicationImportScopes,
 } from "./application-import-config";
-import type { MutatedEntity } from "./entities";
+import { assistantEditors, type MutatedEntity } from "./entities";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
 
 /**
@@ -24,10 +29,7 @@ interface Touched {
 function touched(result: Touched): MutatedEntity[] {
   return [
     { kind: "knowledgeHub" },
-    ...[...new Set(result.assistantIds)].map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors([...new Set(result.assistantIds)]),
   ];
 }
 
@@ -267,6 +269,116 @@ export const syncApplicationImportNowOp = defineOperation({
       organizationId: ctx.organizationId,
     });
     return { assistantIds: current.assistantIds };
+  },
+});
+
+/** Rows per page of an Import's Documents table. */
+export const APPLICATION_IMPORT_DOCUMENTS_PAGE_SIZE = 25;
+
+/**
+ * One remote item an Import brought in, as its Documents table shows it.
+ *
+ * An item is a Source of its own (`stableApplicationSourceId`), and a text
+ * Source is stored as one Document, so the row usually *is* that Document and
+ * opens straight onto it. `documentId` is null when that does not hold: the
+ * Source is still processing and has none yet, or a re-ingest left it with
+ * more than one, and then the row opens the Source's own Documents page.
+ */
+export interface ApplicationImportDocumentRow {
+  sourceId: string;
+  documentId: string | null;
+  documentCount: number;
+  title: string;
+  /** The Document's three states, or the Source's own when there is no single Document. */
+  status: SourceDocumentStatus | "error";
+  /** Where the item lives in the provider, when the provider gave a link. */
+  remoteUrl: string | null;
+  updatedAt: string;
+  memoryCount: number;
+}
+
+/**
+ * Level 2 of an Import's drill-down: every item it brought in, one page at a
+ * time, each opening onto its Document.
+ *
+ * Composed from reads both Db implementations already satisfy rather than a
+ * new cross-Source query: the Import's mappings name its Sources, and the page
+ * bounds the per-Source reads to 25. `assistantId` scopes it the way the
+ * editor scopes a Source: an Import this Assistant does not answer from reads
+ * as not found there.
+ */
+export const listApplicationImportDocumentsOp = defineOperation({
+  name: "applications.imports.documents.list",
+  capability: "member",
+  input: z.object({
+    importId: z.string().min(1),
+    assistantId: z.string().min(1).optional(),
+    page: z.number().int().min(1).optional(),
+  }),
+  entities: () => [],
+  run: async (ctx, input) => {
+    const applicationImport = await requireImport(ctx, input.importId);
+    if (input.assistantId && !applicationImport.assistantIds.includes(input.assistantId)) {
+      throw new OperationError("not_found", "Application Import not found");
+    }
+    // The same rule `listApplicationOperationalState` counts by (a tombstoned
+    // item has lost its Source), so the Configured imports table's "N
+    // Documents" and this table's total are one number.
+    const sourceIds = (await ctx.db.listApplicationSources(applicationImport.id))
+      .map((mapping) => mapping.sourceId)
+      .filter((sourceId): sourceId is string => Boolean(sourceId));
+    const pageSize = APPLICATION_IMPORT_DOCUMENTS_PAGE_SIZE;
+    const total = sourceIds.length;
+    const lastPage = Math.max(1, Math.ceil(total / pageSize));
+    const page = Math.min(input.page ?? 1, lastPage);
+    const onPage = sourceIds.slice((page - 1) * pageSize, page * pageSize);
+
+    const rows = await Promise.all(
+      onPage.map(async (sourceId): Promise<ApplicationImportDocumentRow | null> => {
+        const [source, documents] = await Promise.all([
+          ctx.db.getSource(sourceId),
+          ctx.db.listSourceDocuments(sourceId, { pageSize: 1 }),
+        ]);
+        // The mapping's FK is `on delete set null`, so a named Source is gone
+        // only when it was deleted between the two reads; the row drops for
+        // that one render and `total` catches up on the next.
+        if (!source) return null;
+        const document = documents.total === 1 ? documents.items[0] : null;
+        const memoryCount = document
+          ? ((await ctx.db.countLiveMemoriesByPath(sourceId, [document.path]))[
+              document.path
+            ] ?? 0)
+          : 0;
+        // With no single Document to read, the Source decides: a failure is a
+        // failure, and a ready Source a re-ingest split in two is still ready.
+        // A ready Source with no Document yet has nothing to open, so pending.
+        const status: ApplicationImportDocumentRow["status"] = document
+          ? sourceDocumentStatus(document)
+          : source.status === "error"
+            ? "error"
+            : source.status === "ready" && documents.total > 1
+              ? "ready"
+              : "pending";
+        return {
+          sourceId,
+          documentId: document?.id ?? null,
+          documentCount: documents.total,
+          title: document?.title || source.name,
+          status,
+          remoteUrl:
+            typeof source.config.remoteUrl === "string" ? source.config.remoteUrl : null,
+          updatedAt: document?.createdAt ?? source.createdAt,
+          memoryCount,
+        };
+      })
+    );
+    return {
+      applicationImport,
+      items: rows.filter((row): row is ApplicationImportDocumentRow => row !== null),
+      total,
+      page,
+      pageSize,
+    };
   },
 });
 

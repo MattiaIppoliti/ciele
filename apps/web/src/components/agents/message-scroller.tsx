@@ -86,6 +86,11 @@ export interface MessageScrollerProps extends ComponentPropsWithRef<"div"> {
   label?: string;
   /** Marks the transcript as waiting for more streamed content. */
   busy?: boolean;
+  /**
+   * What the agent is doing right now, for a screen reader. Rendered outside
+   * the log on purpose: the log is `aria-busy` while it streams, which mutes it.
+   */
+  status?: string;
   /** Adds a compact rail for navigating between rendered Message rows. */
   navigation?: "rail";
   /** Accessible label for the optional message navigation rail. */
@@ -111,6 +116,7 @@ export function MessageScroller({
   onFollowChange,
   label = "Conversation",
   busy,
+  status,
   navigation,
   navigationLabel = "Message navigation",
   viewportClassName,
@@ -261,8 +267,16 @@ export function MessageScroller({
     );
   }, [navigation]);
 
+  // Every streamed token is a characterData mutation, and a sync re-reads the
+  // text and the box of every message. While a turn streams the rail waits,
+  // and one sync runs when it lands (the effect below).
+  const busyRef = useRef(busy);
+  useEffect(() => {
+    busyRef.current = busy;
+  });
+
   const scheduleRailSync = useCallback(() => {
-    if (navigation !== "rail") return;
+    if (navigation !== "rail" || busyRef.current) return;
     if (railFrameRef.current) cancelAnimationFrame(railFrameRef.current);
     railFrameRef.current = requestAnimationFrame(() => {
       syncRailItems();
@@ -369,6 +383,10 @@ export function MessageScroller({
     };
   }, [navigation, scheduleRailSync]);
 
+  useEffect(() => {
+    if (!busy) scheduleRailSync();
+  }, [busy, scheduleRailSync]);
+
   useEffect(
     () => () => {
       if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
@@ -459,6 +477,11 @@ export function MessageScroller({
       >
         {children}
       </div>
+      {status !== undefined && (
+        <p role="status" className="sr-only">
+          {status}
+        </p>
+      )}
     </section>
   );
 

@@ -1,5 +1,5 @@
 import type { Role } from "@agent-hub/core";
-import { CAPABILITY_GUARDS } from "@/lib/rbac";
+import { roleAllowsCapability } from "@agent-hub/core";
 import type {
   PanelCapability,
   PanelDomain,
@@ -74,7 +74,7 @@ export function substituteTemplate(
   variables: Record<string, string>
 ): string {
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(variables, name) ? variables[name] : match
+    Object.hasOwn(variables, name) ? variables[name] : match
   );
 }
 
@@ -82,9 +82,7 @@ export function substituteTemplate(
 function resolvePath(path: string, variables: Record<string, string>): string {
   return path.replace(/\{(\w+)\}/g, (_match, param: string) => {
     const name = pathVariableName(path, param);
-    return Object.prototype.hasOwnProperty.call(variables, name)
-      ? variables[name]
-      : `{${name}}`;
+    return Object.hasOwn(variables, name) ? variables[name] : `{${name}}`;
   });
 }
 
@@ -227,7 +225,7 @@ export function renderBodyShape(schema: unknown): string | null {
  *
  * **Derived from the guards themselves**, not from a table of role names: this
  * used to mirror the rank ladder as a switch, and nothing tied the two, so
- * raising a threshold in `lib/rbac.ts` would have made the badge lie in silence.
+ * raising a threshold in core's `roleAllowsCapability` would have made the badge lie in silence.
  *
  * This is about the **key**, never the person reading the panel. An Owner can
  * mint a Viewer key, and that key deletes nothing; greying an operation out
@@ -238,5 +236,5 @@ const ROLE_LADDER: Role[] = ["viewer", "editor", "admin", "owner"];
 export function capabilityRole(capability: PanelCapability): Role | null {
   // "member" means any valid key. A badge saying so on every read is noise.
   if (capability === "member") return null;
-  return ROLE_LADDER.find((role) => CAPABILITY_GUARDS[capability](role)) ?? null;
+  return ROLE_LADDER.find((role) => roleAllowsCapability(role, capability)) ?? null;
 }

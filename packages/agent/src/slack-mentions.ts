@@ -48,7 +48,7 @@ import {
   trustedUrl,
   type ApplicationHttpClient,
 } from "./application-provider-http";
-import { connectorAlertKey } from "./connector-request";
+import { connectorAlertKey, SLACK_AUTH_ERRORS } from "./connector-request";
 import { alertKeys } from "./health";
 import type { JobDeps, JobHandler, RunDueJobsResult } from "./jobs";
 import { redactBearerSecrets } from "./redact";
@@ -219,14 +219,6 @@ type SlackMethod =
   | "conversations.history"
   | "conversations.replies"
   | "chat.postMessage";
-
-const SLACK_AUTH_ERRORS = new Set([
-  "invalid_auth",
-  "not_authed",
-  "token_revoked",
-  "token_expired",
-  "account_inactive",
-]);
 
 /**
  * `chat.postMessage` refusals whose meaning is "not posted, and posting again
@@ -634,16 +626,10 @@ export const answerSlackMentionHandler: JobHandler = {
     } catch (error) {
       const detail = slackFailureDetail(error);
       if (error instanceof Error && error.message === detail) throw error;
-      throw Object.assign(new Error(detail), {
-        retryable:
-          typeof error === "object" && error !== null && "retryable" in error
-            ? (error as { retryable?: unknown }).retryable
-            : undefined,
-        retryAfterMs:
-          typeof error === "object" && error !== null && "retryAfterMs" in error
-            ? (error as { retryAfterMs?: unknown }).retryAfterMs
-            : undefined,
-      });
+      const { retryable, retryAfterMs } = (
+        typeof error === "object" && error !== null ? error : {}
+      ) as { retryable?: unknown; retryAfterMs?: unknown };
+      throw Object.assign(new Error(detail), { retryable, retryAfterMs });
     }
   },
 
@@ -687,13 +673,12 @@ async function answerSlackMention(
   // A channel a second Organization claimed while the job waited is neither:
   // it is the misconfiguration `enqueueSlackMention` alerts on, and it has to
   // reach the same Alert rather than be filed as somebody's opt-out.
+  const conflict = async (candidates: ApplicationConnection[]) => {
+    await reconcileChannelConflict(deps.db, mention, candidates);
+    return nonRetryable(`Slack channel ${mention.channel} is enabled on more than one Organization`);
+  };
   const routing = await resolveSlackRouting(deps.db, mention);
-  if (routing.kind === "conflict") {
-    await reconcileChannelConflict(deps.db, mention, routing.candidates);
-    throw nonRetryable(
-      `Slack channel ${mention.channel} is enabled on more than one Organization`
-    );
-  }
+  if (routing.kind === "conflict") throw await conflict(routing.candidates);
   if (routing.kind === "none") return skip("replies_disabled");
   const connection = routing.connection;
   if (
@@ -760,12 +745,7 @@ async function answerSlackMention(
     // ran; a conflict that appeared meanwhile is still a conflict, and the
     // generated reply stays on the job so the fix does not cost another turn.
     const after = await resolveSlackRouting(deps.db, mention);
-    if (after.kind === "conflict") {
-      await reconcileChannelConflict(deps.db, mention, after.candidates);
-      throw nonRetryable(
-        `Slack channel ${mention.channel} is enabled on more than one Organization`
-      );
-    }
+    if (after.kind === "conflict") throw await conflict(after.candidates);
     if (
       after.kind !== "one" ||
       after.connection.id !== connection.id ||

@@ -23,6 +23,8 @@ import {
   type IngestionItemStatus,
 } from "@/lib/ingestion-activity";
 import { cn } from "@/lib/utils";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * The bottom-right crawl / import progress card.
@@ -166,12 +168,17 @@ export function IngestionActivityCard({
       className="bg-background/95 border-border/70 pointer-events-auto w-[22rem] max-w-full overflow-hidden rounded-3xl border shadow-lg backdrop-blur"
     >
       <div className="flex items-center gap-2 px-4 py-3">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        {/* The title is what is announced ("Crawling" to "Crawled"), not the
+            count, which moves every ten pages and would talk over everything. */}
+        <span
+          aria-live="polite"
+          className="min-w-0 flex-1 truncate text-sm font-medium"
+        >
           {card.title}
         </span>
         {card.count ? (
           <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-            {card.count}
+            <RollingNumber value={card.done} />/<RollingNumber value={card.total} />
           </span>
         ) : null}
         {/* Hides the card, and only that: a 20-minute crawl you are not
@@ -237,7 +244,7 @@ export function IngestionActivityCard({
             </ul>
             {card.overflow > 0 ? (
               <p className="border-border/60 text-muted-foreground border-t px-4 py-2.5 text-xs">
-                +{card.overflow} queued
+                +<RollingNumber value={card.overflow} /> queued
               </p>
             ) : null}
           </motion.div>
@@ -260,7 +267,7 @@ function ActivityRow({ item }: { item: IngestionActivityItem }) {
         ) : null}
       </span>
       <span className={cn("shrink-0 text-xs", STATUS_TEXT[item.status])}>
-        {ingestionStatusLabel(item.status)}
+        <RollInText text={ingestionStatusLabel(item.status)} duration={380} />
       </span>
     </li>
   );

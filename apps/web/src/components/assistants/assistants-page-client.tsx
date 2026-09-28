@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Assistant } from "@agent-hub/core";
 import { Clock, GalleryVerticalEnd, LayoutGrid, Search } from "lucide-react";
 import { ArrowDownAZ, ListFilter } from "lucide-react";
@@ -16,9 +16,15 @@ import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AssistantCard } from "./assistant-card";
 import { CreateAssistantDialog } from "./create-assistant-dialog";
+import { replaceFilterParams } from "@/lib/url-state";
+import { formatCount } from "@/lib/format";
+import {
+  DEFAULT_ASSISTANTS_URL_STATE,
+  type AssistantsUrlState,
+} from "./assistants-url-state";
 
-type SortKey = "updated" | "name";
-type ViewMode = "grid" | "list";
+type SortKey = AssistantsUrlState["sort"];
+type ViewMode = AssistantsUrlState["view"];
 
 /**
  * Vercel-style Projects view: one wide search box, sort filter, grid/list
@@ -28,14 +34,21 @@ export function AssistantsPageClient({
   assistants,
   canCreate,
   canDelete,
+  initialUrlState = DEFAULT_ASSISTANTS_URL_STATE,
 }: {
   assistants: Assistant[];
   canCreate: boolean;
   canDelete: boolean;
+  /** Parsed on the server, so the first render is already filtered. */
+  initialUrlState?: AssistantsUrlState;
 }) {
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortKey>("updated");
-  const [view, setView] = useState<ViewMode>("grid");
+  const [query, setQuery] = useState(initialUrlState.q);
+  const [sort, setSort] = useState<SortKey>(initialUrlState.sort);
+  const [view, setView] = useState<ViewMode>(initialUrlState.view);
+  // A reload or a copied link keeps the same search, order and layout.
+  useEffect(() => {
+    replaceFilterParams({ q: query, sort, view }, DEFAULT_ASSISTANTS_URL_STATE);
+  }, [query, sort, view]);
 
   const filtered = useMemo(() => {
     const list = assistants.filter((a) =>
@@ -59,6 +72,7 @@ export function AssistantsPageClient({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              name="q"
               placeholder="Search Assistants…"
               aria-label="Search assistants"
               type="search"
@@ -85,7 +99,8 @@ export function AssistantsPageClient({
                 <AnimatedIcon icon={Clock} size={16} /> Recent activity
                 {sort === "updated" && (
                   <span className="text-muted-foreground ml-auto text-xs">
-                    ✓
+                    <span aria-hidden>✓</span>
+                    <span className="sr-only">(selected)</span>
                   </span>
                 )}
               </DropdownMenuItem>
@@ -93,7 +108,8 @@ export function AssistantsPageClient({
                 <ArrowDownAZ className="size-4" /> Name
                 {sort === "name" && (
                   <span className="text-muted-foreground ml-auto text-xs">
-                    ✓
+                    <span aria-hidden>✓</span>
+                    <span className="sr-only">(selected)</span>
                   </span>
                 )}
               </DropdownMenuItem>
@@ -113,7 +129,7 @@ export function AssistantsPageClient({
                 aria-label={label}
                 aria-pressed={view === mode}
                 onClick={() => setView(mode)}
-                className={`flex h-full w-9 items-center justify-center rounded-md transition-colors ${
+                className={`focus-visible:ring-ring/50 flex h-full w-9 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-2 ${
                   view === mode
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -126,6 +142,13 @@ export function AssistantsPageClient({
 
           {canCreate && <CreateAssistantDialog triggerLabel="Add New…" />}
         </div>
+
+        {/* What a sighted reader sees change as they type. */}
+        <p className="sr-only" aria-live="polite">
+          {query
+            ? `${formatCount(filtered.length)} of ${formatCount(assistants.length)} assistants`
+            : ""}
+        </p>
 
         {view === "grid" ? (
           <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -172,7 +195,7 @@ export function AssistantsPageClient({
               description="The chat your visitors talk to. Give it knowledge, then publish."
             />
           ) : (
-            <p className="text-muted-foreground mt-16 text-center text-sm">
+            <p className="text-muted-foreground mt-16 text-center text-sm break-words">
               No assistants match “{query}”.
             </p>
           ))}

@@ -11,6 +11,7 @@ import {
   RESUME_REVIEW_KIND,
   dbReviewRuntime,
   deliverReviewRequest,
+  deliverReviewRequestHandler,
   expireDueReviews,
   mintReviewLinkToken,
   resumeReviewedConversation,
@@ -281,6 +282,44 @@ describe("delivery", () => {
     });
     expect(calls[0]!.url).toBe("https://slack.com/api/chat.postMessage");
     expect(calls[0]!.body).toMatchObject({ channel: "C1" });
+  });
+});
+
+describe("delivery happens at most once", () => {
+  const job = (reviewId: string) =>
+    ({ payload: { reviewId, organizationId: DEMO_ORG.id } }) as unknown as Parameters<
+      typeof deliverReviewRequestHandler.perform
+    >[0];
+
+  it("does nothing for a request already delivered", async () => {
+    const db = getMockDb();
+    const { review } = await seed(db);
+    await db.table("reviewRequests").update(review.id, {
+      deliveryAttemptedAt: NOW.toISOString(),
+      deliveredAt: NOW.toISOString(),
+    });
+    // No sender mailbox is connected, so any send attempt would throw.
+    await expect(deliverReviewRequestHandler.perform(job(review.id), { db })).resolves.toBeUndefined();
+  });
+
+  it("raises an Alert instead of resending when a previous run never confirmed", async () => {
+    const db = getMockDb();
+    const { review } = await seed(db);
+    await db.table("reviewRequests").update(review.id, {
+      deliveryAttemptedAt: NOW.toISOString(),
+    });
+    await deliverReviewRequestHandler.perform(job(review.id), { db });
+    const alerts = await db.listAlerts(DEMO_ORG.id);
+    expect(alerts.some((a) => a.sourceKey === `review-delivery:${review.id}`)).toBe(true);
+  });
+
+  it("clears the attempt when the send itself fails, so the retry may send", async () => {
+    const db = getMockDb();
+    const { review } = await seed(db);
+    await expect(deliverReviewRequestHandler.perform(job(review.id), { db })).rejects.toThrow();
+    const after = await db.table("reviewRequests").get(review.id);
+    expect(after?.deliveryAttemptedAt ?? null).toBeNull();
+    expect(after?.deliveredAt ?? null).toBeNull();
   });
 });
 

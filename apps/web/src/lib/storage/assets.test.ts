@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   uploadKnowledgeOriginal,
   uploadPublicImageAsset,
+  uploadPublicImageFromForm,
   validateKnowledgeFile,
   validatePublicImageFile,
 } from "./assets";
@@ -192,5 +193,46 @@ describe("public-assets storage policies (tenancy)", () => {
     expect(hardening).toMatch(
       /drop policy if exists "public read public assets" on storage\.objects/i
     );
+  });
+});
+
+describe("uploadPublicImageFromForm", () => {
+  const input = { organizationId: "org_123", kind: "organization" } as const;
+  const form = (file?: Blob) => {
+    const data = new FormData();
+    if (file) data.set("file", file, "logo.png");
+    return data;
+  };
+
+  it("uploads the form's image and answers its public URL", async () => {
+    const uploads: Array<{ bucket: string; path: string }> = [];
+    const result = await uploadPublicImageFromForm(
+      fakeClient(uploads),
+      form(new Blob(["x"], { type: "image/png" })),
+      input,
+    );
+    expect(result.error).toBeUndefined();
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0].path).toMatch(/^org\/org_123\/avatars\/organization\/.+\.png$/);
+    expect("publicUrl" in result && result.publicUrl).toBe(`https://cdn.test/${uploads[0].path}`);
+  });
+
+  it("refuses in the order a Member can act on, and uploads nothing", async () => {
+    const uploads: Array<{ bucket: string; path: string }> = [];
+    const client = fakeClient(uploads);
+    expect(await uploadPublicImageFromForm(client, form(), input)).toEqual({
+      error: "Choose an image file",
+    });
+    expect(
+      await uploadPublicImageFromForm(client, form(new Blob(["x"], { type: "image/svg+xml" })), input),
+    ).toEqual({ error: "Choose a PNG, JPEG, GIF, or WebP image" });
+    // A bad file is named before a missing store: the Member can fix the first.
+    expect(
+      await uploadPublicImageFromForm(null, form(new Blob(["x"], { type: "image/svg+xml" })), input),
+    ).toEqual({ error: "Choose a PNG, JPEG, GIF, or WebP image" });
+    expect(
+      await uploadPublicImageFromForm(null, form(new Blob(["x"], { type: "image/png" })), input),
+    ).toEqual({ error: "Object storage is not configured" });
+    expect(uploads).toEqual([]);
   });
 });

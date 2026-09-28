@@ -1,43 +1,69 @@
 ---
 title: Esportazioni
-description: Crea e scarica esportazioni strutturate delle Conversazioni.
+description: Crea e scarica report Insights ed esportazioni delle conversazioni.
 ---
 
-Le esportazioni creano record scaricabili per le Conversazioni selezionate.
-Ciele crea l'esportazione come processo in background.
+Ciele offre due tipi di esportazione. Un esportazione Insights è un file di
+report relativo alle tue misure Insights. Un'esportazione di Conversation
+contiene i record completi delle Conversation selezionate.
 
-## Crea un'esportazione
+## Crea un esportazione di Insights
 
 1. Apri **Insights**.
 2. Seleziona **Exports**.
-3. Seleziona le Conversazioni o l'ambito di esportazione disponibile.
-4. Avvia l'esportazione.
-5. Attendi che lo stato del processo sia pronto.
-6. Scarica il file prima che il link scada.
+3. Seleziona **New export**.
+4. Digita un nome in **Export name**.
+5. Imposta i filtri per il report: l'intervallo di date, l'Assistente,
+   **Aggregated**, **Feedback** e **Escalated**.
+6. Seleziona il tipo di esportazione.
+7. Seleziona il tipo di file: **CSV**, **JSON** o **XLSX**.
+8. Seleziona **Create**.
 
-Il download utilizza un URL firmato con scadenza temporale. Avvia una nuova
-esportazione quando il link non è più valido.
+Ciele crea il file come job in background. L'esportazione viene visualizzata
+nell'elenco con il suo nome, il tipo e il tipo di file. Quando lo stato è
+**Ready**, seleziona **Download**.
 
-## Esporta contenuti
+I filtri sono gli stessi della pagina Insights. Un'esportazione e la pagina
+Insights mostrano gli stessi numeri per gli stessi filtri.
 
-Ogni record di Conversazione utilizza l'attuale formato di esportazione a 29
-campi. Il record include informazioni su conversazione, Assistente, visitatore,
-sessione ed esito.
+## Tipi di esportazione di Insights
 
-I dettagli del ragionamento dipendono dalla chiave API o dal ruolo del membro.
-Un ruolo di livello inferiore non può richiedere il ragionamento nascosto
-tramite un'opzione di esportazione.
+- **Aggregated insights**: ogni serie del grafico, con una riga per ogni giorno,
+  settimana o mese.
+- **Datapoints**: le misure principali per l'intervallo, con una riga per
+  ciascuna misura. Una misura senza dati per l'intervallo presenta una cella
+  vuota.
+- **Languages**: il numero di Conversations per ciascuna lingua in cui i Visitor
+  hanno scritto.
 
-## Accesso API e CLI
+**Shortcut button clicks** viene visualizzato nell'elenco, ma non puoi
+selezionarlo. Ciele non registra ancora questi clic.
 
-L'API accetta gli ID conversazione selezionati su
+## Download
+
+Ciele verifica il tuo accesso ogni volta che scarichi un file. Ciele registra
+anche ogni download.
+
+## Contenuto dell'esportazione delle conversazioni
+
+Ogni record di Conversation utilizza l'attuale formato di esportazione a 29
+campi. Il record include informazioni su conversation, Assistant, visitor,
+session e outcome.
+
+I dettagli del ragionamento dipendono dall'API-key o dal Role del membro. Un
+Role di livello inferiore non può richiedere il reasoning nascosto tramite
+un'opzione di esportazione.
+
+## Accesso tramite API e CLI
+
+L'API accetta gli ID delle conversazioni selezionati in
 `POST /api/v1/conversations/export`.
 
-La CLI può scrivere lo stesso formato di record in un file:
+La CLI può scrivere lo stesso formato di record su un file:
 
 ```bash
 ciele conversations export <conversation-id> --out export.json
 ```
 
 Anche lo strumento MCP `read_inbox` può richiedere un'esportazione. La sua
-azione di esportazione rimane disponibile in modalità MCP di sola lettura.
+azione di esportazione rimane disponibile in modalità di sola lettura di MCP.

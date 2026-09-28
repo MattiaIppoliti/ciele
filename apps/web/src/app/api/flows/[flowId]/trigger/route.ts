@@ -6,7 +6,6 @@ import { createRateLimiter } from "@/lib/rate-limit";
 import { getRuntimeDb } from "@/lib/runtime-db";
 import { getLatestPublicationCached } from "@/lib/widget-db";
 
-export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**

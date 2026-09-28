@@ -14,6 +14,8 @@
  * the server read in `lib/ingestion-activity-read.ts`.
  */
 
+import { formatCount } from "@/lib/format";
+
 export type IngestionItemStatus = "queued" | "running" | "indexed" | "failed";
 
 /** Run ids are prefixed so a tally can be read back without a second field. */
@@ -273,7 +275,7 @@ export function ingestionActivityBusy(state: IngestionActivityState): boolean {
 
 export interface IngestionActivityCardModel {
   title: string;
-  /** "261/291", or null while there is no denominator worth showing. */
+  /** "261/291" (grouped, "1,204/2,310"), or null with no denominator worth showing. */
   count: string | null;
   done: number;
   total: number;
@@ -296,12 +298,10 @@ export interface IngestionActivityCardModel {
  */
 export function ingestionActivityCard(
   state: IngestionActivityState,
-  options: { limit?: number } = {},
 ): IngestionActivityCardModel | null {
   if (state.items.length === 0 || state.dismissedAt !== null) return null;
   const runs = Object.values(state.runs);
   if (runs.length === 0) return null;
-  const limit = options.limit ?? VISIBLE_ITEM_LIMIT;
 
   const units = new Set(runs.map((run) => run.unit));
   const progress =
@@ -313,13 +313,16 @@ export function ingestionActivityCard(
   const failed = sum(runs, (run) => run.failed);
   const busy = ingestionActivityBusy(state);
 
-  const items = state.items.slice(0, limit);
+  const items = state.items.slice(0, VISIBLE_ITEM_LIMIT);
   const shownPending = items.filter((item) => !isTerminal(item.status)).length;
   const pendingRows = sum(runs, (run) => run.rows - run.rowsDone);
 
   return {
     title: ingestionTitle(runs, { busy, ...progress, failed }),
-    count: progress.total > 1 ? `${progress.done}/${progress.total}` : null,
+    count:
+      progress.total > 1
+        ? `${formatCount(progress.done)}/${formatCount(progress.total)}`
+        : null,
     done: progress.done,
     total: progress.total,
     items,
@@ -345,21 +348,22 @@ function ingestionTitle(
       return run.busy ? `Crawling ${only.title}` : `Crawled ${only.title}`;
     }
     return run.busy
-      ? `Crawling ${runs.length} websites`
-      : `Crawled ${runs.length} websites`;
+      ? `Crawling ${formatCount(runs.length)} websites`
+      : `Crawled ${formatCount(runs.length)} websites`;
   }
 
   if (crawls === 0) {
     const noun = run.total === 1 ? "item" : "items";
-    if (run.busy) return `Importing ${run.total} ${noun}`;
+    if (run.busy) return `Importing ${formatCount(run.total)} ${noun}`;
     if (run.failed > 0) {
-      return `Imported ${run.done - run.failed} of ${run.total} ${noun}`;
+      return `Imported ${formatCount(run.done - run.failed)} of ${formatCount(run.total)} ${noun}`;
     }
-    return `Imported ${run.total} ${noun}`;
+    return `Imported ${formatCount(run.total)} ${noun}`;
   }
 
   const noun = run.total === 1 ? "source" : "sources";
-  return run.busy ? `Indexing ${run.total} ${noun}` : `Indexed ${run.total} ${noun}`;
+  const total = formatCount(run.total);
+  return run.busy ? `Indexing ${total} ${noun}` : `Indexed ${total} ${noun}`;
 }
 
 /** Row copy: the status pill on the right of each row. */

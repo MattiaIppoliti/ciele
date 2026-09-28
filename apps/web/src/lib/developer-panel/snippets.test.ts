@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { roleRank } from "@/lib/rbac";
+import { memberRoleRank } from "@agent-hub/core";
 import {
   buildSnippet,
   capabilityRole,
@@ -299,15 +299,15 @@ describe("role badges", () => {
     expect(capabilityRole("changeRoles")).toBe("owner");
   });
 
-  it("agrees with rbac rather than restating it", () => {
-    // The point of deriving: a threshold moved in lib/rbac.ts moves the badge.
+  it("agrees with the rank ladder rather than restating it", () => {
+    // The point of deriving: a threshold moved in core's ladder moves the badge.
     for (const capability of ["edit", "publish", "changeRoles"] as const) {
       const role = capabilityRole(capability);
       expect(role).toBeTruthy();
-      expect(roleRank(role)).toBeGreaterThan(0);
+      expect(memberRoleRank(role)).toBeGreaterThan(0);
     }
-    expect(roleRank(capabilityRole("edit"))).toBeLessThan(
-      roleRank(capabilityRole("changeRoles"))
+    expect(memberRoleRank(capabilityRole("edit"))).toBeLessThan(
+      memberRoleRank(capabilityRole("changeRoles"))
     );
   });
 

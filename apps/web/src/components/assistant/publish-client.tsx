@@ -1,9 +1,10 @@
 ﻿"use client";
 
-import { useState, useSyncExternalStore, useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { Assistant } from "@agent-hub/core";
 import { ExternalLink, Plane, RotateCcw, CloudOff } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { useBrowserOrigin } from "@/lib/hooks/use-browser-origin";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import {
   publishAssistantAction,
@@ -28,15 +29,18 @@ import {
   useCopyFeedback,
 } from "@agent-hub/ui";
 import { formatDateTime } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import {
+  isRedirectError,
+  useConfirmDelete,
+} from "@/components/ui/confirm-delete-modal";
 
 interface PublicationSummary {
   id: string;
   version: number;
   createdAt: string;
 }
-
-/** No-op store subscription: window.location.origin never changes at runtime. */
-const NOOP_SUBSCRIBE = () => () => {};
 
 function CopyBlock({ label, code }: { label: string; code: string }) {
   const { copyText, isCopied } = useCopyFeedback<string>();
@@ -54,10 +58,11 @@ function CopyBlock({ label, code }: { label: string; code: string }) {
         <Button
           variant="ghost"
           size="sm"
+          aria-label={`Copy ${label}`}
           onClick={() => void copyCode()}
         >
           <CopyFeedbackIcon copied={copied} className="size-3.5" />
-          {copied ? "Copied" : "Copy"}
+          <RollInText text={copied ? "Copied" : "Copy"} />
         </Button>
       </div>
       <pre className="bg-muted mt-1 overflow-x-auto rounded-xl p-3 text-xs leading-relaxed">
@@ -80,15 +85,15 @@ export function PublishClient({
     (assistant.allowedDomains ?? []).join(", ")
   );
   const [confirmView, setConfirmView] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  // One transition per action, so saving the domains never reads as
+  // "Publishing…" and each button reports only its own work.
+  const [savingDomains, startSaveDomains] = useTransition();
+  const [publishing, startPublish] = useTransition();
+  const [unpublishing, startUnpublish] = useTransition();
+  const busy = publishing || unpublishing;
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
-  // Read the browser origin after hydration (SSR renders the placeholder) via
-  // useSyncExternalStore, avoids both a hydration mismatch and setState-in-effect.
-  const origin = useSyncExternalStore(
-    NOOP_SUBSCRIBE,
-    () => window.location.origin,
-    () => "https://your-app.example"
-  );
+  const origin = useBrowserOrigin();
 
   const latest = publications[0] ?? null;
   const domainsDirty = domains !== (assistant.allowedDomains ?? []).join(", ");
@@ -98,36 +103,65 @@ export function PublishClient({
   const iframeSnippet = `<iframe src="${origin}/widget/${assistant.id}"\n        width="380" height="640"\n        allow="clipboard-write; microphone"\n        style="border:none;border-radius:16px"></iframe>`;
 
   function saveDomains() {
-    startTransition(async () => {
-      await updateAssistantAction(assistant.id, {
-        allowedDomains: domains
-          .split(",")
-          .map((d) => d.trim())
-          .filter(Boolean),
-      });
-      toast.success("Allowed domains saved, publish to make them live");
+    startSaveDomains(async () => {
+      try {
+        await updateAssistantAction(assistant.id, {
+          allowedDomains: domains
+            .split(",")
+            .map((d) => d.trim())
+            .filter(Boolean),
+        });
+        toast.success("Allowed domains saved, publish to make them live");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not save the allowed domains");
+      }
     });
   }
 
   function publish() {
     setConfirmView(null);
-    startTransition(async () => {
-      const result = await publishAssistantAction(assistant.id);
-      if (typeof result === "object") {
-        // The refusal names the Flow to fix (a Connector on a dead or
-        // personal Connection, #839); nothing was published.
-        toast.error(result.error);
-        return;
+    startPublish(async () => {
+      try {
+        const result = await publishAssistantAction(assistant.id);
+        if (typeof result === "object") {
+          // The refusal names the Flow to fix (a Connector on a dead or
+          // personal Connection, #839); nothing was published.
+          toast.error(result.error);
+          return;
+        }
+        toast.success(`Published v${result}, the widget now serves this snapshot`);
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        toast.error(error instanceof Error ? error.message : "Could not publish");
       }
-      toast.success(`Published v${result}, the widget now serves this snapshot`);
     });
   }
 
   function unpublish() {
     setConfirmView(null);
-    startTransition(async () => {
-      await unpublishAssistantAction(assistant.id);
-      toast.success("Unpublished, the widget is offline until the next publish");
+    startUnpublish(async () => {
+      try {
+        await unpublishAssistantAction(assistant.id);
+        toast.success("Unpublished, the widget is offline until the next publish");
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        toast.error(error instanceof Error ? error.message : "Could not unpublish");
+      }
+    });
+  }
+
+  function republish(p: PublicationSummary) {
+    // A rollback replaces what every embed serves, so it asks first, like
+    // Publish does.
+    confirmDelete({
+      title: `Republish v${p.version}?`,
+      description:
+        "This snapshot goes live again as a new version on every page the widget is embedded on.",
+      confirmLabel: "Republish",
+      onConfirm: async () => {
+        const version = await republishAction(assistant.id, p.id);
+        toast.success(`Rolled back, republished as v${version}`);
+      },
     });
   }
 
@@ -157,10 +191,10 @@ export function PublishClient({
           </div>
           <Button
             onClick={saveDomains}
-            disabled={isPending || !domainsDirty}
+            disabled={savingDomains || !domainsDirty}
             variant="outline"
           >
-            Save
+            <RollInText text={savingDomains ? "Saving…" : "Save"} />
           </Button>
         </div>
       </Card>
@@ -194,7 +228,13 @@ export function PublishClient({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold">
-              {latest ? `Live: v${latest.version}` : "Not published yet"}
+              {latest ? (
+                <>
+                  Live: v<RollingNumber value={latest.version} />
+                </>
+              ) : (
+                "Not published yet"
+              )}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
               {latest
@@ -208,18 +248,20 @@ export function PublishClient({
                 <Button
                   variant="destructive"
                   onClick={() => setConfirmView("unpublish")}
-                  disabled={isPending}
+                  disabled={busy}
                 >
                   <CloudOff className="size-4" /> Unpublish
                 </Button>
               )}
               <Button
                 onClick={() => setConfirmView("publish")}
-                disabled={isPending}
+                disabled={busy}
                 className="px-6 font-semibold"
               >
                 <AnimatedIcon icon={Plane} size={16} />
-                {isPending ? "Publishing…" : latest ? "Publish new version" : "Publish"}
+                <RollInText
+                  text={publishing ? "Publishing…" : latest ? "Publish new version" : "Publish"}
+                />
               </Button>
             </div>
           ) : (
@@ -240,12 +282,8 @@ export function PublishClient({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() =>
-                      startTransition(async () => {
-                        const version = await republishAction(assistant.id, p.id);
-                        toast.success(`Rolled back, republished as v${version}`);
-                      })
-                    }
+                    disabled={busy}
+                    onClick={() => republish(p)}
                   >
                     <AnimatedIcon icon={RotateCcw} size={14} /> Republish
                   </Button>
@@ -342,13 +380,14 @@ export function PublishClient({
               <Button variant="ghost" onClick={() => setConfirmView(null)}>
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={unpublish} disabled={isPending}>
+              <Button variant="destructive" onClick={unpublish} disabled={busy}>
                 <CloudOff className="size-4" /> Unpublish
               </Button>
             </div>
           </div>
         )}
       </MorphingModal>
+      {confirmDeleteModal}
     </div>
   );
 }

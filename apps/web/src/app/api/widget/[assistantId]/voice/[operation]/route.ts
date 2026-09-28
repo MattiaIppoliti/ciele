@@ -2,7 +2,6 @@ import { messageText } from "@agent-hub/core";
 import { NextRequest } from "next/server";
 import { resolveWidgetContext, widgetOptions, widgetSubject, subjectOwnsConversation } from "@/lib/widget-db";
 import { checkVoiceRate, readVoiceBody, runVoiceRequest, voiceErrorResponse, VoiceRequestError } from "@/lib/voice-http";
-export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function POST(request: NextRequest, { params }: { params: Promise<{ assistantId: string; operation: string }> }) {
   let headers: HeadersInit = {};

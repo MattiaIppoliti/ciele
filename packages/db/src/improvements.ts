@@ -62,17 +62,9 @@ export async function findOpenImprovementForConversation(
   conversationId: string
 ): Promise<Improvement | null> {
   const links = await db.listConversationImprovementLinks(conversationId);
-  const seen = new Set<string>();
-  for (const link of links) {
-    if (seen.has(link.improvementId)) continue;
-    seen.add(link.improvementId);
-    const improvement = await db.getImprovement(link.improvementId);
-    if (
-      improvement &&
-      isOpenImprovement(improvement)
-    ) {
-      return improvement;
-    }
+  for (const id of new Set(links.map((link) => link.improvementId))) {
+    const improvement = await db.getImprovement(id);
+    if (improvement && isOpenImprovement(improvement)) return improvement;
   }
   return null;
 }

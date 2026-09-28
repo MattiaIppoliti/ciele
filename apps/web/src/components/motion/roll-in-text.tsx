@@ -7,10 +7,10 @@ import { isInitialCommit } from "./page-reveal";
 
 /**
  * Slower than Scritto's 550ms default, so a title visibly builds letter by
- * letter instead of landing almost in one piece. Module scope: a fresh object
- * per render would re-run Scritto's option effect every time.
+ * letter instead of landing almost in one piece. A caller whose value changes
+ * often (a count that follows typing) passes a shorter one.
  */
-const ROLL = { duration: 900 };
+const TITLE_ROLL_MS = 900;
 
 /**
  * Scritto is loaded on demand, never imported statically. A static import put
@@ -34,7 +34,16 @@ function loadScritto(): Promise<unknown> {
  * to a line: every glyph becomes its own span, so kerning and ligatures are
  * off inside it and it only wraps between words.
  */
-export function RollInText({ text, className }: { text: string; className?: string }) {
+export function RollInText({
+  text,
+  className,
+  duration = TITLE_ROLL_MS,
+}: {
+  text: string;
+  className?: string;
+  /** Roll length in ms; read once, when the element takes over. */
+  duration?: number;
+}) {
   const host = useRef<HTMLSpanElement>(null);
   const latest = useRef(text);
   const reduce = useReducedMotion() ?? false;
@@ -65,7 +74,7 @@ export function RollInText({ text, className }: { text: string; className?: stri
         const el = span.querySelector<Scritto>("scritto-text");
         span.style.opacity = "";
         if (!el) return;
-        el.setOptions({ transition: ROLL });
+        el.setOptions({ transition: { duration } });
         live.current = true;
         if (!entrance) {
           el.update(latest.current, false);

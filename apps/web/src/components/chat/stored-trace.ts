@@ -203,3 +203,17 @@ export function liveTraceLabel(steps: TurnStep[]): string {
     line.length > LIVE_LABEL_MAX ? `${line.slice(0, LIVE_LABEL_MAX)}…` : line;
   return /[….!?:]$/.test(clipped) ? clipped : `${clipped}…`;
 }
+
+/**
+ * What a screen reader hears while a turn runs: the newest reply's live label,
+ * or nothing once the turn is over. The transcript log is `aria-busy` while it
+ * streams, which mutes it, so the label needs a status region of its own.
+ */
+export function liveTurnStatus(
+  messages: ReadonlyArray<{ role: string; steps?: TurnStep[] }>,
+  pending: boolean
+): string {
+  const last = messages.at(-1);
+  if (!pending || last?.role !== "bot") return "";
+  return liveTraceLabel(chatVisibleSteps(last.steps ?? []));
+}

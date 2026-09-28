@@ -582,6 +582,10 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
   }
   body {
     @apply bg-background text-foreground;
+    /* No 300ms double-tap-zoom wait on a tap, and no grey flash over what was
+       tapped: every control already draws its own press state. */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   html {
     @apply font-sans;
@@ -1059,11 +1063,6 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
   color: var(--fill-on);
 }
 
-.sld[data-disabled] {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
 .sld-track {
   position: relative;
   width: 100%;
@@ -1344,4 +1343,23 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
 }
 .flow-surface-card:hover .react-flow__handle.flow-surface-handle {
   border-color: color-mix(in oklab, var(--foreground) 55%, transparent);
+}
+
+/* Scritto's own SSR rule (`@scritto/core/dist/ssr.css`). Before the element is
+   defined its value is a plain text child; after, every glyph is its own span
+   with no kerning or ligatures across them. Matching that before upgrade keeps
+   the width identical, so a rolling title or count never nudges its neighbours
+   when the chunk arrives. */
+scritto-text:not(:defined) {
+  display: inline;
+  white-space: nowrap !important;
+  font-kerning: none;
+  font-variant-ligatures: none;
+}
+
+/* React Flow sets `outline: none` on a focused node, so a keyboard user tabbing
+   through the canvas saw no focus at all. The ring rides the card's own
+   selection shadow, which is the one the rounded corner already follows. */
+.react-flow__node:focus-visible .flow-surface-card {
+  --flow-selection: 0 0 0 2px var(--ring);
 }

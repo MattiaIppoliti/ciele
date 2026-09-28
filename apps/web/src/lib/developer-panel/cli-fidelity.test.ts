@@ -67,9 +67,12 @@ interface GroupSurface {
 
 function groupSurface(file: string): GroupSurface {
   const text = readFileSync(file, "utf8");
+  const flags = new Set([...text.matchAll(/flags\.(\w+)/g)].map(([, flag]) => flag));
+  // `jsonFile(ctx, …)` in `commands/shared.ts` is the group's read of `--file`.
+  if (/\bjsonFile[<(]/.test(text)) flags.add("file");
   return {
     verbs: new Set([...text.matchAll(/case "([\w-]+)":/g)].map(([, verb]) => verb)),
-    flags: new Set([...text.matchAll(/flags\.(\w+)/g)].map(([, flag]) => flag)),
+    flags,
   };
 }
 

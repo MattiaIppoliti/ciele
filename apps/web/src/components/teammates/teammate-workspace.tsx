@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { feedbackReactionScore, type ConversationMetadata, type FeedbackReactionId, type Teammate } from "@agent-hub/core";
 import { teammateSearchesKnowledge } from "@agent-hub/core";
@@ -31,7 +31,11 @@ import {
   useComposerTrigger,
   replaceToken,
 } from "@/components/chat/use-composer-trigger";
-import { TriggerList, TriggerRow } from "@/components/chat/trigger-list";
+import {
+  TriggerList,
+  TriggerRow,
+  triggerInputProps,
+} from "@/components/chat/trigger-list";
 import { useAttachments } from "@/components/chat/use-attachments";
 import {
   AttachmentChips,
@@ -49,6 +53,7 @@ import {
   decideActionApprovalAction,
   startReferredConversationAction,
 } from "@/app/(admin)/teammates/actions";
+import { liveTurnStatus } from "@/components/chat/stored-trace";
 import { patchLastBot, runTurn } from "@/components/chat/turn-session";
 
 export interface ThreadEntry {
@@ -147,6 +152,8 @@ export function TeammateWorkspace({
       skillTrigger.settle(next.caret);
     },
   });
+  const skillListId = useId();
+  const channelListId = useId();
   const composerActions = [
     {
       value: "attach",
@@ -235,6 +242,9 @@ export function TeammateWorkspace({
   const [conversationMeta, setConversationMeta] =
     useState<ConversationMetadata | null>(null);
   const [, startTransition] = useTransition();
+  // Its own transition, so the card can stay disabled until the navigation
+  // to the colleague's chat lands.
+  const [acceptingReferral, startReferral] = useTransition();
   const conversationRef = useRef<string | null>(null);
 
   // A newly-started conversation only reaches the history list on a refresh.
@@ -330,17 +340,24 @@ export function TeammateWorkspace({
     if (!bot.id) return;
     const nextReaction = bot.feedbackReaction === reaction ? null : reaction;
     const feedback = feedbackReactionScore(nextReaction);
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.role === "bot" && m.id === bot.id
-          ? { ...m, feedback, feedbackReaction: nextReaction }
-          : m
-      )
-    );
-    await setMessageFeedbackAction(bot.id, feedback, nextReaction);
+    const patch = (next: Pick<ChatBotMsg, "feedback" | "feedbackReaction">) =>
+      setMessages((prev) =>
+        prev.map((m) => (m.role === "bot" && m.id === bot.id ? { ...m, ...next } : m))
+      );
+    patch({ feedback, feedbackReaction: nextReaction });
+    try {
+      await setMessageFeedbackAction(bot.id, feedback, nextReaction);
+    } catch {
+      // Put the reaction back: a highlight that was never stored is a lie.
+      patch({ feedback: bot.feedback, feedbackReaction: bot.feedbackReaction ?? null });
+      toast.error("Could not save your reaction");
+    }
   }
 
+  // Switching conversation mid-turn would let the running stream's `onDone`
+  // write the old id back, and the "new" chat would continue the old one.
   function newChat() {
+    if (pending) return;
     conversationRef.current = null;
     setConversationId(null);
     setConversationMeta(null);
@@ -349,6 +366,7 @@ export function TeammateWorkspace({
   }
 
   async function openConversation(id: string) {
+    if (pending) return;
     try {
       const { messages: stored, conversation } =
         await readTeammateConversationAction(teammate.id, id);
@@ -376,27 +394,27 @@ export function TeammateWorkspace({
    * rather than on a page of its own: the context that makes it answerable is
    * the transcript above it.
    */
-  function decideApproval(
+  async function decideApproval(
     part: ActionApprovalPart,
     decision: "approved" | "rejected"
-  ) {
-    startTransition(async () => {
-      try {
-        await decideActionApprovalAction({ id: part.approvalId, decision });
-        // Either way the decision landed, which is the outcome worth a cue.
-        playFeedback("success");
-        router.refresh();
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Could not decide that action"
-        );
-      }
-    });
+  ): Promise<boolean> {
+    try {
+      await decideActionApprovalAction({ id: part.approvalId, decision });
+      // Either way the decision landed, which is the outcome worth a cue.
+      playFeedback("success");
+      startTransition(() => router.refresh());
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not decide that action"
+      );
+      return false;
+    }
   }
 
   function acceptReferral(part: TeammateReferralPart) {
-    if (!conversationId) return;
-    startTransition(async () => {
+    if (!conversationId || acceptingReferral) return;
+    startReferral(async () => {
       try {
         const { conversationId: opened } = await startReferredConversationAction({
           originConversationId: conversationId,
@@ -479,6 +497,7 @@ export function TeammateWorkspace({
           historyOpen={historyOpen}
           onToggleHistory={() => setHistoryOpen(!historyOpen)}
           onNewChat={newChat}
+          busy={pending}
           fullscreen={fullscreen}
           onToggleFullscreen={() => setFullscreen(!fullscreen)}
         />
@@ -502,10 +521,15 @@ export function TeammateWorkspace({
                       id: entry.id,
                       label: threadEntryLabel(entry),
                       kind: "file",
+                      disabled: pending,
                     })
                   )}
                   activeId={conversationId}
                   onActiveChange={(id) => void openConversation(id)}
+                  // No rename or reorder behind this list: an edit would show
+                  // and then revert on the next refresh.
+                  editable={false}
+                  ariaLabel={`Conversations with ${teammate.name}`}
                 />
               )}
             </div>
@@ -515,6 +539,7 @@ export function TeammateWorkspace({
             <MessageScroller
               className="min-h-0 flex-1"
               busy={pending}
+              status={liveTurnStatus(messages, pending)}
               navigation="rail"
               viewportClassName={`py-5 ${WIDEN_TRANSITION} ${
                 fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
@@ -549,6 +574,7 @@ export function TeammateWorkspace({
                 onSend={send}
                 onVote={vote}
                 onAcceptReferral={acceptReferral}
+                acceptingReferral={acceptingReferral}
                 onDecideApproval={decideApproval}
               />
               {/* Where a referral from this conversation went (#773). The
@@ -608,6 +634,7 @@ export function TeammateWorkspace({
                   )}
                   {skillTrigger.open && (
                     <TriggerList
+                      id={skillListId}
                       label="Use a skill"
                       items={skillTrigger.matches}
                       highlighted={skillTrigger.highlighted}
@@ -624,6 +651,7 @@ export function TeammateWorkspace({
                   )}
                   {channelTrigger.open && (
                     <TriggerList
+                      id={channelListId}
                       label="Bring in another teammate"
                       items={channelTrigger.matches}
                       highlighted={channelTrigger.highlighted}
@@ -645,9 +673,16 @@ export function TeammateWorkspace({
                       channelTrigger.sync(value);
                       skillTrigger.sync(value);
                     }}
+                    // While a turn streams the composer refuses to submit, so
+                    // Enter keeps the draft instead of clearing it for a
+                    // `send` that would return early and drop it.
+                    loading={pending}
+                    {...(channelTrigger.open
+                      ? triggerInputProps(channelListId, true, channelTrigger.highlighted)
+                      : triggerInputProps(skillListId, skillTrigger.open, skillTrigger.highlighted))}
                     onSubmit={(value) => {
                       // See the widget: a file mid-read would vanish.
-                      if (attachments.busy) return;
+                      if (attachments.busy || pending) return;
                       setDraft("");
                       channelTrigger.reset();
                       skillTrigger.reset();

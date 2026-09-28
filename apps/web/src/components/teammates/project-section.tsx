@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { memoryDocumentChanges } from "@agent-hub/core";
 import { Plus } from "lucide-react";
 import { SquareArrowOutUpRight } from "lucide-react";
-import { Button } from "@agent-hub/ui";
+import { Button, Skeleton } from "@agent-hub/ui";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { ProjectPicker } from "@/components/teammates/project-picker";
 import { ProjectDialog } from "@/components/projects/project-dialog";
 import { readProjectAction } from "@/app/actions";
@@ -55,6 +56,8 @@ export function ProjectSection({
     description: string;
     decisions: number;
   } | null>(null);
+  /** The Project whose read failed, so the box can say so instead of waiting. */
+  const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
     if (!value) return;
@@ -64,6 +67,7 @@ export function ProjectSection({
     readProjectAction(value)
       .then(({ project, document, entries }) => {
         if (!live) return;
+        setFailed(null);
         setSummary({
           id: project.id,
           description: project.description,
@@ -71,7 +75,7 @@ export function ProjectSection({
         });
       })
       .catch(() => {
-        /* The dialog reports its own read failure; the summary just stays off. */
+        if (live) setFailed(value);
       });
     return () => {
       live = false;
@@ -87,6 +91,7 @@ export function ProjectSection({
     ),
   ];
   const attached = summary && summary.id === value ? summary : null;
+  const unreadable = attached === null && failed !== null && failed === value;
 
   return (
     <div className="space-y-3">
@@ -105,20 +110,46 @@ export function ProjectSection({
 
       {value && (
         <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
-          <div className="min-w-0 text-sm">
-            <p className="text-muted-foreground">
-              {attached?.description ||
-                "No summary yet. Open the project to say what it is about."}
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              {attached === null
-                ? "Reading its decisions…"
-                : attached.decisions === 0
-                  ? "No decisions recorded yet."
-                  : `${attached.decisions} decision${
-                      attached.decisions > 1 ? "s" : ""
-                    } recorded.`}
-            </p>
+          <div className="min-w-0 text-sm" aria-busy={attached === null && !unreadable}>
+            {unreadable ? (
+              <p className="text-muted-foreground">
+                Could not read this project.{" "}
+                <button
+                  type="button"
+                  className="text-primary font-medium hover:underline"
+                  onClick={() => {
+                    setFailed(null);
+                    setReads((n) => n + 1);
+                  }}
+                >
+                  Try again
+                </button>
+              </p>
+            ) : attached === null ? (
+              // Nothing until the read lands: "No summary yet" flashed for a
+              // Project that had one.
+              <>
+                <Skeleton className="h-4 w-56 max-w-full" />
+                <Skeleton className="mt-2 h-3 w-32" />
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground">
+                  {attached.description ||
+                    "No summary yet. Open the project to say what it is about."}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {attached.decisions === 0 ? (
+                    "No decisions recorded yet."
+                  ) : (
+                    <>
+                      <RollingNumber value={attached.decisions} /> decision
+                      {attached.decisions > 1 ? "s" : ""} recorded.
+                    </>
+                  )}
+                </p>
+              </>
+            )}
           </div>
           <Button
             variant="outline"

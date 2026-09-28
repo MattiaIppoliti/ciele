@@ -83,31 +83,41 @@ export function ImprovementDrawer({
           onUpdated={onUpdated}
           onDeleted={onDeleted}
         />
-      ) : missing ? (
-        <p className="text-muted-foreground px-6 py-10 text-center text-sm">
-          This improvement no longer exists.
-        </p>
-      ) : failed ? (
-        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            Could not load this improvement.
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setFailed(false);
-              setAttempt((n) => n + 1);
-            }}
-          >
-            Try again
-          </Button>
-        </div>
       ) : (
-        <div className="space-y-4 px-6 py-5" aria-busy="true">
-          <Skeleton className="h-7 w-64" />
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-48 w-full" />
+        // One live region that stays mounted from "loading" to "gone" or
+        // "failed", so the change is announced: a region that mounts along
+        // with its text is often read by nobody.
+        <div role="status" aria-live="polite">
+          {missing ? (
+            <p className="text-muted-foreground px-6 py-10 text-center text-sm">
+              This improvement no longer exists.
+            </p>
+          ) : failed ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+              <p className="text-muted-foreground text-sm">
+                Could not load this improvement.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFailed(false);
+                  setAttempt((n) => n + 1);
+                }}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 px-6 py-5">
+              <span className="sr-only">Loading improvement…</span>
+              <div aria-hidden className="space-y-4">
+                <Skeleton className="h-7 w-64" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-48 w-full" />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </DetailDrawer>

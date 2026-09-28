@@ -1,6 +1,6 @@
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { csv, str, usage, type CommandContext } from "./shared.ts";
 
 /**
  * `ciele applications …` (#839): the Application Connections a Connector Flow
@@ -67,16 +67,11 @@ export async function applications(verb: string | undefined, ctx: CommandContext
           "applications reconsent <connectionId> [--actions <key,key>] [--scopes <scope,scope>]"
         );
       }
-      const split = (value: string) =>
-        value
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean);
       const actions = str(flags.actions);
       const scopes = str(flags.scopes);
       const result = await client.applications.reconsent(rest[0], {
-        ...(actions ? { actions: split(actions) } : {}),
-        ...(scopes ? { scopes: split(scopes) } : {}),
+        ...(actions ? { actions: csv(actions) } : {}),
+        ...(scopes ? { scopes: csv(scopes) } : {}),
       });
       emit(
         [

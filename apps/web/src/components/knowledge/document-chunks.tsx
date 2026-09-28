@@ -23,6 +23,8 @@ import {
   pageForChunkIndex,
 } from "@/lib/document-chunks";
 import { toast } from "@/lib/toast";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * A Document's chunks (#929): the slices retrieval actually matches, which is
@@ -128,8 +130,13 @@ export function DocumentChunks({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
-          {total} {total === 1 ? "chunk" : "chunks"}
-          {chunks.length < total && ` · ${chunks.length} loaded`}
+          <RollingNumber value={total} /> {total === 1 ? "chunk" : "chunks"}
+          {chunks.length < total && (
+            <>
+              {" · "}
+              <RollingNumber value={chunks.length} /> loaded
+            </>
+          )}
         </p>
         <div className="relative">
           <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4" />
@@ -156,9 +163,11 @@ export function DocumentChunks({
             // dialog on click as before, and the corner control at the top
             // right of the index is the same action made visible, for a
             // reader who does not know a card is clickable.
+            // `content-visibility` skips laying out the cards scrolled out of
+            // view: a long Document renders hundreds of them.
             <div
               key={chunk.id}
-              className="bg-card hover:bg-accent/50 relative rounded-xl border transition-colors"
+              className="bg-card hover:bg-accent/50 relative rounded-xl border transition-colors [contain-intrinsic-size:auto_9rem] [content-visibility:auto]"
             >
               <Button
                 variant="ghost"
@@ -178,7 +187,7 @@ export function DocumentChunks({
                 <span className="text-muted-foreground block font-mono text-xs">
                   {chunkLabel(chunk.index)}
                 </span>
-                <span className="mt-1 block text-sm leading-relaxed">
+                <span className="mt-1 block text-sm leading-relaxed [overflow-wrap:anywhere]">
                   {chunkPreview(chunk.text)}
                 </span>
               </button>
@@ -194,7 +203,7 @@ export function DocumentChunks({
           disabled={isPending}
           onClick={() => fetchPageFor(chunks.length)}
         >
-          Load more
+          <RollInText text={isPending ? "Loading…" : "Load more"} />
         </Button>
       )}
 
@@ -241,8 +250,8 @@ function ChunkDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <pre className="max-h-[55vh] overflow-y-auto rounded-md border p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-          {loading && !chunk ? "Loading…" : text}
+        <pre className="max-h-[55vh] overflow-y-auto rounded-md border p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
+          {loading && !chunk ? <span role="status">Loading…</span> : text}
         </pre>
 
         <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs">
@@ -256,8 +265,12 @@ function ChunkDialog({
             >
               <ChevronLeft className="size-4" />
             </Button>
-            <span className="font-mono">
-              {index === null ? "" : chunkLabel(index)} / {chunkLabel(total - 1)}
+            <span className="font-mono tabular-nums">
+              <RollInText
+                text={index === null ? "" : chunkLabel(index)}
+                duration={380}
+              />{" "}
+              / {chunkLabel(total - 1)}
             </span>
             <Button
               variant="ghost"
@@ -271,7 +284,7 @@ function ChunkDialog({
           </span>
           <span className="flex items-center gap-2">
             <span className="font-mono uppercase">
-              {chunkWordCount(text)} words
+              <RollingNumber value={chunkWordCount(text)} /> words
             </span>
             <Button
               variant="ghost"

@@ -1,16 +1,16 @@
 ---
 title: Données et mémoire
-description: Basez les réponses sur des enregistrements structurés et mémorisez les visiteurs connectés au fil des conversations.
+description: Ancrez les réponses dans des Records structurés et mémorisez les Visitors connectés d'une Conversation à l'autre.
 ---
 
 import { Brain, Database } from 'lucide-react';
 
-Ciele peut combiner les enregistrements de l'organisation avec des informations
-durables sur les visiteurs connectés. Ces fonctionnalités utilisent une identité
-vérifiée et restent sous le contrôle de l'Organisation.
+Ciele peut combiner les Organization Records avec des faits durables concernant
+les Visitors connectés. Ces fonctionnalités utilisent une identité vérifiée et
+restent sous le contrôle de l'Organisation.
 
 <Mermaid
-  title="Les enregistrements ne deviennent des outils que lorsque vous publiez"
+  title="Les Records ne deviennent des outils qu'une fois que vous les publiez"
   chart={`
 flowchart TB
   DATA["Entity schema and imported Records"]
@@ -25,17 +25,17 @@ flowchart TB
 `}
 />
 
-La Publication contrôle quels outils d'Entité existent. Les valeurs des
-enregistrements restent actives, de sorte qu'une importation CSV ultérieure peut
-modifier les réponses sans qu'une autre publication soit nécessaire.
+La Publication détermine quels outils Entity existent. Les valeurs des Records
+restent actives, de sorte qu'une importation CSV ultérieure peut modifier les
+réponses sans nécessiter une nouvelle Publication.
 
-Une entité au niveau de l'utilisateur nécessite une revendication d'identité
-vérifiée. Le serveur ajoute ce filtre après avoir validé l'entrée de l'outil, de
-sorte qu'un modèle ne peut ni le supprimer ni nommer un autre Visiteur.
+Une Entité à portée utilisateur nécessite une revendication d'identité vérifiée.
+Le serveur ajoute ce filtre après avoir validé l'entrée de l'outil, de sorte
+qu'un modèle ne peut ni le supprimer ni désigner un autre Visitor.
 
-La mémoire à long terme est une fonctionnalité distincte avec son propre cycle
-de vie. Elle ne dépend pas des Entités. Voir
-[Mémoire à long terme](/data/long-term-memory).
+La mémoire à long terme est une fonctionnalité distincte, dotée de son propre
+cycle de vie. Elle ne dépend pas des Entités. Voir
+[Long-term memory](/data/long-term-memory).
 
 <Cards>
   <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
@@ -45,10 +45,10 @@ de vie. Elle ne dépend pas des Entités. Voir
 ## Deux types de mémoire
 
 **Session memory** appartient à une seule Conversation. Elle ne suit pas un
-Visiteur dans une nouvelle Conversation.
+Visitor dans une nouvelle Conversation.
 
 **Long-term memory** appartient à un sujet SSO vérifié au sein d'une
-Organisation. Il peut prendre en charge les Conversations ultérieures lorsque
+Organisation. Elle peut prendre en charge des Conversations ultérieures lorsque
 l'Organisation l'active.
 
 <Callout title="Signed-in Visitors only">

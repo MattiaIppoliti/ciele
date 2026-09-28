@@ -2,13 +2,9 @@
 
 import { LayoutGroup, useReducedMotion } from "motion/react";
 import { useCallback, useId, useMemo } from "react";
-import { cn } from "@/lib/utils";
 import { DayRow } from "./day-row";
 import { type DayAvailability, type WeekDay } from "@agent-hub/core";
 import { type WeekHours, WEEKDAYS, buildOptions, rangeId } from "./types";
-
-export type { DayAvailability, TimeRange, WeekDay } from "@agent-hub/core";
-export type { WeekHours } from "./types";
 
 export interface AvailabilitySchedulerProps {
   /** The seven-day opening schedule (a channel's `availability.hours`). */
@@ -16,7 +12,6 @@ export interface AvailabilitySchedulerProps {
   onChange: (value: WeekHours) => void;
   /** Minutes between selectable times. Default 30. */
   step?: number;
-  className?: string;
 }
 
 /**
@@ -28,7 +23,6 @@ export function AvailabilityScheduler({
   value,
   onChange,
   step = 30,
-  className,
 }: AvailabilitySchedulerProps) {
   const reduce = useReducedMotion() ?? false;
   const groupId = useId();
@@ -59,7 +53,7 @@ export function AvailabilityScheduler({
 
   return (
     <LayoutGroup id={groupId}>
-      <div className={cn("w-full divide-y divide-border", className)}>
+      <div className="w-full divide-y divide-border">
         {WEEKDAYS.map(({ key, label }) => (
           <DayRow
             key={key}

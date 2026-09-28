@@ -64,7 +64,7 @@ export function DeleteAssistantModal({
       // A server action's redirect() arrives as a throw the router must see.
       if (isRedirectError(error)) throw error;
       toast.error(
-        error instanceof Error ? error.message : "The assistant was not deleted",
+        error instanceof Error ? error.message : "The assistant was not deleted. Try again.",
       );
       throw error;
     }
@@ -91,7 +91,7 @@ export function DeleteAssistantModal({
               <AnimatedIcon icon={TriangleAlert} size={20} />
             </div>
             <div>
-              <h3 className="text-base font-semibold">
+              <h3 className="text-base font-semibold break-words">
                 Delete &ldquo;{assistantTitle}&rdquo;?
               </h3>
               <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
@@ -104,7 +104,7 @@ export function DeleteAssistantModal({
               Cancel
             </Button>
             <Button variant="destructive" onClick={() => setView("name")}>
-              Continue
+              Continue to delete
             </Button>
           </div>
         </div>
@@ -114,9 +114,9 @@ export function DeleteAssistantModal({
             <div className="bg-destructive/10 text-destructive rounded-full p-2">
               <AnimatedIcon icon={Trash2} size={20} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-semibold">Confirm deletion</h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed break-words">
                 Type <span className="text-foreground font-medium">{assistantTitle}</span> to continue.
               </p>
             </div>
@@ -125,6 +125,7 @@ export function DeleteAssistantModal({
             <Label htmlFor="confirm-assistant-name">Assistant name</Label>
             <Input
               id="confirm-assistant-name"
+              name="confirm-assistant-name"
               autoFocus={canAutoFocus()}
               value={typedName}
               onChange={(event) => setTypedName(event.target.value)}
@@ -148,7 +149,7 @@ export function DeleteAssistantModal({
               onClick={() => setView("confirm")}
               disabled={typedName.trim() !== assistantTitle.trim()}
             >
-              Continue
+              Delete assistant…
             </Button>
           </div>
         </div>
@@ -158,9 +159,9 @@ export function DeleteAssistantModal({
             <div className="bg-destructive/10 text-destructive rounded-full p-2">
               <AnimatedIcon icon={Trash2} size={20} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-semibold">Confirm deletion</h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed break-words">
                 Slide to permanently delete &ldquo;{assistantTitle}&rdquo;.
               </p>
             </div>

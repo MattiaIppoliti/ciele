@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type {
   Improvement,
@@ -54,6 +55,7 @@ import {
 import { ImprovementContextMenu } from "./improvement-context-menu";
 import { useImprovementLanes } from "./use-improvement-lanes";
 import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 // Opened only after a click, so it never renders on the server anyway; the
 // dynamic import keeps the detail view out of the board's first bundle.
@@ -94,7 +96,8 @@ export function LaneFooter({ paging }: { paging: LanePaging }) {
   return (
     <div className="text-muted-foreground flex items-center justify-between gap-2 px-3 py-2 text-xs">
       <span>
-        Showing {Math.min(paging.loaded, paging.total)} of {paging.total}
+        Showing <RollingNumber value={Math.min(paging.loaded, paging.total)} />{" "}
+        of <RollingNumber value={paging.total} />
       </span>
       {paging.hasMore && (
         <Button
@@ -105,7 +108,7 @@ export function LaneFooter({ paging }: { paging: LanePaging }) {
           disabled={paging.loading}
           onClick={paging.loadMore}
         >
-          {paging.loading ? "Loading…" : "Load more"}
+          <RollInText text={paging.loading ? "Loading…" : "Load more"} />
         </Button>
       )}
     </div>
@@ -216,13 +219,30 @@ export function ImprovementsBoard({
   const [collapsed, setCollapsed] = useState<Set<ImprovementStatus>>(new Set());
   const [view, setView] = useState<ViewMode>(initialUrlState.view);
   // A reload or a copied link keeps the same search, filters and layout.
+  // Debounced: typing a search would otherwise call replaceState on every
+  // keystroke, and Safari throws once a page passes ~100 calls in 30s.
   useEffect(() => {
-    replaceFilterParams(
-      { q: search, priority, assignee, view },
-      DEFAULT_IMPROVEMENTS_URL_STATE,
+    const timer = window.setTimeout(
+      () =>
+        replaceFilterParams(
+          { q: search, priority, assignee, view },
+          DEFAULT_IMPROVEMENTS_URL_STATE,
+        ),
+      300,
     );
+    return () => window.clearTimeout(timer);
   }, [search, priority, assignee, view]);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // The open drawer rides in `?open=` so a reload or a shared link lands on
+  // the same item. Read through useSearchParams rather than the page's typed
+  // URL state: the route is dynamic, so the server sees it too and the first
+  // render already agrees with the address bar.
+  const searchParams = useSearchParams();
+  const [openId, setOpenId] = useState<string | null>(
+    () => searchParams.get("open") || null,
+  );
+  useEffect(() => {
+    replaceFilterParams({ open: openId ?? "" }, { open: "" });
+  }, [openId]);
   const recordUpdate = (updated: Improvement) =>
     setUpdates((current) =>
       recordImprovementUpdate(
@@ -471,7 +491,7 @@ export function ImprovementsBoard({
               render={
                 <Button
                   variant="outline"
-                  aria-label="Export"
+                  aria-label={exporting ? "Exporting…" : "Export"}
                   disabled={exporting}
                   className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
                 />
@@ -479,7 +499,7 @@ export function ImprovementsBoard({
             >
               <Download className="size-4" />{" "}
               <span className="hidden sm:inline">
-                {exporting ? "Exporting…" : "Export"}
+                <RollInText text={exporting ? "Exporting…" : "Export"} />
               </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -536,6 +556,7 @@ export function ImprovementsBoard({
                   : totals[status]
               }
               laneFooter={(status) => <LaneFooter paging={pagingOf(status)} />}
+              filterActive={filterActive}
             />
           )}
 
@@ -544,6 +565,7 @@ export function ImprovementsBoard({
               const items = byStatus.get(lane.value) ?? [];
               const isCollapsed = collapsed.has(lane.value);
               const paging = pagingOf(lane.value);
+              const bodyId = `improvements-lane-${lane.value}`;
               return (
                 <section
                   key={lane.value}
@@ -558,7 +580,9 @@ export function ImprovementsBoard({
                     <button
                       type="button"
                       onClick={() => toggle(lane.value)}
-                      className="text-muted-foreground hover:text-foreground flex items-center gap-2"
+                      aria-expanded={!isCollapsed}
+                      aria-controls={bodyId}
+                      className="text-muted-foreground hover:text-foreground press-text flex items-center gap-2"
                     >
                       {isCollapsed ? (
                         <ChevronRight className="size-4" />
@@ -568,9 +592,10 @@ export function ImprovementsBoard({
                       <span className="text-sm font-semibold">
                         {lane.label}
                       </span>
-                      <span className="text-muted-foreground text-xs tabular-nums">
-                        {filterActive ? items.length : paging.total}
-                      </span>
+                      <RollingNumber
+                        value={filterActive ? items.length : paging.total}
+                        className="text-muted-foreground text-xs"
+                      />
                     </button>
                     <button
                       type="button"
@@ -578,12 +603,16 @@ export function ImprovementsBoard({
                       onClick={() =>
                         runExport({ status: lane.value, format: "csv" })
                       }
-                      className="text-primary ml-auto text-xs font-semibold disabled:opacity-40"
+                      aria-label={`Export ${lane.label} as CSV`}
+                      className="text-primary press-text ml-auto text-xs font-semibold hover:underline disabled:opacity-40 disabled:no-underline"
                     >
                       Export report
                     </button>
                   </div>
 
+                  {/* Always mounted, so `aria-controls` names an element that
+                      exists; collapsed, it holds nothing. */}
+                  <div id={bodyId} hidden={isCollapsed}>
                   {!isCollapsed && (
                     <div className="divide-y">
                       {items.length === 0 && (
@@ -609,6 +638,8 @@ export function ImprovementsBoard({
                             onOpenDrawer={() => setOpenId(i.id)}
                             onTagRemembered={rememberTag}
                             onUpdated={recordUpdate}
+                            status={lanes.statusOf(i)}
+                            onMove={(status) => lanes.move(i.id, status)}
                           >
                             <Link
                               href={`/improvements/${i.id}`}
@@ -618,9 +649,9 @@ export function ImprovementsBoard({
                                 e.preventDefault();
                                 setOpenId(i.id);
                               }}
-                              className={`hover:bg-muted/40 flex items-center gap-3 px-4 py-3 transition-colors ${
+                              className={`hover:bg-muted/40 flex items-center gap-3 px-4 py-3 transition-colors [content-visibility:auto] [contain-intrinsic-size:auto_3.25rem] ${
                                 lanes.draggingId === i.id ? "opacity-40" : ""
-                              } ${
+                              } ${lanes.draggingId ? "select-none" : ""} ${
                                 drag.draggable
                                   ? "cursor-grab active:cursor-grabbing"
                                   : ""
@@ -637,7 +668,7 @@ export function ImprovementsBoard({
                               {i.messageCount > 0 && (
                                 <span className="text-muted-foreground inline-flex items-center gap-1 text-xs tabular-nums">
                                   <MessageSquare className="size-3.5" />
-                                  {i.messageCount}
+                                  <RollingNumber value={i.messageCount} />
                                 </span>
                               )}
                               <span className="text-muted-foreground hidden text-xs sm:inline">
@@ -687,6 +718,7 @@ export function ImprovementsBoard({
                       <LaneFooter paging={paging} />
                     </div>
                   )}
+                  </div>
                 </section>
               );
             })}

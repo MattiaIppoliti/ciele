@@ -3,7 +3,7 @@ import { allowedModelsSchema } from "./model-allow-list";
 import type {
   Assistant,
   AssistantPatch,
-  FlowPatch,
+  FlowInput,
   HelpDeskSettings,
   Provider,
   QuickReplyButton,
@@ -100,7 +100,7 @@ export const assistantPatchSchema = z
 const idSchema = z.object({ id: z.string().min(1) });
 
 /** Shared guard: id → Assistant in the caller's Organization, or not_found. */
-async function requireAssistant(
+export async function requireAssistant(
   ctx: { organizationId: string; db: { getAssistant(id: string): Promise<Assistant | null> } },
   id: string
 ): Promise<Assistant> {
@@ -238,10 +238,9 @@ export const duplicateAssistantOp = defineOperation({
     const consumed = new Set<string>();
     const orderedCopyIds: string[] = [];
     for (const flow of sourceFlows) {
-      const patch: FlowPatch = {
+      const input: FlowInput = {
         name: flow.name,
         description: flow.description,
-        enabled: flow.enabled,
         trigger: flow.trigger,
         triggerSettings: flow.triggerSettings,
         conditionLogic: flow.conditionLogic,
@@ -259,20 +258,10 @@ export const duplicateAssistantOp = defineOperation({
       );
       if (seed) {
         consumed.add(seed.id);
-        await ctx.db.updateFlow(seed.id, patch);
+        await ctx.db.updateFlow(seed.id, { ...input, enabled: flow.enabled });
         if (!flow.isDefault) orderedCopyIds.push(seed.id);
       } else {
-        const created = await ctx.db.createFlow(copy.id, {
-          name: flow.name,
-          description: flow.description,
-          trigger: flow.trigger,
-          triggerSettings: flow.triggerSettings,
-          conditionLogic: flow.conditionLogic,
-          conditions: flow.conditions,
-          actions: flow.actions,
-          actionSettings: flow.actionSettings,
-          customMessage: flow.customMessage,
-        });
+        const created = await ctx.db.createFlow(copy.id, input);
         if (!flow.enabled) await ctx.db.updateFlow(created.id, { enabled: false });
         orderedCopyIds.push(created.id);
       }
@@ -287,5 +276,55 @@ export const duplicateAssistantOp = defineOperation({
 
     // The `copy` in hand predates the config patch, return the stored row.
     return (await ctx.db.getAssistant(copy.id)) ?? copy;
+  },
+});
+
+/** The longest question `assistants.ask` accepts. */
+export const ASK_QUESTION_MAX = 4000;
+
+/** Exported so the v1 registry documents the body as this schema minus `id`. */
+export const askAssistantInput = z.object({
+  id: z.string().min(1),
+  question: z
+    .string()
+    .trim()
+    .min(1, "Question is required")
+    .max(ASK_QUESTION_MAX, `Question is longer than ${ASK_QUESTION_MAX} characters`),
+  conversationId: z.string().min(1).optional(),
+});
+
+/**
+ * Ask an Assistant a question and get its answer back whole, with the Sources
+ * it cited (third-party access to Ciele): for a caller with no model of its
+ * own, a Salesforce Flow, a script, or an agent that wants the Assistant's own
+ * answer rather than passages (`knowledge.search` returns those).
+ *
+ * The real turn on the latest Publication, Flows and escalation included, so
+ * a key gets the answer the widget would have given. It is a Conversation the
+ * key's creator can review in the Inbox, marked with the key, and like the
+ * Preview it is a Member's traffic, so it stays out of Insights. Asking costs
+ * a model turn on the Organization's connections; a member capability, the
+ * same reach an anonymous Visitor has through the widget.
+ */
+export const askAssistantOp = defineOperation({
+  name: "assistants.ask",
+  capability: "member",
+  input: askAssistantInput,
+  entities: () => [{ kind: "inbox" as const }],
+  run: async (ctx, input) => {
+    const ask = ctx.ports?.askAssistant;
+    if (!ask) {
+      throw new OperationError("invalid_input", "Asking an Assistant is not available on this surface");
+    }
+    await requireAssistant(ctx, input.id);
+    const answer = await ask({
+      assistantId: input.id,
+      question: input.question,
+      conversationId: input.conversationId ?? null,
+    });
+    if (!answer) {
+      throw new OperationError("conflict", "This Assistant is not published. Publish it first.");
+    }
+    return answer;
   },
 });

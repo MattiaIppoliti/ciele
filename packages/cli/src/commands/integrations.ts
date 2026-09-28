@@ -1,14 +1,7 @@
-import { readFileSync } from "node:fs";
 import type { ApiEndpointSpec, ApiIntegrationAuthType } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
-
-function jsonFile<T>(ctx: CommandContext, hint: string): T | number {
-  const file = str(ctx.flags.file);
-  if (!file) return usage(ctx.deps, hint);
-  return JSON.parse(readFileSync(file, "utf8")) as T;
-}
+import { jsonFile, usage, type CommandContext } from "./shared.ts";
 
 export async function apiIntegrations(
   verb: string | undefined,
@@ -42,7 +35,7 @@ export async function apiIntegrations(
         credential?: string;
         endpoints: ApiEndpointSpec[];
       }>(ctx, "api-integrations set <assistantId> --file <integration.json>");
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const integration = await client.apiIntegrations.set(rest[0], input);
       emit(`Saved API integration for ${rest[0]}`, integration);
       return EXIT.ok;
@@ -78,7 +71,7 @@ export async function providers(verb: string | undefined, ctx: CommandContext) {
         ctx,
         "providers create-api-key --file <provider.json>"
       );
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const result = await client.providers.createApiKey(input);
       if (result.error) {
         deps.stderr(result.error);
@@ -92,7 +85,7 @@ export async function providers(verb: string | undefined, ctx: CommandContext) {
         ctx,
         "providers create-compatible --file <provider.json>"
       );
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const result = await client.providers.createCompatible(input);
       if (result.error) {
         deps.stderr(result.error);
@@ -106,7 +99,7 @@ export async function providers(verb: string | undefined, ctx: CommandContext) {
         ctx,
         "providers create-federated --file <provider.json>"
       );
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const connection = await client.providers.createFederated(input);
       emit(`Created provider connection ${connection.id}`, connection);
       return EXIT.ok;

@@ -38,7 +38,11 @@ vi.mock("next/cache", () => ({
     },
 }));
 
-import { defaultInsightsFilter, getInsightsOverviewCached } from "./report";
+import {
+  defaultInsightsFilter,
+  getInsightsOverviewCached,
+  insightsFilterFromSearchParams,
+} from "./report";
 
 beforeEach(() => {
   cache.clear();
@@ -116,5 +120,31 @@ describe("getInsightsOverviewCached", () => {
       ),
     ).rejects.toThrow("Authenticated session required");
     expect(createDbMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("insightsFilterFromSearchParams", () => {
+  const read = (query: string) => insightsFilterFromSearchParams(new URLSearchParams(query));
+
+  it("swaps an inverted range and refuses a day that does not exist", () => {
+    expect(read("from=2026-09-10&to=2026-09-01")).toMatchObject({
+      from: "2026-09-01",
+      to: "2026-09-10",
+    });
+    expect(read("from=2026-02-31").from).toBe(defaultInsightsFilter().from);
+  });
+
+  it("keeps the typed filters to their legal values", () => {
+    expect(read("aggregate=hourly&feedback=maybe&escalation=up")).toMatchObject({
+      aggregate: "daily",
+      feedback: "",
+      escalation: "",
+    });
+    expect(read("aggregate=weekly&feedback=down&assistantId=a1&channel=web")).toMatchObject({
+      aggregate: "weekly",
+      feedback: "down",
+      assistantId: "a1",
+      channel: "web",
+    });
   });
 });

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { type ReactNode, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import type {
   AnswerVerdict,
   ImprovementMessageLink,
@@ -70,18 +70,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@agent-hub/ui";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { formatDateTime, formatTime } from "@/lib/format";
+import { FIELD_CLASS, FilterSelect } from "@/components/ui/filter-select";
+import { formatDateTime, formatDay, formatTime } from "@/lib/format";
 import { reviewDecisionLabel } from "@/lib/review-status";
 import { EmptyState } from "@/components/ui/empty-state";
 import { conversationSummaryCsv } from "@/lib/inbox/conversation-export";
+import { downloadFile } from "@/lib/download";
 import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 // Transcript-only UI stays out of the Inbox list's initial bundle. In
 // particular ChatMarkdown owns syntax highlighting, which is wasted until a
@@ -127,9 +124,21 @@ interface AssistantOption {
   title: string;
 }
 
+/** A timestamp's day, in UTC like every other date here, so SSR and hydration agree. */
 function dayLabel(iso: string): string {
-  return new Date(iso).toDateString();
+  return formatDay(iso);
 }
+
+/**
+ * A stored yyyy-mm-dd filter bound. Pinned to UTC noon: a bare local "T12:00"
+ * lands on the previous UTC day east of UTC+12.
+ */
+function filterDayLabel(day: string): string {
+  return formatDay(`${day}T12:00:00Z`);
+}
+
+/** Tailwind's `lg`: below it the list and the thread share one pane. */
+const LG_QUERY = "(min-width: 64rem)";
 
 /**
  * Per-message time in the transcript. The conversation header already carries
@@ -217,13 +226,13 @@ function DateField({
           <Button
             variant="outline"
             data-empty={!selected}
-            aria-label={selected ? `${label}: ${dayLabel(value)}` : `${label}: not set`}
+            aria-label={selected ? `${label}: ${filterDayLabel(value)}` : `${label}: not set`}
             className={`justify-start px-3 font-normal data-[empty=true]:text-muted-foreground ${className ?? ""}`}
           />
         }
       >
         <CalendarIcon className="size-4" />
-        {selected ? dayLabel(value) : <span>Pick a date</span>}
+        {selected ? filterDayLabel(value) : <span>Pick a date</span>}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
         <Calendar
@@ -252,69 +261,23 @@ function subjectInitials(c: InboxConversation): string {
   );
 }
 
-const FIELD_CLASS =
-  "h-10 w-full rounded-lg border bg-background px-3 text-base outline-none focus:ring-2 focus:ring-ring/50 md:text-sm";
-
-function FilterSelect({
-  label,
-  value,
-  placeholder,
-  options,
-  onChange,
-  allowCustom = false,
+/** The divider naming the Flow that started or finished a turn. */
+function WorkflowMarker({
+  icon,
+  children,
 }: {
-  label: string;
-  value: string;
-  placeholder: string;
-  options: Array<{ value: string; label: string }>;
-  onChange: (value: string) => void;
-  allowCustom?: boolean;
+  icon: ReactNode;
+  children: ReactNode;
 }) {
-  const listId = useId();
-  if (!allowCustom) {
-    return (
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium">{label}</span>
-        <Select value={value} onValueChange={(next) => onChange(next as string)}>
-          <SelectTrigger>
-            <SelectValue>
-              {(next: string) =>
-                options.find((option) => option.value === next)?.label ||
-                placeholder
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">{placeholder}</SelectItem>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
-    );
-  }
-
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium">{label}</span>
-      <input
-        list={listId}
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-        className={FIELD_CLASS}
-      />
-      <datalist id={listId}>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </datalist>
-    </label>
+    <div className="flex items-center justify-center gap-2 py-1">
+      <span className="bg-border h-px flex-1" />
+      <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
+        {icon}
+        {children}
+      </span>
+      <span className="bg-border h-px flex-1" />
+    </div>
   );
 }
 
@@ -362,7 +325,7 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
     return (
       <div className="max-w-[85%] space-y-1 rounded-2xl border-l-2 bg-muted/50 px-3.5 py-3 text-sm">
         <p className="text-muted-foreground text-xs font-medium uppercase">Human review</p>
-        <p className="font-medium">{part.title}</p>
+        <p className="font-medium [overflow-wrap:anywhere]">{part.title}</p>
         <p className="text-muted-foreground text-xs">
           {reviewDecisionLabel(part)}
           {part.simulated ? " · simulated" : ""}
@@ -386,7 +349,7 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
           <Radio className="size-3.5" />
           HTTP webhook
         </p>
-        <p className="font-medium">Waited on {host}</p>
+        <p className="font-medium [overflow-wrap:anywhere]">Waited on {host}</p>
         <p className="text-muted-foreground text-xs">
           Until {formatDateTime(part.expiresAt)}
           {part.simulated ? " · simulated" : ""}
@@ -402,7 +365,7 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
         <p className="text-muted-foreground text-xs font-medium uppercase">
           Notification
         </p>
-        {part.title && <p className="font-medium">{part.title}</p>}
+        {part.title && <p className="font-medium [overflow-wrap:anywhere]">{part.title}</p>}
         <ChatMarkdown text={part.content} className="text-sm" />
       </div>
     );
@@ -416,9 +379,9 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
             Asked for clarification
           </span>
         </div>
-        <p className="mt-1.5">{part.question}</p>
+        <p className="mt-1.5 [overflow-wrap:anywhere]">{part.question}</p>
         {part.found && part.found.length > 0 && (
-          <div className="text-muted-foreground mt-2 text-xs">
+          <div className="text-muted-foreground mt-2 text-xs [overflow-wrap:anywhere]">
             <span>Surfaced before asking:</span>
             <ul className="mt-1 list-disc space-y-0.5 pl-4">
               {part.found.map((f) => (
@@ -449,12 +412,14 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
           {part.calls.map((call, i) => (
             <li key={i} className="flex items-center gap-1.5">
               <span
+                aria-hidden="true"
                 className={
                   call.ok ? "text-emerald-500" : "text-red-400"
                 }
               >
                 ●
               </span>
+              <span className="sr-only">{call.ok ? "succeeded:" : "failed:"}</span>
               <span className="font-mono font-medium">{call.tool}</span>
               <span className="text-muted-foreground truncate">
                 {call.summary ? `— ${call.summary}` : `— ${call.label}`}
@@ -471,7 +436,7 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
         <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
           <Headphones className="size-4" />
         </span>
-        <p className="text-sm font-medium">{part.label}</p>
+        <p className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">{part.label}</p>
       </div>
     );
   }
@@ -481,10 +446,10 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
         href={part.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="bg-primary inline-flex max-w-[85%] items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white"
+        className="bg-primary focus-visible:ring-ring inline-flex max-w-[85%] items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
-        {part.label}
-        <ExternalLink className="size-3" />
+        <span className="min-w-0 [overflow-wrap:anywhere]">{part.label}</span>
+        <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
       </a>
     );
   }
@@ -510,7 +475,7 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
         {part.questions.map((q) => (
           <span
             key={q}
-            className="border-primary/30 text-primary rounded-full border px-3 py-1 text-xs font-medium"
+            className="border-primary/30 text-primary max-w-full rounded-full border px-3 py-1 text-xs font-medium [overflow-wrap:anywhere]"
           >
             {q}
           </span>
@@ -568,22 +533,41 @@ export function InboxClient({
       : null;
 
   const [search, setSearch] = useState(initialSearch);
+  // The list query and the address bar follow the search at low priority, so a
+  // keystroke paints the field before either catches up.
+  const deferredSearch = useDeferredValue(search);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersPanelId = useId();
+  const filtersTriggerRef = useRef<HTMLButtonElement>(null);
+  const filtersHeadingRef = useRef<HTMLHeadingElement>(null);
+  // Set by a pointerdown that React bubbled through the panel. That includes
+  // the portaled Select and date popups, which the panel's DOM never contains.
+  const pointerInFilters = useRef(false);
   const [filters, setFilters] = useState<InboxFilters>(
     initialFilters ?? defaultInboxFilters,
   );
   // The address bar follows the filters and the search, so a reload or a copied
   // link lands on the same view; `?conversation=` rides along untouched.
   useEffect(() => {
-    replaceFilterParams({ ...filters, q: search }, defaultInboxUrlState());
-  }, [filters, search]);
+    replaceFilterParams({ ...filters, q: deferredSearch }, defaultInboxUrlState());
+  }, [filters, deferredSearch]);
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [messages, setMessages] = useState<StoredMessage[] | null>(null);
+  const [transcriptError, setTranscriptError] = useState(false);
   const [links, setLinks] = useState<ImprovementMessageLink[]>([]);
   const [reviews, setReviews] = useState<ReviewRequest[]>([]);
   const [verdicts, setVerdicts] = useState<AnswerVerdict[]>([]);
   const [improveMessageId, setImproveMessageId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [legalHoldPending, setLegalHoldPending] = useState(false);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  const threadHeadingRef = useRef<HTMLHeadingElement>(null);
+  const detailsButtonRef = useRef<HTMLButtonElement>(null);
+  const detailsHeadingRef = useRef<HTMLHeadingElement>(null);
+  // Below `lg` the list and the thread swap places, so focus has to follow:
+  // into the thread on select, back to the row it came from on "back".
+  const focusThreadOnSelect = useRef(false);
+  const restoreRowId = useRef<string | null>(null);
   // Only consulted below `xl`, where the details column is a sheet rather than
   // a pane. Reset on every selection so a new conversation opens on its
   // transcript, not on the previous one's metadata.
@@ -609,9 +593,6 @@ export function InboxClient({
     return facets ?? loaded;
   }, [conversations, facets]);
 
-  // The database owns filtering; this client only renders the bounded window.
-  const filtered = conversations;
-
   useEffect(() => {
     if (firstQuery.current) {
       firstQuery.current = false;
@@ -624,7 +605,7 @@ export function InboxClient({
       try {
         const page = await getInboxPageAction(
           await withPendingReviews(
-            inboxQueryFromFilters({ ...filters, search }, { limit: 50 }),
+            inboxQueryFromFilters({ ...filters, search: deferredSearch }, { limit: 50 }),
             filters.review,
           ),
         );
@@ -652,7 +633,7 @@ export function InboxClient({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [filters, search]);
+  }, [filters, deferredSearch]);
 
   async function loadMore() {
     if (!nextCursor || loadingList) return;
@@ -662,7 +643,7 @@ export function InboxClient({
       const page = await getInboxPageAction(
         await withPendingReviews(
           inboxQueryFromFilters(
-            { ...filters, search },
+            { ...filters, search: deferredSearch },
             { cursor: nextCursor, limit: 50 },
           ),
           filters.review,
@@ -703,6 +684,29 @@ export function InboxClient({
     if (next) void loadFacets();
   }
 
+  /** Escape and the Close button hand focus back; an outside click keeps its own target. */
+  function closeFilters() {
+    setFiltersOpen(false);
+    filtersTriggerRef.current?.focus();
+  }
+
+  // A non-modal popover: focus moves in on open, and a press anywhere outside
+  // the panel and its trigger closes it.
+  useEffect(() => {
+    if (!filtersOpen) return;
+    filtersHeadingRef.current?.focus();
+    function onPointerDown(event: PointerEvent) {
+      if (pointerInFilters.current) {
+        pointerInFilters.current = false;
+        return;
+      }
+      if (filtersTriggerRef.current?.contains(event.target as Node)) return;
+      setFiltersOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [filtersOpen]);
+
   // A selected conversation should show even if the current filters would hide
   // it (e.g. when opened via a deep link outside the default date range).
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
@@ -711,17 +715,36 @@ export function InboxClient({
     // Optimistic, then reconciled: the sweep runs nightly, so a stale flag for
     // the duration of a failed request is recoverable, and the revert on error
     // keeps the rail honest.
+    setLegalHoldPending(true);
     setConversations((current) =>
       current.map((c) => (c.id === conversationId ? { ...c, legalHold: next } : c)),
     );
     try {
       await setConversationLegalHoldAction(conversationId, next);
+      toast.success(next ? "Legal hold placed" : "Legal hold released");
     } catch {
       setConversations((current) =>
         current.map((c) => (c.id === conversationId ? { ...c, legalHold: !next } : c)),
       );
-      toast.error("Could not update the legal hold");
+      toast.error("Could not update the legal hold. Try again.");
+    } finally {
+      setLegalHoldPending(false);
     }
+  }
+
+  /** Placing a hold only protects; releasing one re-arms a deletion, so it asks first. */
+  function requestLegalHoldChange(conversation: InboxConversation) {
+    if (!conversation.legalHold) {
+      void toggleLegalHold(conversation.id, true);
+      return;
+    }
+    confirmDelete({
+      title: "Release legal hold?",
+      description:
+        "This conversation goes back on the deletion schedule. The next retention sweep deletes it if it is older than the retention period.",
+      confirmLabel: "Release legal hold",
+      onConfirm: () => toggleLegalHold(conversation.id, false),
+    });
   }
   // Only the user's own dismissal animates. Switching conversation replaces the
   // whole pane, so animating that exit would delay content the user asked for.
@@ -729,6 +752,30 @@ export function InboxClient({
     () => setDetailsOpen(false),
     200,
   );
+
+  /** The sheet's own dismissal: focus goes back to the button that opened it. */
+  function dismissDetails() {
+    closeDetails();
+    detailsButtonRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (detailsOpen) detailsHeadingRef.current?.focus();
+  }, [detailsOpen]);
+
+  useEffect(() => {
+    if (selectedId && focusThreadOnSelect.current) {
+      focusThreadOnSelect.current = false;
+      threadHeadingRef.current?.focus();
+    }
+    if (!selectedId && restoreRowId.current) {
+      const id = restoreRowId.current;
+      restoreRowId.current = null;
+      document
+        .querySelector<HTMLElement>(`[data-conversation-row="${CSS.escape(id)}"]`)
+        ?.focus();
+    }
+  }, [selectedId]);
 
   async function loadConversation(id: string) {
     const generation = ++reviewGeneration.current;
@@ -740,26 +787,33 @@ export function InboxClient({
     replaceConversationParam(id);
     setDetailsOpen(false);
     setMessages(null);
+    setTranscriptError(false);
     setLinks([]);
     setVerdicts([]);
     setReviews([]);
     try {
       const review = await getInboxConversationReviewAction(id);
       if (generation !== reviewGeneration.current) return;
-      setMessages(review.messages);
-      setLinks(review.improvementLinks);
-      setVerdicts(review.answerVerdicts);
-      setReviews(review.reviews);
+      applyReview(review);
     } catch {
       if (generation !== reviewGeneration.current) return;
-      setMessages([]);
-      setLinks([]);
-      setVerdicts([]);
-      setReviews([]);
+      setTranscriptError(true);
     }
   }
 
+  /** Shows a fetched review: the transcript and what hangs off it. */
+  function applyReview(
+    review: Awaited<ReturnType<typeof getInboxConversationReviewAction>>,
+  ) {
+    setMessages(review.messages);
+    setLinks(review.improvementLinks);
+    setVerdicts(review.answerVerdicts);
+    setReviews(review.reviews);
+  }
+
   function select(conversation: InboxConversation) {
+    // Only where selecting hides the list; at `lg` the row keeps focus.
+    focusThreadOnSelect.current = !window.matchMedia(LG_QUERY).matches;
     void loadConversation(conversation.id);
   }
 
@@ -772,16 +826,10 @@ export function InboxClient({
     let cancelled = false;
     getInboxConversationReviewAction(initialId).then((review) => {
       if (cancelled || generation !== reviewGeneration.current) return;
-      setMessages(review.messages);
-      setLinks(review.improvementLinks);
-      setVerdicts(review.answerVerdicts);
-      setReviews(review.reviews);
+      applyReview(review);
     }).catch(() => {
       if (cancelled || generation !== reviewGeneration.current) return;
-      setMessages([]);
-      setLinks([]);
-      setVerdicts([]);
-      setReviews([]);
+      setTranscriptError(true);
     });
     return () => {
       cancelled = true;
@@ -803,11 +851,13 @@ export function InboxClient({
       setLinks(links);
       setReviews(reviews);
     } catch {
-      /* keep stale links on failure */
+      // The stale chips stay; the toast says they may be behind.
+      toast.error("Could not refresh the improvement links. Reload to see them.");
     }
   }
 
   async function setFeedback(messageId: string, reaction: FeedbackReactionId | null) {
+    const before = messages?.find((m) => m.id === messageId);
     const feedback = feedbackReactionScore(reaction);
     setMessages(
       (prev) =>
@@ -818,60 +868,53 @@ export function InboxClient({
     try {
       await setMessageFeedbackAction(messageId, feedback, reaction);
     } catch {
-      /* optimistic update stands; refresh on next select */
+      if (before) {
+        setMessages(
+          (prev) =>
+            prev?.map((m) =>
+              m.id === messageId
+                ? { ...m, feedback: before.feedback, feedbackReaction: before.feedbackReaction }
+                : m
+            ) ?? prev
+        );
+      }
+      toast.error("Could not save the feedback. Try again.");
     }
-  }
-
-  function download(body: string, mime: string, filename: string) {
-    const url = URL.createObjectURL(new Blob([body], { type: mime }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   /**
-   * The reference-parity JSON export (#561): 29-field Conversation records with
-   * their full transcripts and a serialized `AgenticTrace` per message. Assembled
-   * server-side, the transcripts are not loaded in the browser, and the
-   * reasoning gate has to be enforced rather than requested.
+   * The two filtered exports. `json` is the reference-parity export (#561):
+   * 29-field Conversation records with their full transcripts and a serialized
+   * `AgenticTrace` per message, assembled server-side because the transcripts
+   * are not loaded in the browser and the reasoning gate has to be enforced
+   * rather than requested. `csv` is the flat conversation list: one row per
+   * Conversation, no transcripts.
    */
-  async function exportParityJson() {
+  async function exportFiltered(kind: "csv" | "json") {
     setExporting(true);
     try {
-      const result = await exportInboxConversationsAction(
-        inboxQueryFromFilters({ ...filters, search }),
-      );
-      download(
-        JSON.stringify(result.rows, null, 2),
-        "application/json",
-        "conversations.json"
-      );
+      const query = inboxQueryFromFilters({ ...filters, search });
+      let result: { truncated: boolean; limit: number };
+      if (kind === "json") {
+        const json = await exportInboxConversationsAction(query);
+        downloadFile(
+          JSON.stringify(json.rows, null, 2),
+          "application/json",
+          "conversations.json"
+        );
+        result = json;
+      } else {
+        const csv = await exportInboxSummariesAction(query);
+        downloadFile(
+          conversationSummaryCsv(csv.conversations),
+          "text/csv",
+          "conversations.csv"
+        );
+        result = csv;
+      }
       if (result.truncated) {
         toast.warning(
           `Exported the first ${result.limit} matching conversations. Narrow the filters to export another window.`
-        );
-      }
-    } catch {
-      toast.error("Export failed, please try again.");
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  /** The flat conversation-list CSV: one row per Conversation, no transcripts. */
-  async function exportCsv() {
-    setExporting(true);
-    try {
-      const result = await exportInboxSummariesAction(
-        inboxQueryFromFilters({ ...filters, search }),
-      );
-      const csv = conversationSummaryCsv(result.conversations);
-      download(csv, "text/csv", "conversations.csv");
-      if (result.truncated) {
-        toast.warning(
-          `Exported the first ${result.limit} matching conversations. Narrow the filters to export another window.`,
         );
       }
     } catch {
@@ -892,27 +935,39 @@ export function InboxClient({
     frame.setAttribute("aria-hidden", "true");
     frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
     document.body.appendChild(frame);
-    const doc = frame.contentDocument;
-    if (!doc || !frame.contentWindow) {
+    // afterprint is the normal cleanup. The timer is the net for a browser that
+    // never fires it, long enough that nobody is still in the dialog.
+    const fallback = window.setTimeout(() => frame.remove(), 10 * 60_000);
+    const cleanup = () => {
+      window.clearTimeout(fallback);
       frame.remove();
-      toast.error("Could not open the print view.");
-      return;
+    };
+    try {
+      const doc = frame.contentDocument;
+      const win = frame.contentWindow;
+      if (!doc || !win) throw new Error("No print frame");
+      doc.open();
+      doc.write(transcriptDocument({ conversation: selected, messages }));
+      doc.close();
+      // The frame must outlive print(), the dialog is modal but asynchronous,
+      // and removing the frame while it is open cancels the job.
+      win.addEventListener("afterprint", cleanup);
+      win.focus();
+      win.print();
+    } catch {
+      cleanup();
+      toast.error("Could not open the print view. Try again.");
     }
-    doc.open();
-    doc.write(transcriptDocument({ conversation: selected, messages }));
-    doc.close();
-    const win = frame.contentWindow;
-    // The frame must outlive print(), the dialog is modal but asynchronous, and
-    // removing the frame while it is open cancels the job.
-    win.addEventListener("afterprint", () => frame.remove());
-    win.focus();
-    win.print();
   }
 
   const meta = selected?.metadata;
+  const studyReplies = useMemo(
+    () => (messages ?? []).map((message) => message.content as ChatReplyPart[]),
+    [messages],
+  );
 
   return (
-    <StudyProvider replies={(messages ?? []).map(message => message.content as ChatReplyPart[])}>
+    <StudyProvider replies={studyReplies}>
     <div className="flex h-full flex-col">
       {/* Header */}
       <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
@@ -947,8 +1002,11 @@ export function InboxClient({
             />
           </div>
           <Button
+            ref={filtersTriggerRef}
             variant="outline"
             aria-label="Filters"
+            aria-expanded={filtersOpen}
+            aria-controls={filtersOpen ? filtersPanelId : undefined}
             className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
             onClick={toggleFilters}
           >
@@ -960,23 +1018,26 @@ export function InboxClient({
               render={
                 <Button
                   variant="outline"
-                  aria-label="Exports"
+                  aria-label={exporting ? "Exporting…" : "Exports"}
                   className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
                 />
               }
+              disabled={exporting}
             >
               <Download className="size-4" />{" "}
-              <span className="hidden sm:inline">Exports</span>
+              <span className="hidden sm:inline">
+                <RollInText text={exporting ? "Exporting…" : "Exports"} />
+              </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => void exportCsv()}
+                onClick={() => void exportFiltered("csv")}
                 disabled={exporting}
               >
                 Export filtered CSV
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => void exportParityJson()}
+                onClick={() => void exportFiltered("json")}
                 disabled={exporting}
               >
                 {exporting
@@ -994,15 +1055,41 @@ export function InboxClient({
 
         {/* Filters panel */}
         {filtersOpen && (
-          <div className="absolute top-full right-4 left-4 z-30 max-h-[70vh] overflow-y-auto rounded-xl border bg-popover p-5 shadow-xl sm:right-6 sm:left-auto sm:w-96">
+          <div
+            id={filtersPanelId}
+            role="dialog"
+            aria-labelledby={`${filtersPanelId}-title`}
+            onPointerDown={() => {
+              pointerInFilters.current = true;
+            }}
+            onKeyDown={(event) => {
+              // Only a key pressed in the panel itself: an Escape inside an
+              // open Select or date popup closes that popup, not the panel.
+              if (
+                event.key === "Escape" &&
+                event.currentTarget.contains(event.target as Node)
+              ) {
+                event.stopPropagation();
+                closeFilters();
+              }
+            }}
+            className="absolute top-full right-4 left-4 z-30 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border bg-popover p-5 shadow-xl sm:right-6 sm:left-auto sm:w-96"
+          >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Filters</h2>
+              <h2
+                id={`${filtersPanelId}-title`}
+                ref={filtersHeadingRef}
+                tabIndex={-1}
+                className="text-lg font-semibold outline-none"
+              >
+                Filters
+              </h2>
               <button
                 type="button"
-                onClick={() => setFiltersOpen(false)}
-                className="text-primary flex items-center gap-1 text-sm font-semibold"
+                onClick={closeFilters}
+                className="text-primary hover:bg-primary/10 focus-visible:ring-ring flex items-center gap-1 rounded-md px-2 py-1 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
-                <X className="size-4" /> Close
+                <X aria-hidden="true" className="size-4" /> Close
               </button>
             </div>
 
@@ -1020,6 +1107,8 @@ export function InboxClient({
                 <div className="relative">
                   <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                   <input
+                    name="user-info"
+                    autoComplete="off"
                     value={filters.userInfo}
                     onChange={(e) =>
                       setFilters({ ...filters, userInfo: e.target.value })
@@ -1066,7 +1155,9 @@ export function InboxClient({
                     label="From date"
                     className="h-10 flex-1"
                   />
-                  <span className="text-muted-foreground">, </span>
+                  <span aria-hidden="true" className="text-muted-foreground">
+                    –
+                  </span>
                   <DateField
                     value={filters.to}
                     onChange={(to) => setFilters({ ...filters, to })}
@@ -1101,14 +1192,17 @@ export function InboxClient({
               <label className="block">
                 <span className="mb-1 block text-sm font-medium">Conversation IDs</span>
                 <span className="text-muted-foreground mb-1.5 block text-xs">
-                  Press Enter, comma, or space to add an ID.
+                  Separate IDs with commas or spaces.
                 </span>
                 <input
+                  name="conversation-ids"
+                  autoComplete="off"
+                  spellCheck={false}
                   value={filters.conversationIds}
                   onChange={(e) =>
                     setFilters({ ...filters, conversationIds: e.target.value })
                   }
-                  placeholder="Paste IDs"
+                  placeholder="Paste IDs…"
                   className={FIELD_CLASS}
                 />
               </label>
@@ -1183,9 +1277,9 @@ export function InboxClient({
       <div className="shrink-0 px-4 pb-3 sm:px-6">
         <span className="text-primary inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 px-3 py-1.5 text-sm font-medium">
           Date Range:{" "}
-          {filters.from ? dayLabel(`${filters.from}T12:00:00`) : "…"} -{" "}
-          {filters.to ? dayLabel(`${filters.to}T12:00:00`) : "…"}
-          <Info className="size-3.5" />
+          {filters.from ? filterDayLabel(filters.from) : "…"} –{" "}
+          {filters.to ? filterDayLabel(filters.to) : "…"}
+          <Info aria-hidden="true" className="size-3.5" />
         </span>
       </div>
 
@@ -1195,28 +1289,42 @@ export function InboxClient({
             a phone mail client does, picking a conversation swaps to it and
             "All conversations" comes back. */}
         <aside
+          aria-label="Conversations"
+          aria-busy={loadingList}
           className={`w-full shrink-0 flex-col overflow-y-auto border-r lg:flex lg:w-72 ${
             selected ? "hidden" : "flex"
           }`}
         >
           <div className="flex items-center gap-2 px-4 py-3">
             <h2 className="text-sm font-semibold">Conversation log</h2>
-            <span className="text-muted-foreground text-sm">{filtered.length}</span>
+            {/* The loaded window, not the total: "+" says more pages exist. */}
+            <span className="text-muted-foreground text-sm">
+              <RollingNumber value={conversations.length} />
+              {nextCursor ? "+" : ""}
+            </span>
           </div>
-          <p className="text-muted-foreground px-4 pb-2 text-xs">Everything else,</p>
-          {filtered.length === 0 && (
+          <p role="status" aria-live="polite" className="sr-only">
+            {loadingList
+              ? "Loading conversations…"
+              : `${conversations.length}${nextCursor ? " or more" : ""} ${
+                  conversations.length === 1 ? "conversation" : "conversations"
+                }`}
+          </p>
+          <p className="text-muted-foreground px-4 pb-2 text-xs">Latest activity first</p>
+          {conversations.length === 0 && (
             <EmptyState
               size="sm"
               title="No conversations"
               description="Nothing matches the current filters."
             />
           )}
-          {filtered.map((c) => (
+          {conversations.map((c) => (
             // A link, so Cmd/Ctrl/middle-click opens the conversation in a new
             // tab; a plain click selects it in place.
             <a
               key={c.id}
               href={conversationHref(c.id)}
+              data-conversation-row={c.id}
               aria-current={selectedId === c.id ? "page" : undefined}
               onClick={(event) => {
                 if (
@@ -1231,7 +1339,7 @@ export function InboxClient({
                 event.preventDefault();
                 select(c);
               }}
-              className={`focus-visible:ring-ring flex gap-3 border-b px-4 py-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${
+              className={`focus-visible:ring-ring flex gap-3 border-b px-4 py-3 text-left transition-colors [contain-intrinsic-size:auto_96px] [content-visibility:auto] focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${
                 selectedId === c.id ? "bg-primary/5 dark:bg-primary/25" : "hover:bg-muted/50"
               }`}
             >
@@ -1270,13 +1378,14 @@ export function InboxClient({
               disabled={loadingList}
               onClick={() => void loadMore()}
             >
-              {loadingList ? "Loading…" : "Load more"}
+              <RollInText text={loadingList ? "Loading…" : "Load more"} />
             </Button>
           )}
         </aside>
 
         {/* Thread */}
         <section
+          aria-label="Transcript"
           className={`min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:block ${
             selected ? "block" : "hidden"
           }`}
@@ -1305,6 +1414,7 @@ export function InboxClient({
                   size="sm"
                   className="lg:hidden"
                   onClick={() => {
+                    restoreRowId.current = selectedId;
                     setSelectedId(null);
                     replaceConversationParam(null);
                   }}
@@ -1312,9 +1422,11 @@ export function InboxClient({
                   <ChevronLeft className="size-4" /> All conversations
                 </Button>
                 <Button
+                  ref={detailsButtonRef}
                   variant="outline"
                   size="sm"
                   className="ml-auto"
+                  aria-expanded={detailsOpen}
                   onClick={() => setDetailsOpen(true)}
                 >
                   <Info className="size-4" /> Details
@@ -1326,26 +1438,65 @@ export function InboxClient({
                   {subjectInitials(selected)}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{subjectName(selected)}</p>
+                  <h2
+                    ref={threadHeadingRef}
+                    tabIndex={-1}
+                    className="truncate font-semibold outline-none"
+                  >
+                    {subjectName(selected)}
+                  </h2>
                   <p className="text-muted-foreground truncate text-sm">
                     {selected.metadata.userEmail ?? selected.subjectId}
                     {selected.metadata.userRole ? ` • ${selected.metadata.userRole}` : ""}
                   </p>
                 </div>
-                <Badge variant="outline" className="font-mono">
-                  ID {selected.id}
+                {/* A full UUID does not fit beside a name on a phone; the
+                    Details pane carries it there. */}
+                <Badge
+                  variant="outline"
+                  translate="no"
+                  title={selected.id}
+                  className="hidden max-w-[40%] font-mono sm:inline-flex"
+                >
+                  <span className="truncate">ID {selected.id}</span>
                 </Badge>
               </div>
 
               <p className="text-muted-foreground text-xs font-medium">
-                {selected.messageCount} Messages •{dayLabel(selected.createdAt)}{" "}
+                <RollingNumber value={selected.messageCount} />{" "}
+                {selected.messageCount === 1 ? "message" : "messages"} •{" "}
+                {dayLabel(selected.createdAt)}{" "}
                 <span className="ml-1 inline-block h-px w-40 translate-y-[-3px] bg-current opacity-30" />
               </p>
 
-              {messages === null && (
-                <p className="text-muted-foreground animate-pulse text-sm">
+              {messages === null && !transcriptError && (
+                <p role="status" className="text-muted-foreground animate-pulse text-sm">
                   Loading messages…
                 </p>
+              )}
+
+              {transcriptError && (
+                <div role="alert" className="flex flex-col items-start gap-2 rounded-xl border border-dashed px-4 py-3 text-sm">
+                  <p className="font-medium">Could not load this conversation</p>
+                  <p className="text-muted-foreground">
+                    Check your connection, then try again.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void loadConversation(selected.id)}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              )}
+
+              {messages?.length === 0 && (
+                <EmptyState
+                  size="sm"
+                  title="No messages"
+                  description="This conversation has no stored messages."
+                />
               )}
 
               {messages?.map((m) => {
@@ -1355,7 +1506,7 @@ export function InboxClient({
                   return (
                     <div
                       key={m.id}
-                      className="flex flex-row-reverse items-start gap-2.5"
+                      className="flex flex-row-reverse items-start gap-2.5 [contain-intrinsic-size:auto_64px] [content-visibility:auto]"
                     >
                       <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-2xs font-bold">
                         {subjectInitials(selected)}
@@ -1375,37 +1526,40 @@ export function InboxClient({
                 return (
                   <div key={m.id} className="space-y-2 pl-10">
                     {m.flowName && (
-                      <div className="flex items-center justify-center gap-2 py-1">
-                        <span className="bg-border h-px flex-1" />
-                        <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
-                          <CirclePlay className="size-3.5 text-emerald-500" />
-                          Workflow triggered: {m.flowName}
-                        </span>
-                        <span className="bg-border h-px flex-1" />
-                      </div>
+                      <WorkflowMarker
+                        icon={<CirclePlay className="size-3.5 text-emerald-500" />}
+                      >
+                        Workflow triggered: {m.flowName}
+                      </WorkflowMarker>
                     )}
-                    {trace && (
-                      <ThinkingPanel
-                        steps={trace.steps}
-                        phase="done"
-                        searchCount={trace.searchCount}
-                        active={false}
-                        summaryLabel={storedTraceLabel(trace)}
-                        note={traceNote(trace)}
-                      />
-                    )}
-                    {trace?.preflight && <PreflightRecordPanel record={trace.preflight} />}
-                    {(m.content as ChatReplyPart[]).map((part, i) => (
-                      <MessagePart key={i} part={part} />
-                    ))}
+                    {/* Off-screen turns skip layout and paint. Only the content:
+                        containment clips overflow, and the reaction menu in the
+                        row below opens outside its box. The side padding keeps
+                        a child's focus ring inside the clip. */}
+                    <div className="-mx-1 space-y-2 px-1 [contain-intrinsic-size:auto_120px] [content-visibility:auto]">
+                      {trace && (
+                        <ThinkingPanel
+                          steps={trace.steps}
+                          phase="done"
+                          searchCount={trace.searchCount}
+                          active={false}
+                          summaryLabel={storedTraceLabel(trace)}
+                          note={traceNote(trace)}
+                        />
+                      )}
+                      {trace?.preflight && <PreflightRecordPanel record={trace.preflight} />}
+                      {(m.content as ChatReplyPart[]).map((part, i) => (
+                        <MessagePart key={i} part={part} />
+                      ))}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 pt-0.5">
                       {canEdit && (
                         <button
                           type="button"
                           onClick={() => setImproveMessageId(m.id)}
-                          className="text-primary hover:bg-primary/15 bg-primary/10 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
+                          className="text-primary hover:bg-primary/15 bg-primary/10 focus-visible:ring-ring inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         >
-                          <WandSparkles className="size-3.5" /> Improve Answer
+                          <WandSparkles aria-hidden="true" className="size-3.5" /> Improve Answer
                         </button>
                       )}
                       {(m.content as ChatReplyPart[]).some(
@@ -1440,6 +1594,8 @@ export function InboxClient({
                             {v.verdict === "pass"
                               ? "Verified"
                               : "Failed verification"}
+                            {/* The tooltip is pointer-only; this is the same reason, read aloud. */}
+                            {v.reason && <span className="sr-only">: {v.reason}</span>}
                           </span>
                         ))}
                       {links
@@ -1459,7 +1615,9 @@ export function InboxClient({
                         {m.feedbackReaction ? (
                           <span className="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs">
                             <span aria-hidden>{feedbackReactionById(m.feedbackReaction)?.emoji}</span>
-                            <span>{feedbackReactionById(m.feedbackReaction)?.label}</span>
+                            <RollInText
+                              text={feedbackReactionById(m.feedbackReaction)?.label ?? ""}
+                            />
                           </span>
                         ) : m.feedback !== 0 ? (
                           <span className="text-muted-foreground text-xs">
@@ -1474,14 +1632,11 @@ export function InboxClient({
                     </div>
                     <MessageTime iso={m.createdAt} />
                     {m.flowName && (
-                      <div className="flex items-center justify-center gap-2 py-1">
-                        <span className="bg-border h-px flex-1" />
-                        <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
-                          <SquareCheck className="size-3.5 text-red-400" />
-                          Workflow ended: {m.flowName}
-                        </span>
-                        <span className="bg-border h-px flex-1" />
-                      </div>
+                      <WorkflowMarker
+                        icon={<SquareCheck className="size-3.5 text-red-400" />}
+                      >
+                        Workflow ended: {m.flowName}
+                      </WorkflowMarker>
                     )}
                   </div>
                 );
@@ -1495,9 +1650,19 @@ export function InboxClient({
             "Details" button, which opens this same content as a sheet. */}
         {selected && (
           <aside
+            aria-label="Details"
+            onKeyDown={
+              detailsOpen
+                ? (event) => {
+                    if (event.key !== "Escape") return;
+                    event.stopPropagation();
+                    dismissDetails();
+                  }
+                : undefined
+            }
             className={
               detailsOpen
-                ? `bg-background fixed inset-y-0 right-0 z-50 w-[22rem] max-w-[88vw] space-y-4 overflow-y-auto border-l p-4 shadow-2xl duration-200 xl:static xl:z-auto xl:w-80 xl:max-w-none xl:shrink-0 xl:animate-none xl:bg-muted/40 xl:shadow-none ${
+                ? `bg-background fixed inset-y-0 right-0 z-50 w-[22rem] max-w-[88vw] space-y-4 overflow-y-auto overscroll-contain border-l p-4 shadow-2xl duration-200 xl:static xl:z-auto xl:w-80 xl:max-w-none xl:shrink-0 xl:animate-none xl:bg-muted/40 xl:shadow-none ${
                     // Leaves toward the edge it arrived from. It used to slide
                     // in from the right and then switch to `hidden`, so the
                     // sheet's exit contradicted its entrance.
@@ -1509,14 +1674,20 @@ export function InboxClient({
             }
           >
             <div className="flex items-center justify-between xl:hidden">
-              <h2 className="text-sm font-semibold">Conversation</h2>
+              <h2
+                ref={detailsHeadingRef}
+                tabIndex={-1}
+                className="text-sm font-semibold outline-none"
+              >
+                Conversation
+              </h2>
               <button
                 type="button"
                 aria-label="Close details"
-                onClick={closeDetails}
-                className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-9 items-center justify-center rounded-lg transition-colors"
+                onClick={dismissDetails}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex size-9 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
-                <X className="size-4" />
+                <X aria-hidden="true" className="size-4" />
               </button>
             </div>
             <Card size="sm" className="gap-3 p-4">
@@ -1614,22 +1785,27 @@ export function InboxClient({
 
             <Card size="sm" className="gap-3 p-4">
               <h3 className="font-semibold">Retention</h3>
-              <DetailRow
-                label="Legal hold"
-                value={
-                  selected.legalHold
-                    ? "Held: the retention sweep skips this conversation"
-                    : "Not held"
-                }
-              />
+              <div aria-live="polite">
+                <DetailRow
+                  label="Legal hold"
+                  value={
+                    selected.legalHold
+                      ? "Held: the retention sweep skips this conversation"
+                      : "Not held"
+                  }
+                />
+              </div>
               {canManageRetention && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="w-fit"
-                  onClick={() => toggleLegalHold(selected.id, !selected.legalHold)}
+                  disabled={legalHoldPending}
+                  onClick={() => requestLegalHoldChange(selected)}
                 >
-                  {selected.legalHold ? "Release legal hold" : "Place legal hold"}
+                  <RollInText
+                    text={selected.legalHold ? "Release legal hold" : "Place legal hold"}
+                  />
                 </Button>
               )}
             </Card>
@@ -1642,6 +1818,7 @@ export function InboxClient({
         onClose={() => setImproveMessageId(null)}
         onChanged={refreshLinks}
       />
+      {confirmDeleteModal}
     </div>
     </StudyProvider>
   );

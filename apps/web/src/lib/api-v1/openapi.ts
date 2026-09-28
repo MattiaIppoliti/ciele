@@ -9,7 +9,10 @@ import {
   assistantPatchSchema,
   createAssistantOp,
   createFaqOp,
+  createInviteOp,
   createOrgFaqOp,
+  searchKnowledgeOp,
+  askAssistantInput,
   draftFlowOp,
   projectPatchSchema,
   provisionTeammateOp,
@@ -43,6 +46,7 @@ import {
 } from "@ciele/ops";
 import { API_V1_DOMAINS, API_V1_VERSION, type ApiV1Domain } from "@/lib/api-v1/meta";
 import type { ApiCapability } from "@/lib/api-v1/auth";
+import type { ApiRateLimitName } from "@/lib/api-v1/throttle";
 import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "@/lib/api-v1/http";
 import responseSchemas from "./response-schemas.generated.json";
 
@@ -99,8 +103,8 @@ export interface EndpointSpec {
   auth?: boolean;
   /** Honors the Idempotency-Key header. */
   idempotent?: boolean;
-  /** May be rejected by the shared source-ingestion rate limit. */
-  rateLimited?: boolean;
+  /** May be answered 429 under this named budget (`lib/api-v1/throttle.ts`). */
+  rateLimited?: ApiRateLimitName;
 }
 
 const reorderBody = z.object({ orderedIds: z.array(z.string()) });
@@ -116,6 +120,9 @@ const decideReviewBody = z.object({
 const exportBody = z.object({ conversationIds: z.array(z.string()) });
 const faqBody = createFaqOp.input;
 const orgFaqBody = createOrgFaqOp.input;
+const knowledgeSearchBody = searchKnowledgeOp.input;
+// The path supplies `id`.
+const askBody = askAssistantInput.omit({ id: true });
 const linksBody = z.object({ assistantIds: z.array(z.string().min(1)).max(50) });
 const directAccessBody = z.object({
   assistantId: z.string().min(1),
@@ -195,7 +202,7 @@ const goalPatchBody = z.object({
 });
 const roleSchema = z.enum(["owner", "admin", "editor", "viewer"]);
 const memberRoleBody = z.object({ role: roleSchema });
-const inviteBody = z.object({ role: roleSchema, email: z.string().email().optional() });
+const inviteBody = createInviteOp.input;
 const apiKeyBody = z.object({ name: z.string(), role: roleSchema });
 const embeddingConnectionBody = z.object({ connectionId: z.string().nullable() });
 const conversationPinnedBody = z.object({ pinned: z.boolean() });
@@ -256,6 +263,18 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     summary: "Delete an Assistant (admin+)",
     cli: "ciele assistants delete {assistantId} --yes",
     mcp: '{"action":"delete","id":"{assistantId}"}',
+  },
+  {
+    method: "post",
+    path: "/assistants/{id}/ask",
+    domain: "assistants",
+    capability: "member",
+    summary:
+      "Ask an Assistant a question; get its published answer with the Sources it cited (conversationId continues a thread)",
+    body: askBody,
+    rateLimited: "assistant-ask",
+    cli: 'ciele assistants ask {assistantId} "How do I reset my password?"',
+    mcp: '{"action":"ask","id":"{assistantId}","question":"How do I reset my password?"}',
   },
   {
     method: "post",
@@ -433,7 +452,7 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: sourceBody,
     multipart: ["file"],
     idempotent: true,
-    rateLimited: true,
+    rateLimited: "source-ingestion",
     cli: "ciele sources add-url {collectionId} --url https://example.com/help --assistants {assistantId}",
     mcp: '{"action":"add_url","collectionId":"{collectionId}","url":"https://example.com/help","assistantIds":["{assistantId}"]}',
   },
@@ -505,7 +524,7 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: orgSourceBody,
     multipart: ["file"],
     idempotent: true,
-    rateLimited: true,
+    rateLimited: "source-ingestion",
     cli: "ciele sources add-org --url https://example.com/help --assistants {assistantId}",
     mcp: '{"action":"add_org_url","url":"https://example.com/help","assistantIds":["{assistantId}"]}',
   },
@@ -528,6 +547,18 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: directAccessBody,
     cli: "ciele sources direct-access {sourceId} on --assistant {assistantId}",
     mcp: '{"action":"set_direct_access","sourceId":"{sourceId}","assistantId":"{assistantId}","directAccess":true}',
+  },
+  {
+    method: "post",
+    path: "/knowledge/search",
+    domain: "knowledge",
+    capability: "member",
+    summary:
+      "Search the knowledge and get passages with their Sources (optional assistantId narrows to that Assistant)",
+    body: knowledgeSearchBody,
+    rateLimited: "knowledge-search",
+    cli: 'ciele knowledge search "How do I reset my password?" --assistant {assistantId}',
+    mcp: '{"action":"search","query":"How do I reset my password?","assistantId":"{assistantId}"}',
   },
   {
     method: "post",
@@ -1884,11 +1915,12 @@ export function buildOpenApiDocument() {
       errors["503"] = errorResponse("Idempotency storage is temporarily unavailable");
     }
     if (endpoint.rateLimited) {
+      const limit = endpoint.rateLimited;
       errors["429"] = {
-        ...errorResponse("The source-ingestion rate limit was exceeded"),
+        ...errorResponse(`The ${limit} rate limit was exceeded`),
         headers: {
           "Retry-After": {
-            description: "Seconds until another source-ingestion request is allowed.",
+            description: `Seconds until another ${limit} request is allowed.`,
             schema: { type: "integer" },
           },
         },

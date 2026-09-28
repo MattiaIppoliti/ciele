@@ -24,6 +24,8 @@ export function DeferredUsageCard(props: {
   assistants: BreakdownSeries[];
   channels: BreakdownSeries[];
   defaultVisibleMetrics: string[];
+  /** When `labels` and the series were fetched, epoch ms. */
+  fetchedAt: number;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -48,9 +50,11 @@ export function DeferredUsageCard(props: {
         <UsageCard {...props} />
       ) : (
         <div
-          aria-label="Loading usage chart"
-          className="bg-muted/40 h-[28rem] animate-pulse rounded-xl border"
-        />
+          role="status"
+          className="bg-muted/40 h-[28rem] rounded-xl border motion-safe:animate-pulse"
+        >
+          <span className="sr-only">Loading usage chart…</span>
+        </div>
       )}
     </div>
   );

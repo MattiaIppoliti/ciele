@@ -3,18 +3,13 @@ import {
   apiKeySecretHint,
   generateApiKeySecret,
   hashApiKeySecret,
+  memberRoleRank,
 } from "@agent-hub/core";
 import { z } from "zod";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
 
 const idSchema = z.string().min(1);
 const roleSchema = z.enum(["owner", "admin", "editor", "viewer"]);
-const roleRank: Record<Role, number> = {
-  owner: 4,
-  admin: 3,
-  editor: 2,
-  viewer: 1,
-};
 
 async function requireMemberRow(
   ctx: OperationContext,
@@ -106,6 +101,33 @@ export const updateOrganizationOp = defineOperation({
   input: organizationPatchSchema,
   entities: () => [{ kind: "organization" as const }],
   run: (ctx, patch) => ctx.db.updateOrganization(ctx.organizationId, patch),
+});
+
+const positiveLimit = (message: string) =>
+  z.number({ error: message }).positive(message).nullable();
+
+/**
+ * The Organization's daily AI budget (Settings → AI). Admin+, the same gate
+ * as provider keys, since the budget decides whether their spend is allowed.
+ * A limit is positive or absent; tokens are whole and euros are cents.
+ */
+export const setOrgBudgetOp = defineOperation({
+  name: "organization.budget.set",
+  capability: "manageMembers",
+  input: z.object({
+    dailyTokenLimit: positiveLimit("The daily token limit must be a positive number."),
+    dailyEuroLimit: positiveLimit("The daily euro limit must be a positive number."),
+    enforcement: z.enum(["notify", "block"]),
+  }),
+  entities: () => [{ kind: "aiSettings" as const }],
+  run: (ctx, input) =>
+    ctx.db.setOrgBudget(ctx.organizationId, {
+      dailyTokenLimit:
+        input.dailyTokenLimit === null ? null : Math.floor(input.dailyTokenLimit),
+      dailyEuroLimit:
+        input.dailyEuroLimit === null ? null : Math.round(input.dailyEuroLimit * 100) / 100,
+      enforcement: input.enforcement,
+    }),
 });
 
 export const listMembersOp = defineOperation({
@@ -216,7 +238,7 @@ export const createOrgApiKeyOp = defineOperation({
   }),
   entities: () => [{ kind: "apiKeys" as const }],
   run: async (ctx, { name, role }) => {
-    if (roleRank[role] > roleRank[ctx.role]) {
+    if (memberRoleRank(role) > memberRoleRank(ctx.role)) {
       throw new OperationError(
         "invalid_input",
         "An API key's role cannot exceed the calling key's role"

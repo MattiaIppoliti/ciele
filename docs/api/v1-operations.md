@@ -33,6 +33,7 @@ Columns:
 | `assistants.update` | edit | `PATCH /api/v1/assistants/{id}` | |
 | `assistants.delete` | publish | `DELETE /api/v1/assistants/{id}` | graph purge per Collection via the `purgeCollectionGraph` port |
 | `assistants.duplicate` | edit | `POST /api/v1/assistants/{id}/duplicate` |, (multi-step Db orchestration: config, Skills, Flows) |
+| `assistants.ask` | member | `POST /api/v1/assistants/{id}/ask` | one Conversation Turn on the latest Publication via the `askAssistant` port (see below) |
 
 Not extracted (web-only for now): avatar upload (`uploadAssistantAvatarAction`,
 multipart + object storage; joins the catalogue when the Files/storage story
@@ -68,6 +69,35 @@ lands in the Knowledge slice).
 | `knowledge.faqs.create` | edit | `POST /api/v1/collections/{id}/faqs` | OKF persist via `persistFaq` port |
 | `knowledge.faqs.import` | edit | `POST /api/v1/collections/{id}/faqs/import` | CSV parsing at the surface; indexed paths + CSV provenance |
 | `knowledge.sources.recrawl` | edit | `POST /api/v1/sources/{id}/recrawl` | crawl restart via `restartCrawl` port |
+| `knowledge.search` | member | `POST /api/v1/knowledge/search` | the runtime's searcher factory via the `searchKnowledge` port (see below) |
+
+### Search and ask from outside
+
+Two doors for a third-party client, split by whether it brings its own model.
+
+- **`knowledge.search`** (`manage_knowledge` action `search`, `ciele knowledge search`) returns
+  the six reranked passages a widget would cite, with their Document, Source and URL, and **no
+  answer**. It goes through the runtime's one searcher factory by the `searchKnowledge` port,
+  because retrieval embeds and reranks in the runtime and chunk search is not on the org-pinned
+  view. Without `assistantId` it searches the whole Library. It creates no Conversation, so it
+  stays out of the Inbox and Insights by construction, and read-only MCP allows it.
+- **`assistants.ask`** (`manage_assistants` action `ask`, `ciele assistants ask`) runs the real
+  turn on the latest Publication and drains it server-side through `answerConversationTurn`,
+  the `consumeTurnStream` fold the widget, Preview and Inbox share, returning
+  `{answer, sources, flowName, conversationId}`. Its subject is `member` = the key's creator,
+  the Preview's subject, so Insights leaves it out (ADR-0010); `metadata.apiKeyId` marks it, and
+  the Inbox labels it "API key" (hidden by default with the other staff traffic, like the
+  Preview). A `conversationId` continues a thread only when that key started it: the turn checks
+  the subject, which every key a Member mints shares with the Member's own Preview, so the port
+  also compares `metadata.apiKeyId`. No `keyResolution`, so Organization connections only, and
+  the spend is attributed to the key. An unpublished Assistant is a 409; read-only MCP refuses
+  it, because it writes a Conversation. The route, and `/api/mcp`, which waits on it, set
+  `maxDuration = 300`.
+
+Both are budgeted per key by `perKeyThrottle` (`apps/web/src/lib/api-v1/throttle.ts`): 60
+searches and 20 questions a minute. That budget is per key **per instance** (the in-process
+limiter of `lib/rate-limit.ts`), so a key is never refused below it but a warm fleet can admit
+more; the shared ceiling on model turns is the runtime's Postgres-backed turn concurrency.
 
 ## Publish (shipped, #623)
 

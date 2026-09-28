@@ -27,6 +27,7 @@ import {
   openBillingPortalAction,
   startPlanCheckoutAction,
 } from "@/app/(admin)/settings/billing/actions";
+import { PendingSubmitButton } from "@/components/settings/pending-submit-button";
 
 /**
  * The plan, its meters, and the way up, on Billing (#511).
@@ -262,14 +263,14 @@ export function PlanUpgradeCard({
             {paying ? null : tier.cta === "checkout" ? (
               <form action={startPlanCheckoutAction}>
                 <input type="hidden" name="plan" value={tier.slug} />
-                <Button type="submit">
-                  {/* A pending org has no plan to move from, and a comped one is
-                      already on the tier it is being offered, both are a first
-                      subscription, not a move. */}
+                {/* A pending org has no plan to move from, and a comped one is
+                    already on the tier it is being offered, both are a first
+                    subscription, not a move. */}
+                <PendingSubmitButton pendingLabel="Opening checkout…">
                   {pending || tier.slug === plan
                     ? `Subscribe to ${tier.name}`
                     : `Move to ${tier.name}`}
-                </Button>
+                </PendingSubmitButton>
               </form>
             ) : (
               <Button variant="outline" render={<Link href="/contact/sales" />}>
@@ -280,7 +281,9 @@ export function PlanUpgradeCard({
         ))}
         {paying ? (
           <form action={openBillingPortalAction}>
-            <Button type="submit">Manage plan and billing</Button>
+            <PendingSubmitButton pendingLabel="Opening Stripe…">
+              Manage plan and billing
+            </PendingSubmitButton>
           </form>
         ) : null}
       </CardContent>

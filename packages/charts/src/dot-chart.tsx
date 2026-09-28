@@ -12,19 +12,17 @@ import {
   useState,
 } from "react";
 import { motion } from "motion/react";
+import { APPEARANCE } from "./appearances";
 import {
   buildSeriesPath,
   clamp,
   interpolateHeight,
   normalizeValues,
-  resolveSectionPalette,
 } from "./helpers";
-import { NAVY_SECTIONS } from "./palettes";
 import type {
   DotChartActivePoint,
   DotChartDataPoint,
   DotChartStatus,
-  DotPalette,
 } from "./types";
 
 const DOT_TRANSITION = {
@@ -39,15 +37,15 @@ export const DOT_ROWS = 14;
 export const DOT_SIZE = 4;
 export const DOT_GAP = 5;
 export const DOT_CELL_SIZE = DOT_SIZE + DOT_GAP;
+const SVG_HEIGHT = Math.max(DOT_ROWS * DOT_CELL_SIZE, DOT_SIZE);
 
 const ACTIVE_COLUMN_SPREAD = 4;
 
-// Module-level default, must be a stable reference so it doesn't
-// invalidate useMemo on every render.
-const FALLBACK_PALETTE: DotPalette = {
-  filled: "rgba(147,197,253,0.72)",
-  active: "#60a5fa",
-  topDot: "#3b82f6",
+/** Dot colors: the ciele brand-navy used across both consoles. */
+const PALETTE = {
+  filled: "rgba(38,46,92,0.55)",
+  active: "#3c477e",
+  topDot: "#1d2450",
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -59,9 +57,6 @@ interface DotColumnProps {
   columnHeight: number;
   isActiveColumn: boolean;
   activeInfluence: number;
-  colors: DotPalette;
-  idleColor: string;
-  hoverColor: string;
   disableAnimation: boolean;
 }
 
@@ -70,9 +65,6 @@ const DotColumn = memo(function DotColumn({
   columnHeight,
   isActiveColumn,
   activeInfluence,
-  colors,
-  idleColor,
-  hoverColor,
   disableAnimation,
 }: DotColumnProps) {
   const baseX = columnIndex * DOT_CELL_SIZE + DOT_SIZE / 2;
@@ -97,14 +89,14 @@ const DotColumn = memo(function DotColumn({
             initial={false}
             animate={{
               fill: isTopDot
-                ? colors.topDot
+                ? PALETTE.topDot
                 : useActiveColor
-                  ? colors.active
+                  ? PALETTE.active
                   : isActiveColumn
-                    ? hoverColor
+                    ? APPEARANCE.hoverDot
                     : isFilled
-                      ? colors.filled
-                      : idleColor,
+                      ? PALETTE.filled
+                      : APPEARANCE.idleDot,
               opacity: isTopDot
                 ? 1
                 : useActiveColor
@@ -132,22 +124,14 @@ const DotColumn = memo(function DotColumn({
 export interface DotChartProps {
   data: readonly DotChartDataPoint[];
   compare?: readonly DotChartDataPoint[];
-  idleColor?: string;
-  hoverColor?: string;
-  /** Render the primary (current) series as a line overlay tracing each column's peak */
-  showPrimaryLine?: boolean;
-  /** Render the compare (previous) series as a line overlay. Ignored if `compare` is not provided */
-  showCompareLine?: boolean;
-  /** Stroke color for the primary (current) series line overlay */
-  primaryLineStroke?: string;
-  /** Stroke color for the compare (previous) series line overlay */
-  compareLineStroke?: string;
-  /** Fill color for the compare-series area below the line (null/undefined disables fill) */
-  compareLineFill?: string;
+  /**
+   * Render both series as line overlays tracing each column's peak: the
+   * primary (current) one and, when `compare` is provided, the previous one.
+   */
+  showLines: boolean;
   defaultActiveIndex?: number;
   onActivePointChange?: (point: DotChartActivePoint) => void;
   onPointerLeave?: () => void;
-  status?: DotChartStatus;
   disableAnimation?: boolean;
   ariaLabel?: string;
 }
@@ -155,17 +139,10 @@ export interface DotChartProps {
 function DotChartImpl({
   data,
   compare,
-  idleColor = "rgba(18,18,18,0.08)",
-  hoverColor = "rgba(18,18,18,0.04)",
-  showPrimaryLine = false,
-  showCompareLine = true,
-  primaryLineStroke = "rgba(18,18,18,0.85)",
-  compareLineStroke = "rgba(18,18,18,0.4)",
-  compareLineFill = "rgba(18,18,18,0.06)",
+  showLines,
   defaultActiveIndex,
   onActivePointChange,
   onPointerLeave,
-  status = "idle",
   disableAnimation = false,
   ariaLabel,
 }: DotChartProps) {
@@ -188,23 +165,19 @@ function DotChartImpl({
       ? Math.max(1, Math.floor(containerWidth / DOT_CELL_SIZE))
       : 0;
   const svgWidth = Math.max(columnCount * DOT_CELL_SIZE, DOT_SIZE);
-  const svgHeight = Math.max(DOT_ROWS * DOT_CELL_SIZE, DOT_SIZE);
   const hasData = data.length > 0;
-  const effectiveStatus: DotChartStatus =
-    status === "idle" && !hasData ? "empty" : status;
+  const effectiveStatus: DotChartStatus = hasData ? "idle" : "empty";
 
   // Memoize per-column computations. Intentionally excludes `activeColumn`
   // so mouse-move re-renders don't re-run this heavy work.
   const {
     columnHeights,
-    columnColors,
     primaryLinePath,
     compareStrokePath,
     compareAreaPath,
   } = useMemo(() => {
     const empty = {
       columnHeights: [] as number[],
-      columnColors: [] as DotPalette[],
       primaryLinePath: "",
       compareStrokePath: "",
       compareAreaPath: "",
@@ -222,26 +195,18 @@ function DotChartImpl({
       : [];
 
     const heights = new Array<number>(columnCount);
-    const palettes = new Array<DotPalette>(columnCount);
     const compareH: number[] = compare ? new Array<number>(columnCount) : [];
 
     for (let i = 0; i < columnCount; i++) {
       heights[i] = interpolateHeight(i, columnCount, normalized);
-      palettes[i] = resolveSectionPalette(
-        i,
-        columnCount,
-        NAVY_SECTIONS,
-        FALLBACK_PALETTE,
-      );
       if (compare) {
         compareH[i] = interpolateHeight(i, columnCount, normalizedCompare);
       }
     }
 
-    const pathArgs = [DOT_ROWS, DOT_CELL_SIZE, DOT_SIZE, svgHeight] as const;
+    const pathArgs = [DOT_ROWS, DOT_CELL_SIZE, DOT_SIZE, SVG_HEIGHT] as const;
     return {
       columnHeights: heights,
-      columnColors: palettes,
       primaryLinePath:
         heights.length > 1
           ? buildSeriesPath(heights, ...pathArgs, "stroke")
@@ -255,7 +220,7 @@ function DotChartImpl({
           ? buildSeriesPath(compareH, ...pathArgs, "area")
           : "",
     };
-  }, [effectiveStatus, hasData, columnCount, data, compare, svgHeight]);
+  }, [effectiveStatus, hasData, columnCount, data, compare]);
 
   const resolveColumnIndex = useCallback(
     (dataIndex: number) => {
@@ -383,8 +348,8 @@ function DotChartImpl({
           aria-label={descriptiveLabel}
           tabIndex={effectiveStatus === "idle" ? 0 : -1}
           width={svgWidth}
-          height={svgHeight}
-          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          height={SVG_HEIGHT}
+          viewBox={`0 0 ${svgWidth} ${SVG_HEIGHT}`}
           onPointerMove={handlePointerMove}
           onPointerLeave={onPointerLeave}
           onKeyDown={handleKeyDown}
@@ -399,20 +364,18 @@ function DotChartImpl({
               top. Previous is visually secondary, so a lighter stroke + area
               fill are fine under the dots. */}
           {effectiveStatus === "idle" &&
-            showCompareLine &&
+            showLines &&
             compareStrokePath && (
               <g aria-hidden>
-                {compareLineFill && (
-                  <path
-                    d={compareAreaPath}
-                    fill={compareLineFill}
-                    stroke="none"
-                  />
-                )}
+                <path
+                  d={compareAreaPath}
+                  fill={APPEARANCE.compareLineFill}
+                  stroke="none"
+                />
                 <path
                   d={compareStrokePath}
                   fill="none"
-                  stroke={compareLineStroke}
+                  stroke={APPEARANCE.compareLineStroke}
                   strokeWidth={1.4}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -438,9 +401,6 @@ function DotChartImpl({
                   columnHeight={columnHeight}
                   isActiveColumn={activeColumn === columnIndex}
                   activeInfluence={activeInfluence}
-                  colors={columnColors[columnIndex]}
-                  idleColor={idleColor}
-                  hoverColor={hoverColor}
                   disableAnimation={disableAnimation}
                 />
               );
@@ -449,12 +409,12 @@ function DotChartImpl({
           {/* Primary (current) series line, rendered AFTER dots so the line
               sits on top. This is the "bold" line in compare view; stroke is
               thicker than the compare line to establish visual hierarchy. */}
-          {effectiveStatus === "idle" && showPrimaryLine && primaryLinePath && (
+          {effectiveStatus === "idle" && showLines && primaryLinePath && (
             <path
               aria-hidden
               d={primaryLinePath}
               fill="none"
-              stroke={primaryLineStroke}
+              stroke={APPEARANCE.primaryLineStroke}
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"

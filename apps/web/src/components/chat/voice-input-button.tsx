@@ -170,10 +170,10 @@ export function VoiceInputButton({
       {state === "recording" ? (
         <>
           <span className="text-xs tabular-nums text-muted-foreground">{seconds}s / {MAX_SECONDS}s</span>
-          <Button type="button" variant="ghost" size="icon" className="size-8 rounded-full" aria-label="Cancel recording" title="Cancel recording" onClick={cancel}><X className="size-4" /></Button>
+          <Button type="button" variant="ghost" className="size-8 rounded-full" aria-label="Cancel recording" title="Cancel recording" onClick={cancel}><X className="size-4" /></Button>
         </>
       ) : null}
-      <Button type="button" variant="ghost" size="icon" className="size-8 rounded-full" disabled={disabled && state === "idle"} aria-label={label} title={label} aria-pressed={state === "recording"}
+      <Button type="button" variant="ghost" className="size-8 rounded-full" disabled={disabled && state === "idle"} aria-label={label} title={label} aria-pressed={state === "recording"}
         onClick={() => state === "idle" ? void start() : state === "recording" ? recorder.current?.stop() : cancel()}>
         {state === "recording" ? <Square className="size-3.5 fill-current" /> : state === "idle" ? <Mic className="size-4" /> : <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />}
       </Button>

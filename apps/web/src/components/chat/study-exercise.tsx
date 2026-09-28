@@ -275,6 +275,7 @@ function ExerciseCard({ exercise }: { exercise: StudyExercise }) {
               <ArrowLeft className="size-4" />
             </Button>
             <span
+              role="img"
               className="flex gap-1.5"
               aria-label={`Question ${step + 1} of ${exercise.questions.length}`}
             >

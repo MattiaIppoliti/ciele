@@ -5,52 +5,53 @@ description: Configura un trigger, le condizioni disponibili e le azioni di risp
 
 ## Crea il flusso
 
-1. Apri un Assistente.
+1. Apri un Assistant.
 2. Seleziona **Flows**.
 3. Crea un Flow.
 4. Inserisci un nome e una descrizione chiari.
 5. Seleziona un trigger.
 
-La descrizione aiuta Intent Classification a selezionare un Flow per il
-messaggio. Indica l'intento del Visitatore e l'ambito richiesto.
+La descrizione aiuta la classificazione degli intenti a selezionare un Flow di
+messaggi. Indica l'intento del Visitor e l'ambito richiesto.
 
-Un Flow si attiva in seguito a un messaggio di un Visitatore, a un evento widget
-o a una richiesta HTTP in entrata. Gli eventi del widget sono il caricamento
-della pagina, il tempo trascorso sulla pagina e l'apertura della chat. Il
-trigger decide quali condizioni e quali azioni può utilizzare il Flow. Vedi
-[HTTP e webhook](/flows/http) per il trigger in entrata.
+Un Flow si attiva in seguito a un messaggio di un Visitor, a un evento del
+widget o a una richiesta HTTP in entrata. Gli eventi del widget sono page load,
+time on page e chat opens. Il trigger determina quali condizioni e quali azioni
+il Flow può utilizzare. Consulta [HTTP and webhooks](/flows/http) per
+informazioni sul trigger in entrata.
 
 ## Aggiungi condizioni per i messaggi
 
-I Message Flow supportano questi tipi di condizione:
+I Message Flow supportano questi tipi di condizioni:
 
-| Condizione | Comportamento attuale |
+| Condition | Comportamento attuale |
 | --- | --- |
-| Contesto della conversazione | Aggiunge esempi semantici alla Classificazione degli intenti. Non è un hard gate. |
+| Conversation context | Aggiunge esempi semantici alla classificazione degli intenti. Non è un hard gate. |
 | URL | Applica un hard gate di tipo Matches, Contains o Regex. |
-| Pianificazione | Applica un hard gate di inizio, fine e fuso orario. |
+| Schedule | Applica un hard gate per start, end e timezone. |
 
-Seleziona **Any condition matches** o **All conditions match** quando il flusso
+Seleziona **Any condition matches** o **All conditions match** quando il Flow
 contiene più di una condizione.
 
 Le condizioni URL e Schedule rimuovono un Flow non idoneo prima della
-classificazione. Una condizione soddisfatta non obbliga il Flow a vincere.
+classificazione. Una condizione soddisfatta non impone al Flow di prevalere.
 
-## Aggiungi azioni di risposta
+## Aggiungi le azioni di risposta
 
 1. Aggiungi le azioni richieste.
-2. Metti le azioni nel loro ordine di esecuzione.
+2. Ordina le azioni secondo il loro ordine di esecuzione.
 3. Configura tutti i campi obbligatori.
 4. Salva il Flow.
-5. Testa un messaggio corrispondente e uno non corrispondente.
+5. Esegui il test con un messaggio corrispondente e uno non corrispondente.
 
-L'editor limita i Flussi proattivi a una sola azione di Notifica. Il server
-applica la stessa regola quando salva o invia un Flow.
+L'editor limita i Flussi proattivi a una sola azione di tipo Notification. Il
+server applica la stessa regola quando salva o invia un Flow.
 
-## Riordina i flussi
+## Riordina i Flussi
 
-Trascina un Flow per modificare la priorità di instradamento dei messaggi. Il
-flusso di comportamento predefinito rimane per ultimo.
+Trascina un Flow per modificare la priorità di instradamento dei messaggi. Con
+la tastiera, sposta il focus sulla maniglia di un Flow e premi il tasto freccia
+su o giù. Il Flow con comportamento Default rimane l'ultimo.
 
 Disabilita un Flow quando devi interromperne il routing senza eliminarne la
 configurazione.

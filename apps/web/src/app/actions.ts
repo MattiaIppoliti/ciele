@@ -1,5 +1,6 @@
 "use server";
 
+import { ZodError } from "zod";
 import type {
   ApiEndpointSpec,
   ApiIntegrationAuthType,
@@ -49,14 +50,10 @@ import type {
   StoredMessage,
   SupportChannelInput,
   SupportChannelPatch,
-  TriageEvidence,
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
 import { connectorAction } from "@agent-hub/core";
-import {
-  sealSecret,
-  thrownMessage,
-} from "@agent-hub/core";
+import { thrownMessage } from "@agent-hub/core";
 import {
   isSupabaseConfigured,
   raiseImprovement,
@@ -114,6 +111,7 @@ import { orgMutation, revalidateEntities } from "@/lib/org-mutation";
 import { runOperation } from "@/lib/operations";
 import {
   acceptSuggestedFixOp,
+  configureEntitySyncOp,
   dismissSuggestedFixOp,
   addSourceOp,
   createAssistantOp,
@@ -191,6 +189,7 @@ import {
   revokeInviteOp,
   revokeOrgApiKeyOp,
   updateMemberRoleOp,
+  setOrgBudgetOp,
   updateOrganizationOp,
   leaveOrganizationOp,
   createFederatedProviderConnectionOp,
@@ -228,6 +227,7 @@ import { FAQ_CSV_MAX_BYTES, parseFaqCsv, serializeFaqCsv } from "@/lib/faq-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { getWidgetDb } from "@/lib/widget-db";
+import { starterSkills, type StarterSkill } from "@/lib/composer/skills";
 import { discoverScopesKeepingCredentials } from "@/lib/application-discovery";
 import { saveSlackBotSettings } from "@/lib/slack/settings";
 import { canViewReasoning } from "@/lib/rbac";
@@ -240,15 +240,14 @@ import {
 } from "@/lib/inbox/conversation-export";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  createSupabaseServiceClient,
   isSupabaseServiceConfigured,
+  objectStorageClient,
 } from "@/lib/supabase/service";
 import {
   downloadKnowledgeOriginal,
   uploadKnowledgeOriginal,
-  uploadPublicImageAsset,
+  uploadPublicImageFromForm,
   validateKnowledgeFile,
-  validatePublicImageFile,
 } from "@/lib/storage/assets";
 
 // --- Auth & organization ----------------------------------------------------
@@ -299,22 +298,11 @@ export async function uploadOrganizationLogoAction(
   formData: FormData,
 ): Promise<{ logoUrl?: string; error?: string }> {
   const { db, session } = await requireMember("manageMembers");
-
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose an image file" };
-  }
-  const validation = validatePublicImageFile(file);
-  if (!validation.ok) return { error: validation.error };
-  if (!isSupabaseConfigured() || !isSupabaseServiceConfigured()) {
-    return { error: "Object storage is not configured" };
-  }
-
-  const uploaded = await uploadPublicImageAsset(createSupabaseServiceClient(), {
+  const uploaded = await uploadPublicImageFromForm(objectStorageClient(), formData, {
     organizationId: session.organization.id,
     kind: "organization",
-    file,
   });
+  if (uploaded.error !== undefined) return { error: uploaded.error };
 
   await db.updateOrganization(session.organization.id, {
     logoUrl: uploaded.publicUrl,
@@ -329,28 +317,7 @@ export async function updateOrgBudgetAction(input: {
   dailyEuroLimit: number | null;
   enforcement: "notify" | "block";
 }): Promise<void> {
-  await orgMutation(
-    { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
-    async ({ db, session }) => {
-      const limit = input.dailyTokenLimit;
-      if (limit != null && (!Number.isFinite(limit) || limit <= 0)) {
-        throw new Error("The daily token limit must be a positive number.");
-      }
-      const euroLimit = input.dailyEuroLimit;
-      if (
-        euroLimit != null &&
-        (!Number.isFinite(euroLimit) || euroLimit <= 0)
-      ) {
-        throw new Error("The daily euro limit must be a positive number.");
-      }
-      await db.setOrgBudget(session.organization.id, {
-        dailyTokenLimit: limit == null ? null : Math.floor(limit),
-        dailyEuroLimit:
-          euroLimit == null ? null : Math.round(euroLimit * 100) / 100,
-        enforcement: input.enforcement === "block" ? "block" : "notify",
-      });
-    },
-  );
+  await runOperation(setOrgBudgetOp, input);
 }
 
 /** Weekly self-improvement (compost) opt-out. Admin+ (same gate as the budget). */
@@ -489,22 +456,11 @@ export async function uploadProfileAvatarAction(
   // Any Member may set their own photo; the object path is scoped to the
   // caller's active Organization prefix, matching the storage layout.
   const { db, session } = await requireMember();
-
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose an image file" };
-  }
-  const validation = validatePublicImageFile(file);
-  if (!validation.ok) return { error: validation.error };
-  if (!isSupabaseConfigured() || !isSupabaseServiceConfigured()) {
-    return { error: "Object storage is not configured" };
-  }
-
-  const uploaded = await uploadPublicImageAsset(createSupabaseServiceClient(), {
+  const uploaded = await uploadPublicImageFromForm(objectStorageClient(), formData, {
     organizationId: session.organization.id,
     kind: "profile",
-    file,
   });
+  if (uploaded.error !== undefined) return { error: uploaded.error };
 
   await db.updateProfile({ avatarUrl: uploaded.publicUrl });
   revalidatePath("/", "layout");
@@ -638,24 +594,11 @@ export async function uploadAssistantAvatarAction(
         throw new Error("Assistant not found");
       }
 
-      const file = formData.get("file");
-      if (!(file instanceof File) || file.size === 0) {
-        return { error: "Choose an image file" };
-      }
-      const validation = validatePublicImageFile(file);
-      if (!validation.ok) return { error: validation.error };
-      if (!isSupabaseConfigured() || !isSupabaseServiceConfigured()) {
-        return { error: "Object storage is not configured" };
-      }
-
-      const uploaded = await uploadPublicImageAsset(
-        createSupabaseServiceClient(),
-        {
-          organizationId: session.organization.id,
-          kind: "assistant",
-          file,
-        },
-      );
+      const uploaded = await uploadPublicImageFromForm(objectStorageClient(), formData, {
+        organizationId: session.organization.id,
+        kind: "assistant",
+      });
+      if (uploaded.error !== undefined) return { error: uploaded.error };
 
       await db.updateAssistant(id, { avatarUrl: uploaded.publicUrl });
       return { avatarUrl: uploaded.publicUrl };
@@ -687,15 +630,11 @@ export async function createFlowAction(assistantId: string, input: FlowInput) {
   return runOperation(createFlowOp, { assistantId, input });
 }
 
-export async function updateFlowAction(
-  assistantId: string,
-  flowId: string,
-  patch: FlowPatch,
-) {
+export async function updateFlowAction(flowId: string, patch: FlowPatch) {
   await runOperation(updateFlowOp, { id: flowId, patch });
 }
 
-export async function deleteFlowAction(assistantId: string, flowId: string) {
+export async function deleteFlowAction(flowId: string) {
   await runOperation(deleteFlowOp, { id: flowId });
 }
 
@@ -781,11 +720,9 @@ export async function disconnectTicketingIntegrationAction(helpDeskId: string) {
 //
 // The connection is org-scoped and holds a secret, so managing it needs the
 // admin-tier capability (matches provider connections + the sso_connections RLS
-// rank). The `assistantId` only steers revalidation to the editor page the
-// admin is on. The require-sign-in toggle is a per-assistant edit.
+// rank). The require-sign-in toggle is a per-assistant edit.
 
 export async function setSsoConnectionAction(
-  assistantId: string,
   input: {
     provider: SsoProviderKind;
     clientId: string;
@@ -795,7 +732,6 @@ export async function setSsoConnectionAction(
     identityClaim?: string;
   }
 ): Promise<{ error?: string }> {
-  void assistantId;
   try {
     await runOperation(setSsoConnectionOp, input);
     return {};
@@ -804,10 +740,10 @@ export async function setSsoConnectionAction(
   }
 }
 
-export async function validateSsoConnectionAction(
-  assistantId: string,
-): Promise<{ ok: boolean; error?: string }> {
-  void assistantId;
+export async function validateSsoConnectionAction(): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
   try {
     return await runOperation(validateSsoIdentityOp, {});
   } catch (error) {
@@ -815,8 +751,7 @@ export async function validateSsoConnectionAction(
   }
 }
 
-export async function disconnectSsoConnectionAction(assistantId: string) {
-  void assistantId;
+export async function disconnectSsoConnectionAction() {
   await runOperation(disconnectSsoConnectionOp, {});
 }
 
@@ -874,7 +809,7 @@ export async function getPreviewSsoGateAction(assistantId: string): Promise<{
  */
 export async function chatComposerOptionsAction(assistantId: string): Promise<{
   models: ChatModelOption[];
-  skills: Array<{ id: string; name: string; description: string; starter: string }>;
+  skills: StarterSkill[];
 }> {
   const { db, session } = await requireMember();
   const assistant = await db.getAssistant(assistantId);
@@ -891,14 +826,7 @@ export async function chatComposerOptionsAction(assistantId: string): Promise<{
       assistant.allowedModels,
       connections
     ),
-    skills: attached
-      .filter((skill) => (skill.starter ?? "").trim().length > 0)
-      .map((skill) => ({
-        id: skill.id,
-        name: skill.name,
-        description: skill.description,
-        starter: skill.starter,
-      })),
+    skills: starterSkills(attached),
   };
 }
 
@@ -1050,15 +978,11 @@ export async function createSkillAction(
   return runOperation(createSkillOp, { ...input, attachToAssistantId });
 }
 
-export async function updateSkillAction(
-  assistantId: string,
-  skillId: string,
-  patch: SkillPatch,
-) {
+export async function updateSkillAction(skillId: string, patch: SkillPatch) {
   await runOperation(updateSkillOp, { id: skillId, patch });
 }
 
-export async function deleteSkillAction(assistantId: string, skillId: string) {
+export async function deleteSkillAction(skillId: string) {
   await runOperation(deleteSkillOp, { id: skillId });
 }
 
@@ -1287,53 +1211,22 @@ export async function deleteProviderConnectionAction(id: string) {
 
 // --- Knowledge (OKF collections) --------------------------------------------------------
 
-/** Creates the Source row (`processing`) and defers the OKF pipeline to an
- *  Ingestion Job; the Knowledge UI polls the status until it settles. When an
- *  uploaded `original` binary is given and object storage is configured, it is
- *  persisted first and linked to the Source so it can be re-processed later. */
-async function ingestNewSource(
-  assistantId: string,
-  collectionId: string,
-  name: string,
-  kind: "file" | "url" | "text",
-  rawText: string,
-  extras: {
-    /** The uploaded binary, persisted when object storage is configured. */
-    original?: File;
-    /** The fetched URL for a `url` Source, retained so the OKF `sources` entry
-     *  its Concepts carry names a followable artifact rather than a descriptor
-     *  (the Source `name` is the page *title*, which is not addressable). */
-    sourceUrl?: string;
-    /** The triage verdict for a file upload, persisted on the Source (#801, CYB-09). */
-    triage?: TriageEvidence;
-  } = {},
-) {
-  const { original, sourceUrl, triage } = extras;
-  // Original-binary storage stays at this surface (stateless, storage-bound);
-  // guards + Source row + ingestion enqueue live in addSourceOp (#622).
-  const { session } = await requireMember("edit");
-  let originalObjectPath: string | undefined;
-  if (original && isSupabaseConfigured() && isSupabaseServiceConfigured()) {
-    const stored = await uploadKnowledgeOriginal(
-      createSupabaseServiceClient(),
-      {
-        organizationId: session.organization.id,
-        file: original,
-      },
-    );
-    originalObjectPath = stored.path;
-  }
-
-  await runOperation(addSourceOp, {
-    assistantId,
-    collectionId,
-    name,
-    kind,
-    rawText,
-    sourceUrl,
-    originalObjectPath,
-    triage,
+/** Persists an uploaded original binary when object storage is configured, so
+ *  its Source can be re-processed later. Original-binary storage stays at this
+ *  surface (stateless, storage-bound); guards + Source row + ingestion enqueue
+ *  live in addSourceOp (#622), which defers the OKF pipeline to an Ingestion
+ *  Job while the Knowledge UI polls the status until it settles. */
+async function storeKnowledgeOriginal(
+  organizationId: string,
+  file: File,
+): Promise<string | undefined> {
+  const storage = objectStorageClient();
+  if (!storage) return undefined;
+  const stored = await uploadKnowledgeOriginal(storage, {
+    organizationId,
+    file,
   });
+  return stored.path;
 }
 
 /**
@@ -1357,11 +1250,9 @@ export async function uploadFileSourceAction(
   if (!validation.ok) return { error: validation.error };
 
   try {
-    // Authorize before the parser sees a byte (#801, CYB-01). `ingestNewSource`
-    // asks again, but a check that runs *after* extraction is not a gate: a
-    // refused caller would still have spent PDF-parser CPU and memory on a
-    // 25 MiB document first. `requireMember` is request-memoized, so asking
-    // twice costs one lookup.
+    // Authorize before the parser sees a byte (#801, CYB-01): a check that runs
+    // *after* extraction is not a gate, a refused caller would still have spent
+    // PDF-parser CPU and memory on a 25 MiB document first.
     const { organizationId, session } = await requireMember("edit");
     // An authorized member is still on a budget (#801, CYB-01): parsing is the
     // expensive step, so the window is checked after authorization (anonymous
@@ -1373,8 +1264,14 @@ export async function uploadFileSourceAction(
       name: file.name,
       bytes: await file.arrayBuffer(),
     });
-    await ingestNewSource(assistantId, collectionId, extracted.name, "file", extracted.text, {
-      original: file,
+    const originalObjectPath = await storeKnowledgeOriginal(organizationId, file);
+    await runOperation(addSourceOp, {
+      assistantId,
+      collectionId,
+      name: extracted.name,
+      kind: "file",
+      rawText: extracted.text,
+      originalObjectPath,
       triage: extracted.triage,
     });
   } catch (error) {
@@ -1386,7 +1283,7 @@ export async function uploadFileSourceAction(
  * Re-process a file Source from its stored original: re-runs the full
  * ingestion pipeline (extract → enrich → chunk → embed) from the retained
  * binary, replacing the Source's Concepts/chunks. Available only for file
- * Sources whose original was persisted (see `ingestNewSource`); pre-existing
+ * Sources whose original was persisted (see `storeKnowledgeOriginal`); pre-existing
  * Sources without one surface a clear reason instead.
  */
 export async function reprocessSourceAction(
@@ -1403,34 +1300,17 @@ export async function reprocessSourceAction(
       "This file was uploaded before originals were stored, so it can't be re-processed. Re-upload the file to enable re-processing.",
     );
   }
-  if (!isSupabaseConfigured() || !isSupabaseServiceConfigured()) {
-    throw new Error("Object storage is not configured");
-  }
+  const storage = objectStorageClient();
+  if (!storage) throw new Error("Object storage is not configured");
 
-  const bytes = await downloadKnowledgeOriginal(
-    createSupabaseServiceClient(),
-    source.originalObjectPath,
-  );
+  const bytes = await downloadKnowledgeOriginal(storage, source.originalObjectPath);
   const extracted = await extractSourceText({
     kind: "file",
     name: source.name,
     bytes,
   });
 
-  // The existing Concepts stay live while the job runs; the ingestion
-  // pipeline replaces them atomically only once the full new set commits.
-  await db.updateSource(sourceId, { status: "processing", error: "" });
-  await enqueueIngestJob(
-    {
-      kind: "ingest_source",
-      assistantId,
-      collectionId,
-      sourceId,
-      rawText: extracted.text,
-    },
-    { db },
-  );
-  revalidateEntities([{ kind: "assistantEditor", assistantId }], organizationId);
+  await requeueIngest(db, organizationId, assistantId, collectionId, sourceId, extracted.text);
 }
 
 export async function retrySourceIngestAction(
@@ -1443,7 +1323,7 @@ export async function retrySourceIngestAction(
   if (!source || source.collectionId !== collectionId)
     throw new Error("Source not found");
   if (source.kind === "website") {
-    await recrawlWebsiteSourceAction(assistantId, collectionId, sourceId);
+    await recrawlSourceAction(sourceId);
     return;
   }
 
@@ -1465,17 +1345,23 @@ export async function retrySourceIngestAction(
     throw new Error("Retry metadata is not available for this source");
   }
 
-  // The existing Concepts stay live while the job runs; the ingestion
-  // pipeline replaces them atomically only once the full new set commits.
+  await requeueIngest(db, organizationId, assistantId, collectionId, sourceId, rawText);
+}
+
+/** The shared tail of re-process and retry. The existing Concepts stay live
+ *  while the job runs; the ingestion pipeline replaces them atomically only
+ *  once the full new set commits. */
+async function requeueIngest(
+  db: Db,
+  organizationId: string,
+  assistantId: string,
+  collectionId: string,
+  sourceId: string,
+  rawText: string,
+) {
   await db.updateSource(sourceId, { status: "processing", error: "" });
   await enqueueIngestJob(
-    {
-      kind: "ingest_source",
-      assistantId,
-      collectionId,
-      sourceId,
-      rawText,
-    },
+    { kind: "ingest_source", assistantId, collectionId, sourceId, rawText },
     { db },
   );
   revalidateEntities([{ kind: "assistantEditor", assistantId }], organizationId);
@@ -1497,19 +1383,21 @@ export interface WebsiteFormInput {
   loginProtected?: boolean;
 }
 
+/** A textarea's non-blank lines, trimmed. */
+function lines(text: string | undefined): string[] {
+  return (text ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 function toWebsiteConfig(input: WebsiteFormInput) {
   return {
     url: input.url.trim(),
     crawlerProvider: input.crawlerProvider ?? "auto",
     maxPages: input.maxPages,
-    includeGlobs: (input.includeGlobs ?? "")
-      .split("\n")
-      .map((g) => g.trim())
-      .filter(Boolean),
-    excludeGlobs: (input.excludeGlobs ?? "")
-      .split("\n")
-      .map((g) => g.trim())
-      .filter(Boolean),
+    includeGlobs: lines(input.includeGlobs),
+    excludeGlobs: lines(input.excludeGlobs),
     fetchFiles: input.fetchFiles ?? false,
     throttle: input.throttle ?? false,
     pageTimeoutSecs: input.pageTimeoutSecs || undefined,
@@ -1581,19 +1469,9 @@ export async function setRecrawlScheduleAction(
   );
 }
 
-/** Re-crawl: wipes the source's pages and starts a fresh background crawl. */
-export async function recrawlWebsiteSourceAction(
-  assistantId: string,
-  collectionId: string,
-  sourceId: string,
-) {
-  await runOperation(recrawlSourceOp, { id: sourceId });
-}
-
-/**
- * The same re-crawl from a surface that has no Assistant in scope, the
- * Documents route's header menu (#927). One operation behind both.
- */
+/** Re-crawl: wipes the source's pages and starts a fresh background crawl.
+ *  One action for the Assistant's Knowledge list and the Documents route's
+ *  header menu (#927); the operation needs no Assistant in scope. */
 export async function recrawlSourceAction(sourceId: string) {
   await runOperation(recrawlSourceOp, { id: sourceId });
 }
@@ -1749,7 +1627,9 @@ export async function setSourceDirectAccessAction(
   await runOperation(setDirectAccessOp, { sourceId, assistantId, directAccess });
 }
 
-/** Hub delete: removes the item for every linked Assistant at once. */
+/** Hub delete: removes the item for every linked Assistant at once. Cascade
+ *  capture lives in deleteSourceOp (#622). The Assistant editor offers it only
+ *  as the explicit second choice, next to unlinkSourceAction. */
 export async function deleteOrgSourceAction(sourceId: string) {
   await runOperation(deleteSourceOp, { id: sourceId });
 }
@@ -1870,14 +1750,7 @@ export async function uploadOrgFileSourceAction(
       name: file.name,
       bytes: await file.arrayBuffer(),
     });
-    let originalObjectPath: string | undefined;
-    if (isSupabaseConfigured() && isSupabaseServiceConfigured()) {
-      const stored = await uploadKnowledgeOriginal(
-        createSupabaseServiceClient(),
-        { organizationId: session.organization.id, file },
-      );
-      originalObjectPath = stored.path;
-    }
+    const originalObjectPath = await storeKnowledgeOriginal(organizationId, file);
     await runOperation(addSourceOp, {
       collectionId: library.id,
       name: extracted.name,
@@ -1896,11 +1769,7 @@ export async function uploadOrgFileSourceAction(
 export async function exportOrgFaqsAction(): Promise<{ csv: string }> {
   const { db, organizationId } = await requireMember();
   const entries = await db.listOrgFaqs(organizationId);
-  return {
-    csv: serializeFaqCsv(
-      entries.map((e) => ({ question: e.question, answer: e.answer }))
-    ),
-  };
+  return { csv: serializeFaqCsv(entries) };
 }
 
 export async function createFaqAction(
@@ -1977,16 +1846,6 @@ export async function reembedKnowledgeAction(assistantId: string) {
   return { pending: conceptIds.length, reembedded };
 }
 
-export async function deleteSourceAction(
-  assistantId: string,
-  sourceId: string,
-) {
-  // Cascade capture lives in deleteSourceOp (#622). This
-  // destroys the Source for every Assistant linked to it, the editor offers
-  // it only as the explicit second choice, next to unlinkSourceAction.
-  await runOperation(deleteSourceOp, { id: sourceId });
-}
-
 /**
  * Takes a Source off one Assistant and leaves it in the Library for the
  * others. The editor's default "remove" whenever a Source answers for more
@@ -2014,15 +1873,13 @@ export async function deleteConceptAction(
   // A FAQ Concept owns a `faq` Source (PRD #726): deleting the FAQ retires
   // the whole Source so no orphaned hub row survives (the cascade lives in
   // deleteSourceOp).
-  {
-    const { db } = await requireMember("edit");
-    const concept = await db.getConcept(conceptId);
-    if (concept?.sourceId) {
-      const source = await db.getSource(concept.sourceId);
-      if (source?.kind === "faq") {
-        await runOperation(deleteSourceOp, { id: source.id });
-        return;
-      }
+  const { db } = await requireMember("edit");
+  const concept = await db.getConcept(conceptId);
+  if (concept?.sourceId) {
+    const source = await db.getSource(concept.sourceId);
+    if (source?.kind === "faq") {
+      await runOperation(deleteSourceOp, { id: source.id });
+      return;
     }
   }
   await orgMutation(
@@ -2089,20 +1946,6 @@ export async function getInboxConversationReviewAction(
   return runOperation(getInboxConversationReviewOp, { conversationId });
 }
 
-/**
- * The reference-parity Inbox export (#561): the 29-field Conversation records
- * with their full `Messages[]` transcripts and serialized `AgenticTrace`.
- *
- * Server-side because the transcripts are not on the client (the Inbox loads one
- * at a time) and because the reasoning gate has to be *enforced*, not asked for,
- * an export leaves the console, so a Member below the gate must not be able to
- * request the chain-of-thought by passing a flag.
- *
- * Both export modes traverse the same guarded read model with explicit bounds.
- * Transcript reads stop at the smaller ceiling and run in fixed-size batches
- * rather than one `Promise.all` over the whole selection. RLS scopes every page
- * to the signed-in Organization.
- */
 /** Every filtered summary for the lightweight CSV export. */
 export async function exportInboxSummariesAction(
   query: InboxQuery,
@@ -2118,6 +1961,20 @@ export async function exportInboxSummariesAction(
   return { ...result, limit: INBOX_SUMMARY_WINDOW_LIMIT };
 }
 
+/**
+ * The reference-parity Inbox export (#561): the 29-field Conversation records
+ * with their full `Messages[]` transcripts and serialized `AgenticTrace`.
+ *
+ * Server-side because the transcripts are not on the client (the Inbox loads one
+ * at a time) and because the reasoning gate has to be *enforced*, not asked for,
+ * an export leaves the console, so a Member below the gate must not be able to
+ * request the chain-of-thought by passing a flag.
+ *
+ * Both export modes traverse the same guarded read model with explicit bounds.
+ * Transcript reads stop at the smaller ceiling and run in fixed-size batches
+ * rather than one `Promise.all` over the whole selection. RLS scopes every page
+ * to the signed-in Organization.
+ */
 export async function exportInboxConversationsAction(
   query: InboxQuery,
 ): Promise<{
@@ -2187,7 +2044,7 @@ export async function listImprovementsPageAction(
     cursor?: string | null;
     status?: ImprovementStatus;
     limit?: number;
-  } = {},
+  },
 ) {
   return runOperation(listImprovementsPageOp, {
     limit: input.limit ?? IMPROVEMENT_LANE_PAGE_SIZE,
@@ -2408,7 +2265,7 @@ export async function deleteGoalAction(
 
 // --- Alerts ------------------------------------------------------------------
 
-/** "I have resolved this": marks the alert resolved by the current member. */
+/** "Mark resolved": marks the alert resolved by the current member. */
 export async function resolveAlertAction(alertId: string): Promise<void> {
   await runOperation(resolveAlertOp, { id: alertId });
 }
@@ -2471,7 +2328,6 @@ export async function importEntityRecordsAction(
   return runOperation(importEntityRecordsOp, { entityId, csv: csvText });
 }
 
-/** Records browser read (paged), any member of the Entity's org. */
 /** The client-facing sync source shape (#670): sealed headers never leave the server. */
 export interface EntitySyncStatus {
   config:
@@ -2528,37 +2384,21 @@ export async function saveEntitySyncConfigAction(
     mapping: Record<string, string>;
   }
 ): Promise<{ error?: string }> {
-  return orgMutation(
-    { capability: "edit", entities: [{ kind: "dataEntities" }] },
-    async ({ db, session }) => {
-      await requireOrgEntity(db, session.organization.id, entityId);
-      let url: URL;
-      try {
-        url = new URL(input.url);
-      } catch {
-        return { error: "Enter a valid URL." };
-      }
-      if (url.protocol !== "https:" && url.protocol !== "http:") {
-        return { error: "The sync source must be an http(s) URL." };
-      }
-      const cadenceHours = Math.max(1, Math.floor(input.cadenceHours || 24));
-      const meaningful = input.headers.filter((h) => h.name.trim());
-      const existing = await db.getEntitySyncConfig(entityId);
-      const sealedHeaders = input.clearHeaders
-        ? null
-        : meaningful.length > 0
-          ? sealSecret(JSON.stringify(meaningful))
-          : (existing?.sealedHeaders ?? null);
-      await db.upsertEntitySyncConfig(entityId, {
-        url: url.toString(),
-        sealedHeaders,
-        cadenceHours,
-        prune: input.prune,
-        mapping: input.mapping,
-      });
-      return {};
+  // A refused source is a result, not a throw: Next strips a thrown message in
+  // production, and this one tells the admin what to fix.
+  try {
+    await runOperation(configureEntitySyncOp, { entityId, ...input });
+    return {};
+  } catch (error) {
+    if (error instanceof OperationError && error.code === "invalid_input") {
+      return { error: error.message };
     }
-  );
+    // runOperation parses with the operation's schema before running it.
+    if (error instanceof ZodError) {
+      return { error: error.issues[0]?.message ?? "Check the sync settings." };
+    }
+    throw error;
+  }
 }
 
 /**
@@ -2587,6 +2427,7 @@ export async function syncEntityNowAction(entityId: string): Promise<void> {
   );
 }
 
+/** Records browser read (paged), any member of the Entity's org. */
 export async function listEntityRecordsAction(
   entityId: string,
   opts?: { limit?: number; offset?: number }
@@ -2643,9 +2484,11 @@ export async function readProjectAction(id: string): Promise<
 export async function writeProjectDocumentAction(
   id: string,
   body: string,
-  note = ""
+  note = "",
+  /** The version the editor loaded; a newer one refuses the save. */
+  expectedUpdatedAt?: string | null
 ): Promise<MemoryDocument> {
-  return runOperation(writeProjectDocumentOp, { id, body, note });
+  return runOperation(writeProjectDocumentOp, { id, body, note, expectedUpdatedAt });
 }
 
 // ---------------------------------------------------------------------------
@@ -2653,19 +2496,6 @@ export async function writeProjectDocumentAction(
 // and manual sync. OAuth providers finish through the callback route; these
 // actions cover Salesforce / ServiceNow credential grants and shared lifecycle.
 // ---------------------------------------------------------------------------
-
-function revalidateApplicationKnowledge(
-  organizationId: string,
-  assistantIds: string[] = [],
-): void {
-  revalidateEntities(
-    [
-      { kind: "knowledgeHub" },
-      ...[...new Set(assistantIds)].map((assistantId) => ({ kind: "assistantEditor" as const, assistantId })),
-    ],
-    organizationId,
-  );
-}
 
 async function requireApplicationConnectionForImport(
   db: Db,
@@ -2783,25 +2613,27 @@ export async function setApplicationImportEnabledAction(
   await runOperation(setApplicationImportEnabledOp, { importId, enabled });
 }
 
-export async function getApplicationConnectionDeleteImpactAction(
-  connectionId: string
-): Promise<{ imports: number; sources: number; assistantLinks: number }> {
+/** The caller may delete this Connection; hands back the Imports it owns. */
+async function requireDeletableConnection(connectionId: string) {
   const { db, organizationId, session } = await requireMember("edit");
   const connection = await db.getSafeApplicationConnection(connectionId);
   if (
     !connection ||
     connection.organizationId !== organizationId ||
-    !canDeleteApplicationConnection(
-      connection,
-      session.userId,
-      session.role
-    )
+    !canDeleteApplicationConnection(connection, session.userId, session.role)
   ) {
     throw new Error("Application Connection not found");
   }
   const imports = (await db.listApplicationImports(organizationId)).filter(
     (item) => item.connectionId === connectionId
   );
+  return { db, organizationId, imports };
+}
+
+export async function getApplicationConnectionDeleteImpactAction(
+  connectionId: string
+): Promise<{ imports: number; sources: number; assistantLinks: number }> {
+  const { db, imports } = await requireDeletableConnection(connectionId);
   const mappings = (
     await Promise.all(imports.map((item) => db.listApplicationSources(item.id)))
   ).flat();
@@ -2824,29 +2656,14 @@ export async function deleteApplicationImportAction(importId: string): Promise<v
 export async function deleteApplicationConnectionAction(
   connectionId: string
 ): Promise<void> {
-  const { db, organizationId, session } = await requireMember("edit");
-  const safeConnection = await db.getSafeApplicationConnection(connectionId);
-  if (
-    !safeConnection ||
-    safeConnection.organizationId !== organizationId ||
-    !canDeleteApplicationConnection(
-      safeConnection,
-      session.userId,
-      session.role
-    )
-  ) {
-    throw new Error("Application Connection not found");
-  }
+  const { organizationId, imports } = await requireDeletableConnection(connectionId);
   const mutationDb = getWidgetDb();
   const connection = await mutationDb.getApplicationConnection(connectionId);
   if (!connection || connection.organizationId !== organizationId) {
     throw new Error("Application Connection not found");
   }
-  const imports = (await db.listApplicationImports(organizationId)).filter(
-    (applicationImport) => applicationImport.connectionId === connectionId
-  );
   for (const applicationImport of imports) {
-    await getWidgetDb().cancelApplicationSyncJobs(
+    await mutationDb.cancelApplicationSyncJobs(
       applicationImport.id,
       "Application Connection deleted"
     );
@@ -2857,8 +2674,17 @@ export async function deleteApplicationConnectionAction(
   // Connector call raised for it (#839) would otherwise stay open forever. The
   // Alerts page and the sidebar badge render that row: revalidate them too.
   await mutationDb.resolveAlertsByKey(organizationId, connectorAlertKey(connectionId));
-  revalidateEntities([{ kind: "alerts" }], organizationId);
-  revalidateApplicationKnowledge(organizationId, imports.flatMap((item) => item.assistantIds));
+  revalidateEntities(
+    [
+      { kind: "alerts" },
+      { kind: "knowledgeHub" },
+      ...[...new Set(imports.flatMap((item) => item.assistantIds))].map((assistantId) => ({
+        kind: "assistantEditor" as const,
+        assistantId,
+      })),
+    ],
+    organizationId,
+  );
 }
 
 /**

@@ -1,15 +1,17 @@
 import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { InsightsFilter, InsightsOverview } from "@agent-hub/core";
-import { isoDay } from "@agent-hub/core";
 import { createDb, isSupabaseConfigured } from "@agent-hub/db";
 
 import { getDb } from "@/lib/data";
+import { dayRangeFromSearchParams } from "@/lib/day-range";
+import { filtersFromSearchParams } from "@/lib/url-state";
 import {
   createSupabaseRlsClient,
   getSupabaseSessionRlsContext,
 } from "@/lib/supabase/server";
 import { insightsOrganizationTag } from "@/lib/insights/cache";
+import { DEFAULT_RANGE_DAYS, lastDaysRange } from "@/lib/insights/range";
 
 export type {
   InsightsAggregate,
@@ -103,11 +105,14 @@ export async function getInsightsOverviewCached(
   );
 }
 
+/**
+ * The "Last 30 Days" preset exactly, in UTC days, so the browser derives the
+ * same range and a fresh visit reads as the preset rather than as 31 custom
+ * days.
+ */
 export function defaultInsightsFilter(now = new Date()): InsightsFilter {
-  const from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   return {
-    from: isoDay(from),
-    to: isoDay(now),
+    ...lastDaysRange(DEFAULT_RANGE_DAYS, now),
     aggregate: "daily",
     assistantId: "",
     channel: "",
@@ -117,29 +122,24 @@ export function defaultInsightsFilter(now = new Date()): InsightsFilter {
   };
 }
 
+/** The typed filters' legal values, so a hand-edited link cannot widen them. */
+const INSIGHTS_FILTER_OPTIONS = {
+  aggregate: ["daily", "weekly", "monthly"],
+  feedback: ["", "up", "down"],
+  escalation: ["", "escalated", "not_escalated"],
+} as const;
+
+/**
+ * The Insights view a URL asks for: the overview, its Exports and the export
+ * worker all read their filter here. The day range goes through the shared
+ * reader, so an impossible or inverted range never reaches the aggregate.
+ */
 export function insightsFilterFromSearchParams(
   params: URLSearchParams
 ): InsightsFilter {
   const fallback = defaultInsightsFilter();
-  const aggregate = params.get("aggregate");
-  const feedback = params.get("feedback");
-  const escalation = params.get("escalation");
-  const from = params.get("from");
-  const to = params.get("to");
-  const validDate = (value: string | null): value is string =>
-    value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value);
   return {
-    from: validDate(from) ? from : fallback.from,
-    to: validDate(to) ? to : fallback.to,
-    aggregate:
-      aggregate === "weekly" || aggregate === "monthly" ? aggregate : "daily",
-    assistantId: params.get("assistantId") || "",
-    channel: params.get("channel") || "",
-    role: params.get("role") || "",
-    feedback: feedback === "up" || feedback === "down" ? feedback : "",
-    escalation:
-      escalation === "escalated" || escalation === "not_escalated"
-        ? escalation
-        : "",
+    ...filtersFromSearchParams(params, fallback, INSIGHTS_FILTER_OPTIONS),
+    ...dayRangeFromSearchParams(params, fallback),
   };
 }

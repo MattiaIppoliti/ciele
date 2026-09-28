@@ -116,6 +116,38 @@ ciele sources direct-access <source-id> on --assistant <assistant-id>
 
 `sources direct-access` decides whether that one Assistant can give a Visitor the original file.
 
+### Search the knowledge
+
+`knowledge search` shows the passages that match a question, with the Document and the Source of
+each passage. It does not generate an answer.
+
+```bash
+ciele knowledge search "How do I connect Salesforce?"
+ciele knowledge search "How do I connect Salesforce?" --assistant <assistant-id>
+ciele knowledge search "How do I connect Salesforce?" --json
+```
+
+With `--assistant`, the search uses only the Sources linked to that Assistant. Without it, the
+search uses the full Library. `--json` gives the results with their rank, score, and IDs.
+
+### Ask an Assistant
+
+`assistants ask` sends a question to a published Assistant. The command shows the answer, the
+Sources that the answer cites, and the ID of the Conversation.
+
+```bash
+ciele assistants ask <assistant-id> "How do I connect Salesforce?"
+ciele assistants ask <assistant-id> "And ServiceNow?" --conversation <conversation-id>
+```
+
+Use `--conversation` with the ID from an earlier answer to continue that Conversation. Only the
+API key that started a Conversation can continue it. With a different ID, the question starts a
+new Conversation.
+
+Each question uses a model turn and creates a Conversation. The Inbox shows it with the **API
+key** label when you set the **Staff conversations** filter to **Include staff** or **Staff
+only**. The command exits with an error code when the Assistant could not answer.
+
 ## Flow commands
 
 ### Find out what a Flow can contain

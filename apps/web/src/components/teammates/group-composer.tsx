@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { KeyboardEvent, SyntheticEvent } from "react";
 import { PromptInput } from "@/components/agents/prompt-input";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import { triggerInputProps, triggerOptionId } from "@/components/chat/trigger-list";
 import {
   activeMention,
   insertMention,
@@ -33,13 +34,15 @@ export function GroupComposer({
   "aria-label": ariaLabel,
 }: {
   targets: MentionTarget[];
-  onSubmit: (value: string) => void;
+  /** Resolves false when the message did not go out; its text comes back. */
+  onSubmit: (value: string) => Promise<boolean> | void;
   /** While a chain is streaming: the composer wears the loading pulse. */
   pending: boolean;
   placeholder: string;
   "aria-label": string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
   const [draft, setDraft] = useState("");
   const [mention, setMention] = useState<ActiveMention | null>(null);
   const [highlighted, setHighlighted] = useState(0);
@@ -126,16 +129,19 @@ export function GroupComposer({
   return (
     <div ref={containerRef} className="relative">
       {open && (
-        <div
-          role="listbox"
-          aria-label="Mention someone"
-          className="bg-popover text-popover-foreground absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border shadow-lg"
-        >
-          <ul className="max-h-64 overflow-y-auto p-1.5">
+        <div className="bg-popover text-popover-foreground absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border shadow-lg">
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label="Mention someone"
+            className="max-h-64 overflow-y-auto p-1.5"
+          >
             {matches.map((target, index) => (
-              <li key={target.id}>
+              <li key={target.id} role="none">
                 <button
                   type="button"
+                  id={triggerOptionId(listId, index)}
+                  tabIndex={-1}
                   role="option"
                   aria-selected={index === highlighted}
                   // Mousedown would steal the textarea's focus (and with it the
@@ -224,8 +230,15 @@ export function GroupComposer({
             // dismissed: the picker never opened again for the rest of the
             // session.
             dismissed.current = null;
-            onSubmit(value);
+            void Promise.resolve(onSubmit(value)).then((sent) => {
+              // Unless something new was typed meanwhile, the words come back.
+              if (sent === false) setDraft((current) => current || value);
+            });
           }}
+          // While a chain streams the composer refuses to submit, so Enter
+          // keeps the draft rather than clearing it for a send that bails.
+          loading={pending}
+          {...triggerInputProps(listId, open, Math.min(highlighted, matches.length - 1))}
           minRows={1}
           maxRows={6}
           placeholder={placeholder}

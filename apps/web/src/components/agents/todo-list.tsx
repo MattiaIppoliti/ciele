@@ -5,7 +5,6 @@ import { ChevronDown, ListTodo } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,
-  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -31,18 +30,13 @@ export interface TodoItem {
   id: string;
   title: ReactNode;
   status?: TodoItemStatus;
-  progress?: number;
-  detail?: ReactNode;
 }
 
+// Trimmed from upstream to the Thinking panel's plan list: uncontrolled,
+// collapsing once every item completes, no per-item progress or detail.
 export interface TodoListProps {
   items: TodoItem[];
   title?: ReactNode;
-  open?: boolean;
-  defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  collapseOnComplete?: boolean;
-  maxHeight?: number;
   className?: string;
 }
 
@@ -104,16 +98,10 @@ function TodoHeaderIcon({ complete }: { complete: boolean }) {
   );
 }
 
-function TodoStatusIcon({
-  status,
-  progress,
-}: {
-  status: TodoItemStatus;
-  progress?: number;
-}) {
+function TodoStatusIcon({ status }: { status: TodoItemStatus }) {
   const reduce = useReducedMotion() ?? false;
-  const normalizedProgress =
-    progress === undefined ? 0.68 : Math.min(100, Math.max(0, progress)) / 100;
+  // With no measured progress the arc is a fixed partial ring that spins.
+  const spin = status === "in-progress" && !reduce;
 
   return (
     <motion.svg
@@ -151,15 +139,12 @@ function TodoStatusIcon({
         strokeLinecap="round"
         initial={false}
         animate={{
-          pathLength: status === "in-progress" ? normalizedProgress : 0,
+          pathLength: status === "in-progress" ? 0.68 : 0,
           opacity: status === "in-progress" ? 1 : 0,
-          rotate:
-            status === "in-progress" && progress === undefined && !reduce
-              ? 360
-              : -90,
+          rotate: spin ? 360 : -90,
         }}
         transition={
-          status === "in-progress" && progress === undefined && !reduce
+          spin
             ? { rotate: { duration: 1.1, repeat: Infinity, ease: "linear" } }
             : reduce
               ? { duration: 0 }
@@ -201,11 +186,6 @@ function TodoStatusIcon({
 export function TodoList({
   items,
   title = "To-dos",
-  open,
-  defaultOpen = true,
-  onOpenChange,
-  collapseOnComplete = true,
-  maxHeight = 248,
   className,
 }: TodoListProps) {
   const reduce = useReducedMotion() ?? false;
@@ -214,29 +194,20 @@ export function TodoList({
   const contentId = `${baseId}-content`;
   const viewportRef = useRef<HTMLDivElement>(null);
   const previousComplete = useRef(false);
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
-  const currentOpen = open ?? internalOpen;
+  const [currentOpen, setOpen] = useState(true);
   const completed = items.filter((item) => item.status === "completed").length;
   const allComplete = items.length > 0 && completed === items.length;
   const itemCount = items.length;
-
-  const setOpen = useCallback(
-    (next: boolean) => {
-      if (open === undefined) setInternalOpen(next);
-      onOpenChange?.(next);
-    },
-    [onOpenChange, open],
-  );
 
   useEffect(() => {
     if (previousComplete.current && !allComplete) {
       setOpen(true);
     }
-    if (!previousComplete.current && allComplete && collapseOnComplete) {
+    if (!previousComplete.current && allComplete) {
       setOpen(false);
     }
     previousComplete.current = allComplete;
-  }, [allComplete, collapseOnComplete, setOpen]);
+  }, [allComplete]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -286,7 +257,7 @@ export function TodoList({
             {completed} of {items.length} tasks completed
           </span>
           <span aria-hidden="true" className="inline-flex">
-            <ActionSwapText value={String(completed)} animation="roll">
+            <ActionSwapText value={String(completed)}>
               {completed}
             </ActionSwapText>
             <span>/</span>
@@ -312,7 +283,7 @@ export function TodoList({
         <div
           ref={viewportRef}
           className="scrollbar-hide overflow-y-auto px-2 pb-2"
-          style={{ maxHeight }}
+          style={{ maxHeight: 248 }}
         >
           {items.length ? (
             <ol aria-live="polite" className="space-y-0">
@@ -337,7 +308,7 @@ export function TodoList({
                     }
                     className="flex min-h-9 items-center gap-2.5 rounded-xl px-1.5 py-1"
                   >
-                    <TodoStatusIcon status={status} progress={item.progress} />
+                    <TodoStatusIcon status={status} />
                     <span className="sr-only">{statusLabel(status)}: </span>
                     <span
                       className={cn(
@@ -366,11 +337,6 @@ export function TodoList({
                         />
                       </span>
                     </span>
-                    {item.detail ? (
-                      <span className="shrink-0 text-sm text-muted-foreground/55">
-                        {item.detail}
-                      </span>
-                    ) : null}
                   </motion.li>
                 );
               })}

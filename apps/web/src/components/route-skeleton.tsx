@@ -24,7 +24,9 @@ export function RouteSkeleton({
   title?: boolean;
 }) {
   return (
-    <div className="flex h-full flex-col gap-5 p-6" aria-busy="true">
+    <div className="flex h-full flex-col gap-5 p-6" role="status" aria-busy="true">
+      {/* A skeleton is silent to a screen reader; this is what it hears. */}
+      <span className="sr-only">Loading…</span>
       {title && variant !== "hero" && variant !== "prose" && (
         <div className="flex flex-wrap items-center gap-3">
           <Skeleton className="h-8 w-48" />

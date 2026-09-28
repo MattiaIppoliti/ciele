@@ -4,6 +4,7 @@ import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import {
   createApplicationImportOp,
   deleteApplicationImportOp,
+  listApplicationImportDocumentsOp,
   setApplicationImportAssistantsOp,
   setApplicationImportEnabledOp,
   syncApplicationImportNowOp,
@@ -274,5 +275,132 @@ describe("the rest of the lifecycle", () => {
         importId: result.id,
       }),
     ).rejects.toThrowError(OperationError);
+  });
+});
+
+describe("listApplicationImportDocumentsOp", () => {
+  /** One remote item the way a sync lands it: a Source, its mapping, maybe its Document. */
+  async function item(
+    db: ReturnType<typeof getMockDb>,
+    importId: string,
+    remoteId: string,
+    options: { document?: boolean; documents?: number; error?: boolean; ready?: boolean } = {},
+  ) {
+    const applicationImport = await db.getApplicationImport(importId);
+    const source = await db.createSource({
+      collectionId: applicationImport!.collectionId,
+      name: `Item ${remoteId}`,
+      kind: "application",
+      config: { remoteUrl: `https://remote.example/${remoteId}` },
+    });
+    if (options.error) await db.updateSource(source.id, { status: "error", error: "boom" });
+    if (options.ready) await db.updateSource(source.id, { status: "ready" });
+    for (let index = 0; index < (options.documents ?? 0); index += 1) {
+      await db.createConcept({
+        collectionId: applicationImport!.collectionId,
+        sourceId: source.id,
+        path: `application/${remoteId}-${index}.md`,
+        frontmatter: { type: "Reference", title: `Part ${index}` } as never,
+        body: "Body",
+      });
+    }
+    await db.upsertApplicationSource({
+      importId,
+      sourceId: source.id,
+      remoteId,
+      contentHash: remoteId,
+      lastSeenAt: new Date().toISOString(),
+    });
+    const document = options.document
+      ? await db.createConcept({
+          collectionId: applicationImport!.collectionId,
+          sourceId: source.id,
+          path: `application/${remoteId}.md`,
+          frontmatter: { type: "Reference", title: `Article ${remoteId}` } as never,
+          body: "Body",
+        })
+      : null;
+    return { source, document };
+  }
+
+  it("lists every item the Import brought in, each opening onto its one Document", async () => {
+    const { db, assistant, port, result } = await created();
+    const withDocument = await item(db, result.id, "R1", { document: true });
+    const processing = await item(db, result.id, "R2");
+    const failed = await item(db, result.id, "R3", { error: true });
+
+    const page = await listApplicationImportDocumentsOp.run(ctx({ applicationImports: port }), {
+      importId: result.id,
+      assistantId: assistant.id,
+    });
+    expect(page.total).toBe(3);
+    expect(page.items).toEqual([
+      expect.objectContaining({
+        sourceId: withDocument.source.id,
+        documentId: withDocument.document!.id,
+        documentCount: 1,
+        title: "Article R1",
+        status: "pending",
+        remoteUrl: "https://remote.example/R1",
+        memoryCount: 0,
+      }),
+      expect.objectContaining({
+        sourceId: processing.source.id,
+        documentId: null,
+        documentCount: 0,
+        title: "Item R2",
+        status: "pending",
+      }),
+      expect.objectContaining({ sourceId: failed.source.id, status: "error" }),
+    ]);
+  });
+
+  it("answers not found for an Assistant the Import does not feed, and for another Organization", async () => {
+    const { db, port, result } = await created();
+    const other = await db.createAssistant(DEMO_ORG.id, { title: "Unlinked" });
+    await expect(
+      listApplicationImportDocumentsOp.run(ctx({ applicationImports: port }), {
+        importId: result.id,
+        assistantId: other.id,
+      }),
+    ).rejects.toMatchObject({ code: "not_found" });
+    await expect(
+      listApplicationImportDocumentsOp.run(
+        ctx({ applicationImports: port }, { organizationId: "org_other" }),
+        { importId: result.id },
+      ),
+    ).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  it("reads a Source with no single Document by the Source's own status", async () => {
+    const { db, port, result } = await created();
+    const ready = await item(db, result.id, "R1", { documents: 2, ready: true });
+    const processing = await item(db, result.id, "R2", { documents: 2 });
+    // Ready with nothing to open yet is not "ready" to a Member.
+    const empty = await item(db, result.id, "R3", { ready: true });
+    const page = await listApplicationImportDocumentsOp.run(ctx({ applicationImports: port }), {
+      importId: result.id,
+    });
+    expect(page.items).toEqual([
+      expect.objectContaining({
+        sourceId: ready.source.id,
+        documentId: null,
+        documentCount: 2,
+        status: "ready",
+      }),
+      expect.objectContaining({ sourceId: processing.source.id, status: "pending" }),
+      expect.objectContaining({ sourceId: empty.source.id, documentCount: 0, status: "pending" }),
+    ]);
+  });
+
+  it("clamps a page past the end to the last one", async () => {
+    const { db, port, result } = await created();
+    await item(db, result.id, "R1", { document: true });
+    const page = await listApplicationImportDocumentsOp.run(ctx({ applicationImports: port }), {
+      importId: result.id,
+      page: 9,
+    });
+    expect(page.page).toBe(1);
+    expect(page.items).toHaveLength(1);
   });
 });

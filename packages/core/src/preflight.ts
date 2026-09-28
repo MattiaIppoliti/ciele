@@ -44,16 +44,6 @@ export const PREFLIGHT_MAP_VERSION = 2;
  * not widen it without a row in `THINKING_LINES`, which the test enforces.
  */
 export type PreflightLanguage = "it" | "en" | "es" | "fr" | "de" | "nl" | "pt";
-export const PREFLIGHT_LANGUAGES: readonly PreflightLanguage[] = [
-  "it",
-  "en",
-  "es",
-  "fr",
-  "de",
-  "nl",
-  "pt",
-];
-
 const LANGUAGE_NAMES: Readonly<Record<PreflightLanguage, string>> = {
   it: "Italian (italiano)",
   en: "English",
@@ -63,6 +53,9 @@ const LANGUAGE_NAMES: Readonly<Record<PreflightLanguage, string>> = {
   nl: "Dutch (Nederlands)",
   pt: "Portuguese (português)",
 };
+export const PREFLIGHT_LANGUAGES = Object.keys(
+  LANGUAGE_NAMES
+) as readonly PreflightLanguage[];
 
 /** The explicit exits: a choice never has to pick a listed option. */
 export const FLOW_DEFAULT = "default";
@@ -453,11 +446,9 @@ export function thinkingOutcome(
 ): ThinkingOutcome | null {
   switch (routing.kind) {
     case "knowledge_search":
-      return "knowledge_search";
     case "faq":
-      return "faq";
     case "escalation":
-      return "escalation";
+      return routing.kind;
     case "flow": {
       const flow = catalogue.flows.find((f) => f.id === routing.flowId);
       return flow?.actions.includes("search_knowledge") ? "knowledge_search" : null;

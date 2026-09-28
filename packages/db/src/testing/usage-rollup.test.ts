@@ -419,3 +419,60 @@ describe("crawl funding (real SQL)", () => {
     ]);
   });
 });
+
+describe("rollup catch-up after a missed night (real SQL)", () => {
+  const chatCallsOn = async (day: string) => {
+    const res = await pg.query<{ calls: number }>(
+      `select coalesce(sum(calls), 0)::int as calls from public.usage_daily
+       where organization_id = $1 and day = $2 and kind = 'chat'`,
+      [organizationId, day]
+    );
+    return Number(res.rows[0].calls);
+  };
+
+  it("recomputes every day after the last closed one, not just the last two", async () => {
+    const missed = backdate(4);
+    await insertUsage({
+      createdAt: missed,
+      stage: "generate",
+      credentialKind: "platform",
+      inputTokens: 10,
+      outputTokens: 1,
+    });
+    const day = missed.slice(0, 10);
+    const before = await chatCallsOn(day);
+
+    // The last run closed the day before the gap; the plain two-day window
+    // never reaches the missed day.
+    await pg.query(
+      `insert into public.usage_rollup_state (id, closed_through)
+       values (true, (now() at time zone 'utc')::date - 6)
+       on conflict (id) do update set closed_through = excluded.closed_through`
+    );
+    await pg.query("select public.rollup_usage_daily(2)");
+    expect(await chatCallsOn(day)).toBe(before);
+
+    await pg.query("select public.rollup_usage_catch_up(35)");
+    expect(await chatCallsOn(day)).toBe(before + 1);
+
+    const state = await pg.query<{ closed: string }>(
+      `select (closed_through = (now() at time zone 'utc')::date - 1) as closed
+       from public.usage_rollup_state`
+    );
+    expect(state.rows[0].closed).toBe(true);
+  });
+
+  it("repairs pre-existing gaps on its first run, when no state row exists", async () => {
+    await pg.query("delete from public.usage_rollup_state");
+    const old = backdate(20);
+    await insertUsage({
+      createdAt: old,
+      stage: "generate",
+      credentialKind: "platform",
+      inputTokens: 5,
+      outputTokens: 1,
+    });
+    await pg.query("select public.rollup_usage_catch_up(35)");
+    expect(await chatCallsOn(old.slice(0, 10))).toBeGreaterThanOrEqual(1);
+  });
+});

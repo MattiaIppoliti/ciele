@@ -19,15 +19,17 @@ import {
 import { EASE_OUT, SPRING_LAYOUT } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 
-type Variant = "pill" | "underline" | "segment";
+// A link tab (`href`, outside a tablist) marks itself with aria-current, not
+// aria-pressed. Leaving it out of this selector found no active control, so
+// the pill's contrast label stayed clipped away and the selected tab showed
+// its muted base label on the pill: grey on light grey in dark mode.
 const ACTIVE_CONTROL_SELECTOR =
-  '[data-tabs-value][aria-selected="true"], [data-tabs-value][aria-pressed="true"]';
+  '[data-tabs-value][aria-selected="true"], [data-tabs-value][aria-pressed="true"], [data-tabs-value][aria-current="page"]';
 
 type Ctx = {
   value: string;
   setValue: (v: string) => void;
   layoutId: string;
-  variant: Variant;
   panelValues: Set<string>;
   registerPanel: (value: string) => void;
   unregisterPanel: (value: string) => void;
@@ -83,14 +85,12 @@ export function Tabs({
   defaultValue,
   value,
   onValueChange,
-  variant = "pill",
   children,
   className,
 }: {
   defaultValue?: string;
   value?: string;
   onValueChange?: (v: string) => void;
-  variant?: Variant;
   children: ReactNode;
   className?: string;
 }) {
@@ -136,14 +136,13 @@ export function Tabs({
       value: current,
       setValue,
       layoutId,
-      variant,
       panelValues,
       registerPanel,
       unregisterPanel,
       tabId,
       panelId,
     }),
-    [current, layoutId, setValue, variant, panelValues, registerPanel, unregisterPanel, tabId, panelId],
+    [current, layoutId, setValue, panelValues, registerPanel, unregisterPanel, tabId, panelId],
   );
   return (
     <MotionConfig transition={reduce ? { duration: 0 } : transition}>
@@ -160,12 +159,6 @@ export function Tabs({
   );
 }
 
-const listClasses: Record<Variant, string> = {
-  pill: "inline-flex items-center gap-1 rounded-full bg-card p-1",
-  underline: "inline-flex items-center gap-1 border-b border-border",
-  segment: "inline-flex items-center gap-0 rounded-lg bg-card p-0.5",
-};
-
 export function TabsList({
   children,
   className,
@@ -178,7 +171,7 @@ export function TabsList({
   /** Names the tab set. It belongs on the `tablist`, not on the wrapper. */
   "aria-label"?: string;
 }) {
-  const { variant, value, panelValues } = useTabs();
+  const { value, panelValues } = useTabs();
   const isTablist = panelValues.size > 0;
   const reduce = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -255,7 +248,6 @@ export function TabsList({
   }, [children, value, edges.overflow, measure, reveal]);
 
   useLayoutEffect(() => {
-    if (variant === "underline") return;
     const list = listRef.current;
     if (!list) return;
     void children;
@@ -296,7 +288,7 @@ export function TabsList({
     // in sync, including labels crossed during a long or interrupted glide.
     frame.postRender(syncClips, true);
     return () => cancelFrame(syncClips);
-  }, [value, children, variant, reduce]);
+  }, [value, children, reduce]);
 
   const scroll = (direction: number) => {
     const viewport = viewportRef.current;
@@ -305,14 +297,13 @@ export function TabsList({
   };
   const controlClass =
     "absolute inset-y-0 z-20 inline-flex w-9 items-center justify-center text-foreground transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-0";
-  const surfaceClass = variant === "pill" ? "rounded-full bg-card" : variant === "segment" ? "rounded-lg bg-card" : "";
 
   return (
     <div
       ref={rootRef}
       className={cn(
         "relative isolate flex w-full max-w-full min-w-0 items-center",
-        edges.overflow && surfaceClass,
+        edges.overflow && "rounded-full bg-card",
         wrapperClassName,
       )}
     >
@@ -353,7 +344,7 @@ export function TabsList({
           role={isTablist ? "tablist" : "group"}
           aria-orientation={isTablist ? "horizontal" : undefined}
           aria-label={ariaLabel}
-          className={cn(listClasses[variant], "w-max", className)}
+          className={cn("inline-flex w-max items-center gap-1 rounded-full bg-card p-1", className)}
         >
           {children}
         </div>
@@ -390,14 +381,12 @@ export function TabsTrigger({
   value,
   children,
   className,
-  indicatorClassName,
   disabled = false,
   href,
 }: {
   value: string;
   children: ReactNode;
   className?: string;
-  indicatorClassName?: string;
   disabled?: boolean;
   /**
    * When the tab is also a route: rendered as a link, so Cmd/Ctrl/middle-click
@@ -406,7 +395,7 @@ export function TabsTrigger({
    */
   href?: string;
 }) {
-  const { value: current, setValue, layoutId, variant, panelValues, tabId, panelId } = useTabs();
+  const { value: current, setValue, layoutId, panelValues, tabId, panelId } = useTabs();
   const active = current === value;
   const isTablist = panelValues.size > 0;
   const controls = isTablist && panelValues.has(value) ? panelId(value) : undefined;
@@ -457,28 +446,6 @@ export function TabsTrigger({
     );
   }
 
-  if (variant === "underline") {
-    return renderTrigger(
-      cn(
-        "relative isolate px-3 pb-2.5 pt-1 -mb-px text-sm font-medium transition-colors min-h-[44px] inline-flex items-center whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-        active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-        className,
-      ),
-      <>
-        {children}
-        {active ? (
-          <motion.span
-            layoutId={layoutId}
-            layout
-            className={cn("absolute bottom-0 left-0 right-0 h-px bg-primary", indicatorClassName)}
-          />
-        ) : null}
-      </>,
-    );
-  }
-
-  const radius = variant === "pill" ? "rounded-full" : "rounded-md";
-
   return (
     <div className="relative shrink-0">
       {active ? (
@@ -486,15 +453,15 @@ export function TabsTrigger({
           data-tabs-indicator=""
           layoutId={layoutId}
           layout
-          style={{ borderRadius: variant === "pill" ? 9999 : 8 }}
-          className={cn("absolute inset-0 bg-primary", radius, indicatorClassName)}
+          style={{ borderRadius: 9999 }}
+          className="absolute inset-0 rounded-full bg-primary"
         />
       ) : null}
       {renderTrigger(
         cn(
           "relative z-10 inline-flex items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
           "text-muted-foreground hover:text-foreground",
-          radius,
+          "rounded-full",
           className,
         ),
         <>

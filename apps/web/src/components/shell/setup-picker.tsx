@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronUp, MessageCircle, Plus, Search, X } from "lucide-react";
 import { cn } from "@agent-hub/ui";
@@ -8,6 +8,7 @@ import Link from "next/link";
 import { formatDay } from "@/lib/format";
 import { fuzzyFilter } from "@/lib/fuzzy";
 import { canAutoFocus } from "@/lib/auto-focus";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /** One row of the picker: an assistant plus the two facts the list shows. */
 export interface SetupPickerAssistant {
@@ -97,7 +98,10 @@ function AssistantItem({
       style={{ originX: 1, originY: 1 }}
       className="border-border/40 border-b py-4 first:pt-0 last:border-0"
     >
-      <Link href={href} className="group flex items-center">
+      <Link
+        href={href}
+        className="group press hover:bg-muted/40 focus-visible:ring-ring -mx-2 -my-1 flex items-center rounded-xl px-2 py-1 transition-colors outline-none focus-visible:ring-2"
+      >
         <div className="relative mr-4 shrink-0">
           <AssistantAvatar assistant={assistant} className="size-12" />
           {assistant.active && (
@@ -107,9 +111,11 @@ function AssistantItem({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-foreground mb-1.5 truncate text-base leading-none font-semibold">
+          {/* A row title, not a section heading: the rows sit under the
+              list's own h2/h3. */}
+          <p className="text-foreground mb-1.5 truncate text-base leading-none font-semibold">
             {assistant.title}
-          </h3>
+          </p>
           <p className="text-muted-foreground truncate text-sm leading-none">
             {assistant.nickname
               ? `${assistant.nickname} · Updated ${formatDay(assistant.updatedAt)}`
@@ -141,6 +147,10 @@ export function SetupPicker({
   /** Set by "…more": lights up the directory search until it is used. */
   const [highlightSearch, setHighlightSearch] = useState(false);
   const directorySearchRef = useRef<HTMLInputElement>(null);
+  const directoryId = useId();
+  /** "See all" remounts when the directory closes; focus goes back to it. */
+  const seeAllRef = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
 
   const href = (id: string) => `/assistants/${id}/${slug}`;
   const searchText = (assistant: SetupPickerAssistant) =>
@@ -158,6 +168,18 @@ export function SetupPicker({
     () => fuzzyFilter(assistants, directoryQuery, searchText),
     [assistants, directoryQuery]
   );
+
+  const closeDirectory = () => {
+    restoreFocus.current = true;
+    setIsExpanded(false);
+    setHighlightSearch(false);
+  };
+
+  useEffect(() => {
+    if (isExpanded || !restoreFocus.current) return;
+    restoreFocus.current = false;
+    seeAllRef.current?.focus();
+  }, [isExpanded]);
 
   const revealSearch = () => {
     setIsExpanded(true);
@@ -180,7 +202,7 @@ export function SetupPicker({
           <h2 className="text-foreground flex items-center gap-2 text-lg font-semibold tracking-tight">
             Active Assistants
             <span className="bg-muted text-muted-foreground mt-0.5 rounded-full px-2 py-1 text-xs leading-none font-normal">
-              {active.length}
+              <RollingNumber value={active.length} />
             </span>
           </h2>
           <Link
@@ -188,7 +210,7 @@ export function SetupPicker({
             aria-label="Create a new assistant"
             className="border-border/50 text-muted-foreground hover:bg-muted/50 flex size-9 items-center justify-center rounded-full border transition-colors"
           >
-            <Plus className="size-4" />
+            <Plus aria-hidden className="size-4" />
           </Link>
         </div>
 
@@ -202,7 +224,7 @@ export function SetupPicker({
             aria-label="Find assistant"
             autoComplete="off"
             spellCheck={false}
-            className="bg-muted/40 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-border h-11 w-full rounded-2xl pr-4 pl-11 text-sm outline-none focus-visible:ring-1"
+            className="bg-muted/40 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-ring h-11 w-full rounded-2xl pr-4 pl-11 text-sm outline-none focus-visible:ring-2"
           />
         </div>
       </div>
@@ -229,7 +251,7 @@ export function SetupPicker({
           ))}
         </motion.div>
         {filteredActive.length === 0 && (
-          <p className="text-muted-foreground py-8 text-center text-sm">
+          <p className="text-muted-foreground py-8 text-center text-sm break-words">
             {assistants.length === 0
               ? "No assistants yet, create one first."
               : active.length === 0
@@ -256,7 +278,14 @@ export function SetupPicker({
         }
         className="bg-card group/bar absolute z-50 flex flex-col overflow-hidden border"
         style={{ cursor: isExpanded ? "default" : "pointer" }}
+        // A pointer shortcut only: the "See all" button is the keyboard path.
         onClick={() => !isExpanded && setIsExpanded(true)}
+        onKeyDown={(event) => {
+          if (isExpanded && event.key === "Escape") {
+            event.stopPropagation();
+            closeDirectory();
+          }
+        }}
       >
         <div
           className={cn(
@@ -269,9 +298,9 @@ export function SetupPicker({
               <MessageCircle className="size-5" />
             </span>
             <motion.div layout={reduce ? false : "position"}>
-              <h4 className="text-foreground text-base leading-none font-medium">
+              <h3 className="text-foreground text-base leading-none font-medium">
                 Assistants Directory
-              </h4>
+              </h3>
             </motion.div>
           </div>
 
@@ -279,19 +308,23 @@ export function SetupPicker({
             <button
               type="button"
               aria-label="Close the assistants directory"
+              aria-expanded
+              aria-controls={directoryId}
               className="bg-muted/60 text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-xl transition-[color,transform] active:scale-90 motion-reduce:transform-none motion-reduce:transition-none"
               onClick={(event) => {
                 event.stopPropagation();
-                setIsExpanded(false);
-                setHighlightSearch(false);
+                closeDirectory();
               }}
             >
-              <X className="size-4" />
+              <X aria-hidden className="size-4" />
             </button>
           ) : (
             <button
               type="button"
+              ref={seeAllRef}
               aria-label={`Open the assistants directory, see all ${assistants.length}`}
+              aria-expanded={false}
+              aria-controls={directoryId}
               onClick={(event) => {
                 event.stopPropagation();
                 revealSearch();
@@ -304,7 +337,9 @@ export function SetupPicker({
           )}
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Collapsed, the rows are still mounted under opacity 0: inert keeps
+            their links out of the tab order until the directory opens. */}
+        <div id={directoryId} inert={!isExpanded} className="flex flex-1 flex-col overflow-hidden">
           <AnimatePresence>
             {isExpanded && (
               <motion.div
@@ -367,7 +402,7 @@ export function SetupPicker({
               ))}
             </motion.div>
             {isExpanded && filteredAll.length === 0 && (
-              <p className="text-muted-foreground py-8 text-center text-sm">
+              <p className="text-muted-foreground py-8 text-center text-sm break-words">
                 {assistants.length === 0
                   ? "No assistants yet, create one first."
                   : `No assistants match “${directoryQuery}”.`}

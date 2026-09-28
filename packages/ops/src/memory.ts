@@ -6,6 +6,7 @@ import type {
   ProjectPatch,
 } from "@agent-hub/core";
 import { MEMORY_DOCUMENT_MAX_CHARS } from "@agent-hub/core";
+import { MemoryDocumentConflictError } from "@agent-hub/db";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
 import {
   requireEditableTeammate,
@@ -156,6 +157,29 @@ export const deleteProjectOp = defineOperation({
   },
 });
 
+/**
+ * Every memory write goes through here, so a lost update surfaces as the
+ * operation's own `conflict` rather than as an adapter error: the body is a
+ * whole document, and writing it over a version the caller never saw would
+ * erase that version from the document and from its history.
+ */
+async function writeDocument(
+  ctx: OperationContext,
+  input: Parameters<OperationContext["db"]["writeMemoryDocument"]>[0]
+): Promise<MemoryDocument> {
+  try {
+    return await ctx.db.writeMemoryDocument(input);
+  } catch (error) {
+    if (error instanceof MemoryDocumentConflictError) {
+      throw new OperationError("conflict", error.message);
+    }
+    throw error;
+  }
+}
+
+/** The version the editor loaded; optional so older clients keep working. */
+const expectedUpdatedAtSchema = z.string().min(1).nullable().optional();
+
 export const writeProjectDocumentOp = defineOperation({
   name: "projects.document.write",
   capability: "edit",
@@ -163,17 +187,19 @@ export const writeProjectDocumentOp = defineOperation({
     id: z.string().min(1),
     body: bodySchema,
     note: noteSchema,
+    expectedUpdatedAt: expectedUpdatedAtSchema,
   }),
   entities: ({ id }) => [{ kind: "project" as const, id }],
   run: async (ctx, input): Promise<MemoryDocument> => {
     await requireProject(ctx, input.id);
-    return ctx.db.writeMemoryDocument({
+    return writeDocument(ctx, {
       organizationId: ctx.organizationId,
       owner: { scope: "project", projectId: input.id },
       body: input.body,
       note: input.note,
       teammateId: ctx.teammate?.id ?? null,
       authorId: ctx.userId || null,
+      expectedUpdatedAt: input.expectedUpdatedAt,
     });
   },
 });
@@ -183,15 +209,20 @@ export const writeProjectDocumentOp = defineOperation({
 export const writeMyMemoryOp = defineOperation({
   name: "memory.me.write",
   capability: "member",
-  input: z.object({ body: bodySchema, note: noteSchema }),
+  input: z.object({
+    body: bodySchema,
+    note: noteSchema,
+    expectedUpdatedAt: expectedUpdatedAtSchema,
+  }),
   entities: () => [{ kind: "myMemory" as const }],
   run: async (ctx, input): Promise<MemoryDocument> =>
-    ctx.db.writeMemoryDocument({
+    writeDocument(ctx, {
       organizationId: ctx.organizationId,
       owner: { scope: "user", memberId: ctx.userId },
       body: input.body,
       note: input.note || "Edited in settings",
       authorId: ctx.userId || null,
+      expectedUpdatedAt: input.expectedUpdatedAt,
     }),
 });
 
@@ -243,6 +274,7 @@ export const writeTeammateMemoryOp = defineOperation({
     id: z.string().min(1),
     body: bodySchema,
     note: noteSchema,
+    expectedUpdatedAt: expectedUpdatedAtSchema,
   }),
   entities: ({ id }) => [{ kind: "teammate" as const, id }],
   run: async (ctx, input): Promise<MemoryDocument> => {
@@ -255,13 +287,14 @@ export const writeTeammateMemoryOp = defineOperation({
     } else {
       await requireEditableTeammate(ctx, input.id);
     }
-    return ctx.db.writeMemoryDocument({
+    return writeDocument(ctx, {
       organizationId: ctx.organizationId,
       owner: { scope: "agent", teammateId: input.id },
       body: input.body,
       note: input.note || "Edited by hand",
       teammateId: ctx.teammate?.id ?? null,
       authorId: ctx.userId || null,
+      expectedUpdatedAt: input.expectedUpdatedAt,
     });
   },
 });
@@ -292,7 +325,7 @@ export const rememberAboutMemberOp = defineOperation({
     // Whose profile: the Member on the other end of this turn, always. The
     // operation takes no member id, so no prompt injection and no model
     // mistake can point it at a colleague.
-    return ctx.db.writeMemoryDocument({
+    return writeDocument(ctx, {
       organizationId: ctx.organizationId,
       owner: { scope: "user", memberId: ctx.userId },
       body: input.body,
@@ -325,7 +358,7 @@ export const recordProjectDecisionOp = defineOperation({
         `${project.name} is archived, so its decisions are read-only.`
       );
     }
-    return ctx.db.writeMemoryDocument({
+    return writeDocument(ctx, {
       organizationId: ctx.organizationId,
       owner: { scope: "project", projectId: project.id },
       body: input.body,

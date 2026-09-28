@@ -61,7 +61,6 @@ export function PlanTilt({ children }: { children: React.ReactNode }) {
     <TiltCard
       max={7}
       glareOpacity={0.06}
-      invert
       className="h-full overflow-visible rounded-xl"
     >
       {children}

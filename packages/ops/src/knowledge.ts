@@ -1,9 +1,10 @@
 import { z } from "zod";
 import type {
-  Assistant,
   Concept,
   KnowledgeCollection,
   KnowledgeMemory,
+  KnowledgeSearchHit,
+  KnowledgeSearchResponse,
   Source,
 } from "@agent-hub/core";
 import {
@@ -14,6 +15,8 @@ import { raiseDanglingSourceAlerts } from "@agent-hub/db";
 import type { OperationContext } from "./operation";
 import { writingActor } from "./actor";
 import { OperationError, defineOperation } from "./operation";
+import { requireAssistant } from "./assistants";
+import { assistantEditors } from "./entities";
 
 /**
  * The Knowledge domain (#622): Sources, FAQs, re-crawl.
@@ -27,17 +30,6 @@ import { OperationError, defineOperation } from "./operation";
  *   crawl restart), each wired over the surface's own Db.
  */
 
-async function requireAssistant(
-  ctx: OperationContext,
-  id: string
-): Promise<Assistant> {
-  const assistant = await ctx.db.getAssistant(id);
-  if (!assistant || assistant.organizationId !== ctx.organizationId) {
-    throw new OperationError("not_found", "Assistant not found");
-  }
-  return assistant;
-}
-
 /**
  * collectionId → Collection the caller may touch, or not_found. Collections
  * are org-owned (PRD #726 contract): the org stamp is the whole check. The
@@ -50,8 +42,7 @@ async function requireCollection(
   assistantId?: string
 ): Promise<KnowledgeCollection> {
   const collection = await ctx.db.getCollection(collectionId);
-  if (!collection) throw new OperationError("not_found", "Collection not found");
-  if (collection.organizationId !== ctx.organizationId) {
+  if (!collection || collection.organizationId !== ctx.organizationId) {
     throw new OperationError("not_found", "Collection not found");
   }
   if (assistantId) await requireAssistant(ctx, assistantId);
@@ -311,15 +302,10 @@ export const deleteSourceOp = defineOperation({
   capability: "edit",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: { assistantIds: string[] }) => [
-    ...result.assistantIds.map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors(result.assistantIds),
     { kind: "knowledgeHub" as const },
   ],
-  run: async (ctx, { id }) => {
-    return { assistantIds: await removeSource(ctx, id) };
-  },
+  run: async (ctx, { id }) => ({ assistantIds: await removeSource(ctx, id) }),
 });
 
 /**
@@ -338,10 +324,7 @@ export const deleteSourcesOp = defineOperation({
     ids: z.array(z.string().min(1)).min(1).max(100),
   }),
   entities: (_input, result: { assistantIds: string[] }) => [
-    ...result.assistantIds.map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors(result.assistantIds),
     { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, { ids }) => {
@@ -365,6 +348,17 @@ async function removeSource(
   // before the delete cascades them away.
   const links = await ctx.db.listSourceAssistantLinks(id);
   await ctx.db.deleteSource(id);
+  // The uploaded original outlived its row before: nothing removed it from the
+  // bucket, so an erased Source's file stayed there for good. Only a path under
+  // this Organization's own prefix is ever handed to the host.
+  const original = source.originalObjectPath;
+  if (original && original.startsWith(`org/${ctx.organizationId}/`)) {
+    try {
+      await ctx.ports?.removeKnowledgeOriginals?.([original]);
+    } catch (error) {
+      console.error("[knowledge] original removal failed:", error);
+    }
+  }
   // A Teammate can name this Source directly in its Knowledge Scope, and that
   // is not a foreign key: the delete leaves it pointed at nothing, so the
   // operational surface says so rather than letting the scope go quiet (#769).
@@ -397,10 +391,7 @@ export const unlinkSourceOp = defineOperation({
     _input,
     result: { assistantIds: string[]; remaining: number }
   ) => [
-    ...result.assistantIds.map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors(result.assistantIds),
     { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, input) => {
@@ -425,10 +416,7 @@ export const unlinkSourcesOp = defineOperation({
     sourceIds: z.array(z.string().min(1)).min(1).max(100),
   }),
   entities: (_input, result: { assistantIds: string[] }) => [
-    ...result.assistantIds.map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors(result.assistantIds),
     { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, input) => {
@@ -458,10 +446,9 @@ async function removeSourceLink(
   const remaining = affected.filter((id) => id !== assistantId);
   // Not linked in the first place: nothing to do, and no write that would
   // rewrite the other links' Direct access flags.
-  if (remaining.length === affected.length) {
-    return { assistantIds: affected, remaining: remaining.length };
+  if (remaining.length !== affected.length) {
+    await ctx.db.setSourceAssistantLinks(sourceId, remaining);
   }
-  await ctx.db.setSourceAssistantLinks(sourceId, remaining);
   return { assistantIds: affected, remaining: remaining.length };
 }
 
@@ -509,6 +496,16 @@ export const createFaqOp = defineOperation({
   },
 });
 
+/** The parsed rows of a two-column FAQ CSV. */
+const faqRowsSchema = z
+  .array(
+    z.object({
+      question: z.string().min(1).max(1000),
+      answer: z.string().min(1).max(20000),
+    })
+  )
+  .max(2000);
+
 /** Bulk FAQ import, the parsed rows of a two-column CSV. */
 export const importFaqsOp = defineOperation({
   name: "knowledge.faqs.import",
@@ -518,14 +515,7 @@ export const importFaqsOp = defineOperation({
     collectionId: z.string().min(1),
     /** Recorded as each Concept's OKF `sources` entry (what it derives from). */
     fileName: z.string().max(300).optional(),
-    rows: z
-      .array(
-        z.object({
-          question: z.string().min(1).max(1000),
-          answer: z.string().min(1).max(20000),
-        })
-      )
-      .max(2000),
+    rows: faqRowsSchema,
     /** Hub import (PRD #726): the linked-assistant set for every new FAQ. */
     assistantIds: z.array(z.string().min(1)).max(50).optional(),
   }),
@@ -656,14 +646,7 @@ export const importOrgFaqsOp = defineOperation({
   capability: "edit",
   input: z.object({
     fileName: z.string().max(300).optional(),
-    rows: z
-      .array(
-        z.object({
-          question: z.string().min(1).max(1000),
-          answer: z.string().min(1).max(20000),
-        })
-      )
-      .max(2000),
+    rows: faqRowsSchema,
     assistantIds: z.array(z.string().min(1)).min(1).max(50),
   }),
   entities: (_input, result: { imported: number; assistantId: string }) =>
@@ -761,10 +744,7 @@ export const updateOrgFaqOp = defineOperation({
   // Assistant it is linked to, so the edit touches all of them.
   entities: (_input, result: Concept & { linkedAssistantIds: string[] }) => [
     { kind: "knowledgeHub" as const },
-    ...result.linkedAssistantIds.map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors(result.linkedAssistantIds),
   ],
   run: async (ctx, input) => {
     const { source } = await requireSource(ctx, input.sourceId);
@@ -810,10 +790,7 @@ export const recrawlSourceOp = defineOperation({
   capability: "edit",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: { assistantIds: string[] }) => [
-    ...result.assistantIds.map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors(result.assistantIds),
     { kind: "knowledgeHub" as const },
     { kind: "alerts" as const },
   ],
@@ -1000,10 +977,7 @@ export const setDocumentExcludedOp = defineOperation({
   }),
   entities: (_input, result: { excluded: boolean; assistantIds: string[] }) => [
     { kind: "knowledgeHub" as const },
-    ...result.assistantIds.map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors(result.assistantIds),
   ],
   run: async (ctx, input) => {
     const { source } = await requireSource(ctx, input.sourceId);
@@ -1040,10 +1014,7 @@ export const setDocumentsExcludedOp = defineOperation({
   }),
   entities: (_input, result: { changed: number; assistantIds: string[] }) => [
     { kind: "knowledgeHub" as const },
-    ...result.assistantIds.map((assistantId) => ({
-      kind: "assistantEditor" as const,
-      assistantId,
-    })),
+    ...assistantEditors(result.assistantIds),
   ],
   run: async (ctx, input) => {
     const { source } = await requireSource(ctx, input.sourceId);
@@ -1219,3 +1190,57 @@ async function requireKnowledgeMemory(
   await requireSource(ctx, memory.sourceId);
   return memory;
 }
+
+/** The longest question `knowledge.search` embeds. */
+export const KNOWLEDGE_SEARCH_QUERY_MAX = 2000;
+
+/**
+ * Search the Organization's knowledge and return the passages, not an answer
+ * (spec: third-party access to Ciele). For a caller that brings its own model,
+ * an MCP client or a script: the same six reranked passages an Assistant's
+ * widget would have cited, each with its Document and Source, so the caller
+ * can quote and link them the way a Ciele answer does.
+ *
+ * `assistantId` narrows the search to the Sources linked to that Assistant;
+ * without it the whole Library is searched. A member read: it changes nothing
+ * and records no Conversation, so it never enters the Inbox or Insights.
+ */
+export const searchKnowledgeOp = defineOperation({
+  name: "knowledge.search",
+  capability: "member",
+  input: z.object({
+    query: z
+      .string()
+      .trim()
+      .min(1, "Query is required")
+      .max(KNOWLEDGE_SEARCH_QUERY_MAX, `Query is longer than ${KNOWLEDGE_SEARCH_QUERY_MAX} characters`),
+    assistantId: z.string().min(1).optional(),
+  }),
+  entities: () => [],
+  run: async (ctx, input): Promise<KnowledgeSearchResponse> => {
+    const search = ctx.ports?.searchKnowledge;
+    if (!search) {
+      throw new OperationError(
+        "invalid_input",
+        "Knowledge search is not available on this surface"
+      );
+    }
+    if (input.assistantId) await requireAssistant(ctx, input.assistantId);
+    const found = await search({
+      query: input.query,
+      assistantId: input.assistantId ?? null,
+    });
+    const results: KnowledgeSearchHit[] = found.map((hit, index) => ({
+      rank: index + 1,
+      content: hit.content,
+      documentId: hit.conceptId,
+      documentTitle: hit.conceptTitle,
+      sourceId: hit.sourceId ?? null,
+      sourceName: hit.sourceName,
+      collectionName: hit.collectionName,
+      url: hit.resourceUrl,
+      score: hit.similarity,
+    }));
+    return { query: input.query, assistantId: input.assistantId ?? null, results };
+  },
+});

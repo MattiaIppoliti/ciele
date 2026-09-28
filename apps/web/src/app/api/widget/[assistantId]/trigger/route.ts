@@ -16,7 +16,6 @@ import {
 } from "@/lib/widget-rate-limit";
 
 export const maxDuration = 60;
-export const runtime = "nodejs";
 
 /**
  * Proactive Flow triggers (#541): the widget reports a client event, the chat
@@ -104,11 +103,8 @@ export async function POST(
     collectionId: body.collectionId,
     message: "",
     trigger: body.trigger,
-    triggerContext: {
-      ...(typeof body.elapsedSeconds === "number"
-        ? { elapsedSeconds: body.elapsedSeconds }
-        : {}),
-    },
+    triggerContext:
+      typeof body.elapsedSeconds === "number" ? { elapsedSeconds: body.elapsedSeconds } : {},
     metadata: { ...metadata, ...(launchUrl ? { launchUrl } : {}) },
     signal: request.signal,
   });

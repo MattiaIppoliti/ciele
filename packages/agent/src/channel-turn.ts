@@ -18,7 +18,6 @@ import {
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
-import type { HistoryMessage, RuntimeEvent } from "./engine";
 import { resolveChatModel } from "./models";
 import { createTurnSession } from "./session";
 import { getRuntimeHost } from "./host";
@@ -30,12 +29,15 @@ import {
 import {
   admitAiSpend,
   CONVERSATION_SPEND_CAPACITY,
+  spendConnectionKinds,
   type AiConnectionKind,
   type AiSpendBlock,
 } from "./spend-admission";
 import type {
   ChannelEvent,
   ChatReplyPart,
+  HistoryMessage,
+  RuntimeEvent,
   TeammateActionTool,
 } from "./types";
 
@@ -357,19 +359,14 @@ function channelConnectionKinds(
     ...new Set(
       queuedTeammateIds
         .map((id) => input.teammates.find((teammate) => teammate.id === id))
-        .map((teammate) =>
-          teammate
-            ? resolveChatModel(
-                teammate.modelProvider,
-                teammate.modelId,
-                input.connections,
-              )?.credentialKind
-            : undefined,
-        )
         // No model resolves: nothing is funded, so there is nothing to gate.
-        .filter((kind): kind is NonNullable<typeof kind> => Boolean(kind))
-        .map((kind): AiConnectionKind =>
-          kind === "platform" ? "platform" : "byok",
+        .flatMap((teammate) =>
+          spendConnectionKinds(
+            teammate
+              ? resolveChatModel(teammate.modelProvider, teammate.modelId, input.connections)
+                  ?.credentialKind
+              : undefined,
+          ),
         ),
     ),
   ];

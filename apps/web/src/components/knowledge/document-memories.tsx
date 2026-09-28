@@ -57,6 +57,7 @@ import { ExtractMemoriesButton } from "@/components/knowledge/extract-memories-b
 import { relativeTimeLabel } from "@/lib/source-documents";
 import { toast } from "@/lib/toast";
 import { formatDateTime, formatDay } from "@/lib/format";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * A Document's Memories (#932): the facts extracted from the page, one
@@ -179,10 +180,14 @@ export function DocumentMemories({
         <TableCard
           footer={
             <p className="text-muted-foreground px-4 py-2 text-xs">
-              {live} live {live === 1 ? "memory" : "memories"}
-              {showForgotten && memories.length > live
-                ? ` · ${memories.length - live} forgotten`
-                : ""}
+              <RollingNumber value={live} /> live{" "}
+              {live === 1 ? "memory" : "memories"}
+              {showForgotten && memories.length > live && (
+                <>
+                  {" · "}
+                  <RollingNumber value={memories.length - live} /> forgotten
+                </>
+              )}
             </p>
           }
         >
@@ -201,7 +206,7 @@ export function DocumentMemories({
                 disabled={isPending || selectedForgettable.length === 0}
                 onClick={() => forget(selectedForgettable)}
               >
-                Forget {selectedForgettable.length}
+                Forget <RollingNumber value={selectedForgettable.length} />
               </Button>
             </TableBulkBar>
           )}
@@ -252,9 +257,16 @@ export function DocumentMemories({
                     {
                       label: "Copy text",
                       icon: Copy,
-                      onSelect: () => {
-                        void navigator.clipboard?.writeText(memory.text);
-                        toast.success("Copied.");
+                      onSelect: async () => {
+                        // Only claim the copy once the clipboard took it.
+                        try {
+                          await navigator.clipboard.writeText(memory.text);
+                          toast.success("Copied.");
+                        } catch {
+                          toast.error(
+                            "Could not copy. Check the browser allows clipboard access."
+                          );
+                        }
                       },
                     },
                     canEdit &&
@@ -293,7 +305,9 @@ export function DocumentMemories({
                       onClick={() => setOpenId(memory.id)}
                       className="press-text block w-full text-left hover:underline"
                     >
-                      <span className="line-clamp-3">{memory.text}</span>
+                      <span className="line-clamp-3 [overflow-wrap:anywhere]">
+                        {memory.text}
+                      </span>
                     </button>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -379,10 +393,9 @@ function MemoriesEmpty({
       {state.kind === "not_extracted" && (
         <>
           <p className="font-medium">No memories yet</p>
-          {/* The date formats in the reader's locale, which is not the
-              server's: without this the render is a hydration mismatch, as
-              every other date in the console already knows. */}
-          <p className="text-muted-foreground text-sm" suppressHydrationWarning>
+          {/* `formatDay` is fixed to UTC and en-GB, so server and browser
+              render the same date and no hydration guard is needed. */}
+          <p className="text-muted-foreground text-sm">
             Nothing has extracted memories from this Document yet.{" "}
             {state.nextCrawlAt
               ? `The next crawl, due ${formatDay(state.nextCrawlAt)}, will.`
@@ -466,7 +479,7 @@ function MemoryDialog({
     >
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-lg leading-relaxed font-medium">
+          <DialogTitle className="text-lg leading-relaxed font-medium [overflow-wrap:anywhere]">
             {memory?.text}
           </DialogTitle>
         </DialogHeader>
@@ -482,13 +495,9 @@ function MemoryDialog({
 
             <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-y-2 font-mono text-xs">
               <dt className="text-muted-foreground">Created</dt>
-              <dd suppressHydrationWarning>
-                {formatDateTime(memory.createdAt)}
-              </dd>
+              <dd>{formatDateTime(memory.createdAt)}</dd>
               <dt className="text-muted-foreground">Updated</dt>
-              <dd suppressHydrationWarning>
-                {formatDateTime(memory.updatedAt)}
-              </dd>
+              <dd>{formatDateTime(memory.updatedAt)}</dd>
               <dt className="text-muted-foreground">ID</dt>
               <dd className="flex items-center gap-1 break-all">
                 {memory.id}
@@ -499,6 +508,8 @@ function MemoryDialog({
                   onClick={async () => {
                     if (await copyText(memory.id, memory.id)) {
                       toast.success("Memory ID copied");
+                    } else {
+                      toast.error("Could not copy the memory ID");
                     }
                   }}
                 >
@@ -521,7 +532,9 @@ function MemoryDialog({
               {memory.forgetReason && (
                 <>
                   <dt className="text-muted-foreground">Reason</dt>
-                  <dd className="font-sans">{memory.forgetReason}</dd>
+                  <dd className="font-sans [overflow-wrap:anywhere]">
+                    {memory.forgetReason}
+                  </dd>
                 </>
               )}
             </dl>
@@ -530,7 +543,7 @@ function MemoryDialog({
               <h3 className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">
                 Evidence
               </h3>
-              <blockquote className="border-l-2 pl-4 text-sm italic">
+              <blockquote className="border-l-2 pl-4 text-sm italic [overflow-wrap:anywhere]">
                 {memory.quote || "No quote was recorded for this memory."}
               </blockquote>
               {memory.chunkId ? (

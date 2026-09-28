@@ -62,7 +62,6 @@ export function useCopyFeedback<Key>(resetDelay = DEFAULT_RESET_DELAY) {
   );
 
   return {
-    copiedKey,
     isCopied: (key: Key) => Object.is(copiedKey, key),
     copyText,
     runCopy,
@@ -75,16 +74,14 @@ export function useCopyFeedback<Key>(resetDelay = DEFAULT_RESET_DELAY) {
  * It used to be two stacked glyphs cross-fading, which meant the success read
  * as a different icon arriving. Morphing the paths (morphicons.com) keeps it a
  * single object changing state, and drops the stacking grid: the footprint is
- * whatever `size` says, in both states.
+ * 16px in both states.
  */
 export function CopyFeedbackIcon({
   copied,
   className,
-  size = 16,
 }: {
   copied: boolean;
   className?: string;
-  size?: number;
 }) {
   return (
     <span
@@ -94,7 +91,7 @@ export function CopyFeedbackIcon({
     >
       <MorphIcon
         icon={copied ? CheckData : CopyData}
-        size={size}
+        size={16}
         strokeWidth={copied ? 2.75 : 2}
         className={copied ? "text-emerald-500" : undefined}
       />

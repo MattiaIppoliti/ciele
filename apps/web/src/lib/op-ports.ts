@@ -28,6 +28,11 @@ import { improvementAssignedEmail, improvementClosedEmail } from "@/lib/notify";
 import { getWidgetDb, invalidatePublication } from "@/lib/widget-db";
 import { getSsoProvider } from "@/lib/sso";
 import { discoverScopesKeepingCredentials } from "@/lib/application-discovery";
+import { removeKnowledgeOriginals } from "@/lib/storage/assets";
+import {
+  createSupabaseServiceClient,
+  isSupabaseServiceConfigured,
+} from "@/lib/supabase/service";
 
 /**
  * The one implementation of the operations layer's host ports (#621–#625),
@@ -51,8 +56,15 @@ export function webOperationPorts(
      * names the caller. Absent on the ingestion pipeline's own jobs.
      */
     usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
+    /**
+     * The API key behind this call and the Member it delegates for. Only a
+     * keyed surface can ask an Assistant (`askAssistant`): the question is the
+     * key's, so the Conversation is marked with it and the turn is its spend.
+     */
+    apiKey?: { keyId: string; memberId: string };
   }
 ): OperationPorts {
+  const apiKey = opts.apiKey;
   return {
     /**
      * The Application Import lifecycle's host work, on the system Db: the
@@ -111,6 +123,102 @@ export function webOperationPorts(
     },
 
     /**
+     * One real Conversation Turn, on the latest Publication exactly as the
+     * widget runs it, read back whole (`assistants.ask`).
+     *
+     * The subject is the Member the key delegates for, the same subject the
+     * Preview uses: it keeps the thread out of Insights' Visitor population
+     * (ADR-0010) while leaving it in the Inbox to review.
+     *
+     * A thread continues only when this key started it. The turn itself checks
+     * the subject, and every key a Member mints shares that subject with the
+     * Member's own Preview, so without the `apiKeyId` check here a key could
+     * join its creator's Preview threads, or another of the creator's keys'
+     * threads, and be answered from that history.
+     * No `keyResolution`, so org connections only, never a personal
+     * subscription, and the timeout sits under the route's `maxDuration`.
+     */
+    askAssistant: apiKey
+      ? async ({ assistantId, question, conversationId }) => {
+          const [{ answerConversationTurn }, { getLatestPublicationCached }, { getRuntimeDb }] =
+            await Promise.all([
+              import("@agent-hub/agent"),
+              import("@/lib/widget-db"),
+              import("@/lib/runtime-db"),
+            ]);
+          const publication = await getLatestPublicationCached(assistantId);
+          if (!publication) return null;
+          const config = publication.config;
+          if (config.assistant.organizationId !== opts.organizationId) {
+            throw new Error("askAssistant: organization mismatch");
+          }
+          const continued = conversationId ? await db.getConversation(conversationId) : null;
+          const ownThread =
+            continued?.metadata?.apiKeyId === apiKey.keyId ? continued.id : null;
+          const turn = await answerConversationTurn({
+            db,
+            systemDb: getRuntimeDb(db),
+            assistant: {
+              ...config.assistant,
+              createdAt: publication.createdAt,
+              updatedAt: publication.createdAt,
+            },
+            flows: config.flows,
+            skills: config.skills ?? [],
+            entities: config.entities ?? [],
+            connections: await db.listProviderConnections(opts.organizationId),
+            organizationId: opts.organizationId,
+            subjectType: "member",
+            subjectId: apiKey.memberId,
+            conversationId: ownThread,
+            message: question,
+            metadata: { apiKeyId: apiKey.keyId },
+            usageAttribution: { surface: "api", apiKeyId: apiKey.keyId },
+            signal: AbortSignal.timeout(280_000),
+          });
+          return {
+            conversationId: turn.conversationId,
+            messageId: turn.messageId,
+            flowName: turn.flowName,
+            answer: turn.answer,
+            sources: turn.sources.map((source) => ({
+              documentId: source.conceptId ?? null,
+              documentTitle: source.conceptTitle,
+              sourceId: source.sourceId ?? null,
+              sourceName: source.sourceName,
+              collectionName: source.collectionName,
+              url: source.url ?? null,
+            })),
+            error: turn.error,
+          };
+        }
+      : undefined,
+    /**
+     * Knowledge search with no turn (`knowledge.search`). On this surface's
+     * own Db, the service Db over /api/v1, because the chunk search is not on
+     * the org-pinned view; pinned to this port's Organization regardless of
+     * what the operation passed, the same discipline as `grantSystemTeammate`.
+     * Org connections only: whoever holds the key spends the embedding and
+     * the rerank, attributed through `usage`.
+     */
+    searchKnowledge: async ({ query, assistantId }) => {
+      const { searchKnowledge } = await import("@agent-hub/agent");
+      if (assistantId) {
+        const assistant = await db.getAssistant(assistantId);
+        if (!assistant || assistant.organizationId !== opts.organizationId) {
+          throw new Error("searchKnowledge: organization mismatch");
+        }
+      }
+      return searchKnowledge({
+        db,
+        connections: await db.listProviderConnections(opts.organizationId),
+        organizationId: opts.organizationId,
+        query,
+        assistantId,
+        usage: opts.usage,
+      });
+    },
+    /**
      * The Improvements board's dedup and priority decisions (#959). Bound here
      * because `ops` cannot reach a model; the answers come back raw and the
      * derivations that read them live in `@agent-hub/core`, so the weights and
@@ -154,6 +262,14 @@ export function webOperationPorts(
       const assistant = await system.getAssistant(conversation.assistantId);
       if (assistant?.organizationId !== opts.organizationId) return;
       await unsubscribePendingWebhooks({ db: system }, conversationId);
+    },
+    // Knowledge originals live in a private bucket written with the service
+    // client, so they are removed with it. Paths are already scoped to this
+    // Organization's prefix by the operation; re-checked here.
+    removeKnowledgeOriginals: async (paths) => {
+      if (!isSupabaseServiceConfigured()) return;
+      const own = paths.filter((path) => path.startsWith(`org/${opts.organizationId}/`));
+      await removeKnowledgeOriginals(createSupabaseServiceClient(), own);
     },
     // The decision write (#841): a compare-and-set on the system Db, because
     // the table has no member write policy; the operation already checked the
@@ -286,10 +402,11 @@ export function webOperationPorts(
 }
 
 /**
- * One FAQ = one OKF Concept at `faq/<slug>.md` (moved here from actions.ts
- * so both the ports factory and the Suggested-Fix acceptance path share it).
+ * One FAQ = one OKF Concept at `faq/<slug>.md`. Reached only through the
+ * `persistFaq` port above, which is how the FAQ operations and the
+ * Suggested-Fix acceptance in `@ciele/ops` both write one.
  */
-export async function persistFaqConcept(args: {
+async function persistFaqConcept(args: {
   db: Db;
   organizationId: string;
   assistantId: string;

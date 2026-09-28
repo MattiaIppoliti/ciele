@@ -4,7 +4,7 @@ import type { Session } from "@/lib/auth";
 /**
  * The authorization seam (requireMember): every org-scoped server action
  * starts here. Tested by stubbing the session, the RBAC ladder itself is
- * pure (lib/rbac.ts) and exercised through the guard's capability map.
+ * pure (core's roleAllowsCapability) and pinned below as a full table.
  */
 
 const {
@@ -126,6 +126,39 @@ describe("requireMember", () => {
     const attempt = requireMember("publish");
     if (allowed) await expect(attempt).resolves.toBeTruthy();
     else await expect(attempt).rejects.toThrow("Only admins/owners can publish");
+  });
+
+  // The whole capability × Role table, with the exact message each refusal
+  // throws. Server actions surface these strings to the console verbatim.
+  const DENY_EDIT = "Not allowed";
+  const DENY_PUBLISH = "Only admins/owners can publish";
+  const DENY_KEYS = "Only admins/owners can manage API keys";
+  const DENY_ROLES = "Only owners can change roles";
+  const TABLE = {
+    //              owner  admin  editor       viewer       no role
+    member:        [null,  null,  null,        null,        null],
+    edit:          [null,  null,  null,        DENY_EDIT,   DENY_EDIT],
+    publish:       [null,  null,  DENY_PUBLISH, DENY_PUBLISH, DENY_PUBLISH],
+    manageMembers: [null,  null,  DENY_EDIT,   DENY_EDIT,   DENY_EDIT],
+    manageApiKeys: [null,  null,  DENY_KEYS,   DENY_KEYS,   DENY_KEYS],
+    changeRoles:   [null,  DENY_ROLES, DENY_ROLES, DENY_ROLES, DENY_ROLES],
+  } as const;
+  const ROLES = ["owner", "admin", "editor", "viewer", null] as const;
+
+  it.each(
+    Object.entries(TABLE).flatMap(([capability, row]) =>
+      ROLES.map((role, i) => [capability, role, row[i]] as const)
+    )
+  )("%s as %s → %s", async (capability, role, error) => {
+    getSessionMock.mockResolvedValue(session(role));
+    const attempt = requireMember(capability as keyof typeof TABLE);
+    if (error === null) {
+      await expect(attempt).resolves.toBeTruthy();
+    } else {
+      await expect(attempt).rejects.toThrow(
+        expect.objectContaining({ message: error })
+      );
+    }
   });
 
   it("reserves changeRoles for owners", async () => {

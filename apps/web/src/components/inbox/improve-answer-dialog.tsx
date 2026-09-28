@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { type FormEvent, useEffect, useState, useTransition } from "react"
 import type { ImprovementListItem } from "@agent-hub/core"
 import { canAutoFocus } from "@/lib/auto-focus"
 import { Search } from "lucide-react"
@@ -20,6 +20,8 @@ import {
 } from "@agent-hub/ui"
 import { Input } from "@agent-hub/ui"
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs"
+import { RollInText } from "@/components/motion/roll-in-text"
+import { RollingNumber } from "@/components/motion/rolling-number"
 
 const TITLE_MAX = 100
 
@@ -45,6 +47,7 @@ export function ImproveAnswerDialog({
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [existing, setExisting] = useState<ImprovementListItem[] | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -64,6 +67,7 @@ export function ImproveAnswerDialog({
       setExisting(null)
       setNextCursor(null)
       setLoadingMore(false)
+      setLoadFailed(false)
       setError(null)
     }
   }
@@ -79,6 +83,8 @@ export function ImproveAnswerDialog({
         .catch(() => {
           setExisting([])
           setNextCursor(null)
+          setLoadFailed(true)
+          setError("Could not load improvements. Close the dialog and try again.")
         })
     }
   }, [tab, existing, messageId])
@@ -107,7 +113,8 @@ export function ImproveAnswerDialog({
     if (!next) onClose()
   }
 
-  function createNew() {
+  function createNew(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     if (!messageId || !title.trim()) return
     setError(null)
     startTransition(async () => {
@@ -135,8 +142,8 @@ export function ImproveAnswerDialog({
     })
   }
 
+  const needle = search.trim().toLowerCase()
   const filtered = (existing ?? []).filter((i) => {
-    const needle = search.trim().toLowerCase()
     if (!needle) return true
     return (
       i.title.toLowerCase().includes(needle) ||
@@ -171,9 +178,11 @@ export function ImproveAnswerDialog({
         </Tabs>
 
         {tab === "create" ? (
-          <div>
+          <form id="improve-answer-create" onSubmit={createNew}>
             <Input
               aria-label="Improvement title"
+              name="improvement-title"
+              autoComplete="off"
               autoFocus={canAutoFocus()}
               value={title}
               maxLength={TITLE_MAX}
@@ -182,38 +191,51 @@ export function ImproveAnswerDialog({
               className="h-11 rounded-lg"
             />
             <p className="mt-1 text-right text-xs text-muted-foreground">
-              {title.length}/{TITLE_MAX}
+              <RollingNumber value={title.length} />/{TITLE_MAX}
             </p>
-          </div>
+          </form>
         ) : (
           <div className="space-y-2">
             <div className="relative">
-              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Search aria-hidden="true" className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 aria-label="Search existing improvements"
+                aria-describedby="improve-answer-search-hint"
+                type="search"
+                name="improvement-search"
+                autoComplete="off"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search improvements…"
                 className="h-10 rounded-lg pl-9"
               />
             </div>
+            <p id="improve-answer-search-hint" className="text-xs text-muted-foreground">
+              Searches the improvements loaded below.
+            </p>
             <div className="max-h-56 space-y-1 overflow-y-auto">
               {existing === null && (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p role="status" className="py-6 text-center text-sm text-muted-foreground">
                   Loading improvements…
                 </p>
               )}
-              {existing !== null && filtered.length === 0 && (
+              {existing !== null && existing.length === 0 && !loadFailed && (
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   No improvements to link yet.
+                </p>
+              )}
+              {existing !== null && existing.length > 0 && filtered.length === 0 && (
+                <p className="py-6 text-center text-sm [overflow-wrap:anywhere] text-muted-foreground">
+                  No matches for “{search.trim()}”
                 </p>
               )}
               {filtered.map((i) => (
                 <button
                   key={i.id}
                   type="button"
+                  aria-pressed={selectedId === i.id}
                   onClick={() => setSelectedId(i.id)}
-                  className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
                     selectedId === i.id
                       ? "border-primary bg-primary/5 dark:bg-primary/20"
                       : "hover:bg-muted/50"
@@ -233,24 +255,30 @@ export function ImproveAnswerDialog({
                   onClick={loadMore}
                   disabled={loadingMore}
                 >
-                  {loadingMore ? "Loading…" : "Load more improvements"}
+                  <RollInText text={loadingMore ? "Loading…" : "Load more improvements"} />
                 </Button>
               )}
             </div>
           </div>
         )}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
 
         <div className="-mx-4 -mb-4 flex justify-end gap-2 rounded-b-xl border-t bg-muted/50 p-4">
           <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
           {tab === "create" ? (
-            <Button onClick={createNew} disabled={pending || !title.trim()}>
-              {pending ? "Creating…" : "Create Improvement"}
+            // Outside the form, so it submits it by id: Enter in the title
+            // field and this button take the same path.
+            <Button type="submit" form="improve-answer-create" disabled={pending || !title.trim()}>
+              <RollInText text={pending ? "Creating…" : "Create Improvement"} />
             </Button>
           ) : (
             <Button onClick={linkExisting} disabled={pending || !selectedId}>
-              {pending ? "Linking…" : "Link Improvement"}
+              <RollInText text={pending ? "Linking…" : "Link Improvement"} />
             </Button>
           )}
         </div>

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition, type ReactNode } from "react";
 import type {
   Assistant,
   ModelRef,
@@ -31,6 +31,7 @@ import { Bold, GripVertical, Heading1, Heading2, Heading3, Heading4, Italic, Plu
 import { Link2, List, ListOrdered, Minus } from "lucide-react";
 import { moveOrderedId, reorderItemsByIds } from "@/lib/list-order";
 import { toast } from "@/lib/toast";
+import { applyMarkdownCommand, type MarkdownCommand } from "@/lib/markdown-toolbar";
 import { updateAssistantAction, uploadAssistantAvatarAction } from "@/app/actions";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
@@ -38,12 +39,16 @@ import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { formatCount } from "@/lib/format";
 import {
   SortableHandle,
   SortableItem,
   SortableList,
 } from "@/components/ui/sortable-list";
 import { Textarea } from "@/components/ui/textarea";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 import { VoiceSettings, EMPTY_VOICE_SETTINGS } from "./voice-settings";
 
@@ -63,8 +68,20 @@ function quickReplyTypeLabel(type: QuickReplyType): string {
   return QUICK_REPLY_TYPES.find((t) => t.value === type)?.label ?? type;
 }
 
-/** Markdown toolbar command: wrap the selection, or prefix the current line. */
-type ToolbarCommand = { wrap: string; wrapEnd?: string } | { prefix: string };
+/** The on/off pill beside a section's switch. */
+function StatePill({ on, children }: { on: boolean; children: ReactNode }) {
+  return (
+    <Badge
+      variant="outline"
+      className={on ? "gap-1.5 rounded-full bg-muted/50 text-foreground" : "gap-1.5 rounded-full"}
+    >
+      <span
+        className={`size-1.5 rounded-full ${on ? "bg-foreground" : "bg-muted-foreground/50"}`}
+      />
+      {children}
+    </Badge>
+  );
+}
 
 /**
  * Static toolbar spec: kept out of render so the mapped array never captures
@@ -73,7 +90,7 @@ type ToolbarCommand = { wrap: string; wrapEnd?: string } | { prefix: string };
 const TOOLBAR_BUTTONS: Array<{
   label: string;
   Icon: typeof Bold;
-  command: ToolbarCommand;
+  command: MarkdownCommand;
 }> = [
   { label: "Bold", Icon: Bold, command: { wrap: "**" } },
   { label: "Italic", Icon: Italic, command: { wrap: "*" } },
@@ -92,6 +109,15 @@ const TOOLBAR_BUTTONS: Array<{
  * control's `<label>` and the hint is reachable as `${htmlFor}-hint`, so pass
  * that to the control's `aria-describedby`.
  */
+/** `n/max` under a field: only the changing half rolls. */
+function CharCount({ value, max }: { value: number; max: number }) {
+  return (
+    <p className="text-muted-foreground mt-1 text-right text-xs tabular-nums">
+      <RollingNumber value={value} />/{formatCount(max)}
+    </p>
+  );
+}
+
 function FieldHeader({
   title,
   hint,
@@ -118,14 +144,18 @@ function FieldHeader({
 
 export function GeneralForm({
   assistant,
-  unavailableProviders = [],
+  unavailableProviders,
 }: {
   assistant: Assistant;
   /** Providers this Organization has no credential for; the picker skips them. */
-  unavailableProviders?: Provider[];
+  unavailableProviders: Provider[];
 }) {
   const [isPending, startTransition] = useTransition();
+  // Its own transition, so an avatar upload never reads as "Saving…".
+  const [isUploading, startUpload] = useTransition();
   const fieldId = useId();
+  const titleRef = useRef<HTMLInputElement>(null);
+  const [titleError, setTitleError] = useState("");
 
   const [launcherEnabled, setLauncherEnabled] = useState(
     assistant.chatLauncherEnabled
@@ -172,8 +202,15 @@ export function GeneralForm({
   const [draggedReplyId, setDraggedReplyId] = useState<string | null>(null);
   const [reorderAnnouncement, setReorderAnnouncement] = useState("");
 
+  const voiceDirty =
+    JSON.stringify(voice) !== JSON.stringify(assistant.voice ?? EMPTY_VOICE_SETTINGS);
+  // A configured model that moved is implicitly in the picker, so drop any
+  // duplicate of it rather than storing the same model twice.
+  const extraModels = allowedModels.filter(
+    (ref) => !(ref.provider === modelProvider && ref.modelId === modelId)
+  );
   const dirty =
-    JSON.stringify(voice) !== JSON.stringify(assistant.voice ?? EMPTY_VOICE_SETTINGS) ||
+    voiceDirty ||
     launcherEnabled !== assistant.chatLauncherEnabled ||
     title !== assistant.title ||
     nickname !== assistant.nickname ||
@@ -183,7 +220,9 @@ export function GeneralForm({
     answeringStyle !== assistant.answeringStyle ||
     simplifiedThinking !== assistant.simplifiedThinking ||
     modelProvider !== assistant.modelProvider ||
-    modelId !== assistant.modelId ||
+    // Compared against the resolved id the state opened on, or a retired
+    // model would load the form already dirty.
+    modelId !== currentModelId(assistant.modelProvider, assistant.modelId) ||
     JSON.stringify(allowedModels) !==
       JSON.stringify(assistant.allowedModels ?? []) ||
     attachmentsEnabled !== (assistant.attachmentsEnabled ?? false) ||
@@ -192,49 +231,14 @@ export function GeneralForm({
       JSON.stringify(assistant.quickReplies ?? []);
 
   // A reload or closed tab would drop every unsaved field without a word; the
-  // browser's own "Leave site?" prompt is the whole guard. In-app navigation
-  // is not covered: the App Router exposes no blocking hook.
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
-
-  function wrapSelection(before: string, after = before) {
-    const el = welcomeRef.current;
-    if (!el) return;
-    const { selectionStart, selectionEnd, value } = el;
-    const selected = value.slice(selectionStart, selectionEnd);
-    const next =
-      value.slice(0, selectionStart) +
-      before +
-      selected +
-      after +
-      value.slice(selectionEnd);
-    setWelcomeMessage(next);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(
-        selectionStart + before.length,
-        selectionEnd + before.length
-      );
-    });
-  }
-
-  function prefixLine(prefix: string) {
-    const el = welcomeRef.current;
-    if (!el) return;
-    const { selectionStart, value } = el;
-    const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
-    const next = value.slice(0, lineStart) + prefix + value.slice(lineStart);
-    setWelcomeMessage(next);
-    requestAnimationFrame(() => el.focus());
-  }
+  // browser's own "Leave site?" prompt is the whole guard here, since the
+  // editor's navigation is links this form does not own.
+  useUnsavedChanges({ dirty });
 
   function handleSave() {
     if (!title.trim()) {
-      toast.error("Assistant title is required");
+      setTitleError("Enter a title for this assistant.");
+      titleRef.current?.focus();
       return;
     }
     startTransition(async () => {
@@ -254,14 +258,9 @@ export function GeneralForm({
         simplifiedThinking,
         modelProvider,
         modelId,
-        // A configured model that moved is implicitly in the picker, so drop
-        // any duplicate of it rather than storing the same model twice.
-        allowedModels: allowedModels.filter(
-          (ref) =>
-            !(ref.provider === modelProvider && ref.modelId === modelId)
-        ),
+        allowedModels: extraModels,
         attachmentsEnabled,
-        ...(JSON.stringify(voice) !== JSON.stringify(assistant.voice ?? EMPTY_VOICE_SETTINGS) ? { voice } : {}),
+        ...(voiceDirty ? { voice } : {}),
       });
       toast.success("Settings saved");
       } catch (error) {
@@ -275,22 +274,40 @@ export function GeneralForm({
     setAvatarPreviewUrl(previewUrl);
     const form = new FormData();
     form.set("file", file);
-    const result = await uploadAssistantAvatarAction(assistant.id, form);
-    URL.revokeObjectURL(previewUrl);
-    setAvatarPreviewUrl("");
-    if (result.error) {
-      toast.error(result.error);
-      return;
-    }
-    if (result.avatarUrl) {
-      setAvatarUrl(result.avatarUrl);
-      toast.success("Avatar uploaded");
+    try {
+      const result = await uploadAssistantAvatarAction(assistant.id, form);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.avatarUrl) {
+        setAvatarUrl(result.avatarUrl);
+        toast.success("Avatar uploaded");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not upload the avatar");
+    } finally {
+      // A failed upload must not leave the local preview posing as the logo.
+      URL.revokeObjectURL(previewUrl);
+      setAvatarPreviewUrl("");
     }
   }
 
-  function applyCommand(command: ToolbarCommand) {
-    if ("wrap" in command) wrapSelection(command.wrap, command.wrapEnd ?? command.wrap);
-    else prefixLine(command.prefix);
+  function applyCommand(command: MarkdownCommand) {
+    const el = welcomeRef.current;
+    if (!el) return;
+    const { selectionStart, selectionEnd, value } = el;
+    setWelcomeMessage(applyMarkdownCommand(value, selectionStart, selectionEnd, command));
+    requestAnimationFrame(() => {
+      el.focus();
+      // A wrap keeps the original selection selected, inside its new markers.
+      if ("wrap" in command) {
+        el.setSelectionRange(
+          selectionStart + command.wrap.length,
+          selectionEnd + command.wrap.length
+        );
+      }
+    });
   }
 
   return (
@@ -310,21 +327,9 @@ export function GeneralForm({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <Badge
-              variant="outline"
-              className={
-                launcherEnabled
-                  ? "gap-1.5 rounded-full bg-muted/50 text-foreground"
-                  : "gap-1.5 rounded-full"
-              }
-            >
-              <span
-                className={`size-1.5 rounded-full ${
-                  launcherEnabled ? "bg-foreground" : "bg-muted-foreground/50"
-                }`}
-              />
-              {launcherEnabled ? "Active" : "Inactive"}
-            </Badge>
+            <StatePill on={launcherEnabled}>
+              <RollInText text={launcherEnabled ? "Active" : "Inactive"} />
+            </StatePill>
             <Switch
               checked={launcherEnabled}
               onCheckedChange={setLauncherEnabled}
@@ -394,13 +399,7 @@ export function GeneralForm({
           unavailable={unavailableProviders}
         />
         <p className="text-muted-foreground text-xs">
-          {modelAllowListSummary(
-            allowedModels.filter(
-              (ref) =>
-                !(ref.provider === modelProvider && ref.modelId === modelId)
-            ),
-            unavailableProviders
-          )}
+          {modelAllowListSummary(extraModels, unavailableProviders)}
         </p>
       </div>
 
@@ -441,8 +440,8 @@ export function GeneralForm({
         <AvatarUpload
           value={avatarPreviewUrl || avatarUrl}
           onFile={(file) =>
-            startTransition(() => {
-              void uploadAvatar(file);
+            startUpload(async () => {
+              await uploadAvatar(file);
             })
           }
           fallback={
@@ -461,14 +460,28 @@ export function GeneralForm({
           hint="Shown on your assistants page."
         />
         <Input
+          ref={titleRef}
           id={`${fieldId}-title`}
-          aria-describedby={`${fieldId}-title-hint`}
+          aria-describedby={
+            titleError
+              ? `${fieldId}-title-hint ${fieldId}-title-error`
+              : `${fieldId}-title-hint`
+          }
+          aria-invalid={titleError ? true : undefined}
           name="title"
           autoComplete="off"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (titleError && e.target.value.trim()) setTitleError("");
+          }}
           className="h-11"
         />
+        {titleError && (
+          <p id={`${fieldId}-title-error`} className="text-destructive text-sm">
+            {titleError}
+          </p>
+        )}
       </div>
 
       {/* Nickname */}
@@ -507,9 +520,7 @@ export function GeneralForm({
             rows={5}
             className="resize-none"
           />
-          <p className="text-muted-foreground mt-1 text-right text-xs">
-            {description.length}/{DESCRIPTION_MAX}
-          </p>
+          <CharCount value={description.length} max={DESCRIPTION_MAX} />
         </div>
       </div>
       </div>
@@ -573,9 +584,7 @@ export function GeneralForm({
             placeholder="AI answers are not perfect, so please double-check any critical information."
             className="resize-none"
           />
-          <p className="text-muted-foreground mt-1 text-right text-xs">
-            {aiDisclaimer.length}/{AI_DISCLAIMER_MAX}
-          </p>
+          <CharCount value={aiDisclaimer.length} max={AI_DISCLAIMER_MAX} />
         </div>
       </div>
       </div>
@@ -604,37 +613,23 @@ export function GeneralForm({
             }
             className="resize-y"
           />
-          <p className="text-muted-foreground mt-1 text-right text-xs">
-            {answeringStyle.length}/{ANSWERING_STYLE_MAX}
-          </p>
+          <CharCount value={answeringStyle.length} max={ANSWERING_STYLE_MAX} />
         </div>
       </div>
 
       {/* Simplified thinking */}
       <Card size="sm" className="gap-0 p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <h2 className="text-base font-semibold">Simplified thinking</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm">
               Show visitors one short line per step while the assistant works, like &ldquo;Checking the return policy…&rdquo;. The Inbox keeps the lines too.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <Badge
-              variant="outline"
-              className={
-                simplifiedThinking
-                  ? "gap-1.5 rounded-full bg-muted/50 text-foreground"
-                  : "gap-1.5 rounded-full"
-              }
-            >
-              <span
-                className={`size-1.5 rounded-full ${
-                  simplifiedThinking ? "bg-foreground" : "bg-muted-foreground/50"
-                }`}
-              />
-              {simplifiedThinking ? "On" : "Off"}
-            </Badge>
+            <StatePill on={simplifiedThinking}>
+              <RollInText text={simplifiedThinking ? "On" : "Off"} />
+            </StatePill>
             <Switch
               checked={simplifiedThinking}
               onCheckedChange={setSimplifiedThinking}
@@ -673,7 +668,7 @@ export function GeneralForm({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label="Remove question"
+                  aria-label={`Remove question ${i + 1}`}
                   onClick={() =>
                     setQuestions(questions.filter((_, j) => j !== i))
                   }
@@ -773,7 +768,7 @@ export function GeneralForm({
                     className="flex-1"
                   />
                   <Select value={button.type} onValueChange={(type) => patchButton({ type: type as QuickReplyType })} className="w-48">
-                    <SelectTrigger aria-label="Quick reply type">
+                    <SelectTrigger aria-label={`Quick reply ${i + 1} type`}>
                       <SelectValue>{quickReplyTypeLabel(button.type)}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -789,7 +784,7 @@ export function GeneralForm({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      aria-label="Remove button"
+                      aria-label={`Remove button ${i + 1}`}
                       onClick={() =>
                         setQuickReplies(quickReplies.filter((_, j) => j !== i))
                       }
@@ -845,8 +840,11 @@ export function GeneralForm({
               ])
             }
           >
-            <Plus className="size-4" /> Add button ({quickReplies.length}/
-            {QUICK_REPLY_MAX})
+            <Plus className="size-4" /> Add button (
+            <span className="tabular-nums">
+              <RollingNumber value={quickReplies.length} />/{formatCount(QUICK_REPLY_MAX)}
+            </span>
+            )
           </Button>
         </div>
       </div>
@@ -856,17 +854,17 @@ export function GeneralForm({
 
       {/* Save bar */}
       <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
-        {dirty && (
-          <span className="text-muted-foreground text-sm">
-            Unsaved changes
-          </span>
-        )}
+        {/* The live region stays mounted: one that appears together with its
+            text is not reliably announced. */}
+        <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
+          {dirty ? "Unsaved changes" : ""}
+        </span>
         <Button
           onClick={handleSave}
-          disabled={isPending || !dirty}
+          disabled={isPending || isUploading || !dirty}
           className="px-6 font-semibold"
         >
-          {isPending ? "Saving…" : "Save changes"}
+          <RollInText text={isPending ? "Saving…" : "Save changes"} />
         </Button>
       </div>
     </div>

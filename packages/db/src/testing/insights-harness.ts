@@ -307,17 +307,3 @@ export async function createInsightsHarness(): Promise<InsightsHarness> {
     close: () => db.close(),
   };
 }
-
-/** Convenience: boot, run one case, tear down. Prefer the reusable harness for
- *  many cases. */
-export async function runSqlInsightsOverview(
-  seed: InsightsSeed,
-  filter: InsightsFilter
-): Promise<InsightsOverview> {
-  const harness = await createInsightsHarness();
-  try {
-    return await harness.run(seed, filter);
-  } finally {
-    await harness.close();
-  }
-}

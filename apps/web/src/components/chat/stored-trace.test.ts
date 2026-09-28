@@ -6,6 +6,7 @@ import {
   isStudyStep,
   liveOrbState,
   liveTraceLabel,
+  liveTurnStatus,
   storedTraceLabel,
   terminalBadge,
   visibleTraceSteps,
@@ -375,5 +376,27 @@ describe("the shadow pre-flight on a stored trace (#952)", () => {
     );
     expect(visible?.preflight).toEqual(record);
     expect(visible?.hiddenThoughts).toBe(1);
+  });
+});
+
+describe("liveTurnStatus", () => {
+  const bot = (steps: TurnStep[]) => ({ role: "bot", steps });
+
+  it("says nothing once the turn is over", () => {
+    expect(liveTurnStatus([bot([])], false)).toBe("");
+  });
+
+  it("says nothing while the newest message is the person's own", () => {
+    expect(liveTurnStatus([bot([]), { role: "user" }], true)).toBe("");
+  });
+
+  it("reads the live label of the reply being written", () => {
+    expect(liveTurnStatus([bot([])], true)).toBe("Thinking…");
+    expect(
+      liveTurnStatus(
+        [bot([{ id: "1", kind: "tool", tool: "searchKnowledge", label: "Searching the handbook", status: "running" }])],
+        true
+      )
+    ).toBe("Searching the handbook…");
   });
 });

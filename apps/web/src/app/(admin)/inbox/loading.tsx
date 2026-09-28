@@ -2,7 +2,9 @@ import { Skeleton } from "@agent-hub/ui";
 
 export default function InboxLoading() {
   return (
-    <div className="flex h-full flex-col" aria-busy="true">
+    <div className="flex h-full flex-col" role="status" aria-busy="true">
+      {/* A skeleton is silent to a screen reader; this is what it hears. */}
+      <span className="sr-only">Loading conversations…</span>
       <header className="flex shrink-0 flex-col gap-3 px-6 pt-5 pb-3">
         <div className="flex flex-wrap items-center gap-3">
           <Skeleton className="h-9 w-40" />

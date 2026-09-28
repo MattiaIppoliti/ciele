@@ -8,6 +8,8 @@ import { Sparkles, SquarePen, Trash2 } from "lucide-react";
 import { ChevronDown, Headphones, Paperclip, Pin } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
+import { formatDay } from "@/lib/format";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { decideReviewAction } from "@/app/(admin)/reviews/actions";
 import {
   deleteConversationAction,
@@ -83,10 +85,6 @@ import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar"
 import { MessageSquareText } from "lucide-react";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
-/** The transcript's message shapes live with the renderer they belong to. */
-type BotMsg = ChatBotMsg;
-type Msg = ChatMsg;
-
 /** History shows this many recent conversations; pinned ones always stay. */
 const HISTORY_RECENT_LIMIT = 10;
 
@@ -97,11 +95,10 @@ function historyDayLabel(iso: string): string {
   const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  // "Today" is the reader's own calendar day, so the older labels are too:
+  // formatDay prints in UTC, and handing it the local date as a UTC midnight
+  // keeps a late-evening conversation under the day it happened.
+  return formatDay(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 }
 
 export function PreviewPanel({
@@ -134,7 +131,7 @@ export function PreviewPanel({
    */
   variant?: "docked" | "page";
 }) {
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
   /**
    * A simulated Human review (#841, story 57): the card's Approve / Reject
    * decides the row through the same operation the decision page uses, and
@@ -181,6 +178,9 @@ export function PreviewPanel({
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyStatus, setHistoryStatus] = useState<"loading" | "error" | "ready">(
+    "loading"
+  );
   // Full screen grows the panel out of the flow (see use-fullscreen-grow).
   const { fullscreen, setFullscreen, surfaceRef, animating, spacerRef } =
     useFullscreenGrow();
@@ -426,7 +426,7 @@ export function PreviewPanel({
     return () => window.removeEventListener("storage", readPreferences);
   }, [connectorScope]);
 
-  function updateLastBot(update: (bot: BotMsg) => BotMsg) {
+  function updateLastBot(update: (bot: ChatBotMsg) => ChatBotMsg) {
     setMessages((prev) => patchLastBot(prev, update));
   }
 
@@ -454,7 +454,7 @@ export function PreviewPanel({
         });
         if (!response.ok || !response.body) return;
         let appended = false;
-        await consumeTurnStream<BotMsg>(response.body, {
+        await consumeTurnStream<ChatBotMsg>(response.body, {
           update: (apply) => {
             if (!appended) {
               appended = true;
@@ -463,15 +463,10 @@ export function PreviewPanel({
                 {
                   role: "bot",
                   id: null,
-                  flowName: null,
-                  steps: [],
+                  ...EMPTY_TURN_TRACE,
                   parts: [],
                   streamingText: null,
                   phase: "done",
-                  searchCount: 0,
-                  iteration: null,
-                  iterationLimit: null,
-                  terminal: null,
                   feedback: 0,
                 },
               ]);
@@ -540,15 +535,9 @@ export function PreviewPanel({
       {
         role: "bot",
         id: null,
-        flowName: null,
-        steps: [],
+        ...EMPTY_TURN_TRACE,
         parts: [],
         streamingText: null,
-        phase: "running",
-        searchCount: 0,
-        iteration: null,
-        iterationLimit: null,
-        terminal: null,
         feedback: 0,
       },
     ]);
@@ -557,7 +546,7 @@ export function PreviewPanel({
     abortRef.current = controller;
 
     try {
-      const outcome = await runTurn<BotMsg>({
+      const outcome = await runTurn<ChatBotMsg>({
         signal: controller.signal,
         request: (signal, turnId) =>
           fetch("/api/preview/chat", {
@@ -642,10 +631,13 @@ export function PreviewPanel({
 
   async function openHistory() {
     setHistoryOpen(true);
+    setHistoryStatus("loading");
     try {
       setConversations(await listConversationsAction(assistant.id));
+      setHistoryStatus("ready");
     } catch {
-      /* history unavailable */
+      // Not "No previous conversations yet": the list failed, it is not empty.
+      setHistoryStatus("error");
     }
   }
 
@@ -707,12 +699,20 @@ export function PreviewPanel({
   }
 
   async function loadConversation(conversation: Conversation) {
+    let stored: Awaited<ReturnType<typeof getConversationMessagesAction>>;
+    try {
+      stored = await getConversationMessagesAction(conversation.id);
+    } catch {
+      toast.error("Could not open that conversation");
+      return;
+    }
+    // Stop only once the other transcript is in hand, so a failed load leaves
+    // the current one running rather than blank.
     stop();
-    const stored = await getConversationMessagesAction(conversation.id);
     conversationIdRef.current = conversation.id;
     setConversationId(conversation.id);
     setMessages(
-      stored.map((m): Msg => {
+      stored.map((m): ChatMsg => {
         if (m.role === "user") {
           const first = m.content[0] as { text?: string } | undefined;
           return { role: "user", text: first?.text ?? "", sentAt: m.createdAt ?? null };
@@ -720,15 +720,11 @@ export function PreviewPanel({
         return {
           role: "bot",
           id: m.id,
+          ...EMPTY_TURN_TRACE,
           flowName: m.flowName,
-          steps: [],
           parts: m.content as ChatReplyPart[],
           streamingText: null,
           phase: "done",
-          searchCount: 0,
-          iteration: null,
-          iterationLimit: null,
-          terminal: null,
           feedback: m.feedback,
           feedbackReaction: m.feedbackReaction ?? null,
         };
@@ -736,14 +732,28 @@ export function PreviewPanel({
     );
   }
 
-  async function vote(bot: BotMsg, reaction: FeedbackReactionId | null) {
+  async function vote(bot: ChatBotMsg, reaction: FeedbackReactionId | null) {
     if (!bot.id) return;
     const nextReaction = bot.feedbackReaction === reaction ? null : reaction;
     const feedback = feedbackReactionScore(nextReaction);
-    setMessages((prev) =>
-      prev.map((m) => (m.role === "bot" && m.id === bot.id ? { ...m, feedback, feedbackReaction: nextReaction } : m))
-    );
-    await setMessageFeedbackAction(bot.id, feedback, nextReaction);
+    const setVote = (
+      nextFeedback: ChatBotMsg["feedback"],
+      nextReactionId: FeedbackReactionId | null
+    ) =>
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.role === "bot" && m.id === bot.id
+            ? { ...m, feedback: nextFeedback, feedbackReaction: nextReactionId }
+            : m
+        )
+      );
+    setVote(feedback, nextReaction);
+    try {
+      await setMessageFeedbackAction(bot.id, feedback, nextReaction);
+    } catch {
+      setVote(bot.feedback, bot.feedbackReaction ?? null);
+      toast.error("Could not save your feedback");
+    }
   }
 
   const nickname = assistant.nickname || assistant.title;
@@ -751,12 +761,13 @@ export function PreviewPanel({
     assistant.helpDeskSettings?.contactButtonLabel?.trim() || "Contact support";
   const hideEscalation =
     assistant.helpDeskSettings?.hideEscalationButton ?? false;
-  const recommendedHelpDeskId = latestHelpDeskId(
-    messages.flatMap((message) => (message.role === "bot" ? [message.parts] : []))
+  const replies = messages.flatMap((message) =>
+    message.role === "bot" ? [message.parts] : []
   );
+  const recommendedHelpDeskId = latestHelpDeskId(replies);
 
   return (
-    <StudyProvider replies={messages.flatMap(message => message.role === "bot" ? [message.parts] : [])} endpoint={assistant.tools?.studyMode?.enabled ? "/api/preview/chat" : undefined} request={{ assistantId: assistant.id, conversationId }} disabled={pending}>
+    <StudyProvider replies={replies} endpoint={assistant.tools?.studyMode?.enabled ? "/api/preview/chat" : undefined} request={{ assistantId: assistant.id, conversationId }} disabled={pending}>
     {confirmDeleteModal}
     <RailPanel
       title="Preview"
@@ -856,12 +867,31 @@ export function PreviewPanel({
               </span>
             </div>
             <div className="no-scrollbar flex-1 overflow-y-auto px-2 py-2">
-              {historyGroups.length === 0 ? (
+              {historyGroups.length === 0 && historyStatus === "loading" ? (
+                <p className="text-muted-foreground px-4 py-8 text-center text-sm">
+                  Loading conversations…
+                </p>
+              ) : historyGroups.length === 0 && historyStatus === "error" ? (
+                <div className="px-4 py-8 text-center text-sm">
+                  <p className="text-muted-foreground">
+                    Could not load your conversations.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => void openHistory()}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : historyGroups.length === 0 ? (
                 <p className="text-muted-foreground px-4 py-8 text-center text-sm">
                   No previous conversations yet
                 </p>
               ) : (
                 <AISidebar
+                  editable={false}
                   items={historyGroups.map(
                     (group): SidebarResource => ({
                       id: `day:${group.label}`,
@@ -1151,15 +1181,23 @@ export function PreviewPanel({
               Your connected subscription answers the Preview instead. Change it in Settings → AI.
             </p>
           ) : null}
-          {pending && (
-            <p className="text-muted-foreground mt-1 text-2xs">
-              {followUpBehavior === "steer"
-                ? "New messages steer the current reply"
-                : queuedCount > 0
-                  ? `${queuedCount} follow-up${queuedCount === 1 ? "" : "s"} queued`
-                  : "New messages wait in the queue"}
-            </p>
-          )}
+          {/* Always mounted, so a screen reader hears the queue change. */}
+          <div aria-live="polite">
+            {pending && (
+              <p className="text-muted-foreground mt-1 text-2xs">
+                {followUpBehavior === "steer" ? (
+                  "New messages steer the current reply"
+                ) : queuedCount > 0 ? (
+                  <>
+                    <RollingNumber value={queuedCount} /> follow-up
+                    {queuedCount === 1 ? "" : "s"} queued
+                  </>
+                ) : (
+                  "New messages wait in the queue"
+                )}
+              </p>
+            )}
+          </div>
           </div>
           {assistant.aiDisclaimer && (
             <p className="text-muted-foreground mt-3 flex items-start gap-1.5 text-xs leading-snug">

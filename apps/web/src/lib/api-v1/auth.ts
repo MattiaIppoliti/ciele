@@ -1,8 +1,12 @@
 import type { Role } from "@agent-hub/core";
-import { API_KEY_PREFIX, hashApiKeySecret } from "@agent-hub/core";
+import {
+  API_KEY_PREFIX,
+  hashApiKeySecret,
+  memberRoleRank,
+  roleAllowsCapability,
+} from "@agent-hub/core";
 import { createOrgPinnedDb, type Db } from "@agent-hub/db";
 import type { OperationCapability } from "@ciele/ops";
-import { CAPABILITY_GUARDS, roleRank } from "@/lib/rbac";
 import { getApiV1Db } from "@/lib/api-v1/db";
 import { apiError } from "@/lib/api-v1/http";
 
@@ -76,7 +80,7 @@ export async function resolveApiKeyContext(
   // is one more copy of a fact that can drift; the membership row is the
   // original. The stored role still matters as the *ceiling* the key was
   // minted with, a re-promotion never silently widens an old key past it.
-  const role = roleRank(creatorRole) < roleRank(key.role) ? creatorRole : key.role;
+  const role = memberRoleRank(creatorRole) < memberRoleRank(key.role) ? creatorRole : key.role;
 
   await db.touchApiKeyLastUsed(key.id).catch(() => {});
 
@@ -98,7 +102,7 @@ export function requireApiCapability(
   capability: ApiCapability
 ): Response | null {
   if (capability === "member") return null;
-  if (CAPABILITY_GUARDS[capability](ctx.role)) return null;
+  if (roleAllowsCapability(ctx.role, capability)) return null;
   return apiError(
     403,
     "forbidden",

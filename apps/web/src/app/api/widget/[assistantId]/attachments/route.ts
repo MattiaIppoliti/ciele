@@ -10,7 +10,6 @@ import {
 } from "@/lib/attachments";
 import { resolveWidgetContext, widgetOptions, widgetSubject } from "@/lib/widget-db";
 
-export const runtime = "nodejs";
 /** Reading an image is a model call; a long PDF is parser work. */
 export const maxDuration = 60;
 

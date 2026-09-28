@@ -136,8 +136,6 @@ export interface ToolRuntimeContext {
    * search-iteration count the budget gate reads. Owned by the handler.
    */
   searchPasses: SearchPass[];
-  /** Max `searchKnowledge` calls this turn (defaults to MAX_SEARCH_PASSES). */
-  searchBudget?: number;
   /**
    * This turn's untrusted-content fence label (#801, CYB-07). Every piece of
    * retrieved text a tool hands back is wrapped in it, and the system prompt
@@ -289,16 +287,8 @@ export function normalizeSearchQueries(input: {
 }): string[] {
   const raw = input.queries ?? input.query;
   const list = Array.isArray(raw) ? raw : [raw];
-  const seen = new Set<string>();
-  const queries: string[] = [];
-  for (const entry of list) {
-    const query = String(entry ?? "").trim();
-    if (!query || seen.has(query)) continue;
-    seen.add(query);
-    queries.push(query);
-    if (queries.length >= MAX_QUERIES_PER_SEARCH) break;
-  }
-  return queries;
+  const queries = list.map((entry) => String(entry ?? "").trim()).filter(Boolean);
+  return [...new Set(queries)].slice(0, MAX_QUERIES_PER_SEARCH);
 }
 
 function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
@@ -332,7 +322,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
       const { progress } = takeProgress(input as Record<string, unknown>);
       if (progress) ctx.narrate?.(progress, "searchKnowledge");
       const queries = normalizeSearchQueries(input);
-      const budget = ctx.searchBudget ?? MAX_SEARCH_PASSES;
+      const budget = MAX_SEARCH_PASSES;
       if (queries.length === 0) {
         return withBudgetNote(
           { error: "No search query was provided." },
@@ -357,14 +347,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
         iterationLimit: ctx.loop?.limit,
       });
       const end = (ok: boolean, summary: string) =>
-        ctx.emit({
-          type: "tool-end",
-          callId,
-          tool: "searchKnowledge",
-          ok,
-          summary,
-          durationMs: Date.now() - startedAt,
-        });
+        emitToolEnd(ctx, "searchKnowledge", callId, { ok, startedAt, summary });
 
       const runtime = {
         searchKnowledge: ctx.searchKnowledge ?? (async () => []),
@@ -565,27 +548,6 @@ const BUILT_IN_DEFAULTS: Record<string, boolean> = {
 
 let callSeq = 0;
 
-/**
- * The `tool-start` half of the lifecycle. Both instrumented shapes emit it
- * through here so there is one definition of the event's payload.
- */
-function emitToolStart(
-  ctx: ToolRuntimeContext,
-  spec: { name: string; label: (input: Record<string, unknown>) => string },
-  callId: string,
-  input: Record<string, unknown>
-): void {
-  ctx.emit({
-    type: "tool-start",
-    callId,
-    tool: spec.name,
-    label: spec.label(input),
-    input,
-    iteration: ctx.loop?.iteration,
-    iterationLimit: ctx.loop?.limit,
-  });
-}
-
 /** The `tool-end` half; `operatorResult` is the tier `turn.ts` strips for clients. */
 function emitToolEnd(
   ctx: ToolRuntimeContext,
@@ -629,7 +591,15 @@ function openToolCall(
   ctx.loop?.spend();
   const { progress, args: input } = takeProgress(rawInput);
   if (progress) ctx.narrate?.(progress, spec.name);
-  emitToolStart(ctx, spec, callId, input);
+  ctx.emit({
+    type: "tool-start",
+    callId,
+    tool: spec.name,
+    label: spec.label(input),
+    input,
+    iteration: ctx.loop?.iteration,
+    iterationLimit: ctx.loop?.limit,
+  });
   return { callId, startedAt, input };
 }
 

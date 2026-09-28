@@ -6,7 +6,9 @@ import type {
   Improvement,
   ImprovementListItem,
   ImprovementPatch,
+  ImprovementStatus,
 } from "@agent-hub/core";
+import { isoDay } from "@agent-hub/core";
 import { PanelRight, Search } from "lucide-react";
 import { Input } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
@@ -25,7 +27,11 @@ import {
 } from "@/components/motion/context-menu";
 import { updateImprovementAction } from "@/app/actions";
 import { fuzzyMatch } from "@/lib/fuzzy";
-import { IMPROVEMENT_PRIORITIES, improvementKey } from "@/lib/improvements";
+import {
+  IMPROVEMENT_PRIORITIES,
+  IMPROVEMENT_STATUSES,
+  improvementKey,
+} from "@/lib/improvements";
 import { memberDisplayName } from "@/lib/members";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
@@ -36,8 +42,7 @@ const COLLAPSED_MEMBERS = 3;
 function dueDateIn(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  const p2 = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  return isoDay(d);
 }
 
 const DUE_DATE_PRESETS: Array<{ label: string; days: number }> = [
@@ -62,6 +67,8 @@ export function ImprovementContextMenu({
   onOpenDrawer,
   onTagRemembered,
   onUpdated,
+  status,
+  onMove,
   children,
 }: {
   item: ImprovementListItem;
@@ -77,6 +84,13 @@ export function ImprovementContextMenu({
   onTagRemembered: (tag: string) => void;
   /** Keep progressively loaded rows fresh after their Server Action succeeds. */
   onUpdated: (improvement: Improvement) => void;
+  /** The lane the card sits in, the board's optimistic status. */
+  status: ImprovementStatus;
+  /**
+   * The same move a drop makes, so the lane change has a keyboard route and
+   * the list and the Kanban share one optimistic status.
+   */
+  onMove: (status: ImprovementStatus) => void;
   children: ReactElement<React.HTMLAttributes<HTMLElement>>;
 }) {
   const router = useRouter();
@@ -154,6 +168,23 @@ export function ImprovementContextMenu({
         {!canEdit ? null : (
           <>
             <ContextMenuSeparator />
+            <ContextMenuLabel>Move to</ContextMenuLabel>
+            <ContextMenuRadioGroup
+              value={status}
+              onValueChange={(value) => onMove(value as ImprovementStatus)}
+            >
+              {IMPROVEMENT_STATUSES.map((s) => (
+                <ContextMenuRadioItem
+                  key={s.value}
+                  value={s.value}
+                  textValue={s.label}
+                >
+                  {s.label}
+                </ContextMenuRadioItem>
+              ))}
+            </ContextMenuRadioGroup>
+
+            <ContextMenuSeparator />
             <ContextMenuLabel>Priority</ContextMenuLabel>
             <ContextMenuRadioGroup
               value={item.priority}
@@ -186,6 +217,7 @@ export function ImprovementContextMenu({
                 onChange={(e) => setMemberSearch(e.target.value)}
                 placeholder="Search members…"
                 aria-label="Search members"
+                autoComplete="off"
                 // The menu's typeahead moves focus to the matching item on every
                 // keystroke, which would empty this field after one character.
                 onKeyDown={(e) => {

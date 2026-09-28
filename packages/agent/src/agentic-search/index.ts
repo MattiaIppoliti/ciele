@@ -22,30 +22,14 @@ export {
   resolveAnsweringStyle,
   runAgenticSearch,
 } from "./run";
-export type {
-  AgenticSearchOutcome,
-  AgenticSearchTurnInput,
-  FlowStyleContext,
-} from "./run";
+export type { FlowStyleContext } from "./run";
 
 // The search-pass ledger, budget, and the primitive.
-export {
-  MAX_SEARCH_PASSES,
-  runSearchPass,
-  searchBudgetExhausted,
-} from "./search-pass";
-export type {
-  SearchPass,
-  SearchPassOutcome,
-  SearchPassRuntime,
-} from "./search-pass";
+export { MAX_SEARCH_PASSES, runSearchPass } from "./search-pass";
+export type { SearchPass } from "./search-pass";
 
 // The terminal declaration: the model says it is done, and in what state (#558).
-export {
-  createTerminalState,
-  readyToAnswerTool,
-  resolveTerminalStatus,
-} from "./ready-to-answer";
+export { readyToAnswerTool } from "./ready-to-answer";
 export type {
   TerminalState,
   TerminalStatus,

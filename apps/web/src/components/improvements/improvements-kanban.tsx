@@ -21,6 +21,7 @@ import {
 } from "@/lib/improvements";
 import { ImprovementContextMenu } from "./improvement-context-menu";
 import type { ImprovementLanes } from "./use-improvement-lanes";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 interface CardProps extends React.HTMLAttributes<HTMLElement> {
   item: ImprovementListItem;
@@ -55,7 +56,9 @@ function ImprovementCard({
       }}
       {...trigger}
       className={cn(
-        "block rounded-xl transition-opacity",
+        // Only the cards near the viewport paint; a long lane stays cheap.
+        "block rounded-xl transition-opacity [content-visibility:auto] [contain-intrinsic-size:auto_7rem]",
+        lanes.draggingId && "select-none",
         lanes.draggingId === item.id && "opacity-40",
         drag.draggable && "cursor-grab active:cursor-grabbing",
         className,
@@ -97,7 +100,7 @@ function ImprovementCard({
               {item.messageCount > 0 && (
                 <span className="inline-flex items-center gap-1 tabular-nums">
                   <MessageSquare className="size-3.5" />
-                  {item.messageCount}
+                  <RollingNumber value={item.messageCount} />
                 </span>
               )}
               {item.dueDate && (
@@ -145,6 +148,7 @@ export function ImprovementsKanban({
   onUpdated,
   laneCount,
   laneFooter,
+  filterActive,
 }: {
   improvements: ImprovementListItem[];
   members: Array<{ userId: string; email: string }>;
@@ -164,6 +168,8 @@ export function ImprovementsKanban({
   laneCount: (status: ImprovementStatus) => number;
   /** Per-lane "Showing N of M" and its own Load more, rendered by the board. */
   laneFooter: (status: ImprovementStatus) => ReactNode;
+  /** A search or filter is narrowing the cards, so an empty lane is a miss. */
+  filterActive: boolean;
 }) {
   const emailOf = (userId: string | null) =>
     userId ? (members.find((m) => m.userId === userId)?.email ?? null) : null;
@@ -172,28 +178,40 @@ export function ImprovementsKanban({
     // Five lanes stretch on a wide screen and scroll horizontally once each
     // would drop under ~11rem. A phone always scrolls, so its lanes get a
     // readable 15rem and snap to the edge instead of stopping mid-card.
-    <div className="no-scrollbar grid snap-x snap-mandatory grid-cols-[repeat(5,minmax(15rem,1fr))] gap-3 overflow-x-auto overscroll-x-contain pb-2 sm:snap-none sm:grid-cols-[repeat(5,minmax(11rem,1fr))]">
+    <div className="grid snap-x snap-mandatory grid-cols-[repeat(5,minmax(15rem,1fr))] gap-3 overflow-x-auto overscroll-x-contain pb-2 sm:snap-none sm:grid-cols-[repeat(5,minmax(11rem,1fr))]">
       {IMPROVEMENT_STATUSES.map((lane) => {
         const items = improvements.filter(
           (i) => lanes.statusOf(i) === lane.value,
         );
         const isTarget = lanes.dropLane === lane.value;
+        const headingId = `improvements-kanban-${lane.value}`;
         return (
           <section
             key={lane.value}
+            aria-labelledby={headingId}
             {...lanes.laneProps(lane.value)}
             className={`bg-muted/30 flex min-w-0 snap-start flex-col rounded-xl border transition-colors ${
               isTarget ? "border-primary bg-primary/5" : ""
             }`}
           >
             <header className="flex items-center gap-2 px-3 py-2.5">
-              <span className="text-sm font-semibold">{lane.label}</span>
-              <Badge variant="outline" className="tabular-nums">{laneCount(lane.value)}</Badge>
+              <h2 id={headingId} className="text-sm font-semibold">
+                {lane.label}
+              </h2>
+              <Badge variant="outline" className="tabular-nums">
+                <RollingNumber value={laneCount(lane.value)} />
+              </Badge>
             </header>
             <div className="flex min-h-24 flex-1 flex-col gap-2.5 p-2">
               {items.length === 0 ? (
                 <p className="text-muted-foreground px-1 py-6 text-center text-xs">
-                  {canEdit ? "Drop an improvement here." : "Nothing here."}
+                  {lanes.draggingId
+                    ? "Drop an improvement here."
+                    : filterActive
+                      ? "No loaded improvements match."
+                      : canEdit
+                        ? "Drop an improvement here."
+                        : "Nothing here."}
                 </p>
               ) : (
                 items.map((i) => (
@@ -206,6 +224,8 @@ export function ImprovementsKanban({
                     onOpenDrawer={() => onOpen(i.id)}
                     onTagRemembered={onTagRemembered}
                     onUpdated={onUpdated}
+                    status={lanes.statusOf(i)}
+                    onMove={(status) => lanes.move(i.id, status)}
                   >
                     <ImprovementCard
                       item={i}

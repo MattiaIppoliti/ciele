@@ -58,10 +58,7 @@ export function routineSlotStart(
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate(),
-      routine.hour,
-      0,
-      0,
-      0
+      routine.hour
     )
   );
   // Today's slot has not arrived yet: the current one is the previous period's.
@@ -77,7 +74,7 @@ export function routineSlotStart(
   // Monthly: the first of the month, at the preferred hour. If that moment is
   // still ahead of `now` (early on the 1st), the current slot is last month's.
   const monthly = new Date(
-    Date.UTC(slot.getUTCFullYear(), slot.getUTCMonth(), 1, routine.hour, 0, 0, 0)
+    Date.UTC(slot.getUTCFullYear(), slot.getUTCMonth(), 1, routine.hour)
   );
   if (monthly.getTime() > now.getTime()) {
     monthly.setUTCMonth(monthly.getUTCMonth() - 1);

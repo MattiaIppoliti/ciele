@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestSingleResponse, SupabaseClient } from "@supabase/supabase-js";
 import {
   RETRIEVAL_OVERFETCH,
   capPerSource,
@@ -7,7 +7,10 @@ import {
   LEXICAL_SIMILARITY,
 } from "./hybrid-search";
 import {
+  clampPageLimit,
+  decodeMemorySubjectCursor,
   finalizeImprovementPage,
+  finalizePage,
   normalizeImprovementPageInput,
 } from "./improvement-pagination";
 import type {
@@ -23,7 +26,6 @@ import type {
   ApplicationSyncRun,
   Assistant,
   AssistantGoal,
-  AssistantPatch,
   AssistantTools,
   BackgroundJob,
   ChannelAuthorType,
@@ -37,6 +39,7 @@ import type {
   SourceDocumentListItem,
   Conversation,
   ConversationMetadata,
+  DashboardFacts,
   Entity,
   EntityRecord,
   EntityRecordValue,
@@ -152,6 +155,7 @@ import {
   camelToSnakeKey,
   domainToRow,
   newTableRowId,
+  patchRow,
   rowToDomain,
   type DbTableAccessor,
   type DbTableName,
@@ -165,6 +169,13 @@ import {
 } from "./inbox";
 import type { Db } from "./types";
 import { resolveApplicationConnectionOwner } from "./application-connections";
+import { MemoryDocumentConflictError } from "./memory-conflict";
+
+/** A PostgREST result's rows, or its error thrown. */
+function must<T>(result: PostgrestSingleResponse<T>): T {
+  if (result.error) throw result.error;
+  return result.data;
+}
 
 function isSchemaLagError(error: unknown): boolean {
   const value = error as { code?: string; message?: string } | null;
@@ -178,6 +189,17 @@ function isSchemaLagError(error: unknown): boolean {
 }
 
 /**
+ * RLS answers a write it refuses with zero rows, not an error. For the Inbox
+ * writes that was a pin, a legal hold or a delete that reported success and
+ * changed nothing, so these methods read back the affected ids and treat an
+ * empty result as the refusal it is.
+ */
+function assertConversationWritten(data: unknown, id: string): void {
+  if (Array.isArray(data) && data.length > 0) return;
+  throw new Error(`Conversation ${id} was not changed: not found or not permitted`);
+}
+
+/**
  * The organization columns the current schema has, and the set one migration
  * behind it (`transcript_retention_days` landed in 20260830130000). Every
  * organization read tries the first and falls back to the second on a
@@ -188,6 +210,28 @@ const ORGANIZATION_COLUMNS =
   "id, name, logo_url, trace_retention_days, transcript_retention_days, created_at";
 const ORGANIZATION_COLUMNS_LEGACY =
   "id, name, logo_url, trace_retention_days, created_at";
+
+const PROFILE_COLUMNS = "id, email, username, first_name, last_name, avatar_url";
+
+interface ProfileRow {
+  id: string;
+  email: string;
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
+function toProfile(row: ProfileRow): Profile {
+  return {
+    userId: row.id,
+    email: row.email,
+    username: row.username ?? "",
+    firstName: row.first_name ?? "",
+    lastName: row.last_name ?? "",
+    avatarUrl: row.avatar_url,
+  };
+}
 
 interface OrganizationRow {
   id: string;
@@ -493,13 +537,12 @@ async function hydrateChunkHits(
   if (rows.length === 0) return [];
 
   const conceptIds = [...new Set(rows.map((r) => r.concept_id))];
-  const { data: conceptRows, error: conceptError } = await client
+  const conceptRows = must(await client
     .from("concepts")
     .select(
       "id, path, frontmatter, collection_id, source_id, knowledge_collections (name), sources (id, name, kind, original_object_path)"
     )
-    .in("id", conceptIds);
-  if (conceptError) throw conceptError;
+    .in("id", conceptIds));
 
   const conceptById = new Map(
     (conceptRows as Array<Record<string, unknown>>).map((c) => [c.id, c])
@@ -516,12 +559,11 @@ async function hydrateChunkHits(
   ];
   const directBySource = new Map<string, boolean>();
   if (assistantId && hitSourceIds.length > 0) {
-    const { data: linkRows, error: linkErr } = await client
+    const linkRows = must(await client
       .from("assistant_sources")
       .select("source_id, direct_access")
       .eq("assistant_id", assistantId)
-      .in("source_id", hitSourceIds);
-    if (linkErr) throw linkErr;
+      .in("source_id", hitSourceIds));
     for (const link of linkRows as Array<{
       source_id: string;
       direct_access: boolean;
@@ -1073,6 +1115,26 @@ function toFlow(row: FlowRow): Flow {
   };
 }
 
+function toCollection(row: Record<string, unknown>): KnowledgeCollection {
+  return {
+    id: row.id as string,
+    organizationId: (row.organization_id as string | null) ?? "",
+    name: row.name as string,
+    description: row.description as string,
+    createdAt: row.created_at as string,
+  };
+}
+
+function toPublication(row: Record<string, unknown>): Publication {
+  return {
+    id: row.id as string,
+    assistantId: row.assistant_id as string,
+    version: row.version as number,
+    config: row.config as PublicationConfig,
+    createdAt: row.created_at as string,
+  };
+}
+
 function toSource(row: Record<string, unknown>): Source {
   return {
     id: row.id as string,
@@ -1284,41 +1346,6 @@ function toOrgApiKey(row: OrgApiKeyRow): OrgApiKey {
   };
 }
 
-function assistantPatchToRow(patch: AssistantPatch): Record<string, unknown> {
-  const row: Record<string, unknown> = {};
-  if (patch.title !== undefined) row.title = patch.title;
-  if (patch.nickname !== undefined) row.nickname = patch.nickname;
-  if (patch.description !== undefined) row.description = patch.description;
-  if (patch.avatarUrl !== undefined) row.avatar_url = patch.avatarUrl;
-  if (patch.welcomeMessage !== undefined)
-    row.welcome_message = patch.welcomeMessage;
-  if (patch.aiDisclaimer !== undefined) row.ai_disclaimer = patch.aiDisclaimer;
-  if (patch.suggestedQuestions !== undefined)
-    row.suggested_questions = patch.suggestedQuestions;
-  if (patch.quickReplies !== undefined) row.quick_replies = patch.quickReplies;
-  if (patch.answeringStyle !== undefined)
-    row.answering_style = patch.answeringStyle;
-  if (patch.chatLauncherEnabled !== undefined)
-    row.chat_launcher_enabled = patch.chatLauncherEnabled;
-  if (patch.modelProvider !== undefined) row.model_provider = patch.modelProvider;
-  if (patch.modelId !== undefined) row.model_id = patch.modelId;
-  if (patch.allowedModels !== undefined)
-    row.allowed_models = patch.allowedModels;
-  if (patch.attachmentsEnabled !== undefined)
-    row.attachments_enabled = patch.attachmentsEnabled;
-  if (patch.voice !== undefined) row.voice = patch.voice;
-  if (patch.style !== undefined) row.style = patch.style;
-  if (patch.allowedDomains !== undefined) row.allowed_domains = patch.allowedDomains;
-  if (patch.helpDeskSettings !== undefined)
-    row.help_desk_settings = patch.helpDeskSettings;
-  if (patch.tools !== undefined) row.tools = patch.tools;
-  if (patch.requireSignIn !== undefined)
-    row.require_sign_in = patch.requireSignIn;
-  if (patch.simplifiedThinking !== undefined)
-    row.simplified_thinking = patch.simplifiedThinking;
-  return row;
-}
-
 /**
  * Generic table accessor (ADR-0016): one implementation for every table in
  * DbTableMap. Filters/patches arrive in domain field names and are rewritten
@@ -1337,22 +1364,20 @@ function supabaseTable<K extends DbTableName>(
         const column = camelToSnakeKey(key);
         query = value === null ? query.is(column, null) : query.eq(column, value);
       }
-      query = query.order(camelToSnakeKey(options?.orderBy ?? spec.orderBy), {
+      query = query.order(camelToSnakeKey(options?.orderBy ?? "createdAt"), {
         ascending: options?.ascending ?? spec.ascending,
       });
       if (options?.limit !== undefined) query = query.limit(options.limit);
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = must(await query);
       return (data ?? []).map((row) => rowToDomain(row) as unknown as DbTableRow<K>);
     },
 
     async get(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from(spec.table)
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? (rowToDomain(data) as unknown as DbTableRow<K>) : null;
     },
 
@@ -1390,19 +1415,17 @@ function supabaseTable<K extends DbTableName>(
     async update(id, patch) {
       const row = domainToRow({ ...patch });
       if (spec.touchesUpdatedAt) row.updated_at = new Date().toISOString();
-      const { data, error } = await client
+      const data = must(await client
         .from(spec.table)
         .update(row)
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return rowToDomain(data) as unknown as DbTableRow<K>;
     },
 
     async delete(id) {
-      const { error } = await client.from(spec.table).delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from(spec.table).delete().eq("id", id));
     },
   };
 }
@@ -1417,11 +1440,10 @@ async function linkedSourceIds(
   client: SupabaseClient,
   assistantId: string
 ): Promise<string[]> {
-  const { data, error } = await client
+  const data = must(await client
     .from("assistant_sources")
     .select("source_id")
-    .eq("assistant_id", assistantId);
-  if (error) throw error;
+    .eq("assistant_id", assistantId));
   return (data as Array<{ source_id: string }>).map((r) => r.source_id);
 }
 
@@ -1627,13 +1649,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async updateOrganization(organizationId, patch: OrganizationPatch) {
-      const row: Record<string, unknown> = {};
-      if (patch.name !== undefined) row.name = patch.name;
-      if (patch.logoUrl !== undefined) row.logo_url = patch.logoUrl;
-      if (patch.traceRetentionDays !== undefined)
-        row.trace_retention_days = patch.traceRetentionDays;
-      if (patch.transcriptRetentionDays !== undefined)
-        row.transcript_retention_days = patch.transcriptRetentionDays;
+      const row = patchRow(patch, [
+        "name", "logoUrl", "traceRetentionDays", "transcriptRetentionDays",
+      ]);
       const updateWith = (columns: string) =>
         client
           .from("organizations")
@@ -1660,86 +1678,62 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async getProfile() {
       const userId = await authenticatedUserId(client);
       if (!userId) return null;
-      const { data, error } = await client
+      const data = must(await client
         .from("profiles")
-        .select("id, email, username, first_name, last_name, avatar_url")
+        .select(PROFILE_COLUMNS)
         .eq("id", userId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       if (!data) return null;
-      return {
-        userId: data.id,
-        email: data.email,
-        username: data.username ?? "",
-        firstName: data.first_name ?? "",
-        lastName: data.last_name ?? "",
-        avatarUrl: data.avatar_url,
-      } satisfies Profile;
+      return toProfile(data as ProfileRow);
     },
 
     async updateProfile(patch: ProfilePatch) {
       const userId = await authenticatedUserId(client);
       if (!userId) throw new Error("Not authenticated");
-      const row: Record<string, unknown> = {};
-      if (patch.username !== undefined) row.username = patch.username;
-      if (patch.firstName !== undefined) row.first_name = patch.firstName;
-      if (patch.lastName !== undefined) row.last_name = patch.lastName;
-      if (patch.avatarUrl !== undefined) row.avatar_url = patch.avatarUrl;
-      const { data, error } = await client
+      const row = patchRow(patch, ["username", "firstName", "lastName", "avatarUrl"]);
+      const data = must(await client
         .from("profiles")
         .update(row)
         .eq("id", userId)
-        .select("id, email, username, first_name, last_name, avatar_url")
-        .single();
-      if (error) throw error;
-      return {
-        userId: data.id,
-        email: data.email,
-        username: data.username ?? "",
-        firstName: data.first_name ?? "",
-        lastName: data.last_name ?? "",
-        avatarUrl: data.avatar_url,
-      } satisfies Profile;
+        .select(PROFILE_COLUMNS)
+        .single());
+      return toProfile(data as ProfileRow);
     },
 
     async createOrganization(name) {
-      const { data, error } = await client.rpc("create_organization", {
+      const data = must(await client.rpc("create_organization", {
         org_name: name,
-      });
-      if (error) throw error;
+      }));
       return data as string;
     },
 
     async acceptInvite(token) {
-      const { data, error } = await client.rpc("accept_invite", {
+      const data = must(await client.rpc("accept_invite", {
         invite_token: token,
-      });
-      if (error) throw error;
+      }));
       return data as string;
     },
 
     async getMemberRole(organizationId, userId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("organization_members")
         .select("role")
         .eq("organization_id", organizationId)
         .eq("user_id", userId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return (data?.role as Role | undefined) ?? null;
     },
 
     async listMembers(organizationId) {
       // One query: emails come through the organization_members -> profiles
       // embed (FK added in 0020 -- the profile mirror exists for this join).
-      const { data, error } = await client
+      const data = must(await client
         .from("organization_members")
         .select(
           "user_id, role, created_at, profiles(email, username, first_name, last_name, avatar_url)"
         )
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }));
       const rows = data as unknown as Array<{
         user_id: string;
         role: Role;
@@ -1765,31 +1759,28 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async updateMemberRole(organizationId, userId, role) {
-      const { error } = await client
+      must(await client
         .from("organization_members")
         .update({ role })
         .eq("organization_id", organizationId)
-        .eq("user_id", userId);
-      if (error) throw error;
+        .eq("user_id", userId));
     },
 
     async removeMember(organizationId, userId) {
-      const { error } = await client
+      must(await client
         .from("organization_members")
         .delete()
         .eq("organization_id", organizationId)
-        .eq("user_id", userId);
-      if (error) throw error;
+        .eq("user_id", userId));
     },
 
     async listInvites(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("organization_invites")
         .select("*")
         .eq("organization_id", organizationId)
         .is("accepted_at", null)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        .order("created_at", { ascending: false }));
       return (data as InviteRow[]).map(toInvite);
     },
 
@@ -1800,34 +1791,31 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         email: email ?? "",
         token: shortId() + shortId(),
       };
-      const { data, error } = await client
+      const data = must(await client
         .from("organization_invites")
         .insert(row)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toInvite(data as InviteRow);
     },
 
     async revokeInvite(inviteId) {
-      const { error } = await client
+      must(await client
         .from("organization_invites")
         .delete()
-        .eq("id", inviteId);
-      if (error) throw error;
+        .eq("id", inviteId));
     },
 
     // --- Organization API keys (#618) -----------------------------------
 
     async listApiKeys(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("organization_api_keys")
         .select(
           "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
         )
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        .order("created_at", { ascending: false }));
       return (data as OrgApiKeyRow[]).map(toOrgApiKey);
     },
 
@@ -1840,60 +1828,55 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         role: input.role,
         created_by: input.createdBy,
       };
-      const { data, error } = await client
+      const data = must(await client
         .from("organization_api_keys")
         .insert(row)
         .select(
           "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
         )
-        .single();
-      if (error) throw error;
+        .single());
       return toOrgApiKey(data as OrgApiKeyRow);
     },
 
     async revokeApiKey(keyId) {
-      const { error } = await client
+      must(await client
         .from("organization_api_keys")
         .update({ revoked_at: new Date().toISOString() })
         .eq("id", keyId)
-        .is("revoked_at", null);
-      if (error) throw error;
+        .is("revoked_at", null));
     },
 
     async getApiKeyByHash(secretHash) {
-      const { data, error } = await client
+      const data = must(await client
         .from("organization_api_keys")
         .select(
           "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
         )
         .eq("secret_hash", secretHash)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toOrgApiKey(data as OrgApiKeyRow) : null;
     },
 
     async touchApiKeyLastUsed(keyId) {
-      const { error } = await client
+      must(await client
         .from("organization_api_keys")
         .update({ last_used_at: new Date().toISOString() })
-        .eq("id", keyId);
-      if (error) throw error;
+        .eq("id", keyId));
     },
 
     // --- Assistants -----------------------------------------------------
 
     async listAssistants(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("assistants")
         .select("*")
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }));
       return (data as AssistantRow[]).map(toAssistant);
     },
 
     async listAssistantsPage(organizationId, input) {
-      const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
+      const limit = clampPageLimit(input.limit);
       let query = client
         .from("assistants")
         .select("*")
@@ -1901,24 +1884,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .order("id", { ascending: true })
         .limit(limit + 1);
       if (input.cursor) query = query.gt("id", input.cursor);
-      const { data, error } = await query;
-      if (error) throw error;
-      const rows = data as AssistantRow[];
-      const hasMore = rows.length > limit;
-      const items = rows.slice(0, limit).map(toAssistant);
-      return {
-        items,
-        nextCursor: hasMore ? items.at(-1)?.id ?? null : null,
-      };
+      const data = must(await query);
+      return finalizePage((data as AssistantRow[]).map(toAssistant), limit, (a) => a.id);
     },
 
     async listAssistantShellSummaries(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("assistants")
         .select("id, title, nickname, avatar_url, style")
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }));
       return (
         data as Array<{
           id: string;
@@ -1937,12 +1912,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getAssistant(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("assistants")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toAssistant(data as AssistantRow) : null;
     },
 
@@ -1958,12 +1932,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         suggested_questions: [],
         chat_launcher_enabled: true,
       };
-      const { data, error } = await client
+      const data = must(await client
         .from("assistants")
         .insert(row)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
 
       const flowRows = DEFAULT_FLOWS.map((f, i) => ({
         id: shortId(),
@@ -1980,49 +1953,50 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         custom_message: f.customMessage,
         is_default: f.isDefault,
       }));
-      const { error: flowError } = await client.from("flows").insert(flowRows);
-      if (flowError) throw flowError;
+      must(await client.from("flows").insert(flowRows));
 
       return toAssistant(data as AssistantRow);
     },
 
     async updateAssistant(id, patch) {
-      const { data, error } = await client
+      const data = must(await client
         .from("assistants")
         .update({
-          ...assistantPatchToRow(patch),
+          ...patchRow(patch, [
+            "title", "nickname", "description", "avatarUrl", "welcomeMessage",
+            "aiDisclaimer", "suggestedQuestions", "quickReplies", "answeringStyle",
+            "chatLauncherEnabled", "modelProvider", "modelId", "allowedModels",
+            "attachmentsEnabled", "voice", "style", "allowedDomains", "helpDeskSettings",
+            "tools", "requireSignIn", "simplifiedThinking",
+          ]),
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toAssistant(data as AssistantRow);
     },
 
     async deleteAssistant(id) {
-      const { error } = await client.from("assistants").delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from("assistants").delete().eq("id", id));
     },
 
     // --- Flows -----------------------------------------------------------
 
     async listFlows(assistantId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("flows")
         .select("*")
-        .eq("assistant_id", assistantId);
-      if (error) throw error;
+        .eq("assistant_id", assistantId));
       return sortFlows((data as FlowRow[]).map(toFlow));
     },
 
     async getFlow(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("flows")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toFlow(data as FlowRow) : null;
     },
 
@@ -2051,78 +2025,62 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         custom_message: input.customMessage ?? "",
         is_default: false,
       };
-      const { data, error } = await client
+      const data = must(await client
         .from("flows")
         .insert(row)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toFlow(data as FlowRow);
     },
 
     async updateFlow(id, patch: FlowPatch) {
-      const row: Record<string, unknown> = {};
-      if (patch.name !== undefined) row.name = patch.name;
-      if (patch.description !== undefined) row.description = patch.description;
-      if (patch.enabled !== undefined) row.enabled = patch.enabled;
+      const row = patchRow(patch, [
+        "name", "description", "enabled", "triggerSettings", "conditionLogic",
+        "conditions", "actions", "actionSettings", "customMessage",
+      ]);
       if (patch.trigger !== undefined) row.trigger_kind = patch.trigger;
-      if (patch.triggerSettings !== undefined)
-        row.trigger_settings = patch.triggerSettings;
-      if (patch.conditionLogic !== undefined)
-        row.condition_logic = patch.conditionLogic;
-      if (patch.conditions !== undefined) row.conditions = patch.conditions;
-      if (patch.actions !== undefined) row.actions = patch.actions;
-      if (patch.actionSettings !== undefined)
-        row.action_settings = patch.actionSettings;
-      if (patch.customMessage !== undefined)
-        row.custom_message = patch.customMessage;
-      const { data, error } = await client
+      const data = must(await client
         .from("flows")
         .update(row)
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toFlow(data as FlowRow);
     },
 
     async deleteFlow(id) {
-      const { error } = await client.from("flows").delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from("flows").delete().eq("id", id));
     },
 
     async reorderFlows(assistantId, orderedIds) {
-      const { error } = await client.rpc("reorder_assistant_flows", {
+      must(await client.rpc("reorder_assistant_flows", {
         p_assistant_id: assistantId,
         p_ordered_ids: orderedIds,
-      });
-      if (error) throw error;
+      }));
     },
 
     // --- Help desks --------------------------------------------------------
 
     async listHelpDesks(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("help_desks")
         .select("*")
         .eq("organization_id", organizationId)
-        .order("name");
-      if (error) throw error;
+        .order("name"));
       return (data as HelpDeskRow[]).map(toHelpDesk);
     },
 
     async getHelpDesk(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("help_desks")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toHelpDesk(data as HelpDeskRow) : null;
     },
 
     async createHelpDesk(organizationId, input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("help_desks")
         .insert({
           id: shortId(),
@@ -2131,41 +2089,34 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           description: input.description ?? "",
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toHelpDesk(data as HelpDeskRow);
     },
 
     async updateHelpDesk(id, patch) {
-      const row: Record<string, unknown> = {
+      const row = {
         updated_at: new Date().toISOString(),
+        ...patchRow(patch, ["name", "description", "autoGenerateImprovements"]),
       };
-      if (patch.name !== undefined) row.name = patch.name;
-      if (patch.description !== undefined) row.description = patch.description;
-      if (patch.autoGenerateImprovements !== undefined)
-        row.auto_generate_improvements = patch.autoGenerateImprovements;
-      const { data, error } = await client
+      const data = must(await client
         .from("help_desks")
         .update(row)
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toHelpDesk(data as HelpDeskRow);
     },
 
     async deleteHelpDesk(id) {
-      const { error } = await client.from("help_desks").delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from("help_desks").delete().eq("id", id));
     },
 
     async listSupportChannels(helpDeskId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("support_channels")
         .select("*")
         .eq("help_desk_id", helpDeskId)
-        .order("position");
-      if (error) throw error;
+        .order("position"));
       return (data as SupportChannelRow[]).map(toSupportChannel);
     },
 
@@ -2175,7 +2126,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .select("*", { count: "exact", head: true })
         .eq("help_desk_id", helpDeskId);
       if (countError) throw countError;
-      const { data, error } = await client
+      const data = must(await client
         .from("support_channels")
         .insert({
           id: shortId(),
@@ -2192,51 +2143,41 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           availability: normalizeChannelAvailability(input.availability),
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toSupportChannel(data as SupportChannelRow);
     },
 
     async updateSupportChannel(id, patch) {
-      const row: Record<string, unknown> = {
+      const row = {
         updated_at: new Date().toISOString(),
+        ...patchRow(patch, [
+          "name", "enabled", "config", "formTitle", "form", "confirmationMessage",
+          "conversationData", "availability",
+        ]),
       };
-      if (patch.name !== undefined) row.name = patch.name;
-      if (patch.enabled !== undefined) row.enabled = patch.enabled;
-      if (patch.config !== undefined) row.config = patch.config;
-      if (patch.formTitle !== undefined) row.form_title = patch.formTitle;
-      if (patch.form !== undefined) row.form = patch.form;
-      if (patch.confirmationMessage !== undefined)
-        row.confirmation_message = patch.confirmationMessage;
-      if (patch.conversationData !== undefined)
-        row.conversation_data = patch.conversationData;
-      if (patch.availability !== undefined) row.availability = patch.availability;
-      const { data, error } = await client
+      const data = must(await client
         .from("support_channels")
         .update(row)
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toSupportChannel(data as SupportChannelRow);
     },
 
     async deleteSupportChannel(id) {
-      const { error } = await client
+      must(await client
         .from("support_channels")
         .delete()
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     async reorderSupportChannels(helpDeskId, orderedIds) {
       for (let i = 0; i < orderedIds.length; i++) {
-        const { error } = await client
+        must(await client
           .from("support_channels")
           .update({ position: i })
           .eq("id", orderedIds[i])
-          .eq("help_desk_id", helpDeskId);
-        if (error) throw error;
+          .eq("help_desk_id", helpDeskId));
       }
     },
 
@@ -2248,7 +2189,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         connectedAt: new Date().toISOString(),
         config: input.config,
       };
-      const { data, error } = await client
+      const data = must(await client
         .from("help_desks")
         .update({
           ticketing_integration: integration,
@@ -2256,41 +2197,37 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         })
         .eq("id", helpDeskId)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toHelpDesk(data as HelpDeskRow);
     },
 
     async clearTicketingIntegration(helpDeskId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("help_desks")
         .update({ ticketing_integration: null, updated_at: new Date().toISOString() })
         .eq("id", helpDeskId)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toHelpDesk(data as HelpDeskRow);
     },
 
     // --- Widget SSO connections -----------------------------------------
 
     async getSsoConnection(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("sso_connections")
         .select("*")
         .eq("organization_id", organizationId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toSsoConnection(data as SsoConnectionRow) : null;
     },
 
     async getSsoConnectionPublic(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("sso_connections")
         .select("provider")
         .eq("organization_id", organizationId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data
         ? { provider: (data as { provider: SsoProviderKind }).provider }
         : null;
@@ -2299,7 +2236,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async setSsoConnection(organizationId, input) {
       // One connection per org: upsert on organization_id. Setting a new
       // connection resets validation until the caller re-validates.
-      const { data, error } = await client
+      const data = must(await client
         .from("sso_connections")
         .upsert(
           {
@@ -2316,13 +2253,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           { onConflict: "organization_id" }
         )
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toSsoConnection(data as SsoConnectionRow);
     },
 
     async setSsoConnectionValidation(organizationId, status) {
-      const { data, error } = await client
+      const data = must(await client
         .from("sso_connections")
         .update({
           validation_status: status,
@@ -2332,36 +2268,33 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         })
         .eq("organization_id", organizationId)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toSsoConnection(data as SsoConnectionRow);
     },
 
     async clearSsoConnection(organizationId) {
-      const { error } = await client
+      must(await client
         .from("sso_connections")
         .delete()
-        .eq("organization_id", organizationId);
-      if (error) throw error;
+        .eq("organization_id", organizationId));
     },
 
     // --- Crawler connections ---------------------------------------------
 
     async getCrawlerConnection(organizationId, provider) {
-      const { data, error } = await client
+      const data = must(await client
         .from("crawler_connections")
         .select("*")
         .eq("organization_id", organizationId)
         .eq("provider", provider)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data
         ? (rowToDomain(data as Record<string, unknown>) as unknown as CrawlerConnection)
         : null;
     },
 
     async setCrawlerConnection(organizationId, input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("crawler_connections")
         .upsert(
           {
@@ -2378,29 +2311,26 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           { onConflict: "organization_id,provider" }
         )
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return rowToDomain(data as Record<string, unknown>) as unknown as CrawlerConnection;
     },
 
     async deleteCrawlerConnection(organizationId, provider) {
-      const { error } = await client
+      must(await client
         .from("crawler_connections")
         .delete()
         .eq("organization_id", organizationId)
-        .eq("provider", provider);
-      if (error) throw error;
+        .eq("provider", provider));
     },
 
     // --- API integrations (spec #559) ------------------------------------
 
     async getApiIntegration(assistantId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("assistant_api_integrations")
         .select("*")
         .eq("assistant_id", assistantId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toApiIntegration(data as ApiIntegrationRow) : null;
     },
 
@@ -2423,21 +2353,19 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (input.encryptedCredential !== undefined) {
         row.encrypted_credential = input.encryptedCredential;
       }
-      const { data, error } = await client
+      const data = must(await client
         .from("assistant_api_integrations")
         .upsert(row, { onConflict: "assistant_id" })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toApiIntegration(data as ApiIntegrationRow);
     },
 
     async deleteApiIntegration(assistantId) {
-      const { error } = await client
+      must(await client
         .from("assistant_api_integrations")
         .delete()
-        .eq("assistant_id", assistantId);
-      if (error) throw error;
+        .eq("assistant_id", assistantId));
     },
 
     // --- Provider connections -------------------------------------------
@@ -2471,26 +2399,24 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async setEmbeddingConnectionId(organizationId, connectionId) {
       if (connectionId) {
         // Cross-org references would silently embed with someone else's key.
-        const { data, error } = await client
+        const data = must(await client
           .from("provider_connections")
           .select("id")
           .eq("id", connectionId)
           .eq("organization_id", organizationId)
-          .maybeSingle();
-        if (error) throw error;
+          .maybeSingle());
         if (!data) {
           throw new Error("connection does not belong to this organization");
         }
       }
-      const { error } = await client
+      must(await client
         .from("organizations")
         .update({ embedding_connection_id: connectionId })
-        .eq("id", organizationId);
-      if (error) throw error;
+        .eq("id", organizationId));
     },
 
     async createProviderConnection(organizationId, input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("provider_connections")
         .insert({
           organization_id: organizationId,
@@ -2503,45 +2429,35 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           created_by: input.createdBy ?? null,
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toConnection(data as ConnectionRow);
     },
 
     async deleteProviderConnection(id) {
-      const { error } = await client
+      must(await client
         .from("provider_connections")
         .delete()
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     // --- Knowledge (OKF collections) ----------------------------------------
 
     async listOrgCollections(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("knowledge_collections")
         .select("*")
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data as Array<Record<string, string>>).map((r) => ({
-        id: r.id,
-        organizationId: r.organization_id ?? "",
-        name: r.name,
-        description: r.description,
-        createdAt: r.created_at,
-      })) satisfies KnowledgeCollection[];
+        .order("created_at", { ascending: true }));
+      return (data as Array<Record<string, unknown>>).map(toCollection);
     },
 
     async listCollections(assistantId) {
       // Derived membership (PRD #726 contract): the Collections holding
       // Sources linked to this Assistant.
-      const { data: linkRows, error: linkError } = await client
+      const linkRows = must(await client
         .from("assistant_sources")
         .select("sources!inner(collection_id)")
-        .eq("assistant_id", assistantId);
-      if (linkError) throw linkError;
+        .eq("assistant_id", assistantId));
       const collectionIds = [
         ...new Set(
           (
@@ -2554,54 +2470,32 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         ),
       ];
       if (collectionIds.length === 0) return [];
-      const { data, error } = await client
+      const data = must(await client
         .from("knowledge_collections")
         .select("*")
         .in("id", collectionIds)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data as Array<Record<string, string>>).map((r) => ({
-        id: r.id,
-        organizationId: r.organization_id ?? "",
-        name: r.name,
-        description: r.description,
-        createdAt: r.created_at,
-      })) satisfies KnowledgeCollection[];
+        .order("created_at", { ascending: true }));
+      return (data as Array<Record<string, unknown>>).map(toCollection);
     },
 
     async getCollection(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("knowledge_collections")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       if (!data) return null;
-      return {
-        id: data.id,
-        organizationId: data.organization_id ?? "",
-        name: data.name,
-        description: data.description,
-        createdAt: data.created_at,
-      };
+      return toCollection(data as Record<string, unknown>);
     },
 
     async getOrCreateOrgLibraryCollection(organizationId) {
       const id = `org-library-${organizationId}`;
-      const map = (row: Record<string, unknown>): KnowledgeCollection => ({
-        id: row.id as string,
-        organizationId: (row.organization_id as string | null) ?? "",
-        name: row.name as string,
-        description: row.description as string,
-        createdAt: row.created_at as string,
-      });
-      const { data: existing, error: readError } = await client
+      const existing = must(await client
         .from("knowledge_collections")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (readError) throw readError;
-      if (existing) return map(existing as Record<string, unknown>);
+        .maybeSingle());
+      if (existing) return toCollection(existing as Record<string, unknown>);
       const { data, error } = await client
         .from("knowledge_collections")
         .insert({
@@ -2622,21 +2516,20 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           .eq("id", id)
           .maybeSingle();
         if (retryError || !again) throw error;
-        return map(again as Record<string, unknown>);
+        return toCollection(again as Record<string, unknown>);
       }
-      return map(data as Record<string, unknown>);
+      return toCollection(data as Record<string, unknown>);
     },
 
     async createCollection(assistantId, input) {
       // Stamp the owning Organization (PRD #726): new Collections are
       // org-owned from day one; the backfill migration covers history.
-      const { data: assistant, error: assistantError } = await client
+      const assistant = must(await client
         .from("assistants")
         .select("organization_id")
         .eq("id", assistantId)
-        .single();
-      if (assistantError) throw assistantError;
-      const { data, error } = await client
+        .single());
+      const data = must(await client
         .from("knowledge_collections")
         .insert({
           id: shortId(),
@@ -2645,37 +2538,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           description: input.description ?? "",
         })
         .select()
-        .single();
-      if (error) throw error;
-      return {
-        id: data.id,
-        organizationId: data.organization_id ?? "",
-        name: data.name,
-        description: data.description,
-        createdAt: data.created_at,
-      };
-    },
-
-    async deleteCollection(id) {
-      const { error } = await client
-        .from("knowledge_collections")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+        .single());
+      return toCollection(data as Record<string, unknown>);
     },
 
     async listSources(collectionId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("sources")
         .select("*")
         .eq("collection_id", collectionId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }));
       return (data as Array<Record<string, unknown>>).map(toSource);
     },
 
     async createSource(input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("sources")
         .insert({
           id: input.id ?? shortId(),
@@ -2687,69 +2564,57 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           original_object_path: input.originalObjectPath ?? null,
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       // No implicit link (PRD #726 contract): Collections have no owning
       // assistant, so callers (the ops layer) link Assistants explicitly.
       return toSource(data as Record<string, unknown>);
     },
 
     async updateSource(id, patch) {
-      const row: Record<string, unknown> = {
+      const row = {
         updated_at: new Date().toISOString(),
+        ...patchRow(patch, [
+          "name", "status", "error", "config", "recrawlSchedule", "lastCrawledAt",
+          "originalObjectPath",
+        ]),
       };
-      if (patch.name !== undefined) row.name = patch.name;
-      if (patch.status !== undefined) row.status = patch.status;
-      if (patch.error !== undefined) row.error = patch.error;
-      if (patch.config !== undefined) row.config = patch.config;
-      if (patch.recrawlSchedule !== undefined)
-        row.recrawl_schedule = patch.recrawlSchedule;
-      if (patch.lastCrawledAt !== undefined)
-        row.last_crawled_at = patch.lastCrawledAt;
-      if (patch.originalObjectPath !== undefined)
-        row.original_object_path = patch.originalObjectPath;
-      const { error } = await client.from("sources").update(row).eq("id", id);
-      if (error) throw error;
+      must(await client.from("sources").update(row).eq("id", id));
     },
 
     async getSource(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("sources")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toSource(data as Record<string, unknown>) : null;
     },
 
     async createApplicationOAuthNonce(input) {
-      const { error } = await client.from("application_oauth_nonces").insert({
+      must(await client.from("application_oauth_nonces").insert({
         nonce: input.nonce,
         organization_id: input.organizationId,
         member_id: input.memberId,
         expires_at: input.expiresAt,
-      });
-      if (error) throw error;
+      }));
     },
 
     async consumeApplicationOAuthNonce(input) {
-      const { data, error } = await client.rpc("consume_application_oauth_nonce", {
+      const data = must(await client.rpc("consume_application_oauth_nonce", {
         p_nonce: input.nonce,
         p_organization_id: input.organizationId,
         p_member_id: input.memberId,
         p_consumed_at: input.consumedAt,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
     async listApplicationConnections(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("application_connections_safe")
         .select("*")
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }));
       return (data as Array<Record<string, unknown>>).map(
         toApplicationConnection
       );
@@ -2761,34 +2626,31 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // predicate in addition to base-table RLS; service-role requests have no
       // auth.uid(), so the view correctly returns no rows for them. Query the
       // base table while still selecting no credential ciphertext.
-      const { data, error } = await client
+      const data = must(await client
         .from("application_connections")
         .select(
           "id, organization_id, provider, name, status, scopes, provider_account_id, metadata, error, last_connected_at, created_at, updated_at, owner_type, owner_member_id",
         )
         .eq("provider", "slack")
-        .eq("provider_account_id", teamId);
-      if (error) throw error;
+        .eq("provider_account_id", teamId));
       return (data ?? []).map((row: Record<string, unknown>) => toApplicationConnection(row));
     },
 
     async getSafeApplicationConnection(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("application_connections_safe")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toApplicationConnection(data as Record<string, unknown>) : null;
     },
 
     async getApplicationConnection(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("application_connections")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data
         ? toApplicationConnection(data as Record<string, unknown>)
         : null;
@@ -2839,64 +2701,49 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async updateApplicationConnection(id, patch) {
-      const row: Record<string, unknown> = {
+      const row = {
         updated_at: new Date().toISOString(),
+        ...patchRow(patch, [
+          "ownerType", "ownerMemberId", "name", "status", "sealedCredentials", "scopes",
+          "providerAccountId", "metadata", "error", "lastConnectedAt",
+        ]),
       };
-      if (patch.ownerType !== undefined) row.owner_type = patch.ownerType;
-      if (patch.ownerMemberId !== undefined)
-        row.owner_member_id = patch.ownerMemberId;
-      if (patch.name !== undefined) row.name = patch.name;
-      if (patch.status !== undefined) row.status = patch.status;
-      if (patch.sealedCredentials !== undefined)
-        row.sealed_credentials = patch.sealedCredentials;
-      if (patch.scopes !== undefined) row.scopes = patch.scopes;
-      if (patch.providerAccountId !== undefined)
-        row.provider_account_id = patch.providerAccountId;
-      if (patch.metadata !== undefined) row.metadata = patch.metadata;
-      if (patch.error !== undefined) row.error = patch.error;
-      if (patch.lastConnectedAt !== undefined)
-        row.last_connected_at = patch.lastConnectedAt;
-      const { error } = await client
+      must(await client
         .from("application_connections")
         .update(row)
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     async deleteApplicationConnection(id) {
-      const { error } = await client
+      must(await client
         .from("application_connections")
         .delete()
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     async listApplicationImports(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("application_imports")
         .select("*, application_import_assistants(assistant_id)")
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }));
       return (data as Array<Record<string, unknown>>).map(toApplicationImport);
     },
 
     async getApplicationImport(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("application_imports")
         .select("*, application_import_assistants(assistant_id)")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toApplicationImport(data as Record<string, unknown>) : null;
     },
 
     async acquireApplicationImportSync(id, organizationId) {
-      const { data, error } = await client.rpc("acquire_application_import_sync", {
+      const data = must(await client.rpc("acquire_application_import_sync", {
         p_id: id,
         p_organization_id: organizationId,
-      });
-      if (error) throw error;
+      }));
       const acquired = Array.isArray(data) ? data[0] : data;
       return acquired
         ? toApplicationImport(acquired as Record<string, unknown>)
@@ -2905,7 +2752,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async createApplicationImport(input) {
       const assistantIds = [...new Set(input.assistantIds ?? [])];
-      const { data, error } = await client.rpc(
+      const data = must(await client.rpc(
         "create_application_import_with_assistants",
         {
           p_id: shortId(),
@@ -2918,8 +2765,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           p_enabled: input.enabled ?? true,
           p_assistant_ids: assistantIds,
         }
-      );
-      if (error) throw error;
+      ));
       const created = Array.isArray(data) ? data[0] : data;
       return toApplicationImport({
         ...(created as Record<string, unknown>),
@@ -2937,7 +2783,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       ] as const) {
         if (patch[key] !== undefined) body[key] = patch[key] ?? "";
       }
-      const { error } = await client.rpc(
+      must(await client.rpc(
         "update_application_import_with_assistants",
         {
           p_id: id,
@@ -2947,16 +2793,14 @@ export function createSupabaseDb(client: SupabaseClient): Db {
               ? null
               : [...new Set(patch.assistantIds)],
         }
-      );
-      if (error) throw error;
+      ));
     },
 
     async deleteApplicationImport(id) {
-      const { error } = await client
+      must(await client
         .from("application_imports")
         .delete()
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     async listDueApplicationImports(now, limit) {
@@ -3003,27 +2847,40 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async listApplicationSources(importId) {
-      const { data, error } = await client
-        .from("application_sources")
-        .select("*")
-        .eq("import_id", importId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data as Array<Record<string, unknown>>).map(toApplicationSource);
+      // Every mapping, in windows: PostgREST caps an unranged read at its
+      // max-rows (1000 by default), and an Import can map more items than
+      // that. A capped read made the drill-down's total disagree with the
+      // SQL-counted "N Documents", and undercounted the sync's byte
+      // accounting. `id` breaks created_at ties so no row straddles two windows.
+      const windowSize = 1000;
+      const rows: Array<Record<string, unknown>> = [];
+      for (let from = 0; ; from += windowSize) {
+        const { data, error } = await client
+          .from("application_sources")
+          .select("*")
+          .eq("import_id", importId)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + windowSize - 1);
+        if (error) throw error;
+        const window = (data ?? []) as Array<Record<string, unknown>>;
+        rows.push(...window);
+        if (window.length < windowSize) break;
+      }
+      return rows.map(toApplicationSource);
     },
 
     async upsertApplicationSource(input) {
       // Keep the mapping's own identity stable across incremental refreshes.
       // Supabase includes every supplied column in ON CONFLICT's UPDATE set,
       // so generating an id unconditionally would silently replace it.
-      const { data: existing, error: lookupError } = await client
+      const existing = must(await client
         .from("application_sources")
         .select("id")
         .eq("import_id", input.importId)
         .eq("remote_id", input.remoteId)
-        .maybeSingle();
-      if (lookupError) throw lookupError;
-      const { data, error } = await client
+        .maybeSingle());
+      const data = must(await client
         .from("application_sources")
         .upsert(
           {
@@ -3045,13 +2902,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           { onConflict: "import_id,remote_id", ignoreDuplicates: false }
         )
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toApplicationSource(data as Record<string, unknown>);
     },
 
     async reserveApplicationKnowledgeBytes(input) {
-      const { data, error } = await client.rpc(
+      const data = must(await client.rpc(
         "reserve_application_knowledge_bytes",
         {
           p_import_id: input.importId,
@@ -3059,30 +2915,27 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           p_projected_bytes: input.projectedBytes,
           p_limit_bytes: input.limitBytes,
         }
-      );
-      if (error) throw error;
+      ));
       return data === true;
     },
 
     async syncApplicationSourceAssistantScope(importId, sourceId) {
-      const { error } = await client.rpc("sync_application_source_assistant_scope", {
+      must(await client.rpc("sync_application_source_assistant_scope", {
         p_import_id: importId,
         p_source_id: sourceId,
-      });
-      if (error) throw error;
+      }));
     },
 
     async markApplicationSourceRemoved(importId, remoteId, removedAt) {
-      const { error } = await client
+      must(await client
         .from("application_sources")
         .update({ removed_at: removedAt, updated_at: new Date().toISOString() })
         .eq("import_id", importId)
-        .eq("remote_id", remoteId);
-      if (error) throw error;
+        .eq("remote_id", remoteId));
     },
 
     async recordApplicationSyncRun(importId, input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("application_sync_runs")
         .insert({
           id: shortId(),
@@ -3104,16 +2957,14 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           completed_at: input.completedAt,
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toApplicationSyncRun(data as Record<string, unknown>);
     },
 
     async listApplicationOperationalState(organizationId) {
-      const { data, error } = await client.rpc("list_application_operational_state", {
+      const data = must(await client.rpc("list_application_operational_state", {
         p_organization_id: organizationId,
-      });
-      if (error) throw error;
+      }));
       return (data as Array<Record<string, unknown>>).map((row) => ({
         importId: row.import_id as string,
         sourceCount: Number(row.source_count ?? 0),
@@ -3124,10 +2975,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getApplicationHealthSummary(organizationId) {
-      const { data, error } = await client.rpc("get_application_health_summary", {
+      const data = must(await client.rpc("get_application_health_summary", {
         p_organization_id: organizationId,
-      });
-      if (error) throw error;
+      }));
       const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
       return {
         connected: Number(row?.connected ?? 0),
@@ -3173,12 +3023,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           .single());
       }
       if (error && input.id && error.code === "23505") {
-        const { data: existing, error: readError } = await client
+        const existing = must(await client
           .from("background_jobs")
           .select("*")
           .eq("id", input.id)
-          .single();
-        if (readError) throw readError;
+          .single());
         return toBackgroundJob(existing as Record<string, unknown>);
       }
       if (error) throw error;
@@ -3186,23 +3035,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async createApplicationSyncJobIfAbsent(input) {
-      const { data, error } = await client.rpc("create_application_sync_job_if_absent", {
+      const data = must(await client.rpc("create_application_sync_job_if_absent", {
         p_id: shortId(),
         p_import_id: input.importId,
         p_organization_id: input.organizationId,
         p_next_run_at: input.nextRunAt,
         p_max_concurrent: input.maxConcurrent ?? 3,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
     async cancelApplicationSyncJobs(importId, reason) {
-      const { error } = await client.rpc("cancel_application_sync_jobs", {
+      must(await client.rpc("cancel_application_sync_jobs", {
         p_import_id: importId,
         p_reason: reason,
-      });
-      if (error) throw error;
+      }));
     },
 
     async stageSourceIngestJob(input) {
@@ -3249,11 +3096,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .select("version, raw_text, draft_manifest")
         .eq("source_id", sourceId);
       if (version !== undefined) query = query.eq("version", version);
-      const { data, error } = await query
+      const data = must(await query
         .order("version", { ascending: false })
         .limit(1)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data
         ? {
             version: Number(data.version),
@@ -3268,14 +3114,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async initializeSourceIngestAttempt(input) {
-      const { data, error } = await client.rpc("initialize_source_ingest_attempt", {
+      const data = must(await client.rpc("initialize_source_ingest_attempt", {
         p_job_id: input.jobId,
         p_lease_token: input.leaseToken,
         p_source_id: input.sourceId,
         p_version: input.version,
         p_draft_manifest: input.drafts,
-      });
-      if (error) throw error;
+      }));
       const row = (Array.isArray(data) ? data[0] : data) as
         | Record<string, unknown>
         | undefined;
@@ -3293,28 +3138,26 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async checkpointSourceIngestCursor(input) {
-      const { data, error } = await client.rpc("checkpoint_source_ingest_cursor", {
+      const data = must(await client.rpc("checkpoint_source_ingest_cursor", {
         p_job_id: input.jobId,
         p_lease_token: input.leaseToken,
         p_source_id: input.sourceId,
         p_version: input.version,
         p_generation_id: input.generationId,
         p_cursor: input.cursor,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
     async commitSourceIngestGeneration(input) {
-      const { data, error } = await client.rpc("commit_source_ingest_generation", {
+      const data = must(await client.rpc("commit_source_ingest_generation", {
         p_job_id: input.jobId,
         p_lease_token: input.leaseToken,
         p_source_id: input.sourceId,
         p_version: input.version,
         p_expected_active_generation_id: input.expectedActiveGenerationId,
         p_generation_id: input.generationId,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
@@ -3325,8 +3168,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .eq("source_id", sourceId)
         .order("created_at", { ascending: false });
       if (kind) query = query.eq("kind", kind);
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = must(await query);
       return (data as Array<Record<string, unknown>>).map(toBackgroundJob);
     },
 
@@ -3363,15 +3205,14 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async checkpointBackgroundJob(input) {
-      const { data, error } = await client.from("background_jobs")
+      const data = must(await client.from("background_jobs")
         .update({ payload: input.payload }).eq("id", input.id)
-        .eq("status", "running").eq("lease_token", input.leaseToken).select("id");
-      if (error) throw error;
+        .eq("status", "running").eq("lease_token", input.leaseToken).select("id"));
       return (data?.length ?? 0) === 1;
     },
 
     async settleBackgroundJob(input) {
-      const { data, error } = await client.rpc("settle_background_job", {
+      const data = must(await client.rpc("settle_background_job", {
         p_id: input.id,
         p_lease_token: input.leaseToken,
         p_now: input.now,
@@ -3379,13 +3220,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_error: "error" in input.outcome ? input.outcome.error : "",
         p_next_run_at:
           input.outcome.status === "queued" ? input.outcome.nextRunAt : null,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
     async settleApplicationSyncJobSuccess(input) {
-      const { data, error } = await client.rpc(
+      const data = must(await client.rpc(
         "settle_application_sync_job_success",
         {
           p_id: input.id,
@@ -3396,18 +3236,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           p_now: input.now,
           p_max_concurrent: input.maxConcurrent,
         }
-      );
-      if (error) throw error;
+      ));
       return data === true;
     },
 
     async renewBackgroundJobLease(input) {
-      const { data, error } = await client.rpc("renew_background_job_lease", {
+      const data = must(await client.rpc("renew_background_job_lease", {
         p_id: input.id,
         p_lease_token: input.leaseToken,
         p_now: input.now,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
@@ -3447,7 +3285,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async completeApiIdempotency(input) {
-      const { data, error } = await client.rpc("complete_api_idempotency", {
+      const data = must(await client.rpc("complete_api_idempotency", {
         p_scope: input.scope,
         p_key: input.key,
         p_lease_token: input.leaseToken,
@@ -3455,8 +3293,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_response_body: input.responseBody,
         p_content_type: input.contentType,
         p_now: input.now,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
@@ -3518,7 +3355,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async createExportJob(organizationId, input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("export_jobs")
         .insert({
           id: shortId(),
@@ -3529,60 +3366,51 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           params: input.params,
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toExportJob(data as Record<string, unknown>);
     },
 
     async listExportJobs(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("export_jobs")
         .select("*")
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        .order("created_at", { ascending: false }));
       return (data as Array<Record<string, unknown>>).map(toExportJob);
     },
 
     async getExportJob(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("export_jobs")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toExportJob(data as Record<string, unknown>) : null;
     },
 
     async claimDueExportJobs(input) {
-      const { data, error } = await client.rpc("claim_due_export_jobs", {
+      const data = must(await client.rpc("claim_due_export_jobs", {
         p_worker_id: input.workerId,
         p_now: input.now,
         p_stale_before: input.staleBefore,
         p_limit: input.limit,
-      });
-      if (error) throw error;
+      }));
       return ((data ?? []) as Array<Record<string, unknown>>).map(toExportJob);
     },
 
     async updateExportJob(id, patch) {
-      const row: Record<string, unknown> = {
+      const row = {
         updated_at: new Date().toISOString(),
+        ...patchRow(patch, ["status", "error", "storagePath", "lockedAt", "lockedBy"]),
       };
-      if (patch.status !== undefined) row.status = patch.status;
-      if (patch.error !== undefined) row.error = patch.error;
-      if (patch.storagePath !== undefined) row.storage_path = patch.storagePath;
-      if (patch.lockedAt !== undefined) row.locked_at = patch.lockedAt;
-      if (patch.lockedBy !== undefined) row.locked_by = patch.lockedBy;
-      const { error } = await client
+      must(await client
         .from("export_jobs")
         .update(row)
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     async requeueExportJob(id) {
-      const { error } = await client
+      must(await client
         .from("export_jobs")
         .update({
           status: "queued",
@@ -3593,18 +3421,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           locked_by: null,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     async claimProcessingCrawlSources(input) {
-      const { data, error } = await client.rpc("claim_processing_crawl_sources", {
+      const data = must(await client.rpc("claim_processing_crawl_sources", {
         p_worker_id: input.workerId,
         p_now: input.now,
         p_stale_before: input.staleBefore,
         p_limit: input.limit,
-      });
-      if (error) throw error;
+      }));
       return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
         sourceId: row.source_id as string,
         collectionId: row.collection_id as string,
@@ -3613,11 +3439,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async claimDueRecrawlSources(input) {
-      const { data, error } = await client.rpc("claim_due_recrawl_sources", {
+      const data = must(await client.rpc("claim_due_recrawl_sources", {
         p_now: input.now,
         p_limit: input.limit,
-      });
-      if (error) throw error;
+      }));
       return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
         sourceId: row.source_id as string,
         collectionId: row.collection_id as string,
@@ -3626,7 +3451,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async claimProcessingCrawlSource(input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("sources")
         .update({
           crawl_finalize_locked_at: input.now,
@@ -3639,39 +3464,35 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           `crawl_finalize_locked_at.is.null,crawl_finalize_locked_at.lte.${input.staleBefore}`
         )
         .select("id")
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return Boolean(data);
     },
 
     async renewProcessingCrawlSourceClaim({ sourceId, workerId, now }) {
-      const { data, error } = await client
+      const data = must(await client
         .from("sources")
         .update({ crawl_finalize_locked_at: now })
         .eq("id", sourceId)
         .eq("status", "processing")
         .eq("crawl_finalize_locked_by", workerId)
         .select("id")
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return Boolean(data);
     },
 
     async releaseProcessingCrawlSourceClaim({ sourceId, workerId }) {
-      const { error } = await client
+      must(await client
         .from("sources")
         .update({
           crawl_finalize_locked_at: null,
           crawl_finalize_locked_by: null,
         })
         .eq("id", sourceId)
-        .eq("crawl_finalize_locked_by", workerId);
-      if (error) throw error;
+        .eq("crawl_finalize_locked_by", workerId));
     },
 
     async deleteSource(id) {
-      const { error } = await client.from("sources").delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from("sources").delete().eq("id", id));
     },
 
     async deleteSourceKnowledgeGeneration(sourceId, generationId) {
@@ -3736,10 +3557,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           .like("frontmatter->generated->>by", "okf-enricher/%")
           .eq("is_active", true);
         if (after) query = query.gt("source_id", after);
-        const { data, error } = await query
+        const data = must(await query
           .order("source_id", { ascending: true })
-          .range(offset, offset + pageSize - 1);
-        if (error) throw error;
+          .range(offset, offset + pageSize - 1));
         const rows = data as Array<{ source_id: string | null; collection_id: string }>;
         for (const row of rows) {
           if (found.size >= limit) break;
@@ -3944,38 +3764,32 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async updateConcept(id, patch) {
-      const row: Record<string, unknown> = {};
-      if (patch.frontmatter !== undefined) row.frontmatter = patch.frontmatter;
-      if (patch.body !== undefined) row.body = patch.body;
-      const { data, error } = await client
+      const row = patchRow(patch, ["frontmatter", "body"]);
+      const data = must(await client
         .from("concepts")
         .update(row)
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toConcept(data as Record<string, unknown>);
     },
 
     async deleteConcept(id) {
-      const { error } = await client.from("concepts").delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from("concepts").delete().eq("id", id));
     },
 
     async deleteChunksByConcept(conceptId) {
-      const { error } = await client
+      must(await client
         .from("concept_chunks")
         .delete()
-        .eq("concept_id", conceptId);
-      if (error) throw error;
+        .eq("concept_id", conceptId));
     },
 
     async setConceptExcluded(id, excluded) {
-      const { error } = await client
+      must(await client
         .from("concepts")
         .update({ excluded })
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     async saveChunks(chunks) {
@@ -4053,12 +3867,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // Tenancy first: the caller names Collections, the database decides which
       // of them are this Organization's. A stale scope (a Collection deleted or
       // moved) narrows the search instead of widening it.
-      const { data: ownRows, error: ownError } = await client
+      const ownRows = must(await client
         .from("knowledge_collections")
         .select("id")
         .eq("organization_id", organizationId)
-        .in("id", collectionIds);
-      if (ownError) throw ownError;
+        .in("id", collectionIds));
       const scoped = (ownRows as Array<{ id: string }>).map((row) => row.id);
       if (scoped.length === 0) return [];
 
@@ -4080,12 +3893,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // organization id of its own, so the join is what decides which of the
       // named Sources are this Organization's. A stale scope narrows the
       // search instead of widening it.
-      const { data: ownRows, error: ownError } = await client
+      const ownRows = must(await client
         .from("sources")
         .select("id, knowledge_collections!inner(organization_id)")
         .in("id", sourceIds)
-        .eq("knowledge_collections.organization_id", organizationId);
-      if (ownError) throw ownError;
+        .eq("knowledge_collections.organization_id", organizationId));
       const scoped = (ownRows as Array<{ id: string }>).map((row) => row.id);
       if (scoped.length === 0) return [];
 
@@ -4100,88 +3912,68 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Publications --------------------------------------------------------
 
     async createPublication(assistantId, config: PublicationConfig) {
-      const { data: latest, error: latestError } = await client
-        .from("publications")
-        .select("version")
-        .eq("assistant_id", assistantId)
-        .order("version", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (latestError) throw latestError;
-      const version = (latest?.version ?? 0) + 1;
-      const { data, error } = await client
-        .from("publications")
-        .insert({ id: shortId(), assistant_id: assistantId, version, config })
-        .select()
-        .single();
-      if (error) throw error;
-      return {
-        id: data.id,
-        assistantId: data.assistant_id,
-        version: data.version,
-        config: data.config,
-        createdAt: data.created_at,
-      } satisfies Publication;
+      // Read the latest version, insert the next. Two publishes at once pick
+      // the same number and unique(assistant_id, version) refuses the second;
+      // that one re-reads and takes the next number rather than failing with a
+      // raw constraint error. Both publications land, in commit order.
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const latest = must(await client
+          .from("publications")
+          .select("version")
+          .eq("assistant_id", assistantId)
+          .order("version", { ascending: false })
+          .limit(1)
+          .maybeSingle());
+        const version = (latest?.version ?? 0) + 1;
+        const inserted = await client
+          .from("publications")
+          .insert({ id: shortId(), assistant_id: assistantId, version, config })
+          .select()
+          .single();
+        if (inserted.error && (inserted.error as { code?: string }).code === "23505" && attempt < 2) {
+          continue;
+        }
+        return toPublication(must(inserted) as Record<string, unknown>);
+      }
+      throw new Error("Could not allocate a publication version");
     },
 
     async deletePublications(assistantId) {
-      const { error } = await client
+      must(await client
         .from("publications")
         .delete()
-        .eq("assistant_id", assistantId);
-      if (error) throw error;
+        .eq("assistant_id", assistantId));
     },
 
     async listPublications(assistantId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("publications")
         .select("*")
         .eq("assistant_id", assistantId)
-        .order("version", { ascending: false });
-      if (error) throw error;
-      return (data as Array<Record<string, unknown>>).map((r) => ({
-        id: r.id as string,
-        assistantId: r.assistant_id as string,
-        version: r.version as number,
-        config: r.config as PublicationConfig,
-        createdAt: r.created_at as string,
-      }));
+        .order("version", { ascending: false }));
+      return (data as Array<Record<string, unknown>>).map(toPublication);
     },
 
     async getLatestPublication(assistantId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("publications")
         .select("*")
         .eq("assistant_id", assistantId)
         .order("version", { ascending: false })
         .limit(1)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       if (!data) return null;
-      return {
-        id: data.id,
-        assistantId: data.assistant_id,
-        version: data.version,
-        config: data.config,
-        createdAt: data.created_at,
-      };
+      return toPublication(data as Record<string, unknown>);
     },
 
     async getPublication(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("publications")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       if (!data) return null;
-      return {
-        id: data.id,
-        assistantId: data.assistant_id,
-        version: data.version,
-        config: data.config,
-        createdAt: data.created_at,
-      };
+      return toPublication(data as Record<string, unknown>);
     },
 
     // --- Conversations & messages ------------------------------------------
@@ -4199,24 +3991,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           metadata: input.metadata ?? {},
         };
       if (input.id) {
-        const { error: insertError } = await client
+        must(await client
           .from("conversations")
-          .upsert(row, { onConflict: "id", ignoreDuplicates: true });
-        if (insertError) throw insertError;
-        const { data, error } = await client
+          .upsert(row, { onConflict: "id", ignoreDuplicates: true }));
+        const data = must(await client
           .from("conversations")
           .select("*")
           .eq("id", id)
-          .single();
-        if (error) throw error;
+          .single());
         return toConversation(data as ConversationRow);
       }
-      const { data, error } = await client
+      const data = must(await client
         .from("conversations")
         .insert(row)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toConversation(data as ConversationRow);
     },
 
@@ -4224,27 +4013,25 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // Unbounded before: a visitor's or member's full lifetime history was
       // fetched on every call. Callers only ever show a short recent list
       // (+ pinned, capped in the UI), so cap the round trip at the source.
-      const { data, error } = await client
+      const data = must(await client
         .from("conversations")
         .select("*")
         .eq("assistant_id", assistantId)
         .eq("subject_type", subjectType)
         .eq("subject_id", subjectId)
         .order("updated_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
+        .limit(50));
       return (data as ConversationRow[]).map(toConversation);
     },
 
     async listTeammateConversations(teammateId, subjectId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("conversations")
         .select("*")
         .eq("teammate_id", teammateId)
         .eq("subject_id", subjectId)
         .order("updated_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
+        .limit(50));
       return (data as ConversationRow[]).map(toConversation);
     },
 
@@ -4253,7 +4040,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const cursor = decodeInboxCursor(query.cursor);
       const optionalText = (value: string | undefined) =>
         value?.trim() ? value.trim() : null;
-      const { data, error } = await client.rpc("get_inbox_page", {
+      const data = must(await client.rpc("get_inbox_page", {
         p_organization_id: organizationId,
         p_limit: limit,
         p_cursor_updated_at: cursor?.updatedAt ?? null,
@@ -4274,8 +4061,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_feedback: optionalText(query.feedback),
         p_escalation: optionalText(query.escalation),
         p_staff: optionalText(query.staff),
-      });
-      if (error) throw error;
+      }));
 
       type InboxPageRow = {
         id: string;
@@ -4329,10 +4115,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getInboxFacets(organizationId): Promise<InboxFacets> {
-      const { data, error } = await client.rpc("get_inbox_facets", {
+      const data = must(await client.rpc("get_inbox_facets", {
         p_organization_id: organizationId,
-      });
-      if (error) throw error;
+      }));
       const facets = (data ?? {}) as Partial<InboxFacets>;
       return {
         locations: facets.locations ?? [],
@@ -4346,15 +4131,14 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async getInboxConversationReview(
       conversationId
     ): Promise<InboxConversationReview> {
-      const { data, error } = await client
+      const data = must(await client
         .from("messages")
         .select(
           "*, improvement_messages(message_id, improvements(id, seq, title)), answer_verdicts(message_id, verdict, reason, created_at)"
         )
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true })
-        .order("seq", { ascending: true });
-      if (error) throw error;
+        .order("seq", { ascending: true }));
 
       type ReviewMessageRow = MessageRow & {
         improvement_messages:
@@ -4416,47 +4200,46 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getConversation(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("conversations")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toConversation(data as ConversationRow) : null;
     },
 
     async getConversationForMessage(messageId) {
-      const { data: msg, error: msgError } = await client
+      const msg = must(await client
         .from("messages")
         .select("conversation_id")
         .eq("id", messageId)
-        .maybeSingle();
-      if (msgError) throw msgError;
+        .maybeSingle());
       const conversationId = (msg as { conversation_id?: string } | null)
         ?.conversation_id;
       if (!conversationId) return null;
-      const { data, error } = await client
+      const data = must(await client
         .from("conversations")
         .select("*")
         .eq("id", conversationId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toConversation(data as ConversationRow) : null;
     },
 
     async setConversationPinned(id, pinned) {
-      const { error } = await client
+      const data = must(await client
         .from("conversations")
         .update({ pinned })
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id)
+        .select("id"));
+      assertConversationWritten(data, id);
     },
 
     async setConversationLegalHold(id, legalHold) {
-      const { error } = await client
+      const { data, error } = await client
         .from("conversations")
         .update({ legal_hold: legalHold })
-        .eq("id", id);
+        .eq("id", id)
+        .select("id");
       if (error && isSchemaLagError(error)) {
         // No silent success here: a hold the database cannot record is a hold
         // the sweep would not honour, so the caller hears that it did not take.
@@ -4465,19 +4248,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         );
       }
       if (error) throw error;
+      // A hold the database did not record is one the retention sweep will
+      // not honour, so an update that matched no row is a failure, not a no-op.
+      assertConversationWritten(data, id);
     },
 
     async decideReviewRequest(id, patch) {
       // `.eq("status", "pending")` is the whole first-wins rule: the row is
       // written only if nobody closed it between the caller's read and now.
-      const { data, error } = await client
+      const data = must(await client
         .from("review_requests")
         .update({ ...domainToRow({ ...patch }), updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("status", "pending")
         .select("*")
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? (rowToDomain(data) as unknown as ReviewRequest) : null;
     },
 
@@ -4485,26 +4270,24 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // Same first-wins rule as the review gate: an approval is written only
       // while the row is still pending, so a Member's yes and the expiry sweep
       // cannot both take.
-      const { data, error } = await client
+      const data = must(await client
         .from("action_approvals")
         .update({ ...domainToRow({ ...patch }), updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("status", "pending")
         .select("*")
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? (rowToDomain(data) as unknown as ActionApproval) : null;
     },
 
     async settleWebhookSubscription(id, patch) {
-      const { data, error } = await client
+      const data = must(await client
         .from("webhook_subscriptions")
         .update({ ...domainToRow({ ...patch }), updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("status", "pending")
         .select("*")
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? (rowToDomain(data) as unknown as WebhookSubscription) : null;
     },
 
@@ -4515,21 +4298,19 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       });
       if (!error) return;
       if (!isSchemaLagError(error)) throw error;
-      const { data, error: readError } = await client
+      const data = must(await client
         .from("conversations")
         .select("metadata")
         .eq("id", id)
-        .maybeSingle();
-      if (readError) throw readError;
+        .maybeSingle());
       const metadata = {
         ...((data?.metadata as ConversationMetadata) ?? {}),
         ...patch,
       };
-      const { error: updateError } = await client
+      must(await client
         .from("conversations")
         .update({ metadata })
-        .eq("id", id);
-      if (updateError) throw updateError;
+        .eq("id", id));
     },
 
     async appendConversationReferral(id, referral) {
@@ -4539,14 +4320,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       });
       if (!error) return;
       if (!isSchemaLagError(error)) throw error;
-      const { data, error: readError } = await client
+      const data = must(await client
         .from("conversations")
         .select("metadata")
         .eq("id", id)
-        .maybeSingle();
-      if (readError) throw readError;
+        .maybeSingle());
       const current = (data?.metadata as ConversationMetadata | null) ?? {};
-      const { error: updateError } = await client
+      must(await client
         .from("conversations")
         .update({
           metadata: {
@@ -4554,20 +4334,18 @@ export function createSupabaseDb(client: SupabaseClient): Db {
             referredTo: [...(current.referredTo ?? []), referral],
           },
         })
-        .eq("id", id);
-      if (updateError) throw updateError;
+        .eq("id", id));
     },
 
     async mergeConversationSessionState(input) {
-      const { data, error } = await client.rpc(
+      const data = must(await client.rpc(
         "merge_conversation_session_state",
         {
           p_id: input.id,
           p_expected_version: input.expectedVersion,
           p_patch: input.patch,
         }
-      );
-      if (error) throw error;
+      ));
       return data === true;
     },
 
@@ -4579,16 +4357,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_now: input.now,
         p_stale_before: input.staleBefore,
       });
-      if (error) {
-        if (isSchemaLagError(error)) {
-          return {
-            status: "claimed" as const,
-            leaseToken: null,
-            assistantMessageId: null,
-          };
-        }
-        throw error;
-      }
+      // No schema-lag fallback, on purpose. It used to answer "claimed, no
+      // lease", which quietly routed the turn to an unfenced append and
+      // unkeyed effects, so a database missing this RPC lost idempotency
+      // without a signal. The RPC shipped in 20260828070300; a database
+      // without it is broken, and the turn should say so.
+      if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as {
         claim_status: "claimed" | "running" | "completed";
         claim_lease_token: string | null;
@@ -4602,7 +4376,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async commitConversationTurn(input) {
-      const { data, error } = await client.rpc("commit_conversation_turn", {
+      const data = must(await client.rpc("commit_conversation_turn", {
         p_message_id: shortId(),
         p_conversation_id: input.conversationId,
         p_request_id: input.requestId,
@@ -4613,61 +4387,60 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_trace: input.trace ?? null,
         p_deferred_effects: input.deferredEffects ?? [],
         p_now: input.now,
-      });
-      if (error) throw error;
+      }));
       const row = Array.isArray(data) ? data[0] : data;
       return row ? toStoredMessage(row as MessageRow) : null;
     },
 
     async failConversationTurn(input) {
-      const { data, error } = await client.rpc("fail_conversation_turn", {
+      const data = must(await client.rpc("fail_conversation_turn", {
         p_conversation_id: input.conversationId,
         p_request_id: input.requestId,
         p_lease_token: input.leaseToken,
         p_error: input.error,
         p_now: input.now,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
     async deleteConversation(id) {
-      const { error } = await client.from("conversations").delete().eq("id", id);
-      if (error) throw error;
+      const data = must(await client
+        .from("conversations")
+        .delete()
+        .eq("id", id)
+        .select("id"));
+      assertConversationWritten(data, id);
     },
 
     async listMessages(conversationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("messages")
         .select("*")
         .eq("conversation_id", conversationId)
         // seq breaks created_at ties (same-tick appends) in insertion order.
         .order("created_at", { ascending: true })
-        .order("seq", { ascending: true });
-      if (error) throw error;
+        .order("seq", { ascending: true }));
       return (data as MessageRow[]).map(toStoredMessage);
     },
 
     async getMessage(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("messages")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toStoredMessage(data as MessageRow) : null;
     },
 
     async listRecentMessages(conversationId, limit) {
       const cappedLimit = Math.max(1, Math.min(Math.floor(limit), 50));
-      const { data, error } = await client
+      const data = must(await client
         .from("messages")
         .select("*")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: false })
         .order("seq", { ascending: false })
-        .limit(cappedLimit);
-      if (error) throw error;
+        .limit(cappedLimit));
       return (data as MessageRow[])
         .map(toStoredMessage)
         .reverse();
@@ -4705,12 +4478,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         flow_name: input.flowName ?? null,
         trace: input.trace ?? null,
       };
-      const { data, error } = await client
+      const data = must(await client
         .from("messages")
         .insert(legacyRow)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       await client
         .from("conversations")
         .update({ updated_at: new Date().toISOString() })
@@ -4719,14 +4491,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async claimTurnEffects(input) {
-      const { data, error } = await client.rpc("claim_turn_effects", {
+      const data = must(await client.rpc("claim_turn_effects", {
         p_message_id: input.messageId ?? null,
         p_worker_id: input.workerId,
         p_now: input.now,
         p_stale_before: input.staleBefore,
         p_limit: input.limit,
-      });
-      if (error) throw error;
+      }));
       return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
         id: row.id as string,
         organizationId: row.organization_id as string,
@@ -4739,14 +4510,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async settleTurnEffect(input) {
-      const { data, error } = await client.rpc("settle_turn_effect", {
+      const data = must(await client.rpc("settle_turn_effect", {
         p_id: input.id,
         p_lease_token: input.leaseToken,
         p_now: input.now,
         p_succeeded: input.succeeded,
         p_error: input.error ?? "",
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
@@ -4781,53 +4551,48 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // Newest-first with a limit, then reversed: "the last 100 messages" is a
       // tail read, and ordering ascending with a limit would return the oldest
       // hundred of a long channel.
-      const { data, error } = await client
+      const data = must(await client
         .from("teammate_channel_messages")
         .select("*")
         .eq("channel_id", channelId)
         .order("seq", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
+        .limit(limit));
       return (data as ChannelMessageRow[]).map(toChannelMessage).reverse();
     },
 
     async listChannelMessageWindows(channelIds, limitPerChannel = 30) {
       if (channelIds.length === 0) return [];
-      const { data, error } = await client.rpc("list_channel_message_windows", {
+      const data = must(await client.rpc("list_channel_message_windows", {
         p_channel_ids: channelIds,
         p_limit_per_channel: limitPerChannel,
-      });
-      if (error) throw error;
+      }));
       return (data as ChannelMessageRow[]).map(toChannelMessage);
     },
 
     async listChannelChainMessages(channelId, chainId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("teammate_channel_messages")
         .select("*")
         .eq("channel_id", channelId)
         .eq("chain_id", chainId)
-        .order("seq", { ascending: true });
-      if (error) throw error;
+        .order("seq", { ascending: true }));
       return (data as ChannelMessageRow[]).map(toChannelMessage);
     },
 
     async setMessageFeedback(messageId, feedback, reaction = null) {
-      const { error } = await client
+      must(await client
         .from("messages")
         .update({ feedback, feedback_reaction: reaction })
-        .eq("id", messageId);
-      if (error) throw error;
+        .eq("id", messageId));
     },
 
     async listTraceRetentionPolicies() {
       // Filtered in code rather than with `.not(... is null)`: the row set is
       // one per organization, and this keeps the query inside the PostgREST
       // subset the pglite contract shim implements.
-      const { data, error } = await client
+      const data = must(await client
         .from("organizations")
-        .select("id, trace_retention_days");
-      if (error) throw error;
+        .select("id, trace_retention_days"));
       return (
         data as Array<{ id: string; trace_retention_days: number | null }>
       )
@@ -4838,11 +4603,28 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         }));
     },
 
-    async clearExpiredTraces(organizationId, cutoffIso) {
-      const { data, error } = await client.rpc("clear_expired_traces", {
-        p_organization_id: organizationId,
-        p_cutoff: cutoffIso,
-      });
+    async clearExpiredTraces(organizationId, cutoffIso, limit) {
+      const args = { p_organization_id: organizationId, p_cutoff: cutoffIso };
+      let { data, error } = await client.rpc(
+        "clear_expired_traces",
+        limit === undefined ? args : { ...args, p_limit: limit }
+      );
+      // One migration behind (20260927150000): the unbounded two-argument form.
+      if (error && limit !== undefined && isSchemaLagError(error)) {
+        ({ data, error } = await client.rpc("clear_expired_traces", args));
+      }
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+
+    async deleteExpiredMemories(organizationId, cutoffIso, limit) {
+      const args = { p_organization_id: organizationId, p_cutoff: cutoffIso };
+      const { data, error } = await client.rpc(
+        "delete_expired_memories",
+        limit === undefined ? args : { ...args, p_limit: limit }
+      );
+      // One migration behind (20260927160000): nothing swept yet.
+      if (error && isSchemaLagError(error)) return 0;
       if (error) throw error;
       return (data as number) ?? 0;
     },
@@ -4867,11 +4649,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         }));
     },
 
-    async deleteExpiredConversations(organizationId, cutoffIso) {
-      const { data, error } = await client.rpc("delete_expired_conversations", {
-        p_organization_id: organizationId,
-        p_cutoff: cutoffIso,
-      });
+    async deleteExpiredConversations(organizationId, cutoffIso, limit) {
+      const args = { p_organization_id: organizationId, p_cutoff: cutoffIso };
+      let { data, error } = await client.rpc(
+        "delete_expired_conversations",
+        limit === undefined ? args : { ...args, p_limit: limit }
+      );
+      // One migration behind (20260927150000): the unbounded two-argument form.
+      if (error && limit !== undefined && isSchemaLagError(error)) {
+        ({ data, error } = await client.rpc("delete_expired_conversations", args));
+      }
       // The sweep primitive is not there yet: nothing expired, nothing deleted.
       if (error && isSchemaLagError(error)) return 0;
       if (error) throw error;
@@ -4881,12 +4668,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Improvements -------------------------------------------------
 
     async listImprovements(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("improvements")
         .select("*, improvement_messages(id.count())")
         .eq("organization_id", organizationId)
-        .order("seq", { ascending: false });
-      if (error) throw error;
+        .order("seq", { ascending: false }));
       type Row = ImprovementRow & {
         improvement_messages: Array<{ count: number }>;
       };
@@ -4912,8 +4698,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (status) {
         query = query.eq("status", status);
       }
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = must(await query);
       type Row = ImprovementRow & {
         improvement_messages: Array<{ count: number }>;
       };
@@ -4946,23 +4731,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getImprovement(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("improvements")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toImprovement(data as ImprovementRow) : null;
     },
 
     async createImprovement(organizationId, input) {
-      const { data: seq, error: seqError } = await client.rpc(
+      const seq = must(await client.rpc(
         "next_improvement_seq",
         { org: organizationId }
-      );
-      if (seqError) throw seqError;
+      ));
       const id = shortId();
-      const { data, error } = await client
+      const data = must(await client
         .from("improvements")
         .insert({
           id,
@@ -4972,67 +4755,57 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           created_by: input.createdBy ?? null,
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       if (input.messageId) {
-        const { error: linkError } = await client
+        must(await client
           .from("improvement_messages")
           .insert({
             id: shortId(),
             improvement_id: id,
             message_id: input.messageId,
-          });
-        if (linkError) throw linkError;
+          }));
       }
       return toImprovement(data as ImprovementRow);
     },
 
     async updateImprovement(id, patch) {
-      const row: Record<string, unknown> = {
+      const row = {
         updated_at: new Date().toISOString(),
+        ...patchRow(patch, [
+          "title", "description", "status", "priority", "tags", "assigneeId", "dueDate",
+          "projectId",
+        ]),
       };
-      if (patch.title !== undefined) row.title = patch.title;
-      if (patch.description !== undefined) row.description = patch.description;
-      if (patch.status !== undefined) row.status = patch.status;
-      if (patch.priority !== undefined) row.priority = patch.priority;
-      if (patch.tags !== undefined) row.tags = patch.tags;
-      if (patch.assigneeId !== undefined) row.assignee_id = patch.assigneeId;
-      if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
-      if (patch.projectId !== undefined) row.project_id = patch.projectId;
-      const { data, error } = await client
+      const data = must(await client
         .from("improvements")
         .update(row)
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toImprovement(data as ImprovementRow);
     },
 
     async deleteImprovement(id) {
-      const { error } = await client.from("improvements").delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from("improvements").delete().eq("id", id));
     },
 
     async getImprovementProposal(improvementId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("improvement_proposals")
         .select("*")
         .eq("improvement_id", improvementId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toImprovementProposal(data as ImprovementProposalRow) : null;
     },
 
     async listDueRoutineCandidates({ before, limit }) {
-      const { data, error } = await client
+      const data = must(await client
         .from("teammate_routines")
         .select("*")
         .eq("enabled", true)
         .or(`last_run_at.is.null,last_run_at.lt.${before}`)
         .order("last_run_at", { ascending: true, nullsFirst: true })
-        .limit(limit);
-      if (error) throw error;
+        .limit(limit));
       return (data ?? []).map(
         (row) => rowToDomain(row) as unknown as TeammateRoutine
       );
@@ -5049,31 +4822,28 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       query = expectedLastRunAt
         ? query.eq("last_run_at", expectedLastRunAt)
         : query.is("last_run_at", null);
-      const { data, error } = await query.select("*").maybeSingle();
-      if (error) throw error;
+      const data = must(await query.select("*").maybeSingle());
       return data ? (rowToDomain(data) as unknown as TeammateRoutine) : null;
     },
 
     async recordTeammateRoutineRun(id, input) {
-      const { error } = await client
+      must(await client
         .from("teammate_routines")
         .update({
           last_status: input.status,
           last_detail: input.detail.slice(0, 1000),
         })
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", id));
     },
 
     async getMemoryDocument(organizationId, owner) {
       const { column, value } = memoryOwnerColumn(owner);
-      const { data, error } = await client
+      const data = must(await client
         .from("memory_documents")
         .select("*")
         .eq("organization_id", organizationId)
         .eq(column, value)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toMemoryDocument(data as MemoryDocumentRow) : null;
     },
 
@@ -5089,16 +4859,26 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // "newest first" arbitrarily (the coin flip 98c5df54 fixed elsewhere).
       const now = new Date(monotonicNow()).toISOString();
 
+      if (
+        input.expectedUpdatedAt !== undefined &&
+        (existing?.updatedAt ?? null) !== input.expectedUpdatedAt
+      ) {
+        throw new MemoryDocumentConflictError();
+      }
+
       let row: MemoryDocumentRow;
       if (existing) {
-        const { data, error } = await client
+        // Compare-and-set on the version just read: a concurrent writer that
+        // landed in between makes this match no row, and the caller hears it
+        // rather than silently erasing that write.
+        const updated = (must(await client
           .from("memory_documents")
           .update({ body, updated_at: now })
           .eq("id", existing.id)
-          .select("*")
-          .single();
-        if (error) throw error;
-        row = data as MemoryDocumentRow;
+          .eq("updated_at", existing.updatedAt)
+          .select("*")) ?? []) as MemoryDocumentRow[];
+        if (updated.length === 0) throw new MemoryDocumentConflictError();
+        row = updated[0];
       } else {
         const { data, error } = await client
           .from("memory_documents")
@@ -5110,6 +4890,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           })
           .select("*")
           .single();
+        // One document per owner (partial uniques): a concurrent first write
+        // won, and this body was written without seeing it.
+        if (error && (error as { code?: string }).code === "23505") {
+          throw new MemoryDocumentConflictError();
+        }
         if (error) throw error;
         row = data as MemoryDocumentRow;
       }
@@ -5134,46 +4919,42 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async listMemoryDocumentEntries(organizationId, documentId, limit = 50) {
-      const { data, error } = await client
+      const data = must(await client
         .from("memory_document_entries")
         .select("*")
         .eq("organization_id", organizationId)
         .eq("document_id", documentId)
         .order("created_at", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
+        .limit(limit));
       return (data ?? []).map((row) =>
         toMemoryDocumentEntry(row as MemoryDocumentEntryRow)
       );
     },
 
     async revertMemoryDocument(input) {
-      const { data: entryData, error: entryError } = await client
+      const entryData = must(await client
         .from("memory_document_entries")
         .select("*")
         .eq("id", input.entryId)
-        .maybeSingle();
-      if (entryError) throw entryError;
+        .maybeSingle());
       if (!entryData) throw new Error("No such memory history entry");
       const entry = toMemoryDocumentEntry(entryData as MemoryDocumentEntryRow);
 
-      const { data: docData, error: docError } = await client
+      const docData = must(await client
         .from("memory_documents")
         .select("*")
         .eq("id", entry.documentId)
-        .maybeSingle();
-      if (docError) throw docError;
+        .maybeSingle());
       if (!docData) throw new Error("No such memory document");
       const before = toMemoryDocument(docData as MemoryDocumentRow);
 
       const revertedAt = new Date(monotonicNow()).toISOString();
-      const { data, error } = await client
+      const data = must(await client
         .from("memory_documents")
         .update({ body: entry.bodyBefore, updated_at: revertedAt })
         .eq("id", entry.documentId)
         .select("*")
-        .single();
-      if (error) throw error;
+        .single());
 
       // Undoing a write is another write: the history keeps both, so a revert
       // is visible rather than a hole where a write used to be.
@@ -5194,12 +4975,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getImprovementProposalById(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("improvement_proposals")
         .select("*")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toImprovementProposal(data as ImprovementProposalRow) : null;
     },
 
@@ -5211,7 +4991,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("improvement_proposals")
         .delete()
         .eq("improvement_id", input.improvementId);
-      const { data, error } = await client
+      const data = must(await client
         .from("improvement_proposals")
         .insert({
           id: shortId(),
@@ -5221,36 +5001,32 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           payload: input.payload,
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toImprovementProposal(data as ImprovementProposalRow);
     },
 
     async updateImprovementProposal(id, patch) {
-      const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (patch.status !== undefined) row.status = patch.status;
-      if (patch.dismissReason !== undefined) row.dismiss_reason = patch.dismissReason;
-      if (patch.acceptedConceptId !== undefined)
-        row.accepted_concept_id = patch.acceptedConceptId;
-      const { data, error } = await client
+      const row = {
+        updated_at: new Date().toISOString(),
+        ...patchRow(patch, ["status", "dismissReason", "acceptedConceptId"]),
+      };
+      const data = must(await client
         .from("improvement_proposals")
         .update(row)
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toImprovementProposal(data as ImprovementProposalRow);
     },
 
     async listImprovementMessages(improvementId) {
-      const { data: links, error } = await client
+      const links = must(await client
         .from("improvement_messages")
         .select(
           "id, message_id, created_at, messages(*, conversations(*, assistants(title)))"
         )
         .eq("improvement_id", improvementId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }));
       return hydrateImprovementAssociations(
         client,
         links as unknown as ImprovementLinkJoinedRow[]
@@ -5298,36 +5074,32 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .eq("message_id", messageId)
         .maybeSingle();
       if (existing) return;
-      const { error } = await client.from("improvement_messages").insert({
+      must(await client.from("improvement_messages").insert({
         id: shortId(),
         improvement_id: improvementId,
         message_id: messageId,
-      });
-      if (error) throw error;
+      }));
     },
 
     async unlinkImprovementMessage(improvementId, messageId) {
-      const { error } = await client
+      must(await client
         .from("improvement_messages")
         .delete()
         .eq("improvement_id", improvementId)
-        .eq("message_id", messageId);
-      if (error) throw error;
+        .eq("message_id", messageId));
     },
 
     async listConversationImprovementLinks(conversationId) {
-      const { data: msgs, error } = await client
+      const msgs = must(await client
         .from("messages")
         .select("id")
-        .eq("conversation_id", conversationId);
-      if (error) throw error;
+        .eq("conversation_id", conversationId));
       const ids = (msgs as Array<{ id: string }>).map((m) => m.id);
       if (ids.length === 0) return [];
-      const { data, error: lErr } = await client
+      const data = must(await client
         .from("improvement_messages")
         .select("message_id, improvements!inner(id, seq, title)")
-        .in("message_id", ids);
-      if (lErr) throw lErr;
+        .in("message_id", ids));
       type Row = {
         message_id: string;
         improvements: { id: string; seq: number; title: string };
@@ -5382,11 +5154,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (query)
         matches = matches.filter((s) => s.name.toLowerCase().includes(query));
       if (filter.assistantId) {
-        const { data: linkRows, error: linkError } = await client
+        const linkRows = must(await client
           .from("assistant_sources")
           .select("source_id")
-          .eq("assistant_id", filter.assistantId);
-        if (linkError) throw linkError;
+          .eq("assistant_id", filter.assistantId));
         const linkedIds = new Set(
           (linkRows as Array<{ source_id: string }>).map((r) => r.source_id)
         );
@@ -5662,7 +5433,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // `.is("summary", null)` is the whole write-once rule: two Members
       // opening the same Document at once both generate, and the second one's
       // write finds nothing to update rather than overwriting the first.
-      const { data, error } = await client
+      const data = must(await client
         .from("concepts")
         .update({
           summary: input.text,
@@ -5672,8 +5443,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .eq("id", conceptId)
         .is("summary", null)
         .select("*")
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       if (data) return toConcept(data as Record<string, unknown>);
       // Somebody else got there first (or the row is gone): answer with what
       // is stored, never with what this caller generated.
@@ -5690,7 +5460,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async getSourceDocumentByPath(sourceId, documentPath) {
       // concepts_active_source_path_idx is exactly this predicate.
-      const { data, error } = await client
+      const data = must(await client
         .from("concepts")
         .select("*")
         .eq("source_id", sourceId)
@@ -5698,21 +5468,19 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .eq("is_active", true)
         .order("id", { ascending: true })
         .limit(1)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       if (!data) return null;
       return toConcept(data as Record<string, unknown>);
     },
 
     async countLiveMemoriesByPath(sourceId, documentPaths) {
       if (documentPaths.length === 0) return {};
-      const { data, error } = await client
+      const data = must(await client
         .from("knowledge_memories")
         .select("document_path")
         .eq("source_id", sourceId)
         .is("forgotten_at", null)
-        .in("document_path", documentPaths);
-      if (error) throw error;
+        .in("document_path", documentPaths));
       const counts: Record<string, number> = {};
       for (const row of (data ?? []) as Array<{ document_path: string }>) {
         counts[row.document_path] = (counts[row.document_path] ?? 0) + 1;
@@ -5721,23 +5489,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getMemoryExtraction(sourceId, documentPath) {
-      const { data, error } = await client
+      const data = must(await client
         .from("knowledge_memory_extractions")
         .select("*")
         .eq("source_id", sourceId)
         .eq("document_path", documentPath)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toMemoryExtraction(data as Record<string, unknown>) : null;
     },
 
     async listMemoryExtractions(sourceId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("knowledge_memory_extractions")
         .select("*")
         .eq("source_id", sourceId)
-        .order("document_path", { ascending: true });
-      if (error) throw error;
+        .order("document_path", { ascending: true }));
       return (data ?? []).map((row) =>
         toMemoryExtraction(row as Record<string, unknown>)
       );
@@ -5767,13 +5533,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (existing.error) throw existing.error;
 
       if (existing.data) {
-        const { data, error } = await client
+        const data = must(await client
           .from("knowledge_memory_extractions")
           .update(values)
           .eq("id", (existing.data as { id: string }).id)
           .select("*")
-          .single();
-        if (error) throw error;
+          .single());
         return toMemoryExtraction(data as Record<string, unknown>);
       }
 
@@ -5859,12 +5624,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async listSourceAssistantLinks(sourceId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("assistant_sources")
         .select("assistant_id, direct_access, created_at, assistants!inner(title)")
         .eq("source_id", sourceId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }));
       type Row = {
         assistant_id: string;
         direct_access: boolean;
@@ -5884,11 +5648,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       });
       if (!error) return;
       if (!isSchemaLagError(error)) throw error;
-      const { data, error: readError } = await client
+      const data = must(await client
         .from("assistant_sources")
         .select("assistant_id")
-        .eq("source_id", sourceId);
-      if (readError) throw readError;
+        .eq("source_id", sourceId));
       const existing = new Set(
         (data as Array<{ assistant_id: string }>).map((row) => row.assistant_id),
       );
@@ -5896,35 +5659,32 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const toRemove = [...existing].filter((id) => !wanted.has(id));
       const toAdd = [...wanted].filter((id) => !existing.has(id));
       if (toRemove.length > 0) {
-        const { error: removeError } = await client
+        must(await client
           .from("assistant_sources")
           .delete()
           .eq("source_id", sourceId)
-          .in("assistant_id", toRemove);
-        if (removeError) throw removeError;
+          .in("assistant_id", toRemove));
       }
       if (toAdd.length > 0) {
-        const { error: addError } = await client.from("assistant_sources").insert(
+        must(await client.from("assistant_sources").insert(
           toAdd.map((assistantId) => ({
             assistant_id: assistantId,
             source_id: sourceId,
           })),
-        );
-        if (addError) throw addError;
+        ));
       }
     },
 
     async setSourceDirectAccess(sourceId, assistantId, directAccess) {
-      const { error } = await client
+      must(await client
         .from("assistant_sources")
         .update({ direct_access: directAccess })
         .eq("source_id", sourceId)
-        .eq("assistant_id", assistantId);
-      if (error) throw error;
+        .eq("assistant_id", assistantId));
     },
 
     async getInsightsOverview(organizationId, filters) {
-      const { data, error } = await client.rpc("get_insights_overview", {
+      const data = must(await client.rpc("get_insights_overview", {
         p_organization_id: organizationId,
         p_from: filters.from,
         p_to: filters.to,
@@ -5934,8 +5694,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_role: filters.role || null,
         p_feedback: filters.feedback || null,
         p_escalation: filters.escalation || null,
-      });
-      if (error) throw error;
+      }));
       const overview = data as InsightsOverview | null;
       if (!overview || !overview.stats || !overview.chart || !overview.options) {
         throw new Error("Invalid Insights reporting result");
@@ -5946,24 +5705,22 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Alerts ---------------------------------------------------------
 
     async listAlerts(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("alerts")
         .select("*")
         .eq("organization_id", organizationId)
-        .order("detected_at", { ascending: false });
-      if (error) throw error;
+        .order("detected_at", { ascending: false }));
       return (data as AlertRow[]).map(toAlert);
     },
 
     async listActiveAlerts(organizationId, limit = 5) {
-      const { data, error } = await client
+      const data = must(await client
         .from("alerts")
         .select("*")
         .eq("organization_id", organizationId)
         .eq("status", "active")
         .order("detected_at", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
+        .limit(limit));
       return (data as AlertRow[]).map(toAlert);
     },
 
@@ -5979,16 +5736,15 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async raiseAlert(organizationId, input) {
       if (input.sourceKey) {
-        const { data: existing, error: findError } = await client
+        const existing = must(await client
           .from("alerts")
           .select("id")
           .eq("organization_id", organizationId)
           .eq("source_key", input.sourceKey)
           .eq("status", "active")
-          .maybeSingle();
-        if (findError) throw findError;
+          .maybeSingle());
         if (existing) {
-          const { data, error } = await client
+          const data = must(await client
             .from("alerts")
             .update({
               type: input.type,
@@ -5998,12 +5754,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
             })
             .eq("id", existing.id)
             .select()
-            .single();
-          if (error) throw error;
+            .single());
           return toAlert(data as AlertRow);
         }
       }
-      const { data, error } = await client
+      const data = must(await client
         .from("alerts")
         .insert({
           id: shortId(),
@@ -6014,13 +5769,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           source_key: input.sourceKey ?? null,
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toAlert(data as AlertRow);
     },
 
     async resolveAlert(id, resolvedBy) {
-      const { data, error } = await client
+      const data = must(await client
         .from("alerts")
         .update({
           status: "resolved",
@@ -6029,13 +5783,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         })
         .eq("id", id)
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toAlert(data as AlertRow);
     },
 
     async resolveAlertsByKey(organizationId, sourceKey) {
-      const { error } = await client
+      must(await client
         .from("alerts")
         .update({
           status: "resolved",
@@ -6044,15 +5797,14 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         })
         .eq("organization_id", organizationId)
         .eq("source_key", sourceKey)
-        .eq("status", "active");
-      if (error) throw error;
+        .eq("status", "active"));
     },
 
     // --- AI usage ledger -----------------------------------------------------
 
     async recordAiUsage(rows) {
       if (rows.length === 0) return;
-      const { error } = await client.from("ai_usage").insert(
+      must(await client.from("ai_usage").insert(
         rows.map((r) => ({
           organization_id: r.organizationId,
           assistant_id: r.assistantId,
@@ -6078,23 +5830,20 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           funding: r.funding ?? "plan",
           credits_micro: r.creditsMicro ?? null,
         }))
-      );
-      if (error) throw error;
+      ));
     },
 
     async getOrgTokensUsedToday(organizationId) {
-      const { data, error } = await client.rpc("org_ai_tokens_today", {
+      const data = must(await client.rpc("org_ai_tokens_today", {
         p_organization_id: organizationId,
-      });
-      if (error) throw error;
+      }));
       return Number(data ?? 0);
     },
 
     async getOrgCostUsedToday(organizationId) {
-      const { data, error } = await client.rpc("org_ai_usage_by_model_today", {
+      const data = must(await client.rpc("org_ai_usage_by_model_today", {
         p_organization_id: organizationId,
-      });
-      if (error) throw error;
+      }));
       const rows = (data ?? []) as {
         provider: Provider;
         model_id: string;
@@ -6115,19 +5864,28 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async rollupUsageDaily(days = 2) {
-      const { data, error } = await client.rpc("rollup_usage_daily", {
+      const data = must(await client.rpc("rollup_usage_daily", {
         p_days: days,
-      });
-      if (error) throw error;
+      }));
       return Number(data ?? 0);
     },
 
+    async rollupUsageCatchUp(maxDays = 35) {
+      const { data, error } = await client.rpc("rollup_usage_catch_up", {
+        p_max_days: maxDays,
+      });
+      if (!error) return Number(data ?? 0);
+      if (!isSchemaLagError(error)) throw error;
+      // One migration behind: no state row to catch up from, so cover the
+      // whole cap. The recompute is idempotent, so this only costs a scan.
+      return this.rollupUsageDaily(maxDays);
+    },
+
     async getOrgUsageDaily(organizationId, days = 30) {
-      const { data, error } = await client.rpc("org_usage_daily", {
+      const data = must(await client.rpc("org_usage_daily", {
         p_organization_id: organizationId,
         p_days: days,
-      });
-      if (error) throw error;
+      }));
       const rows = (data ?? []) as {
         day: string;
         kind: UsageKind;
@@ -6155,12 +5913,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getOrgUsageMeters(organizationId, from, to) {
-      const { data, error } = await client.rpc("org_usage_meters", {
+      const data = must(await client.rpc("org_usage_meters", {
         p_organization_id: organizationId,
         p_from: from,
         p_to: to,
-      });
-      if (error) throw error;
+      }));
       const rows = (data ?? []) as {
         resource: UsageMeterRow["resource"];
         credential_kind: UsageMeterRow["credentialKind"];
@@ -6187,7 +5944,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async recordUsageEvents(events) {
       if (events.length === 0) return;
-      const { error } = await client.from("usage_events").insert(
+      must(await client.from("usage_events").insert(
         events.map((e) => ({
           organization_id: e.organizationId,
           operation: e.operation,
@@ -6203,17 +5960,15 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           conversation_id: e.conversationId ?? null,
           surface: e.surface ?? null,
         }))
-      );
-      if (error) throw error;
+      ));
     },
 
     async getOrgUsageEvents(organizationId, from, to) {
-      const { data, error } = await client.rpc("org_usage_events", {
+      const data = must(await client.rpc("org_usage_events", {
         p_organization_id: organizationId,
         p_from: from,
         p_to: to,
-      });
-      if (error) throw error;
+      }));
       const rows = (data ?? []) as {
         operation: UsageEventRow["operation"];
         unit: UsageEventRow["unit"];
@@ -6231,12 +5986,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getOrgUsageSpenders(organizationId, from, to) {
-      const { data, error } = await client.rpc("org_usage_spenders", {
+      const data = must(await client.rpc("org_usage_spenders", {
         p_organization_id: organizationId,
         p_from: from,
         p_to: to,
-      });
-      if (error) throw error;
+      }));
       const rows = (data ?? []) as {
         member_id: string | null;
         teammate_id: string | null;
@@ -6280,8 +6034,93 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }));
     },
 
+    async getOrgDashboardFacts(organizationId, from, to) {
+      const args = { p_organization_id: organizationId, p_from: from, p_to: to };
+      // Four independent reads over the same window; none depends on another.
+      const [usage, turns, verdicts, conversations] = await Promise.all([
+        client.rpc("org_dashboard_usage", args),
+        client.rpc("org_dashboard_turns", args),
+        client.rpc("org_dashboard_verdicts", args),
+        client.rpc("org_dashboard_conversations", args),
+      ]);
+      for (const result of [usage, turns, verdicts, conversations]) {
+        if (result.error) throw result.error;
+      }
+      // bigint sums arrive as strings over PostgREST, so every count is
+      // coerced here rather than trusted to be a number downstream.
+      const n = (value: number | string | null): number => Number(value ?? 0);
+      return {
+        usage: ((usage.data ?? []) as {
+          day: string;
+          surface: string | null;
+          stage: string;
+          provider: string | null;
+          model_id: string | null;
+          assistant_id: string | null;
+          calls: number | string;
+          input_tokens: number | string;
+          output_tokens: number | string;
+        }[]).map((r) => ({
+          day: r.day,
+          surface: (r.surface || null) as DashboardFacts["usage"][number]["surface"],
+          stage: r.stage as DashboardFacts["usage"][number]["stage"],
+          provider: r.provider ?? "",
+          modelId: r.model_id ?? "",
+          assistantId: r.assistant_id || null,
+          calls: n(r.calls),
+          inputTokens: n(r.input_tokens),
+          outputTokens: n(r.output_tokens),
+        })),
+        turns: ((turns.data ?? []) as {
+          day: string;
+          surface: string | null;
+          assistant_id: string | null;
+          status: "succeeded" | "failed";
+          flow_name: string | null;
+          error_class: string | null;
+          latency_bucket: number | string;
+          turns: number | string;
+          duration_ms: number | string | null;
+          tool_calls: number | string | null;
+        }[]).map((r) => ({
+          day: r.day,
+          surface: (r.surface || null) as DashboardFacts["turns"][number]["surface"],
+          assistantId: r.assistant_id || null,
+          status: r.status,
+          flowName: r.flow_name || null,
+          errorClass: r.error_class || null,
+          latencyBucket: n(r.latency_bucket),
+          turns: n(r.turns),
+          durationMs: n(r.duration_ms),
+          toolCalls: n(r.tool_calls),
+        })),
+        verdicts: ((verdicts.data ?? []) as {
+          day: string;
+          assistant_id: string | null;
+          verdict: "pass" | "fail";
+          count: number | string;
+        }[]).map((r) => ({
+          day: r.day,
+          assistantId: r.assistant_id || null,
+          verdict: r.verdict,
+          count: n(r.count),
+        })),
+        conversations: ((conversations.data ?? []) as {
+          day: string;
+          assistant_id: string;
+          escalated: boolean;
+          conversations: number | string;
+        }[]).map((r) => ({
+          day: r.day,
+          assistantId: r.assistant_id,
+          escalated: r.escalated,
+          conversations: n(r.conversations),
+        })),
+      };
+    },
+
     async recordRuntimeEvent(event) {
-      const { error } = await client.from("runtime_events").insert({
+      must(await client.from("runtime_events").insert({
         organization_id: event.organizationId,
         assistant_id: event.assistantId ?? null,
         conversation_id: event.conversationId ?? null,
@@ -6305,12 +6144,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         error_message: event.errorMessage ?? null,
         trace_id: event.traceId ?? null,
         span_id: event.spanId ?? null,
-      });
-      if (error) throw error;
+      }));
     },
 
     async recordObjectAccess(event) {
-      const { error } = await client.from("object_access_events").insert({
+      must(await client.from("object_access_events").insert({
         organization_id: event.organizationId,
         actor_kind: event.actorKind,
         actor_id: event.actorId ?? null,
@@ -6322,8 +6160,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         ip: event.ip ?? null,
         user_agent: event.userAgent ?? null,
         request_id: event.requestId ?? null,
-      });
-      if (error) throw error;
+      }));
     },
 
     async listObjectAccessEvents(organizationId, options) {
@@ -6340,8 +6177,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .range(offset, offset + limit - 1);
       if (options?.objectPath) query = query.eq("object_path", options.objectPath);
       if (options?.sinceIso) query = query.gte("created_at", options.sinceIso);
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = must(await query);
       return (data ?? []).map((row) => ({
         id: String(row.id),
         organizationId: String(row.organization_id),
@@ -6360,32 +6196,29 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async purgeExpiredObjectAccessEvents(cutoffIso) {
-      const { data, error } = await client.rpc("purge_expired_object_access_events", {
+      const data = must(await client.rpc("purge_expired_object_access_events", {
         p_cutoff: cutoffIso,
-      });
-      if (error) throw error;
+      }));
       return (data as number) ?? 0;
     },
 
     async recordRetentionSweep(event) {
-      const { error } = await client.from("retention_sweep_events").insert({
+      must(await client.from("retention_sweep_events").insert({
         organization_id: event.organizationId,
         policy: event.policy,
         retention_days: event.retentionDays,
         cutoff: event.cutoff,
         deleted: event.deleted ?? null,
         error: event.error ?? null,
-      });
-      if (error) throw error;
+      }));
     },
 
     async getOrgBudget(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("org_budgets")
         .select("*")
         .eq("organization_id", organizationId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       if (!data) return null;
       const row = data as {
         organization_id: string;
@@ -6406,7 +6239,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async setOrgBudget(organizationId, input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("org_budgets")
         .upsert(
           {
@@ -6422,8 +6255,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           { onConflict: "organization_id" }
         )
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       const row = data as {
         organization_id: string;
         daily_token_limit: number | string | null;
@@ -6443,34 +6275,31 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async reserveOrgBudget(input) {
-      const { data, error } = await client.rpc("reserve_org_budget", {
+      const data = must(await client.rpc("reserve_org_budget", {
         p_organization_id: input.organizationId,
         p_max_tokens: input.maxTokens,
         p_max_eur: input.maxEur,
         p_observed_cost_eur: input.observedCostEur,
         p_now: input.now,
         p_expires_at: input.expiresAt,
-      });
-      if (error) throw error;
+      }));
       return typeof data === "string" ? data : null;
     },
 
     async acquireTurnConcurrency(input) {
-      const { data, error } = await client.rpc("acquire_turn_concurrency", {
+      const data = must(await client.rpc("acquire_turn_concurrency", {
         p_scope_keys: input.scopes.map((scope) => scope.key),
         p_limits: input.scopes.map((scope) => scope.limit),
         p_now: input.now,
         p_expires_at: input.expiresAt,
-      });
-      if (error) throw error;
+      }));
       return typeof data === "string" ? data : null;
     },
 
     async releaseTurnConcurrency(leaseId) {
-      const { data, error } = await client.rpc("release_turn_concurrency", {
+      const data = must(await client.rpc("release_turn_concurrency", {
         p_lease_id: leaseId,
-      });
-      if (error) throw error;
+      }));
       return data === true;
     },
 
@@ -6499,7 +6328,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
             ),
           0,
         );
-        const { data: released, error: releaseError } = await client.rpc(
+        const released = must(await client.rpc(
           "release_org_budget_reservation",
           {
             p_id: id,
@@ -6507,8 +6336,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
             p_actual_eur: actualEur,
             p_now: new Date().toISOString(),
           },
-        );
-        if (releaseError) throw releaseError;
+        ));
         return released === true;
       }
       return data === true;
@@ -6534,12 +6362,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Standing goals -------------------------------------------------------
 
     async createAssistantGoal(assistantId, input) {
-      const { data: assistant, error: assistantError } = await client
+      const assistant = must(await client
         .from("assistants")
         .select("organization_id")
         .eq("id", assistantId)
-        .single();
-      if (assistantError) throw assistantError;
+        .single());
       const { count, error: countError } = await client
         .from("assistant_goals")
         .select("id", { count: "exact", head: true })
@@ -6560,22 +6387,20 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async claimDueAssistantGoals({ dueBefore, limit }) {
-      const { data, error } = await client.rpc("claim_due_assistant_goals", {
+      const data = must(await client.rpc("claim_due_assistant_goals", {
         p_due_before: dueBefore,
         p_limit: limit,
-      });
-      if (error) throw error;
+      }));
       return ((data ?? []) as GoalRow[]).map(toGoal);
     },
 
     // --- Answer verification --------------------------------------------------
 
     async claimUnverifiedAnswers({ limit, staleBefore }) {
-      const { data, error } = await client.rpc("claim_unverified_answers", {
+      const data = must(await client.rpc("claim_unverified_answers", {
         p_limit: limit,
         p_stale_before: staleBefore,
-      });
-      if (error) throw error;
+      }));
       return ((data ?? []) as {
         message_id: string;
         conversation_id: string;
@@ -6600,11 +6425,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async releaseAnswerVerifierClaim(messageId) {
-      const { error } = await client
+      must(await client
         .from("answer_verifier_claims")
         .delete()
-        .eq("message_id", messageId);
-      if (error) throw error;
+        .eq("message_id", messageId));
     },
 
     async recordAnswerVerdict(input) {
@@ -6628,10 +6452,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Flow trust ledger -----------------------------------------------------
 
     async listTrustSignals({ limit }) {
-      const { data, error } = await client.rpc("list_trust_signals", {
+      const data = must(await client.rpc("list_trust_signals", {
         p_limit: limit,
-      });
-      if (error) throw error;
+      }));
       return ((data ?? []) as {
         organization_id: string;
         assistant_id: string;
@@ -6652,17 +6475,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async upsertFlowTrust(input) {
-      const { data: existing, error: readError } = await client
+      const existing = must(await client
         .from("flow_trust")
         .select("tier")
         .eq("assistant_id", input.assistantId)
         .eq("flow_id", input.flowId)
-        .maybeSingle();
-      if (readError) throw readError;
+        .maybeSingle());
       const previousTier =
         ((existing as { tier?: "auto" | "queue" | "watch" } | null)?.tier ??
           null);
-      const { error } = await client.from("flow_trust").upsert(
+      must(await client.from("flow_trust").upsert(
         {
           assistant_id: input.assistantId,
           flow_id: input.flowId,
@@ -6674,33 +6496,30 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           computed_at: new Date().toISOString(),
         },
         { onConflict: "assistant_id,flow_id" }
-      );
-      if (error) throw error;
+      ));
       return { previousTier };
     },
 
     async listFlowTrust(assistantId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("flow_trust")
         .select("*")
-        .eq("assistant_id", assistantId);
-      if (error) throw error;
+        .eq("assistant_id", assistantId));
       return ((data ?? []) as FlowTrustRow[]).map(toFlowTrust);
     },
 
     async getFlowTrust(assistantId, flowId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("flow_trust")
         .select("*")
         .eq("assistant_id", assistantId)
         .eq("flow_id", flowId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toFlowTrust(data as FlowTrustRow) : null;
     },
 
     async recordFlowTrustEvent(input) {
-      const { error } = await client.from("flow_trust_events").insert({
+      must(await client.from("flow_trust_events").insert({
         organization_id: input.organizationId,
         assistant_id: input.assistantId,
         flow_id: input.flowId,
@@ -6708,37 +6527,33 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         to_tier: input.toTier,
         runs: input.runs,
         passes: input.passes,
-      });
-      if (error) throw error;
+      }));
 
       // Capped retention: drop everything older than the newest N per flow.
-      const { data: stale, error: staleError } = await client
+      const stale = must(await client
         .from("flow_trust_events")
         .select("id")
         .eq("assistant_id", input.assistantId)
         .eq("flow_id", input.flowId)
         .order("created_at", { ascending: false })
-        .range(FLOW_TRUST_EVENT_RETENTION, FLOW_TRUST_EVENT_RETENTION + 199);
-      if (staleError) throw staleError;
+        .range(FLOW_TRUST_EVENT_RETENTION, FLOW_TRUST_EVENT_RETENTION + 199));
       const staleIds = ((stale ?? []) as { id: string }[]).map((r) => r.id);
       if (staleIds.length > 0) {
-        const { error: deleteError } = await client
+        must(await client
           .from("flow_trust_events")
           .delete()
-          .in("id", staleIds);
-        if (deleteError) throw deleteError;
+          .in("id", staleIds));
       }
     },
 
     // --- Compost loop ----------------------------------------------------------
 
     async claimDueCompostAssistants({ dueBefore, staleBefore, limit }) {
-      const { data, error } = await client.rpc("claim_due_compost_assistants", {
+      const data = must(await client.rpc("claim_due_compost_assistants", {
         p_due_before: dueBefore,
         p_stale_before: staleBefore,
         p_limit: limit,
-      });
-      if (error) throw error;
+      }));
       return ((data ?? []) as {
         assistant_id: string;
         organization_id: string;
@@ -6834,50 +6649,45 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async recordCompostRun(input) {
-      const { error } = await client.from("compost_runs").insert({
+      must(await client.from("compost_runs").insert({
         assistant_id: input.assistantId,
         organization_id: input.organizationId,
         window_start: input.windowStart,
         window_end: input.windowEnd,
         proposals: input.proposals,
         clean: input.clean,
-      });
-      if (error) throw error;
+      }));
     },
 
     async setCompostOptOut(organizationId, optOut) {
-      const { error } = await client
+      must(await client
         .from("organizations")
         .update({ compost_opt_out: optOut })
-        .eq("id", organizationId);
-      if (error) throw error;
+        .eq("id", organizationId));
     },
 
     async getCompostOptOut(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("organizations")
         .select("compost_opt_out")
         .eq("id", organizationId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return (data as { compost_opt_out?: boolean } | null)?.compost_opt_out ?? false;
     },
 
     async setPersonalAiSubscriptionsAllowed(organizationId, allowed) {
-      const { error } = await client
+      must(await client
         .from("organizations")
         .update({ allow_personal_ai_subscriptions: allowed })
-        .eq("id", organizationId);
-      if (error) throw error;
+        .eq("id", organizationId));
     },
 
     async getPersonalAiSubscriptionsAllowed(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("organizations")
         .select("allow_personal_ai_subscriptions")
         .eq("id", organizationId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return (
         (data as { allow_personal_ai_subscriptions?: boolean } | null)
           ?.allow_personal_ai_subscriptions ?? false
@@ -6885,49 +6695,44 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async recordAssistantGoalRun(goalId, input) {
-      const { data: goal, error: goalError } = await client
+      const goal = must(await client
         .from("assistant_goals")
         .select("organization_id")
         .eq("id", goalId)
-        .single();
-      if (goalError) throw goalError;
+        .single());
       const organizationId = (goal as { organization_id: string })
         .organization_id;
 
-      const { error: runError } = await client.from("assistant_goal_runs").insert({
+      must(await client.from("assistant_goal_runs").insert({
         goal_id: goalId,
         organization_id: organizationId,
         pass: input.pass,
         detail: input.detail,
         duration_ms: input.durationMs,
-      });
-      if (runError) throw runError;
+      }));
 
-      const { error: updateError } = await client
+      must(await client
         .from("assistant_goals")
         .update({
           last_run_at: new Date().toISOString(),
           last_result: input.pass ? "pass" : "fail",
           last_detail: input.detail || null,
         })
-        .eq("id", goalId);
-      if (updateError) throw updateError;
+        .eq("id", goalId));
 
       // Capped retention: drop everything older than the newest N runs.
-      const { data: stale, error: staleError } = await client
+      const stale = must(await client
         .from("assistant_goal_runs")
         .select("id")
         .eq("goal_id", goalId)
         .order("ran_at", { ascending: false })
-        .range(GOAL_RUN_RETENTION, GOAL_RUN_RETENTION + 199);
-      if (staleError) throw staleError;
+        .range(GOAL_RUN_RETENTION, GOAL_RUN_RETENTION + 199));
       const staleIds = ((stale ?? []) as { id: string }[]).map((r) => r.id);
       if (staleIds.length > 0) {
-        const { error: deleteError } = await client
+        must(await client
           .from("assistant_goal_runs")
           .delete()
-          .in("id", staleIds);
-        if (deleteError) throw deleteError;
+          .in("id", staleIds));
       }
     },
 
@@ -6936,7 +6741,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async consumeLocalConnectorPairing({ codeHash, origin, now }) {
       // One-time consumption as a single compare-and-set: only an unused,
       // unexpired pairing matching the code + origin can flip to used.
-      const { data, error } = await client
+      const data = must(await client
         .from("local_connector_pairings")
         .update({ used_at: now })
         .eq("code_hash", codeHash)
@@ -6944,8 +6749,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .is("used_at", null)
         .gt("expires_at", now)
         .select()
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data
         ? (rowToDomain(data as Record<string, unknown>) as unknown as LocalConnectorPairing)
         : null;
@@ -6962,8 +6766,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .gte("last_seen_at", input.seenAfter)
         .order("last_seen_at", { ascending: false });
       if (input.limit !== undefined) query = query.limit(input.limit);
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = must(await query);
       return ((data ?? []) as Array<Record<string, unknown>>).map(
         (row) => rowToDomain(row) as unknown as LocalConnectorDevice
       );
@@ -6976,14 +6779,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // single most executed statement in the database and deleted nothing
       // almost every time. The relay gates it to the heartbeat cadence.
       if (sweep) {
-        const { error: sweepError } = await client
+        must(await client
           .from("local_inference_jobs")
           .delete()
           .eq("device_id", deviceId)
-          .lt("expires_at", now);
-        if (sweepError) throw sweepError;
+          .lt("expires_at", now));
       }
-      const { data: pending, error } = await client
+      const pending = must(await client
         .from("local_inference_jobs")
         .select("id")
         .eq("device_id", deviceId)
@@ -6991,18 +6793,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .gt("expires_at", now)
         .order("created_at", { ascending: true })
         .limit(1)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       if (!pending) return null;
       // CAS pending → claimed: a concurrent claimer loses and gets null.
-      const { data: claimed, error: claimError } = await client
+      const claimed = must(await client
         .from("local_inference_jobs")
         .update({ status: "claimed", claimed_at: now })
         .eq("id", pending.id)
         .eq("status", "pending")
         .select()
-        .maybeSingle();
-      if (claimError) throw claimError;
+        .maybeSingle());
       return claimed
         ? (rowToDomain(claimed as Record<string, unknown>) as unknown as LocalInferenceJob)
         : null;
@@ -7010,7 +6810,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async completeLocalInferenceJob(input) {
       const failed = Boolean(input.error);
-      const { data, error } = await client
+      const data = must(await client
         .from("local_inference_jobs")
         .update({
           status: failed ? "failed" : "completed",
@@ -7022,25 +6822,23 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .eq("device_id", input.deviceId)
         .eq("status", "claimed")
         .select("id")
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return Boolean(data);
     },
 
     // --- Platform settings (single row, service-role only) --------------------
 
     async getPlatformSystemPromptOverride() {
-      const { data, error } = await client
+      const data = must(await client
         .from("platform_settings")
         .select("system_prompt")
         .eq("id", "default")
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return ((data as { system_prompt?: string } | null)?.system_prompt ?? "");
     },
 
     async setPlatformSystemPrompt(prompt, updatedBy) {
-      const { error } = await client.from("platform_settings").upsert(
+      must(await client.from("platform_settings").upsert(
         {
           id: "default",
           system_prompt: prompt,
@@ -7048,8 +6846,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }
-      );
-      if (error) throw error;
+      ));
     },
 
     // --- Skills (reusable prompt templates) ----------------------------------
@@ -7057,17 +6854,15 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // stays named because it carries cascade semantics (assistant_skills).
 
     async deleteSkill(id) {
-      const { error } = await client.from("skills").delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from("skills").delete().eq("id", id));
     },
 
     async listAssistantSkills(assistantId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("assistant_skills")
         .select("position, skills(*)")
         .eq("assistant_id", assistantId)
-        .order("position", { ascending: true });
-      if (error) throw error;
+        .order("position", { ascending: true }));
       return (data as unknown as Array<{ position: number; skills: SkillRow }>)
         .filter((row) => row.skills)
         .map((row) => toSkill(row.skills));
@@ -7080,20 +6875,18 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       });
       if (!error) return;
       if (!isSchemaLagError(error)) throw error;
-      const { error: deleteError } = await client
+      must(await client
         .from("assistant_skills")
         .delete()
-        .eq("assistant_id", assistantId);
-      if (deleteError) throw deleteError;
+        .eq("assistant_id", assistantId));
       if (skillIds.length === 0) return;
-      const { error: insertError } = await client.from("assistant_skills").insert(
+      must(await client.from("assistant_skills").insert(
         skillIds.map((skillId, position) => ({
           assistant_id: assistantId,
           skill_id: skillId,
           position,
         })),
-      );
-      if (insertError) throw insertError;
+      ));
     },
 
     // --- Entities + Records (#663) ---------------------------------------
@@ -7109,12 +6902,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       for (let i = 0; i < rows.length; i += CHUNK) {
         const chunk = rows.slice(i, i + CHUNK);
         const keys = chunk.map((r) => r.key);
-        const { data: existing, error: readError } = await client
+        const existing = must(await client
           .from("entity_records")
           .select("id, record_key, values")
           .eq("entity_id", entityId)
-          .in("record_key", keys);
-        if (readError) throw readError;
+          .in("record_key", keys));
         const byKey = new Map(
           (existing as Array<{
             id: string;
@@ -7129,19 +6921,17 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           const existingRow = byKey.get(row.key);
           if (existingRow) {
             if (entityRecordValuesEqual(existingRow.values, row.values)) continue;
-            const { error } = await client
+            must(await client
               .from("entity_records")
               .update({ values: row.values, updated_at: now })
-              .eq("id", existingRow.id);
-            if (error) throw error;
+              .eq("id", existingRow.id));
           } else {
-            const { error } = await client.from("entity_records").insert({
+            must(await client.from("entity_records").insert({
               id: shortId(),
               entity_id: entityId,
               record_key: row.key,
               values: row.values,
-            });
-            if (error) throw error;
+            }));
           }
           written += 1;
         }
@@ -7152,13 +6942,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async listEntityRecords(entityId, opts) {
       const limit = opts?.limit ?? 50;
       const offset = opts?.offset ?? 0;
-      const { data, error } = await client
+      const data = must(await client
         .from("entity_records")
         .select()
         .eq("entity_id", entityId)
         .order("record_key", { ascending: true })
-        .range(offset, offset + limit - 1);
-      if (error) throw error;
+        .range(offset, offset + limit - 1));
       return (data as EntityRecordRow[]).map(toEntityRecord);
     },
 
@@ -7172,44 +6961,40 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async queryEntityRecords(entityId, query) {
-      const { data, error } = await client.rpc("query_entity_records", {
+      const data = must(await client.rpc("query_entity_records", {
         p_entity_id: entityId,
         p_filters: query.filters ?? {},
         p_search: query.search?.trim() || null,
         p_limit: query.limit ?? 20,
-      });
-      if (error) throw error;
+      }));
       return (data as EntityRecordRow[]).map(toEntityRecord);
     },
 
     // --- Long-term memories (#664) ---------------------------------------
 
     async getMemoryEnabled(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("organizations")
         .select("memory_enabled")
         .eq("id", organizationId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return Boolean((data as { memory_enabled?: boolean } | null)?.memory_enabled);
     },
 
     async setMemoryEnabled(organizationId, enabled) {
-      const { error } = await client
+      must(await client
         .from("organizations")
         .update({ memory_enabled: enabled })
-        .eq("id", organizationId);
-      if (error) throw error;
+        .eq("id", organizationId));
     },
 
     async upsertMemories(subject, items) {
       const { organizationId, subjectId } = subject;
-      const { data: existingRows, error: existingError } = await client
+      const existingRows = must(await client
         .from("memories")
         .select("text")
         .eq("organization_id", organizationId)
-        .eq("subject_id", subjectId);
-      if (existingError) throw existingError;
+        .eq("subject_id", subjectId));
       const existing = new Set(
         (existingRows as Array<{ text: string }>).map((r) => r.text)
       );
@@ -7233,73 +7018,66 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }
       let inserted = 0;
       if (rows.length > 0) {
-        const { data, error } = await client
+        const data = must(await client
           .from("memories")
           .insert(rows)
-          .select("id");
-        if (error) throw error;
+          .select("id"));
         inserted = data?.length ?? 0;
       }
 
       // Cap enforcement: drop the oldest rows beyond the per-subject cap.
-      const { data: overflow, error: overflowError } = await client
+      const overflow = must(await client
         .from("memories")
         .select("id")
         .eq("organization_id", organizationId)
         .eq("subject_id", subjectId)
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(MEMORIES_PER_SUBJECT_CAP, MEMORIES_PER_SUBJECT_CAP + 999);
-      if (overflowError) throw overflowError;
+        .range(MEMORIES_PER_SUBJECT_CAP, MEMORIES_PER_SUBJECT_CAP + 999));
       const staleIds = (overflow as Array<{ id: string }>).map((r) => r.id);
       if (staleIds.length > 0) {
-        const { error } = await client.from("memories").delete().in("id", staleIds);
-        if (error) throw error;
+        must(await client.from("memories").delete().in("id", staleIds));
       }
       return inserted;
     },
 
     async listMemories({ organizationId, subjectId }) {
-      const { data, error } = await client
+      const data = must(await client
         .from("memories")
         .select("id, organization_id, subject_id, text, conversation_id, created_at")
         .eq("organization_id", organizationId)
         .eq("subject_id", subjectId)
         .order("created_at", { ascending: false })
-        .order("id", { ascending: false });
-      if (error) throw error;
+        .order("id", { ascending: false }));
       return (data as MemoryRow[]).map(toMemory);
     },
 
     async deleteMemory(id) {
-      const { error } = await client.from("memories").delete().eq("id", id);
-      if (error) throw error;
+      must(await client.from("memories").delete().eq("id", id));
     },
 
     async getMemory(id) {
-      const { data, error } = await client
+      const data = must(await client
         .from("memories")
         .select("id, organization_id, subject_id, text, conversation_id, created_at")
         .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toMemory(data as MemoryRow) : null;
     },
 
     // --- Synced Record ingestion (#670) ---------------------------------
 
     async getEntitySyncConfig(entityId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("entity_sync_configs")
         .select("*")
         .eq("entity_id", entityId)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle());
       return data ? toEntitySyncConfig(data as EntitySyncConfigRow) : null;
     },
 
     async upsertEntitySyncConfig(entityId, input) {
-      const { data, error } = await client
+      const data = must(await client
         .from("entity_sync_configs")
         .upsert(
           {
@@ -7314,24 +7092,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           { onConflict: "entity_id" }
         )
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toEntitySyncConfig(data as EntitySyncConfigRow);
     },
 
     async markEntitySynced(entityId, at) {
-      const { error } = await client
+      must(await client
         .from("entity_sync_configs")
         .update({ last_synced_at: at })
-        .eq("entity_id", entityId);
-      if (error) throw error;
+        .eq("entity_id", entityId));
     },
 
     async listDueEntitySyncConfigs(now) {
-      const { data, error } = await client
+      const data = must(await client
         .from("entity_sync_configs")
-        .select("entity_id, cadence_hours, last_synced_at, entities!inner(organization_id)");
-      if (error) throw error;
+        .select("entity_id, cadence_hours, last_synced_at, entities!inner(organization_id)"));
       const due: Array<{ entityId: string; organizationId: string }> = [];
       for (const row of data as unknown as Array<{
         entity_id: string;
@@ -7353,7 +7128,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async recordEntitySyncRun(entityId, run) {
-      const { data, error } = await client
+      const data = must(await client
         .from("entity_sync_runs")
         .insert({
           id: shortId(),
@@ -7370,8 +7145,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           error: run.error ?? null,
         })
         .select()
-        .single();
-      if (error) throw error;
+        .single());
       return toEntitySyncRun(data as EntitySyncRunRow);
     },
 
@@ -7420,43 +7194,39 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async listEntitySyncRuns(entityId, limit = 20) {
-      const { data, error } = await client
+      const data = must(await client
         .from("entity_sync_runs")
         .select("*")
         .eq("entity_id", entityId)
         .order("finished_at", { ascending: false })
         .order("id", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
+        .limit(limit));
       return (data as EntitySyncRunRow[]).map(toEntitySyncRun);
     },
 
     async pruneEntityRecords(entityId, seenKeys) {
-      const { data: rows, error: listError } = await client
+      const rows = must(await client
         .from("entity_records")
         .select("id, record_key")
-        .eq("entity_id", entityId);
-      if (listError) throw listError;
+        .eq("entity_id", entityId));
       const seen = new Set(seenKeys);
       const stale = (rows as Array<{ id: string; record_key: string }>)
         .filter((r) => !seen.has(r.record_key))
         .map((r) => r.id);
       if (stale.length > 0) {
-        const { error } = await client
+        must(await client
           .from("entity_records")
           .delete()
-          .in("id", stale);
-        if (error) throw error;
+          .in("id", stale));
       }
       return stale.length;
     },
 
     async listMemorySubjects(organizationId) {
-      const { data, error } = await client
+      const data = must(await client
         .from("memories")
         .select("subject_id, created_at")
-        .eq("organization_id", organizationId);
-      if (error) throw error;
+        .eq("organization_id", organizationId));
       const bySubject = new Map<string, { count: number; last: string }>();
       for (const row of data as Array<{ subject_id: string; created_at: string }>) {
         const entry = bySubject.get(row.subject_id);
@@ -7470,14 +7240,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (bySubject.size === 0) return [];
 
       // Latest SSO conversation per subject carries the identity-claim value.
-      const { data: convRows, error: convError } = await client
+      const convRows = must(await client
         .from("conversations")
         .select("subject_id, metadata, created_at, assistants!inner(organization_id)")
         .eq("assistants.organization_id", organizationId)
         .eq("subject_type", "sso")
         .in("subject_id", [...bySubject.keys()])
-        .order("created_at", { ascending: false });
-      if (convError) throw convError;
+        .order("created_at", { ascending: false }));
       const claims = new Map<string, string>();
       for (const row of convRows as Array<{
         subject_id: string;
@@ -7499,28 +7268,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async listMemorySubjectsPage(organizationId, input) {
-      const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
-      let afterLastMemoryAt: string | null = null;
-      let afterSubjectId: string | null = null;
-      if (input.cursor) {
-        try {
-          const decoded = JSON.parse(input.cursor) as [string, string];
-          if (typeof decoded[0] === "string" && typeof decoded[1] === "string") {
-            [afterLastMemoryAt, afterSubjectId] = decoded;
-          } else {
-            throw new Error("Invalid memory subject cursor");
-          }
-        } catch {
-          throw new Error("Invalid memory subject cursor");
-        }
-      }
-      const { data, error } = await client.rpc("list_memory_subjects_page", {
+      const limit = clampPageLimit(input.limit);
+      const [afterLastMemoryAt, afterSubjectId] = input.cursor
+        ? decodeMemorySubjectCursor(input.cursor)
+        : [null, null];
+      const data = must(await client.rpc("list_memory_subjects_page", {
         p_organization_id: organizationId,
         p_after_last_memory_at: afterLastMemoryAt,
         p_after_subject_id: afterSubjectId,
         p_limit: limit + 1,
-      });
-      if (error) throw error;
+      }));
       const mapped = ((data ?? []) as Array<Record<string, unknown>>).map(
         (row): MemorySubjectSummary => ({
           subjectId: row.subject_id as string,
@@ -7529,21 +7286,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           lastMemoryAt: row.last_memory_at as string,
         })
       );
-      const hasMore = mapped.length > limit;
-      const items = mapped.slice(0, limit);
-      return {
-        items,
-        nextCursor: hasMore
-          ? JSON.stringify([
-              items.at(-1)!.lastMemoryAt,
-              items.at(-1)!.subjectId,
-            ])
-          : null,
-      };
+      return finalizePage(mapped, limit, (last) =>
+        JSON.stringify([last.lastMemoryAt, last.subjectId])
+      );
     },
 
     async listEntitiesPage(organizationId, input) {
-      const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
+      const limit = clampPageLimit(input.limit);
       let query = client
         .from("entities")
         .select("*")
@@ -7551,25 +7300,18 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .order("id", { ascending: true })
         .limit(limit + 1);
       if (input.cursor) query = query.gt("id", input.cursor);
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = must(await query);
       const mapped = (data ?? []).map(
         (row) => rowToDomain(row) as unknown as Entity
       );
-      const hasMore = mapped.length > limit;
-      const items = mapped.slice(0, limit);
-      return {
-        items,
-        nextCursor: hasMore ? items.at(-1)?.id ?? null : null,
-      };
+      return finalizePage(mapped, limit, (entity) => entity.id);
     },
 
     async deleteSubjectMemories({ organizationId, subjectId }) {
-      const { error } = await client.rpc("erase_subject_memories", {
+      must(await client.rpc("erase_subject_memories", {
         p_organization_id: organizationId,
         p_subject_id: subjectId,
-      });
-      if (error) throw error;
+      }));
     },
 
     async searchMemories({ organizationId, subjectId }, query) {
@@ -7582,14 +7324,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const lexicalSearch = async (): Promise<MemoryRow[]> => {
         const tokens = lexicalTokens(query.text, 5);
         if (tokens.length === 0) return [];
-        const { data, error } = await client
+        const data = must(await client
           .from("memories")
           .select("id, text")
           .eq("organization_id", organizationId)
           .eq("subject_id", subjectId)
           .or(tokens.map((t) => `text.ilike.%${t}%`).join(","))
-          .limit(limit);
-        if (error) throw error;
+          .limit(limit));
         return (data as Array<{ id: string; text: string }>).map((r) => ({
           id: r.id,
           text: r.text,
@@ -7601,13 +7342,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         embedding: query.embedding,
         limit,
         vector: async () => {
-          const { data, error } = await client.rpc("match_memories", {
+          const data = must(await client.rpc("match_memories", {
             p_organization_id: organizationId,
             p_subject_id: subjectId,
             p_query_embedding: query.embedding,
             p_match_count: limit,
-          });
-          if (error) throw error;
+          }));
           return data as MemoryRow[];
         },
         lexical: lexicalSearch,

@@ -35,6 +35,7 @@ export default async function MemorySettingsPage() {
     >
       <MemoryClient
         body={document?.body ?? ""}
+        updatedAt={document?.updatedAt ?? null}
         entries={entries}
         teammateNames={Object.fromEntries(
           teammates.map((teammate) => [teammate.id, teammate.name])

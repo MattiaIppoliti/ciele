@@ -1,32 +1,34 @@
 ---
 title: Conservation des données
-description: Définissez la durée de conservation des conversations et des traces de raisonnement, et conservez une conversation.
+description: Définissez la durée de conservation des conversations et des traces de raisonnement, et conservez une conversation de plus.
 ---
 
 Une organisation définit deux périodes de conservation dans **Settings**, dans
 l'onglet **General**. Les deux sont désactivées par défaut : rien n'est supprimé
-tant qu'un administrateur n'a pas sélectionné une période.
+tant qu'un administrateur n'a pas sélectionné une fenêtre.
 
 ## Les deux fenêtres
 
-| Paramètre | Ce que fait le nettoyage nocturne après la fenêtre |
+| Paramètre | Ce que le nettoyage nocturne effectue après la période définie |
 | --- | --- |
-| **Reasoning trace retention** | Supprime le panneau Pensée des anciens messages. Les messages sont conservés. |
-| **Conversation retention** | Supprime l'intégralité de la conversation, transcription comprise. |
+| **Reasoning trace retention** | Supprime le panneau Thinking des anciens messages. Les messages sont conservés. |
+| **Conversation retention** | Supprime l'ensemble de la conversation, transcription comprise. |
 
-Les deux fenêtres sont indépendantes. Une organisation peut définir l'une ou
-l'autre, les deux, ou aucune. Par exemple, conservez les transcriptions pendant
-un an, mais supprimez les traces de raisonnement après 30 jours.
+Les deux fenêtres sont indépendantes. Une organisation peut définir l'un, les
+deux ou aucun des deux. Par exemple, conservez les transcripts pendant un an,
+mais supprimez les traces de raisonnement au bout de 30 jours.
 
-Un nettoyage est effectué une fois par nuit. Il applique chaque fenêtre aux
-conversations plus anciennes que cette fenêtre. Le nettoyage est permanent : une
-conversation supprimée n'est pas placée dans une corbeille.
+Un nettoyage s'exécute une fois par nuit. Il mesure la fenêtre à partir du
+dernier message de la conversation, et non à partir du premier. Une conversation
+encore en cours d'utilisation n'est pas supprimée, quelle que soit la date à
+laquelle elle a débuté. Le nettoyage est définitif : une conversation supprimée
+n'est pas placée dans une corbeille.
 
 <Callout type="warn" title="Conversation retention deletes data">
 After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
 </Callout>
 
-## Définissez une fenêtre
+## Définir une fenêtre
 
 1. Ouvrez **Settings**.
 2. Restez sur l'onglet **General**.
@@ -34,25 +36,29 @@ After the window, the conversation is gone from the Inbox, from exports, and fro
    retention**.
 4. Sélectionnez **Save changes**.
 
-Seul un membre habilité à gérer les membres peut modifier ces paramètres.
+Si la nouvelle fenêtre est plus courte que la fenêtre actuelle, Ciele vous
+demande de confirmer. Le prochain nettoyage nocturne supprime les données les
+plus anciennes.
 
-## Conservation légale
+Seul un membre autorisé à gérer les membres peut modifier ces paramètres.
 
-Une conservation légale exclut une conversation du processus de suppression des
-conversations conservées. Utilisez-la lorsqu'une obligation de conservation
-s'applique à une conversation, sans désactiver la conservation pour toutes les
-autres conversations.
+## Mise en suspens pour motif juridique
+
+Une mise en suspens légale (legal hold) exempte une conversation du processus de
+nettoyage de conservation des conversations. Utilisez-la lorsqu'une obligation
+de conservation s'applique à une seule conversation, sans désactiver la
+conservation pour toutes les autres conversations.
 
 1. Ouvrez **Inbox** et sélectionnez la conversation.
-2. Ouvrez le panneau des détails.
+2. Ouvrez le panneau Details.
 3. Sélectionnez **Place legal hold** dans la carte **Retention**.
 
-La conservation est maintenue jusqu'à ce qu'un membre sélectionne **Release
-legal hold**. Chaque membre voit le statut de mise en attente. Seul un membre
-habilité à gérer les membres peut placer ou lever une mise en attente.
+La suspension reste en vigueur jusqu'à ce qu'un membre sélectionne **Release
+legal hold**. Chaque membre voit le statut de la mise en suspens. Seul un membre
+autorisé à gérer les membres peut placer ou lever une mise en attente.
 
 ## Installations auto-hébergées
 
-Le nettoyage nocturne est exécuté à partir du planificateur intégré. Aucune
-configuration supplémentaire n'est nécessaire. Le nettoyage appelle
+Le nettoyage nocturne s'exécute à partir du planificateur intégré. Aucune
+configuration supplémentaire n'est nécessaire. Le processus de nettoyage appelle
 `/api/cron/sweep-retention` avec l'identifiant `CRON_SECRET`.

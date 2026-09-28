@@ -38,11 +38,11 @@ const GPL2_NO_LATER = /^gpl-2(\.0)?(-only)?$/;
 
 // A single operand is denied if it is exactly-GPL-2.0 or contains any
 // non-GPL denylist token.
-function isDeniedOperand(operand, denyList) {
+function isDeniedOperand(operand) {
   const o = operand.trim().toLowerCase();
   if (!o || o === "and" || o === "or") return false;
   if (GPL2_NO_LATER.test(o)) return true;
-  return denyList.some((token) => {
+  return DEFAULT_DENYLIST.some((token) => {
     const t = token.toLowerCase();
     // GPL-2.0 tokens are handled by the anchored regex above, substring
     // matching them would false-deny LGPL-2.x and GPL-2.0-or-later.
@@ -54,7 +54,7 @@ function isDeniedOperand(operand, denyList) {
 // Evaluate an SPDX expression. OR means the consumer may pick any operand,
 // so it is a violation only if EVERY operand is denied. AND (or a single
 // license) is a violation if ANY operand is denied.
-export function isDeniedExpression(expression, denyList = DEFAULT_DENYLIST) {
+export function isDeniedExpression(expression) {
   if (!expression) return false;
   const normalized = expression.replace(/[()]/g, " ");
   const hasOr = /\bor\b/i.test(normalized);
@@ -65,19 +65,19 @@ export function isDeniedExpression(expression, denyList = DEFAULT_DENYLIST) {
   if (operands.length === 0) return false;
   if (hasOr && !/\band\b/i.test(normalized)) {
     // pure OR expression: denied only if no permissive choice exists
-    return operands.every((op) => isDeniedOperand(op, denyList));
+    return operands.every(isDeniedOperand);
   }
   // single license, or AND (all must be satisfiable): denied if any is denied
-  return operands.some((op) => isDeniedOperand(op, denyList));
+  return operands.some(isDeniedOperand);
 }
 
 // licenseMap: { "<license string>": [{ name, versions, ... }, ...] },
 // the shape emitted by `pnpm licenses list --json`.
 // Returns [{ package, version, license }] for every denied dependency.
-export function findLicenseViolations(licenseMap, denyList = DEFAULT_DENYLIST) {
+export function findLicenseViolations(licenseMap) {
   const violations = [];
   for (const [license, pkgs] of Object.entries(licenseMap || {})) {
-    if (!isDeniedExpression(license, denyList)) continue;
+    if (!isDeniedExpression(license)) continue;
     for (const pkg of pkgs || []) {
       violations.push({
         package: pkg.name ?? "(unknown)",

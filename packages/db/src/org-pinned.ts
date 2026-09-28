@@ -72,6 +72,14 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "listProviderConnections",
   "createProviderConnection",
   "setEmbeddingConnectionId",
+  // Memory-document reads (#771), see the `writeMemoryDocument` branch below.
+  "getMemoryDocument",
+  // Organization-first, so it is substituted like every other org-scoped
+  // read. It was briefly a bare passthrough on the reasoning that a document
+  // id only ever arrives from a read this proxy already pinned; that is true
+  // of today's callers and is not a property of the seam, which is the only
+  // thing a fail-closed boundary may rely on.
+  "listMemoryDocumentEntries",
 ]);
 
 /**
@@ -107,6 +115,13 @@ const sourceOwner: OwnerResolver = async (inner, id, organizationId) => {
 };
 
 /**
+ * proposalId → organization. A Suggested Fix carries its own stamp, so this is
+ * one read rather than a walk through the Improvement the caller named.
+ */
+const improvementProposalOwner: OwnerResolver = async (inner, id) =>
+  (await inner.getImprovementProposalById(id))?.organizationId ?? null;
+
+/**
  * conversationId → owner → organization.
  *
  * A Conversation is owned by an Assistant **or** by a Teammate (#768), never
@@ -114,14 +129,7 @@ const sourceOwner: OwnerResolver = async (inner, id, organizationId) => {
  * at neither resolves to null and is unreachable through this view, rather than
  * quietly visible to every tenant.
  */
-/**
- * proposalId → organization. A Suggested Fix carries its own stamp, so this is
- * one read rather than a walk through the Improvement the caller named.
- */
-const improvementProposalOwner: OwnerResolver = async (inner, id) =>
-  (await inner.getImprovementProposalById(id))?.organizationId ?? null;
-
-const conversationOwnerOf: OwnerResolver = async (
+const conversationOwner: OwnerResolver = async (
   inner,
   id,
   organizationId
@@ -145,8 +153,6 @@ async function conversationRowOwner(
   }
   return null;
 }
-
-const conversationOwner = conversationOwnerOf;
 
 /** messageId → conversation → its owner → organization. */
 const messageOwner: OwnerResolver = async (inner, id, organizationId) => {
@@ -191,26 +197,20 @@ const entityOwner: OwnerResolver = async (inner, id) =>
   (await inner.table("entities").get(id))?.organizationId ?? null;
 
 /** Rows only reachable by membership in an org-scoped list. */
-const inviteOwner: OwnerResolver = async (inner, id, organizationId) =>
-  (await inner.listInvites(organizationId)).some((invite) => invite.id === id)
-    ? organizationId
-    : null;
+const listedIn =
+  (
+    list: (inner: Db, organizationId: string) => Promise<Array<{ id: string }>>
+  ): OwnerResolver =>
+  async (inner, id, organizationId) =>
+    (await list(inner, organizationId)).some((row) => row.id === id)
+      ? organizationId
+      : null;
 
-const apiKeyOwner: OwnerResolver = async (inner, id, organizationId) =>
-  (await inner.listApiKeys(organizationId)).some((key) => key.id === id)
-    ? organizationId
-    : null;
-
-const providerConnectionOwner: OwnerResolver = async (
-  inner,
-  id,
-  organizationId
-) =>
-  (await inner.listProviderConnections(organizationId)).some(
-    (connection) => connection.id === id
-  )
-    ? organizationId
-    : null;
+const inviteOwner = listedIn((inner, org) => inner.listInvites(org));
+const apiKeyOwner = listedIn((inner, org) => inner.listApiKeys(org));
+const providerConnectionOwner = listedIn((inner, org) =>
+  inner.listProviderConnections(org)
+);
 
 /** Application Connections carry their organizationId directly (#839). */
 const applicationConnectionOwner: OwnerResolver = async (inner, id) =>
@@ -220,10 +220,7 @@ const applicationConnectionOwner: OwnerResolver = async (inner, id) =>
 const reviewRequestOwner: OwnerResolver = async (inner, id) =>
   (await inner.table("reviewRequests").get(id))?.organizationId ?? null;
 
-const alertOwner: OwnerResolver = async (inner, id, organizationId) =>
-  (await inner.listAlerts(organizationId)).some((alert) => alert.id === id)
-    ? organizationId
-    : null;
+const alertOwner = listedIn((inner, org) => inner.listAlerts(org));
 
 const supportChannelOwner: OwnerResolver = async (
   inner,
@@ -579,7 +576,7 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
        * inside the input object rather than as the first argument, so it is
        * stamped the way `listMemories` is, and a forged one in the payload
        * cannot place a document in another tenant. The read takes it as the
-       * first argument, so it is substituted there.
+       * first argument, so it is in `ORG_SCOPED_METHODS`.
        *
        * Reading arrived with the Projects and Agent-memory endpoints: both
        * serve the document *and* its history, so `getMemoryDocument` and
@@ -595,17 +592,6 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
       if (method === "writeMemoryDocument") {
         return (...args: unknown[]) =>
           call({ ...((args[0] ?? {}) as object), organizationId });
-      }
-      if (method === "getMemoryDocument") {
-        return (...args: unknown[]) => call(organizationId, ...args.slice(1));
-      }
-      if (method === "listMemoryDocumentEntries") {
-        // Organization-first, so the proxy substitutes it like every other
-        // org-scoped read. It was briefly a bare passthrough on the reasoning
-        // that a document id only ever arrives from a read this proxy already
-        // pinned; that is true of today's callers and is not a property of the
-        // seam, which is the only thing a fail-closed boundary may rely on.
-        return (...args: unknown[]) => call(organizationId, ...args.slice(1));
       }
 
       /**

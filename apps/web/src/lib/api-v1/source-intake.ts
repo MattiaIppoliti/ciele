@@ -1,7 +1,7 @@
 import { extractSourceText } from "@agent-hub/agent";
 import type { TriageEvidence } from "@agent-hub/core";
 import { isSupabaseConfigured } from "@agent-hub/db";
-import { apiError } from "@/lib/api-v1/http";
+import { apiError, apiRateLimited } from "@/lib/api-v1/http";
 import { requireApiCapability, resolveApiKeyContext } from "@/lib/api-v1/auth";
 import { checkUploadAllowance, uploadThrottledMessage } from "@/lib/upload-limit";
 import {
@@ -155,10 +155,5 @@ export async function intakeSource(
 
 /** The 429 the console doors express as a form error; here a status and a header. */
 function rateLimited(retryAfterMs: number): Response {
-  const response = apiError(429, "rate_limited", uploadThrottledMessage(retryAfterMs));
-  response.headers.set(
-    "retry-after",
-    String(Math.max(1, Math.ceil(retryAfterMs / 1000)))
-  );
-  return response;
+  return apiRateLimited(uploadThrottledMessage(retryAfterMs), retryAfterMs);
 }

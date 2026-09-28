@@ -69,16 +69,15 @@ function wallClock(value: string | undefined): string | null {
  */
 function wallClockInZone(now: Date, timezone: string): string {
   // sv-SE is the locale whose Date format IS "YYYY-MM-DD HH:MM:SS".
-  const local = () => now.toLocaleString("sv-SE").replace(" ", "T").slice(0, 16);
-  if (!timezone.trim()) return local();
+  let local: string;
   try {
-    return now
-      .toLocaleString("sv-SE", { timeZone: timezone })
-      .replace(" ", "T")
-      .slice(0, 16);
+    local = now.toLocaleString("sv-SE", {
+      timeZone: timezone.trim() ? timezone : undefined,
+    });
   } catch {
-    return local();
+    local = now.toLocaleString("sv-SE");
   }
+  return local.replace(" ", "T").slice(0, 16);
 }
 
 /**

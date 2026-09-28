@@ -99,13 +99,11 @@ export function rankSpenders(
   rows: readonly UsageSpenderRow[],
   dimension: UsageSpenderDimension
 ): SpenderTotal[] {
-  const totals = new Map<string, SpenderTotal>();
+  const totals = new Map<string | null, SpenderTotal>();
   for (const row of rows) {
     const id = idFor(row, dimension);
-    // A null id is a bucket of its own and must not collide with an entity
-    // literally named "null"; the prefix keeps the two apart.
-    const key = id === null ? "\0unattributed" : `id:${id}`;
-    const at = totals.get(key) ?? {
+    // A null id is the unattributed bucket, a key of its own.
+    const at = totals.get(id) ?? {
       dimension,
       id,
       credits: 0,
@@ -120,7 +118,7 @@ export function rankSpenders(
     if (row.credentialKind === "platform") at.platformCredits += credits;
     else at.ownCredits += credits;
     at.calls += row.calls;
-    totals.set(key, at);
+    totals.set(id, at);
   }
   return [...totals.values()].sort((a, b) => {
     // The unattributed bucket sorts by cost like any other, so a large one is

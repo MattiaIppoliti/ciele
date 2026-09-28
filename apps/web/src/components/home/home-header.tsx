@@ -177,6 +177,11 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
 
   React.useEffect(() => cancelClose, [cancelClose]);
 
+  // A click on any link inside a CTA cluster closes the mobile menu.
+  const closeOnLink = (event: React.MouseEvent) => {
+    if ((event.target as HTMLElement).closest("a")) setMenuState(false);
+  };
+
   const measure = React.useCallback((name: string) => {
     const trigger = triggerRefs.current.get(name);
     const list = listRef.current;
@@ -422,11 +427,7 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
               {/* Desktop inline nav cluster (theme toggle + CTAs); hidden on
                   mobile, where the top bar and the buttons below take over. */}
               <div
-                onClick={(event) => {
-                  if ((event.target as HTMLElement).closest("a")) {
-                    setMenuState(false);
-                  }
-                }}
+                onClick={closeOnLink}
                 className="hidden items-center gap-3 lg:flex"
               >
                 <GithubLink />
@@ -465,11 +466,7 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
               {/* Mobile: large CTA buttons absolutely pinned to the bottom
                   edge, so they ride it down smoothly as the card grows. */}
               <div
-                onClick={(event) => {
-                  if ((event.target as HTMLElement).closest("a")) {
-                    setMenuState(false);
-                  }
-                }}
+                onClick={closeOnLink}
                 className="absolute inset-x-6 bottom-8 flex flex-col gap-3 lg:hidden"
               >
                 <div className="home-cta-authed">

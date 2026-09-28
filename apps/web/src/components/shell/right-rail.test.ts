@@ -10,7 +10,7 @@ describe("rightRailVars", () => {
   it("publishes a docked panel's width in pixels", () => {
     expect(rightRailVars({ width: 400, animated: true })).toEqual({
       [RIGHT_RAIL_WIDTH_VAR]: "400px",
-      [RIGHT_RAIL_TRANSITION_VAR]: "right 200ms ease-out",
+      [RIGHT_RAIL_TRANSITION_VAR]: "transform 200ms ease-out",
     });
   });
 

@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { Input, Label } from "@agent-hub/ui";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/motion/tabs";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { sourceTypeLabel } from "@/lib/knowledge-hub";
 import {
   SCOPE_TABS,
@@ -15,6 +17,14 @@ import {
   type ScopeSource,
   type ScopeTab,
 } from "@/lib/teammates/knowledge-scope";
+
+/**
+ * A row off screen skips layout and paint: a Library tab can list hundreds of
+ * sources, and this box shows eight. The intrinsic size is one row's height,
+ * so the scrollbar stays honest before a row has been drawn.
+ */
+const COLLECTION_ROW = "[content-visibility:auto] [contain-intrinsic-size:auto_2.25rem]";
+const SOURCE_ROW = "[content-visibility:auto] [contain-intrinsic-size:auto_3rem]";
 
 /**
  * The Knowledge Scope picker: what this Teammate may search.
@@ -85,119 +95,123 @@ export function KnowledgeScopePicker({
       <Label>Knowledge</Label>
 
       {/* One row of tabs rather than one long list: a Library with sixty
-          websites in it would bury the Collections a Member usually wants. */}
-      <div className="flex flex-wrap gap-1.5" role="tablist">
-        {SCOPE_TABS.map((slug) => (
-          <button
-            key={slug}
-            type="button"
-            role="tab"
-            aria-selected={tab === slug}
-            // The search box belongs to the tab it filters: carrying a query
-            // across would open the next tab looking empty.
-            onClick={() => {
-              setTab(slug);
-              setQuery("");
-            }}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${
-              tab === slug
-                ? "border-primary bg-primary/5 text-primary"
-                : "hover:bg-muted"
-            }`}
-          >
-            {SCOPE_TAB_LABELS[slug]}
-            <span className="text-muted-foreground text-xs">
-              {counts[slug]}
-            </span>
-            {selectedCounts[slug] > 0 && (
-              <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-xs font-semibold">
-                {selectedCounts[slug]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {counts[tab] > 8 && (
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value.slice(0, 200))}
-          placeholder={`Search ${SCOPE_TAB_LABELS[tab].toLowerCase()}`}
-          aria-label={`Search ${SCOPE_TAB_LABELS[tab].toLowerCase()}`}
-        />
-      )}
-
-      <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border p-2">
-        {tab === "collections" ? (
-          collections.length === 0 ? (
-            <p className="text-muted-foreground px-2 py-1.5 text-sm">
-              No collections yet. Pick websites, files or FAQs, or leave empty.
-            </p>
-          ) : visibleCollections.length === 0 ? (
-            <p className="text-muted-foreground px-2 py-1.5 text-sm">
-              No collection matches that.
-            </p>
-          ) : (
-            visibleCollections.map((collection) => (
-              <label
-                key={collection.id}
-                className="hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-              >
-                <Checkbox
-                  checked={collectionIds.includes(collection.id)}
-                  onCheckedChange={(on) =>
-                    toggle(
-                      collection.id,
-                      on === true,
-                      collectionIds,
-                      onCollectionsChange
-                    )
-                  }
-                />
-                {collection.name}
-              </label>
-            ))
-          )
-        ) : counts[tab] === 0 ? (
-          <p className="text-muted-foreground px-2 py-1.5 text-sm">
-            Nothing in your Library&apos;s{" "}
-            {SCOPE_TAB_LABELS[tab].toLowerCase()} yet.
-          </p>
-        ) : visibleSources.length === 0 ? (
-          <p className="text-muted-foreground px-2 py-1.5 text-sm">
-            Nothing matches that.
-          </p>
-        ) : (
-          visibleSources.map((source) => {
-            const covered = coveringCollectionName(
-              source,
-              collectionIds,
-              collections
-            );
-            return (
-              <label
-                key={source.id}
-                className="hover:bg-muted/50 flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm"
-              >
-                <Checkbox
-                  className="mt-0.5"
-                  checked={sourceIds.includes(source.id)}
-                  onCheckedChange={(on) =>
-                    toggle(source.id, on === true, sourceIds, onSourcesChange)
-                  }
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">{source.name}</span>
-                  <span className="text-muted-foreground block text-xs">
-                    {sourceTypeLabel(source.kind)}
-                    {covered ? ` · already in scope via ${covered}` : ""}
-                  </span>
+          websites in it would bury the Collections a Member usually wants.
+          The same pill rail as the Library's own tabs, since these are its
+          buckets. */}
+      <Tabs
+        value={tab}
+        // The search box belongs to the tab it filters: carrying a query
+        // across would open the next tab looking empty.
+        onValueChange={(slug) => {
+          setTab(slug as ScopeTab);
+          setQuery("");
+        }}
+      >
+        <TabsList aria-label="Knowledge to search" className="bg-muted">
+          {SCOPE_TABS.map((slug) => (
+            <TabsTrigger key={slug} value={slug} className="gap-2">
+              {SCOPE_TAB_LABELS[slug]}
+              <RollingNumber value={counts[slug]} className="text-xs opacity-70" />
+              {selectedCounts[slug] > 0 && (
+                <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-xs font-semibold">
+                  <RollingNumber value={selectedCounts[slug]} />
+                  <span className="sr-only"> selected</span>
                 </span>
-              </label>
-            );
-          })
-        )}
-      </div>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {SCOPE_TABS.map((slug) => (
+          <TabsContent key={slug} value={slug} className="mt-2 space-y-2">
+            {/* Only the open tab renders its rows; the others keep an empty
+                panel for their tab to point at. */}
+            {slug === tab && (
+              <>
+                {counts[tab] > 8 && (
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value.slice(0, 200))}
+                    placeholder={`Search ${SCOPE_TAB_LABELS[tab].toLowerCase()}`}
+                    aria-label={`Search ${SCOPE_TAB_LABELS[tab].toLowerCase()}`}
+                  />
+                )}
+
+                <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border p-2">
+                  {tab === "collections" ? (
+                    collections.length === 0 ? (
+                      <p className="text-muted-foreground px-2 py-1.5 text-sm">
+                        No collections yet. Pick websites, files or FAQs, or leave empty.
+                      </p>
+                    ) : visibleCollections.length === 0 ? (
+                      <p className="text-muted-foreground px-2 py-1.5 text-sm">
+                        No collection matches that.
+                      </p>
+                    ) : (
+                      visibleCollections.map((collection) => (
+                        <label
+                          key={collection.id}
+                          className={`hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${COLLECTION_ROW}`}
+                        >
+                          <Checkbox
+                            checked={collectionIds.includes(collection.id)}
+                            onCheckedChange={(on) =>
+                              toggle(
+                                collection.id,
+                                on === true,
+                                collectionIds,
+                                onCollectionsChange
+                              )
+                            }
+                          />
+                          {collection.name}
+                        </label>
+                      ))
+                    )
+                  ) : counts[tab] === 0 ? (
+                    <p className="text-muted-foreground px-2 py-1.5 text-sm">
+                      Nothing in your Library&apos;s{" "}
+                      {SCOPE_TAB_LABELS[tab].toLowerCase()} yet.
+                    </p>
+                  ) : visibleSources.length === 0 ? (
+                    <p className="text-muted-foreground px-2 py-1.5 text-sm">
+                      Nothing matches that.
+                    </p>
+                  ) : (
+                    visibleSources.map((source) => {
+                      const covered = coveringCollectionName(
+                        source,
+                        collectionIds,
+                        collections
+                      );
+                      return (
+                        <label
+                          key={source.id}
+                          className={`hover:bg-muted/50 flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm ${SOURCE_ROW}`}
+                        >
+                          <Checkbox
+                            className="mt-0.5"
+                            checked={sourceIds.includes(source.id)}
+                            onCheckedChange={(on) =>
+                              toggle(source.id, on === true, sourceIds, onSourcesChange)
+                            }
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">{source.name}</span>
+                            <span className="text-muted-foreground block text-xs">
+                              {sourceTypeLabel(source.kind)}
+                              {covered ? ` · already in scope via ${covered}` : ""}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
 
       <p className="text-muted-foreground text-sm">
         {knowledgeScopeSummary({ collectionIds, sourceIds })}

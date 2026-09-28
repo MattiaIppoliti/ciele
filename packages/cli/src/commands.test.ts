@@ -330,7 +330,92 @@ describe("flow commands", () => {
   });
 });
 
+describe("assistants ask", () => {
+  it("posts the question and prints the answer, its citations and how to continue", async () => {
+    const { deps, calls, out } = harness(() => ({
+      json: {
+        conversationId: "conv-1",
+        messageId: "msg-1",
+        flowName: null,
+        answer: "Open the Library, then Applications.",
+        sources: [
+          {
+            documentId: "c1",
+            documentTitle: "Connect Salesforce",
+            sourceId: "s1",
+            sourceName: "Salesforce",
+            collectionName: "Knowledge Library",
+            url: "https://help.example/sf",
+          },
+        ],
+        error: null,
+      },
+    }));
+    const code = await runCli(
+      ["assistants", "ask", "a1", "How", "do", "I", "connect?", "--conversation", "conv-0"],
+      deps
+    );
+    expect(code).toBe(EXIT.ok);
+    expect(calls[0]).toMatchObject({ method: "POST", url: "http://self.host/api/v1/assistants/a1/ask" });
+    expect(JSON.parse(calls[0].body!)).toEqual({
+      question: "How do I connect?",
+      conversationId: "conv-0",
+    });
+    const printed = out.join("\n");
+    expect(printed).toContain("Open the Library, then Applications.");
+    expect(printed).toContain("[1] Connect Salesforce https://help.example/sf");
+    expect(printed).toContain("Continue with --conversation conv-1");
+  });
+
+  it("exits non-zero when the turn failed, and needs a question", async () => {
+    const { deps } = harness(() => ({
+      json: { conversationId: "c", messageId: null, flowName: null, answer: "Sorry.", sources: [], error: "boom" },
+    }));
+    expect(await runCli(["assistants", "ask", "a1", "Hi"], deps)).toBe(EXIT.error);
+    const { deps: bare, calls } = harness();
+    expect(await runCli(["assistants", "ask", "a1"], bare)).toBe(EXIT.usage);
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe("knowledge commands", () => {
+  it("knowledge search posts the whole query and prints each passage with its Source", async () => {
+    const { deps, calls, out } = harness(() => ({
+      json: {
+        query: "reset my password",
+        assistantId: "a1",
+        results: [
+          {
+            rank: 1,
+            content: "Go to the account page\nand choose Reset.",
+            documentId: "c1",
+            documentTitle: "Reset your password",
+            sourceId: "s1",
+            sourceName: "Help center",
+            collectionName: "Knowledge Library",
+            url: "https://help.example/reset",
+            score: 0.8,
+          },
+        ],
+      },
+    }));
+    const code = await runCli(
+      ["knowledge", "search", "reset", "my", "password", "--assistant", "a1"],
+      deps
+    );
+    expect(code).toBe(EXIT.ok);
+    expect(calls[0]).toMatchObject({ method: "POST", url: "http://self.host/api/v1/knowledge/search" });
+    expect(JSON.parse(calls[0].body!)).toEqual({ query: "reset my password", assistantId: "a1" });
+    expect(out.join("\n")).toContain("1. Reset your password (Help center)");
+    expect(out.join("\n")).toContain("   Go to the account page and choose Reset.");
+  });
+
+  it("knowledge search without a query prints usage and sends nothing", async () => {
+    const { deps, calls } = harness();
+    expect(await runCli(["knowledge", "search"], deps)).not.toBe(EXIT.ok);
+    expect(calls).toHaveLength(0);
+  });
+
   it("sources add-text reads a local file; add-file uploads multipart", async () => {
     const dir = tmp();
     const textPath = join(dir, "handbook.txt");
@@ -673,6 +758,17 @@ describe("entities and records commands", () => {
     expect(await runCli(["records", "query", "e1", "--file", queryPath], deps)).toBe(EXIT.ok);
     expect(calls[0].url).toContain("/entities/e1/records/query");
     expect(JSON.parse(calls[0].body!)).toEqual({ filters: { delayed: true }, limit: 20 });
+  });
+
+  it("sends a --file holding a bare number instead of exiting with it", async () => {
+    const dir = tmp();
+    const queryPath = join(dir, "query.json");
+    writeFileSync(queryPath, "5");
+    const { deps, calls } = harness(() => ({ json: { data: [] } }));
+    expect(await runCli(["records", "query", "e1", "--file", queryPath], deps)).toBe(EXIT.ok);
+    expect(calls[0].body).toBe("5");
+    expect(await runCli(["records", "query", "e1"], deps)).toBe(EXIT.usage);
+    expect(calls).toHaveLength(1);
   });
 });
 

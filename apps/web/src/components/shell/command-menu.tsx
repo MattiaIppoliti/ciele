@@ -174,11 +174,11 @@ export function CommandMenu({
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-background/5 supports-backdrop-filter:backdrop-blur-md supports-backdrop-filter:backdrop-saturate-150 data-open:duration-200 data-closed:duration-100"
-        className="top-[18vh] translate-y-0 gap-0 overflow-hidden rounded-2xl p-0 shadow-2xl will-change-transform sm:max-w-xl data-open:duration-300 data-open:ease-[cubic-bezier(0.16,1,0.3,1)] data-open:slide-in-from-top-2 data-closed:duration-100 data-closed:slide-out-to-top-2"
+        className="top-[18vh] translate-y-0 gap-0 overflow-hidden rounded-2xl p-0 shadow-2xl will-change-transform sm:max-w-xl data-open:duration-300 data-open:ease-[cubic-bezier(0.16,1,0.3,1)] data-open:slide-in-from-top-2 data-closed:duration-100 data-closed:slide-out-to-top-2 motion-reduce:data-open:slide-in-from-top-0 motion-reduce:data-open:zoom-in-100 motion-reduce:data-closed:slide-out-to-top-0 motion-reduce:data-closed:zoom-out-100"
       >
         <DialogTitle className="sr-only">Find</DialogTitle>
         <div className="flex items-center gap-2.5 border-b px-4">
-          <Search className="text-muted-foreground size-4 shrink-0" />
+          <Search aria-hidden className="text-muted-foreground size-4 shrink-0" />
           <input
             autoFocus={canAutoFocus()}
             data-foley-type=""
@@ -207,7 +207,7 @@ export function CommandMenu({
           id={`${uid}-list`}
           role="listbox"
           aria-label="Find results"
-          className="relative max-h-80 overflow-y-auto p-2"
+          className="relative max-h-80 overflow-y-auto overscroll-contain p-2"
         >
           {highlight && items.length > 0 && (
             <div
@@ -220,14 +220,19 @@ export function CommandMenu({
             />
           )}
           {items.length === 0 && (
-            <p className="text-muted-foreground px-3 py-8 text-center text-sm">
+            <p className="text-muted-foreground px-3 py-8 text-center text-sm break-words">
               No results for “{query}”.
             </p>
           )}
-          {grouped.map(([group, list]) => (
-            <div key={group} className="mb-1 last:mb-0">
+          {grouped.map(([group, list], groupIndex) => (
+            <div
+              key={group}
+              role="group"
+              aria-labelledby={`${uid}-group-${groupIndex}`}
+              className="mb-1 last:mb-0"
+            >
               <div
-                aria-hidden
+                id={`${uid}-group-${groupIndex}`}
                 className="text-muted-foreground px-2 py-1.5 text-2xs font-semibold tracking-wider uppercase"
               >
                 {group}
@@ -243,6 +248,9 @@ export function CommandMenu({
                     type="button"
                     id={`${uid}-opt-${index}`}
                     role="option"
+                    // Focus stays in the input (aria-activedescendant), so
+                    // the options are not tab stops of their own.
+                    tabIndex={-1}
                     aria-selected={isActive}
                     data-index={index}
                     onMouseEnter={() => setActive(index)}

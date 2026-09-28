@@ -10,18 +10,22 @@ import { CHANNELS, type AppState, type CieleBridge, type Mode } from "../shared/
 import { SETUP_CHANNELS, type SetupBridge, type SetupSnapshot } from "../shared/setup-ipc";
 import { STACK_CHANNELS, type StackBridge, type StackStatus } from "../shared/stack";
 
+/**
+ * A listener on one fixed push channel from main; the return unsubscribes.
+ * The channel is bound here, so the renderer still cannot pick one.
+ */
+function subscribe<T>(channel: string) {
+  return (listener: (payload: T) => void) => {
+    const handler = (_event: unknown, payload: T) => listener(payload);
+    ipcRenderer.on(channel, handler);
+    return () => ipcRenderer.off(channel, handler);
+  };
+}
+
 const bridge: CieleBridge & SetupBridge & StackBridge = {
   getState: () => ipcRenderer.invoke(CHANNELS.getState),
-  onState: (listener: (state: AppState) => void) => {
-    const handler = (_event: unknown, state: AppState) => listener(state);
-    ipcRenderer.on(CHANNELS.stateChanged, handler);
-    return () => ipcRenderer.off(CHANNELS.stateChanged, handler);
-  },
-  onNavigate: (listener: (route: string) => void) => {
-    const handler = (_event: unknown, route: string) => listener(route);
-    ipcRenderer.on(CHANNELS.navigate, handler);
-    return () => ipcRenderer.off(CHANNELS.navigate, handler);
-  },
+  onState: subscribe<AppState>(CHANNELS.stateChanged),
+  onNavigate: subscribe<string>(CHANNELS.navigate),
   chooseMode: (mode: Mode) => ipcRenderer.invoke(CHANNELS.chooseMode, mode),
   openProduct: () => ipcRenderer.invoke(CHANNELS.openProduct),
   signOut: () => ipcRenderer.invoke(CHANNELS.signOut),
@@ -32,11 +36,7 @@ const bridge: CieleBridge & SetupBridge & StackBridge = {
 
   setup: {
     getSnapshot: () => ipcRenderer.invoke(SETUP_CHANNELS.getSnapshot),
-    onSnapshot: (listener: (snapshot: SetupSnapshot) => void) => {
-      const handler = (_event: unknown, snapshot: SetupSnapshot) => listener(snapshot);
-      ipcRenderer.on(SETUP_CHANNELS.snapshotChanged, handler);
-      return () => ipcRenderer.off(SETUP_CHANNELS.snapshotChanged, handler);
-    },
+    onSnapshot: subscribe<SetupSnapshot>(SETUP_CHANNELS.snapshotChanged),
     run: () => ipcRenderer.invoke(SETUP_CHANNELS.run),
     retry: () => ipcRenderer.invoke(SETUP_CHANNELS.retry),
     skip: () => ipcRenderer.invoke(SETUP_CHANNELS.skip),
@@ -48,11 +48,7 @@ const bridge: CieleBridge & SetupBridge & StackBridge = {
 
   stack: {
     status: () => ipcRenderer.invoke(STACK_CHANNELS.status),
-    onStatus: (listener: (status: StackStatus) => void) => {
-      const handler = (_event: unknown, status: StackStatus) => listener(status);
-      ipcRenderer.on(STACK_CHANNELS.statusChanged, handler);
-      return () => ipcRenderer.off(STACK_CHANNELS.statusChanged, handler);
-    },
+    onStatus: subscribe<StackStatus>(STACK_CHANNELS.statusChanged),
     start: () => ipcRenderer.invoke(STACK_CHANNELS.start),
     stop: () => ipcRenderer.invoke(STACK_CHANNELS.stop),
   },

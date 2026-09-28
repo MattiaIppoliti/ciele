@@ -21,12 +21,7 @@ import {
  * counting and then inserting leaves a gap two concurrent creates both pass.
  */
 
-const cadenceSchema = z.enum(
-  ROUTINE_CADENCES as unknown as [
-    (typeof ROUTINE_CADENCES)[number],
-    ...(typeof ROUTINE_CADENCES)[number][],
-  ]
-);
+const cadenceSchema = z.enum(ROUTINE_CADENCES);
 const instructionSchema = z.string().min(1).max(2000);
 const hourSchema = z.number().int().min(0).max(23);
 

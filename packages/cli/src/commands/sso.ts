@@ -1,7 +1,5 @@
 import { EXIT } from "../index.ts";
-import { usage, type CommandContext } from "./shared.ts";
-import { readFileSync } from "node:fs";
-import { str } from "./shared.ts";
+import { jsonFile, usage, type CommandContext } from "./shared.ts";
 
 export async function sso(verb: string | undefined, ctx: CommandContext) {
   const { client, rest, emit, deps } = ctx;
@@ -29,11 +27,12 @@ export async function sso(verb: string | undefined, ctx: CommandContext) {
       return result.ok ? EXIT.ok : EXIT.error;
     }
     case "connect": {
-      const file = str(ctx.flags.file);
-      if (!file) return usage(deps, "sso connect --file <connection.json>");
-      const result = await client.sso.connect(
-        JSON.parse(readFileSync(file, "utf8")) as Parameters<typeof client.sso.connect>[0]
+      const input = jsonFile<Parameters<typeof client.sso.connect>[0]>(
+        ctx,
+        "sso connect --file <connection.json>"
       );
+      if (input === undefined) return EXIT.usage;
+      const result = await client.sso.connect(input);
       emit("SSO connection saved", result);
       return EXIT.ok;
     }

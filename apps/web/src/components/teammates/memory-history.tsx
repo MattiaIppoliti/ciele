@@ -54,7 +54,8 @@ export function MemoryHistory({
                 {historyAuthor({ entry, teammateNames })}
                 <span className="text-muted-foreground font-normal">
                   {" · "}
-                  {formatDateTime(entry.createdAt)}
+                  {/* `formatDateTime` renders UTC, so it says so. */}
+                  {formatDateTime(entry.createdAt)} UTC
                   {" · "}
                   {historyChangeSummary(change)}
                 </span>

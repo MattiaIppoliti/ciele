@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampPageLimit,
+  decodeMemorySubjectCursor,
   finalizeImprovementPage,
+  finalizePage,
   normalizeImprovementPageInput,
 } from "./improvement-pagination";
 
@@ -29,5 +32,37 @@ describe("improvement pagination", () => {
       items: [{ seq: 9 }],
       nextCursor: null,
     });
+  });
+});
+
+describe("page helpers", () => {
+  it("clamps a page size to 1..100, truncating fractions", () => {
+    expect(clampPageLimit(0)).toBe(1);
+    expect(clampPageLimit(7.9)).toBe(7);
+    expect(clampPageLimit(500)).toBe(100);
+  });
+
+  it("names the last item as the cursor only when the extra row came back", () => {
+    const id = (row: { id: string }) => row.id;
+    expect(finalizePage([{ id: "a" }, { id: "b" }], 1, id)).toEqual({
+      items: [{ id: "a" }],
+      nextCursor: "a",
+    });
+    expect(finalizePage([{ id: "a" }], 1, id)).toEqual({
+      items: [{ id: "a" }],
+      nextCursor: null,
+    });
+  });
+
+  it("decodes a memory subject cursor or refuses it readably", () => {
+    expect(decodeMemorySubjectCursor('["2026-01-01","s1"]')).toEqual([
+      "2026-01-01",
+      "s1",
+    ]);
+    for (const bad of ["not json", "null", "[1, 2]"]) {
+      expect(() => decodeMemorySubjectCursor(bad)).toThrow(
+        "Invalid memory subject cursor",
+      );
+    }
   });
 });

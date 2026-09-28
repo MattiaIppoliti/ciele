@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { Badge } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { RollInText } from "@/components/motion/roll-in-text";
 import { ScopeSwitcher } from "@/components/shell/scope-switcher";
 import { DeveloperPanelButton } from "@/components/developer-panel/developer-panel-button";
 import { useShell } from "@/components/shell/shell-provider";
@@ -44,8 +45,13 @@ const subscribeNoop = () => () => {};
 /** Global top bar: scope switcher on the left, page title centered. */
 export function TopBar({ demo }: { demo: boolean }) {
   const pathname = usePathname();
-  const { sidebarDocked, setSidebarDocked, setNavDrawerOpen, topBarActions } =
-    useShell();
+  const {
+    sidebarDocked,
+    setSidebarDocked,
+    navDrawerOpen,
+    setNavDrawerOpen,
+    topBarActions,
+  } = useShell();
   const title = pageTitle(pathname);
   // topBarActions is registered from page components via useEffect, so with
   // selective hydration it can be set before this boundary hydrates. Server
@@ -58,17 +64,18 @@ export function TopBar({ demo }: { demo: boolean }) {
   );
 
   return (
-    <header className="bg-background/95 relative flex h-14 shrink-0 items-center gap-2 border-b px-2 backdrop-blur sm:gap-3 sm:px-4">
+    <header className="bg-background/95 relative flex h-14 shrink-0 items-center gap-2 border-b pr-[max(0.5rem,env(safe-area-inset-right))] pl-[max(0.5rem,env(safe-area-inset-left))] backdrop-blur sm:gap-3 sm:pr-[max(1rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))]">
       {/* Below `lg` the sidebar is off-canvas, so the hamburger is the only way
           into navigation and is always present. From `lg` up it disappears and
           the reopen button takes over, but only while the sidebar is hidden. */}
       <button
         type="button"
         aria-label="Open navigation"
+        aria-expanded={navDrawerOpen}
         onClick={() => setNavDrawerOpen(true)}
         className="text-muted-foreground hover:bg-muted hover:text-foreground z-10 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors lg:hidden"
       >
-        <Menu className="size-5" />
+        <Menu aria-hidden className="size-5" />
       </button>
       {!sidebarDocked && (
         <>
@@ -99,7 +106,9 @@ export function TopBar({ demo }: { demo: boolean }) {
         {/* `min-w-0`, or the nowrap title's max-content min-width makes it
             refuse to shrink and the scope switcher collapses to one letter
             beside it. Both need to be able to give. */}
-        <span className="min-w-0 truncate text-sm font-medium">{title}</span>
+        {/* The bar outlives navigation, so the title rolls from the page you
+            left to the one you opened. */}
+        <RollInText text={title} className="min-w-0 truncate text-sm font-medium" />
       </div>
       <div className="z-10 flex shrink-0 items-center gap-1 sm:gap-2">
         {mounted && topBarActions}

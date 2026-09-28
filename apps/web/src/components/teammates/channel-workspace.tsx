@@ -61,8 +61,11 @@ import {
   removeChannelTeammateAction,
   updateChannelAction,
 } from "@/app/(admin)/teammates/channels/actions";
+import { liveTurnStatus } from "@/components/chat/stored-trace";
 import { patchLastBot } from "@/components/chat/turn-session";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 /**
  * A Teammate group (#778, "channel" in the code): the 1:1 chat's transcript
@@ -144,25 +147,30 @@ export function ChannelWorkspace({
   const updateLastBot = (fn: (bot: ChatBotMsg) => ChatBotMsg) =>
     setMessages((prev) => patchLastBot(prev, fn));
 
-  async function send(text: string) {
+  /**
+   * Resolves whether the message reached the group. False only when the server
+   * refused it outright: the bubble is taken back and the composer gets the
+   * words back, because a bubble that looks delivered over an empty box is a
+   * message silently lost. A chain that fails later was still delivered.
+   */
+  async function send(text: string): Promise<boolean> {
     const message = text.trim();
-    if (!message || pending) return;
+    if (!message || pending) return false;
     setPending(true);
     playFeedback("send");
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "user",
-        text: message,
-        sentAt: new Date().toISOString(),
-        author: {
-          name:
-            roster.find((entry) => entry.id === currentUserId)?.name ?? "You",
-          avatarSeed: currentUserId,
-        },
+    const optimistic: ChatMsg = {
+      role: "user",
+      text: message,
+      sentAt: new Date().toISOString(),
+      author: {
+        name:
+          roster.find((entry) => entry.id === currentUserId)?.name ?? "You",
+        avatarSeed: currentUserId,
       },
-    ]);
+    };
+    setMessages((prev) => [...prev, optimistic]);
 
+    let delivered = false;
     try {
       const response = await fetch(
         `/api/teammates/channels/${channel.id}/chat`,
@@ -175,6 +183,7 @@ export function ChannelWorkspace({
       if (!response.ok || !response.body) {
         throw new Error(`Channel message failed (${response.status})`);
       }
+      delivered = true;
       await consumeChannelStream<ChatBotMsg>(response.body, {
         // A Teammate is about to speak: open its bubble, and every update that
         // follows belongs to it until the next speaker.
@@ -222,11 +231,15 @@ export function ChannelWorkspace({
       toast.error(
         error instanceof Error ? error.message : "Channel message failed"
       );
+      if (!delivered) {
+        setMessages((prev) => prev.filter((entry) => entry !== optimistic));
+      }
     } finally {
       setPending(false);
       // The roster's last-activity order and unread badges are server state.
       startTransition(() => router.refresh());
     }
+    return delivered;
   }
 
   const members = roster.filter((entry) => entry.kind === "member");
@@ -355,6 +368,7 @@ export function ChannelWorkspace({
         <MessageScroller
           className="min-h-0 flex-1"
           busy={pending}
+          status={liveTurnStatus(messages, pending)}
           navigation="rail"
           viewportClassName="px-4 py-5"
           contentClassName="space-y-4"
@@ -385,7 +399,7 @@ export function ChannelWorkspace({
         <div className="space-y-1.5 px-4 pb-4">
           <GroupComposer
             targets={mentionTargets}
-            onSubmit={(value) => void send(value)}
+            onSubmit={send}
             pending={pending}
             // No `#` here. The channel name with a hash in front of it reads as
             // something you can type or click, and nothing in this composer
@@ -443,7 +457,36 @@ function ChannelSettingsDialog({
   const [name, setName] = useState(channel.name);
   const [projectId, setProjectId] = useState(channel.projectId ?? "");
   const [isPending, startTransition] = useTransition();
+  // Which button started the transition, so only Save says "Saving…".
+  const [saving, setSaving] = useState(false);
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+
+  // Seeded from the channel each time the dialog opens, during render (the
+  // derived-state pattern): seeded once, a rename made elsewhere, or edits
+  // abandoned last time, came back on the next open.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setName(channel.name);
+      setProjectId(channel.projectId ?? "");
+    }
+  }
+
+  const dirty =
+    name !== channel.name || projectId !== (channel.projectId ?? "");
+
+  const { leave } = useUnsavedChanges({
+    dirty: open && dirty,
+    confirmDelete,
+    description: "The name and project edits are not saved yet.",
+  });
+
+  function requestClose() {
+    // Closing mid-save would hide whether the save landed.
+    if (isPending) return;
+    leave(onClose);
+  }
 
   function run(work: () => Promise<void>, done: string, back?: string) {
     startTransition(async () => {
@@ -455,6 +498,8 @@ function ChannelSettingsDialog({
         toast.error(
           error instanceof Error ? error.message : "Could not save the group"
         );
+      } finally {
+        setSaving(false);
       }
     });
   }
@@ -462,7 +507,7 @@ function ChannelSettingsDialog({
   return (
     <>
     {confirmDeleteModal}
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Group settings</DialogTitle>
@@ -509,8 +554,9 @@ function ChannelSettingsDialog({
             </p>
           </div>
           <Button
-            disabled={isPending || !name.trim()}
-            onClick={() =>
+            disabled={isPending || !name.trim() || !dirty}
+            onClick={() => {
+              setSaving(true);
               run(
                 async () => {
                   await updateChannelAction(channel.id, {
@@ -519,10 +565,10 @@ function ChannelSettingsDialog({
                   });
                 },
                 "Group saved"
-              )
-            }
+              );
+            }}
           >
-            Save
+            <RollInText text={saving ? "Saving…" : "Save"} />
           </Button>
 
           <section className="space-y-2 border-t pt-4">

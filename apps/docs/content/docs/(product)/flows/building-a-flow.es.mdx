@@ -1,24 +1,24 @@
 ---
 title: Crea un flujo
-description: Configura un desencadenante, las condiciones disponibles y las acciones de respuesta ordenadas.
+description: Configura un desencadenante, las condiciones disponibles y las acciones de respuesta en el orden deseado.
 ---
 
 ## Crea el flujo
 
-1. Abre un Asistente.
+1. Abre un asistente.
 2. Selecciona **Flows**.
 3. Crea un flujo.
 4. Introduce un nombre y una descripción claros.
 5. Selecciona un desencadenante.
 
-La descripción ayuda a Intent Classification a seleccionar un flujo de mensajes.
+La descripción ayuda a Intent Classification a seleccionar un Flow de mensajes.
 Indica la intención del visitante y el ámbito requerido.
 
-Un Flow se activa con un mensaje de un visitante, con un evento de widget o con
-una solicitud HTTP entrante. Los eventos del widget son la carga de la página,
-el tiempo en la página y la apertura del chat. El desencadenante decide qué
-condiciones y qué acciones puede usar el flujo. Consulta
-[HTTP y webhooks](/flows/http) para el desencadenante entrante.
+Un Flow se activa ante un mensaje de un Visitor, ante un evento de widget o ante
+una solicitud HTTP entrante. Los eventos del widget son page load, time on page
+y chat opens. El desencadenante decide qué condiciones y qué acciones puede
+utilizar el Flow. Consulta [HTTP and webhooks](/flows/http) para obtener
+información sobre el desencadenante de entrada.
 
 ## Añade condiciones de mensaje
 
@@ -26,31 +26,33 @@ Los flujos de mensajes admiten estos tipos de condiciones:
 
 | Condición | Comportamiento actual |
 | --- | --- |
-| Contexto de conversación | Añade ejemplos semánticos a la clasificación de intenciones. No es una puerta rígida. |
-| URL | Aplica una puerta dura de Coincidencia, Contiene o Regex. |
-| Programación | Aplica una puerta dura de inicio, finalización y zona horaria. |
+| Conversation context | Añade ejemplos semánticos a Intent Classification. No es una puerta estricta. |
+| URL | Aplica una puerta rígida de tipo Matches, Contains o Regex. |
+| Schedule | Aplica una puerta rígida de inicio, fin y zona horaria. |
 
-Selecciona **Any condition matches** o **All conditions match** cuando el flujo
+Selecciona **Any condition matches** o **All conditions match** cuando el Flow
 contenga más de una condición.
 
-Las condiciones de URL y Programación eliminan un flujo no apto antes de la
-clasificación. Una condición satisfecha no obliga al flujo a ganar.
+Las condiciones URL y Schedule eliminan un Flow no apto antes de la
+clasificación. El cumplimiento de una condición no obliga al Flow a imponerse.
 
 ## Añade acciones de respuesta
 
-1. Añade las acciones necesarias.
+1. Añade las acciones obligatorias.
 2. Coloca las acciones en su orden de ejecución.
 3. Configura todos los campos obligatorios.
-4. Guarda el flujo.
-5. Prueba un mensaje que coincida y otro que no coincida.
+4. Guarda el Flow.
+5. Prueba un mensaje que cumpla las condiciones y otro que no las cumpla.
 
-El editor limita los Flows proactivos a una acción de Notificación. El servidor
-aplica la misma regla cuando guarda o envía un Flow.
+El editor limita los Flujos proactivos a una única acción de Notification. El
+servidor aplica la misma regla cuando guarda o envía un Flow.
 
 ## Reordenar flujos
 
-Arrastra un Flow para cambiar la prioridad de enrutamiento de los mensajes. El
-flujo de comportamiento predeterminado permanece en último lugar.
+Arrastra un Flow para cambiar la prioridad de enrutamiento de los mensajes. Con
+el teclado, coloca el foco en el control de un Flow y pulsa la tecla de flecha
+arriba o abajo. El flujo de comportamiento predeterminado (Default behavior
+Flow) se mantiene en último lugar.
 
-Desactiva un Flow cuando debas detener su enrutamiento sin eliminar su
+Desactiva un Flow cuando tengas que detener su enrutamiento sin eliminar su
 configuración.

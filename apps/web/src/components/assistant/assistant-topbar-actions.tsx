@@ -29,7 +29,7 @@ export function AssistantTopBarActions({
         {/* The raw id is reference material, not a control, on a phone header
             it would crowd out the page title. The copy button next to it still
             puts it on the clipboard at every size. */}
-        <code className="text-muted-foreground hidden font-mono text-xs md:inline">
+        <code translate="no" className="text-muted-foreground hidden font-mono text-xs md:inline">
           {assistantId}
         </code>
         {/* The options menu carries its own "Copy ID", so the standalone

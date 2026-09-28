@@ -167,10 +167,11 @@ export function TimelineSection({
       >
         {title}
       </h2>
+      {/* Only the heading and the dot mark the inactive sections. The fields
+          stay at full strength: dimmed text and controls read as disabled,
+          and fell under contrast minimums. */}
       <div
-        className={`mt-5 ${boxed ? "min-w-0 rounded-2xl border border-border bg-background p-4 sm:p-5" : ""} transition-opacity duration-300 ${
-          active ? "opacity-100" : "opacity-70"
-        }`}
+        className={`mt-5 ${boxed ? "min-w-0 rounded-2xl border border-border bg-background p-4 sm:p-5" : ""}`}
       >
         {children}
       </div>

@@ -8,6 +8,10 @@ import {
   uploadOrganizationLogoAction,
 } from "@/app/actions";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
+import { FieldHeader } from "@/components/settings/field-header";
+import { useSettingsDirty } from "@/components/settings/settings-dirty";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
@@ -32,13 +36,17 @@ const RETENTION_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "365", label: "1 year" },
 ];
 
-function FieldHeader({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div>
-      <h2 className="text-base font-semibold">{title}</h2>
-      <p className="text-muted-foreground mt-0.5 text-sm">{hint}</p>
-    </div>
-  );
+/** Days as a number, or null for "forever". */
+function retentionDays(value: string): number | null {
+  return value === "forever" ? null : Number.parseInt(value, 10);
+}
+
+/** A window that got shorter deletes whatever now falls outside it. */
+function shortened(next: string, stored: string): number | null {
+  const nextDays = retentionDays(next);
+  const storedDays = retentionDays(stored);
+  if (nextDays === null) return null;
+  return storedDays === null || nextDays < storedDays ? nextDays : null;
 }
 
 export function OrganizationClient({
@@ -49,6 +57,9 @@ export function OrganizationClient({
   demo: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
+  // Its own transition: an upload in flight must not read as a pending save.
+  const [uploading, startUpload] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const [name, setName] = useState(organization.name);
   const [logoUrl, setLogoUrl] = useState(organization.logoUrl ?? "");
   const [logoPreviewUrl, setLogoPreviewUrl] = useState("");
@@ -67,49 +78,99 @@ export function OrganizationClient({
     name !== organization.name ||
     retention !== storedRetention ||
     transcriptRetention !== storedTranscriptRetention;
+  useSettingsDirty(dirty);
 
   function handleSave() {
     if (!name.trim()) {
       toast.error("Organization name is required");
       return;
     }
-    startTransition(async () => {
-      await updateOrganizationAction({
-        name: name.trim(),
-        traceRetentionDays:
-          retention === "forever" ? null : Number.parseInt(retention, 10),
-        transcriptRetentionDays:
-          transcriptRetention === "forever"
-            ? null
-            : Number.parseInt(transcriptRetention, 10),
+    const save = () =>
+      startTransition(async () => {
+        try {
+          await updateOrganizationAction({
+            name: name.trim(),
+            traceRetentionDays: retentionDays(retention),
+            transcriptRetentionDays: retentionDays(transcriptRetention),
+          });
+          toast.success("Organization saved");
+        } catch {
+          toast.error("Could not save the organization");
+        }
       });
-      toast.success("Organization saved");
+
+    // Shortening a window is the one change here that cannot be undone: the
+    // nightly retention sweep deletes what falls outside it.
+    const traceDays = shortened(retention, storedRetention);
+    const transcriptDays = shortened(
+      transcriptRetention,
+      storedTranscriptRetention,
+    );
+    if (traceDays === null && transcriptDays === null) {
+      save();
+      return;
+    }
+    const losses = [
+      transcriptDays !== null &&
+        `conversations older than ${transcriptDays} days`,
+      traceDays !== null && `reasoning traces older than ${traceDays} days`,
+    ].filter(Boolean);
+    confirmDelete({
+      title: "Delete older data?",
+      description: `The next nightly cleanup permanently deletes ${losses.join(
+        " and ",
+      )}.${
+        transcriptDays !== null
+          ? " Conversations under a legal hold are kept."
+          : ""
+      }`,
+      confirmLabel: "Save and delete",
+      onConfirm: save,
     });
   }
 
-  async function uploadLogo(file: File) {
-    const previewUrl = URL.createObjectURL(file);
-    setLogoPreviewUrl(previewUrl);
-    const form = new FormData();
-    form.set("file", file);
-    const result = await uploadOrganizationLogoAction(form);
-    URL.revokeObjectURL(previewUrl);
-    setLogoPreviewUrl("");
-    if (result.error) {
-      toast.error(result.error);
-      return;
-    }
-    if (result.logoUrl) {
-      setLogoUrl(result.logoUrl);
-      toast.success("Logo uploaded");
-    }
+  function uploadLogo(file: File) {
+    startUpload(async () => {
+      const previewUrl = URL.createObjectURL(file);
+      setLogoPreviewUrl(previewUrl);
+      try {
+        const form = new FormData();
+        form.set("file", file);
+        const result = await uploadOrganizationLogoAction(form);
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
+        if (result.logoUrl) {
+          setLogoUrl(result.logoUrl);
+          toast.success("Logo uploaded");
+        }
+      } catch {
+        toast.error("Could not upload logo");
+      } finally {
+        URL.revokeObjectURL(previewUrl);
+        setLogoPreviewUrl("");
+      }
+    });
   }
 
   function removeLogo() {
-    setLogoUrl("");
-    startTransition(async () => {
-      await updateOrganizationAction({ logoUrl: null });
-      toast.success("Logo removed");
+    confirmDelete({
+      title: "Remove the logo?",
+      description:
+        "The organization's initial shows in its place. You can upload a new logo at any time.",
+      confirmLabel: "Remove logo",
+      onConfirm: async () => {
+        const previous = logoUrl;
+        setLogoUrl("");
+        try {
+          await updateOrganizationAction({ logoUrl: null });
+        } catch {
+          setLogoUrl(previous);
+          throw new Error("Could not remove logo");
+        }
+        toast.success("Logo removed");
+      },
     });
   }
 
@@ -128,12 +189,9 @@ export function OrganizationClient({
         />
         <AvatarUpload
           value={logoPreviewUrl || logoUrl}
-          onFile={(file) =>
-            startTransition(() => {
-              void uploadLogo(file);
-            })
-          }
+          onFile={uploadLogo}
           onRemove={removeLogo}
+          busy={uploading}
           fallback={
             <span className="bg-primary text-primary-foreground flex size-full items-center justify-center text-2xl font-semibold">
               {name.slice(0, 1).toUpperCase() || "?"}
@@ -198,11 +256,14 @@ export function OrganizationClient({
       </div>
 
       <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
-        {dirty && <span className="text-muted-foreground text-sm">Unsaved changes</span>}
+        <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
+          {dirty && <RollInText text="Unsaved changes" />}
+        </span>
         <Button onClick={handleSave} disabled={isPending || !dirty} className="px-6 font-semibold">
-          {isPending ? "Saving…" : "Save changes"}
+          <RollInText text={isPending ? "Saving…" : "Save changes"} />
         </Button>
       </div>
+      {confirmDeleteModal}
     </div>
   );
 }

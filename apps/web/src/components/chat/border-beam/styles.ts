@@ -7,8 +7,6 @@
  * Unused size families and palettes are omitted. See LICENSE in this directory.
  */
 
-type BorderBeamColorVariant = "colorful" | "mono";
-
 interface GenerateStylesOptions {
   id: string;
   borderRadius: string;
@@ -18,13 +16,9 @@ interface GenerateStylesOptions {
   innerOpacity: number;
   bloomOpacity: number;
   innerShadow: string;
-  colorVariant: BorderBeamColorVariant;
-  staticColors: boolean;
   brightness: number;
   saturation: number;
-  hueRange: number;
   theme: "dark" | "light";
-  glowSize?: number;
 }
 
 export function createBorderBeamStyles(id: string, theme: "dark" | "light") {
@@ -41,11 +35,8 @@ export function createBorderBeamStyles(id: string, theme: "dark" | "light") {
     innerOpacity: (dark ? 0.42 : 0.26) * monoIntensity,
     bloomOpacity: (dark ? 0.24 : 0.34) * monoIntensity,
     innerShadow: dark ? "rgba(255, 255, 255, 0.27)" : "rgba(0, 0, 0, 0.14)",
-    colorVariant: "mono",
-    staticColors: true,
     brightness: 1.3,
     saturation: dark ? 1.2 : 1.5,
-    hueRange: 30,
     theme,
   }) + `
 /* Ciele: preserve the loading indication without movement when requested. */
@@ -62,51 +53,30 @@ export function createBorderBeamStyles(id: string, theme: "dark" | "light") {
 `;
 }
 
-const colorPalettes = {
-  colorful: {
-    border: [
-      { color: 'rgb(255, 50, 100)', pos: '33% -7.4%', size: '70px 40px' },
-      { color: 'rgb(40, 140, 255)', pos: '12% -5%', size: '60px 35px' },
-      { color: 'rgb(50, 200, 80)', pos: '2.1% 68.3%', size: '40px 70px' },
-      { color: 'rgb(30, 185, 170)', pos: '2.1% 68.3%', size: '20px 35px' },
-      { color: 'rgb(100, 70, 255)', pos: '74.4% 100%', size: '180px 32px' },
-      { color: 'rgb(40, 140, 255)', pos: '55% 100%', size: '85px 26px' },
-      { color: 'rgb(255, 120, 40)', pos: '93.9% 0%', size: '74px 32px' },
-      { color: 'rgb(240, 50, 180)', pos: '100% 27.1%', size: '26px 42px' },
-      { color: 'rgb(180, 40, 240)', pos: '100% 27.1%', size: '52px 48px' },
-    ],
-    spike: { primary: 'rgb(255, 60, 80)', secondary: 'rgba(40, 190, 180, 0.98)' },
-    spikeLt: { primary: 'rgb(200, 30, 60)', secondary: 'rgb(20, 150, 140)' },
-  },
-  mono: {
-    border: [
-      { color: 'rgb(180, 180, 180)', pos: '33% -7.4%', size: '70px 40px' },
-      { color: 'rgb(140, 140, 140)', pos: '12% -5%', size: '60px 35px' },
-      { color: 'rgb(160, 160, 160)', pos: '2.1% 68.3%', size: '40px 70px' },
-      { color: 'rgb(130, 130, 130)', pos: '2.1% 68.3%', size: '20px 35px' },
-      { color: 'rgb(170, 170, 170)', pos: '74.4% 100%', size: '180px 32px' },
-      { color: 'rgb(150, 150, 150)', pos: '55% 100%', size: '85px 26px' },
-      { color: 'rgb(190, 190, 190)', pos: '93.9% 0%', size: '74px 32px' },
-      { color: 'rgb(145, 145, 145)', pos: '100% 27.1%', size: '26px 42px' },
-      { color: 'rgb(165, 165, 165)', pos: '100% 27.1%', size: '52px 48px' },
-    ],
-    spike: { primary: 'rgb(200, 200, 200)', secondary: 'rgb(170, 170, 170)' },
-    spikeLt: { primary: 'rgb(80, 80, 80)', secondary: 'rgb(120, 120, 120)' },
-  },
-};
+// Ciele renders only the static mono palette, so upstream's colorful palette
+// and hue-shift animation are gone.
+const MONO_BORDER = [
+    { color: 'rgb(180, 180, 180)', pos: '33% -7.4%', size: '70px 40px' },
+    { color: 'rgb(140, 140, 140)', pos: '12% -5%', size: '60px 35px' },
+    { color: 'rgb(160, 160, 160)', pos: '2.1% 68.3%', size: '40px 70px' },
+    { color: 'rgb(130, 130, 130)', pos: '2.1% 68.3%', size: '20px 35px' },
+    { color: 'rgb(170, 170, 170)', pos: '74.4% 100%', size: '180px 32px' },
+    { color: 'rgb(150, 150, 150)', pos: '55% 100%', size: '85px 26px' },
+    { color: 'rgb(190, 190, 190)', pos: '93.9% 0%', size: '74px 32px' },
+    { color: 'rgb(145, 145, 145)', pos: '100% 27.1%', size: '26px 42px' },
+    { color: 'rgb(165, 165, 165)', pos: '100% 27.1%', size: '52px 48px' },
+];
 
-function getColorGradients(colorVariant: BorderBeamColorVariant): string {
-  const palette = colorPalettes[colorVariant];
-  return palette.border
+function getColorGradients(): string {
+  return MONO_BORDER
     .map(c => `radial-gradient(ellipse ${c.size} at ${c.pos}, ${c.color}, transparent)`)
     .join(',\n    ');
 }
 
-function getInnerGradients(colorVariant: BorderBeamColorVariant): string {
-  const palette = colorPalettes[colorVariant];
+function getInnerGradients(): string {
   // Mono variant gets 50% lower opacity
-  const baseOpacity = colorVariant === 'mono' ? 0.225 : 0.45;
-  return palette.border
+  const baseOpacity = 0.225;
+  return MONO_BORDER
     .map(c => {
       const rgba = c.color.replace('rgb(', 'rgba(').replace(')', `, ${baseOpacity})`);
       const smallerSize = c.size.split(' ').map(s => {
@@ -129,10 +99,6 @@ function pausedAnimationsRule(id: string): string {
 }
 
 
-function scaleBlur(px: number, glowSize = 1): number {
-  return Math.max(0.5, Math.round(px * glowSize * 100) / 100);
-}
-
 function generateBorderVariantCSS(options: GenerateStylesOptions): string {
   const {
     id,
@@ -143,33 +109,18 @@ function generateBorderVariantCSS(options: GenerateStylesOptions): string {
     innerOpacity,
     bloomOpacity,
     innerShadow,
-    colorVariant,
-    staticColors,
     brightness,
     saturation,
-    hueRange,
     theme,
-    glowSize = 1,
   } = options;
 
   const innerRadius = `max(0px, calc(${borderRadius} - ${borderWidth}px))`;
 
   // Mono variant gets 50% lower opacity
-  const monoOpacityMultiplier = colorVariant === 'mono' ? 0.5 : 1.0;
+  const monoOpacityMultiplier = 0.5;
   const finalStrokeOpacity = strokeOpacity * monoOpacityMultiplier;
   const finalInnerOpacity = innerOpacity * monoOpacityMultiplier;
   const finalBloomOpacity = bloomOpacity * monoOpacityMultiplier;
-
-  const hueShiftAnimation = staticColors
-    ? ''
-    : `animation: beam-hue-shift-${id} 12s ease-in-out infinite;`;
-
-  const hueShiftKeyframes = staticColors ? '' : `
-@keyframes beam-hue-shift-${id} {
-  0% { filter: hue-rotate(calc(var(--beam-hue-base, 0deg) - ${hueRange}deg)) brightness(${brightness.toFixed(2)}) saturate(${saturation.toFixed(2)}); }
-  50% { filter: hue-rotate(calc(var(--beam-hue-base, 0deg) + ${hueRange}deg)) brightness(${brightness.toFixed(2)}) saturate(${saturation.toFixed(2)}); }
-  100% { filter: hue-rotate(calc(var(--beam-hue-base, 0deg) - ${hueRange}deg)) brightness(${brightness.toFixed(2)}) saturate(${saturation.toFixed(2)}); }
-}`;
 
   const isDark = theme === 'dark';
 
@@ -199,8 +150,8 @@ function generateBorderVariantCSS(options: GenerateStylesOptions): string {
         transparent 78%, transparent 100%
       )`;
 
-  const colorGradients = getColorGradients(colorVariant);
-  const innerGradients = getInnerGradients(colorVariant);
+  const colorGradients = getColorGradients();
+  const innerGradients = getInnerGradients();
 
   const bloomGradient = isDark
     ? `conic-gradient(
@@ -301,7 +252,7 @@ function generateBorderVariantCSS(options: GenerateStylesOptions): string {
   pointer-events: none;
   z-index: 2;
   opacity: calc(var(--beam-opacity-${id}) * ${finalStrokeOpacity.toFixed(2)} * var(--beam-stroke-opacity, 1) * var(--beam-strength, 1));
-  ${hueShiftAnimation}
+  
 }
 
 [data-beam="${id}"][data-active]::before,
@@ -340,7 +291,7 @@ function generateBorderVariantCSS(options: GenerateStylesOptions): string {
   z-index: 1;
   opacity: calc(var(--beam-opacity-${id}) * ${finalInnerOpacity.toFixed(2)} * var(--beam-inner-opacity, 1) * var(--beam-strength, 1));
   clip-path: inset(0 round ${borderRadius});
-  ${hueShiftAnimation}
+  
 }
 
 [data-beam="${id}"] [data-beam-bloom] {
@@ -355,7 +306,7 @@ function generateBorderVariantCSS(options: GenerateStylesOptions): string {
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   padding: ${borderWidth}px;
-  filter: blur(${scaleBlur(8, glowSize)}px) brightness(${brightness.toFixed(2)}) saturate(${saturation.toFixed(2)});
+  filter: blur(8px) brightness(${brightness.toFixed(2)}) saturate(${saturation.toFixed(2)});
   pointer-events: none;
   z-index: 3;
   opacity: 0;
@@ -379,7 +330,7 @@ function generateBorderVariantCSS(options: GenerateStylesOptions): string {
   from { --beam-opacity-${id}: 1; }
   to { --beam-opacity-${id}: 0; }
 }
-${hueShiftKeyframes}
+
 ${pausedAnimationsRule(id)}
 `;
 }

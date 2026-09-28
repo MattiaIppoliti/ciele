@@ -16,9 +16,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Hint } from "@agent-hub/ui";
+import { CopyFeedbackIcon, Hint, useCopyFeedback } from "@agent-hub/ui";
+import { RollInText } from "@/components/motion/roll-in-text";
 
-/** Editor top-bar "More options" menu: Duplicate / Delete assistant. */
+/** Editor top-bar "More options" menu: Copy ID / Duplicate / Delete assistant. */
 export function AssistantOptionsMenu({
   assistantId,
   assistantTitle,
@@ -33,14 +34,25 @@ export function AssistantOptionsMenu({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { copyText, isCopied } = useCopyFeedback<"id">();
+  const copied = isCopied("id");
 
-  if (!canEdit && !canDelete) return null;
+  // Copy ID is here for every role: the header hides its standalone copy
+  // button on a phone, so this menu is the only way to it there.
+  async function copyId() {
+    if (await copyText("id", assistantId)) toast.success("Assistant ID copied");
+    else toast.error("Could not copy the assistant ID");
+  }
 
   function handleDuplicate() {
     startTransition(async () => {
-      const copy = await duplicateAssistantAction(assistantId);
-      toast.success(`Duplicated as "${copy.title}"`);
-      router.push(`/assistants/${copy.id}`);
+      try {
+        const copy = await duplicateAssistantAction(assistantId);
+        toast.success(`Duplicated as “${copy.title}”`);
+        router.push(`/assistants/${copy.id}`);
+      } catch {
+        toast.error("Could not duplicate the assistant. Try again.");
+      }
     });
   }
 
@@ -62,6 +74,10 @@ export function AssistantOptionsMenu({
         </DropdownMenuTrigger>
       </Hint>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem closeOnClick={false} onClick={() => void copyId()}>
+          <CopyFeedbackIcon copied={copied} className="size-4" />
+          <RollInText text={copied ? "Copied" : "Copy ID"} />
+        </DropdownMenuItem>
         {canEdit && (
           <DropdownMenuItem onClick={handleDuplicate}>
             <AnimatedIcon icon={CopyPlus} size={16} /> Duplicate assistant
@@ -69,7 +85,7 @@ export function AssistantOptionsMenu({
         )}
         {canDelete && (
           <>
-            {canEdit && <DropdownMenuSeparator />}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
               onClick={() => setConfirmDelete(true)}

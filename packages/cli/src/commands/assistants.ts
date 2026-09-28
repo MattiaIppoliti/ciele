@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { EXIT } from "../index.ts";
 import { lines, table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { csv, str, usage, type CommandContext } from "./shared.ts";
 
 const ASSISTANT_COLUMNS = [
   { key: "id", header: "Id" },
@@ -87,6 +87,33 @@ export async function assistants(
       emit(`Created ${copy.id} ("${copy.title}")`, copy);
       return EXIT.ok;
     }
+    case "ask": {
+      const question = rest.slice(1).join(" ").trim();
+      if (!rest[0] || !question) {
+        return usage(deps, 'assistants ask <id> "<question>" [--conversation <id>]');
+      }
+      const answer = await client.assistants.ask(rest[0], {
+        question,
+        conversationId: str(flags.conversation),
+      });
+      // The answer, then its citations, then how to continue: the id a
+      // follow-up needs is the one thing a human cannot guess.
+      const cited = answer.sources.map(
+        (source, index) =>
+          `[${index + 1}] ${source.documentTitle}${source.url ? ` ${source.url}` : ""}`
+      );
+      emit(
+        [
+          answer.answer || "(no answer)",
+          ...(cited.length ? ["", ...cited] : []),
+          ...(answer.conversationId
+            ? ["", `Continue with --conversation ${answer.conversationId}`]
+            : []),
+        ].join("\n"),
+        answer
+      );
+      return answer.error ? EXIT.error : EXIT.ok;
+    }
     case "get-entities": {
       if (!rest[0]) return usage(deps, "assistants get-entities <id>");
       const selection = await client.assistants.entities(rest[0]);
@@ -97,10 +124,7 @@ export async function assistants(
       if (!rest[0] || str(flags.ids) === undefined) {
         return usage(deps, "assistants set-entities <id> --ids <entityId,…>");
       }
-      const entityIds = (str(flags.ids) ?? "")
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean);
+      const entityIds = csv(str(flags.ids) ?? "");
       const selection = await client.assistants.setEntities(rest[0], entityIds);
       emit(`Selected ${selection.entityIds.length} Entities`, selection);
       return EXIT.ok;
@@ -115,15 +139,12 @@ export async function assistants(
       if (!rest[0] || str(flags.ids) === undefined) {
         return usage(deps, "assistants set-skills <id> --ids <skillId,…>");
       }
-      const skillIds = (str(flags.ids) ?? "")
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean);
+      const skillIds = csv(str(flags.ids) ?? "");
       const result = await client.assistants.setSkills(rest[0], skillIds);
       emit(`Selected ${result.data.length} Skills`, result);
       return EXIT.ok;
     }
     default:
-      return usage(deps, "assistants <list|get|create|update|delete|duplicate|get-entities|set-entities|get-skills|set-skills>");
+      return usage(deps, "assistants <ask|list|get|create|update|delete|duplicate|get-entities|set-entities|get-skills|set-skills>");
   }
 }

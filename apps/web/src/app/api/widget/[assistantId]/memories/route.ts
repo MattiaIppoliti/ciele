@@ -5,9 +5,6 @@ import {
   widgetSubject,
 } from "@/lib/widget-db";
 
-// Depends on the per-visitor gate cookie, so never cached.
-export const runtime = "nodejs";
-
 /**
  * The widget Memory folder (#666): what the assistant remembers about the
  * SSO-signed end-user, with per-memory delete. The subject comes exclusively

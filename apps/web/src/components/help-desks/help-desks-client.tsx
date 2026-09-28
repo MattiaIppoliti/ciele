@@ -20,6 +20,9 @@ import { Label } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { isRedirectError } from "@/components/ui/confirm-delete-modal";
+import { formatCount } from "@/lib/format";
 
 const DESCRIPTION_LIMIT = 5000;
 
@@ -86,32 +89,48 @@ function CreateHelpDeskDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [template, setTemplate] = useState<string | null>(null);
+  const [nameError, setNameError] = useState(false);
+  // Set when a paste ran past the limit, so the cut is said out loud instead
+  // of the tail quietly going missing.
+  const [clipped, setClipped] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function pick(t: { name: string; description: string } | null) {
     setTemplate(t?.name ?? "blank");
     setName(t?.name ?? "");
     setDescription(t?.description ?? "");
+    setNameError(false);
+    setClipped(false);
   }
 
   function handleCreate() {
     if (!name.trim()) {
-      toast.error("Help desk name is required");
+      setNameError(true);
+      document.getElementById("desk-name")?.focus();
       return;
     }
     startTransition(async () => {
-      const desk = await createHelpDeskAction({
-        name: name.trim(),
-        description,
-      });
-      toast.success(`"${desk.name}" created`);
-      onClose();
-      router.push(`/help-desks/${desk.id}`);
+      try {
+        const desk = await createHelpDeskAction({
+          name: name.trim(),
+          description,
+        });
+        toast.success(`"${desk.name}" created`);
+        onClose();
+        router.push(`/help-desks/${desk.id}`);
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        // The dialog stays open, so nothing typed is lost to a failed create.
+        toast.error(
+          error instanceof Error ? error.message : "Could not create the help desk",
+        );
+      }
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    // A close mid-create would hide whether the desk exists yet.
+    <Dialog open={open} onOpenChange={(o) => !o && !isPending && onClose()}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Create a Help Desk</DialogTitle>
@@ -128,6 +147,7 @@ function CreateHelpDeskDialog({
               <button
                 key={t.name}
                 type="button"
+                aria-pressed={template === t.name}
                 onClick={() => pick(t)}
                 className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
                   template === t.name
@@ -135,12 +155,15 @@ function CreateHelpDeskDialog({
                     : "hover:bg-muted/50"
                 }`}
               >
-                <span className="text-2xl">{t.emoji}</span>
+                <span aria-hidden className="text-2xl">
+                  {t.emoji}
+                </span>
                 {t.name}
               </button>
             ))}
             <button
               type="button"
+              aria-pressed={template === "blank"}
               onClick={() => pick(null)}
               className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
                 template === "blank"
@@ -148,7 +171,7 @@ function CreateHelpDeskDialog({
                   : "hover:bg-muted/50"
               }`}
             >
-              <Plus className="size-7" />
+              <Plus aria-hidden className="size-7" />
               Blank
             </button>
           </div>
@@ -160,9 +183,20 @@ function CreateHelpDeskDialog({
           </Label>
           <Input
             id="desk-name"
+            autoComplete="off"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            aria-invalid={nameError || undefined}
+            aria-describedby={nameError ? "desk-name-error" : undefined}
+            onChange={(e) => {
+              setName(e.target.value);
+              setNameError(false);
+            }}
           />
+          {nameError && (
+            <p id="desk-name-error" className="text-destructive text-sm">
+              Help desk name is required.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -170,22 +204,40 @@ function CreateHelpDeskDialog({
           <Textarea
             id="desk-description"
             value={description}
-            onChange={(e) =>
-              setDescription(e.target.value.slice(0, DESCRIPTION_LIMIT))
-            }
+            onChange={(e) => {
+              setClipped(e.target.value.length > DESCRIPTION_LIMIT);
+              setDescription(e.target.value.slice(0, DESCRIPTION_LIMIT));
+            }}
             placeholder="Describe what this help desk handles…"
             rows={6}
+            aria-describedby="desk-description-count"
           />
-          <p className="text-muted-foreground text-right text-xs">
-            {description.length}/{DESCRIPTION_LIMIT}
+          <p
+            id="desk-description-count"
+            className="text-muted-foreground text-right text-xs"
+          >
+            <RollingNumber value={description.length} />/
+            {formatCount(DESCRIPTION_LIMIT)}
           </p>
+          {description.length >= DESCRIPTION_LIMIT && (
+            <p role="status" className="text-destructive text-sm">
+              {clipped
+                ? `Only the first ${formatCount(DESCRIPTION_LIMIT)} characters were kept.`
+                : `The description is at its ${formatCount(DESCRIPTION_LIMIT)}-character limit.`}
+            </p>
+          )}
           <p className="text-muted-foreground text-sm">
             At least 200 characters recommended for best AI recognition.
           </p>
         </div>
 
         <div className="flex justify-end gap-2 border-t pt-4">
-          <Button variant="outline" className="h-10 px-5" onClick={onClose}>
+          <Button
+            variant="outline"
+            className="h-10 px-5"
+            onClick={onClose}
+            disabled={isPending}
+          >
             Cancel
           </Button>
           <Button
@@ -193,7 +245,7 @@ function CreateHelpDeskDialog({
             onClick={handleCreate}
             disabled={isPending}
           >
-            {isPending ? "Creating…" : "Create Help Desk"}
+            <RollInText text={isPending ? "Creating…" : "Create Help Desk"} />
           </Button>
         </div>
       </DialogContent>
@@ -257,11 +309,11 @@ export function HelpDesksClient({
           >
             <Link
               href={`/help-desks/${desk.id}`}
-              className="text-primary text-lg font-bold underline underline-offset-4 hover:opacity-70"
+              className="text-primary max-w-full text-lg font-bold break-words underline underline-offset-4 hover:opacity-70"
             >
               {desk.name}
             </Link>
-            <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed">
+            <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed break-words">
               {desk.description || "No description yet."}
             </p>
             <Button

@@ -21,7 +21,7 @@ import { OperationError, type OperationContext } from "./operation";
  */
 
 /** The viewer these rules decide against: the calling Member and their Role. */
-function viewerOf(ctx: OperationContext): { userId: string; role: OperationContext["role"] } {
+export function viewerOf(ctx: OperationContext): { userId: string; role: OperationContext["role"] } {
   return { userId: ctx.userId, role: ctx.role };
 }
 

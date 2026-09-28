@@ -10,6 +10,8 @@ import {
   SEALED_TEXT_COLUMNS,
   isLegacyPlaintextSecret,
   openSecret,
+  rekeySealedValue,
+  rekeyTicketingIntegration,
   rotateTicketingIntegration,
   sealSecret,
 } from "./rotate-legacy-secrets.mjs";
@@ -109,6 +111,36 @@ check("the column inventory names every sealed text column the schema has", () =
     "provider_connections.encrypted_key",
     "sso_connections.encrypted_secret",
   ]);
+});
+
+const NEW_KEY = "the replacement key";
+
+check("rekey moves a value from the previous key to the current one", () => {
+  const old = sealSecret("sk-move-me", KEY);
+  const next = rekeySealedValue(old, NEW_KEY, KEY);
+  assert.ok(next);
+  assert.equal(openSecret(next, NEW_KEY), "sk-move-me");
+  assert.throws(() => openSecret(next, KEY));
+});
+
+check("rekey leaves a value already under the current key, and plaintext, alone", () => {
+  assert.equal(rekeySealedValue(sealSecret("sk-fine", NEW_KEY), NEW_KEY, KEY), null);
+  assert.equal(rekeySealedValue("plain:sk-legacy", NEW_KEY, KEY), null);
+});
+
+check("rekey refuses a value neither key opens rather than skipping it", () => {
+  assert.throws(() => rekeySealedValue(sealSecret("x", "a third key"), NEW_KEY, KEY));
+});
+
+check("rekey reaches the sealed leaves of a ticketing integration only", () => {
+  const next = rekeyTicketingIntegration(
+    { platform: "servicenow", config: { password: sealSecret("pw", KEY), instance: "acme" } },
+    NEW_KEY,
+    KEY
+  );
+  assert.equal(next.platform, "servicenow");
+  assert.equal(next.config.instance, "acme");
+  assert.equal(openSecret(next.config.password, NEW_KEY), "pw");
 });
 
 console.log(`${passed} checks passed`);

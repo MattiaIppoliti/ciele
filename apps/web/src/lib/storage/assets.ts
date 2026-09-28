@@ -74,6 +74,29 @@ export async function uploadPublicImageAsset(
 }
 
 /**
+ * The whole round trip from an upload form's `file` field to a public image
+ * URL, refusing in the order a Member can act on: no file, the wrong file,
+ * then a deployment without storage (`client` null). The caller writes the
+ * URL onto its own row; that write is the only thing the three image forms
+ * (Organization logo, profile photo, Assistant avatar) do differently.
+ */
+export async function uploadPublicImageFromForm(
+  client: SupabaseClient | null,
+  formData: FormData,
+  input: { organizationId: string; kind: PublicAvatarKind },
+): Promise<{ publicUrl: string; error?: undefined } | { error: string }> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose an image file" };
+  }
+  const validation = validatePublicImageFile(file);
+  if (!validation.ok) return { error: validation.error };
+  if (!client) return { error: "Object storage is not configured" };
+  const { publicUrl } = await uploadPublicImageAsset(client, { ...input, file });
+  return { publicUrl };
+}
+
+/**
  * Knowledge-file originals, the uploaded binary retained so a Source can be
  * re-ingested (extract → enrich → chunk → embed) after the pipeline improves,
  * without the admin re-uploading. Unlike public avatars this bucket is
@@ -107,14 +130,10 @@ const KNOWLEDGE_FILE_CONTENT_TYPES: Record<string, string> = {
   log: "text/plain",
 };
 
-const KNOWLEDGE_FILE_EXTENSIONS = new Set(
-  Object.keys(KNOWLEDGE_FILE_CONTENT_TYPES)
-);
-
 function knowledgeFileExtension(filename: string): string | null {
   const parts = filename.toLowerCase().split(".");
   const ext = parts.length > 1 ? parts[parts.length - 1] : "";
-  return KNOWLEDGE_FILE_EXTENSIONS.has(ext) ? ext : null;
+  return Object.hasOwn(KNOWLEDGE_FILE_CONTENT_TYPES, ext) ? ext : null;
 }
 
 export function validateKnowledgeFile(file: {
@@ -180,4 +199,16 @@ export async function downloadKnowledgeOriginal(
     .download(path);
   if (error) throw error;
   return data.arrayBuffer();
+}
+
+/** Deletes knowledge originals by path; a path already gone is not an error. */
+export async function removeKnowledgeOriginals(
+  client: SupabaseClient,
+  paths: string[]
+): Promise<void> {
+  if (paths.length === 0) return;
+  const { error } = await client.storage
+    .from(KNOWLEDGE_ORIGINALS_BUCKET)
+    .remove(paths);
+  if (error) throw error;
 }

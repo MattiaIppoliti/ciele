@@ -5,6 +5,7 @@ import type {
 } from "@agent-hub/core";
 import type { BadgeTone } from "@agent-hub/ui";
 import { knowledgeTabForKind } from "@/lib/knowledge-hub";
+import { countLabel } from "@/lib/pagination";
 
 /**
  * Pure derivations for a Source's Documents route (#927): where the link goes,
@@ -154,13 +155,13 @@ export function relativeTimeLabel(iso: string, now: Date = new Date()): string {
   const seconds = Math.max(0, Math.round((now.getTime() - then) / 1000));
   if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  if (minutes < 60) return `${countLabel(minutes, "minute")} ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  if (hours < 24) return `${countLabel(hours, "hour")} ago`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+  if (days < 30) return `${countLabel(days, "day")} ago`;
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
+  if (months < 12) return `${countLabel(months, "month")} ago`;
   const years = Math.floor(days / 365);
-  return `${years} year${years === 1 ? "" : "s"} ago`;
+  return `${countLabel(years, "year")} ago`;
 }

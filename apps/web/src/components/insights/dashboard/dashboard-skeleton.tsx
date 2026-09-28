@@ -1,0 +1,33 @@
+import { Skeleton } from "@agent-hub/ui";
+
+/**
+ * The streaming boundary both dashboards share, inside insights/layout.tsx so
+ * the sub-nav stays painted: header controls, the stat cards (two across: four rows
+ * on Observability, two on Costs), then a full-width chart and a card pair.
+ */
+export function DashboardSkeleton({ statRows }: { statRows: 2 | 4 }) {
+  return (
+    <div className="flex min-h-full flex-col" aria-busy="true">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
+        <Skeleton className="h-8 w-40" />
+        <div className="ml-auto flex items-center gap-2">
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-72" />
+          <Skeleton className="h-10 w-28" />
+        </div>
+      </header>
+      <div className="space-y-4 border-t px-4 pt-5 pb-8 sm:px-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {Array.from({ length: statRows * 2 }).map((_, i) => (
+            <Skeleton key={`stat-${i}`} className="h-[106px] rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-96 rounded-xl" />
+        <div className="grid grid-cols-12 gap-4">
+          <Skeleton className="col-span-12 h-[34rem] rounded-xl xl:col-span-5" />
+          <Skeleton className="col-span-12 h-[34rem] rounded-xl xl:col-span-7" />
+        </div>
+      </div>
+    </div>
+  );
+}

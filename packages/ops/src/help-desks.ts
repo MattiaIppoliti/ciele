@@ -64,6 +64,10 @@ function publicSupportChannel(channel: SupportChannel): SupportChannelView {
   };
 }
 
+/** Shape-trusted structured channel config: any object, or absent. */
+const objectOrUndefined = (value: unknown) =>
+  value === undefined || (typeof value === "object" && value !== null);
+
 const supportChannelInputSchema = z.object({
   kind: z.enum([
     "email",
@@ -75,35 +79,23 @@ const supportChannelInputSchema = z.object({
     "api_endpoint",
   ]),
   name: z.string().trim().min(1).max(200),
-  config: z.custom<SupportChannelInput["config"]>(
-    (value) => value === undefined || (typeof value === "object" && value !== null)
-  ).optional(),
+  config: z.custom<SupportChannelInput["config"]>(objectOrUndefined).optional(),
   formTitle: z.string().max(500).optional(),
   form: z.custom<SupportChannelInput["form"]>(Array.isArray).optional(),
   confirmationMessage: z.string().max(10_000).optional(),
-  conversationData: z.custom<SupportChannelInput["conversationData"]>(
-    (value) => value === undefined || (typeof value === "object" && value !== null)
-  ).optional(),
-  availability: z.custom<SupportChannelInput["availability"]>(
-    (value) => value === undefined || (typeof value === "object" && value !== null)
-  ).optional(),
+  conversationData: z.custom<SupportChannelInput["conversationData"]>(objectOrUndefined).optional(),
+  availability: z.custom<SupportChannelInput["availability"]>(objectOrUndefined).optional(),
 }) satisfies z.ZodType<SupportChannelInput>;
 
 const supportChannelPatchSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   enabled: z.boolean().optional(),
-  config: z.custom<SupportChannelPatch["config"]>(
-    (value) => value === undefined || (typeof value === "object" && value !== null)
-  ).optional(),
+  config: z.custom<SupportChannelPatch["config"]>(objectOrUndefined).optional(),
   formTitle: z.string().max(500).optional(),
   form: z.custom<SupportChannelPatch["form"]>(Array.isArray).optional(),
   confirmationMessage: z.string().max(10_000).optional(),
-  conversationData: z.custom<SupportChannelPatch["conversationData"]>(
-    (value) => value === undefined || (typeof value === "object" && value !== null)
-  ).optional(),
-  availability: z.custom<SupportChannelPatch["availability"]>(
-    (value) => value === undefined || (typeof value === "object" && value !== null)
-  ).optional(),
+  conversationData: z.custom<SupportChannelPatch["conversationData"]>(objectOrUndefined).optional(),
+  availability: z.custom<SupportChannelPatch["availability"]>(objectOrUndefined).optional(),
 }) satisfies z.ZodType<SupportChannelPatch>;
 
 export const helpDeskInputSchema = z.object({

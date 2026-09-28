@@ -15,6 +15,7 @@ import {
   type KnowledgeTabSlug,
 } from "@/lib/knowledge-hub";
 import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 const HEALTH_DOT: Record<SourceStatus, string> = {
   ready: "bg-emerald-500",
@@ -78,7 +79,9 @@ export function LibraryHeader({
       <header className="flex flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
           <RollInText text={KNOWLEDGE_TAB_TITLES[tab]} />
-          <Badge variant="secondary">{tabSummaries[tab]?.total ?? 0}</Badge>
+          <Badge variant="secondary">
+            <RollingNumber value={tabSummaries[tab]?.total ?? 0} />
+          </Badge>
         </h1>
       </header>
 
@@ -112,9 +115,15 @@ export function LibraryHeader({
                 className="gap-2"
               >
                 {KNOWLEDGE_TAB_LABELS[slug]}
-                <span className="text-xs opacity-70">{summary?.total ?? 0}</span>
+                <RollingNumber
+                  value={summary?.total ?? 0}
+                  className="text-xs opacity-70"
+                />
                 {health && (
+                  // A role, so the label is announced: on a bare span it is
+                  // ignored by most screen readers.
                   <span
+                    role="img"
                     className={`size-1.5 rounded-full ${HEALTH_DOT[health]}`}
                     aria-label={`status: ${health}`}
                   />

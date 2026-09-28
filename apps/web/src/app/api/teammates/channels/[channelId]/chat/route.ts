@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { CHANNEL_NDJSON_HEADERS, streamChannelChain } from "@agent-hub/agent";
 import { postChannelMessageOp } from "@ciele/ops";
-import { getSession } from "@/lib/auth";
+import { getSession, profileName } from "@/lib/auth";
 import { getDb } from "@/lib/data";
 import { resolveTeammateActions } from "@/lib/teammates/actions";
 import { runOperation } from "@/lib/operations";
@@ -44,13 +44,6 @@ export async function POST(
 
   const db = await getDb();
   const connections = await db.listProviderConnections(session.organization.id);
-  const profileName =
-    [session.profile?.firstName, session.profile?.lastName]
-      .filter(Boolean)
-      .join(" ") ||
-    session.profile?.username ||
-    session.email ||
-    undefined;
 
   const stream = await streamChannelChain({
     db,
@@ -62,7 +55,10 @@ export async function POST(
     startMessage: posted.message,
     // Every turn in the chain, and every mutation a granted Teammate makes
     // inside it, records this Member (#778, story 8).
-    startedBy: { userId: session.userId, name: profileName },
+    startedBy: {
+      userId: session.userId,
+      name: profileName(session.profile) ?? (session.email || undefined),
+    },
     targets: posted.targets,
     teammateActions: (teammate) =>
       resolveTeammateActions({

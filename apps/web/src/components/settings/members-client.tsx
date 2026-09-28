@@ -11,6 +11,8 @@ import { createInviteAction, updateMemberRoleAction } from "@/app/actions";
 import { Table, type TableColumn } from "@/components/motion/table";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { RemoveMemberModal } from "@/components/settings/remove-member-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { formatDay } from "@/lib/format";
 import {
   assignableRoles,
@@ -32,6 +34,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+/** "editor" to "Editor": rolled text is drawn glyph by glyph, so it cannot
+ * lean on `capitalize`. */
+function roleLabel(role: Role): string {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
 
 function inviteUrl(token: string): string {
   return `${window.location.origin}/join/${token}`;
@@ -60,7 +68,9 @@ export function MembersClient({
   const [inviteRole, setInviteRole] = useState<Role>("editor");
   const [pendingRemoval, setPendingRemoval] = useState<MemberRow | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [inviting, startInvite] = useTransition();
   const { copyText, isCopied } = useCopyFeedback<string>();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   const rows = useMemo(
     () => buildMemberRows(members, invites, currentUserId),
@@ -83,12 +93,54 @@ export function MembersClient({
 
   function handleInvite(e: React.FormEvent) {
     e.preventDefault();
-    startTransition(async () => {
-      const invite = await createInviteAction(inviteRole, inviteEmail || undefined);
+    startInvite(async () => {
+      let invite: Invite;
+      try {
+        invite = await createInviteAction(inviteRole, inviteEmail || undefined);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not create the invite",
+        );
+        return;
+      }
       const copied = await copyText(invite.id, inviteUrl(invite.token));
       if (copied) toast.success("Invite created, link copied to clipboard");
       else toast.success("Invite created, use Copy link to copy it");
       setInviteEmail("");
+    });
+  }
+
+  async function applyRole(row: MemberRow, role: Role) {
+    await updateMemberRoleAction(row.subjectId, role);
+    toast.success(`Role updated to ${role}`);
+  }
+
+  function changeRole(row: MemberRow, role: Role) {
+    if (role === row.role) return;
+    // Ownership is the one role that can take the organization away from
+    // whoever holds it now, so granting or removing it asks first.
+    if (role === "owner" || row.role === "owner") {
+      const granting = role === "owner";
+      confirmDelete({
+        title: granting
+          ? `Make ${row.name} an owner?`
+          : `Remove ${row.name} as an owner?`,
+        description: granting
+          ? "Owners have full control of the organization, including billing, every member's role and granting ownership to others."
+          : `They become ${role === "admin" ? "an" : "a"} ${role} and lose control of billing and ownership.`,
+        confirmLabel: granting ? "Make owner" : `Change to ${role}`,
+        onConfirm: () => applyRole(row, role),
+      });
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await applyRole(row, role);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not update the role",
+        );
+      }
     });
   }
 
@@ -160,10 +212,14 @@ export function MembersClient({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="outline" size="sm" className="capitalize" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Role for ${row.name}: ${row.role}`}
+                />
               }
             >
-              {row.role}
+              <RollInText text={roleLabel(row.role)} />
               <ChevronDown className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
@@ -171,12 +227,7 @@ export function MembersClient({
                 <DropdownMenuItem
                   key={role}
                   className="capitalize"
-                  onClick={() =>
-                    startTransition(async () => {
-                      await updateMemberRoleAction(row.subjectId, role);
-                      toast.success(`Role updated to ${role}`);
-                    })
-                  }
+                  onClick={() => changeRole(row, role)}
                 >
                   {role}
                 </DropdownMenuItem>
@@ -279,12 +330,11 @@ export function MembersClient({
                   <Button
                     type="button"
                     variant="outline"
-                    className="capitalize"
                     aria-label={`Invite role: ${inviteRole}`}
                   />
                 }
               >
-                {inviteRole}
+                <RollInText text={roleLabel(inviteRole)} />
                 <ChevronDown className="size-3.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -299,12 +349,14 @@ export function MembersClient({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button type="submit" disabled={isPending}>
-              <Plus className="size-4" /> Create invite
+            <Button type="submit" disabled={inviting}>
+              <Plus className="size-4" />
+              <RollInText text={inviting ? "Creating…" : "Create invite"} />
             </Button>
           </form>
         </div>
       )}
+      {confirmDeleteModal}
     </div>
   );
 }

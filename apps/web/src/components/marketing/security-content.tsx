@@ -317,11 +317,6 @@ export function SecurityContent() {
           <BouncyAccordion
             className="mt-6 text-left"
             items={FAQ_ITEMS}
-            classNames={{
-              // Match the translucent surfaces the rest of the page sits on.
-              item: "bg-card/60 ring-1 ring-border/60 backdrop-blur-sm",
-              title: "whitespace-normal text-wrap",
-            }}
           />
         </div>
 

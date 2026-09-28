@@ -1,6 +1,7 @@
 import { sealSecret } from "@agent-hub/core";
 import type { CrawlerConnection } from "@agent-hub/core";
 import { z } from "zod";
+import { keyHintOf } from "./integrations";
 import { defineOperation } from "./operation";
 
 /**
@@ -24,10 +25,6 @@ function crawlerView(connection: CrawlerConnection): CrawlerConnectionView {
     accountId: connection.accountId,
     updatedAt: connection.updatedAt,
   };
-}
-
-function hintOf(token: string): string {
-  return token.length >= 4 ? `…${token.slice(-4)}` : "";
 }
 
 export const setCrawlerConnectionOp = defineOperation({
@@ -62,7 +59,7 @@ export const setCrawlerConnectionOp = defineOperation({
     const connection = await ctx.db.setCrawlerConnection(ctx.organizationId, {
       provider: input.provider,
       encryptedToken: sealSecret(input.token),
-      tokenHint: hintOf(input.token),
+      tokenHint: keyHintOf(input.token),
       accountId,
       createdBy: ctx.userId || null,
     });

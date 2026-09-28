@@ -1,15 +1,16 @@
 import { z } from "zod";
 import type {
-  Assistant,
   Entity,
   EntityAttribute,
   EntityInput,
   EntityRecordValue,
   Memory,
 } from "@agent-hub/core";
+import { sealSecret } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { parseCsv } from "./csv";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
+import { requireAssistant } from "./assistants";
 
 const attributeSchema = z.object({
   key: z.string().min(1).max(100),
@@ -43,17 +44,6 @@ async function requireEntity(
     throw new OperationError("not_found", "Entity not found");
   }
   return entity;
-}
-
-async function requireAssistant(
-  ctx: { organizationId: string; db: { getAssistant(id: string): Promise<Assistant | null> } },
-  id: string
-): Promise<Assistant> {
-  const assistant = await ctx.db.getAssistant(id);
-  if (!assistant || assistant.organizationId !== ctx.organizationId) {
-    throw new OperationError("not_found", "Assistant not found");
-  }
-  return assistant;
 }
 
 export const getAssistantEntitiesOp = defineOperation({
@@ -238,6 +228,54 @@ export const updateEntityOp = defineOperation({
       ...(patch.description !== undefined
         ? { description: patch.description.trim() }
         : {}),
+    });
+  },
+});
+
+/**
+ * Where an Entity's records are synced from (#670): an http(s) URL, the
+ * headers it needs, how often and how to map the payload. Headers are sealed
+ * before they are stored and never read back; a save with no headers keeps the
+ * sealed ones, and only `clearHeaders` drops them, so editing the cadence does
+ * not make an admin retype a token.
+ */
+export const configureEntitySyncOp = defineOperation({
+  name: "entities.sync.configure",
+  capability: "edit",
+  input: z.object({
+    entityId: z.string().min(1),
+    url: z.string(),
+    headers: z.array(z.object({ name: z.string(), value: z.string() })).max(50),
+    clearHeaders: z.boolean().optional(),
+    cadenceHours: z.number(),
+    prune: z.boolean(),
+    mapping: z.record(z.string(), z.string()),
+  }),
+  entities: () => [{ kind: "dataEntities" as const }],
+  run: async (ctx, input) => {
+    await requireEntity(ctx, input.entityId);
+    let url: URL;
+    try {
+      url = new URL(input.url);
+    } catch {
+      throw new OperationError("invalid_input", "Enter a valid URL.");
+    }
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new OperationError("invalid_input", "The sync source must be an http(s) URL.");
+    }
+    const meaningful = input.headers.filter((header) => header.name.trim());
+    const sealedHeaders = input.clearHeaders
+      ? null
+      : meaningful.length > 0
+        ? sealSecret(JSON.stringify(meaningful))
+        : ((await ctx.db.getEntitySyncConfig(input.entityId))?.sealedHeaders ?? null);
+    return ctx.db.upsertEntitySyncConfig(input.entityId, {
+      url: url.toString(),
+      sealedHeaders,
+      // At least hourly, whole hours; a missing or zero cadence means daily.
+      cadenceHours: Math.max(1, Math.floor(input.cadenceHours || 24)),
+      prune: input.prune,
+      mapping: input.mapping,
     });
   },
 });

@@ -12,7 +12,7 @@ import { getStoredPlatformPrompt, isPlatformOwner } from "@/lib/platform";
 import { canManageMembers } from "@/lib/rbac";
 import { canChangeRoles } from "@/lib/rbac";
 import { connectorInstallationScope } from "@/lib/local-connector-installer";
-import { DEFAULT_PLATFORM_PROMPT, providerAvailability } from "@agent-hub/agent";
+import { DEFAULT_PLATFORM_PROMPT } from "@agent-hub/agent";
 import {
   isLocalSubscriptionDirectEnabled,
   isLoopbackHost,
@@ -63,7 +63,6 @@ export default async function AiSettingsPage() {
     >
       <AiSettingsClient
           connections={connections.map((c) => ({ ...c, encryptedKey: null }))}
-          availability={providerAvailability(connections)}
           canManage={canManage}
           canEnablePersonalSubscriptions={canChangeRoles(role)}
           personalSubscriptionsAllowed={personalSubscriptionsAllowed}

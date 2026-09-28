@@ -21,12 +21,8 @@ import { httpFailureReason, loadFailureReason, partitionForMode } from "./failur
 const MIN_WIDTH = 900;
 const MIN_HEIGHT = 640;
 
-export interface WindowHost {
-  /** Bounds carried between the native and product windows. */
-  bounds?: Electron.Rectangle;
-}
-
-const host: WindowHost = {};
+/** Bounds carried between the native and product windows. */
+let bounds: Electron.Rectangle | undefined;
 
 let current: BrowserWindow | null = null;
 let currentIsNative = false;
@@ -37,7 +33,7 @@ export function currentWindow(): BrowserWindow | null {
 
 function remember(window: BrowserWindow): void {
   const save = () => {
-    if (!window.isDestroyed() && !window.isMinimized()) host.bounds = window.getBounds();
+    if (!window.isDestroyed() && !window.isMinimized()) bounds = window.getBounds();
   };
   window.on("resize", save);
   window.on("move", save);
@@ -80,7 +76,7 @@ export function showNative(route: string): BrowserWindow {
   }
 
   const window = new BrowserWindow({
-    ...host.bounds,
+    ...bounds,
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     show: false,
@@ -124,10 +120,10 @@ export interface ProductWindowOptions {
 export function showProduct(
   origin: string,
   mode: Mode,
-  options?: ProductWindowOptions,
+  options: ProductWindowOptions,
 ): BrowserWindow {
   const window = new BrowserWindow({
-    ...host.bounds,
+    ...bounds,
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     show: false,
@@ -174,16 +170,15 @@ export function showProduct(
   const fail = (reason: string) => {
     if (landed) return;
     landed = true;
-    options?.onUnreachable(reason);
+    options.onUnreachable(reason);
   };
 
-  window.webContents.on("did-fail-load", (_event, errorCode, description, url, isMainFrame) => {
+  window.webContents.on("did-fail-load", (_event, errorCode, description, _url, isMainFrame) => {
     // -3 is ERR_ABORTED, which is what a redirect or a cancelled load looks
     // like, routine, not a failure.
     if (!isMainFrame || errorCode === -3) return;
     // The address is rendered on its own line by the screen, so the reason
     // stays a sentence rather than repeating it.
-    void url;
     fail(loadFailureReason(errorCode, description));
   });
 

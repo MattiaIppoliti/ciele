@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { parseModelSelector, resolveRequestedModel } from "@agent-hub/core";
-import { getSession } from "@/lib/auth";
+import { getSession, profileName } from "@/lib/auth";
 import { openAttachments } from "@/lib/attachments";
 import { getDb } from "@/lib/data";
 import { getRuntimeDb } from "@/lib/runtime-db";
@@ -72,9 +72,6 @@ export async function POST(request: NextRequest) {
   const entities = orgEntities.filter(
     (e) => selectedEntityIds.includes(e.id)
   );
-  const profileName = [session.profile?.firstName, session.profile?.lastName]
-    .filter(Boolean)
-    .join(" ") || session.profile?.username || undefined;
   const localModelPreference = resolveLocalPreviewModelPreference(
     body.modelPreference,
     personal.providers
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
     studyAnswer: body.studyAnswer,
     metadata: {
       ...sessionMetadata(request.headers),
-      userName: profileName,
+      userName: profileName(session.profile),
       userEmail: session.email,
       userRole: session.role ?? undefined,
     },

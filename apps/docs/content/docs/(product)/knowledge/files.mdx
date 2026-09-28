@@ -55,6 +55,8 @@ A file Source can answer for more than one Assistant. The Assistant editor there
 
 When only this Assistant answers from the file, the editor deletes it directly.
 
+When you delete a Source, Ciele also deletes the original file from storage. If that step fails, the nightly retention sweep deletes the file later.
+
 ## Give the Visitor the original file
 
 Turn on **Direct access** in the [Library](/knowledge/library) to let the Assistant attach the original file to its citation. The setting applies to one Assistant link, and it is off by default.

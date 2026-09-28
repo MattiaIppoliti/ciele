@@ -1,5 +1,5 @@
 import type { Invite, Member, Role } from "@agent-hub/core";
-import { memberDisplayName } from "@agent-hub/core";
+import { memberDisplayName, memberRoleRank } from "@agent-hub/core";
 
 /**
  * One line of the Members table. Accepted Members and pending Invites share
@@ -32,13 +32,6 @@ export interface MemberRow {
  * Members first (owners at the top, then by name), pending invites after.
  * The table can re-sort by any column; this is only the resting order.
  */
-const ROLE_RANK: Record<Role, number> = {
-  owner: 4,
-  admin: 3,
-  editor: 2,
-  viewer: 1,
-};
-
 export function buildMemberRows(
   members: Member[],
   invites: Invite[],
@@ -59,7 +52,7 @@ export function buildMemberRows(
     }))
     .sort(
       (a, b) =>
-        ROLE_RANK[b.role] - ROLE_RANK[a.role] || a.name.localeCompare(b.name)
+        memberRoleRank(b.role) - memberRoleRank(a.role) || a.name.localeCompare(b.name)
     );
 
   const inviteRows: MemberRow[] = invites.map((invite) => ({

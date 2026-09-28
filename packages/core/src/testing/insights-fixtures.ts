@@ -211,7 +211,10 @@ export function fixtureConversations(): InboxConversation[] {
 
 export function fixtureMessages(convs: InboxConversation[]): InsightsMessage[] {
   const out: InsightsMessage[] = [];
-  for (const c of convs) {
+  // Each exchange takes a different, uneven time, so the average conversation
+  // time is a real number on both sides of the parity test rather than zero.
+  const later = (iso: string, seconds: number) => new Date(Date.parse(iso) + seconds * 1000).toISOString();
+  for (const [index, c] of convs.entries()) {
     // A notification-only conversation is exactly that: one proactive message and
     // nothing else. The others get a nudge *and* a real exchange, so the two rules
     // (not-an-answer, and not-a-conversation) are exercised independently.
@@ -238,13 +241,13 @@ export function fixtureMessages(convs: InboxConversation[]): InsightsMessage[] {
         })
       );
     }
-    out.push(msg({ conversationId: c.id, role: "user", feedback: 0, createdAt: c.createdAt }));
+    out.push(msg({ conversationId: c.id, role: "user", feedback: 0, createdAt: later(c.createdAt, 12) }));
     out.push(
       msg({
         conversationId: c.id,
         role: "assistant",
         feedback: c.feedback,
-        createdAt: c.createdAt,
+        createdAt: later(c.createdAt, 25 + index * 37),
       })
     );
   }

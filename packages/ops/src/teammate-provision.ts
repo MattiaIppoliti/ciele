@@ -5,7 +5,6 @@ import {
   TEAMMATE_GRANT_DOMAINS,
   roleAllowsCapability,
 } from "@agent-hub/core";
-import type { TeammateGrantDomain } from "@agent-hub/core";
 import { defineOperation } from "./operation";
 import { createRoutineOp } from "./routines";
 import { createTeammateOp, teammateInputSchema } from "./teammates";
@@ -45,19 +44,9 @@ import {
  * diffing what it asked for against what came back.
  */
 
-const cadenceSchema = z.enum(
-  ROUTINE_CADENCES as unknown as [
-    (typeof ROUTINE_CADENCES)[number],
-    ...(typeof ROUTINE_CADENCES)[number][],
-  ]
-);
+const cadenceSchema = z.enum(ROUTINE_CADENCES);
 
-const domainSchema = z.enum(
-  TEAMMATE_GRANT_DOMAINS as unknown as [
-    TeammateGrantDomain,
-    ...TeammateGrantDomain[],
-  ]
-);
+const domainSchema = z.enum(TEAMMATE_GRANT_DOMAINS);
 
 export interface ProvisionedTeammate {
   teammate: Teammate;

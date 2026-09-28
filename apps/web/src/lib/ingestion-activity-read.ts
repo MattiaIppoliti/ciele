@@ -1,5 +1,6 @@
 import type { Source, SourceKind, SourceStatus } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { countLabel } from "@/lib/pagination";
 import {
   IMPORT_PREFIX,
   WEBSITE_PREFIX,
@@ -136,49 +137,45 @@ export async function readIngestionActivity(
     .map(documentItem);
 
   return {
-    runs: [...crawls, ...importRuns, ...(loose.length > 0 ? [looseRun(loose)] : [])],
+    runs: [...crawls, ...importRuns, ...(loose.length > 0 ? [itemRun(`${IMPORT_PREFIX}loose`, "Sources", loose)] : [])],
   };
 }
 
 function importRun(id: string, name: string, sources: Source[]): IngestionRun {
   const items = sources.map(documentItem);
-  const done = items.filter(isSettled).length;
-  return {
-    id: `${IMPORT_PREFIX}${id}`,
-    title: name,
-    unit: "item",
-    // One document, one row: for an Import the two counts are the same number.
-    done,
-    total: items.length,
-    rows: items.length,
-    rowsDone: done,
-    failed: items.filter((item) => item.status === "failed").length,
-    // Failures first, then the queue: the sample has to carry what matters,
-    // because the card never sees the rows this cut away.
-    items: [
-      ...items.filter((item) => item.status === "failed"),
-      ...items.filter((item) => item.status === "queued"),
-      ...items.filter((item) => item.status === "indexed"),
-    ].slice(0, IMPORT_SAMPLE),
-  };
+  // Failures first, then the queue: the sample has to carry what matters,
+  // because the card never sees the rows this cut away.
+  const sample = [
+    ...items.filter((item) => item.status === "failed"),
+    ...items.filter((item) => item.status === "queued"),
+    ...items.filter((item) => item.status === "indexed"),
+  ].slice(0, IMPORT_SAMPLE);
+  return itemRun(`${IMPORT_PREFIX}${id}`, name, items, sample);
 }
 
 /**
- * The rows that belong to no Import: an uploaded file, or a document whose
- * Import was deleted while the card was following it.
+ * A run counted in documents. One document, one row: for an Import the two
+ * counts are the same number. With no `sample`, every item is shown; that is
+ * the loose run, the rows that belong to no Import (an uploaded file, or a
+ * document whose Import was deleted while the card was following it).
  */
-function looseRun(items: IngestionActivityItem[]): IngestionRun {
+function itemRun(
+  id: string,
+  title: string,
+  items: IngestionActivityItem[],
+  sample: IngestionActivityItem[] = items,
+): IngestionRun {
   const done = items.filter(isSettled).length;
   return {
-    id: `${IMPORT_PREFIX}loose`,
-    title: "Sources",
+    id,
+    title,
     unit: "item",
     done,
     total: items.length,
     rows: items.length,
     rowsDone: done,
     failed: items.filter((item) => item.status === "failed").length,
-    items,
+    items: sample,
   };
 }
 
@@ -246,9 +243,9 @@ function websiteDetail(input: {
     if (!remote) return "Crawling";
     return remote.found !== null && remote.found > remote.crawled
       ? `${remote.crawled} of ${remote.found} pages crawled`
-      : `${remote.crawled} ${remote.crawled === 1 ? "page" : "pages"} crawled`;
+      : `${countLabel(remote.crawled, "page")} crawled`;
   }
-  return `${input.done} ${input.done === 1 ? "page" : "pages"}`;
+  return countLabel(input.done, "page");
 }
 
 /**

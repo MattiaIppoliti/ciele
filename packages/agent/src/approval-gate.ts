@@ -9,6 +9,7 @@ import {
 
 import { decide, type ResolvedDecisionModel } from "./decision-model";
 import { getRuntimeHost } from "./host";
+import { raceTimeout } from "./preflight-shadow";
 import type { Db } from "@agent-hub/db";
 
 import type { ChatReplyPart, UsageEvent } from "./types";
@@ -81,43 +82,33 @@ export async function runApprovalGate(input: {
   // become an approval.
   if (!input.resolved) return unjudged(null);
 
-  const timeoutMs = input.timeoutMs ?? APPROVAL_GATE_TIMEOUT_MS;
-  const budget = AbortSignal.timeout(timeoutMs);
-  const signal = input.signal ? AbortSignal.any([input.signal, budget]) : budget;
-
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const expiry = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), timeoutMs);
-  });
-
-  try {
-    // The same belt and braces as the shadow pre-flight: aborting asks the
-    // backend to stop, the timer is what guarantees this call returns.
-    const decision = await Promise.race([
-      decide(input.resolved, {
+  // The same belt and braces as the shadow pre-flight: a failure and a
+  // timeout both leave the action unjudged.
+  const resolved = input.resolved;
+  const outcome = await raceTimeout(
+    (signal) =>
+      decide(resolved, {
         state: "",
         questions: buildApprovalQuestions(input.subject),
         abortSignal: signal,
-      }).catch(() => null),
-      expiry,
-    ]);
-    if (!decision) return unjudged(input.resolved.backend);
-
-    input.recordUsage?.(decision.usage);
-    return {
-      verdict: approvalVerdict({
-        answers: decision.answers,
-        confidence: decision.confidence,
-        calibrated: decision.calibrated,
       }),
-      backend: decision.backend,
+    { signal: input.signal, timeoutMs: input.timeoutMs ?? APPROVAL_GATE_TIMEOUT_MS }
+  );
+  if (outcome.kind !== "ok" || !outcome.value) return unjudged(resolved.backend);
+  const decision = outcome.value;
+
+  input.recordUsage?.(decision.usage);
+  return {
+    verdict: approvalVerdict({
+      answers: decision.answers,
+      confidence: decision.confidence,
       calibrated: decision.calibrated,
-      confidence: { ...decision.confidence },
-      mapVersion: APPROVAL_GATE_MAP_VERSION,
-    };
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+    }),
+    backend: decision.backend,
+    calibrated: decision.calibrated,
+    confidence: { ...decision.confidence },
+    mapVersion: APPROVAL_GATE_MAP_VERSION,
+  };
 }
 
 /**

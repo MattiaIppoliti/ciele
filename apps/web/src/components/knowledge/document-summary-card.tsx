@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { documentSummaryAction } from "@/app/actions";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 /**
  * The Summary card under a Document's Details (#931).
@@ -62,12 +63,18 @@ export function DocumentSummaryCard({
 
   return (
     <section className="bg-card rounded-xl border">
-      <h2 className="flex items-center gap-2 border-b px-4 py-3 text-sm font-medium">
-        {heading}
+      {/* Polite: the heading turning from Excerpt into Summary is the news
+          that the text under it was replaced. */}
+      <h2
+        aria-live="polite"
+        className="flex items-center gap-2 border-b px-4 py-3 text-sm font-medium"
+      >
+        <RollInText text={heading} />
         {state === "running" && (
-          <span className="text-muted-foreground text-xs font-normal">
-            Summarising…
-          </span>
+          <RollInText
+            text="Summarising…"
+            className="text-muted-foreground text-xs font-normal"
+          />
         )}
       </h2>
       <div className="px-4 py-4">

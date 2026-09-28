@@ -15,6 +15,8 @@ import {
   sourceDocumentStatusLabel,
 } from "@agent-hub/core";
 import { Badge } from "@agent-hub/ui";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
 import { DocumentChunks } from "@/components/knowledge/document-chunks";
 import { KnowledgeBreadcrumb } from "@/components/knowledge/knowledge-breadcrumb";
@@ -122,7 +124,7 @@ export function DocumentView({
         <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">
           <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
           <Badge tone={sourceDocumentTone(status)}>
-            {sourceDocumentStatusLabel(status)}
+            <RollInText text={sourceDocumentStatusLabel(status)} />
           </Badge>
         </h1>
       </header>
@@ -148,9 +150,10 @@ export function DocumentView({
               >
                 {entry}
                 {counts[entry] !== null && (
-                  <span className="text-muted-foreground ml-1.5 text-xs">
-                    {counts[entry]}
-                  </span>
+                  <RollingNumber
+                    value={counts[entry]}
+                    className="text-muted-foreground ml-1.5 text-xs"
+                  />
                 )}
               </Link>
             ))}
@@ -220,10 +223,21 @@ export function DocumentView({
             <div className="space-y-5 px-4 py-4">
               <DetailGroup label="Source">
                 <DetailRow label="Collection">
-                  <Badge variant="secondary">{collection.name}</Badge>
+                  {/* Capped at the row, with the ellipsis on a text child:
+                      the badge is inline-flex and never shrinks by itself. */}
+                  <Badge
+                    variant="secondary"
+                    className="max-w-full"
+                    title={collection.name}
+                  >
+                    <span className="min-w-0 truncate">{collection.name}</span>
+                  </Badge>
                 </DetailRow>
                 <DetailRow label="Source">
-                  <Link href={backHref} className="press-text hover:underline">
+                  <Link
+                    href={backHref}
+                    className="press-text [overflow-wrap:anywhere] hover:underline"
+                  >
                     {source.name}
                   </Link>
                 </DetailRow>
@@ -236,7 +250,7 @@ export function DocumentView({
                       href={document.frontmatter.resource}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-primary inline-flex items-center gap-1 break-all hover:underline"
+                      className="text-primary inline-flex items-center gap-1 [overflow-wrap:anywhere] hover:underline"
                     >
                       {document.frontmatter.resource}
                       <ExternalLink className="size-3 shrink-0" />
@@ -282,7 +296,7 @@ export function DocumentView({
                   </span>
                 </DetailRow>
                 <DetailRow label="Chunks">
-                  <span className="font-mono text-xs">{chunkCount}</span>
+                  <RollingNumber value={chunkCount} className="font-mono text-xs" />
                 </DetailRow>
                 {canEdit ? (
                   <DocumentExcludeToggle

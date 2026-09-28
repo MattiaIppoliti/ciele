@@ -308,25 +308,28 @@ export interface EscalationEndpointConfig {
   queryParams?: Array<{ name: string; value: string }>;
 }
 
+/** The channel's flat auth fields, composed by the one `authHeaders`. */
 function escalationAuthHeaders(
   config: EscalationEndpointConfig
 ): Record<string, string> {
-  if (config.authType === "bearer" && config.bearerToken) {
-    return { authorization: `Bearer ${config.bearerToken}` };
+  switch (config.authType) {
+    case "bearer":
+      return authHeaders({ type: "bearer", token: config.bearerToken });
+    case "api_key":
+      return authHeaders({
+        type: "api_key",
+        header: config.apiKeyHeaderName,
+        key: config.apiKeyValue,
+      });
+    case "basic":
+      return authHeaders({
+        type: "basic",
+        username: config.basicUsername,
+        password: config.basicPassword,
+      });
+    default:
+      return {};
   }
-  if (config.authType === "api_key" && config.apiKeyHeaderName && config.apiKeyValue) {
-    return { [config.apiKeyHeaderName]: config.apiKeyValue };
-  }
-  if (
-    config.authType === "basic" &&
-    (config.basicUsername || config.basicPassword)
-  ) {
-    const encoded = Buffer.from(
-      `${config.basicUsername ?? ""}:${config.basicPassword ?? ""}`
-    ).toString("base64");
-    return { authorization: `Basic ${encoded}` };
-  }
-  return {};
 }
 
 /**

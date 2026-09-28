@@ -35,6 +35,7 @@ export function ChatHeader({
   onToggleFullscreen,
   onSendFeedback,
   headerColor,
+  busy = false,
 }: {
   nickname: string;
   avatarUrl?: string | null;
@@ -47,6 +48,8 @@ export function ChatHeader({
   onSendFeedback?: () => void;
   /** Style-section override for the top bar's background (§4.7 Colors). */
   headerColor?: string;
+  /** A turn is streaming: a new chat now would be continued by its tail. */
+  busy?: boolean;
 }) {
   // Icons use the theme foreground token (via `text-primary`) rather than the
   // brand color: a dark brand color is invisible on the dark-mode surface, so
@@ -70,16 +73,16 @@ export function ChatHeader({
         </Button>
       </Hint>
 
-      <span className="flex flex-1 items-center justify-center gap-2 text-lg font-medium">
+      <span className="flex min-w-0 flex-1 items-center justify-center gap-2 text-lg font-medium">
         {avatarUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={avatarUrl}
             alt=""
-            className="size-7 rounded-full object-cover"
+            className="size-7 shrink-0 rounded-full object-cover"
           />
         )}
-        <span>{nickname}</span>
+        <span className="truncate">{nickname}</span>
       </span>
 
       <Hint label="New chat">
@@ -87,6 +90,7 @@ export function ChatHeader({
           variant="ghost"
           size="icon"
           aria-label="New chat"
+          disabled={busy}
           onClick={onNewChat}
         >
           <SquarePen className="text-primary size-4" />

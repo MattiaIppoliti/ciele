@@ -3,8 +3,6 @@ import {
   isConnectorInstallShell,
 } from "@/lib/local-connector-terminal-install";
 
-export const runtime = "nodejs";
-
 // Public, unauthenticated install script for terminal self-service pairing.
 // It only downloads the secret-free runtime and runs it in bootstrap mode; it
 // carries no org, member or provider secret. The pasted one-liner pipes this

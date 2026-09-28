@@ -106,9 +106,9 @@ export function serializeAgenticTrace(
   input: SerializeAgenticTraceInput
 ): string {
   const includeReasoning = input.includeReasoning ?? true;
-  const segments: AgenticTraceSegment[] = [];
+  const segments: string[] = [];
   const push = (marker: AgenticTraceMarker, text: string) => {
-    segments.push({ marker, text: neutralizeMarkers(text) });
+    segments.push(`[${MARKER_LABELS[marker]}: ${neutralizeMarkers(text)}]`);
   };
 
   if (input.flowName) push("workflow_started", input.flowName);
@@ -130,10 +130,7 @@ export function serializeAgenticTrace(
 
   if (input.flowName) push("workflow_completed", input.flowName);
 
-  if (segments.length === 0) return "";
-  return segments
-    .map((s) => `[${MARKER_LABELS[s.marker]}: ${s.text}]`)
-    .join(" ");
+  return segments.join(" ");
 }
 
 /**

@@ -24,6 +24,15 @@ import { VisibilityPicker } from "@/components/teammates/visibility-picker";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
 import { GroupAvatarCluster } from "@/components/teammates/group-avatar-cluster";
 import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { LeaveGuardProvider, useGuardedLinkClick } from "@/components/teammates/leave-guard";
+
+/** The rail's order; "en" so it sorts the same on the server and in any browser. */
+const byName = new Intl.Collator("en", { sensitivity: "base" });
+
+/** Past this many people, the channel dialog's picker gets a filter. */
+const PEOPLE_FILTER_AT = 12;
+
 export interface CollectionOption {
   id: string;
   name: string;
@@ -120,10 +129,28 @@ function CreateTeammateDialog({
   const [projectId, setProjectId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function pick(template: (typeof TEMPLATES)[number] | null) {
-    setName(template?.name ?? "");
-    setTitle(template?.title ?? "");
-    setRoleDescription(template?.roleDescription ?? "");
+  function reset() {
+    setName("");
+    setTitle("");
+    setRoleDescription("");
+    setCollectionIds([]);
+    setSourceIds([]);
+    setVisibility("org");
+    setProjectId(null);
+  }
+
+  /**
+   * A role fills only what is still blank or still holds another role's text:
+   * switching roles swaps the preset, and a name somebody typed survives it.
+   */
+  function pick(template: (typeof TEMPLATES)[number]) {
+    const untouched = (value: string, field: "name" | "title" | "roleDescription") =>
+      value.trim() === "" || TEMPLATES.some((other) => other[field] === value);
+    if (untouched(name, "name")) setName(template.name);
+    if (untouched(title, "title")) setTitle(template.title);
+    if (untouched(roleDescription, "roleDescription")) {
+      setRoleDescription(template.roleDescription);
+    }
   }
 
   function handleCreate() {
@@ -148,6 +175,9 @@ function CreateTeammateDialog({
           await updateTeammateAction(teammate.id, { projectId });
         }
         toast.success(`${teammate.name} is ready`);
+        // The dialog stays mounted in the layout: the next "New teammate"
+        // must not open on this one's answers.
+        reset();
         onClose();
         router.push(`/teammates/${teammate.id}`);
       } catch (error) {
@@ -180,7 +210,9 @@ className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm
                     : "hover:bg-muted/50"
                 }`}
               >
-                <span className="text-2xl">{template.emoji}</span>
+                <span aria-hidden="true" className="text-2xl">
+                  {template.emoji}
+                </span>
                 {template.title}
               </button>
             ))}
@@ -250,7 +282,7 @@ className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm
             Cancel
           </Button>
           <Button className="h-10 px-5" onClick={handleCreate} disabled={isPending}>
-            {isPending ? "Creating…" : "Create teammate"}
+            <RollInText text={isPending ? "Creating…" : "Create teammate"} />
           </Button>
         </div>
       </DialogContent>
@@ -281,7 +313,19 @@ function CreateChannelDialog({
   const [name, setName] = useState("");
   const [teammateIds, setTeammateIds] = useState<string[]>([]);
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [peopleQuery, setPeopleQuery] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // Chosen people stay listed whatever the filter says, so a pick never
+  // disappears from view while it still counts.
+  const peopleNeedle = peopleQuery.trim().toLowerCase();
+  const shownMembers = peopleNeedle
+    ? members.filter(
+        (member) =>
+          memberIds.includes(member.userId) ||
+          member.label.toLowerCase().includes(peopleNeedle)
+      )
+    : members;
 
   const toggle = (
     id: string,
@@ -301,6 +345,11 @@ function CreateChannelDialog({
           teammateIds,
           memberIds,
         });
+        // Mounted in the layout, like the Teammate dialog: start blank next time.
+        setName("");
+        setTeammateIds([]);
+        setMemberIds([]);
+        setPeopleQuery("");
         onClose();
         router.push(`/teammates/channels/${channel.id}`);
       } catch (error) {
@@ -365,8 +414,25 @@ className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
                 You are the only member of this organization so far.
               </p>
             ) : (
+              <>
+              {members.length > PEOPLE_FILTER_AT && (
+                <Input
+                  type="search"
+                  value={peopleQuery}
+                  onChange={(e) => setPeopleQuery(e.target.value)}
+                  placeholder="Filter people…"
+                  aria-label="Filter people"
+                  autoComplete="off"
+                  className="h-9"
+                />
+              )}
               <div className="flex flex-wrap gap-2">
-                {members.map((member) => (
+                {shownMembers.length === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    Nobody by that name.
+                  </p>
+                )}
+                {shownMembers.map((member) => (
                   <button
                     key={member.userId}
                     type="button"
@@ -382,6 +448,7 @@ className={`rounded-full border px-3 py-1.5 text-sm ${
                   </button>
                 ))}
               </div>
+              </>
             )}
           </div>
           <Button
@@ -389,7 +456,7 @@ className={`rounded-full border px-3 py-1.5 text-sm ${
             disabled={isPending || !name.trim()}
             onClick={handleCreate}
           >
-            {isPending ? "Opening…" : "Open group"}
+            <RollInText text={isPending ? "Opening…" : "Open group"} />
           </Button>
         </div>
       </DialogContent>
@@ -424,10 +491,15 @@ function RailRow({
   /** Row actions, revealed on hover or keyboard focus. Never inside the link. */
   trailing?: ReactNode;
 }) {
+  const guardedClick = useGuardedLinkClick();
   return (
     <div className="group/row relative">
       <Link
         href={href}
+        aria-current={active ? "page" : undefined}
+        // The open page may hold unsaved edits (a Teammate's settings), and
+        // this rail sits outside it; the page gets to ask first.
+        onClick={(event) => guardedClick(event, href)}
         className={`flex items-start gap-3 border-b px-4 py-3 transition-colors ${
           active ? "bg-primary/5 dark:bg-primary/25" : "hover:bg-muted/50"
         }`}
@@ -522,7 +594,8 @@ export function TeammatesShell({
         .filter((teammate) => matches(teammate.name))
         .map((teammate) => ({ kind: "teammate" as const, teammate })),
     ].sort((a, b) =>
-      (a.kind === "channel" ? a.channel.name : a.teammate.name).localeCompare(
+      byName.compare(
+        a.kind === "channel" ? a.channel.name : a.teammate.name,
         b.kind === "channel" ? b.channel.name : b.teammate.name
       )
     );
@@ -550,6 +623,7 @@ export function TeammatesShell({
   }
 
   return (
+    <LeaveGuardProvider>
     <div className="flex h-full flex-col">
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Teammates" /></h1>
@@ -631,7 +705,8 @@ export function TeammatesShell({
                     </span>
                   ) : row.channel.unread.count > 0 ? (
                     <span className="bg-muted text-muted-foreground ml-auto shrink-0 rounded-full px-2 py-0.5 text-2xs font-medium">
-                      {row.channel.unread.count}
+                      <RollingNumber value={row.channel.unread.count} />
+                      <span className="sr-only"> unread</span>
                     </span>
                   ) : null
                 }
@@ -694,7 +769,7 @@ export function TeammatesShell({
           {hidden.length > 0 && (
             <details className="mt-auto shrink-0 border-t px-4 py-3">
               <summary className="text-muted-foreground cursor-pointer text-xs hover:underline">
-                Hidden from your roster ({hidden.length})
+                Hidden from your roster (<RollingNumber value={hidden.length} />)
               </summary>
               <ul className="mt-3 space-y-2">
                 {hidden.map((teammate) => (
@@ -744,5 +819,6 @@ export function TeammatesShell({
         onClose={() => setChannelOpen(false)}
       />
     </div>
+    </LeaveGuardProvider>
   );
 }

@@ -36,6 +36,8 @@ import {
 import type { CollectionOption } from "@/components/teammates/teammates-client";
 import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { useLeaveGuard } from "@/components/teammates/leave-guard";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 /**
  * The Teammate's configuration. Everything here takes effect on the next
@@ -122,6 +124,8 @@ export function TeammateSettingsForm({
    * a page-old copy, so the save writes nothing.
    */
   const [loadedMemory, setLoadedMemory] = useState<string | null>(null);
+  /** The Agent layer's version as read, so a save over a newer write is refused. */
+  const [loadedMemoryVersion, setLoadedMemoryVersion] = useState<string | null>(null);
   /**
    * The read failed. The field stays read-only rather than let a save put a
    * body of unknown age over whatever the Teammate has since written; closing
@@ -141,6 +145,7 @@ export function TeammateSettingsForm({
         if (!live) return;
         const body = document?.body ?? "";
         setLoadedMemory(body);
+        setLoadedMemoryVersion(document?.updatedAt ?? null);
         setAgentMemory(body);
       })
       .catch(() => {
@@ -175,7 +180,7 @@ export function TeammateSettingsForm({
         // layer must not gain a history entry saying somebody edited it, and a
         // layer we never managed to read is not one to write.
         if (loadedMemory !== null && agentMemory !== loadedMemory) {
-          await writeTeammateMemoryAction(teammate.id, agentMemory);
+          await writeTeammateMemoryAction(teammate.id, agentMemory, "", loadedMemoryVersion);
         }
         // Two writes because they are two capabilities: an Editor saving the
         // persona must not be refused for a grants change they cannot make and
@@ -216,26 +221,16 @@ export function TeammateSettingsForm({
     (loadedMemory !== null && agentMemory !== loadedMemory) ||
     changedGrants;
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
-
   /** Leave now, or after a Discard confirm when there are unsaved edits. */
-  function leave(go: () => void) {
-    if (!dirty || isPending) {
-      go();
-      return;
-    }
-    confirmDelete({
-      title: "Discard your changes?",
-      description: `The edits to ${teammate.name} are not saved yet.`,
-      confirmLabel: "Discard changes",
-      onConfirm: go,
-    });
-  }
+  const { leave } = useUnsavedChanges({
+    dirty,
+    saving: isPending,
+    confirmDelete,
+    description: `The edits to ${teammate.name} are not saved yet.`,
+  });
+
+  // The Teammates rail sits in the layout, outside this form; it asks here too.
+  useLeaveGuard(dirty, leave);
 
   /** A breadcrumb link that asks first, keeping Cmd/Ctrl-click as a new tab. */
   function guardLink(href: string) {
@@ -366,6 +361,7 @@ export function TeammateSettingsForm({
           value={allowedModels}
           onChange={setAllowedModels}
           unavailable={unavailableProviders}
+          audience="colleagues"
         />
         <p className="text-muted-foreground text-sm">
           {modelAllowListSummary(allowedModels, unavailableProviders)} Your own connected

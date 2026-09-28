@@ -96,8 +96,8 @@ export function ScopeSwitcher() {
           />
         </PopoverTrigger>
         <PopoverContent className="w-72 p-0" align="start">
-        <div className="flex items-center gap-2 border-b px-3">
-          <Search className="text-muted-foreground size-4 shrink-0" />
+        <div className="has-[:focus-visible]:ring-ring/50 flex items-center gap-2 border-b px-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset">
+          <Search aria-hidden className="text-muted-foreground size-4 shrink-0" />
           <input
             autoFocus={canAutoFocus()}
             value={query}
@@ -109,10 +109,11 @@ export function ScopeSwitcher() {
             className="placeholder:text-muted-foreground h-10 w-full bg-transparent text-sm outline-none"
           />
         </div>
-        <HoverHighlight className="max-h-72 overflow-y-auto p-1.5">
+        <HoverHighlight className="max-h-72 overflow-y-auto overscroll-contain p-1.5">
           <Link
             href="/"
             onClick={close}
+            aria-current={!scoped ? "page" : undefined}
             data-highlight-row
             className="relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm"
           >
@@ -123,7 +124,7 @@ export function ScopeSwitcher() {
               className="shrink-0"
             />
             <span className="flex-1 truncate">All Assistants</span>
-            {!scoped && <Check className="size-4 shrink-0" />}
+            {!scoped && <Check aria-hidden className="size-4 shrink-0" />}
           </Link>
           {filtered.map((assistant) => (
             <Link
@@ -157,12 +158,12 @@ export function ScopeSwitcher() {
                 )}
               </span>
               {assistant.id === scopedId && (
-                <Check className="size-4 shrink-0" />
+                <Check aria-hidden className="size-4 shrink-0" />
               )}
             </Link>
           ))}
           {filtered.length === 0 && (
-            <p className="text-muted-foreground px-3 py-6 text-center text-sm">
+            <p className="text-muted-foreground px-3 py-6 text-center text-sm break-words">
               No assistants match “{query}”.
             </p>
           )}

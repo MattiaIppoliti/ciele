@@ -6,7 +6,7 @@ import {
   streamConversationTurn,
 } from "@agent-hub/agent";
 import { OperationError, ensureFlowsAgentOp, flowTriggerSchema } from "@ciele/ops";
-import { getSession } from "@/lib/auth";
+import { getSession, profileName } from "@/lib/auth";
 import { getDb } from "@/lib/data";
 import { loadFlowBuilderCatalogue } from "@/lib/flow-builder-catalogue";
 import { webOperationPorts } from "@/lib/op-ports";
@@ -160,11 +160,6 @@ export async function POST(
       .map((candidate) => ({ id: candidate.id, title: candidate.title })),
   });
 
-  const profileName =
-    [session.profile?.firstName, session.profile?.lastName].filter(Boolean).join(" ") ||
-    session.profile?.username ||
-    undefined;
-
   const stream = await streamConversationTurn({
     db,
     systemDb: getRuntimeDb(db),
@@ -179,7 +174,7 @@ export async function POST(
     turnId: body.turnId,
     metadata: {
       ...sessionMetadata(request.headers),
-      userName: profileName,
+      userName: profileName(session.profile),
       userEmail: session.email,
       userRole: session.role ?? undefined,
       flowsAgent: { assistantId, flowId },

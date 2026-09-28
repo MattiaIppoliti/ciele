@@ -35,30 +35,18 @@ function text(a: string, b: string): number {
   return a.toLowerCase().localeCompare(b.toLowerCase());
 }
 
-function descend(value: number): number {
-  return -value;
+interface OrgKnowledgeSourceRow {
+  id: string;
+  name: string;
+  status: SourceStatus;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export function compareOrgKnowledgeSources(
   order: OrgKnowledgeSourceOrder
-): (
-  a: {
-    id: string;
-    name: string;
-    status: SourceStatus;
-    createdAt: string;
-    updatedAt?: string;
-  },
-  b: {
-    id: string;
-    name: string;
-    status: SourceStatus;
-    createdAt: string;
-    updatedAt?: string;
-  }
-) => number {
-  const ascending = order.ascending ?? false;
-  const face = (value: number) => (ascending ? value : descend(value));
+): (a: OrgKnowledgeSourceRow, b: OrgKnowledgeSourceRow) => number {
+  const face = (value: number) => (order.ascending ? value : -value);
   return (a, b) => {
     let primary: number;
     switch (order.sort) {
@@ -96,14 +84,16 @@ export interface SourceDocumentOrder {
   ascending?: boolean;
 }
 
+interface SourceDocumentRow {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
 export function compareSourceDocuments(
   order: SourceDocumentOrder
-): (
-  a: { id: string; title: string; createdAt: string },
-  b: { id: string; title: string; createdAt: string }
-) => number {
-  const ascending = order.ascending ?? false;
-  const face = (value: number) => (ascending ? value : descend(value));
+): (a: SourceDocumentRow, b: SourceDocumentRow) => number {
+  const face = (value: number) => (order.ascending ? value : -value);
   return (a, b) => {
     const primary =
       order.sort === "title"

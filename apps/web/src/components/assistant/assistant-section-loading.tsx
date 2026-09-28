@@ -258,9 +258,11 @@ export function AssistantSectionLoading({
     return (
       <div
         className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col px-4 py-4 sm:px-5"
+        role="status"
         aria-busy="true"
         aria-label="Loading assistant section"
       >
+        <span className="sr-only">Loading…</span>
         <div className="flex items-center justify-between pb-3">
           <Skeleton className="h-6 w-24" />
           <Skeleton className="h-8 w-24" />
@@ -273,9 +275,11 @@ export function AssistantSectionLoading({
   return (
     <div
       className={`mx-auto ${wide ? "max-w-4xl" : "max-w-3xl"} px-5 py-6 sm:px-8 sm:py-8`}
+      role="status"
       aria-busy="true"
       aria-label="Loading assistant section"
     >
+      <span className="sr-only">Loading…</span>
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
           <Skeleton className="h-8 w-48" />

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { SetupPicker } from "@/components/shell/setup-picker";
 import { SETUP_SECTIONS } from "@/components/shell/nav";
 import { requirePageMember } from "@/lib/authz";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function SetupSectionPage({
           <Icon className="text-muted-foreground size-6" />
         </span>
         <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          Continue to {config.label}
+          <RollInText text={`Continue to ${config.label}`} />
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Choose an assistant to continue

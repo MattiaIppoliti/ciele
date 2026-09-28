@@ -50,6 +50,9 @@ export { DEMO_MEMBER, DEMO_ORG } from "./mock";
 // pinned to one Organization, standing in for RLS on service-role clients.
 export { OrgPinnedDbError, createOrgPinnedDb } from "./org-pinned";
 
+// A memory document write whose version precondition failed (lost update).
+export { MemoryDocumentConflictError } from "./memory-conflict";
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&

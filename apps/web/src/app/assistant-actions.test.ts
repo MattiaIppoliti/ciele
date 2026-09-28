@@ -16,7 +16,7 @@ import {
   acceptImprovementProposalAction,
   createFlowAction,
   deleteAssistantAction,
-  deleteSourceAction,
+  deleteOrgSourceAction,
   dismissImprovementProposalAction,
   duplicateAssistantAction,
   updateAssistantAction,
@@ -132,7 +132,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     );
     expect(courtesy, "the built-in Basic Interaction flow ships by default").toBeTruthy();
 
-    await updateFlowAction(assistant.id, courtesy!.id, {
+    await updateFlowAction(courtesy!.id, {
       actionSettings: { basic_reply: { message: "Ciao! Come posso aiutarti?" } },
     });
 
@@ -143,7 +143,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
       "Ciao! Come posso aiutarti?"
     );
     // Clearing it is how an admin goes back to a generated reply.
-    await updateFlowAction(assistant.id, courtesy!.id, {
+    await updateFlowAction(courtesy!.id, {
       actionSettings: { basic_reply: { message: "" } },
     });
     expect(
@@ -163,14 +163,14 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
 
     // Patching only the actions still has to respect the *stored* trigger.
     await expect(
-      updateFlowAction(assistant.id, flow.id, { actions: ["custom_message"] })
+      updateFlowAction(flow.id, { actions: ["custom_message"] })
     ).rejects.toThrow(/cannot run on the "chat_open" trigger/);
     // Patching only the trigger has to respect the *stored* actions.
     await expect(
-      updateFlowAction(assistant.id, flow.id, { trigger: "message" })
+      updateFlowAction(flow.id, { trigger: "message" })
     ).rejects.toThrow(/cannot run on the "message" trigger/);
     // Moving both at once is how a flow legitimately changes kind.
-    await updateFlowAction(assistant.id, flow.id, {
+    await updateFlowAction(flow.id, {
       trigger: "message",
       actions: ["custom_message"],
     });
@@ -226,7 +226,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     });
   });
 
-  it("deleteSourceAction cascades to the source's Concepts", async () => {
+  it("deleteOrgSourceAction cascades to the source's Concepts", async () => {
     const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
     const collection = await db.createCollection(assistant.id, { name: "C" });
     const source = await db.createSource({
@@ -242,7 +242,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
       body: "body",
     });
 
-    await deleteSourceAction(assistant.id, source.id);
+    await deleteOrgSourceAction(source.id);
 
     expect(await db.getConcept(concept.id)).toBeNull();
   });

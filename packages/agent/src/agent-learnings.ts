@@ -1,7 +1,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { appendAgentLearning, messageText } from "@agent-hub/core";
-import type { Db } from "@agent-hub/db";
+import { MemoryDocumentConflictError, type Db } from "@agent-hub/db";
 import { getClassifierModel } from "./models";
 import {
   isSafeToPersist,
@@ -141,26 +141,36 @@ export async function distillAgentLearning(input: {
     return { appended: false };
   }
 
-  const existing = await db.getMemoryDocument(organizationId, {
-    scope: "agent",
-    teammateId,
-  });
-  const body = appendAgentLearning(
-    existing?.body ?? "",
-    learning,
-    new Date().toISOString()
-  );
-  // Unchanged body means the append fell off the front cap immediately, which
-  // only happens when a single learning exceeds the whole layer. Nothing to
-  // record, and a history entry saying so would be noise.
-  if (body === (existing?.body ?? "")) return { appended: false };
+  // An append, so a concurrent write (a Member correcting the document, or
+  // another distillation) is re-read and appended to rather than overwritten.
+  // Two attempts: a second conflict is left to the job ledger's retry.
+  for (let attempt = 0; ; attempt += 1) {
+    const existing = await db.getMemoryDocument(organizationId, {
+      scope: "agent",
+      teammateId,
+    });
+    const body = appendAgentLearning(
+      existing?.body ?? "",
+      learning,
+      new Date().toISOString()
+    );
+    // Unchanged body means the append fell off the front cap immediately, which
+    // only happens when a single learning exceeds the whole layer. Nothing to
+    // record, and a history entry saying so would be noise.
+    if (body === (existing?.body ?? "")) return { appended: false };
 
-  await db.writeMemoryDocument({
-    organizationId,
-    owner: { scope: "agent", teammateId },
-    body,
-    note: "Learned from a conversation",
-    teammateId,
-  });
-  return { appended: true };
+    try {
+      await db.writeMemoryDocument({
+        organizationId,
+        owner: { scope: "agent", teammateId },
+        body,
+        note: "Learned from a conversation",
+        teammateId,
+        expectedUpdatedAt: existing?.updatedAt ?? null,
+      });
+      return { appended: true };
+    } catch (error) {
+      if (!(error instanceof MemoryDocumentConflictError) || attempt >= 1) throw error;
+    }
+  }
 }

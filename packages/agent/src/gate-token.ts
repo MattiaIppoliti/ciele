@@ -24,7 +24,7 @@ export type GateTokenVerdict =
 
 export interface GateTokens {
   mint(subject: { id: string; expiresAt: string }): string;
-  verify(token: string, options?: { now?: Date; graceMs?: number }): GateTokenVerdict;
+  verify(token: string, options?: { now?: Date }): GateTokenVerdict;
 }
 
 /**
@@ -78,8 +78,7 @@ export function gateTokens(domain: string, defaultGraceMs: number): GateTokens {
       const expiresMs = Number(decoded.slice(0, separator));
       const id = decoded.slice(separator + 1);
       if (!Number.isFinite(expiresMs) || !id) return { ok: false, reason: "malformed" };
-      const grace = options.graceMs ?? defaultGraceMs;
-      if ((options.now ?? new Date()).getTime() > expiresMs + grace) {
+      if ((options.now ?? new Date()).getTime() > expiresMs + defaultGraceMs) {
         return { ok: false, reason: "expired" };
       }
       return { ok: true, id };

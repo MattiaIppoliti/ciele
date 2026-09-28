@@ -9,7 +9,10 @@ import {
   isAfterInboxCursor,
 } from "./inbox";
 import {
+  clampPageLimit,
+  decodeMemorySubjectCursor,
   finalizeImprovementPage,
+  finalizePage,
   normalizeImprovementPageInput,
 } from "./improvement-pagination";
 import type {
@@ -33,6 +36,7 @@ import type {
   Conversation,
   CookieConsentRecord,
   CrawlFinalizeClaim,
+  DashboardFacts,
   DefaultFlowSpec,
   DueCompostAssistant,
   Entity,
@@ -123,6 +127,7 @@ import {
   FLOW_TRUST_EVENT_RETENTION,
   GOAL_RUN_RETENTION,
   isProactiveMessage,
+  latencyBucketOf,
   MEMORIES_PER_SUBJECT_CAP,
   monotonicNow,
   nextCrawlDue,
@@ -147,6 +152,7 @@ import {
 
 import type { Db } from "./types";
 import { resolveApplicationConnectionOwner } from "./application-connections";
+import { MemoryDocumentConflictError } from "./memory-conflict";
 
 /** Link row: an improvement associated with an assistant message. */
 interface ImprovementMessageRow {
@@ -253,6 +259,8 @@ interface MockStore {
   aiUsage: (AiUsageInput & { createdAt: string })[];
   /** usage_daily rollup rows, keyed `${org}|${day}|${kind}|${credentialKind}`. */
   usageDaily: Map<string, UsageDailyAggregate>;
+  /** Mirrors public.usage_rollup_state: the last UTC day a rollup run closed. */
+  usageRollupClosedThrough: string | null;
   /** usage_spender_daily rollup rows (#850), keyed by org + day + the tuple. */
   usageSpenderDaily: Map<string, UsageSpenderAggregate>;
   /** Non-model operations (#854), appended per call; counted, never priced. */
@@ -600,6 +608,7 @@ function emptyStore(): MockStore {
       },
     ],
     usageDaily: new Map(),
+    usageRollupClosedThrough: null,
     usageSpenderDaily: new Map(),
     usageEvents: [],
     objectAccessEvents: [],
@@ -673,8 +682,222 @@ function emptyStore(): MockStore {
   };
 }
 
+/**
+ * Five weeks of AI activity behind the Insights Dashboard, so the demo build
+ * shows its charts populated rather than a month of zeros.
+ *
+ * Deterministic (a fixed-seed PRNG), so two demo sessions look the same and a
+ * screenshot stays reproducible. Every row is dated before today: the Usage
+ * page and plan meters read today live, and a week of this costs well under the
+ * smallest plan's weekly allowance (about EUR 1.50 of the 5.60), so seeding it
+ * can never cap a demo chat. Verdicts carry no Flow, so the trust ledger, which
+ * only reads (Assistant, Flow) pairs, never sees them.
+ */
+function seedDashboardHistory(store: MockStore): void {
+  let state = 0x5eed_da5b;
+  const random = () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
+  };
+  const between = (lo: number, hi: number) => Math.round(lo + random() * (hi - lo));
+  const pick = <T,>(weights: readonly (readonly [T, number])[]): T => {
+    const total = weights.reduce((sum, [, w]) => sum + w, 0);
+    let at = random() * total;
+    for (const [value, weight] of weights) {
+      at -= weight;
+      if (at <= 0) return value;
+    }
+    return weights[weights.length - 1][0];
+  };
+  const assistants = ["Vrp47KxooVPk", "GlQMYjuZ6xcO"];
+  const todayMs = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  const DAYS = 35;
+
+  for (let back = DAYS; back >= 1; back -= 1) {
+    const dayMs = todayMs - back * 86_400_000;
+    const weekday = new Date(dayMs).getUTCDay();
+    const weekend = weekday === 0 || weekday === 6;
+    // Traffic grows over the five weeks and dips at weekends.
+    const growth = 1 + (DAYS - back) / DAYS;
+    const at = () => new Date(dayMs + between(7, 21) * 3_600_000 + between(0, 3_599) * 1000).toISOString();
+    // Flow popularity drifts, so the ranking has something to show: the
+    // Socratic flow climbs through the month while Assistant Information fades.
+    const drift = (DAYS - back) / DAYS;
+    const flows = [
+      ["Search knowledge", 30] as const,
+      ["Basic Interaction", 22] as const,
+      ["Assistant Information", 18 - 12 * drift] as const,
+      ["Socratic flow", 4 + 20 * drift] as const,
+      ["Human Help Needed", 7 + 3 * Math.sin(back / 3)] as const,
+      ["Default behavior", 9] as const,
+    ];
+
+    for (const assistantId of assistants) {
+      const main = assistantId === assistants[0];
+      const turns = Math.round((main ? between(24, 42) : between(6, 14)) * growth * (weekend ? 0.45 : 1));
+      for (let i = 0; i < turns; i += 1) {
+        const createdAt = at();
+        const surface = random() < 0.12 ? "preview" : "widget";
+        const flowName = pick(flows);
+        const failed = random() < 0.03;
+        // A long right tail, like real turns: most land in two to four seconds.
+        const durationMs = Math.round(
+          (flowName === "Basic Interaction" ? 700 : 2200) * Math.exp((random() - 0.35) * 1.4)
+        );
+        const toolCalls = flowName === "Search knowledge" ? between(1, 3) : 0;
+        store.runtimeEvents.push({
+          organizationId: DEMO_ORG.id,
+          assistantId,
+          kind: "chat_turn",
+          status: failed ? "failed" : "succeeded",
+          surface,
+          flowName: failed ? null : flowName,
+          durationMs,
+          toolCalls,
+          errorClass: failed ? pick([["provider_timeout", 3], ["rate_limited", 2], ["tool_error", 1]] as const) : null,
+          createdAt,
+        });
+        if (failed) continue;
+        const usage = (stage: AiUsageInput["stage"], provider: AiUsageInput["provider"], modelId: string, input: number, output: number) =>
+          store.aiUsage.push({
+            organizationId: DEMO_ORG.id,
+            assistantId,
+            stage,
+            provider,
+            modelId,
+            credentialKind: "platform",
+            inputTokens: input,
+            outputTokens: output,
+            surface,
+            createdAt,
+          });
+        usage("decide", "typesafe", "typesafe-ai/jev", between(450, 700), between(40, 90));
+        usage("generate", "google", "gemini-3.5-flash", between(3_000, 9_000), between(180, 650));
+        if (toolCalls > 0) {
+          usage("embed", "openai", "text-embedding-3-small", between(12, 40), 0);
+          usage("rerank", "voyage", "voyage/rerank-2.5", between(2_000, 5_000), 0);
+        }
+        // The verifier grades about a third of answers, an hour later.
+        if (random() < 0.35) {
+          const verdictAt = new Date(Date.parse(createdAt) + 3_600_000).toISOString();
+          usage("verify", "google", "gemini-2.5-flash-lite", between(1_500, 3_000), between(20, 60));
+          const pass = random() < 0.86 + 0.06 * drift;
+          const messageId = `demo-verdict-${shortId()}`;
+          store.answerVerdicts.set(messageId, {
+            messageId,
+            organizationId: DEMO_ORG.id,
+            assistantId,
+            flowId: null,
+            verdict: pass ? "pass" : "fail",
+            reason: pass ? "Supported by the cited sources." : "Claims a detail no cited source states.",
+            modelId: "gemini-2.5-flash-lite",
+            createdAt: verdictAt,
+          });
+        }
+      }
+    }
+
+    // AI Teammates: fewer turns, larger contexts, a Routine each weekday morning.
+    const teammateTurns = Math.round(between(5, 12) * growth * (weekend ? 0.2 : 1));
+    for (let i = 0; i < teammateTurns + (weekend ? 0 : 1); i += 1) {
+      const createdAt = at();
+      const routine = i === teammateTurns;
+      const surface = routine ? "routine" : random() < 0.25 ? "channel" : "teammate";
+      const failed = random() < 0.02;
+      store.runtimeEvents.push({
+        organizationId: DEMO_ORG.id,
+        assistantId: null,
+        kind: "chat_turn",
+        status: failed ? "failed" : "succeeded",
+        surface: "teammate",
+        durationMs: Math.round(4_500 * Math.exp((random() - 0.3) * 1.2)),
+        toolCalls: between(0, 4),
+        errorClass: failed ? "provider_timeout" : null,
+        createdAt,
+      });
+      if (failed) continue;
+      store.aiUsage.push({
+        organizationId: DEMO_ORG.id,
+        assistantId: null,
+        stage: "generate",
+        provider: "google",
+        modelId: "gemini-3.5-flash",
+        credentialKind: "platform",
+        inputTokens: between(9_000, 22_000),
+        outputTokens: between(500, 1_600),
+        surface,
+        createdAt,
+      });
+      if (random() < 0.4) {
+        store.aiUsage.push({
+          organizationId: DEMO_ORG.id,
+          assistantId: null,
+          stage: "agent_memory",
+          provider: "google",
+          modelId: "gemini-2.5-flash-lite",
+          credentialKind: "platform",
+          inputTokens: between(2_000, 4_000),
+          outputTokens: between(80, 220),
+          surface,
+          createdAt,
+        });
+      }
+    }
+
+    // The platform's own work: nightly indexing, the compost and API callers.
+    const nightly = new Date(dayMs + 2 * 3_600_000).toISOString();
+    for (let i = 0; i < between(2, 6); i += 1) {
+      store.aiUsage.push({
+        organizationId: DEMO_ORG.id,
+        assistantId: assistants[i % 2],
+        stage: "embed",
+        provider: "openai",
+        modelId: "text-embedding-3-small",
+        credentialKind: "platform",
+        inputTokens: between(20_000, 90_000),
+        outputTokens: 0,
+        surface: "ingestion",
+        createdAt: nightly,
+      });
+    }
+    if (weekday === 1) {
+      store.aiUsage.push({
+        organizationId: DEMO_ORG.id,
+        assistantId: assistants[0],
+        stage: "compost",
+        provider: "google",
+        modelId: "gemini-3.5-flash",
+        credentialKind: "platform",
+        inputTokens: between(30_000, 60_000),
+        outputTokens: between(1_500, 3_000),
+        surface: "scheduled",
+        createdAt: nightly,
+      });
+    }
+    if (!weekend) {
+      for (let i = 0; i < between(3, 9); i += 1) {
+        store.aiUsage.push({
+          organizationId: DEMO_ORG.id,
+          assistantId: null,
+          stage: "classify",
+          provider: "google",
+          modelId: "gemini-2.5-flash-lite",
+          credentialKind: "platform",
+          inputTokens: between(800, 2_400),
+          outputTokens: between(20, 80),
+          surface: "api",
+          createdAt: at(),
+        });
+      }
+    }
+  }
+}
+
 function createStore(): MockStore {
   const store = emptyStore();
+  seedDashboardHistory(store);
 
   seedAssistant(store, {
     id: "Vrp47KxooVPk",
@@ -1883,6 +2106,24 @@ function dropConversation(store: MockStore, id: string): void {
   }
 }
 
+/** The supabase adapter reads back affected rows; a write that changed none throws. */
+function requireMockConversation(store: MockStore, id: string): Conversation {
+  const conversation = store.conversations.get(id);
+  if (!conversation) {
+    throw new Error(`Conversation ${id} was not changed: not found or not permitted`);
+  }
+  return conversation;
+}
+
+/** Mirrors `conversations_refuse_held_delete` (20260927120000). */
+function refuseHeldConversationDelete(conversation: Conversation): void {
+  if (conversation.legalHold) {
+    throw new Error(
+      `Conversation ${conversation.id} is under legal hold; release the hold before deleting it`
+    );
+  }
+}
+
 function assistantOfConversation(
   conversation: Pick<Conversation, "assistantId">
 ): Assistant | undefined {
@@ -2037,6 +2278,135 @@ function detachMemoriesFromConcept(conceptId: string): void {
 }
 
 /** `on delete cascade` from a Source (and, through it, from a Collection). */
+/** Stores the next payload version of a Source's ingest, and returns it. */
+function stageMockIngestPayload(
+  store: MockStore,
+  sourceId: string,
+  rawText: string
+): number {
+  const versions = [...store.sourceIngestPayloads.entries()]
+    .filter(([key]) => key.startsWith(`${sourceId}:`))
+    .map(([, payload]) => payload.version);
+  const version = Math.max(0, ...versions) + 1;
+  store.sourceIngestPayloads.set(`${sourceId}:${version}`, {
+    version,
+    rawText,
+    drafts: null,
+    generationId: null,
+    expectedActiveGenerationId: null,
+    cursor: 0,
+  });
+  return version;
+}
+
+/** Whether `job` is the running ingest of this Source payload version, under
+ * the caller's lease. */
+function holdsIngestLease(
+  job: BackgroundJob | undefined,
+  input: { leaseToken: string; sourceId: string; version: number }
+): job is BackgroundJob {
+  return (
+    job !== undefined &&
+    job.status === "running" &&
+    job.leaseToken === input.leaseToken &&
+    job.sourceId === input.sourceId &&
+    Number(job.payload.payloadVersion) === input.version
+  );
+}
+
+/** Queues an assistant message's deferred effects, pending from `at`, under
+ * the Organization that owns the Conversation (its Assistant or Teammate). */
+function enqueueMockTurnEffects(
+  store: MockStore,
+  conversationId: string,
+  messageId: string,
+  payloads: unknown[],
+  at: string
+): void {
+  const conversation = store.conversations.get(conversationId);
+  const organizationId = conversation?.assistantId
+    ? store.assistants.get(conversation.assistantId)?.organizationId
+    : conversation?.teammateId
+      ? store.teammates.get(conversation.teammateId)?.organizationId
+      : undefined;
+  if (!organizationId) throw new Error("Conversation organization not found");
+  for (const payload of payloads) {
+    const id = crypto.randomUUID();
+    store.turnEffects.set(id, {
+      id,
+      organizationId,
+      conversationId,
+      messageId,
+      payload,
+      status: "pending",
+      attempts: 0,
+      nextRunAt: at,
+      leaseToken: null,
+      lockedAt: null,
+      error: "",
+      updatedAt: at,
+    });
+  }
+}
+
+type MockChunk = MockStore["chunks"] extends Map<string, infer C> ? C : never;
+
+/** A demo-store chunk as a search hit. The three scoped searches differ only
+ * in which chunks qualify and whether the hit carries Direct access. */
+function mockChunkHit(
+  chunk: MockChunk,
+  concept: Concept | undefined,
+  collection: KnowledgeCollection | undefined,
+  source: Source | undefined,
+  similarity: number,
+  { directAccess }: { directAccess: boolean }
+): KnowledgeSearchResult {
+  return {
+    conceptId: chunk.conceptId,
+    conceptTitle: concept?.frontmatter.title ?? concept?.path ?? "Concept",
+    conceptPath: concept?.path ?? "",
+    collectionId: chunk.collectionId,
+    collectionName: collection?.name ?? "",
+    sourceName: source?.name ?? null,
+    sourceId: source?.id ?? null,
+    directAccess,
+    resourceUrl: concept?.frontmatter.resource ?? null,
+    content: chunk.content,
+    similarity,
+  };
+}
+
+/** Same shaping rule the Supabase implementation applies (#801, CYB-14):
+ * one Source may not take the whole window from the one that answers. */
+function rankMockHits(
+  results: KnowledgeSearchResult[],
+  limit: number | undefined
+): KnowledgeSearchResult[] {
+  return capPerSource(
+    results.sort((a, b) => b.similarity - a.similarity),
+    limit ?? 6
+  );
+}
+
+/**
+ * One page of `items` by id. Code-unit order, because the cursor filter uses
+ * `>`: localeCompare made the two comparisons disagree for ids containing "-"
+ * (locale collation shifts punctuation), so the page after the cursor could
+ * come back empty for an id the sort had placed later.
+ */
+function pageById<T extends { id: string }>(
+  items: T[],
+  input: { limit: number; cursor?: string | null }
+): { items: T[]; nextCursor: string | null } {
+  const limit = clampPageLimit(input.limit);
+  const ordered = items.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const nextIndex = input.cursor
+    ? ordered.findIndex((item) => item.id > input.cursor!)
+    : 0;
+  const start = nextIndex < 0 ? ordered.length : nextIndex;
+  return finalizePage(ordered.slice(start, start + limit + 1), limit, (item) => item.id);
+}
+
 function deleteMemoriesOfSource(sourceId: string): void {
   const store = getStore();
   for (const [id, memory] of store.knowledgeMemories)
@@ -2052,7 +2422,7 @@ function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
     );
   return {
     async list(filter = {}, options) {
-      const orderBy = options?.orderBy ?? spec.orderBy;
+      const orderBy = options?.orderBy ?? "createdAt";
       const ascending = options?.ascending ?? spec.ascending;
       const fields = (row: DbTableRow<K>) =>
         row as unknown as Record<string, unknown>;
@@ -2152,6 +2522,27 @@ interface UsageSpenderAggregate {
   outputTokens: number;
 }
 
+/** A ledger row's spender identity, absent ones keyed as '' like the rollup. */
+function spenderIdentityOf(
+  u: AiUsageInput
+): Omit<
+  UsageSpenderAggregate,
+  "organizationId" | "day" | "calls" | "inputTokens" | "outputTokens"
+> {
+  return {
+    memberId: u.spenders?.memberId ?? "",
+    teammateId: u.spenders?.teammateId ?? "",
+    apiKeyId: u.spenders?.apiKeyId ?? "",
+    routineId: u.spenders?.routineId ?? "",
+    flowId: u.spenders?.flowId ?? "",
+    assistantId: u.assistantId ?? "",
+    surface: u.surface ?? "",
+    credentialKind: u.credentialKind ?? "unknown",
+    provider: u.provider,
+    modelId: u.modelId,
+  };
+}
+
 /** The rollup's key for one ledger row, in the SQL primary key's order. */
 function spenderRollupKey(row: Omit<UsageSpenderAggregate, "calls" | "inputTokens" | "outputTokens">): string {
   return [
@@ -2190,16 +2581,7 @@ function aggregateSpenders(
     const identity = {
       organizationId: u.organizationId,
       day,
-      memberId: u.spenders?.memberId ?? "",
-      teammateId: u.spenders?.teammateId ?? "",
-      apiKeyId: u.spenders?.apiKeyId ?? "",
-      routineId: u.spenders?.routineId ?? "",
-      flowId: u.spenders?.flowId ?? "",
-      assistantId: u.assistantId ?? "",
-      surface: u.surface ?? "",
-      credentialKind: u.credentialKind ?? "unknown",
-      provider: u.provider,
-      modelId: u.modelId,
+      ...spenderIdentityOf(u),
     };
     const key = spenderRollupKey(identity);
     let row = groups.get(key);
@@ -2310,18 +2692,11 @@ function aggregateCrawls(
   return groups;
 }
 
-function usageDailyRowOf(row: UsageDailyAggregate): UsageDailyRow {
-  return {
-    day: row.day,
-    kind: row.kind,
-    credentialKind: row.credentialKind,
-    provider: row.provider,
-    modelId: row.modelId,
-    units: row.units,
-    calls: row.calls,
-    inputTokens: row.inputTokens,
-    outputTokens: row.outputTokens,
-  };
+function usageDailyRowOf({
+  organizationId: _organizationId,
+  ...row
+}: UsageDailyAggregate): UsageDailyRow {
+  return row;
 }
 
 /** UTC day (YYYY-MM-DD) `back` days before today; 0 = today. */
@@ -2546,8 +2921,18 @@ export const mockDb: Db = {
     if (member) store.members.set(userId, { ...member, role });
   },
 
-  async removeMember(_orgId, userId) {
-    getStore().members.delete(userId);
+  async removeMember(orgId, userId) {
+    const store = getStore();
+    store.members.delete(userId);
+    // Mirrors organization_members_remove_memory (20260927160000): the
+    // departed Member's User-layer document goes, history with it.
+    for (const [id, doc] of store.memoryDocuments) {
+      if (doc.organizationId !== orgId || doc.memberId !== userId) continue;
+      store.memoryDocuments.delete(id);
+      for (const [entryId, entry] of store.memoryDocumentEntries) {
+        if (entry.documentId === id) store.memoryDocumentEntries.delete(entryId);
+      }
+    }
   },
 
   async listInvites() {
@@ -2627,20 +3012,12 @@ export const mockDb: Db = {
   },
 
   async listAssistantsPage(organizationId, input) {
-    const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
-    const ordered = [...getStore().assistants.values()]
-      .filter((assistant) => assistant.organizationId === organizationId)
-      // Code-unit order, matching the `>` cursor filter below (same defect as
-      // listEntitiesPage: localeCompare orders "-" differently).
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    const nextIndex = input.cursor
-      ? ordered.findIndex((assistant) => assistant.id > input.cursor!)
-      : 0;
-    const start = nextIndex < 0 ? ordered.length : nextIndex;
-    const slice = ordered.slice(Math.max(0, start), Math.max(0, start) + limit + 1);
-    const hasMore = slice.length > limit;
-    const items = slice.slice(0, limit);
-    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
+    return pageById(
+      [...getStore().assistants.values()].filter(
+        (assistant) => assistant.organizationId === organizationId
+      ),
+      input
+    );
   },
 
   async listAssistantShellSummaries(organizationId) {
@@ -2716,6 +3093,11 @@ export const mockDb: Db = {
 
   async deleteAssistant(id) {
     const store = getStore();
+    // The schema's cascade reaches the Assistant's Conversations, and the
+    // legal-hold trigger refuses a held one there too.
+    for (const conversation of store.conversations.values()) {
+      if (conversation.assistantId === id) refuseHeldConversationDelete(conversation);
+    }
     store.assistants.delete(id);
     for (const [fid, f] of store.flows) {
       if (f.assistantId === id) store.flows.delete(fid);
@@ -3152,22 +3534,6 @@ export const mockDb: Db = {
     };
     store.collections.set(collection.id, collection);
     return collection;
-  },
-
-  async deleteCollection(id) {
-    const store = getStore();
-    store.collections.delete(id);
-    for (const [sid, s] of store.sources)
-      if (s.collectionId === id) {
-        store.sources.delete(sid);
-        deleteMemoriesOfSource(sid);
-        for (const [key, link] of store.assistantSources)
-          if (link.sourceId === sid) store.assistantSources.delete(key);
-      }
-    for (const [cid, c] of store.concepts)
-      if (c.collectionId === id) store.concepts.delete(cid);
-    for (const [kid, k] of store.chunks)
-      if (k.collectionId === id) store.chunks.delete(kid);
   },
 
   async listSources(collectionId) {
@@ -3729,18 +4095,7 @@ export const mockDb: Db = {
         });
       }
     }
-    const versions = [...store.sourceIngestPayloads.entries()]
-      .filter(([key]) => key.startsWith(`${input.sourceId}:`))
-      .map(([, payload]) => payload.version);
-    const version = Math.max(0, ...versions) + 1;
-    store.sourceIngestPayloads.set(`${input.sourceId}:${version}`, {
-      version,
-      rawText: input.rawText,
-      drafts: null,
-      generationId: null,
-      expectedActiveGenerationId: null,
-      cursor: 0,
-    });
+    const version = stageMockIngestPayload(store, input.sourceId, input.rawText);
     await this.createBackgroundJob({
       kind: "ingest_source",
       sourceId: input.sourceId,
@@ -3766,18 +4121,7 @@ export const mockDb: Db = {
     ) {
       return null;
     }
-    const versions = [...store.sourceIngestPayloads.entries()]
-      .filter(([key]) => key.startsWith(`${input.sourceId}:`))
-      .map(([, payload]) => payload.version);
-    const version = Math.max(0, ...versions) + 1;
-    store.sourceIngestPayloads.set(`${input.sourceId}:${version}`, {
-      version,
-      rawText: input.rawText,
-      drafts: null,
-      generationId: null,
-      expectedActiveGenerationId: null,
-      cursor: 0,
-    });
+    const version = stageMockIngestPayload(store, input.sourceId, input.rawText);
     store.backgroundJobs.set(input.jobId, {
       ...job,
       payload: {
@@ -3806,13 +4150,7 @@ export const mockDb: Db = {
 
   async initializeSourceIngestAttempt(input) {
     const job = getStore().backgroundJobs.get(input.jobId);
-    if (
-      !job ||
-      job.status !== "running" ||
-      job.leaseToken !== input.leaseToken ||
-      job.sourceId !== input.sourceId ||
-      Number(job.payload.payloadVersion) !== input.version
-    ) {
+    if (!holdsIngestLease(job, input)) {
       return null;
     }
     const key = `${input.sourceId}:${input.version}`;
@@ -3840,11 +4178,7 @@ export const mockDb: Db = {
       `${input.sourceId}:${input.version}`
     );
     if (
-      !job ||
-      job.status !== "running" ||
-      job.leaseToken !== input.leaseToken ||
-      job.sourceId !== input.sourceId ||
-      Number(job.payload.payloadVersion) !== input.version ||
+      !holdsIngestLease(job, input) ||
       !payload ||
       payload.generationId !== input.generationId ||
       input.cursor < payload.cursor
@@ -3857,13 +4191,7 @@ export const mockDb: Db = {
 
   async commitSourceIngestGeneration(input) {
     const job = getStore().backgroundJobs.get(input.jobId);
-    if (
-      !job ||
-      job.status !== "running" ||
-      job.leaseToken !== input.leaseToken ||
-      job.sourceId !== input.sourceId ||
-      Number(job.payload.payloadVersion) !== input.version
-    ) {
+    if (!holdsIngestLease(job, input)) {
       return false;
     }
     return this.commitSourceKnowledgeGeneration({
@@ -4871,29 +5199,16 @@ export const mockDb: Db = {
       const link = source
         ? store.assistantSources.get(`${assistantId}:${source.id}`)
         : undefined;
-      results.push({
-        conceptId: chunk.conceptId,
-        conceptTitle: concept?.frontmatter.title ?? concept?.path ?? "Concept",
-        conceptPath: concept?.path ?? "",
-        collectionId: chunk.collectionId,
-        collectionName: collection?.name ?? "",
-        sourceName: source?.name ?? null,
-        sourceId: source?.id ?? null,
-        directAccess:
-          source?.kind === "file" &&
-          source.originalObjectPath !== null &&
-          link?.directAccess === true,
-        resourceUrl: concept?.frontmatter.resource ?? null,
-        content: chunk.content,
-        similarity,
-      });
+      results.push(
+        mockChunkHit(chunk, concept, collection, source, similarity, {
+          directAccess:
+            source?.kind === "file" &&
+            source.originalObjectPath !== null &&
+            link?.directAccess === true,
+        })
+      );
     }
-    // Same shaping rule the Supabase implementation applies (#801, CYB-14):
-    // one Source may not take the whole window from the one that answers.
-    return capPerSource(
-      results.sort((a, b) => b.similarity - a.similarity),
-      query.limit ?? 6
-    );
+    return rankMockHits(results, query.limit);
   },
 
   async searchCollectionChunks(organizationId, collectionIds, query) {
@@ -4921,29 +5236,16 @@ export const mockDb: Db = {
       const source = concept?.sourceId
         ? store.sources.get(concept.sourceId)
         : undefined;
-      results.push({
-        conceptId: chunk.conceptId,
-        conceptTitle: concept?.frontmatter.title ?? concept?.path ?? "Concept",
-        conceptPath: concept?.path ?? "",
-        collectionId: chunk.collectionId,
-        collectionName: collection?.name ?? "",
-        sourceName: source?.name ?? null,
-        sourceId: source?.id ?? null,
-        // Direct access is a per-Assistant grant on a link row (#733); a
-        // Teammate search has no Assistant, so a cited file is never handed
-        // out as a signed original here.
-        directAccess: false,
-        resourceUrl: concept?.frontmatter.resource ?? null,
-        content: chunk.content,
-        similarity,
-      });
+      // Direct access is a per-Assistant grant on a link row (#733); a
+      // Teammate search has no Assistant, so a cited file is never handed
+      // out as a signed original here.
+      results.push(
+        mockChunkHit(chunk, concept, collection, source, similarity, {
+          directAccess: false,
+        })
+      );
     }
-    // Same shaping rule the Supabase implementation applies (#801, CYB-14):
-    // one Source may not take the whole window from the one that answers.
-    return capPerSource(
-      results.sort((a, b) => b.similarity - a.similarity),
-      query.limit ?? 6
-    );
+    return rankMockHits(results, query.limit);
   },
 
   async searchSourceChunks(organizationId, sourceIds, query) {
@@ -4965,27 +5267,14 @@ export const mockDb: Db = {
       const concept = store.concepts.get(chunk.conceptId);
       if (concept?.excluded) continue;
       const source = store.sources.get(chunk.sourceId);
-      results.push({
-        conceptId: chunk.conceptId,
-        conceptTitle: concept?.frontmatter.title ?? concept?.path ?? "Concept",
-        conceptPath: concept?.path ?? "",
-        collectionId: chunk.collectionId,
-        collectionName: collection?.name ?? "",
-        sourceName: source?.name ?? null,
-        sourceId: source?.id ?? null,
-        // No Assistant, so no per-(assistant, source) Direct access grant.
-        directAccess: false,
-        resourceUrl: concept?.frontmatter.resource ?? null,
-        content: chunk.content,
-        similarity,
-      });
+      // No Assistant, so no per-(assistant, source) Direct access grant.
+      results.push(
+        mockChunkHit(chunk, concept, collection, source, similarity, {
+          directAccess: false,
+        })
+      );
     }
-    // Same shaping rule the Supabase implementation applies (#801, CYB-14):
-    // one Source may not take the whole window from the one that answers.
-    return capPerSource(
-      results.sort((a, b) => b.similarity - a.similarity),
-      query.limit ?? 6
-    );
+    return rankMockHits(results, query.limit);
   },
 
   // --- Publications ---------------------------------------------------------
@@ -5139,14 +5428,14 @@ export const mockDb: Db = {
 
   async setConversationPinned(id, pinned) {
     const store = getStore();
-    const conversation = store.conversations.get(id);
-    if (conversation) store.conversations.set(id, { ...conversation, pinned });
+    const conversation = requireMockConversation(store, id);
+    store.conversations.set(id, { ...conversation, pinned });
   },
 
   async setConversationLegalHold(id, legalHold) {
     const store = getStore();
-    const conversation = store.conversations.get(id);
-    if (conversation) store.conversations.set(id, { ...conversation, legalHold });
+    const conversation = requireMockConversation(store, id);
+    store.conversations.set(id, { ...conversation, legalHold });
   },
 
   async updateConversationMetadata(id, patch) {
@@ -5289,30 +5578,13 @@ export const mockDb: Db = {
     (message as StoredMessage & { requestId?: string }).requestId = input.requestId;
     store.messages.set(message.id, message);
     if (!existing && input.deferredEffects?.length) {
-      const conversation = store.conversations.get(input.conversationId);
-      const organizationId = conversation?.assistantId
-        ? store.assistants.get(conversation.assistantId)?.organizationId
-        : conversation?.teammateId
-          ? store.teammates.get(conversation.teammateId)?.organizationId
-          : undefined;
-      if (!organizationId) throw new Error("Conversation organization not found");
-      input.deferredEffects.forEach((payload) => {
-        const id = crypto.randomUUID();
-        store.turnEffects.set(id, {
-          id,
-          organizationId,
-          conversationId: input.conversationId,
-          messageId: message.id,
-          payload,
-          status: "pending",
-          attempts: 0,
-          nextRunAt: input.now,
-          leaseToken: null,
-          lockedAt: null,
-          error: "",
-          updatedAt: input.now,
-        });
-      });
+      enqueueMockTurnEffects(
+        store,
+        input.conversationId,
+        message.id,
+        input.deferredEffects,
+        input.now
+      );
     }
     store.conversationTurns.set(key, {
       ...turn,
@@ -5345,7 +5617,9 @@ export const mockDb: Db = {
   },
 
   async deleteConversation(id) {
-    dropConversation(getStore(), id);
+    const store = getStore();
+    refuseHeldConversationDelete(requireMockConversation(store, id));
+    dropConversation(store, id);
   },
 
   async listMessages(conversationId) {
@@ -5359,10 +5633,7 @@ export const mockDb: Db = {
   },
 
   async listRecentMessages(conversationId, limit) {
-    return [...getStore().messages.values()]
-      .filter((m) => m.conversationId === conversationId)
-      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
-      .slice(-limit);
+    return (await mockDb.listMessages(conversationId)).slice(-limit);
   },
 
   async appendMessage(input) {
@@ -5394,30 +5665,13 @@ export const mockDb: Db = {
     }
     store.messages.set(message.id, message);
     if (input.role === "assistant" && input.deferredEffects?.length) {
-      const conversation = store.conversations.get(input.conversationId);
-      const organizationId = conversation?.assistantId
-        ? store.assistants.get(conversation.assistantId)?.organizationId
-        : conversation?.teammateId
-          ? store.teammates.get(conversation.teammateId)?.organizationId
-          : undefined;
-      if (!organizationId) throw new Error("Conversation organization not found");
-      input.deferredEffects.forEach((payload) => {
-        const id = crypto.randomUUID();
-        store.turnEffects.set(id, {
-          id,
-          organizationId,
-          conversationId: input.conversationId,
-          messageId: message.id,
-          payload,
-          status: "pending",
-          attempts: 0,
-          nextRunAt: message.createdAt,
-          leaseToken: null,
-          lockedAt: null,
-          error: "",
-          updatedAt: message.createdAt,
-        });
-      });
+      enqueueMockTurnEffects(
+        store,
+        input.conversationId,
+        message.id,
+        input.deferredEffects,
+        message.createdAt
+      );
     }
     const conversation = store.conversations.get(input.conversationId);
     if (conversation) {
@@ -5620,11 +5874,16 @@ export const mockDb: Db = {
       : [];
   },
 
-  async deleteExpiredConversations(organizationId, cutoffIso) {
+  async deleteExpiredConversations(organizationId, cutoffIso, limit = Infinity) {
     const store = getStore();
     const cutoff = Date.parse(cutoffIso);
     let deleted = 0;
-    for (const [id, conversation] of [...store.conversations]) {
+    // Oldest first, like the SQL, so a bounded call takes the right rows.
+    const byAge = [...store.conversations].sort(([, a], [, b]) =>
+      a.updatedAt.localeCompare(b.updatedAt)
+    );
+    for (const [id, conversation] of byAge) {
+      if (deleted >= limit) break;
       // Last activity, not creation: a thread still in use is not expired
       // however long ago it was opened. `appendMessage` moves `updatedAt`.
       if (Date.parse(conversation.updatedAt) >= cutoff) continue;
@@ -5643,11 +5902,29 @@ export const mockDb: Db = {
     return deleted;
   },
 
-  async clearExpiredTraces(organizationId, cutoffIso) {
+  async deleteExpiredMemories(organizationId, cutoffIso, limit = Infinity) {
+    const store = getStore();
+    const cutoff = Date.parse(cutoffIso);
+    const expired = [...store.memories.values()]
+      .filter(
+        // Memories are never edited in place, so creation is their last update.
+        (m) => m.organizationId === organizationId && Date.parse(m.createdAt) < cutoff
+      )
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .slice(0, Number.isFinite(limit) ? limit : undefined);
+    for (const memory of expired) store.memories.delete(memory.id);
+    return expired.length;
+  },
+
+  async clearExpiredTraces(organizationId, cutoffIso, limit = Infinity) {
     const store = getStore();
     const cutoff = Date.parse(cutoffIso);
     let cleared = 0;
-    for (const [id, message] of store.messages) {
+    const byAge = [...store.messages].sort(([, a], [, b]) =>
+      a.createdAt.localeCompare(b.createdAt)
+    );
+    for (const [id, message] of byAge) {
+      if (cleared >= limit) break;
       if (!message.trace) continue;
       if (Date.parse(message.createdAt) >= cutoff) continue;
       const conversation = store.conversations.get(message.conversationId);
@@ -5827,6 +6104,12 @@ export const mockDb: Db = {
         doc.organizationId === input.organizationId &&
         ownerMatches(doc, input.owner)
     );
+    if (
+      input.expectedUpdatedAt !== undefined &&
+      (existing?.updatedAt ?? null) !== input.expectedUpdatedAt
+    ) {
+      throw new MemoryDocumentConflictError();
+    }
     const body = capMemoryDocument(input.body);
     const document: MemoryDocument = existing
       ? { ...existing, body, updatedAt: now }
@@ -6511,6 +6794,20 @@ export const mockDb: Db = {
     return groups.size + crawls.size + spenders.size;
   },
 
+  async rollupUsageCatchUp(maxDays = 35) {
+    const store = getStore();
+    const cap = Math.max(maxDays, 2);
+    const today = utcDayBack(0);
+    const closed = store.usageRollupClosedThrough;
+    const gap = closed
+      ? Math.round((Date.parse(today) - Date.parse(closed)) / 86_400_000)
+      : cap;
+    const upserted = await this.rollupUsageDaily(Math.min(cap, Math.max(2, gap)));
+    const yesterday = utcDayBack(1);
+    if (!closed || yesterday > closed) store.usageRollupClosedThrough = yesterday;
+    return upserted;
+  },
+
   async getOrgUsageDaily(organizationId, days = 30) {
     const store = getStore();
     const today = utcDayBack(0);
@@ -6736,22 +7033,118 @@ export const mockDb: Db = {
         (at >= fromMs && at < liveLo) || (at >= liveHi && at < toMs);
       if (!inLive) continue;
       add({
-        memberId: u.spenders?.memberId ?? "",
-        teammateId: u.spenders?.teammateId ?? "",
-        apiKeyId: u.spenders?.apiKeyId ?? "",
-        routineId: u.spenders?.routineId ?? "",
-        flowId: u.spenders?.flowId ?? "",
-        assistantId: u.assistantId ?? "",
-        surface: u.surface ?? "",
-        credentialKind: u.credentialKind ?? "unknown",
-        provider: u.provider,
-        modelId: u.modelId,
+        ...spenderIdentityOf(u),
         calls: 1,
         inputTokens: u.inputTokens,
         outputTokens: u.outputTokens,
       });
     }
     return [...rows.values()];
+  },
+
+  async getOrgDashboardFacts(organizationId, from, to) {
+    const store = getStore();
+    const fromMs = Date.parse(from);
+    const toMs = Date.parse(to);
+    // Instants, never ISO strings: two spellings of the same moment must not
+    // compare differently.
+    const inWindow = (iso: string) => {
+      const at = Date.parse(iso);
+      return at >= fromMs && at < toMs;
+    };
+    const dayOf = (iso: string) => new Date(Date.parse(iso)).toISOString().slice(0, 10);
+    const group = <T extends object>(
+      rows: Map<string, T>,
+      key: unknown[],
+      create: () => T,
+      add: (row: T) => void
+    ) => {
+      const id = JSON.stringify(key);
+      const row = rows.get(id) ?? create();
+      add(row);
+      rows.set(id, row);
+    };
+
+    const usage = new Map<string, DashboardFacts["usage"][number]>();
+    for (const u of store.aiUsage) {
+      if (u.organizationId !== organizationId || !inWindow(u.createdAt)) continue;
+      const base = {
+        day: dayOf(u.createdAt),
+        surface: u.surface ?? null,
+        stage: u.stage,
+        provider: u.provider,
+        modelId: u.modelId,
+        assistantId: u.assistantId ?? null,
+      };
+      group(
+        usage,
+        Object.values(base),
+        () => ({ ...base, calls: 0, inputTokens: 0, outputTokens: 0 }),
+        (row) => {
+          row.calls += 1;
+          row.inputTokens += u.inputTokens;
+          row.outputTokens += u.outputTokens;
+        }
+      );
+    }
+
+    const turns = new Map<string, DashboardFacts["turns"][number]>();
+    for (const e of store.runtimeEvents) {
+      if (e.organizationId !== organizationId || e.kind !== "chat_turn") continue;
+      if (e.status !== "succeeded" && e.status !== "failed") continue;
+      if (!inWindow(e.createdAt)) continue;
+      const base = {
+        day: dayOf(e.createdAt),
+        surface: e.surface ?? null,
+        assistantId: e.assistantId ?? null,
+        status: e.status,
+        flowName: e.flowName ?? null,
+        errorClass: e.status === "failed" ? (e.errorClass ?? "unknown") : null,
+        latencyBucket: latencyBucketOf(e.durationMs ?? 0),
+      };
+      group(
+        turns,
+        Object.values(base),
+        () => ({ ...base, turns: 0, durationMs: 0, toolCalls: 0 }),
+        (row) => {
+          row.turns += 1;
+          row.durationMs += e.durationMs ?? 0;
+          row.toolCalls += e.toolCalls ?? 0;
+        }
+      );
+    }
+
+    const verdicts = new Map<string, DashboardFacts["verdicts"][number]>();
+    for (const v of store.answerVerdicts.values()) {
+      if (v.organizationId !== organizationId || !inWindow(v.createdAt)) continue;
+      const base = { day: dayOf(v.createdAt), assistantId: v.assistantId, verdict: v.verdict };
+      group(verdicts, Object.values(base), () => ({ ...base, count: 0 }), (row) => {
+        row.count += 1;
+      });
+    }
+
+    // The Insights population: Assistant-owned, Member Preview excluded.
+    const conversations = new Map<string, DashboardFacts["conversations"][number]>();
+    for (const c of store.conversations.values()) {
+      if (!c.assistantId || c.subjectType === "member" || !inWindow(c.createdAt)) continue;
+      const assistant = store.assistants.get(c.assistantId);
+      if (!assistant || assistant.organizationId !== organizationId) continue;
+      const base = {
+        day: dayOf(c.createdAt),
+        assistantId: c.assistantId,
+        escalated: c.metadata?.escalated === true,
+      };
+      group(conversations, Object.values(base), () => ({ ...base, conversations: 0 }), (row) => {
+        row.conversations += 1;
+      });
+    }
+
+    return {
+      usage: [...usage.values()],
+      turns: [...turns.values()],
+      verdicts: [...verdicts.values()],
+      conversations: [...conversations.values()],
+    };
   },
 
   async recordRuntimeEvent(event) {
@@ -7746,20 +8139,9 @@ export const mockDb: Db = {
   },
 
   async listMemorySubjectsPage(organizationId, input) {
-    const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
+    const limit = clampPageLimit(input.limit);
     const ordered = await this.listMemorySubjects(organizationId);
-    let after: [string, string] | null = null;
-    if (input.cursor) {
-      try {
-        const decoded = JSON.parse(input.cursor) as [string, string];
-        if (typeof decoded[0] !== "string" || typeof decoded[1] !== "string") {
-          throw new Error("Invalid memory subject cursor");
-        }
-        after = decoded;
-      } catch {
-        throw new Error("Invalid memory subject cursor");
-      }
-    }
+    const after = input.cursor ? decodeMemorySubjectCursor(input.cursor) : null;
     const remaining = after
       ? ordered.filter(
           (item) =>
@@ -7767,34 +8149,18 @@ export const mockDb: Db = {
             (item.lastMemoryAt === after![0] && item.subjectId > after![1])
         )
       : ordered;
-    const slice = remaining.slice(0, limit + 1);
-    const hasMore = slice.length > limit;
-    const items = slice.slice(0, limit);
-    return {
-      items,
-      nextCursor: hasMore
-        ? JSON.stringify([items.at(-1)!.lastMemoryAt, items.at(-1)!.subjectId])
-        : null,
-    };
+    return finalizePage(remaining.slice(0, limit + 1), limit, (last) =>
+      JSON.stringify([last.lastMemoryAt, last.subjectId])
+    );
   },
 
   async listEntitiesPage(organizationId, input) {
-    const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
-    const ordered = [...getStore().entities.values()]
-      .filter((entity) => entity.organizationId === organizationId)
-      // Code-unit order, because the cursor filter below uses `>`. localeCompare
-      // here made the two comparisons disagree for ids containing "-" (locale
-      // collation shifts punctuation), so the page after the cursor could come
-      // back empty for an id the sort had placed later.
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    const nextIndex = input.cursor
-      ? ordered.findIndex((entity) => entity.id > input.cursor!)
-      : 0;
-    const start = nextIndex < 0 ? ordered.length : nextIndex;
-    const slice = ordered.slice(Math.max(0, start), Math.max(0, start) + limit + 1);
-    const hasMore = slice.length > limit;
-    const items = slice.slice(0, limit);
-    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
+    return pageById(
+      [...getStore().entities.values()].filter(
+        (entity) => entity.organizationId === organizationId
+      ),
+      input
+    );
   },
 
   async deleteSubjectMemories({ organizationId, subjectId }) {

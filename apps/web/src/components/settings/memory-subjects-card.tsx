@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import type { Memory, MemorySubjectSummary } from "@agent-hub/core";
 import { Trash2, UserRound } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -19,6 +19,7 @@ import {
   wipeSubjectMemoriesAction,
 } from "@/app/actions";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * Admin erasure surface over long-term memories (#666): look up a signed-in
@@ -38,7 +39,12 @@ export function MemorySubjectsCard({
   const [memories, setMemories] = useState<Memory[]>([]);
   const [wiped, setWiped] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const [isLoading, startLoad] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  const panelId = useId();
+  // The subject whose memories were asked for last. Opening a second subject
+  // before the first answers must not fill its panel with the first's list.
+  const requested = useRef<string | null>(null);
 
   const visible = subjects.filter((s) => {
     if (wiped.has(s.subjectId)) return false;
@@ -51,15 +57,24 @@ export function MemorySubjectsCard({
   });
 
   function open(subjectId: string) {
+    requested.current = subjectId;
     setOpenSubject(subjectId);
     setMemories([]);
-    startTransition(async () => {
+    startLoad(async () => {
       try {
-        setMemories(await listSubjectMemoriesAction(subjectId));
+        const list = await listSubjectMemoriesAction(subjectId);
+        if (requested.current === subjectId) setMemories(list);
       } catch {
-        toast.error("Could not load memories");
+        if (requested.current === subjectId) {
+          toast.error("Could not load memories");
+        }
       }
     });
+  }
+
+  function close() {
+    requested.current = null;
+    setOpenSubject(null);
   }
 
   function deleteOne(subjectId: string, memoryId: string) {
@@ -97,7 +112,7 @@ export function MemorySubjectsCard({
       try {
         await wipeSubjectMemoriesAction(subjectId);
         setWiped((prev) => new Set(prev).add(subjectId));
-        setOpenSubject(null);
+        close();
         setMemories([]);
         toast.success("All memories deleted");
       } catch {
@@ -139,14 +154,14 @@ export function MemorySubjectsCard({
               <p className="text-muted-foreground text-sm">No matching users.</p>
             )}
             <div className="grid gap-2">
-              {visible.map((s) => (
+              {visible.map((s, index) => (
                 <div key={s.subjectId} className="rounded-lg border">
                   <button
                     type="button"
+                    aria-expanded={openSubject === s.subjectId}
+                    aria-controls={`${panelId}-${index}`}
                     onClick={() =>
-                      openSubject === s.subjectId
-                        ? setOpenSubject(null)
-                        : open(s.subjectId)
+                      openSubject === s.subjectId ? close() : open(s.subjectId)
                     }
                     className="hover:bg-muted/50 flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                   >
@@ -161,14 +176,16 @@ export function MemorySubjectsCard({
                       )}
                     </span>
                     <span className="text-muted-foreground shrink-0 text-xs">
-                      {s.memoryCount}{" "}
+                      <RollingNumber value={s.memoryCount} />{" "}
                       {s.memoryCount === 1 ? "memory" : "memories"}
                     </span>
                   </button>
                   {openSubject === s.subjectId && (
-                    <div className="border-t px-4 py-3">
-                      {isPending && memories.length === 0 ? (
-                        <p className="text-muted-foreground text-sm">Loading…</p>
+                    <div id={`${panelId}-${index}`} className="border-t px-4 py-3">
+                      {isLoading && memories.length === 0 ? (
+                        <p role="status" className="text-muted-foreground text-sm">
+                          Loading…
+                        </p>
                       ) : memories.length === 0 ? (
                         <p className="text-muted-foreground text-sm">
                           Nothing remembered.

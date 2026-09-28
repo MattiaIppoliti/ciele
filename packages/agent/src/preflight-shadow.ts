@@ -281,7 +281,7 @@ type RaceOutcome<T> =
  * not redundancy: aborting *asks* the work to stop, the timer is what
  * guarantees the caller stops waiting whether or not it obliges.
  */
-async function raceTimeout<T>(
+export async function raceTimeout<T>(
   work: (signal: AbortSignal) => Promise<T>,
   options: { signal?: AbortSignal; timeoutMs: number }
 ): Promise<RaceOutcome<T>> {

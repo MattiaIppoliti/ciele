@@ -20,12 +20,23 @@ import { invalidatePublicationFromRoute } from "@/lib/widget-db";
 export async function runApiOperation<In, Out>(
   request: Request,
   op: Operation<In, Out>,
-  rawInput: unknown
+  rawInput: unknown,
+  options: {
+    /**
+     * A per-key budget for an operation that spends money on every call
+     * (`knowledge.search` embeds and reranks, `assistants.ask` runs a turn);
+     * build one with `perKeyThrottle`. Runs after the key is known and before
+     * anything else, so a refused call costs a map lookup.
+     */
+    throttle?: (ctx: ApiKeyContext) => Response | null;
+  } = {}
 ): Promise<{ ctx: ApiKeyContext; result: Out } | Response> {
   const ctx = await resolveApiKeyContext(request);
   if (ctx instanceof Response) return ctx;
   const denied = requireApiCapability(ctx, op.capability);
   if (denied) return denied;
+  const throttled = options.throttle?.(ctx);
+  if (throttled) return throttled;
 
   const parsed = op.input.safeParse(rawInput);
   if (!parsed.success) {
@@ -52,6 +63,7 @@ export async function runApiOperation<In, Out>(
       // Indexing this call triggers is the key's spend, not the spend of
       // whoever minted it (#849).
       usage: { spenders: { apiKeyId: ctx.keyId }, surface: "api" },
+      apiKey: { keyId: ctx.keyId, memberId: ctx.actorUserId },
     }),
   };
 

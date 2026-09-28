@@ -1,6 +1,6 @@
 import { CreditCard, ExternalLink } from "lucide-react";
 import type { BillingAccountSnapshot } from "@agent-hub/agent";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@agent-hub/ui";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@agent-hub/ui";
 import {
   Table,
   TableBody,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { openBillingPortalAction } from "@/app/(admin)/settings/billing/actions";
+import { PendingSubmitButton } from "@/components/settings/pending-submit-button";
 import {
   EMPTY_FIELD,
   formatBillingDate,
@@ -52,9 +53,13 @@ export function BillingAccountCard({
           <CardTitle>Payment method</CardTitle>
           {/* The portal is where a card is replaced; we never see one. */}
           <form action={openBillingPortalAction}>
-            <Button type="submit" variant="outline" size="sm">
+            <PendingSubmitButton
+              variant="outline"
+              size="sm"
+              pendingLabel="Opening Stripe…"
+            >
               Update in Stripe
-            </Button>
+            </PendingSubmitButton>
           </form>
         </CardHeader>
         <CardContent className="text-sm">
@@ -139,9 +144,10 @@ export function BillingAccountCard({
                           href={row.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 underline underline-offset-4"
+                          aria-label={`View invoice ${row.numberLabel} (opens in new tab)`}
+                          className="press-text inline-flex items-center gap-1 underline underline-offset-4"
                         >
-                          View <ExternalLink className="size-3" />
+                          View <ExternalLink className="size-3" aria-hidden="true" />
                         </a>
                       ) : (
                         EMPTY_FIELD

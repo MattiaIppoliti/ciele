@@ -12,20 +12,14 @@ export interface PreviewRailItem {
   ariaLabel?: string;
   description?: ReactNode;
   href?: string;
-  target?: "_blank" | "_self" | "_parent" | "_top";
-  rel?: string;
 }
 
 export interface PreviewRailProps {
   items: PreviewRailItem[];
   label?: string;
-  orientation?: "vertical" | "horizontal";
-  activeId?: string;
-  defaultActiveId?: string;
+  activeId: string;
   onActiveChange?: (id: string) => void;
   onItemSelect?: (item: PreviewRailItem) => void;
-  renderPreview?: (item: PreviewRailItem) => ReactNode;
-  showPreview?: boolean;
   previewSide?: "before" | "after";
   highlightActive?: boolean;
   itemSize?: number;
@@ -63,13 +57,9 @@ function DefaultPreview({ item }: { item: PreviewRailItem }) {
 export function PreviewRail({
   items,
   label = "Section navigation",
-  orientation = "vertical",
   activeId,
-  defaultActiveId,
   onActiveChange,
   onItemSelect,
-  renderPreview,
-  showPreview = true,
   previewSide = "after",
   highlightActive = false,
   itemSize = 24,
@@ -82,15 +72,11 @@ export function PreviewRail({
   const uid = useId();
   const reduce = useReducedMotion();
   const canHover = useHoverCapable();
-  const [internalActiveId, setInternalActiveId] = useState(
-    defaultActiveId ?? items[0]?.id ?? "",
-  );
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
-  const requestedActiveId = activeId ?? internalActiveId;
-  const selectedId = items.some((item) => item.id === requestedActiveId)
-    ? requestedActiveId
+  const selectedId = items.some((item) => item.id === activeId)
+    ? activeId
     : (items[0]?.id ?? "");
   const displayedId = hoveredId ?? focusedId ?? "";
   const highlightedId = displayedId || (highlightActive ? selectedId : "");
@@ -98,12 +84,6 @@ export function PreviewRail({
   const rowTemplate = items.length
     ? `repeat(${items.length}, ${itemSize}px)`
     : undefined;
-  const isHorizontal = orientation === "horizontal";
-
-  const selectItem = (id: string) => {
-    if (activeId === undefined) setInternalActiveId(id);
-    onActiveChange?.(id);
-  };
 
   return (
     <motion.div
@@ -114,26 +94,16 @@ export function PreviewRail({
         }
       }}
       className={cn(
-        "isolate relative flex w-full overflow-visible",
-        isHorizontal
-          ? "min-h-64 flex-col items-center justify-center"
-          : "min-h-80",
+        "isolate relative flex w-full overflow-visible min-h-80",
         className,
       )}
     >
       <nav
         aria-label={label}
         onPointerLeave={() => setHoveredId(null)}
-        style={
-          isHorizontal
-            ? { gridTemplateColumns: rowTemplate }
-            : { gridTemplateRows: rowTemplate }
-        }
+        style={{ gridTemplateRows: rowTemplate }}
         className={cn(
-          "relative z-10 grid shrink-0",
-          isHorizontal
-            ? "h-12 w-fit max-w-full self-center justify-center"
-            : "w-12 content-center",
+          "relative z-10 grid shrink-0 w-12 content-center",
           railClassName,
         )}
       >
@@ -155,13 +125,10 @@ export function PreviewRail({
               <motion.span
                 data-slot="preview-rail-tick"
                 aria-hidden="true"
-                animate={isHorizontal ? { scaleY: scale } : { scaleX: scale }}
+                animate={{ scaleX: scale }}
                 transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
                 className={cn(
-                  "block bg-current",
-                  isHorizontal
-                    ? "h-12 w-0.5 origin-bottom"
-                    : "h-0.5 w-12 origin-left",
+                  "block bg-current h-0.5 w-12 origin-left",
                   highlighted ? "text-foreground" : undefined,
                 )}
               />
@@ -170,13 +137,9 @@ export function PreviewRail({
 
           const sharedClassName = cn(
             "relative flex text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            isHorizontal
-              ? "h-12 w-6 items-end justify-center"
-              : "h-6 w-12 items-center",
+            "h-6 w-12 items-center",
           );
-          const sharedStyle = isHorizontal
-            ? { width: itemSize }
-            : { height: itemSize };
+          const sharedStyle = { height: itemSize };
           const handlePointerEnter = () => {
             if (canHover) setHoveredId(item.id);
           };
@@ -186,7 +149,7 @@ export function PreviewRail({
             }
           };
           const handleSelect = () => {
-            selectItem(item.id);
+            onActiveChange?.(item.id);
             onItemSelect?.(item);
           };
 
@@ -195,11 +158,6 @@ export function PreviewRail({
               key={item.id}
               data-slot="preview-rail-item"
               href={item.href}
-              target={item.target}
-              rel={
-                item.rel ??
-                (item.target === "_blank" ? "noreferrer noopener" : undefined)
-              }
               aria-label={item.ariaLabel ?? item.label}
               aria-current={selected ? "page" : undefined}
               onPointerEnter={handlePointerEnter}
@@ -233,96 +191,75 @@ export function PreviewRail({
         })}
       </nav>
 
-      {showPreview ? (
-        <div
-          aria-hidden="true"
-          style={
-            isHorizontal
-              ? { gridTemplateColumns: rowTemplate }
-              : { gridTemplateRows: rowTemplate }
-          }
-          className={cn(
-            "pointer-events-none absolute z-50 grid",
-            isHorizontal
-              ? "top-1/2 left-1/2 h-5 w-fit max-w-full -translate-x-1/2 -translate-y-1/2 justify-center"
-              : previewSide === "before"
-                ? "inset-y-0 right-16 left-4 content-center"
-                : "inset-y-0 right-4 left-16 content-center",
-            previewContainerClassName,
-          )}
-        >
-          {items.map((item) => (
-            <div
-              key={item.id}
-              style={
-                isHorizontal ? { width: itemSize } : { height: itemSize }
-              }
-              className={cn(
-                "relative flex items-center",
-                isHorizontal ? "justify-center" : undefined,
-              )}
-            >
-              {item.id === displayedId ? (
-                <div
-                  className={cn(
-                    isHorizontal
-                      ? "absolute bottom-12 left-1/2 w-72 -translate-x-1/2"
-                      : cn(
-                          "w-full max-w-sm",
-                          previewSide === "before" && "ml-auto",
-                        ),
-                    previewClassName,
-                  )}
+      <div
+        aria-hidden="true"
+        style={{ gridTemplateRows: rowTemplate }}
+        className={cn(
+          "pointer-events-none absolute z-50 grid",
+          previewSide === "before"
+            ? "inset-y-0 right-16 left-4 content-center"
+            : "inset-y-0 right-4 left-16 content-center",
+          previewContainerClassName,
+        )}
+      >
+        {items.map((item) => (
+          <div
+            key={item.id}
+            style={{ height: itemSize }}
+            className="relative flex items-center"
+          >
+            {item.id === displayedId ? (
+              <div
+                className={cn(
+                  "w-full max-w-sm",
+                  previewSide === "before" && "ml-auto",
+                  previewClassName,
+                )}
+              >
+                <motion.div
+                  layoutId={`preview-rail-card-${uid}`}
+                  transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
                 >
-                  <motion.div
-                    layoutId={`preview-rail-card-${uid}`}
-                    transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
-                  >
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.div
-                        key={item.id}
-                        initial={
-                          reduce
-                            ? { opacity: 0 }
-                            : { opacity: 0, y: 4, filter: "blur(6px)" }
-                        }
-                        animate={
-                          reduce
-                            ? { opacity: 1 }
-                            : { opacity: 1, y: 0, filter: "blur(0px)" }
-                        }
-                        exit={
-                          reduce
-                            ? { opacity: 0 }
-                            : {
-                                opacity: 0,
-                                y: -2,
-                                filter: "blur(4px)",
-                                transition: {
-                                  duration: 0.12,
-                                  ease: EASE_OUT,
-                                },
-                              }
-                        }
-                        transition={{
-                          duration: reduce ? 0 : 0.18,
-                          ease: EASE_OUT,
-                        }}
-                      >
-                        {renderPreview ? (
-                          renderPreview(item)
-                        ) : (
-                          <DefaultPreview item={item} />
-                        )}
-                      </motion.div>
-                    </AnimatePresence>
-                  </motion.div>
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={item.id}
+                      initial={
+                        reduce
+                          ? { opacity: 0 }
+                          : { opacity: 0, y: 4, filter: "blur(6px)" }
+                      }
+                      animate={
+                        reduce
+                          ? { opacity: 1 }
+                          : { opacity: 1, y: 0, filter: "blur(0px)" }
+                      }
+                      exit={
+                        reduce
+                          ? { opacity: 0 }
+                          : {
+                              opacity: 0,
+                              y: -2,
+                              filter: "blur(4px)",
+                              transition: {
+                                duration: 0.12,
+                                ease: EASE_OUT,
+                              },
+                            }
+                      }
+                      transition={{
+                        duration: reduce ? 0 : 0.18,
+                        ease: EASE_OUT,
+                      }}
+                    >
+                      <DefaultPreview item={item} />
+                    </motion.div>
+                  </AnimatePresence>
+                </motion.div>
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
 
       {children ? (
         <div className="min-h-0 min-w-0 flex-1">{children}</div>

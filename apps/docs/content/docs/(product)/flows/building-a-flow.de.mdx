@@ -1,58 +1,60 @@
 ---
 title: Einen Flow erstellen
-description: Konfigurieren Sie einen Trigger, verfügbare Bedingungen und geordnete Antwortaktionen.
+description: Konfigurieren Sie einen Trigger, die verfügbaren Bedingungen und die in der gewünschten Reihenfolge ausgeführten Antwortaktionen.
 ---
 
-## Erstellen Sie den Flow
+## Den Flow erstellen
 
-1. Öffnen Sie einen Assistenten.
-2. Wählen Sie **Flows**.
+1. Öffnen Sie einen Assistant.
+2. Wählen Sie **Flows** aus.
 3. Erstellen Sie einen Flow.
-4. Geben Sie einen eindeutigen Namen und eine Beschreibung ein.
+4. Geben Sie einen eindeutigen Namen und eine aussagekräftige Beschreibung ein.
 5. Wählen Sie einen Trigger aus.
 
-Die Beschreibung hilft der Intent Classification, einen Nachrichten-Flow
-auszuwählen. Geben Sie die Absicht des Besuchers und den erforderlichen
-Geltungsbereich an.
+Die Beschreibung unterstützt die Intent Classification dabei, einen Message Flow
+auszuwählen. Geben Sie die Absicht des Besuchers und den erforderlichen Scope
+an.
 
-Ein Flow wird durch eine Besuchernachricht, ein Widget-Ereignis oder eine
-eingehende HTTP-Anforderung ausgelöst. Die Widget-Ereignisse sind Seitenladen,
-Verweildauer auf der Seite und Chat-Öffnung. Der Trigger entscheidet, welche
-Bedingungen und welche Aktionen der Flow verwenden darf. Informationen zum
-eingehenden Trigger finden Sie unter [HTTP und Webhooks](/flows/http).
+Ein Flow wird durch eine Nachricht eines Besuchers, durch ein Widget-Ereignis
+oder durch eine eingehende HTTP-Anfrage ausgelöst. Die Widget-Ereignisse sind
+page load, time on page und chat opens. Der Trigger bestimmt, welche Bedingungen
+und welche Aktionen der Flow verwenden darf. Siehe
+[HTTP and webhooks](/flows/http) für den eingehenden Trigger.
 
 ## Nachrichtenbedingungen hinzufügen
 
-Message Flows unterstützen diese Bedingungstypen:
+Message Flows unterstützen die folgenden Bedingungstypen:
 
-| Bedingung | Aktuelles Verhalten |
+| Condition | Aktuelles Verhalten |
 | --- | --- |
-| Konversationskontext | Fügt der Intent-Klassifizierung semantische Beispiele hinzu. Es handelt sich nicht um ein Hard Gate. |
-| URL | Wendet ein Hard-Gate vom Typ „Matches“, „Contains“ oder „Regex“ an. |
-| Zeitplan | Wendet ein Hard-Gate für Start, Ende und Zeitzone an. |
+| Conversation context | Fügt der Intent Classification semantische Beispiele hinzu. Es handelt sich nicht um ein Hard Gate. |
+| URL | Wendet ein Hard Gate vom Typ Matches, Contains oder Regex an. |
+| Schedule | Wendet ein Hard Gate für Start, Ende und Zeitzone an. |
 
 Wählen Sie **Any condition matches** oder **All conditions match**, wenn der
 Flow mehr als eine Bedingung enthält.
 
-Die Bedingungen URL und Schedule entfernen einen nicht berechtigten Flow vor der
-Klassifizierung. Eine erfüllte Bedingung führt nicht zwingend dazu, dass der
-Flow gewinnt.
+Die Bedingungen URL und Schedule entfernen einen nicht qualifizierten Flow vor
+der Klassifizierung. Eine erfüllte Bedingung zwingt den Flow nicht dazu,
+ausgewählt zu werden.
 
 ## Antwortaktionen hinzufügen
 
 1. Fügen Sie die erforderlichen Aktionen hinzu.
 2. Ordnen Sie die Aktionen in ihrer Ausführungsreihenfolge an.
-3. Konfigurieren Sie jedes erforderliche Feld.
+3. Konfigurieren Sie jedes Pflichtfeld.
 4. Speichern Sie den Flow.
-5. Testen Sie eine passende und eine nicht passende Nachricht.
+5. Testen Sie eine übereinstimmende und eine nicht übereinstimmende Nachricht.
 
-Der Editor beschränkt proaktive Flows auf eine Benachrichtigungsaktion. Der
+Der Editor beschränkt proaktive Flows auf eine einzige Notification-Aktion. Der
 Server wendet dieselbe Regel an, wenn er einen Flow speichert oder versendet.
 
-## Flows neu anordnen
+## Reihenfolge der Flows ändern
 
-Ziehen Sie einen Flow, um die Priorität für das Weiterleiten von Nachrichten zu
-ändern. Der Flow für das Standardverhalten bleibt an letzter Stelle.
+Ziehen Sie einen Flow, um die Priorität der Nachrichtenweiterleitung zu ändern.
+Setzen Sie mit der Tastatur den Fokus auf den Handle eines Flows und drücken Sie
+die Pfeiltaste nach oben oder nach unten. Der Flow „Default behavior“ bleibt an
+letzter Stelle.
 
-Deaktivieren Sie einen Flow, wenn Sie sein Routing stoppen müssen, ohne seine
+Deaktivieren Sie einen Flow, wenn Sie dessen Routing stoppen müssen, ohne seine
 Konfiguration zu löschen.

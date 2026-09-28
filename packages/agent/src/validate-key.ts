@@ -15,8 +15,6 @@ interface ProbeRequest {
   invalidStatuses: number[];
 }
 
-const KNOWN_PROVIDERS: ProviderConnectionProvider[] = ["anthropic", "openai", "google", "elevenlabs"];
-
 function probeFor(provider: ProviderConnectionProvider, apiKey: string): ProbeRequest {
   switch (provider) {
     case "anthropic":
@@ -63,9 +61,7 @@ export async function validateProviderApiKey(
   provider: ProviderConnectionProvider,
   apiKey: string
 ): Promise<void> {
-  if (!KNOWN_PROVIDERS.includes(provider)) {
-    throw new Error(`Unknown provider: ${String(provider)}`);
-  }
+  // Outside the network catch below, so an unknown provider throws.
   const probe = probeFor(provider, apiKey);
   let response: Response;
   try {

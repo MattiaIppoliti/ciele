@@ -1,13 +1,12 @@
-import { notFound } from "next/navigation";
+import { assistantKnowledgeHref } from "@/lib/knowledge-mode";
 import {
-  OperationError,
   getSourceDocumentOp,
   listDocumentChunksOp,
   listDocumentMemoriesOp,
 } from "@ciele/ops";
 import { DocumentView } from "@/components/knowledge/document-view";
 import { requirePageMember } from "@/lib/authz";
-import { runOperation } from "@/lib/operations";
+import { runPageOperation } from "@/lib/operations";
 import { canEdit } from "@/lib/rbac";
 import { parseDocumentTab } from "@/lib/document-view";
 import {
@@ -39,39 +38,31 @@ export default async function AssistantDocumentPage({
   const list = parseSourceDocumentsParams(search);
   const { role } = await requirePageMember();
 
-  let view;
-  let chunks;
-  let memories;
-  try {
-    // The two tabs' data, read here so each paints with the route rather than
-    // after a client round trip. Memories include the forgotten ones: the
-    // toolbar's filter is the client's to apply, and a Member toggling it
-    // should not wait for a request.
-    //
-    // Chunks are keyed by the ids in the URL, so that read does not wait for
-    // the Document; only the memories do, because they are keyed by its
-    // path. Awaiting all three in a row made opening a Document three
-    // sequential round trips where two of them had nothing to say to each
-    // other.
-    [view, chunks] = await Promise.all([
-      runOperation(getSourceDocumentOp, { sourceId, documentId, assistantId: id }),
-      runOperation(listDocumentChunksOp, {
-        sourceId,
-        documentId,
-        assistantId: id,
-        page: 1,
-      }),
-    ]);
-    memories = await runOperation(listDocumentMemoriesOp, {
+  // The two tabs' data, read here so each paints with the route rather than
+  // after a client round trip. Memories include the forgotten ones: the
+  // toolbar's filter is the client's to apply, and a Member toggling it
+  // should not wait for a request.
+  //
+  // Chunks are keyed by the ids in the URL, so that read does not wait for
+  // the Document; only the memories do, because they are keyed by its
+  // path. Awaiting all three in a row made opening a Document three
+  // sequential round trips where two of them had nothing to say to each
+  // other.
+  const [view, chunks] = await Promise.all([
+    runPageOperation(getSourceDocumentOp, { sourceId, documentId, assistantId: id }),
+    runPageOperation(listDocumentChunksOp, {
       sourceId,
-      documentPath: view.document.path,
+      documentId,
       assistantId: id,
-      includeForgotten: true,
-    });
-  } catch (error) {
-    if (error instanceof OperationError && error.code === "not_found") notFound();
-    throw error;
-  }
+      page: 1,
+    }),
+  ]);
+  const memories = await runPageOperation(listDocumentMemoriesOp, {
+    sourceId,
+    documentPath: view.document.path,
+    assistantId: id,
+    includeForgotten: true,
+  });
 
   const sourcePath = assistantDocumentsHref(id, view.source.id);
   return (
@@ -91,7 +82,7 @@ export default async function AssistantDocumentPage({
       tab={which}
       basePath={`${sourcePath}/${view.document.id}`}
       backHref={sourceDocumentsPageHref(sourcePath, list, list.page)}
-      rootHref={`/assistants/${id}/knowledge`}
+      rootHref={assistantKnowledgeHref(id, view.source.kind)}
       rootLabel="Knowledge"
       listQuery={sourceDocumentsQuery(list)}
       canEdit={canEdit(role)}

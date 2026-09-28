@@ -90,7 +90,9 @@ import {
 import { ConnectorConfig } from "@/components/assistant/flow-connector-config";
 import { HumanReviewConfig } from "@/components/assistant/flow-human-review-config";
 import type { ConnectorConnectionOption } from "@/lib/connector-options";
-import { formatDateTime } from "@/lib/format";
+import { formatCount, formatDateTime } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * The Flow Builder's three steps as configuration components, hosted by both
@@ -134,8 +136,20 @@ const BUTTON_TEMPLATE_FIELDS = [
   { value: "{{user.id}}", label: "ID" },
 ];
 
-export function localId(): string {
-  return crypto.randomUUID();
+/** A run's duration: "1,234 ms", grouped the same way on the server and here. */
+const DURATION_FORMATTER = new Intl.NumberFormat("en-US", {
+  style: "unit",
+  unit: "millisecond",
+  unitDisplay: "short",
+});
+
+/** "12/1,000" under a field: the count rolls, the limit holds still. */
+function CharCount({ count, limit }: { count: number; limit: number }) {
+  return (
+    <p className="text-muted-foreground text-right text-xs tabular-nums">
+      <RollingNumber value={count} />/{formatCount(limit)}
+    </p>
+  );
 }
 
 /**
@@ -197,6 +211,11 @@ function ExampleRow({
       </div>
       <Textarea
         value={example.note}
+        aria-label={
+          example.shouldTrigger
+            ? "Why this message should trigger the flow"
+            : "Why this message should not trigger the flow"
+        }
         onChange={(e) =>
           onChange({ note: e.target.value.slice(0, NOTE_LIMIT) })
         }
@@ -208,9 +227,7 @@ function ExampleRow({
         rows={2}
         className="min-h-16 resize-none bg-background text-sm"
       />
-      <p className="text-muted-foreground text-right text-xs">
-        {example.note.length}/{NOTE_LIMIT}
-      </p>
+      <CharCount count={example.note.length} limit={NOTE_LIMIT} />
     </div>
   );
 }
@@ -557,14 +574,9 @@ function FollowUpManualConfig({
   // Always render at least one input row so the empty state is editable.
   const rows = questions.length > 0 ? questions : [""];
 
-  const update = (index: number, value: string) => {
-    const next = rows.map((q, i) => (i === index ? value : q));
-    onChange(next);
-  };
-  const remove = (index: number) => {
-    const next = rows.filter((_, i) => i !== index);
-    onChange(next);
-  };
+  const update = (index: number, value: string) =>
+    onChange(rows.map((q, i) => (i === index ? value : q)));
+  const remove = (index: number) => onChange(rows.filter((_, i) => i !== index));
   const add = () => onChange([...rows, ""]);
 
   return (
@@ -658,9 +670,7 @@ function SearchKnowledgeAdvanced({
               rows={5}
               className="bg-background"
             />
-            <p className="text-muted-foreground text-right text-xs">
-              {searchGuidelines.length}/{SEARCH_KNOWLEDGE_FIELD_MAX}
-            </p>
+            <CharCount count={searchGuidelines.length} limit={SEARCH_KNOWLEDGE_FIELD_MAX} />
           </div>
 
           <div className="space-y-1.5">
@@ -675,9 +685,7 @@ function SearchKnowledgeAdvanced({
               rows={5}
               className="bg-background"
             />
-            <p className="text-muted-foreground text-right text-xs">
-              {answeringStyle.length}/{SEARCH_KNOWLEDGE_FIELD_MAX}
-            </p>
+            <CharCount count={answeringStyle.length} limit={SEARCH_KNOWLEDGE_FIELD_MAX} />
           </div>
 
           <label className="flex items-start gap-2.5">
@@ -729,6 +737,44 @@ const ENDPOINT_LABELS = {
   url: "A URL",
   swagger: "An operation in a Swagger/OpenAPI definition",
 } as const;
+
+const FOLLOW_UP_MODE_LABELS = {
+  ai_generated: "AI generated",
+  manual: "Manual",
+} as const;
+
+/**
+ * A select whose options are a label map, in the map's key order. The trigger
+ * gets explicit children because the primitive otherwise shows the stored
+ * value, so a closed trigger would read "api_key" or "external_link" while its
+ * own menu said "API key header" or "External link".
+ */
+function LabelSelect<T extends string>({
+  id,
+  value,
+  labels,
+  onChange,
+}: {
+  id: string;
+  value: T;
+  labels: Readonly<Record<T, string>>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as T)}>
+      <SelectTrigger id={id} className="bg-background">
+        <SelectValue>{labels[value]}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {(Object.keys(labels) as T[]).map((option) => (
+          <SelectItem key={option} value={option}>
+            {labels[option]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 /** Searchable list of template variables; clicking one inserts its token. */
 function VariablePicker({ onInsert }: { onInsert: (token: string) => void }) {
@@ -1034,10 +1080,10 @@ export function TestRequestControl({ settings }: { settings: ApiRequestSettings 
         disabled={pending || !settings.url?.trim()}
         onClick={run}
       >
-        {pending ? "Testing…" : "Test request"}
+        <RollInText text={pending ? "Testing…" : "Test request"} />
       </Button>
       {result && (
-        <div className="bg-muted/30 space-y-2 rounded-lg border p-3 text-xs">
+        <div role="status" className="bg-muted/30 space-y-2 rounded-lg border p-3 text-xs">
           <p className="text-muted-foreground">
             Sent with sample values (shown as <code>«variable»</code>).
           </p>
@@ -1047,8 +1093,14 @@ export function TestRequestControl({ settings }: { settings: ApiRequestSettings 
             </p>
           ) : (
             <p>
-              Response status: <span className="font-mono">{result.status}</span>{" "}
-              {result.ok ? "✓" : "✗"}
+              Response status:{" "}
+              {result.status !== null ? (
+                <RollingNumber value={result.status} className="font-mono" />
+              ) : (
+                <span className="font-mono">none</span>
+              )}{" "}
+              <span aria-hidden>{result.ok ? "✓" : "✗"}</span>
+              <span className="sr-only">{result.ok ? "OK" : "Failed"}</span>
             </p>
           )}
           {result.parseFailed && (
@@ -1057,7 +1109,7 @@ export function TestRequestControl({ settings }: { settings: ApiRequestSettings 
           {result.extracted.length > 0 && (
             <div className="space-y-0.5">
               {result.extracted.map((e) => (
-                <div key={e.variable} className="font-mono">
+                <div key={e.variable} className="font-mono break-all">
                   {e.variable} = {e.missed ? <span className="opacity-60">(no value)</span> : JSON.stringify(e.value)}
                 </div>
               ))}
@@ -1191,21 +1243,12 @@ function ApiAuthFields({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={`${fieldId}-f6`}>Authentication</Label>
-      <Select value={auth.type} onValueChange={(v) => setAuthType(v as ApiRequestAuthType)}>
-        <SelectTrigger id={`${fieldId}-f6`} className="bg-background">
-          {/* Explicit children: the primitive otherwise shows the stored value,
-              so the closed trigger read "api_key" while its own menu said
-              "API key header". Same reason as the endpoint select below. */}
-          <SelectValue>{API_REQUEST_AUTH_LABELS[auth.type]}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {(Object.keys(API_REQUEST_AUTH_LABELS) as ApiRequestAuthType[]).map((type) => (
-            <SelectItem key={type} value={type}>
-              {API_REQUEST_AUTH_LABELS[type]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <LabelSelect
+        id={`${fieldId}-f6`}
+        value={auth.type}
+        labels={API_REQUEST_AUTH_LABELS}
+        onChange={setAuthType}
+      />
       {auth.type === "bearer" && (
         <Input
           type="password"
@@ -1214,7 +1257,9 @@ function ApiAuthFields({
           placeholder={auth.hasToken ? "Saved: type to replace" : "Token"}
           aria-label="Bearer token"
           className="bg-background"
-          autoComplete="off"
+          autoComplete="new-password"
+          data-1p-ignore
+          data-lpignore="true"
         />
       )}
       {auth.type === "api_key" && (
@@ -1235,7 +1280,9 @@ function ApiAuthFields({
             placeholder={auth.hasKey ? "Saved: type to replace" : "Key"}
             aria-label="API key"
             className="bg-background"
-            autoComplete="off"
+            autoComplete="new-password"
+            data-1p-ignore
+            data-lpignore="true"
           />
         </div>
       )}
@@ -1261,7 +1308,9 @@ function ApiAuthFields({
             placeholder={auth.hasPassword ? "Saved: type to replace" : "Password"}
             aria-label="Password"
             className="bg-background"
-            autoComplete="off"
+            autoComplete="new-password"
+            data-1p-ignore
+            data-lpignore="true"
           />
         </div>
       )}
@@ -1475,27 +1524,12 @@ function ApiRequestConfig({
 
       <div className="space-y-1.5">
         <Label htmlFor={`${fieldId}-f12`}>Endpoint</Label>
-        <Select
+        <LabelSelect
+          id={`${fieldId}-f12`}
           value={endpoint}
-          onValueChange={(value) =>
-            onChange({ endpoint: value as ApiRequestSettings["endpoint"] })
-          }
-        >
-          <SelectTrigger id={`${fieldId}-f12`} className="bg-background">
-            {/* Explicit children: the primitive otherwise shows the stored
-                value, and "url" is not what the row above it says. */}
-            <SelectValue>{ENDPOINT_LABELS[endpoint]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(ENDPOINT_LABELS) as (keyof typeof ENDPOINT_LABELS)[]).map(
-              (option) => (
-                <SelectItem key={option} value={option}>
-                  {ENDPOINT_LABELS[option]}
-                </SelectItem>
-              )
-            )}
-          </SelectContent>
-        </Select>
+          labels={ENDPOINT_LABELS}
+          onChange={(value) => onChange({ endpoint: value })}
+        />
       </div>
 
       {/* Two ways to say the same thing: a method and a path typed here, or an
@@ -1539,7 +1573,7 @@ function ApiRequestConfig({
           <div className="space-y-1.5">
             <Label htmlFor={`${fieldId}-f15`}>Method</Label>
             <Select
-              value={settings?.method ?? "POST"}
+              value={method}
               onValueChange={(value) =>
                 onChange({ method: value as ApiRequestSettings["method"] })
               }
@@ -1767,24 +1801,12 @@ function FlowButtonConfig({
 
       <div className="space-y-1.5">
         <Label htmlFor={`${fieldId}-f19`}>Button type</Label>
-        <Select
+        <LabelSelect
+          id={`${fieldId}-f19`}
           value={type}
-          onValueChange={(value) =>
-            onChange({ type: value as FlowButtonType })
-          }
-        >
-          <SelectTrigger id={`${fieldId}-f19`} className="bg-background">
-            {/* Explicit children, or the trigger reads "external_link". */}
-            <SelectValue>{FLOW_BUTTON_TYPE_LABELS[type]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(FLOW_BUTTON_TYPE_LABELS) as FlowButtonType[]).map((option) => (
-              <SelectItem key={option} value={option}>
-                {FLOW_BUTTON_TYPE_LABELS[option]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          labels={FLOW_BUTTON_TYPE_LABELS}
+          onChange={(value) => onChange({ type: value })}
+        />
       </div>
 
       {type === "help_desk" ? (
@@ -2113,13 +2135,18 @@ function HttpFlowRunHistory({ flowId }: { flowId: string }) {
               >
                 {run.status}
               </span>
-              <span className="text-muted-foreground">{run.durationMs} ms</span>
-              <span className="text-muted-foreground truncate">
+              <span className="text-muted-foreground tabular-nums">
+                {DURATION_FORMATTER.format(run.durationMs)}
+              </span>
+              {/* `truncate` in a wrapping row needs a ceiling: without one the
+                  span is as wide as its text and never truncates. */}
+              <span className="text-muted-foreground min-w-0 max-w-full truncate">
                 {run.ran.length > 0 ? run.ran.join(" → ") : "no steps ran"}
               </span>
               {run.failedAction && (
-                <span className="text-destructive truncate" title={run.failedMessage ?? undefined}>
+                <span className="text-destructive w-full break-words">
                   {run.failedAction} failed
+                  {run.failedMessage ? `: ${run.failedMessage}` : ""}
                 </span>
               )}
             </li>
@@ -2342,7 +2369,7 @@ export function FlowConditionsConfig({
               variant="outline"
               size="sm"
               onClick={() =>
-                onConditionsChange([...conditions, newFlowCondition(meta.kind, localId())])
+                onConditionsChange([...conditions, newFlowCondition(meta.kind, crypto.randomUUID())])
               }
             >
               {meta.label} <Plus className="size-4" />
@@ -2364,7 +2391,7 @@ export function FlowActionConfig({
   faqs,
   assistants,
   connections,
-  onPatchSettings,
+  onPatchSettings: patchSettings,
   onCustomMessageChange,
 }: {
   action: FlowAction;
@@ -2380,7 +2407,6 @@ export function FlowActionConfig({
   onCustomMessageChange: (next: string) => void;
 }) {
   const fieldId = useId();
-  const patchSettings = onPatchSettings;
   switch (action) {
     case "connector":
       return (
@@ -2451,26 +2477,12 @@ export function FlowActionConfig({
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor={`${fieldId}-f25`}>Mode</Label>
-            <Select
+            <LabelSelect
+              id={`${fieldId}-f25`}
               value={settings.follow_up_questions?.mode ?? "ai_generated"}
-              onValueChange={(value) =>
-                patchSettings("follow_up_questions", {
-                  mode: value as "ai_generated" | "manual",
-                })
-              }
-            >
-              <SelectTrigger id={`${fieldId}-f25`} className="bg-background">
-                <SelectValue>
-                  {(settings.follow_up_questions?.mode ?? "ai_generated") === "manual"
-                    ? "Manual"
-                    : "AI generated"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ai_generated">AI generated</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
-              </SelectContent>
-            </Select>
+              labels={FOLLOW_UP_MODE_LABELS}
+              onChange={(mode) => patchSettings("follow_up_questions", { mode })}
+            />
           </div>
           {(settings.follow_up_questions?.mode ?? "ai_generated") === "ai_generated" ? (
             <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
@@ -2551,7 +2563,10 @@ export function FlowActionConfig({
                   patchSettings("iframe", { heightUnit: value as "vh" | "px" })
                 }
               >
-                <SelectTrigger className="bg-background w-20 rounded-l-none border-l-0">
+                <SelectTrigger
+                  className="bg-background w-20 rounded-l-none border-l-0"
+                  aria-label="Iframe height unit"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -2620,9 +2635,10 @@ export function FlowActionConfig({
               placeholder="New pricing is live"
               className="bg-background"
             />
-            <p className="text-muted-foreground text-right text-xs">
-              {(settings.notification?.title ?? "").length}/{NOTIFICATION_TITLE_LIMIT}
-            </p>
+            <CharCount
+              count={(settings.notification?.title ?? "").length}
+              limit={NOTIFICATION_TITLE_LIMIT}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`${fieldId}-f31`}>Notification content</Label>
@@ -2637,35 +2653,19 @@ export function FlowActionConfig({
               rows={4}
               className="bg-background"
             />
-            <p className="text-muted-foreground text-right text-xs">
-              {(settings.notification?.content ?? "").length}/{NOTIFICATION_CONTENT_LIMIT}
-            </p>
+            <CharCount
+              count={(settings.notification?.content ?? "").length}
+              limit={NOTIFICATION_CONTENT_LIMIT}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`${fieldId}-f32`}>Delivery</Label>
-            <Select
+            <LabelSelect
+              id={`${fieldId}-f32`}
               value={settings.notification?.deliveryRule ?? "session"}
-              onValueChange={(value) =>
-                patchSettings("notification", {
-                  deliveryRule: value as NotificationDeliveryRule,
-                })
-              }
-            >
-              <SelectTrigger id={`${fieldId}-f32`} className="bg-background">
-                <SelectValue>
-                  {DELIVERY_RULE_LABELS[settings.notification?.deliveryRule ?? "session"]}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(DELIVERY_RULE_LABELS) as NotificationDeliveryRule[]).map(
-                  (rule) => (
-                    <SelectItem key={rule} value={rule}>
-                      {DELIVERY_RULE_LABELS[rule]}
-                    </SelectItem>
-                  )
-                )}
-              </SelectContent>
-            </Select>
+              labels={DELIVERY_RULE_LABELS}
+              onChange={(deliveryRule) => patchSettings("notification", { deliveryRule })}
+            />
           </div>
           <SettingToggle
             title="Allow users to reply"

@@ -72,6 +72,21 @@ describe("accepting a referral", () => {
     ]);
   });
 
+  it("opens the handoff once when the same card is accepted twice", async () => {
+    const db = getMockDb();
+    const { to, conversation } = await origin(db);
+    const accept = () =>
+      startReferralOp.run(ctx({ db }), {
+        originConversationId: conversation.id,
+        teammateId: to.id,
+        summary: "s",
+      });
+    const first = await accept();
+    const second = await accept();
+    expect(second.conversationId).toBe(first.conversationId);
+    expect((await db.getConversation(conversation.id))?.metadata.referredTo).toHaveLength(1);
+  });
+
   it("refuses an origin that is not this Member's own conversation", async () => {
     const db = getMockDb();
     const { to, conversation } = await origin(db);

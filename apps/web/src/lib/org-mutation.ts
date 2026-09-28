@@ -17,20 +17,14 @@ import {
  * `revalidatePath` calls (path-based per ADR-0005, admin reads are
  * force-dynamic, so the only real effect is purging the client router cache).
  * Forgetting a path stops being possible; adding a route means extending the
- * map, once.
+ * map, once. The entity vocabulary lives in `@ciele/ops` (#620) so operations
+ * can declare what they mutate without knowing about routes; the entity→path
+ * table is web-shaped knowledge and stays here.
  *
  * Non-org-scoped actions (sign-out, org create/switch, profile, platform
  * settings) stay outside this helper on purpose: they are session-scoped, not
  * Member-capability-scoped.
  */
-
-/**
- * The entity vocabulary itself moved to `@ciele/ops` (#620) so operations can
- * declare what they mutate without knowing about routes; this module keeps
- * the entity→path table, which is web-shaped knowledge. Re-exported for the
- * existing action imports.
- */
-export type { MutatedEntity } from "@ciele/ops";
 
 interface Revalidation {
   path: string;
@@ -174,11 +168,6 @@ function ruleFor<K extends EntityKind>(entity: EntityOf<K>): EntityRule<K> {
   return ENTITY_RULES[entity.kind as K];
 }
 
-/** The entity→paths half of the table. One entity may fan out to many routes. */
-function revalidationsFor(entity: MutatedEntity): Revalidation[] {
-  return ruleFor(entity).paths(entity);
-}
-
 /**
  * Turns declared entities into deduped `revalidatePath` calls, then expires
  * the Organization's Insights cache when any entity feeds the aggregate.
@@ -194,7 +183,8 @@ export function revalidateEntities(
 ) {
   const seen = new Set<string>();
   for (const entity of entities) {
-    for (const { path, scope } of revalidationsFor(entity)) {
+    // One entity may fan out to many routes.
+    for (const { path, scope } of ruleFor(entity).paths(entity)) {
       // `scope` is part of the identity, and the empty string stands for
       // "omitted" rather than a scope name, so an explicit `"page"` on the
       // same path stays a separate call.

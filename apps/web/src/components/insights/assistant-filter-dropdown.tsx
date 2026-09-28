@@ -7,6 +7,9 @@ import { Button } from "@agent-hub/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import { canAutoFocus } from "@/lib/auto-focus";
 
+const OPTION_CLASS =
+  "press-control hover:bg-muted focus-visible:outline-ring flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm focus-visible:outline-2";
+
 interface AssistantOption {
   id: string;
   title: string;
@@ -50,19 +53,24 @@ export function AssistantFilterDropdown({
     >
       <PopoverTrigger
         render={
-          <Button variant="outline" className="h-10 max-w-56 rounded-lg px-4" />
+          <Button
+            variant="outline"
+            aria-label={`Assistant: ${selected?.title ?? "All"}`}
+            className="h-10 max-w-56 rounded-lg px-4"
+          />
         }
       >
         {selected ? (
           <span className="bg-primary size-3.5 shrink-0 rounded-full" />
         ) : (
-          <LayoutGrid className="size-4 shrink-0" />
+          <LayoutGrid className="size-4 shrink-0" aria-hidden />
         )}
         <span className="truncate">{selected ? selected.title : "All Assistants"}</span>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0" align="start">
-        <div className="flex items-center gap-2 border-b px-3">
-          <Search className="text-muted-foreground size-4 shrink-0" />
+        {/* The input draws no outline of its own, so the row shows focus. */}
+        <div className="focus-within:ring-ring/50 flex items-center gap-2 rounded-t-xl border-b px-3 focus-within:ring-2 focus-within:ring-inset">
+          <Search className="text-muted-foreground size-4 shrink-0" aria-hidden />
           <input
             autoFocus={canAutoFocus()}
             value={query}
@@ -77,28 +85,30 @@ export function AssistantFilterDropdown({
         <div className="max-h-72 overflow-y-auto p-1.5">
           <button
             type="button"
+            aria-pressed={!value}
             onClick={() => pick("")}
-            className="hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm"
+            className={OPTION_CLASS}
           >
-            <LayoutGrid className="text-muted-foreground size-4 shrink-0" />
+            <LayoutGrid className="text-muted-foreground size-4 shrink-0" aria-hidden />
             <span className="flex-1 truncate">All Assistants</span>
-            {!value && <Check className="size-4 shrink-0" />}
+            {!value && <Check className="size-4 shrink-0" aria-hidden />}
           </button>
           {filtered.map((assistant) => (
             <button
               key={assistant.id}
               type="button"
+              aria-pressed={assistant.id === value}
               onClick={() => pick(assistant.id)}
-              className="hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm"
+              className={OPTION_CLASS}
             >
               <span className="bg-primary/80 size-3.5 shrink-0 rounded-full" />
               <span className="flex-1 truncate">{assistant.title}</span>
-              {assistant.id === value && <Check className="size-4 shrink-0" />}
+              {assistant.id === value && <Check className="size-4 shrink-0" aria-hidden />}
             </button>
           ))}
           {filtered.length === 0 && (
-            <p className="text-muted-foreground px-3 py-6 text-center text-sm">
-              No assistants match “{query}”.
+            <p className="text-muted-foreground px-3 py-6 text-center text-sm break-words">
+              {query ? `No assistants match “${query}”.` : "No assistants yet."}
             </p>
           )}
         </div>

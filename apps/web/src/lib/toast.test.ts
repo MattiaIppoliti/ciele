@@ -13,7 +13,7 @@ describe("feedbackForStatus", () => {
 
 describe("toast", () => {
   const play = vi.fn();
-  const runtime: FeedbackRuntime = { play, unlocked: true, destroy: () => {} };
+  const runtime: FeedbackRuntime = { play, destroy: () => {} };
 
   afterEach(() => {
     play.mockClear();
@@ -25,7 +25,6 @@ describe("toast", () => {
     toast.success("Published");
     toast.error("Upload failed");
     toast.info("Syncing");
-    toast.message("Note");
     expect(play.mock.calls.map((c) => c[0])).toEqual(["success", "error"]);
   });
 

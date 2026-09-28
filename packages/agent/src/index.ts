@@ -25,6 +25,13 @@
 // Registered once at startup (apps/web does it from `instrumentation.ts`); both
 // have defaults that keep the runtime correct if nobody registers anything.
 export { runTriageDecision } from "./improvement-decisions";
+// Knowledge search with no Conversation Turn, for callers that bring their own
+// model (the `knowledge.search` operation behind /api/v1, the CLI and MCP).
+export { searchKnowledge } from "./knowledge-search";
+// A whole turn folded into one answer, for a caller that cannot read a stream
+// (the `assistants.ask` operation behind /api/v1, the CLI and MCP).
+export { answerConversationTurn } from "./turn-answer";
+export type { TurnAnswer, TurnAnswerSource } from "./turn-answer";
 export type { TriageDecisionResult } from "./improvement-decisions";
 export { registerRuntimeHost, DEFAULT_PLATFORM_PROMPT } from "./host";
 export type { RuntimeHost } from "./host";

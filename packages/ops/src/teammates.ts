@@ -73,13 +73,6 @@ export const teammatePatchSchema = z
   })
   .partial() satisfies z.ZodType<TeammatePatch, TeammatePatch>;
 
-/** The roster read every operation shares: this org's rows, tombstones out. */
-async function orgTeammates(ctx: OperationContext): Promise<Teammate[]> {
-  return ctx.db
-    .table("teammates")
-    .list({ organizationId: ctx.organizationId, deletedAt: null });
-}
-
 /**
  * Every Teammate this caller may see. Permission only, deliberately **not** the
  * Member's roster.
@@ -97,10 +90,13 @@ export const listTeammatesOp = defineOperation({
   input: z.object({}),
   entities: () => [],
   run: async (ctx): Promise<Teammate[]> =>
-    visibleTeammates(await orgTeammates(ctx), {
-      userId: ctx.userId,
-      role: ctx.role,
-    }),
+    visibleTeammates(
+      // This org's rows, tombstones out.
+      await ctx.db
+        .table("teammates")
+        .list({ organizationId: ctx.organizationId, deletedAt: null }),
+      { userId: ctx.userId, role: ctx.role }
+    ),
 });
 
 /**
@@ -388,6 +384,17 @@ export const startReferralOp = defineOperation({
       throw new OperationError("not_found", "Conversation not found");
     }
     const referrer = await findTeammate(ctx, origin.teammateId);
+
+    // Accepting the same card twice (a double click, a retried request) opens
+    // the handoff once: the origin already records where it went, so the
+    // second accept returns that thread instead of a copy of it.
+    for (const prior of origin.metadata?.referredTo ?? []) {
+      if (prior.teammateId !== target.id) continue;
+      const existing = await ctx.db.getConversation(prior.conversationId);
+      if (existing && existing.subjectId === ctx.userId) {
+        return { conversationId: existing.id };
+      }
+    }
 
     const conversation = await ctx.db.createConversation({
       teammateId: target.id,

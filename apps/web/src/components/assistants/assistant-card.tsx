@@ -29,6 +29,8 @@ import {
   useContextMenuControls,
 } from "@/components/motion/context-menu";
 import { cn } from "@/lib/utils";
+import { formatShortDay } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 /** Menu width, so the ⋮ button can right-align the panel under itself. */
 const MENU_WIDTH = 224;
@@ -63,14 +65,6 @@ function MoreActionsButton() {
   );
 }
 
-function formatUpdated(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 /** Bento-style card (grid) or Vercel-style row (list) for one assistant. */
 export function AssistantCard({
   assistant,
@@ -102,8 +96,12 @@ export function AssistantCard({
 
   function handleDuplicate() {
     startTransition(async () => {
-      const copy = await duplicateAssistantAction(assistant.id);
-      toast.success(`Duplicated as "${copy.title}"`);
+      try {
+        const copy = await duplicateAssistantAction(assistant.id);
+        toast.success(`Duplicated as “${copy.title}”`);
+      } catch {
+        toast.error("Could not duplicate the assistant. Try again.");
+      }
     });
   }
 
@@ -124,7 +122,7 @@ export function AssistantCard({
         onSelect={() => void copyId("menu")}
       >
         <CopyFeedbackIcon copied={menuCopied} className="size-4" />
-        {menuCopied ? "Copied" : "Copy ID"}
+        <RollInText text={menuCopied ? "Copied" : "Copy ID"} />
       </ContextMenuItem>
       {canEdit && (
         <ContextMenuItem textValue="Duplicate assistant" onSelect={handleDuplicate}>
@@ -180,13 +178,14 @@ export function AssistantCard({
         <Link
           href={`/assistants/${assistant.id}`}
           aria-label={`Open ${assistant.title}`}
-          className="absolute inset-0 z-[1]"
+          // The row clips overflow, so the ring is drawn inside it.
+          className="focus-visible:ring-ring absolute inset-0 z-[1] outline-none focus-visible:ring-2 focus-visible:ring-inset"
         />
 
         <div
           className={cn(
             "pointer-events-none absolute inset-0 -z-10 transition-opacity duration-300",
-            hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-has-[a:focus-visible]:opacity-100"
           )}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[length:4px_4px] dark:bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_1px,transparent_1px)]" />
@@ -199,7 +198,7 @@ export function AssistantCard({
           </p>
         </div>
         <p className="text-muted-foreground hidden shrink-0 text-xs sm:block">
-          Updated {formatUpdated(assistant.updatedAt)}
+          Updated {formatShortDay(assistant.updatedAt)}
         </p>
         <div className="z-[2]">
           <MoreActionsButton />
@@ -225,13 +224,14 @@ export function AssistantCard({
       <Link
         href={`/assistants/${assistant.id}`}
         aria-label={`Open ${assistant.title}`}
-        className="absolute inset-0 z-[1]"
+        // The card clips overflow, so the ring is drawn inside it.
+        className="focus-visible:ring-ring absolute inset-0 z-[1] rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-inset"
       />
 
       <div
         className={cn(
           "pointer-events-none absolute inset-0 transition-opacity duration-300",
-          hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-has-[a:focus-visible]:opacity-100"
         )}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[length:4px_4px] dark:bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_1px,transparent_1px)]" />
@@ -256,7 +256,7 @@ export function AssistantCard({
       </CardHeader>
 
       <CardContent className="relative space-y-2">
-        <h3 className="text-[0.9375rem] font-medium tracking-tight">
+        <h3 className="text-[0.9375rem] font-medium tracking-tight break-words text-pretty">
           {assistant.title}
           <span className="text-muted-foreground ml-2 text-xs font-normal">
             {assistant.nickname}
@@ -275,17 +275,17 @@ export function AssistantCard({
                 type="button"
                 onClick={() => void copyId("card")}
                 aria-label={cardCopied ? "Assistant ID copied" : "Copy ID"}
-                className="bg-foreground/5 hover:text-foreground z-[2] inline-flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 transition-colors dark:bg-white/10"
+                className="bg-foreground/5 hover:text-foreground focus-visible:ring-ring/50 z-[2] inline-flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 transition-colors outline-none focus-visible:ring-2 dark:bg-white/10"
               >
                 <CopyFeedbackIcon copied={cardCopied} className="size-3.5" />
-                <span className="truncate font-mono">{assistant.id}</span>
+                <span translate="no" className="truncate font-mono">{assistant.id}</span>
               </button>
             </Hint>
             <span className="bg-foreground/5 shrink-0 rounded-md px-2 py-1 dark:bg-white/10">
-              Updated {formatUpdated(assistant.updatedAt)}
+              Updated {formatShortDay(assistant.updatedAt)}
             </span>
           </div>
-          <span className="text-muted-foreground flex shrink-0 items-center gap-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="text-muted-foreground flex shrink-0 items-center gap-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 group-has-[a:focus-visible]:opacity-100">
             Open
             <ChevronRight className="size-3.5" strokeWidth={3} />
           </span>
@@ -295,7 +295,7 @@ export function AssistantCard({
       <div
         className={cn(
           "bg-linear-to-br pointer-events-none absolute inset-0 -z-10 rounded-xl from-transparent via-gray-200/70 to-transparent p-px transition-opacity duration-300 dark:via-white/10",
-          hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-has-[a:focus-visible]:opacity-100"
         )}
       />
     </Card>

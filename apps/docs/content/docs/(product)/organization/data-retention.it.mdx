@@ -1,32 +1,35 @@
 ---
 title: Conservazione dei dati
-description: Imposta per quanto tempo conservare le conversazioni e le tracce di ragionamento e trattieni una conversazione.
+description: Imposta per quanto tempo vengono conservate le conversazioni e le tracce di ragionamento e mantieni una conversazione in sospeso.
 ---
 
-Un'Organizzazione imposta due finestre di conservazione in **Settings**, nella
-scheda **General**. Entrambe sono disattivate per impostazione predefinita:
+Un'organizzazione imposta due periodi di conservazione in **Settings**, nella
+scheda **General**. Entrambi sono disattivati per impostazione predefinita:
 nulla viene eliminato finché un amministratore non seleziona una finestra.
 
 ## Le due finestre
 
-| Impostazione | Cosa fa la pulizia notturna dopo la finestra |
+| Impostazione | Cosa fa il processo di pulizia notturna dopo il periodo di conservazione |
 | --- | --- |
-| **Reasoning trace retention** | Rimuove il pannello Thinking dai messaggi precedenti. I messaggi restano. |
+| **Reasoning trace retention** | Rimuove il pannello Thinking dai messaggi meno recenti. I messaggi rimangono. |
 | **Conversation retention** | Elimina l'intera conversazione, trascrizione inclusa. |
 
-Le due finestre sono indipendenti. Un'Organizzazione può impostare una delle
-due, entrambe o nessuna delle due. Ad esempio, conserva le trascrizioni per un
-anno ma rimuovi le tracce del ragionamento dopo 30 giorni.
+Le due finestre sono indipendenti. Un'organizzazione può impostare una delle due
+opzioni, entrambe o nessuna delle due. Ad esempio, puoi conservare le
+trascrizioni per un anno, ma rimuovere le tracce del ragionamento dopo 30
+giorni.
 
-Una volta a notte viene eseguita una pulizia. Applica ogni finestra alle
-conversazioni più vecchie di quella finestra. La pulizia è permanente: una
-conversazione eliminata non finisce nel cestino.
+Un processo di pulizia viene eseguito una volta a notte. Misura la finestra a
+partire dall'ultimo messaggio della conversazione, non dal primo. Una
+conversazione ancora in uso non viene eliminata, indipendentemente da quanto
+tempo fa sia iniziata. Lo sweep è definitivo: una conversazione eliminata non
+finisce in un'area cestino.
 
 <Callout type="warn" title="Conversation retention deletes data">
 After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
 </Callout>
 
-## Imposta una finestra
+## Imposta una finestra temporale
 
 1. Apri **Settings**.
 2. Rimani nella scheda **General**.
@@ -34,25 +37,28 @@ After the window, the conversation is gone from the Inbox, from exports, and fro
    retention**.
 4. Seleziona **Save changes**.
 
-Solo un membro che può gestire i membri può modificare queste impostazioni.
+Se la nuova finestra è più breve di quella corrente, Ciele ti chiede di
+confermare. Il prossimo sweep notturno elimina i dati più vecchi.
 
-## Conservazione a fini legali
+Solo un membro che può gestire altri membri può modificare queste impostazioni.
 
-Una conservazione a fini legali esclude una conversazione dalla pulizia delle
-conversazioni conservate. Usalo quando un obbligo di conservazione si applica a
-una conversazione, senza disattivare la conservazione per tutte le altre
+## Conservazione per obblighi legali
+
+Un legal hold esonera una conversazione dallo sweep di conservazione delle
+conversazioni. Usalo quando un obbligo di conservazione si applica a una singola
+conversazione, senza disattivare la conservazione per tutte le altre
 conversazioni.
 
 1. Apri **Inbox** e seleziona la conversazione.
-2. Apri il pannello dei dettagli.
+2. Apri il pannello details.
 3. Seleziona **Place legal hold** nella scheda **Retention**.
 
 Il blocco rimane attivo finché un membro non seleziona **Release legal hold**.
-Ogni membro vede lo stato di sospensione. Solo un membro che può gestire i
-membri può impostare o rilasciare un blocco.
+Ogni membro vede lo stato di blocco. Solo un membro che può gestire altri membri
+può applicare o rimuovere uno stato di attesa.
 
 ## Installazioni self-hosted
 
-La pulizia notturna viene eseguita dal pianificatore integrato. Non è necessaria
-alcuna configurazione aggiuntiva. Lo sweep chiama `/api/cron/sweep-retention`
-con la credenziale `CRON_SECRET`.
+Il nightly sweep viene eseguito dallo scheduler incluso. Non è necessaria alcuna
+configurazione aggiuntiva. Lo sweep chiama `/api/cron/sweep-retention` con la
+credenziale `CRON_SECRET`.

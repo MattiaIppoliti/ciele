@@ -49,8 +49,21 @@ import type {
   Role,
   ApiEndpointSpec,
   ApiIntegrationAuthType,
+  AssistantAnswer,
+  KnowledgeSearchResponse,
   ProviderConnection,
   TicketingPlatform,
+} from "@agent-hub/core";
+
+/**
+ * The ask and search wire shapes, re-exported so a client user types a
+ * response without a second dependency. Declared once, in `@agent-hub/core`.
+ */
+export type {
+  AssistantAnswer,
+  AssistantAnswerSource,
+  KnowledgeSearchHit,
+  KnowledgeSearchResponse,
 } from "@agent-hub/core";
 
 /**
@@ -267,6 +280,15 @@ interface RequestOptions {
   idempotencyKey?: string;
 }
 
+/** A multipart upload the route links to Assistants. */
+function linkedForm(file: File, assistantIds: string[]): FormData {
+  const form = new FormData();
+  form.set("file", file);
+  // The route parses this field as JSON (multipart carries no arrays).
+  form.set("assistantIds", JSON.stringify(assistantIds));
+  return form;
+}
+
 export class CieleClient {
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -316,11 +338,6 @@ export class CieleClient {
     return (await response.json()) as T;
   }
 
-  /** Like `request`, for endpoints that answer raw text (e.g. CSV exports). */
-  private requestText(path: string): Promise<string> {
-    return this.request<string>("GET", path, { parseText: true });
-  }
-
   /**
    * Walks a paginated listing to exhaustion, `for await` over every item.
    */
@@ -365,6 +382,16 @@ export class CieleClient {
       this.request("DELETE", `/assistants/${id}`),
     duplicate: (id: string): Promise<ApiAssistant> =>
       this.request("POST", `/assistants/${id}/duplicate`),
+    /**
+     * The published Assistant's answer to `question`, with its Sources. A real
+     * turn (it can take a while and creates a Conversation the Inbox shows);
+     * pass `conversationId` from a previous answer to continue that thread.
+     */
+    ask: (
+      id: string,
+      input: { question: string; conversationId?: string }
+    ): Promise<AssistantAnswer> =>
+      this.request("POST", `/assistants/${id}/ask`, { body: input }),
     entities: (id: string): Promise<{ entityIds: string[] }> =>
       this.request("GET", `/assistants/${encodeURIComponent(id)}/entities`),
     setEntities: (id: string, entityIds: string[]): Promise<{ entityIds: string[] }> =>
@@ -492,13 +519,10 @@ export class CieleClient {
       collectionId: string,
       file: File,
       assistantIds: string[]
-    ): Promise<ApiSource> => {
-      const form = new FormData();
-      form.set("file", file);
-      // The route parses this field as JSON (multipart carries no arrays).
-      form.set("assistantIds", JSON.stringify(assistantIds));
-      return this.request("POST", `/collections/${collectionId}/sources`, { form });
-    },
+    ): Promise<ApiSource> =>
+      this.request("POST", `/collections/${collectionId}/sources`, {
+        form: linkedForm(file, assistantIds),
+      }),
     getSource: (id: string): Promise<ApiSource> =>
       this.request("GET", `/sources/${id}`),
     deleteSource: (id: string): Promise<void> =>
@@ -514,14 +538,10 @@ export class CieleClient {
       collectionId: string,
       csv: File,
       assistantIds: string[]
-    ): Promise<{ imported: number; skipped: string[] }> => {
-      const form = new FormData();
-      form.set("file", csv);
-      form.set("assistantIds", JSON.stringify(assistantIds));
-      return this.request("POST", `/collections/${collectionId}/faqs/import`, {
-        form,
-      });
-    },
+    ): Promise<{ imported: number; skipped: string[] }> =>
+      this.request("POST", `/collections/${collectionId}/faqs/import`, {
+        form: linkedForm(csv, assistantIds),
+      }),
 
     // --- Org-level knowledge hub (PRD #726) --------------------------------
     /** Org-wide knowledge items (the hub's table). */
@@ -612,13 +632,8 @@ export class CieleClient {
       this.request("POST", "/knowledge/sources", {
         body: { kind: "url", url, assistantIds },
       }),
-    addOrgFileSource: (file: File, assistantIds: string[]): Promise<ApiSource> => {
-      const form = new FormData();
-      form.set("file", file);
-      // The route parses this field as JSON (multipart carries no arrays).
-      form.set("assistantIds", JSON.stringify(assistantIds));
-      return this.request("POST", "/knowledge/sources", { form });
-    },
+    addOrgFileSource: (file: File, assistantIds: string[]): Promise<ApiSource> =>
+      this.request("POST", "/knowledge/sources", { form: linkedForm(file, assistantIds) }),
     /** Org-level FAQ create (Knowledge Library + explicit links). */
     addOrgFaq: (input: {
       question: string;
@@ -635,15 +650,18 @@ export class CieleClient {
     importOrgFaqs: (
       csv: File,
       assistantIds: string[]
-    ): Promise<{ imported: number; skipped: string[] }> => {
-      const form = new FormData();
-      form.set("file", csv);
-      form.set("assistantIds", JSON.stringify(assistantIds));
-      return this.request("POST", "/knowledge/faqs/import", { form });
-    },
+    ): Promise<{ imported: number; skipped: string[] }> =>
+      this.request("POST", "/knowledge/faqs/import", { form: linkedForm(csv, assistantIds) }),
     /** Org-wide FAQ CSV export (raw CSV text). */
     exportOrgFaqs: (): Promise<string> =>
-      this.requestText("/knowledge/faqs/export"),
+      this.request("GET", "/knowledge/faqs/export", { parseText: true }),
+    /**
+     * The passages that answer `query`, each with its Document and Source:
+     * retrieval without an answer, for a caller that brings its own model.
+     * `assistantId` narrows the search to that Assistant's linked Sources.
+     */
+    search: (input: { query: string; assistantId?: string }): Promise<KnowledgeSearchResponse> =>
+      this.request("POST", "/knowledge/search", { body: input }),
   };
 
   readonly publish = {
@@ -1153,13 +1171,10 @@ export class CieleClient {
    */
   readonly usage = {
     meters: (): Promise<unknown> => this.request("GET", "/usage/meters"),
-    spenders: (window: { from?: string; to?: string } = {}): Promise<unknown> => {
-      const query = new URLSearchParams();
-      if (window.from) query.set("from", window.from);
-      if (window.to) query.set("to", window.to);
-      const suffix = query.size > 0 ? `?${query.toString()}` : "";
-      return this.request("GET", `/usage/spenders${suffix}`);
-    },
+    spenders: (window: { from?: string; to?: string } = {}): Promise<unknown> =>
+      this.request("GET", "/usage/spenders", {
+        query: { from: window.from || undefined, to: window.to || undefined },
+      }),
   };
 
   readonly apiIntegrations = {
@@ -1195,19 +1210,13 @@ export class CieleClient {
   /** Application Connections as the Connector action sees them (#839). */
   readonly applications = {
     list: (provider?: string): Promise<{ data: ApplicationConnectionView[] }> =>
-      this.request(
-        "GET",
-        provider
-          ? `/applications/connections?provider=${encodeURIComponent(provider)}`
-          : "/applications/connections"
-      ),
+      this.request("GET", "/applications/connections", {
+        query: { provider: provider || undefined },
+      }),
     connectors: (provider?: string): Promise<{ data: ConnectorActionView[] }> =>
-      this.request(
-        "GET",
-        provider
-          ? `/applications/connectors?provider=${encodeURIComponent(provider)}`
-          : "/applications/connectors"
-      ),
+      this.request("GET", "/applications/connectors", {
+        query: { provider: provider || undefined },
+      }),
     reconsent: (
       id: string,
       input: { actions?: string[]; scopes?: string[] } = {}

@@ -99,8 +99,12 @@ export function CrawlerConnectionCard({
             </span>
           </span>
           {connection.accountId && (
-            <Badge variant="outline" className="rounded-full font-mono">
-              {connection.accountId}
+            <Badge
+              variant="outline"
+              className="max-w-40 rounded-full font-mono"
+              title={connection.accountId}
+            >
+              <span className="min-w-0 truncate">{connection.accountId}</span>
             </Badge>
           )}
           <Hint label="Disconnect">

@@ -1,9 +1,7 @@
 import { streamObject } from "ai";
 import type { LanguageModel } from "ai";
 import type {
-  ApiIntegration,
   Assistant,
-  EntitySnapshot,
   Flow,
   FlowAction,
   FlowRoutingContext,
@@ -11,7 +9,6 @@ import type {
   PreflightTraceRecord,
   Provider,
   ProviderConnection,
-  ReferralCandidate,
   SkillSnapshot,
   TrustTier,
 } from "@agent-hub/core";
@@ -32,7 +29,6 @@ import { runApprovalGate } from "./approval-gate";
 import { decide, resolveDecisionModel } from "./decision-model";
 import { decidedRoute, runPreflight, type PreflightFaqAnswer, type PreflightOutcome } from "./preflight-shadow";
 import type { ChatReplyPart } from "./types";
-import type { UntrustedEnvelope } from "./untrusted-content";
 import type { TurnSession } from "./session";
 import {
   getClassifierModel,
@@ -42,7 +38,7 @@ import {
   type ProviderCredential,
 } from "./models";
 import { PROVIDER_NAMES } from "./catalog";
-import { ACTION_HANDLERS, contactLabel } from "./actions";
+import { ACTION_HANDLERS, contactLabel, faqAnswerParts, recommendedDeskPart } from "./actions";
 import { needsWatchEscalation } from "./trust";
 import { buildHelpDeskRecommender } from "./help-desk-recommend";
 import type { EscalationDeskCandidate } from "./help-desk-recommend";
@@ -50,25 +46,12 @@ import { withWorkflowName } from "./template";
 import type {
   ActionContext,
   ActionEffect,
-  HistoryMessage,
-  KnowledgeDocument,
-  KnowledgeSearcher,
   RunResult,
   RuntimeEvent,
-  TeammateActionTool,
   UsageEvent,
 } from "./types";
 import { usageTotals } from "./usage";
 import { errorMessageOf } from "./telemetry";
-
-// Re-exported so callers keep importing the runtime contract from one place.
-export type {
-  ActionEffect,
-  HistoryMessage,
-  KnowledgeSearcher,
-  RunResult,
-  RuntimeEvent,
-} from "./types";
 
 export interface ProviderHealthEvent {
   provider: Provider;
@@ -479,96 +462,57 @@ export async function runProactiveFlows(options: {
  * search_knowledge / Default behavior are generative. Returns the reply parts
  * plus any deferred effects for the caller to apply after persistence.
  */
-export async function runAssistantChat(options: {
-  assistant: Assistant;
-  /** The immutable platform (Ciele) prompt layer; "" falls back sanely. */
-  platformPrompt?: string;
-  /**
-   * The persona layer of an AI Teammate turn (#768): who this agent is and
-   * what its Standing Role says, replacing the "you are a website assistant"
-   * identity lines. Absent on Assistant turns.
-   */
-  persona?: string;
+// Fields shared with ActionContext pass straight through to the actions, so
+// they are documented there; the object literal below holds the engine's own.
+export async function runAssistantChat(options: Pick<ActionContext,
+  | "assistant"
+  | "persona"
+  | "message"
+  | "history"
+  | "templateContext"
+  | "searchKnowledge"
+  | "readKnowledgeDocument"
+  | "apiIntegration"
+  | "teammateActions"
+  | "memoryDocuments"
+  | "untrustedContext"
+  | "referralCandidates"
+  | "collectionId"
+  | "session"
+  | "alreadyClarified"
+  | "longTermMemory"
+  | "searchMemories"
+  | "entities"
+  | "queryEntityRecords"
+  | "connectorRuntime"
+  | "reviewRuntime"
+  | "countOperation"
+  | "webhookRuntime"
+  | "toolSubject"
+  | "emit"
+  | "signal"
+> &
+  Partial<Pick<ActionContext, "platformPrompt" | "skills">> & {
   flows: Flow[];
   connections: ProviderConnection[];
-  message: string;
-  history: HistoryMessage[];
-  /** Resolved template-variable catalog interpolated into action text this turn. */
-  templateContext?: ActionContext["templateContext"];
   /**
    * Page URL + clock the objective Flow Conditions (URL, Schedule) are gated
    * against (spec #550). Omitted leaves them unevaluatable, which never
    * disqualifies a Flow, an unwired caller keeps the previous behaviour.
    */
   routing?: FlowRoutingContext;
-  searchKnowledge?: KnowledgeSearcher;
-  /**
-   * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
-   * tool (spec #559). Absent leaves that tool unregistered, an unwired caller
-   * keeps exactly the previous behaviour.
-   */
-  readKnowledgeDocument?: (id: string) => Promise<KnowledgeDocument | null>;
-  /**
-   * The Assistant's API catalogue integration, credential still sealed (spec
-   * #559). Absent or with an empty catalogue leaves the three catalogue tools
-   * unregistered.
-   */
-  apiIntegration?: ApiIntegration | null;
-  /**
-   * An AI Teammate's granted actions (#770), already filtered by the host
-   * against its grant rows and its ceiling. Empty registers no action tools.
-   */
-  teammateActions?: readonly TeammateActionTool[];
-  /** Its three memory documents, rendered (#771). Empty injects nothing. */
-  memoryDocuments?: readonly string[];
   /**
    * This turn carries a file. It suppresses the courtesy short-circuit below:
    * `memoryDocuments` cannot stand in for this, because a Teammate turn always
    * has memory layers and would then never recognise a greeting again.
    */
   hasAttachments?: boolean;
-  /** Third-party text for this turn (#857), fenced as untrusted by the search action. */
-  untrustedContext?: readonly UntrustedEnvelope[];
-  /** Colleagues this Teammate may refer to (#773); empty registers no tool. */
-  referralCandidates?: readonly ReferralCandidate[];
   /**
-   * Active Knowledge Collection anchor (see the #53 audit). Scopes retrieval
-   * upstream and seeds the Agentic Search context frame; null/absent degrades
-   * to assistant-wide.
+   * Receives each model call's usage as it completes. The turn owns the array
+   * so a run that throws or is aborted still settles what it already spent;
+   * `RunResult.usage` is this same array on success.
    */
-  collectionId?: string | null;
-  /** Persistent cross-turn session state (see session.ts). */
-  session: TurnSession;
-  /**
-   * Whether an earlier turn in this conversation already asked the Visitor to
-   * clarify (#558 anti-loop guarantee). Derived by the caller from the persisted
-   * parts; false/absent for a fresh conversation.
-   */
-  alreadyClarified?: boolean;
-  /** Skills attached to the assistant (live rows or a Publication snapshot). */
-  skills?: SkillSnapshot[];
-  /** Long-term memories recalled for the turn's SSO subject (#664). */
-  longTermMemory?: string[];
-  /**
-   * Mid-conversation long-term memory recall (#664); presence registers the
-   * `searchMemories` tool. Provided by the Conversation Turn under its gate
-   * (org toggle on + verified SSO subject).
-   */
-  searchMemories?: ActionContext["searchMemories"];
-  /** Selected shared Entities (#665): snapshot on the widget, live in Preview. */
-  entities?: EntitySnapshot[];
-  /** Live Record read for the auto-generated Entity tools (#665). */
-  queryEntityRecords?: ActionContext["queryEntityRecords"];
-  /** The Connector action's host port (#839), bound over the turn's Db. */
-  connectorRuntime?: ActionContext["connectorRuntime"];
-  /** The Human review gate's host port (#841), bound over the turn's Conversation. */
-  reviewRuntime?: ActionContext["reviewRuntime"];
-  /** Counts non-model operations the Flow performs (#854); priced at zero. */
-  countOperation?: ActionContext["countOperation"];
-  /** The callback gate's host port (#842), bound over the turn's Conversation. */
-  webhookRuntime?: ActionContext["webhookRuntime"];
-  /** Who the turn verifiably speaks for, Entity tool policy input (#667). */
-  toolSubject?: ActionContext["toolSubject"];
+  usageSink?: UsageEvent[];
   /**
    * The desks this assistant may recommend ("AI recommended help desk"):
    * id + name + description candidates resolved by the Conversation Turn.
@@ -597,8 +541,6 @@ export async function runAssistantChat(options: {
    * path. Absent, the pre-flight never answers with an FAQ.
    */
   readPreflightFaq?: (faqId: string) => Promise<PreflightFaqAnswer | null>;
-  emit: (e: RuntimeEvent) => void;
-  signal?: AbortSignal;
   /** ADR-0001 surface context; omit for published traffic (safe default). */
   keyResolution?: KeyResolution;
   onProviderHealth?: (event: ProviderHealthEvent) => void | Promise<void>;
@@ -685,15 +627,21 @@ export async function runAssistantChat(options: {
           candidate.actions[resumeFrom.actionIndex] === resumeFrom.action
       ) ?? null)
     : null;
-  if (resumeFrom && !resumedFlow) {
-    const part: ChatReplyPart = {
-      type: "text",
-      action: "fallback",
-      text: "This flow changed while I was waiting, so I can't continue with it.",
-    };
+  /** The turn ends with no Flow: one fallback line, and nothing else runs. */
+  const noFlow = (
+    text: string,
+    usage: UsageEvent[],
+    extra?: Pick<RunResult, "preflight">
+  ): RunResult => {
+    const part: ChatReplyPart = { type: "text", action: "fallback", text };
     emit({ type: "flow", flowId: null, flowName: "No flow", isDefault: true });
     emit({ type: "part", part });
-    return { parts: [part], effects: [], flowId: null, flowName: "No flow", usage: [] };
+    return { parts: [part], effects: [], flowId: null, flowName: "No flow", usage, ...extra };
+  };
+  const NO_FLOW_TEXT =
+    "No enabled flow can handle this message, enable the Default behavior flow or add a new one.";
+  if (resumeFrom && !resumedFlow) {
+    return noFlow("This flow changed while I was waiting, so I can't continue with it.", []);
   }
   const resumeIndex = resumeFrom ? resumeFrom.actionIndex + 1 : 0;
   const resumeContext = (base: ActionContext["templateContext"]) =>
@@ -721,7 +669,23 @@ export async function runAssistantChat(options: {
   let providerFailed = false;
   // AI usage ledger: one event per model call this turn, persisted post-commit
   // by the Conversation Turn.
-  const usageEvents: UsageEvent[] = [];
+  const usageEvents: UsageEvent[] = options.usageSink ?? [];
+  /** One ledger event for a call `who` ran; no model resolved meters nothing. */
+  const meter = (
+    stage: UsageEvent["stage"],
+    who: Pick<UsageEvent, "provider" | "modelId" | "credentialKind"> | null,
+    tokens: { inputTokens: number; outputTokens: number }
+  ): void => {
+    if (!who) return;
+    usageEvents.push({
+      stage,
+      provider: who.provider,
+      modelId: who.modelId,
+      credentialKind: who.credentialKind,
+      inputTokens: tokens.inputTokens,
+      outputTokens: tokens.outputTokens,
+    });
+  };
 
   // "AI recommended help desk": one lazy, cached recommendation per turn,
   // shared by every escalation-chip emission site through the action context.
@@ -732,17 +696,7 @@ export async function runAssistantChat(options: {
     message,
     history,
     signal,
-    recordUsage: (usage) => {
-      if (!classifier) return;
-      usageEvents.push({
-        stage: "classify",
-        provider: classifier.provider,
-        modelId: classifier.modelId,
-        credentialKind: classifier.credentialKind,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-      });
-    },
+    recordUsage: (usage) => meter("classify", classifier, usage),
   });
 
   /**
@@ -763,6 +717,40 @@ export async function runAssistantChat(options: {
     // that failed while configured, is a verdict. See the port's contract.
     return gate.backend === null ? null : gate.verdict;
   };
+
+  /** What both engines hand every action; the model-backed one adds its tools. */
+  const baseContext = (
+    flow: Flow,
+    parts: ChatReplyPart[]
+  ): Omit<ActionContext, "chatModel"> => ({
+    idempotencyKey: effectKeyPrefix,
+    assistant,
+    platformPrompt,
+    persona,
+    flow,
+    message,
+    history,
+    collectionId,
+    templateContext: resumeContext(withWorkflowName(templateContext, flow.name)),
+    searchKnowledge,
+    session,
+    skills,
+    longTermMemory,
+    searchMemories,
+    entities,
+    queryEntityRecords,
+    connectorRuntime,
+    reviewRuntime,
+    countOperation,
+    judgeAction,
+    webhookRuntime,
+    toolSubject,
+    priorParts: parts,
+    emit,
+    signal,
+    previewSurface: isOperatorSurface(keyResolution),
+    recommendHelpDesk,
+  });
 
   // Never rejects: a pre-flight that could fail a turn would be worse than no
   // pre-flight. `runPreflight` already swallows the decision's own failures;
@@ -846,22 +834,7 @@ export async function runAssistantChat(options: {
       });
     }
     const flow = resumedFlow ?? requestedStudyFlow ?? matchFlow(message, flows, routing);
-    if (!flow) {
-      const part: ChatReplyPart = {
-        type: "text",
-        action: "fallback",
-        text: "No enabled flow can handle this message, enable the Default behavior flow or add a new one.",
-      };
-      emit({ type: "flow", flowId: null, flowName: "No flow", isDefault: true });
-      emit({ type: "part", part });
-      return {
-        parts: [part],
-        effects: [],
-        flowId: null,
-        flowName: "No flow",
-        usage: [],
-      };
-    }
+    if (!flow) return noFlow(NO_FLOW_TEXT, []);
     emit({ type: "notice", label: flow.id === STUDY_MODE_FLOW_ID ? "Study Mode" : `Matched flow “${flow.name}” (keyword matching)` });
     emit({
       type: "flow",
@@ -871,36 +844,7 @@ export async function runAssistantChat(options: {
     });
     const parts: ChatReplyPart[] = [];
     const effects: ActionEffect[] = [];
-    const ctx: ActionContext = {
-      idempotencyKey: effectKeyPrefix,
-      assistant,
-      platformPrompt,
-      persona,
-      flow,
-      message,
-      history,
-      collectionId,
-      templateContext: resumeContext(withWorkflowName(templateContext, flow.name)),
-      chatModel: null,
-      searchKnowledge,
-      session,
-      skills,
-      longTermMemory,
-      searchMemories,
-      entities,
-      queryEntityRecords,
-      connectorRuntime,
-      reviewRuntime,
-      countOperation,
-      judgeAction,
-      webhookRuntime,
-      toolSubject,
-      priorParts: parts,
-      emit,
-      signal,
-      previewSurface: isOperatorSurface(keyResolution),
-      recommendHelpDesk,
-    };
+    const ctx: ActionContext = { ...baseContext(flow, parts), chatModel: null };
 
     const { handoverTo } = await dispatchActions({
       ctx,
@@ -983,20 +927,7 @@ export async function runAssistantChat(options: {
     if (faq) {
       preflightLine();
       emit({ type: "flow", flowId: null, flowName: "FAQ", isDefault: false });
-      const textPart: ChatReplyPart = { type: "text", action: "custom_message", text: faq.body };
-      const sourcesPart: ChatReplyPart = {
-        type: "sources",
-        action: "search_knowledge",
-        sources: [
-          {
-            conceptId: preflightRoute.faqId,
-            conceptTitle: faq.title,
-            collectionName: faq.collectionName,
-            sourceName: null,
-            url: faq.url,
-          },
-        ],
-      };
+      const [textPart, sourcesPart] = faqAnswerParts(preflightRoute.faqId, faq);
       emit({ type: "part", part: textPart });
       emit({ type: "part", part: sourcesPart });
       const preflight = actedRecord();
@@ -1052,16 +983,7 @@ export async function runAssistantChat(options: {
       flows,
       classifier?.model ?? null,
       assistant.nickname || assistant.title,
-      (usage) => {
-        if (!classifier) return;
-        usageEvents.push({
-          stage: "classify",
-          provider: classifier.provider,
-          modelId: classifier.modelId,
-          credentialKind: classifier.credentialKind,
-          ...usageTotals(usage),
-        });
-      },
+      (usage) => meter("classify", classifier, usageTotals(usage)),
       routing,
       emit
     ));
@@ -1079,23 +1001,7 @@ export async function runAssistantChat(options: {
       }
     : undefined;
 
-  if (!flow) {
-    const part: ChatReplyPart = {
-      type: "text",
-      action: "fallback",
-      text: "No enabled flow can handle this message, enable the Default behavior flow or add a new one.",
-    };
-    emit({ type: "flow", flowId: null, flowName: "No flow", isDefault: true });
-    emit({ type: "part", part });
-    return {
-      parts: [part],
-      effects: [],
-      flowId: null,
-      flowName: "No flow",
-      usage: usageEvents,
-      ...(preflight ? { preflight } : {}),
-    };
-  }
+  if (!flow) return noFlow(NO_FLOW_TEXT, usageEvents, preflight ? { preflight } : {});
 
   // The routing decision, stated once the classifier has made it, the emitter
   // knows which flow matched, so the trace row carries it directly instead of a
@@ -1126,6 +1032,7 @@ export async function runAssistantChat(options: {
   const parts: ChatReplyPart[] = [];
   const effects: ActionEffect[] = [];
   const ctx: ActionContext = {
+    ...baseContext(flow, parts),
     chooseStudyFormat: async (formats, topic) => {
       const fallback = formats[0];
       const resolved = resolveDecisionModel(assistant.modelProvider, connections, keyResolution);
@@ -1144,71 +1051,24 @@ export async function runAssistantChat(options: {
         return fallback;
       }
     },
-    idempotencyKey: effectKeyPrefix,
-    assistant,
-    platformPrompt,
-    persona,
-    flow,
-    message,
-    history,
-    collectionId,
-    templateContext: resumeContext(withWorkflowName(templateContext, flow.name)),
     chatModel,
     fastModel: classifier?.model ?? null,
-    searchKnowledge,
     readKnowledgeDocument,
     apiIntegration,
     teammateActions,
     memoryDocuments,
     untrustedContext,
     referralCandidates,
-    session,
     alreadyClarified,
-    skills,
-    longTermMemory,
-    searchMemories,
-    entities,
-    queryEntityRecords,
-    connectorRuntime,
-    reviewRuntime,
-    countOperation,
-    judgeAction,
-    webhookRuntime,
-    toolSubject,
-    priorParts: parts,
-    emit,
-    signal,
-    previewSurface: isOperatorSurface(keyResolution),
-    recommendHelpDesk,
     // Pre-bound with the turn's resolved chat model so handlers only report
     // token totals. Null-guarded rather than assumed: a courtesy turn reaches
     // this path with no resolvable model (the handler answers verbatim), and a
     // handler that made no call has nothing to meter anyway.
-    recordUsage: (usage) => {
-      if (!resolved) return;
-      usageEvents.push({
-        stage: "generate",
-        provider: resolved.provider,
-        modelId: resolved.modelId,
-        credentialKind: resolved.credentialKind,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-      });
-    },
+    recordUsage: (usage) => meter("generate", resolved, usage),
     // Metered against the classifier-tier model that actually ran, still as a
     // `generate` event: the stage says what the call produced, the model id
     // says who produced it.
-    recordFastUsage: (usage) => {
-      if (!classifier) return;
-      usageEvents.push({
-        stage: "generate",
-        provider: classifier.provider,
-        modelId: classifier.modelId,
-        credentialKind: classifier.credentialKind,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-      });
-    },
+    recordFastUsage: (usage) => meter("generate", classifier, usage),
   };
 
   const { handoverTo } = await dispatchActions({
@@ -1254,13 +1114,7 @@ export async function runAssistantChat(options: {
   // Watch-tier flows always offer the human exit ramp with their generative
   // answers (flow trust ledger, the one behavioral consequence in v1).
   if (needsWatchEscalation(parts, await trustTierPromise)) {
-    const recommended = await recommendHelpDesk();
-    const part: ChatReplyPart = {
-      type: "help_desk",
-      action: "suggest_help_desk",
-      label: contactLabel(assistant),
-      ...(recommended ? { helpDeskId: recommended } : {}),
-    };
+    const part = await recommendedDeskPart(assistant, recommendHelpDesk);
     emit({ type: "part", part });
     parts.push(part);
   }

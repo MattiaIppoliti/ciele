@@ -1,20 +1,15 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import type { Role } from "@agent-hub/core";
+import { roleAllowsCapability } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import type { OperationCapability } from "@ciele/ops";
 import {
   createAdminPageReads,
   type AdminPageReads,
 } from "@/lib/admin-page-reads";
 import { getSession, type Session } from "@/lib/auth";
 import { getDb } from "@/lib/data";
-import {
-  canChangeRoles,
-  canEdit,
-  canManageApiKeys,
-  canManageMembers,
-  canPublish,
-} from "@/lib/rbac";
 
 /** A session guaranteed to carry an active Organization. */
 export type OrgSession = Session & {
@@ -30,28 +25,16 @@ export async function requireSession(): Promise<Session> {
 
 /**
  * What a Member must be allowed to do for an action to proceed. Maps onto
- * the Role ladder in rbac.ts; "member" means any Role in the Organization.
+ * core's `roleAllowsCapability`; "member" means any Role in the Organization,
+ * so it is checked here and never ranked.
  */
-export type MemberCapability =
-  | "member"
-  | "edit"
-  | "publish"
-  | "manageMembers"
-  | "manageApiKeys"
-  | "changeRoles";
+export type MemberCapability = OperationCapability;
 
-const CAPABILITY_GUARDS: Record<
-  Exclude<MemberCapability, "member">,
-  { allowed: (role: Role | null) => boolean; error: string }
-> = {
-  edit: { allowed: canEdit, error: "Not allowed" },
-  publish: { allowed: canPublish, error: "Only admins/owners can publish" },
-  manageMembers: { allowed: canManageMembers, error: "Not allowed" },
-  manageApiKeys: {
-    allowed: canManageApiKeys,
-    error: "Only admins/owners can manage API keys",
-  },
-  changeRoles: { allowed: canChangeRoles, error: "Only owners can change roles" },
+/** Refusal copy the console shows; a capability not listed says "Not allowed". */
+const CAPABILITY_ERRORS: Partial<Record<MemberCapability, string>> = {
+  publish: "Only admins/owners can publish",
+  manageApiKeys: "Only admins/owners can manage API keys",
+  changeRoles: "Only owners can change roles",
 };
 
 /** Everything an authorized server action starts from. */
@@ -96,7 +79,8 @@ export const requirePageMember = cache(async (): Promise<PageMemberContext> => {
  * The authorization seam every org-scoped server action goes through:
  * resolves the signed-in Member (redirecting to /login or /onboarding),
  * checks the required capability against their Role, and hands back the
- * request-scoped Db. RBAC policy lives here and in rbac.ts, nowhere else.
+ * request-scoped Db. RBAC policy lives here and in core's
+ * `roleAllowsCapability`, nowhere else.
  */
 export async function requireMember(
   capability: MemberCapability = "member"
@@ -104,9 +88,8 @@ export async function requireMember(
   const session = await requireSession();
   if (!session.organization) redirect("/onboarding");
   const orgSession = session as OrgSession;
-  if (capability !== "member") {
-    const guard = CAPABILITY_GUARDS[capability];
-    if (!guard.allowed(orgSession.role)) throw new Error(guard.error);
+  if (capability !== "member" && !roleAllowsCapability(orgSession.role, capability)) {
+    throw new Error(CAPABILITY_ERRORS[capability] ?? "Not allowed");
   }
   return {
     session: orgSession,

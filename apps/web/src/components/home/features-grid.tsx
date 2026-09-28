@@ -95,7 +95,7 @@ export function FeaturesGrid() {
       <div ref={gridRef} className="mt-14 grid grid-cols-1 gap-8 md:grid-cols-3">
         {FEATURES.map((feature) =>
           mounted ? (
-            <FeatureCard key={feature.title} feature={feature} mounted />
+            <FeatureCard key={feature.title} feature={feature} />
           ) : (
             <FeatureCardFace key={feature.title} feature={feature} />
           )

@@ -37,7 +37,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/motion/context-menu";
 import "@xyflow/react/dist/style.css";
-import { ArrowUp, ExternalLink, LayoutGrid, MousePointer2, MousePointerClick, Plus, RotateCcw, Search, SlidersHorizontal, Trash2, Unplug, Workflow, X, type LucideIcon } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ExternalLink, LayoutGrid, MousePointer2, MousePointerClick, Plus, RotateCcw, Search, SlidersHorizontal, Trash2, Unplug, Workflow, X, type LucideIcon } from "lucide-react";
 import { AlertCircle, Brush, Ellipsis, Hand, ListFilter, Maximize, Maximize2, Minimize2, Minus, Zap } from "lucide-react";
 import { Badge, Button, Hint, Input } from "@agent-hub/ui";
 import {
@@ -46,7 +46,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { useDeferredStoredValue } from "@/components/assistant/use-deferred-stored-value";
 import { FLOW_ACTIONS } from "@/lib/flow-actions";
@@ -54,6 +54,7 @@ import { PromptInput } from "@/components/agents/prompt-input";
 import { motion, useReducedMotion } from "motion/react";
 import { EASE_GROW, EASE_OUT, GROW_DURATION_MS, SPRING_LAYOUT } from "@/lib/ease";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
+import { isTypingTarget } from "@/lib/typing-target";
 import { newFlowCondition } from "@/lib/flow-conditions";
 import type { FlowDraft, FlowDraftStatus } from "@/lib/flow-editor";
 import {
@@ -69,6 +70,7 @@ import {
   flowStepEntries,
   flowStepGroupsOf,
   layoutFlowCanvas,
+  moveAction,
   offsetFor,
   paletteForDraft,
   parseCanvasDirection,
@@ -89,7 +91,6 @@ import {
   FlowTriggerConfig,
   TestRequestControl,
   actionHasConfig,
-  localId,
   type AssistantOption,
   type FaqOption,
   type FlowStepHandlers,
@@ -244,7 +245,7 @@ interface FlowCanvasViewProps {
    */
   onAskAgent?: (message: string) => void;
   /** Whether the agent panel is already open, in which case the box is redundant. */
-  agentOpen?: boolean;
+  agentOpen: boolean;
 }
 
 type CanvasTool = "select" | "hand";
@@ -285,7 +286,7 @@ function FlowCanvasInner({
   onClosePanel,
   onOpenPreview,
   onAskAgent,
-  agentOpen = false,
+  agentOpen,
 }: FlowCanvasViewProps) {
   const projection = useMemo(
     () => projectFlowCanvas(draft, { isDefaultFlow }),
@@ -295,7 +296,7 @@ function FlowCanvasInner({
     () => paletteForDraft(draft, { isDefaultFlow }),
     [draft, isDefaultFlow]
   );
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView, zoomIn, zoomOut } = useReactFlow();
 
   /**
    * Which way the chain runs. A viewing preference, so it is kept per Member
@@ -349,6 +350,15 @@ function FlowCanvasInner({
       }
     },
     [offsetsKey]
+  );
+  /** Drop one node's nudge, putting it back on its derived position. */
+  const resetOffset = useCallback(
+    (id: string) => {
+      const next = { ...offsets };
+      delete next[id];
+      persistOffsets(next);
+    },
+    [offsets, persistOffsets]
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -433,10 +443,9 @@ function FlowCanvasInner({
     []
   );
 
-  // Keep the chain in view as it grows or appears; `fitView` alone runs once.
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
   // A finger never hovers: it decides whether a drag is a marquee or a pan.
   const hoverCapable = useHoverCapable();
+  // Keep the chain in view as it grows or appears; `fitView` alone runs once.
   const nodeCount = showChain ? projection.nodes.length : 0;
   useEffect(() => {
     if (nodeCount === 0) return;
@@ -463,15 +472,13 @@ function FlowCanvasInner({
         );
         if (reordered) {
           handlers.setActions(reordered);
-          const next = { ...offsets };
-          delete next[node.id];
-          persistOffsets(next);
+          resetOffset(node.id);
           return;
         }
       }
       persistOffsets({ ...offsets, [node.id]: offsetFor(projected, node.position, direction) });
     },
-    [draft, projection.nodes, positions, handlers, offsets, persistOffsets, direction]
+    [draft, projection.nodes, positions, handlers, offsets, persistOffsets, resetOffset, direction]
   );
 
   // A palette tile dragged onto the pane inserts at the chain position under
@@ -502,6 +509,18 @@ function FlowCanvasInner({
 
   const hasOffsets = Object.keys(offsets).length > 0;
 
+  // The box the flow and its field share: scene rectangles are relative to it.
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * The canvas's single-key shortcuts listen on the window, so they ask this
+   * first: focus on the page body or inside the canvas. Without it Backspace on
+   * a header button or the Flows Agent's composer removed the selected step.
+   */
+  const focusOnCanvas = useCallback(() => {
+    const active = document.activeElement;
+    return !active || active === document.body || Boolean(canvasRef.current?.contains(active));
+  }, []);
+
   /**
    * Tidy up: drop every nudge and put the chain back on its derivation, then
    * bring it into view. The same thing the menu used to call "Reset layout",
@@ -518,22 +537,14 @@ function FlowCanvasInner({
     function onKeyDown(event: KeyboardEvent) {
       if (!event.shiftKey || event.key.toLowerCase() !== "t") return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
+      if (!focusOnCanvas()) return;
+      if (isTypingTarget(event.target)) return;
       event.preventDefault();
       tidyUp();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [tidyUp]);
+  }, [tidyUp, focusOnCanvas]);
 
   // React Flow stamps `.light` / `.dark` on its root for its own variables, and
   // the console's theme scopes *its* tokens on those same class names, so the
@@ -541,8 +552,6 @@ function FlowCanvasInner({
   // in the other mode's colours.
   const { resolvedTheme } = useTheme();
   const colorMode = resolvedTheme === "dark" ? "dark" : "light";
-  // The box the flow and its field share: scene rectangles are relative to it.
-  const canvasRef = useRef<HTMLDivElement | null>(null);
 
   const selectAndOpen = useCallback(
     (id: string) => {
@@ -564,6 +573,21 @@ function FlowCanvasInner({
    */
   const { fullscreen, setFullscreen, surfaceRef, animating, spacerRef } = useFullscreenGrow();
 
+  /**
+   * Remove one action step, from the keyboard, the `⋯` menu or the context
+   * menu. Leave full screen first: the panel is about to unmount, and a fixed
+   * panel that vanishes mid-animation leaves the screen blank over the next
+   * selection.
+   */
+  const removeStep = useCallback(
+    (action: FlowAction) => {
+      setFullscreen(false);
+      handlers.removeAction(action);
+      deselect();
+    },
+    [setFullscreen, handlers, deselect]
+  );
+
   // Delete / Backspace removes the selected step, the shortcut the context
   // menu advertises. Never while a field has focus: the node panel is full of
   // them and Backspace there is a character, not a deletion.
@@ -572,27 +596,25 @@ function FlowCanvasInner({
     if (readOnly || !selectedAction) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Delete" && event.key !== "Backspace") return;
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
+      if (!focusOnCanvas()) return;
+      if (isTypingTarget(event.target)) return;
       event.preventDefault();
-      // Leave full screen first, for the reason the context menu's own Remove
-      // gives: the panel is about to unmount, and a fixed panel that vanishes
-      // mid-animation leaves the screen blank over the next selection.
-      setFullscreen(false);
-      handlers.removeAction(selectedAction!);
-      deselect();
+      removeStep(selectedAction!);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [readOnly, selectedAction, handlers, deselect, setFullscreen]);
+  }, [readOnly, selectedAction, removeStep, focusOnCanvas]);
+
+  // Full screen covers the page, so it answers Escape the way a dialog does and
+  // takes focus with it: a keyboard user left behind on the canvas would be
+  // tabbing through controls the panel now hides.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const frame = window.requestAnimationFrame(() =>
+      surfaceRef.current?.focus({ preventScroll: true })
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [fullscreen, surfaceRef]);
 
   /**
    * One place a step is added, whichever control asked. `buildByHand` comes
@@ -610,7 +632,7 @@ function FlowCanvasInner({
         case "condition":
           handlers.setConditions([
             ...draft.conditions,
-            newFlowCondition(choice.condition, localId()),
+            newFlowCondition(choice.condition, crypto.randomUUID()),
           ]);
           selectAndOpen(CONDITIONS_NODE_ID);
           return;
@@ -648,10 +670,7 @@ function FlowCanvasInner({
         <AddStepControl
           entries={entries}
           onPick={(choice) => addStep(choice, insertIndex)}
-          label="Add a step"
           direction={direction}
-          className="bg-primary text-primary-foreground ring-background size-6 shadow-sm ring-2"
-          iconClassName="size-3.5"
         />
       ),
     [entries, addStep, readOnly, direction]
@@ -671,11 +690,7 @@ function FlowCanvasInner({
         key: "reset-position",
         label: "Reset position",
         icon: RotateCcw,
-        run: () => {
-          const next = { ...offsets };
-          delete next[node.id];
-          persistOffsets(next);
-        },
+        run: () => resetOffset(node.id),
       });
     }
     entries.push({
@@ -684,31 +699,53 @@ function FlowCanvasInner({
       icon: ExternalLink,
       run: onOpenPreview,
     });
+    // The keyboard's way to reorder, since dragging along the chain is a
+    // pointer gesture. A move re-derives the position, so any nudge on the
+    // step goes, the same as a drag that reorders.
+    const index = action ? draft.actions.indexOf(action) : -1;
+    if (action && !readOnly && index !== -1) {
+      const move = (to: number) => {
+        handlers.setActions(moveAction(draft.actions, action, to));
+        if (offsets[node.id]) resetOffset(node.id);
+      };
+      const vertical = direction === "vertical";
+      if (index > 0) {
+        entries.push({
+          key: "move-earlier",
+          label: "Move earlier",
+          icon: vertical ? ArrowUp : ArrowLeft,
+          run: () => move(index - 1),
+        });
+      }
+      if (index < draft.actions.length - 1) {
+        entries.push({
+          key: "move-later",
+          label: "Move later",
+          icon: vertical ? ArrowDown : ArrowRight,
+          run: () => move(index + 1),
+        });
+      }
+    }
     if (action && !readOnly) {
       entries.push({
         key: "remove",
         label: `Remove ${node.title}`,
         icon: Trash2,
         destructive: true,
-        run: () => {
-          // Leave full screen first: the panel is about to unmount, and a
-          // fixed panel that vanishes mid-animation leaves the screen blank.
-          setFullscreen(false);
-          handlers.removeAction(action);
-          deselect();
-        },
+        run: () => removeStep(action),
       });
     }
     return entries;
   }, [
     selectedNode,
     offsets,
-    persistOffsets,
+    resetOffset,
     onOpenPreview,
     readOnly,
     handlers,
-    deselect,
-    setFullscreen,
+    removeStep,
+    draft.actions,
+    direction,
   ]);
 
   /** Right-click "Open full screen": select the step, then grow its panel. */
@@ -731,6 +768,15 @@ function FlowCanvasInner({
         className="flow-canvas bg-background relative min-w-0 flex-1"
         onDragOver={onDragOver}
         onDrop={onDrop}
+        // React Flow selects a focused node on Enter or Space but opens
+        // nothing, so the panel a click opens was out of a keyboard's reach.
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          const target = event.target as HTMLElement;
+          if (!target.classList?.contains("react-flow__node")) return;
+          const id = target.getAttribute("data-id");
+          if (id) selectAndOpen(id);
+        }}
         // Runs before the trigger opens the menu, so the menu is already
         // scoped by the time it renders.
         onContextMenu={(event) => {
@@ -750,11 +796,11 @@ function FlowCanvasInner({
             nodeTypes={NODE_TYPES}
             onNodesChange={onNodesChange}
             onNodeDragStop={onNodeDragStop}
-            onNodeClick={(_event, node) => {
-              setSelectedId(node.id);
-              onOpenPanel();
-            }}
+            onNodeClick={(_event, node) => selectAndOpen(node.id)}
             onPaneClick={deselect}
+            /* Removal is ours (the window handler above), so React Flow's own
+               Backspace deletion never drops a node the draft still holds. */
+            deleteKeyCode={null}
             nodesDraggable={!readOnly}
             nodesConnectable={false}
             edgesFocusable={false}
@@ -838,7 +884,7 @@ function FlowCanvasInner({
                 type="button"
                 aria-label={control.label}
                 onClick={control.run}
-                className="press-control text-muted-foreground hover:text-foreground hover:bg-foreground/5 flex size-8 items-center justify-center rounded-full transition-colors"
+                className={ROUND_ICON_BUTTON}
               >
                 <control.icon className="size-4" />
               </button>
@@ -860,7 +906,7 @@ function FlowCanvasInner({
                   type="button"
                   aria-label={fullscreen ? "Exit full screen" : "Open full screen"}
                   onClick={() => setFullscreen(!fullscreen)}
-                  className="press-control text-muted-foreground hover:text-foreground hover:bg-foreground/5 flex size-8 items-center justify-center rounded-full transition-colors"
+                  className={ROUND_ICON_BUTTON}
                 >
                   {fullscreen ? (
                     <Minimize2 className="size-4" />
@@ -869,7 +915,7 @@ function FlowCanvasInner({
                   )}
                 </button>
               </Hint>
-              <NodeMenu entries={nodeMenu} side="right" align="end" />
+              <NodeMenu entries={nodeMenu} side="right" />
             </>
           )}
         </div>
@@ -934,16 +980,8 @@ function FlowCanvasInner({
         onConfigure={(id) => selectAndOpen(id)}
         onFullscreen={openNodeFullscreen}
         onAddStep={() => setPickerOpen(true)}
-        onRemove={(action) => {
-          setFullscreen(false);
-          handlers.removeAction(action);
-          deselect();
-        }}
-        onResetNode={(id) => {
-          const next = { ...offsets };
-          delete next[id];
-          persistOffsets(next);
-        }}
+        onRemove={removeStep}
+        onResetNode={resetOffset}
         onTidyUp={tidyUp}
         onFitView={() => void fitView({ padding: 0.3, maxZoom: 1, duration: 200 })}
         direction={direction}
@@ -972,8 +1010,21 @@ function FlowCanvasInner({
           )}
           <div
             ref={surfaceRef}
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              // DOM containment, not React's: a Select inside the panel portals
+              // its popup out, and its own Escape must only close that popup.
+              if (
+                event.key !== "Escape" ||
+                !fullscreen ||
+                !event.currentTarget.contains(event.target as globalThis.Node)
+              )
+                return;
+              event.preventDefault();
+              setFullscreen(false);
+            }}
             className={cn(
-              "bg-card z-30 flex flex-col overflow-hidden border shadow-xl",
+              "bg-card z-30 flex flex-col overflow-hidden border shadow-xl outline-none",
               fullscreen
                 ? "fixed inset-0 z-50 rounded-none"
                 : "absolute inset-y-3 right-3 w-[360px] max-w-[calc(100%-1.5rem)] rounded-xl"
@@ -1005,6 +1056,10 @@ function FlowCanvasInner({
   );
 }
 
+/** The canvas's round, quiet icon buttons: panel controls and the step menu. */
+const ROUND_ICON_BUTTON =
+  "press-control text-muted-foreground hover:text-foreground hover:bg-foreground/5 flex size-8 items-center justify-center rounded-full transition-colors";
+
 /**
  * The selected step's `⋯`, in a dropdown. The same entries reach the
  * right-click menu through `CanvasContextMenu`, which renders them as context
@@ -1012,14 +1067,10 @@ function FlowCanvasInner({
  */
 function NodeMenu({
   entries,
-  side = "bottom",
-  align = "end",
-  className,
+  side,
 }: {
   entries: NodeMenuEntry[];
-  side?: "top" | "bottom" | "left" | "right";
-  align?: "start" | "center" | "end";
-  className?: string;
+  side: "bottom" | "right";
 }) {
   if (entries.length === 0) return null;
   return (
@@ -1030,17 +1081,14 @@ function NodeMenu({
             <button
               type="button"
               aria-label="Step options"
-              className={cn(
-                "press-control text-muted-foreground hover:text-foreground hover:bg-foreground/5 flex size-8 items-center justify-center rounded-full transition-colors",
-                className
-              )}
+              className={ROUND_ICON_BUTTON}
             />
           }
         >
           <Ellipsis className="size-4" />
         </DropdownMenuTrigger>
       </Hint>
-      <DropdownMenuContent side={side} align={align} className="w-52">
+      <DropdownMenuContent side={side} align="end" className="w-52">
         {entries.map((entry) => (
           <DropdownMenuItem
             key={entry.key}
@@ -1176,20 +1224,6 @@ function CanvasContextMenu({
   );
 }
 
-/**
- * The canvas's bottom-left pill: the pointer tools and Add.
- *
- * Icons only at rest, and the labels unfold on hover, so the bar names its
- * controls without spending the canvas's width on three words that are read
- * once. A resting pointer is the reveal, which is why it is gated on
- * `useHoverCapable`: a finger never hovers, and a bar that expanded on tap
- * would swallow the first tap on every control. Touch therefore keeps the
- * plain icon buttons, with their tooltips.
- *
- * The pill behind the highlighted control is one `layoutId`, so it slides from
- * control to control rather than cross-fading, and the whole track animates its
- * own width as the labels arrive.
- */
 /** Geometry of the expanding shell, in px, so the open size is arithmetic. */
 const BAR_HEIGHT = 40;
 /** Gap between the panel and the bar docked under it. */
@@ -1247,7 +1281,9 @@ function useMeasuredSize<T extends HTMLElement>() {
  * At rest the bar is icons only, and the labels unfold on a resting pointer,
  * so it names its controls without spending the canvas's width on three words
  * read once. That is gated on `useHoverCapable`: a finger never hovers, and a
- * bar that expanded on tap would swallow the first tap on every control.
+ * bar that expanded on tap would swallow the first tap on every control. The
+ * pill behind the highlighted control is one `layoutId`, so it slides from
+ * control to control rather than cross-fading.
  *
  * The open size is arithmetic over one measurement (the picker's height) rather
  * than a second, hidden copy of the picker: the panel stays mounted and
@@ -1491,7 +1527,7 @@ function AgentPromptBar({ onAsk }: { onAsk: (message: string) => void }) {
         onAsk(trimmed);
         setValue("");
       }}
-      className="bg-card pointer-events-auto flex h-10 w-[min(26rem,42%)] items-center gap-2 rounded-full border py-1 pr-1 pl-3 shadow-sm"
+      className="bg-card focus-within:border-ring focus-within:ring-ring/50 pointer-events-auto flex h-10 w-[min(26rem,42%)] items-center gap-2 rounded-full border py-1 pr-1 pl-3 shadow-sm transition-shadow focus-within:ring-3"
     >
       <Zap className="text-muted-foreground size-4" />
       <input
@@ -1530,13 +1566,6 @@ function stepIcon(choice: FlowStepChoice) {
 }
 
 /**
- * The Add control: a round `+` that opens the step picker above it.
- *
- * There are two of them, the bottom bar's and the one that appears on the last
- * node's hover, and they open the same menu on purpose: "what can I add here"
- * has one answer, and two lists drift.
- */
-/**
  * A node's own Add control: a `+` on the wire just past the card's right edge,
  * revealed by hovering that card.
  *
@@ -1548,18 +1577,12 @@ function stepIcon(choice: FlowStepChoice) {
 function AddStepControl({
   entries,
   onPick,
-  label,
-  direction = "horizontal",
-  className,
-  iconClassName,
+  direction,
 }: {
   entries: FlowStepEntry[];
   onPick: (choice: FlowStepChoice) => void;
-  label: string;
   /** Which edge of the card it hangs off: the one the next step is on. */
-  direction?: CanvasDirection;
-  className?: string;
-  iconClassName?: string;
+  direction: CanvasDirection;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -1581,20 +1604,17 @@ function AddStepControl({
       onPointerDown={(event) => event.stopPropagation()}
     >
       <Popover open={open} onOpenChange={setOpen}>
-        <Hint label={label} side="top">
+        <Hint label="Add a step" side="top">
           <PopoverTrigger
             render={
               <button
                 type="button"
-                aria-label={label}
-                className={cn(
-                  "press-control flex items-center justify-center rounded-full transition-[filter] hover:brightness-110",
-                  className
-                )}
+                aria-label="Add a step"
+                className="press-control flex items-center justify-center rounded-full transition-[filter] hover:brightness-110 bg-primary text-primary-foreground ring-background size-6 shadow-sm ring-2"
               />
             }
           >
-            <Plus className={iconClassName} />
+            <Plus className="size-3.5" />
           </PopoverTrigger>
         </Hint>
         {/* `overflow-hidden` turns off the popup's own scroller: the list below
@@ -1632,12 +1652,12 @@ function AddStepControl({
 function FlowStepPicker({
   entries,
   onPick,
-  autoFocus = true,
+  autoFocus,
 }: {
   entries: FlowStepEntry[];
   onPick: (choice: FlowStepChoice) => void;
   /** False while the picker is mounted but clipped, so it never steals focus. */
-  autoFocus?: boolean;
+  autoFocus: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<FlowStepGroup | null>(null);
@@ -1696,7 +1716,7 @@ function FlowStepPicker({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-2">
         {shown.length === 0 ? (
-          <p className="text-muted-foreground px-3 py-6 text-center text-sm">
+          <p className="text-muted-foreground px-3 py-6 text-center text-sm break-words">
             {entries.length === 0
               ? "Every step this trigger can run is already in the chain."
               : `No step matches “${query}”.`}
@@ -1827,7 +1847,7 @@ function NodePanel({
         )}
         {/* Removing lives in the `⋯` now, beside the step's other options,
             rather than as a bare destructive button one pixel from Close. */}
-        <NodeMenu entries={menu} side="bottom" align="end" />
+        <NodeMenu entries={menu} side="bottom" />
         <Hint label={fullscreen ? "Exit full screen" : "Open full screen"}>
           <button
             type="button"
@@ -1850,12 +1870,12 @@ function NodePanel({
         </Hint>
       </div>
 
-      <Tabs defaultValue="configure" className="min-h-0 flex-1 gap-0">
-        <TabsList aria-label="Flow node view" className="mx-4 mt-3">
+      <Tabs defaultValue="configure" className="flex min-h-0 flex-1 flex-col">
+        <TabsList aria-label="Flow node view" className="bg-muted" wrapperClassName="mx-4 mt-3 w-auto">
           <TabsTrigger value="configure">Configure</TabsTrigger>
           <TabsTrigger value="run">Run node</TabsTrigger>
         </TabsList>
-        <TabsContent value="configure" className="overflow-y-auto p-4">
+        <TabsContent value="configure" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4">
           {/* A disabled fieldset is the read-only rendering: same fields, no edits. */}
           <fieldset disabled={readOnly} className="min-w-0">
             {node.kind === "trigger" && (
@@ -1905,7 +1925,7 @@ function NodePanel({
               ))}
           </fieldset>
         </TabsContent>
-        <TabsContent value="run" className="overflow-y-auto p-4">
+        <TabsContent value="run" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4">
           <RunNode action={action} draft={draft} onOpenPreview={onOpenPreview} />
         </TabsContent>
       </Tabs>

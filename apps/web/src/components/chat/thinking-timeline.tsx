@@ -252,7 +252,7 @@ function ThoughtRow({ step }: { step: TurnStep }) {
 
   const elapsedMs = step.durationMs ?? measuredMs;
   const streamingCursor = running ? (
-    <span className="animate-pulse not-italic">▍</span>
+    <span aria-hidden="true" className="animate-pulse not-italic motion-reduce:animate-none">▍</span>
   ) : null;
 
   return (
@@ -299,11 +299,11 @@ function PlainStepRow({ step }: { step: TurnStep }) {
       } ${
         // A running tool label pulses; a streaming thought is text being
         // written; it gets a cursor, not a blink.
-        step.status === "running" && !streamingThought ? "animate-pulse" : ""
+        step.status === "running" && !streamingThought ? "animate-pulse motion-reduce:animate-none" : ""
       }`}
     >
       {step.label}
-      {streamingThought && <span className="animate-pulse not-italic">▍</span>}
+      {streamingThought && <span aria-hidden="true" className="animate-pulse not-italic motion-reduce:animate-none">▍</span>}
       {step.status === "error" && (
         <span className="text-destructive"> (failed)</span>
       )}

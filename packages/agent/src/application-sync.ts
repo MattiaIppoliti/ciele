@@ -4,9 +4,18 @@ import type { Db } from "@agent-hub/db";
 import type {
   ApplicationArtifact,
   ApplicationConnectorRegistry,
+  ApplicationCredentials,
 } from "./application-connectors";
-import { ApplicationAuthorizationError } from "./application-provider-connectors";
+import { ApplicationAuthorizationError } from "./application-provider-http";
 import { alertKeys, signalHealth } from "./health";
+
+/** A paused Import is a stop, never a retry. */
+function pausedError(): Error {
+  return Object.assign(new Error("Application Import is paused"), {
+    name: "ApplicationImportPausedError",
+    retryable: false,
+  });
+}
 
 function hashArtifact(artifact: ApplicationArtifact): string {
   return createHash("sha256")
@@ -94,10 +103,7 @@ export async function syncApplicationImport(
     if (!current || current.organizationId !== organizationId) {
       throw new Error("Application Import not found");
     }
-    throw Object.assign(new Error("Application Import is paused"), {
-      name: "ApplicationImportPausedError",
-      retryable: false,
-    });
+    throw pausedError();
   }
   const connection = await db.getApplicationConnection(
     applicationImport.connectionId
@@ -110,6 +116,14 @@ export async function syncApplicationImport(
       "Application Connection requires authorization"
     );
   }
+  const saveCredentials = async (refreshed: ApplicationCredentials) => {
+    await db.updateApplicationConnection(connection.id, {
+      sealedCredentials: sealSecret(JSON.stringify(refreshed)),
+      status: "connected",
+      error: "",
+      lastConnectedAt: timestamp,
+    });
+  };
   const connector = connectors[connection.provider];
   if (!connector || connector.provider !== connection.provider) {
     throw new Error(`No Connector is registered for ${connection.provider}`);
@@ -156,22 +170,19 @@ export async function syncApplicationImport(
             : []
         )
       ),
-      onCredentialsRefreshed: async (refreshedCredentials) => {
-        await db.updateApplicationConnection(connection.id, {
-          sealedCredentials: sealSecret(JSON.stringify(refreshedCredentials)),
-          status: "connected",
-          error: "",
-          lastConnectedAt: timestamp,
-        });
-      },
+      onCredentialsRefreshed: saveCredentials,
       onProgress: input.onProgress,
     });
+    // The fence, before the first write this run makes. A connector call that
+    // stalled past the job lease returns here after the ledger reclaimed the
+    // job and a second worker began the same Import; the heartbeat then fails
+    // to renew and stops this run before it reserves bytes or writes a
+    // refreshed credential over the newer worker's. Every later write is
+    // already behind its own heartbeat.
+    await input.onProgress?.();
     const latestImport = await db.getApplicationImport(importId);
     if (!latestImport?.enabled) {
-      throw Object.assign(new Error("Application Import is paused"), {
-        name: "ApplicationImportPausedError",
-        retryable: false,
-      });
+      throw pausedError();
     }
     const artifacts = [...new Map(result.artifacts.map((item) => [item.remoteId, item])).values()];
     skipped = result.skipped?.length ?? 0;
@@ -231,6 +242,9 @@ export async function syncApplicationImport(
       const existing = existingMappings.get(remoteId);
       if (existing?.sourceId) projectedImportBytes -= existing.contentBytes;
     }
+    // The running total as artifacts land, whose highest point is what has to
+    // fit; it ends at the projected total, so it is never below that either.
+    let peakMaterializedBytes = Math.max(0, projectedImportBytes);
     for (const artifact of artifacts) {
       const existing = existingMappings.get(artifact.remoteId);
       if (existing?.sourceId && !removedForAllowance.has(artifact.remoteId)) {
@@ -239,23 +253,7 @@ export async function syncApplicationImport(
       projectedImportBytes += new TextEncoder().encode(
         artifact.text
       ).byteLength;
-    }
-    let intermediateBytes = currentImportBytes;
-    for (const remoteId of removedForAllowance) {
-      const existing = existingMappings.get(remoteId);
-      if (existing?.sourceId) intermediateBytes -= existing.contentBytes;
-    }
-    let peakMaterializedBytes = Math.max(0, intermediateBytes);
-    for (const artifact of artifacts) {
-      const existing = existingMappings.get(artifact.remoteId);
-      if (existing?.sourceId && !removedForAllowance.has(artifact.remoteId)) {
-        intermediateBytes -= existing.contentBytes;
-      }
-      intermediateBytes += new TextEncoder().encode(artifact.text).byteLength;
-      peakMaterializedBytes = Math.max(
-        peakMaterializedBytes,
-        intermediateBytes
-      );
+      peakMaterializedBytes = Math.max(peakMaterializedBytes, projectedImportBytes);
     }
     const reserved = await db.reserveApplicationKnowledgeBytes({
       importId,
@@ -263,8 +261,7 @@ export async function syncApplicationImport(
       projectedBytes: Math.max(
         applicationImport.reservedBytes,
         currentImportBytes,
-        peakMaterializedBytes,
-        Math.max(0, projectedImportBytes)
+        peakMaterializedBytes
       ),
       limitBytes: byteLimit,
     });
@@ -276,14 +273,7 @@ export async function syncApplicationImport(
         { retryable: false }
       );
     }
-    if (result.refreshedCredentials) {
-      await db.updateApplicationConnection(connection.id, {
-        sealedCredentials: sealSecret(JSON.stringify(result.refreshedCredentials)),
-        status: "connected",
-        error: "",
-        lastConnectedAt: timestamp,
-      });
-    }
+    if (result.refreshedCredentials) await saveCredentials(result.refreshedCredentials);
 
     for (const remoteId of new Set(result.unchangedRemoteIds ?? [])) {
       await input.onProgress?.();

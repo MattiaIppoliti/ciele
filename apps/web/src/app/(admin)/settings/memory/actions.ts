@@ -14,9 +14,11 @@ import { runOperation } from "@/lib/operations";
 
 export async function writeMyMemoryAction(
   body: string,
-  note = ""
+  note = "",
+  /** The version the editor loaded; a newer one refuses the save. */
+  expectedUpdatedAt?: string | null
 ): Promise<MemoryDocument> {
-  return runOperation(writeMyMemoryOp, { body, note });
+  return runOperation(writeMyMemoryOp, { body, note, expectedUpdatedAt });
 }
 
 /** Undo one write, back to the body it replaced. */

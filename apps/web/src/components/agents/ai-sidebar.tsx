@@ -66,6 +66,12 @@ export interface AISidebarProps {
     item: SidebarResource,
     controls: SidebarResourceMenuControls,
   ) => ReactNode;
+  /**
+   * Off for a list whose rows cannot be renamed or reordered anywhere: without
+   * an `onRename`/`onMove` behind them, the optimistic edit shows and then the
+   * next `items` from the server silently reverts it.
+   */
+  editable?: boolean;
   ariaLabel?: string;
   className?: string;
 }
@@ -286,6 +292,7 @@ interface ResourceRowProps {
   dropTarget: DropTarget | null;
   menuOpen: boolean;
   renaming: boolean;
+  editable: boolean;
   onDragEnd: () => void;
   onDragOver: (event: DragEvent<HTMLDivElement>, row: FlatResource) => void;
   onDragStart: (event: DragEvent<HTMLDivElement>, id: string) => void;
@@ -312,6 +319,7 @@ function ResourceRow({
   dropTarget,
   menuOpen,
   renaming,
+  editable,
   onDragEnd,
   onDragOver,
   onDragStart,
@@ -386,7 +394,7 @@ function ResourceRow({
       aria-expanded={acceptsChildren ? expanded : undefined}
       aria-disabled={row.item.disabled || undefined}
       tabIndex={focused ? 0 : -1}
-      draggable={!row.item.disabled && !renaming}
+      draggable={editable && !row.item.disabled && !renaming}
       data-menu-open={menuOpen || undefined}
       data-drop={dropPosition ?? undefined}
       data-dragging={isDragging || undefined}
@@ -404,7 +412,7 @@ function ResourceRow({
         else onSelect();
       }}
       onDoubleClick={(event) => {
-        if (acceptsChildren || row.item.disabled) return;
+        if (!editable || acceptsChildren || row.item.disabled) return;
         event.preventDefault();
         onRenameStart();
       }}
@@ -469,7 +477,7 @@ function ResourceRow({
         <MarqueeLabel active={hovered || menuOpen}>{row.item.label}</MarqueeLabel>
       )}
 
-      {!renaming && !row.item.disabled ? (
+      {!renaming && !row.item.disabled && (editable || renderMenu) ? (
         <MorphPopover
           open={menuOpen}
           onOpenChange={onMenuOpenChange}
@@ -489,8 +497,6 @@ function ResourceRow({
           <MorphPopoverContent
             side="bottom"
             align="end"
-            sideOffset={8}
-            radius={12}
             className="w-40 p-1.5"
           >
             <div data-sidebar-resource-menu={row.item.id}>{menu}</div>
@@ -514,6 +520,7 @@ export function AISidebar({
   defaultExpandedIds = [],
   renderIcon,
   renderMenu,
+  editable = true,
   ariaLabel = "Resources",
   className,
 }: AISidebarProps) {
@@ -679,6 +686,10 @@ export function AISidebar({
         return;
       }
 
+      if (!editable && (moveModifier || event.key === "F2")) {
+        event.preventDefault();
+        return;
+      }
       if (moveModifier && event.key === "ArrowUp" && previous) {
         event.preventDefault();
         void performMove({ itemId: row.item.id, targetId: previous.item.id, position: "before" });
@@ -721,7 +732,7 @@ export function AISidebar({
         setMenuOpenId(row.item.id);
       }
     },
-    [expandedIds, flat, focusRow, performMove, select, toggle],
+    [editable, expandedIds, flat, focusRow, performMove, select, toggle],
   );
 
   return (
@@ -763,6 +774,7 @@ export function AISidebar({
             dropTarget={dropTarget}
             menuOpen={menuOpenId === row.item.id}
             renaming={renamingId === row.item.id}
+            editable={editable}
             onFocus={() => setFocusedId(row.item.id)}
             onSelect={() => select(row.item.id)}
             onToggle={() => toggle(row.item.id)}

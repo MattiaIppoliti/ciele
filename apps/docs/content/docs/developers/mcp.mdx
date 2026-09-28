@@ -75,9 +75,9 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | Tool | Current operations |
 | --- | --- |
 | `ciele_identity` | Read deployment, Organization, and Role information. |
-| `manage_assistants` | List, read, create, update, duplicate, or delete Assistants. |
+| `manage_assistants` | Ask an Assistant a question, then list, read, create, update, duplicate, or delete Assistants. |
 | `manage_flows` | Read the Flow catalogue, check a Flow without saving it, read an HTTP Flow's runs, then list, read, create, update, reorder, or delete Flows. |
-| `manage_knowledge` | Manage Collections, Sources, and FAQs. |
+| `manage_knowledge` | Search the knowledge, then manage Collections, Sources, and FAQs. |
 | `publish_assistant` | Read status, publish, unpublish, or restore a publication. |
 | `read_inbox` | List, read, export, pin, annotate, rate, or delete Conversations. List, read, and decide Human review requests. |
 | `manage_improvements` | List, read, or update Improvements. |
@@ -94,7 +94,43 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 The server registers seventeen tools: one identity tool and sixteen domain tools. Each domain tool uses an `action` field for its operations.
 
-Read-only mode classifies each action. It permits list, read, status, query, and export actions while refusing mutations.
+Read-only mode classifies each action. It permits list, read, status, query, search, and export actions while refusing mutations.
+
+## Search the knowledge
+
+The `search` action of `manage_knowledge` finds the passages that match a question. Each result
+gives the passage text, its Document title, its Source name, and its URL when it has one. Ciele
+does not generate an answer. Your AI client writes the answer and cites the Sources.
+
+```json
+{ "action": "search", "query": "How do I connect Salesforce?", "assistantId": "<assistant-id>" }
+```
+
+With `assistantId`, the search uses only the Sources linked to that Assistant. Without it, the
+search uses the full Library of the Organization. A viewer key can search, and read-only mode
+permits it. A search does not create a Conversation, so it does not appear in the Inbox or in
+Insights. Each API key can make 60 searches in one minute.
+
+## Ask an Assistant
+
+The `ask` action of `manage_assistants` sends a question to an Assistant and returns its answer
+with the Sources that it cited. Use it when the client must show the answer of Ciele, not its own
+answer.
+
+```json
+{ "action": "ask", "id": "<assistant-id>", "question": "How do I connect Salesforce?" }
+```
+
+The Assistant answers as its published widget does, with its Flows and its knowledge search. If
+the Assistant is not published, the action fails. Send the `conversationId` of an answer with the
+next question to continue the same Conversation. Only the API key that started a Conversation can
+continue it. With a different ID, the question starts a new Conversation.
+
+Each question creates a Conversation. Insights does not count it. The Inbox shows it with the
+**API key** label when you set the **Staff conversations** filter to **Include staff** or **Staff
+only**. The question uses a model turn on the Provider Connections of the
+Organization. For this reason, read-only mode refuses `ask`. Each API key can ask 20 questions in
+one minute. An answer can take some time, because the Assistant can search more than one time.
 
 See [AI clients](/developers/ai-clients) for the configuration of each supported client.
 

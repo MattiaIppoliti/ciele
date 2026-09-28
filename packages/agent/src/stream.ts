@@ -108,15 +108,6 @@ function foldThought(
 }
 
 /**
- * Folds one wire event into the turn's trace. Pure, total (an event it does not
- * care about returns the trace unchanged) and append-only on `steps` (except
- * the streaming thought, see {@link foldThought}), which is what makes
- * `steps.length` a safe id for the kinds that have no call id.
- *
- * The running/done transition lives here rather than in the clients so the panel
- * contents and the persisted trace can never disagree about what the agent did.
- */
-/**
  * The projection of a RuntimeEvent that is safe to send to a chat client.
  *
  * `tool-end` carries two tiers (see its type): `result`, safe for any audience,
@@ -125,17 +116,6 @@ function foldThought(
  * anonymous caller, so the operator tier is dropped here. Call this on the way
  * out, after {@link foldTraceEvent} has taken what the stored trace needs.
  */
-/**
- * Which tier the stored trace keeps: the operator record when the tool declared
- * one, otherwise the shown record. Never a leak, because `turn.ts` strips
- * `operatorResult` on the way to a client; this only keeps the stored copy whole.
- */
-function storedResult(
-  event: Extract<RuntimeEvent, { type: "tool-end" }>
-): Record<string, unknown> | undefined {
-  return event.operatorResult ?? event.result;
-}
-
 export function publicRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
   if (event.type === "notice") {
     if (event.operatorDetail === undefined) return event;
@@ -149,6 +129,15 @@ export function publicRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
   return rest;
 }
 
+/**
+ * Folds one wire event into the turn's trace. Pure, total (an event it does not
+ * care about returns the trace unchanged) and append-only on `steps` (except
+ * the streaming thought, see {@link foldThought}), which is what makes
+ * `steps.length` a safe id for the kinds that have no call id.
+ *
+ * The running/done transition lives here rather than in the clients so the panel
+ * contents and the persisted trace can never disagree about what the agent did.
+ */
 export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace {
   switch (event.type) {
     case "flow":
@@ -202,7 +191,7 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
       // record. A live client never receives `operatorResult` (turn.ts strips
       // it), so folding it here cannot leak, it only keeps the stored copy
       // complete.
-      const stored = storedResult(event);
+      const stored = event.operatorResult ?? event.result;
       return {
         ...trace,
         steps: trace.steps.map((step) =>
@@ -587,13 +576,7 @@ function applyTurnEvent<T extends TurnView>(
       // Backstop: schema validation runs before execute, so a rejected
       // payload yields no tool-end to clean up after. Nothing is still
       // arriving once the turn is done.
-      if (streamingProps.size > 0) {
-        streamingProps.clear();
-        update((view) => ({
-          ...view,
-          parts: dropPendingComponents(view.parts),
-        }));
-      }
+      sweepPendingComponents(options, state);
       onDone?.({
         conversationId: event.conversationId,
         messageId: event.messageId,
@@ -661,17 +644,17 @@ export async function consumeChannelStream<T extends TurnView>(
   // Fresh per speaker: a half-written component from one Teammate's turn must
   // not grow into the next one's bubble.
   let state = newTurnState();
-  const turnOptions = (): ConsumeTurnOptions<T> => ({
+  const turnOptions: ConsumeTurnOptions<T> = {
     update: options.update,
     errorText: options.errorText,
-  });
+  };
   try {
     for await (const event of decodeRuntimeEvents<RuntimeEvent | ChannelEvent>(
       body
     )) {
       switch (event.type) {
         case "channel-speaker":
-          sweepPendingComponents(turnOptions(), state);
+          sweepPendingComponents(turnOptions, state);
           state = newTurnState();
           options.onSpeaker({
             teammateId: event.teammateId,
@@ -690,10 +673,10 @@ export async function consumeChannelStream<T extends TurnView>(
           break;
         default:
           options.onEvent?.(event);
-          applyTurnEvent(event, turnOptions(), state);
+          applyTurnEvent(event, turnOptions, state);
       }
     }
   } finally {
-    sweepPendingComponents(turnOptions(), state);
+    sweepPendingComponents(turnOptions, state);
   }
 }

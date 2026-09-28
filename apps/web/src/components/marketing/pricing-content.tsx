@@ -19,7 +19,7 @@ import {
 import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { GridBeam } from "@/components/motion/grid-beam";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
-import { CodeBlock } from "@/components/ui/code-block";
+import { SelfHostInstall } from "@/components/marketing/self-host-install";
 import { CTA_CLASS, ENTERPRISE, PlanTilt } from "./plan-cards";
 
 /**
@@ -499,58 +499,22 @@ export function PricingContent() {
             through the whole product before wiring anything up.
           </p>
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
-            <CodeBlock tabs={INSTALL_TABS} />
-
-            <div className="border-border/70 bg-card/60 rounded-xl border p-6 backdrop-blur-sm">
-              <p className="text-foreground text-sm font-semibold">
-                What you provide
-              </p>
-              <ul className="mt-4 space-y-4">
-                {INSTALL_REQUIREMENTS.map((requirement) => (
-                  <li key={requirement.title}>
-                    <p className="text-foreground text-sm font-medium">
-                      {requirement.title}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                      {requirement.detail}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 flex flex-col gap-2">
-                <Button
-                  className={cn("h-9 w-full", CTA_CLASS)}
-                  variant="outline"
-                  nativeButton={false}
-                  render={
-                    <a
-                      href="https://docs.ciele.app/self-hosting/installation"
-                      target="_blank"
-                      rel="noreferrer"
-                    />
-                  }
-                >
-                  <span>Self-hosting docs</span>
-                </Button>
-                <Button
-                  className={cn("h-9 w-full", CTA_CLASS)}
-                  variant="outline"
-                  nativeButton={false}
-                  render={
-                    <a href={SOURCE_URL} target="_blank" rel="noreferrer" />
-                  }
-                >
-                  <span>View the source</span>
-                </Button>
-              </div>
-              <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
-                AGPL-3.0. Hosting, upgrades, backups, usage controls and support
-                are the Enterprise edition&rsquo;s job, everything else is in
-                the repository.
-              </p>
-            </div>
-          </div>
+          <SelfHostInstall
+            className="mt-8"
+            tabs={INSTALL_TABS}
+            requirements={INSTALL_REQUIREMENTS}
+            docs={{
+              href: "https://docs.ciele.app/self-hosting/installation",
+              label: "Self-hosting docs",
+            }}
+            sourceUrl={SOURCE_URL}
+          >
+            <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
+              AGPL-3.0. Hosting, upgrades, backups, usage controls and support
+              are the Enterprise edition&rsquo;s job, everything else is in
+              the repository.
+            </p>
+          </SelfHostInstall>
         </section>
 
         {/* FAQ, the block is centred, but each row stays left-aligned: a
@@ -563,13 +527,6 @@ export function PricingContent() {
           <BouncyAccordion
             className="mt-6 text-left"
             items={FAQ_ITEMS}
-            classNames={{
-              // Match the translucent surfaces the rest of the page sits on,
-              // so the rows read as part of the sky shell rather than as opaque
-              // cards pasted over it.
-              item: "bg-card/60 ring-1 ring-border/60 backdrop-blur-sm",
-              title: "whitespace-normal text-wrap",
-            }}
           />
         </div>
 

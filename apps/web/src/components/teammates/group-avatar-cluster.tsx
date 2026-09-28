@@ -1,4 +1,5 @@
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { cn } from "@/lib/utils";
 
 /**
@@ -84,7 +85,7 @@ export function GroupAvatarCluster({
             small ? "text-[10px]" : "text-[11px]"
           )}
         >
-          +{rest}
+          +<RollingNumber value={rest} />
         </span>
       )}
     </div>

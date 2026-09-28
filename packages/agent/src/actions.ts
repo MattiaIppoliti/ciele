@@ -35,7 +35,8 @@ import {
   runAgenticSearch,
   type FlowStyleContext,
 } from "./agentic-search";
-import type { ActionContext, ActionHandler } from "./types";
+import type { ActionContext, ActionHandler, ActionResult } from "./types";
+import type { PreflightFaqAnswer } from "./preflight-shadow";
 import { errorMessageOf } from "./telemetry";
 import { usageTotals } from "./usage";
 import { voiceReplyLanguage } from "./voice-language";
@@ -63,6 +64,53 @@ const BASIC_REPLY_HISTORY = 4;
 export const contactLabel = (assistant: Assistant): string =>
   assistant.helpDeskSettings?.contactButtonLabel?.trim() || "Contact support";
 
+/** The escalation chip, opened on the recommended desk when there is one. */
+export async function recommendedDeskPart(
+  assistant: Assistant,
+  recommendHelpDesk?: () => Promise<string | null>
+): Promise<ChatReplyPart> {
+  const recommended = (await recommendHelpDesk?.()) ?? null;
+  return {
+    type: "help_desk",
+    action: "suggest_help_desk",
+    label: contactLabel(assistant),
+    ...(recommended ? { helpDeskId: recommended } : {}),
+  };
+}
+
+/** A curated FAQ answered verbatim and cited to its Concept, no model call. */
+export function faqAnswerParts(
+  conceptId: string,
+  faq: PreflightFaqAnswer
+): [ChatReplyPart, ChatReplyPart] {
+  return [
+    { type: "text", action: "custom_message", text: faq.body },
+    {
+      type: "sources",
+      action: "search_knowledge",
+      sources: [
+        {
+          conceptId,
+          conceptTitle: faq.title,
+          collectionName: faq.collectionName,
+          sourceName: null,
+          url: faq.url,
+        },
+      ],
+    },
+  ];
+}
+
+/** Stream one part and hand it back as the handler's result. */
+function reply(
+  emit: ActionContext["emit"],
+  part: ChatReplyPart,
+  extra?: Omit<ActionResult, "parts">
+): ActionResult {
+  emit({ type: "part", part });
+  return { parts: [part], ...extra };
+}
+
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 /**
@@ -80,8 +128,7 @@ const customMessage: ActionHandler = async ({ flow, emit, templateContext }) => 
       ? resolveTemplate(configured, templateContext ?? {})
       : `(This flow has no custom message yet, add one from the "${flow.name}" flow settings.)`,
   };
-  emit({ type: "part", part });
-  return { parts: [part] };
+  return reply(emit, part);
 };
 
 const suggestHelpDesk: ActionHandler = async ({
@@ -89,15 +136,7 @@ const suggestHelpDesk: ActionHandler = async ({
   recommendHelpDesk,
   emit,
 }) => {
-  const recommended = (await recommendHelpDesk?.()) ?? null;
-  const part: ChatReplyPart = {
-    type: "help_desk",
-    action: "suggest_help_desk",
-    label: contactLabel(assistant),
-    ...(recommended ? { helpDeskId: recommended } : {}),
-  };
-  emit({ type: "part", part });
-  return { parts: [part] };
+  return reply(emit, await recommendedDeskPart(assistant, recommendHelpDesk));
 };
 
 const GENERIC_FOLLOW_UPS = ["What else can you help me with?", "How do I get started?"];
@@ -181,8 +220,7 @@ const followUpQuestions: ActionHandler = async ({
           : GENERIC_FOLLOW_UPS;
   }
   const part: ChatReplyPart = { type: "follow_ups", action: "follow_up_questions", questions };
-  emit({ type: "part", part });
-  return { parts: [part] };
+  return reply(emit, part);
 };
 
 const showButton: ActionHandler = async ({ flow, emit, templateContext }) => {
@@ -197,8 +235,7 @@ const showButton: ActionHandler = async ({ flow, emit, templateContext }) => {
       showIcon: settings.showIcon ?? false,
       icon: settings.icon ?? "headset",
     };
-    emit({ type: "part", part });
-    return { parts: [part] };
+    return reply(emit, part);
   }
   if (settings?.type === "send_text") {
     const text = settings.text?.trim();
@@ -212,8 +249,7 @@ const showButton: ActionHandler = async ({ flow, emit, templateContext }) => {
       showIcon: settings.showIcon ?? false,
       icon: settings.icon ?? "message",
     };
-    emit({ type: "part", part });
-    return { parts: [part] };
+    return reply(emit, part);
   }
   if (settings?.type === "faq") {
     const text = settings.faqQuestion?.trim();
@@ -227,8 +263,7 @@ const showButton: ActionHandler = async ({ flow, emit, templateContext }) => {
       showIcon: settings.showIcon ?? false,
       icon: settings.icon ?? "message",
     };
-    emit({ type: "part", part });
-    return { parts: [part] };
+    return reply(emit, part);
   }
   if (!settings?.url) return { parts: [] };
   const part: ChatReplyPart = {
@@ -245,8 +280,7 @@ const showButton: ActionHandler = async ({ flow, emit, templateContext }) => {
     showIcon: settings.showIcon ?? (settings.type ? false : true),
     icon: settings.icon ?? "message",
   };
-  emit({ type: "part", part });
-  return { parts: [part] };
+  return reply(emit, part);
 };
 
 /**
@@ -282,8 +316,7 @@ function iframeReplyPart(
 const iframe: ActionHandler = async ({ flow, emit }) => {
   const part = iframeReplyPart(flow.actionSettings?.iframe);
   if (!part) return { parts: [] };
-  emit({ type: "part", part });
-  return { parts: [part] };
+  return reply(emit, part);
 };
 
 /**
@@ -349,8 +382,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
         type: "text", action: "search_knowledge",
         text: "Study Mode needs an AI model to create an exercise. Please try again when the assistant's AI connection is available.",
       };
-      emit({ type: "part", part });
-      return { parts: [part] };
+      return reply(emit, part);
     }
     if (!searchKnowledge) {
       // Nothing to search AND no model to answer from: a scopeless AI Teammate
@@ -362,8 +394,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
         action: "search_knowledge",
         text: "I have no knowledge to search and no AI provider is configured, so I can't answer that yet.",
       };
-      emit({ type: "part", part: textPart });
-      return { parts: [textPart] };
+      return reply(emit, textPart);
     }
     // The deterministic path searches for real, so it reports a real tool call
     // rather than a phase label: same panel row, same ×N counter, same icon as
@@ -416,13 +447,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
     const parts: ChatReplyPart[] = [textPart];
     emit({ type: "part", part: textPart });
     if (searchSettings?.escalatePrompt) {
-      const recommended = (await recommendHelpDesk?.()) ?? null;
-      const helpPart: ChatReplyPart = {
-        type: "help_desk",
-        action: "suggest_help_desk",
-        label: contactLabel(assistant),
-        ...(recommended ? { helpDeskId: recommended } : {}),
-      };
+      const helpPart = await recommendedDeskPart(assistant, recommendHelpDesk);
       emit({ type: "part", part: helpPart });
       parts.push(helpPart);
     }
@@ -526,13 +551,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
   const parts = [...outcome.parts, ...referralParts];
   // Builder toggle: offer escalation when nothing grounded the answer.
   if (searchSettings?.escalatePrompt && !outcome.grounded) {
-    const recommended = (await recommendHelpDesk?.()) ?? null;
-    const part: ChatReplyPart = {
-      type: "help_desk",
-      action: "suggest_help_desk",
-      label: contactLabel(assistant),
-      ...(recommended ? { helpDeskId: recommended } : {}),
-    };
+    const part = await recommendedDeskPart(assistant, recommendHelpDesk);
     emit({ type: "part", part });
     parts.push(part);
   }
@@ -612,8 +631,7 @@ const apiRequest: ActionHandler = async ({
           ? `The approval gate stopped this request (${verdict.reason}). Put a Human review step in gated mode before it to have somebody approve it.`
           : "Sorry, I can't complete that request right now.",
       };
-      emit({ type: "part", part });
-      return { parts: [part], halt: true };
+      return reply(emit, part, { halt: true });
     }
   }
 
@@ -666,8 +684,7 @@ const apiRequest: ActionHandler = async ({
       ? "Your request was submitted successfully."
       : "Sorry, that request couldn't be completed right now.",
   };
-  emit({ type: "part", part });
-  return { parts: [part], templatePatch };
+  return reply(emit, part, { templatePatch });
 };
 
 const DEFAULT_CONNECTOR_SUCCESS = "Your request was submitted successfully.";
@@ -731,8 +748,7 @@ const connector: ActionHandler = async ({
     action: "connector",
     text: resolveTemplate(text, { ...ctx, ...templatePatch }),
   };
-  emit({ type: "part", part });
-  return { parts: [part], templatePatch };
+  return reply(emit, part, { templatePatch });
 };
 
 /**
@@ -749,12 +765,7 @@ const handover: ActionHandler = async ({ flow, emit }) => {
       ? "I'm handing this conversation over to a more specialized assistant."
       : "(Handover is enabled but no target assistant is set.)",
   };
-  emit({ type: "part", part });
-  return {
-    parts: [part],
-    halt: true,
-    ...(targetId ? { handoverTo: targetId } : {}),
-  };
+  return reply(emit, part, { halt: true, ...(targetId ? { handoverTo: targetId } : {}) });
 };
 
 /**
@@ -787,9 +798,7 @@ const sendEmail: ActionHandler = async ({
       ? "Thanks, your message has been forwarded to the team."
       : "I couldn't forward your message automatically. Please use the contact options to reach the team directly.",
   };
-  emit({ type: "part", part });
-  return {
-    parts: [part],
+  return reply(emit, part, {
     effects: configured
       ? [
           {
@@ -800,7 +809,7 @@ const sendEmail: ActionHandler = async ({
           },
         ]
       : [],
-  };
+  });
 };
 
 /**
@@ -913,11 +922,8 @@ const basicReply: ActionHandler = async ({
   recordUsage,
   previewSurface,
 }) => {
-  const verbatim = (text: string) => {
-    const part: ChatReplyPart = { type: "text", action: "basic_reply", text };
-    emit({ type: "part", part });
-    return { parts: [part] };
-  };
+  const verbatim = (text: string) =>
+    reply(emit, { type: "text", action: "basic_reply", text });
 
   const configured = resolveTemplate(
     flow.actionSettings?.basic_reply?.message ?? "",
@@ -1015,8 +1021,7 @@ const humanReview: ActionHandler = async ({
         ? `The Human review step is not configured: ${issue}`
         : "Sorry, I can't continue with this request right now.",
     };
-    emit({ type: "part", part });
-    return { parts: [part], halt: true };
+    return reply(emit, part, { halt: true });
   }
   if (!reviewRuntime) {
     const part: ChatReplyPart = {
@@ -1024,8 +1029,7 @@ const humanReview: ActionHandler = async ({
       action: "fallback",
       text: "Human review is not available on this surface.",
     };
-    emit({ type: "part", part });
-    return { parts: [part], halt: true };
+    return reply(emit, part, { halt: true });
   }
   // Gated mode (#958): ask the approval gate about the action this step is
   // standing in front of, and step aside when it is confident that action is
@@ -1126,8 +1130,7 @@ const httpWebhook: ActionHandler = async ({
         ? `The HTTP webhook step is not configured: ${issue}`
         : "Sorry, I can't continue with this request right now.",
     };
-    emit({ type: "part", part });
-    return { parts: [part], halt: true };
+    return reply(emit, part, { halt: true });
   }
   if (!webhookRuntime) {
     const part: ChatReplyPart = {
@@ -1135,8 +1138,7 @@ const httpWebhook: ActionHandler = async ({
       action: "fallback",
       text: "Webhooks are not available on this surface.",
     };
-    emit({ type: "part", part });
-    return { parts: [part], halt: true };
+    return reply(emit, part, { halt: true });
   }
 
   emit({ type: "notice", label: "Subscribing to an external system" });
@@ -1183,8 +1185,7 @@ const httpWebhook: ActionHandler = async ({
       // A policy block and a system that is down read the same to a Visitor.
       text: webhookHaltMessage({ status: "failed", haltMessage: settings.haltMessage ?? "" }),
     };
-    emit({ type: "part", part });
-    return { parts: [part], halt: true };
+    return reply(emit, part, { halt: true });
   }
 
   // Resolved now, with the subscribe reply in hand, and stored: the
@@ -1282,8 +1283,7 @@ const respond: ActionHandler = ({ flow, emit, templateContext }) => {
           headers: respondHeaders(settings, resolve),
           body: settings?.bodyTemplate?.trim() ? resolve(settings.bodyTemplate) : "",
         };
-  emit({ type: "part", part });
-  return Promise.resolve({ parts: [part], halt: true });
+  return Promise.resolve(reply(emit, part, { halt: true }));
 };
 
 /** The registry: FlowAction → Adapter. Complete (no fall-through). */
@@ -1305,5 +1305,3 @@ export const ACTION_HANDLERS: Record<FlowAction, ActionHandler> = {
   http_webhook: httpWebhook,
   respond,
 };
-
-export type { ActionContext, ActionHandler };

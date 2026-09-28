@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { Headphones } from "lucide-react";
-import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
+import type { TurnStep } from "@agent-hub/agent/client";
 import { DEFAULT_AI_DISCLAIMER } from "@agent-hub/core";
 import {
   Message,
@@ -19,6 +19,11 @@ import { ProgressLine } from "@/components/chat/progress-line";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { useShouldAnimate } from "@/components/home/use-in-viewport";
+import {
+  finalSteps,
+  useScriptedTurn,
+  type BuildScript,
+} from "@/components/marketing/use-scripted-turn";
 import { cn } from "@/lib/utils";
 
 /* The live-preview shot on /features/assistants, played rather than framed:
@@ -87,16 +92,8 @@ const THOUGHT_TEXT =
 const API_RESPONSE =
   '{\n  "workspace": "acme-inc",\n  "plan": "pro",\n  "seats": 12,\n  "next_invoice_eur": 348,\n  "due_date": "2027-03-01"\n}';
 
-interface ScriptApi {
-  setSteps: (update: (steps: TurnStep[]) => TurnStep[]) => void;
-  setPhase: (phase: TurnPhase) => void;
-  setProgress: (lines: string[]) => void;
-  setStreaming: (text: string | null) => void;
-  setAnswered: (answered: boolean) => void;
-}
-
 /** The scripted step sequence, (delayMs, apply) pairs run in order. */
-function buildScript(api: ScriptApi): Array<[number, () => void]> {
+const buildScript: BuildScript = (api) => {
   const { setSteps, setPhase, setProgress, setStreaming, setAnswered } = api;
   const upsert = (step: TurnStep) =>
     setSteps((steps) => {
@@ -198,35 +195,12 @@ function buildScript(api: ScriptApi): Array<[number, () => void]> {
       setProgress([]);
     }],
   ];
-}
+};
 
-/** The frame every loop ends on, also the still shown before the loop has
- *  ever run (reduced motion, or the observer's first tick). */
-const FINAL_STEPS: TurnStep[] = (() => {
-  const steps: TurnStep[] = [];
-  const script = buildScript({
-    setSteps: (update) => {
-      const next = update(steps);
-      steps.length = 0;
-      steps.push(...next);
-    },
-    setPhase: () => {},
-    setProgress: () => {},
-    setStreaming: () => {},
-    setAnswered: () => {},
-  });
-  for (const [, apply] of script) apply();
-  return steps;
-})();
+const FINAL_STEPS = finalSteps(buildScript);
 
 /** Loop pacing: how long the finished answer holds before replaying. */
 const DWELL_MS = 4000;
-
-/* One dial over the whole script's tempo. The delays above are written as the
-   turn's *shape*, which beat is longer than which, and this stretches them:
-   played at their raw speed the assistant reasoned and answered faster than a
-   reader can follow the panel, so the thinking never registered. */
-const PACE = 1.5;
 
 const noop = () => {};
 
@@ -240,50 +214,8 @@ export function AssistantPreviewDemo({
   const frameRef = useRef<HTMLDivElement>(null);
   const active = useShouldAnimate(frameRef);
 
-  // Starts on the finished conversation; the first activation resets and
-  // plays. Under reduced motion `active` never flips, so this is all there is.
-  const [steps, setSteps] = useState<TurnStep[]>(FINAL_STEPS);
-  const [phase, setPhase] = useState<TurnPhase>("done");
-  const [progress, setProgress] = useState<string[]>([]);
-  const [streaming, setStreaming] = useState<string | null>(null);
-  const [answered, setAnswered] = useState(true);
-  // Remounts the scripted turn per replay, so the panel's elapsed clock and
-  // entrance animations start fresh each run.
-  const [runId, setRunId] = useState(0);
-
-  useEffect(() => {
-    if (!active) return;
-    const timers: number[] = [];
-    // Deferred a tick so the effect body itself never calls setState.
-    timers.push(
-      window.setTimeout(() => {
-        setSteps([]);
-        setPhase("running");
-        setProgress([]);
-        setStreaming(null);
-        setAnswered(false);
-      }, 0)
-    );
-
-    let at = 0;
-    for (const [delay, apply] of buildScript({
-      setSteps,
-      setPhase,
-      setProgress,
-      setStreaming,
-      setAnswered,
-    })) {
-      at += delay * PACE;
-      timers.push(window.setTimeout(apply, at));
-    }
-    // The loop: hold the finished answer, then replay from the top.
-    timers.push(
-      window.setTimeout(() => setRunId((run) => run + 1), at + DWELL_MS)
-    );
-    return () => {
-      for (const timer of timers) window.clearTimeout(timer);
-    };
-  }, [active, runId]);
+  const { steps, phase, progress, streaming, answered, runId } =
+    useScriptedTurn(active, buildScript, FINAL_STEPS, DWELL_MS);
 
   const pending = phase !== "done";
 

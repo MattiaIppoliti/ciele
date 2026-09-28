@@ -7,6 +7,7 @@ import { Button, CopyFeedbackIcon, useCopyFeedback } from "@agent-hub/ui";
 import { getDocumentBodyAction } from "@/app/actions";
 import { toast } from "@/lib/toast";
 import { formatCount } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 /**
  * A Document's OKF body, rendered (#928).
@@ -39,6 +40,9 @@ export function DocumentContent({
   const [full, setFull] = useState<string | null>(total === head.length ? head : null);
   const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // Its own transition: copying a folded body fetches it first, and sharing
+  // one pending flag turned "Show all" into "Loading…" on a copy.
+  const [copying, startCopy] = useTransition();
   const { copyText, isCopied } = useCopyFeedback<string>();
   const copied = isCopied(documentId);
 
@@ -64,9 +68,13 @@ export function DocumentContent({
         <Button
           variant="ghost"
           size="icon"
-          aria-label={copied ? "Content copied" : "Copy content"}
+          aria-label={
+            copied ? "Content copied" : copying ? "Copying content…" : "Copy content"
+          }
+          aria-busy={copying || undefined}
+          disabled={copying}
           onClick={() =>
-            startTransition(async () => {
+            startCopy(async () => {
               const text = await loadFull();
               if (text === null) return;
               if (await copyText(documentId, text)) toast.success("Content copied");
@@ -125,7 +133,7 @@ export function DocumentContent({
                 <input
                   type="checkbox"
                   checked={checked ?? false}
-                  readOnly
+                  disabled
                   className="mr-1.5 size-3.5 align-middle"
                 />
               ),
@@ -148,6 +156,8 @@ export function DocumentContent({
                 <img
                   src={typeof src === "string" ? src : undefined}
                   alt={alt ?? ""}
+                  loading="lazy"
+                  decoding="async"
                   className="max-w-full rounded-md border"
                 />
               ),
@@ -188,11 +198,15 @@ export function DocumentContent({
               });
             }}
           >
-            {expanded
-              ? "Show less"
-              : isPending
-                ? "Loading…"
-                : `Show all (${formatCount(total)} characters)`}
+            <RollInText
+              text={
+                expanded
+                  ? "Show less"
+                  : isPending
+                    ? "Loading…"
+                    : `Show all (${formatCount(total)} characters)`
+              }
+            />
           </Button>
         </div>
       )}

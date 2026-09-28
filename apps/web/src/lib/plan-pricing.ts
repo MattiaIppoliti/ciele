@@ -1,4 +1,5 @@
 import type { PlanCatalogEntry } from "@agent-hub/agent";
+import { formatCount } from "@/lib/format";
 
 /**
  * How a plan catalog reads on Billing (#511).
@@ -49,8 +50,6 @@ export interface PlanTierView {
   priceEur: number;
 }
 
-const formatCount = (value: number): string => value.toLocaleString("en-US");
-
 /**
  * How a tier slug is written in a sentence. The slug itself, capitalized,
  * never a separate marketing name, so the console, an invoice and a support
@@ -59,8 +58,6 @@ const formatCount = (value: number): string => value.toLocaleString("en-US");
  */
 export const planDisplayName = (slug: string): string =>
   slug.charAt(0).toUpperCase() + slug.slice(1);
-
-const titleCase = planDisplayName;
 
 /**
  * The tiers, cheapest first. Sorted here rather than trusted from the catalog:
@@ -75,7 +72,7 @@ export function planTierViews(
     .sort((a, b) => a.priceEur - b.priceEur)
     .map((entry) => ({
       slug: entry.slug,
-      name: titleCase(entry.slug),
+      name: planDisplayName(entry.slug),
       pricePrefix: entry.salesLed ? "from" : null,
       priceLabel: `€${formatCount(entry.priceEur)}`,
       // An unrecognized slug gets no audience line rather than a guessed one.

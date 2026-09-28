@@ -1,21 +1,5 @@
-import type { DotPalette, DotSection } from "./types";
-
 export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-export function resolveSectionPalette(
-  columnIndex: number,
-  columnCount: number,
-  sections: readonly DotSection[] | undefined,
-  fallback: DotPalette,
-): DotPalette {
-  if (!sections || sections.length === 0 || columnCount <= 0) return fallback;
-  const position = columnCount > 1 ? columnIndex / (columnCount - 1) : 0;
-  const match =
-    sections.find((s) => position >= s.start && position <= s.end) ??
-    sections[sections.length - 1];
-  return match.palette;
 }
 
 export function normalizeValues(

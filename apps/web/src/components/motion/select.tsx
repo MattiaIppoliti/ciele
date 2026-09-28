@@ -79,9 +79,6 @@ function useSelectContext(component: string) {
 }
 
 interface SelectSharedProps {
-  open?: boolean;
-  defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   className?: string;
   children: ReactNode;
@@ -90,14 +87,12 @@ interface SelectSharedProps {
 export interface SelectSingleProps extends SelectSharedProps {
   multiple?: false;
   value?: string;
-  defaultValue?: string;
   onValueChange?: (value: string) => void;
 }
 
 export interface SelectMultipleProps extends SelectSharedProps {
   multiple: true;
   value?: string[];
-  defaultValue?: string[];
   onValueChange?: (value: string[]) => void;
 }
 
@@ -107,12 +102,8 @@ export function Select(props: SelectMultipleProps): ReactNode;
 export function Select(props: SelectSingleProps): ReactNode;
 export function Select({
   value,
-  defaultValue,
   onValueChange,
   multiple = false,
-  open: openProp,
-  defaultOpen = false,
-  onOpenChange,
   disabled = false,
   className,
   children,
@@ -120,8 +111,8 @@ export function Select({
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
-  const [internal, setInternal] = useState<string | string[] | undefined>(defaultValue);
+  const [open, setInternalOpen] = useState(false);
+  const [internal, setInternal] = useState<string | string[] | undefined>(undefined);
   const [labels, setLabels] = useState<Map<string, string>>(new Map());
   const [placement, setPlacement] = useState<Placement>("bottom");
   const [triggerId, setTriggerId] = useState(`${baseId}-trigger`);
@@ -143,15 +134,13 @@ export function Select({
           : [current],
     [controlled, current, internal, multiple, value],
   );
-  const openControlled = openProp !== undefined;
-  const open = openControlled ? openProp : internalOpen;
-  const onOpenChangeWithFeedback = useOpenChangeFeedback(onOpenChange);
+  const openChangeFeedback = useOpenChangeFeedback(undefined);
   const setOpen = useCallback(
     (next: boolean) => {
-      if (!openControlled) setInternalOpen(next);
-      onOpenChangeWithFeedback?.(next);
+      setInternalOpen(next);
+      openChangeFeedback(next);
     },
-    [onOpenChangeWithFeedback, openControlled],
+    [openChangeFeedback],
   );
   const focusTrigger = useCallback(() => {
     document.getElementById(triggerId)?.focus();

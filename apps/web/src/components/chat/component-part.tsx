@@ -64,7 +64,7 @@ function TableComponent({
   // not jump once the first cells land.
   if (!table) {
     return pending ? (
-      <div className="w-full max-w-[92%] animate-pulse space-y-2 rounded-xl border p-3">
+      <div className="w-full max-w-[92%] animate-pulse space-y-2 rounded-xl border p-3 motion-reduce:animate-none">
         <div className="h-3 w-1/3 rounded bg-muted" />
         <div className="h-3 w-full rounded bg-muted" />
         <div className="h-3 w-2/3 rounded bg-muted" />

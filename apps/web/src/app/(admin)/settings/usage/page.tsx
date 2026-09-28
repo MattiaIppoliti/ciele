@@ -27,6 +27,7 @@ import { requirePageMember } from "@/lib/authz";
 import { canManageMembers } from "@/lib/rbac";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { formatCredits, summarizeUsage } from "@/lib/usage-summary";
+import { formatCount, formatDay } from "@/lib/format";
 import { budgetMeterView, usageLimitsView } from "@/lib/usage-meters";
 import {
   DailyBudgetCard,
@@ -81,8 +82,6 @@ const METERS: {
     description: "Pages fetched when a Website Source is crawled",
   },
 ];
-
-const formatCount = new Intl.NumberFormat("en-US").format;
 
 const OPERATION_LABELS: Record<UsageEventRow["operation"], string> = {
   api_request: "API request",
@@ -302,7 +301,7 @@ export default async function UsageSettingsPage() {
                   <CardTitle>{meter.title}</CardTitle>
                   <CardDescription>{meter.description}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-1 text-sm">
+                <CardContent className="space-y-1 text-sm tabular-nums">
                   <p>
                     <span className="font-medium">
                       {formatCredits(usage.platformCredits)}
@@ -335,7 +334,7 @@ export default async function UsageSettingsPage() {
               Only work on platform keys counts against your plan. Your own keys are never counted.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm">
+          <CardContent className="space-y-1 text-sm tabular-nums">
             <p>
               <span className="font-medium">Platform:</span>{" "}
               {formatCredits(summary.platform.credits)} credits ·{" "}
@@ -393,13 +392,20 @@ export default async function UsageSettingsPage() {
                     <TableRow
                       key={`${r.day}-${r.kind}-${r.credentialKind}-${r.provider}-${r.modelId}`}
                     >
-                      <TableCell className="font-medium">{r.day}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap tabular-nums">
+                        {formatDay(r.day)}
+                      </TableCell>
                       <TableCell>{KIND_LABELS[r.kind]}</TableCell>
                       <TableCell>
                         {CREDENTIAL_LABELS[r.credentialKind]}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {r.modelId || r.provider || "N/A"}
+                        <span
+                          className="block max-w-48 truncate"
+                          title={r.modelId || r.provider || undefined}
+                        >
+                          {r.modelId || r.provider || "N/A"}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatCount(r.calls)}

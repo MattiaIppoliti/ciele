@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Role } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import {
+  askAssistantOp,
   assistantPatchSchema,
   createAssistantOp,
   deleteAssistantOp,
@@ -147,5 +148,62 @@ describe("Study Mode settings", () => {
       { ...studyMode, instructions: "x".repeat(10001) },
       { ...studyMode, enabled: "true" },
     ]) expect(assistantPatchSchema.safeParse({ tools: { studyMode: invalid } }).success).toBe(false);
+  });
+});
+
+describe("askAssistantOp", () => {
+  const answer = {
+    conversationId: "conv-1",
+    messageId: "msg-1",
+    flowName: "Default behavior",
+    answer: "Open the Library, then Applications.",
+    sources: [],
+    error: null,
+  };
+
+  it("asks the port for this Assistant's answer and hands it back whole", async () => {
+    const assistant = await createAssistantOp.run(ctx(), { title: "Ask target" });
+    const asked: unknown[] = [];
+    const result = await askAssistantOp.run(
+      ctx({ ports: { askAssistant: async (input) => (asked.push(input), answer) } }),
+      { id: assistant.id, question: "How do I connect Salesforce?" }
+    );
+    expect(result).toEqual(answer);
+    expect(asked).toEqual([
+      { assistantId: assistant.id, question: "How do I connect Salesforce?", conversationId: null },
+    ]);
+    // A new Conversation lands in the Inbox; nothing else changes.
+    expect(askAssistantOp.entities({} as never, result)).toEqual([{ kind: "inbox" }]);
+    expect(askAssistantOp.capability).toBe("member");
+  });
+
+  it("says an unpublished Assistant must be published first", async () => {
+    const assistant = await createAssistantOp.run(ctx(), { title: "Draft only" });
+    await expect(
+      askAssistantOp.run(ctx({ ports: { askAssistant: async () => null } }), {
+        id: assistant.id,
+        question: "Anyone there?",
+      })
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
+
+  it("never reaches the port for another Organization's Assistant", async () => {
+    const assistant = await createAssistantOp.run(ctx(), { title: "Ours" });
+    let called = false;
+    await expect(
+      askAssistantOp.run(
+        { ...foreignCtx(), ports: { askAssistant: async () => ((called = true), answer) } },
+        { id: assistant.id, question: "Hi" }
+      )
+    ).rejects.toBeInstanceOf(OperationError);
+    expect(called).toBe(false);
+  });
+
+  it("refuses without a turn backend and trims the question", async () => {
+    const assistant = await createAssistantOp.run(ctx(), { title: "No port" });
+    await expect(
+      askAssistantOp.run(ctx({ ports: {} }), { id: assistant.id, question: "Hi" })
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    expect(askAssistantOp.input.safeParse({ id: "a", question: "  " }).success).toBe(false);
   });
 });

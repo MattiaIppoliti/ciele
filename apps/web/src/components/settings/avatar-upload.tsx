@@ -19,18 +19,22 @@ export function AvatarUpload({
   fallback,
   size = "size-24",
   label = "Choose photo",
+  busy = false,
 }: {
   value: string;
   /** Storage-backed upload: the caller receives the File and owns upload. */
   onFile: (file: File) => void;
   /** When given, a "Remove" button appears next to the avatar once `value`
    * is set (e.g. an org logo, which, unlike an assistant's, can be
-   * cleared back to the initial-letter fallback). */
+   * cleared back to the initial-letter fallback). The caller confirms, so
+   * the question is asked once, in the caller's words. */
   onRemove?: () => void;
   /** Rendered in place of the image when `value` is empty. */
   fallback: React.ReactNode;
   size?: string;
   label?: string;
+  /** An upload or removal is in flight: both controls wait for it. */
+  busy?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,8 +69,10 @@ export function AvatarUpload({
       <button
         type="button"
         aria-label={label}
+        aria-busy={busy || undefined}
+        disabled={busy}
         onClick={() => inputRef.current?.click()}
-        className={`group relative ${size} shrink-0 overflow-hidden rounded-full`}
+        className={`group focus-visible:ring-ring focus-visible:ring-offset-background relative ${size} shrink-0 overflow-hidden rounded-full outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-70`}
       >
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -74,7 +80,7 @@ export function AvatarUpload({
         ) : (
           fallback
         )}
-        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/0 text-transparent transition-colors group-hover:bg-black/60 group-hover:text-white">
+        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/0 text-transparent transition-colors group-hover:bg-black/60 group-hover:text-white group-focus-visible:bg-black/60 group-focus-visible:text-white">
           <Pencil className="size-4" />
           <span className="text-xs font-medium">{label}</span>
         </span>
@@ -83,7 +89,8 @@ export function AvatarUpload({
         <button
           type="button"
           onClick={onRemove}
-          className="text-muted-foreground text-sm font-medium underline underline-offset-4 hover:text-foreground"
+          disabled={busy}
+          className="press-text text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm text-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-2 disabled:opacity-50"
         >
           Remove
         </button>

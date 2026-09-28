@@ -1,5 +1,6 @@
 import type { InboxConversation, StoredMessage } from "@agent-hub/core";
 import { messageContent } from "./conversation-export";
+import { countLabel } from "@/lib/pagination";
 
 /**
  * A single Conversation transcript as a self-contained, printable HTML document
@@ -131,9 +132,7 @@ export function transcriptDocument(input: TranscriptDocumentInput): string {
 </head>
 <body>
 <h1>${escapeHtml(title)}</h1>
-<p class="subtitle">${escapeHtml(
-    `${messages.length} ${messages.length === 1 ? "message" : "messages"}`
-  )}</p>
+<p class="subtitle">${escapeHtml(countLabel(messages.length, "message"))}</p>
 <dl>${details}</dl>
 ${turns}
 <footer>${escapeHtml(

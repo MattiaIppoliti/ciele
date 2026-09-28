@@ -10,7 +10,7 @@ An Organization sets two retention windows in **Settings**, on the **General** t
 | Setting | What the nightly sweep does after the window |
 | --- | --- |
 | **Reasoning trace retention** | Removes the Thinking panel from old messages. The messages stay. |
-| **Conversation retention** | Deletes the whole conversation, transcript included. |
+| **Conversation retention** | Deletes the whole conversation, transcript included. It also deletes the long-term memories about a Visitor that were not updated during the window. |
 
 The two windows are independent. An Organization can set either, both, or neither. For example, keep transcripts for one year but remove reasoning traces after 30 days.
 
@@ -27,6 +27,8 @@ After the window, the conversation is gone from the Inbox, from exports, and fro
 3. Select a window under **Reasoning trace retention** or **Conversation retention**.
 4. Select **Save changes**.
 
+If the new window is shorter than the current window, Ciele asks you to confirm. The next nightly sweep deletes the older data.
+
 Only a member who can manage members can change these settings.
 
 ## Legal hold
@@ -38,6 +40,8 @@ A legal hold exempts one conversation from the conversation-retention sweep. Use
 3. Select **Place legal hold** in the **Retention** card.
 
 The hold stays until a member selects **Release legal hold**. Every member sees the hold status. Only a member who can manage members can place or release a hold.
+
+A held conversation cannot be deleted. This applies to the Inbox, the API, the retention sweep, and the deletion of the assistant that owns the conversation. To delete a held conversation or its assistant, release the hold first.
 
 ## Self-hosted installations
 

@@ -1,8 +1,5 @@
 import { z } from "zod";
-import type {
-  ApplicationConnection,
-  ConnectorProvider,
-} from "@agent-hub/core";
+import type { ApplicationConnection } from "@agent-hub/core";
 import {
   CONNECTOR_ACTIONS,
   CONNECTOR_PROVIDERS,
@@ -52,7 +49,7 @@ export const listApplicationConnectionsOp = defineOperation({
   name: "applications.connections.list",
   capability: "member",
   input: z.object({
-    provider: z.enum(CONNECTOR_PROVIDERS as [ConnectorProvider, ...ConnectorProvider[]]).optional(),
+    provider: z.enum(CONNECTOR_PROVIDERS).optional(),
   }),
   entities: () => [],
   run: async (ctx, { provider }) => {
@@ -154,7 +151,7 @@ export const listConnectorActionsOp = defineOperation({
   name: "applications.connectors.list",
   capability: "member",
   input: z.object({
-    provider: z.enum(CONNECTOR_PROVIDERS as [ConnectorProvider, ...ConnectorProvider[]]).optional(),
+    provider: z.enum(CONNECTOR_PROVIDERS).optional(),
   }),
   entities: () => [],
   run: async (_ctx, { provider }) =>

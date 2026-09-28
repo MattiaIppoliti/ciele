@@ -247,10 +247,8 @@ export async function escalateConversation(input: {
   // clicks don't flood the tracker; a tracker failure never fails the Visitor.
   if (conversation && desk.autoGenerateImprovements && !alreadyEscalated) {
     const messages = await db.listMessages(conversation.id);
-    const lastAssistant = [...messages]
-      .reverse()
-      .find((m) => m.role === "assistant");
-    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const lastAssistant = messages.findLast((m) => m.role === "assistant");
+    const lastUser = messages.findLast((m) => m.role === "user");
     const userText = messageText(lastUser?.content ?? [], " ");
     const raised = await raiseImprovement(
       db,
@@ -261,14 +259,12 @@ export async function escalateConversation(input: {
       },
       { swallowErrors: true }
     );
-    if (lastAssistant?.id) {
+    if (lastAssistant?.id && raised) {
       // Draft a Suggested Fix for the flagged answer (#390).
-      if (raised) {
-        await enqueueDraftProposalJob(
-          { improvementId: raised.id, messageId: lastAssistant.id },
-          { db }
-        );
-      }
+      await enqueueDraftProposalJob(
+        { improvementId: raised.id, messageId: lastAssistant.id },
+        { db }
+      );
     }
   }
 

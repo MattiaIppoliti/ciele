@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
 import { ChevronsUpDown, Fingerprint, LifeBuoy, MessageCircle, Search, Settings, type LucideIcon } from "lucide-react";
-import { BookOpen, Check, Ellipsis, LogOut, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
+import { BookOpen, Check, Ellipsis, Loader2, LogOut, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
 // Icon data, not components: the collapse arrow reshapes between the two.
 import {
   PanelLeftClose as PanelLeftCloseData,
@@ -62,6 +62,8 @@ import {
 } from "@/components/shell/shell-provider";
 import { canManageMembers } from "@/lib/rbac";
 import { canAutoFocus } from "@/lib/auto-focus";
+import { formatCount } from "@/lib/format";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /** Full name if set, else username, else the email local-part. */
 function profileDisplayName(profile: Profile | null, email: string): string {
@@ -148,7 +150,8 @@ function NavRow({
   const row = (
     <Link
       href={href}
-      aria-label={label}
+      // The label overrides the row's text, so the count has to be in it too.
+      aria-label={badge > 0 ? `${label} (${formatCount(badge)})` : label}
       aria-current={active ? "page" : undefined}
       data-highlight-row
       className={`${rowClass(collapsed)} ${active ? ROW_ACTIVE : ROW_IDLE}`}
@@ -165,13 +168,16 @@ function NavRow({
           <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
         ) : null}
         {badge > 0 && collapsed && (
-          <span className="absolute -top-1 -right-1 size-2 rounded-full bg-red-500" />
+          <span aria-hidden className="absolute -top-1 -right-1 size-2 rounded-full bg-red-500" />
         )}
       </span>
       {!collapsed && <span className="truncate">{label}</span>}
       {badge > 0 && !collapsed && (
-        <span className="ml-auto rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white">
-          {badge}
+        <span
+          aria-hidden
+          className="ml-auto rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white"
+        >
+          <RollingNumber value={badge} />
         </span>
       )}
       <NavRowPending />
@@ -230,6 +236,8 @@ function OrgAvatarSwitcher({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [isPending, startTransition] = useTransition();
+  /** The row that was clicked, so only it shows the wait. */
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const canManage = canManageMembers(role);
   const roleLabel = demo ? "Demo" : role ?? "Member";
 
@@ -242,6 +250,7 @@ function OrgAvatarSwitcher({
       setOpen(false);
       return;
     }
+    setPendingId(id);
     startTransition(async () => {
       await switchOrganizationAction(id);
       setOpen(false);
@@ -299,8 +308,8 @@ function OrgAvatarSwitcher({
         trigger
       )}
       <PopoverContent align="start" className="w-72 p-0">
-        <div className="flex items-center gap-2 border-b px-3">
-          <Search className="text-muted-foreground size-4 shrink-0" />
+        <div className="has-[:focus-visible]:ring-ring/50 flex items-center gap-2 border-b px-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset">
+          <Search aria-hidden className="text-muted-foreground size-4 shrink-0" />
           <input
             autoFocus={canAutoFocus()}
             value={query}
@@ -312,7 +321,7 @@ function OrgAvatarSwitcher({
             className="placeholder:text-muted-foreground h-10 w-full bg-transparent text-sm outline-none"
           />
         </div>
-        <HoverHighlight className="max-h-72 overflow-y-auto p-1.5">
+        <HoverHighlight className="max-h-72 overflow-y-auto overscroll-contain p-1.5">
           {filtered.map((org) => {
             const active = org.id === orgId;
             return (
@@ -323,27 +332,36 @@ function OrgAvatarSwitcher({
               >
                 <button
                   type="button"
-                  disabled={isPending}
-                  onClick={() => switchTo(org.id)}
-                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left disabled:opacity-50"
+                  // aria-disabled, not disabled: disabling the focused row
+                  // would drop keyboard focus to the body mid-switch.
+                  aria-disabled={isPending || undefined}
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => {
+                    if (!isPending) switchTo(org.id);
+                  }}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left aria-disabled:opacity-50"
                 >
                   <OrgAvatar name={org.name} logoUrl={org.logoUrl} />
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {org.name}
                   </span>
+                  {isPending && pendingId === org.id && (
+                    <Loader2 aria-label="Switching…" className="size-4 shrink-0 animate-spin motion-reduce:animate-none" />
+                  )}
                 </button>
                 {active && (
                   <>
                     <Badge variant="secondary" className="shrink-0 capitalize">
                       {roleLabel}
                     </Badge>
-                    <Check className="size-4 shrink-0" />
+                    <Check aria-hidden className="size-4 shrink-0" />
                   </>
                 )}
                 {active && canManage && (
                   <Hint label="Manage members">
                     <Link
                       href="/settings/members"
+                      aria-label="Manage members"
                       onClick={() => setOpen(false)}
                       className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-6 shrink-0 items-center justify-center rounded-md transition-colors"
                     >
@@ -385,10 +403,14 @@ function SidebarContent({
   mentionCount,
   collapsed,
   onToggle,
+  toggleLabel,
   expandsOnToggle,
 }: AppSidebarProps & {
   collapsed: boolean;
   onToggle: () => void;
+  /** What the toggle does here: it hides, docks or closes depending on where
+   * the sidebar is mounted, and "Toggle sidebar" said none of those. */
+  toggleLabel: string;
   /** True when the toggle grows the sidebar (rail → full, or peek → docked),
    * so it shows the "open" glyph; false when it shrinks (full → rail). */
   expandsOnToggle: boolean;
@@ -415,10 +437,10 @@ function SidebarContent({
       : null;
 
   const toggleButton = (
-    <Hint label="Toggle sidebar" side="right">
+    <Hint label={toggleLabel} side="right">
       <button
         type="button"
-        aria-label="Toggle sidebar"
+        aria-label={toggleLabel}
         onClick={onToggle}
         className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors"
       >
@@ -479,10 +501,11 @@ function SidebarContent({
       {/* Find... opens the command palette (F / Cmd+K). */}
       <div className={`pb-2 ${collapsed ? "flex justify-center px-2" : "px-3"}`}>
         {collapsed ? (
-          <Hint label="Find... (F)" side="right">
+          <Hint label="Find… (F)" side="right">
             <button
               type="button"
               aria-label="Find"
+              aria-keyshortcuts="F Meta+K"
               onClick={openFind}
               className="press-control border-input text-muted-foreground hover:bg-muted flex size-9 items-center justify-center rounded-lg border transition-colors"
             >
@@ -492,6 +515,7 @@ function SidebarContent({
         ) : (
           <button
             type="button"
+            aria-keyshortcuts="F Meta+K"
             onClick={openFind}
             className="press border-input text-muted-foreground hover:bg-muted flex h-8 w-full items-center gap-2 rounded-lg border px-2.5 text-sm transition-colors"
           >
@@ -504,7 +528,7 @@ function SidebarContent({
 
       <nav
         aria-label="Main navigation"
-        className={`no-scrollbar min-h-0 flex-1 overflow-y-auto pb-3 ${
+        className={`no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3 ${
           collapsed ? "px-2" : "px-3"
         }`}
       >
@@ -817,12 +841,15 @@ function NavDrawer(props: AppSidebarProps) {
             animate={reduceMotion ? { opacity: 1 } : { x: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
             transition={SPRING_PANEL}
-            className="bg-background absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col border-r shadow-2xl"
+            // viewport-fit=cover: keep the account row off the home indicator
+            // and the rows out from under a landscape notch.
+            className="bg-background absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col border-r pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] shadow-2xl"
           >
             <SidebarContent
               {...props}
               collapsed={false}
               expandsOnToggle={false}
+              toggleLabel="Close navigation"
               onToggle={() => setNavDrawerOpen(false)}
             />
           </motion.div>
@@ -996,6 +1023,7 @@ export function AppSidebar(props: AppSidebarProps) {
                   {...props}
                   collapsed={collapsed}
                   expandsOnToggle={false}
+                  toggleLabel="Hide sidebar"
                   // Toggle fully hides the sidebar (never a rail). Width is
                   // preserved so reopening from the top bar restores the same
                   // state, full or the dragged-down icon rail. Rail is reached
@@ -1088,6 +1116,7 @@ function UndockedSidebar({
               {...props}
               collapsed={false}
               expandsOnToggle
+              toggleLabel="Dock sidebar"
               onToggle={() => {
                 setPeek(false);
                 onDock();

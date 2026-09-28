@@ -38,16 +38,20 @@ export default async function LibraryTabPage({
     applicationImports,
     applicationOperationalRows,
   ] = await Promise.all([
-    db.listOrgKnowledgeSources(organizationId, {
-      kinds: KNOWLEDGE_TAB_KINDS[tab],
-      status: filters.status,
-      assistantId: filters.assistant,
-      query: filters.q,
-      page: filters.page,
-      pageSize: filters.size,
-      sort: filters.sort || undefined,
-      ascending: filters.ascending,
-    }),
+    // Applications draws no Source table (its Imports open onto their items),
+    // so it skips the read rather than fetching a page nobody renders.
+    showApplications
+      ? Promise.resolve({ items: [], total: 0 })
+      : db.listOrgKnowledgeSources(organizationId, {
+          kinds: KNOWLEDGE_TAB_KINDS[tab],
+          status: filters.status,
+          assistantId: filters.assistant,
+          query: filters.q,
+          page: filters.page,
+          pageSize: filters.size,
+          sort: filters.sort || undefined,
+          ascending: filters.ascending,
+        }),
     reads.assistantShellSummaries(),
     showApplications ? db.listApplicationConnections(organizationId) : Promise.resolve([]),
     showApplications ? db.listApplicationImports(organizationId) : Promise.resolve([]),

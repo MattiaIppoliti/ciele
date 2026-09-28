@@ -2,13 +2,7 @@ import { readFileSync } from "node:fs";
 import type { EntityInput, EntityRecordQuery } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
-
-function jsonFile<T>(ctx: CommandContext, hint: string): T | number {
-  const path = str(ctx.flags.file);
-  if (!path) return usage(ctx.deps, hint);
-  return JSON.parse(readFileSync(path, "utf8")) as T;
-}
+import { jsonFile, str, usage, type CommandContext } from "./shared.ts";
 
 export async function entities(verb: string | undefined, ctx: CommandContext) {
   const { client, flags, rest, emit, deps } = ctx;
@@ -34,7 +28,7 @@ export async function entities(verb: string | undefined, ctx: CommandContext) {
       });
     case "create": {
       const input = jsonFile<EntityInput>(ctx, "entities create --file <entity.json>");
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const entity = await client.entities.create(input);
       emit(`Created ${entity.id}`, entity);
       return EXIT.ok;
@@ -74,7 +68,7 @@ export async function records(verb: string | undefined, ctx: CommandContext) {
     }
     case "query": {
       const query = jsonFile<EntityRecordQuery>(ctx, "records query <entityId> --file <query.json>");
-      if (typeof query === "number") return query;
+      if (query === undefined) return EXIT.usage;
       const result = await client.entities.queryRecords(entityId, query);
       emit(JSON.stringify(result.data, null, 2), result);
       return EXIT.ok;

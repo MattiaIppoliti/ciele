@@ -41,8 +41,6 @@ export const toast = {
   error: (message: string) => raise("error", message),
   warning: (message: string) => raise("warning", message),
   info: (message: string) => raise("info", message),
-  /** Neutral notice. */
-  message: (message: string) => raise("info", message),
   /** Full control for pending messages, action buttons, and custom lifetimes. */
   show: (input: string | ToastInput) => {
     const state = typeof input === "string" ? undefined : input.state;

@@ -20,8 +20,6 @@ import {
 } from "@/lib/application-connected";
 import { revalidateEntities } from "@/lib/org-mutation";
 
-export const runtime = "nodejs";
-
 function completionPage(returnTo: string, provider: string): NextResponse {
   const inlineJson = (value: unknown) =>
     JSON.stringify(value).replaceAll("<", "\\u003c");

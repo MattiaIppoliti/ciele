@@ -62,7 +62,7 @@ export function FlowsAgentPanel({
   onPromptSent,
   resumeConversationId,
   onConversationChange,
-  providerReady = true,
+  providerReady,
 }: {
   assistantId: string;
   /** The open Flow, null on the new-Flow canvas. Scopes the panel's history. */
@@ -86,22 +86,22 @@ export function FlowsAgentPanel({
    * The panel calls `onPromptSent` as it takes it, so the parent can clear it
    * and a remount cannot replay it.
    */
-  prompt?: { id: string; text: string } | null;
-  onPromptSent?: () => void;
+  prompt: { id: string; text: string } | null;
+  onPromptSent: () => void;
   /**
    * The conversation this panel was last holding. The panel is mounted inside
    * the Canvas view, so switching to the Form unmounts it; the builder keeps
    * the id so coming back reopens the same thread rather than a blank one.
    */
-  resumeConversationId?: string | null;
-  onConversationChange?: (id: string | null) => void;
+  resumeConversationId: string | null;
+  onConversationChange: (id: string | null) => void;
   /**
    * Whether a turn has anything to run on: the Organization holds a Provider
    * Connection, or has opted into Members' own subscriptions (ADR-0007). False
    * means no turn can succeed, so the composer is disabled and the panel says
    * why, instead of every message coming back as an error bubble.
    */
-  providerReady?: boolean;
+  providerReady: boolean;
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -112,7 +112,12 @@ export function FlowsAgentPanel({
     useFullscreenGrow();
   const [history, setHistory] = useState<{ id: string; title: string; updatedAt: string }[]>([]);
   const [proposals, setProposals] = useState<(FlowsAgentProposalPayload & { key: string })[]>([]);
-  const [, startTransition] = useTransition();
+  // Pending until the new Flow's page has loaded, so a second click on
+  // "Create and open" cannot create the same Flow twice.
+  const [accepting, startTransition] = useTransition();
+  // The rows arrive after the list opens; without this the empty state
+  // flashed first and read as "there are none".
+  const [historyLoading, setHistoryLoading] = useState(false);
   const conversationRef = useRef<string | null>(null);
   // The turn in flight, so Stop can end it and unmount does not leave a stream
   // writing into a tree that is gone. The Preview holds the same handle for the
@@ -123,7 +128,7 @@ export function FlowsAgentPanel({
   /** One place the held conversation changes, so the builder always hears it. */
   const holdConversation = (id: string | null) => {
     conversationRef.current = id;
-    onConversationChange?.(id);
+    onConversationChange(id);
   };
 
   const updateLastBot = (fn: (bot: ChatBotMsg) => ChatBotMsg) =>
@@ -211,7 +216,7 @@ export function FlowsAgentPanel({
   useEffect(() => {
     if (!prompt || pending || sentPromptId.current === prompt.id) return;
     sentPromptId.current = prompt.id;
-    onPromptSent?.();
+    onPromptSent();
     void send(prompt.text);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prompt, pending]);
@@ -220,11 +225,14 @@ export function FlowsAgentPanel({
     const next = !historyOpen;
     setHistoryOpen(next);
     if (!next) return;
+    setHistoryLoading(true);
     try {
       const rows = await flowsAgentThreadAction(assistantId, flowId);
       setHistory(rows.map((row) => ({ id: row.id, title: row.title, updatedAt: row.updatedAt })));
     } catch {
       toast.error("Could not load earlier conversations");
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -248,6 +256,7 @@ export function FlowsAgentPanel({
   }
 
   function acceptProposal(proposal: FlowsAgentProposalPayload & { key: string }) {
+    if (accepting) return;
     startTransition(async () => {
       try {
         const flow = await createFlowAction(assistantId, proposal.flow);
@@ -317,7 +326,11 @@ export function FlowsAgentPanel({
               </span>
             </div>
             <div className="no-scrollbar flex-1 overflow-y-auto px-2 py-2">
-              {history.length === 0 ? (
+              {historyLoading && history.length === 0 ? (
+                <p role="status" className="text-muted-foreground px-4 py-8 text-center text-sm">
+                  Loading conversations…
+                </p>
+              ) : history.length === 0 ? (
                 <p className="text-muted-foreground px-4 py-8 text-center text-sm">
                   No earlier conversations about this flow
                 </p>
@@ -330,7 +343,7 @@ export function FlowsAgentPanel({
                         className="hover:bg-muted press flex w-full flex-col items-start rounded-md px-3 py-2 text-left"
                         onClick={() => void openConversation(entry.id)}
                       >
-                        <span className="truncate text-sm font-medium">
+                        <span className="w-full max-w-full truncate text-sm font-medium">
                           {entry.title || "Conversation"}
                         </span>
                         <span className="text-muted-foreground text-xs">
@@ -384,6 +397,7 @@ export function FlowsAgentPanel({
                 <ProposalCard
                   key={proposal.key}
                   proposal={proposal}
+                  accepting={accepting}
                   onAccept={() => acceptProposal(proposal)}
                   onDismiss={() =>
                     setProposals((prev) => prev.filter((p) => p.key !== proposal.key))
@@ -427,10 +441,13 @@ export function FlowsAgentPanel({
 /** A `flows.propose` hand-back: a whole Flow the Editor may create, or not. */
 function ProposalCard({
   proposal,
+  accepting,
   onAccept,
   onDismiss,
 }: {
   proposal: FlowsAgentProposalPayload;
+  /** A Flow is being created from some proposal; every card waits for it. */
+  accepting: boolean;
   onAccept: () => void;
   onDismiss: () => void;
 }) {
@@ -439,16 +456,16 @@ function ProposalCard({
   return (
     <div className="bg-card mt-3 rounded-lg border p-3 text-sm shadow-sm">
       <p className="text-muted-foreground text-xs font-medium uppercase">Proposed flow</p>
-      <p className="mt-1 font-semibold">{flow.name}</p>
+      <p className="mt-1 font-semibold break-words">{flow.name}</p>
       <p className="text-muted-foreground mt-1 text-xs">
         {FLOW_TRIGGER_LABELS[trigger]}
         {flow.actions?.length
           ? ` → ${flow.actions.map((action) => FLOW_ACTIONS[action].label).join(" → ")}`
           : ""}
       </p>
-      {proposal.rationale && <p className="mt-2">{proposal.rationale}</p>}
+      {proposal.rationale && <p className="mt-2 break-words">{proposal.rationale}</p>}
       <div className="mt-3 flex gap-2">
-        <Button type="button" size="sm" onClick={onAccept}>
+        <Button type="button" size="sm" disabled={accepting} onClick={onAccept}>
           Create and open
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onDismiss}>

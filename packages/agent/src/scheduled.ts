@@ -169,7 +169,35 @@ function alertOnOldQueueWork(
     // this service-wide queue SLO without leaking another tenant's backlog.
     console.error("[runtime] durable queue age SLO breached", { overdue });
   }
+  // Terminal failures, on the same channel. A job that exhausted its attempts
+  // left the due count, so the age check above never saw it, and two kinds
+  // (the draft proposals) raise no Organization Alert of their own: without
+  // this line a poisoned job disappeared without a trace anywhere but the
+  // table. The count is what the ledger still retains (30 days), so the line
+  // repeats until the rows age out, which is what a log-based alert wants.
+  const failed = Object.entries(backlog.backgroundJobs)
+    .filter(([, state]) => (state.failed ?? 0) > 0)
+    .map(([kind, state]) => ({ queue: `background:${kind}`, failed: state.failed }));
+  if ((backlog.turnEffects.failed ?? 0) > 0) {
+    failed.push({ queue: "turn-effects", failed: backlog.turnEffects.failed });
+  }
+  if (failed.length > 0) {
+    console.error("[runtime] durable jobs failed terminally", { failed });
+  }
 }
+
+/**
+ * The ledger queues one tick drains, each under its own worker id: the report
+ * key it totals into, the job kind, the worker-id suffix and the claim size.
+ */
+const JOB_QUEUES = [
+  { key: "jobs", kind: "ingest_source", suffix: "", limit: 10 },
+  { key: "proposals", kind: "draft_improvement_proposal", suffix: "-proposals", limit: 10 },
+  { key: "memories", kind: "promote_memories", suffix: "-memories", limit: 20 },
+  { key: "agentMemories", kind: "distill_agent_memory", suffix: "-agent-memory", limit: 20 },
+  { key: "entitySyncs", kind: "sync_entity_records", suffix: "-entity-sync", limit: 10 },
+  { key: "applicationSyncs", kind: "sync_application_import", suffix: "-application-sync", limit: 10 },
+] as const;
 
 /**
  * Background safety-net tick for website crawls and the durable job ledger.
@@ -211,12 +239,9 @@ export async function finalizeDueCrawls(
     retried: 0,
     superseded: 0,
   });
-  const jobs = emptyJobs();
-  const proposals = emptyJobs();
-  const memories = emptyJobs();
-  const agentMemories = emptyJobs();
-  const entitySyncs = emptyJobs();
-  const applicationSyncs = emptyJobs();
+  const totals = Object.fromEntries(
+    JOB_QUEUES.map((queue) => [queue.key, emptyJobs()])
+  ) as Record<(typeof JOB_QUEUES)[number]["key"], RunDueJobsResult>;
   const addEffects = (batch: typeof effects) => {
     effects.claimed += batch.claimed;
     effects.succeeded += batch.succeeded;
@@ -234,83 +259,25 @@ export async function finalizeDueCrawls(
   // Each claim stays bounded; a tick walks several windows so a recovered
   // worker drains backlog instead of advancing it by one small batch per cron.
   for (let pass = 0; pass < (options.queuePasses ?? 5); pass += 1) {
-    const [
-      batchEffects,
-      batchJobs,
-      batchProposals,
-      batchMemories,
-      batchAgentMemories,
-      batchEntitySyncs,
-      batchApplicationSyncs,
-    ] = await Promise.all([
+    const [batchEffects, batches] = await Promise.all([
       drainTurnEffects(db, { limit: 50, now: options.now }),
-      runDueJobs(
-        { db },
-        { kinds: ["ingest_source"], workerId, limit: 10, now: options.now },
-      ),
-      runDueJobs(
-        { db },
-        {
-          kinds: ["draft_improvement_proposal"],
-          workerId: `${workerId}-proposals`,
-          limit: 10,
-          now: options.now,
-        },
-      ),
-      runDueJobs(
-        { db },
-        {
-          kinds: ["promote_memories"],
-          workerId: `${workerId}-memories`,
-          limit: 20,
-          now: options.now,
-        },
-      ),
-      runDueJobs(
-        { db },
-        {
-          kinds: ["distill_agent_memory"],
-          workerId: `${workerId}-agent-memory`,
-          limit: 20,
-          now: options.now,
-        },
-      ),
-      runDueJobs(
-        { db },
-        {
-          kinds: ["sync_entity_records"],
-          workerId: `${workerId}-entity-sync`,
-          limit: 10,
-          now: options.now,
-        },
-      ),
-      runDueJobs(
-        { db },
-        {
-          kinds: ["sync_application_import"],
-          workerId: `${workerId}-application-sync`,
-          limit: 10,
-          now: options.now,
-        },
+      Promise.all(
+        JOB_QUEUES.map((queue) =>
+          runDueJobs(
+            { db },
+            {
+              kinds: [queue.kind],
+              workerId: `${workerId}${queue.suffix}`,
+              limit: queue.limit,
+              now: options.now,
+            }
+          )
+        )
       ),
     ]);
     addEffects(batchEffects);
-    addJobs(jobs, batchJobs);
-    addJobs(proposals, batchProposals);
-    addJobs(memories, batchMemories);
-    addJobs(agentMemories, batchAgentMemories);
-    addJobs(entitySyncs, batchEntitySyncs);
-    addJobs(applicationSyncs, batchApplicationSyncs);
-    if (
-      batchEffects.claimed +
-        batchJobs.claimed +
-        batchProposals.claimed +
-        batchMemories.claimed +
-        batchAgentMemories.claimed +
-        batchEntitySyncs.claimed +
-        batchApplicationSyncs.claimed ===
-      0
-    ) {
+    batches.forEach((batch, index) => addJobs(totals[JOB_QUEUES[index]!.key], batch));
+    if (batches.reduce((sum, batch) => sum + batch.claimed, batchEffects.claimed) === 0) {
       break;
     }
   }
@@ -355,13 +322,13 @@ export async function finalizeDueCrawls(
   );
   return {
     effects,
-    jobs,
-    proposals,
-    memories,
-    agentMemories,
-    entitySyncs: { ...entitySyncs, enqueued: entityEnqueued.enqueued },
+    jobs: totals.jobs,
+    proposals: totals.proposals,
+    memories: totals.memories,
+    agentMemories: totals.agentMemories,
+    entitySyncs: { ...totals.entitySyncs, enqueued: entityEnqueued.enqueued },
     applicationSyncs: {
-      ...applicationSyncs,
+      ...totals.applicationSyncs,
       enqueued: applicationEnqueued.enqueued,
     },
     crawls: { swept: pending.length, settled, results },
@@ -457,6 +424,31 @@ async function recordSweepAudit(
  * Idempotent because the primitives are: a cleared trace is null and a deleted
  * conversation is gone, so neither matches a second pass.
  */
+/** One retention call's row budget, and how many calls one tick may make per Organization. */
+export const RETENTION_SWEEP_BATCH = 5000;
+export const RETENTION_SWEEP_MAX_BATCHES = 20;
+
+/**
+ * Calls a bounded sweep primitive until a batch comes back short. One
+ * statement over a large backlog ran out the function timeout and made no
+ * progress, night after night; batches commit as they go, so a tick that runs
+ * out keeps what it did and the next one continues.
+ */
+export async function drainRetentionBatches(
+  runBatch: (limit: number) => Promise<number>,
+  options: { batch?: number; maxBatches?: number } = {}
+): Promise<number> {
+  const batch = options.batch ?? RETENTION_SWEEP_BATCH;
+  const maxBatches = options.maxBatches ?? RETENTION_SWEEP_MAX_BATCHES;
+  let total = 0;
+  for (let i = 0; i < maxBatches; i += 1) {
+    const count = await runBatch(batch);
+    total += count;
+    if (count < batch) break;
+  }
+  return total;
+}
+
 async function sweepRetentionPolicies(input: {
   db: ScheduledDeps["db"];
   policies: RetentionPolicy[];
@@ -524,7 +516,8 @@ export async function sweepExpiredTraces(
     now: options.now ?? new Date(),
     policy: "traces",
     errorLabel: "trace sweep failed",
-    run: (organizationId, cutoff) => db.clearExpiredTraces(organizationId, cutoff),
+    run: (organizationId, cutoff) =>
+      drainRetentionBatches((limit) => db.clearExpiredTraces(organizationId, cutoff, limit)),
   });
   return {
     traces: {
@@ -609,8 +602,15 @@ export async function sweepExpiredTranscripts(
     now: options.now ?? new Date(),
     policy: "transcripts",
     errorLabel: "transcript sweep failed",
-    run: (organizationId, cutoff) =>
-      db.deleteExpiredConversations(organizationId, cutoff),
+    // The Conversations, then the Visitor memories distilled from them, under
+    // the same window; the audit row counts both.
+    run: async (organizationId, cutoff) =>
+      (await drainRetentionBatches((limit) =>
+        db.deleteExpiredConversations(organizationId, cutoff, limit)
+      )) +
+      (await drainRetentionBatches((limit) =>
+        db.deleteExpiredMemories(organizationId, cutoff, limit)
+      )),
   });
   return {
     transcripts: {

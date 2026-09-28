@@ -80,6 +80,44 @@ describe("Application Import synchronization", () => {
     ).toEqual([]);
   });
 
+  it("stops a run whose lease was lost during the provider call before it writes anything", async () => {
+    const { applicationImport } = await configuredImport();
+    const connector: ApplicationConnector = {
+      provider: "salesforce",
+      async discoverScopes() {
+        return { scopes: [] };
+      },
+      async synchronize() {
+        // The stall is over; the ledger has reclaimed the job meanwhile.
+        return {
+          artifacts: [],
+          checkpoint: {},
+          refreshedCredentials: { accessToken: "stale-worker-token" },
+        };
+      },
+    };
+    const reserve = vi.spyOn(db, "reserveApplicationKnowledgeBytes");
+    const credentialWrite = vi.spyOn(db, "updateApplicationConnection");
+    let leaseLost = false;
+    // The lease is gone by the time the provider answers.
+    leaseLost = true;
+    await expect(
+      syncApplicationImport({
+        db,
+        organizationId: DEMO_ORG.id,
+        importId: applicationImport.id,
+        connectors: { salesforce: connector },
+        onProgress: async () => {
+          if (leaseLost) throw new Error("Application sync lease was lost");
+        },
+      })
+    ).rejects.toThrow("lease was lost");
+    expect(reserve).not.toHaveBeenCalled();
+    expect(
+      credentialWrite.mock.calls.some(([, patch]) => "sealedCredentials" in (patch ?? {}))
+    ).toBe(false);
+  });
+
   it("runs through the durable job registry", async () => {
     const { applicationImport } = await configuredImport();
     const connector: ApplicationConnector = {

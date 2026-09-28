@@ -82,6 +82,36 @@ export function engagedConversations(
   return conversations.filter((c) => !proactiveOnly.get(c.id));
 }
 
+/**
+ * The time of each conversation's last message, over its whole history. The
+ * SQL reads the same fact from `window_message_facts`, which is unwindowed for
+ * the same reason: a conversation's length is not cut by the date range.
+ */
+export function lastMessageTimes(messages: InsightsMessage[]): Map<string, number> {
+  const last = new Map<string, number>();
+  for (const m of messages) {
+    const at = Date.parse(m.createdAt);
+    if (at > (last.get(m.conversationId) ?? -Infinity)) last.set(m.conversationId, at);
+  }
+  return last;
+}
+
+/**
+ * Seconds from a conversation's start to its last message, or null when it has
+ * none. Clamped at zero: a message stamped a moment before its conversation
+ * (clock skew between writers) is a zero-length conversation, not a negative one.
+ */
+function durationSeconds(c: InboxConversation, lastMessageAt: Map<string, number>): number | null {
+  const last = lastMessageAt.get(c.id);
+  if (last === undefined) return null;
+  return Math.max(0, (last - Date.parse(c.createdAt)) / 1000);
+}
+
+function meanSeconds(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
+}
+
 /** Applies the conversation-level filters (date range + segment facets). */
 export function filterConversations(
   conversations: InboxConversation[],
@@ -141,7 +171,8 @@ export function filterMessages(
 export function computeInsightsStats(
   filtered: InboxConversation[],
   filteredMessages: InsightsMessage[],
-  proactiveMessages?: InsightsMessage[]
+  proactiveMessages?: InsightsMessage[],
+  lastMessageAt: Map<string, number> = lastMessageTimes(filteredMessages)
 ): InsightsStats {
   const total = filtered.length;
   const escalated = filtered.filter((c) => c.metadata.escalated).length;
@@ -213,6 +244,10 @@ export function computeInsightsStats(
       unrated.length > 0 ? Math.round((calm / unrated.length) * 100) : null,
     escalationIntentRate:
       withPreflight > 0 ? Math.round((wantedHuman / withPreflight) * 100) : null,
+    questionsPerConversation: total > 0 ? round1(userMessages / total) : 0,
+    avgConversationSeconds: meanSeconds(
+      filtered.map((c) => durationSeconds(c, lastMessageAt)).filter((d): d is number => d !== null)
+    ),
   };
 }
 
@@ -256,7 +291,8 @@ export function computeInsightsChart(
   filtered: InboxConversation[],
   filteredMessages: InsightsMessage[],
   range: { from: string; to: string; aggregate: ChartAggregate },
-  proactiveMessages?: InsightsMessage[]
+  proactiveMessages?: InsightsMessage[],
+  lastMessageAt: Map<string, number> = lastMessageTimes(filteredMessages)
 ): InsightsChartData {
   const start = new Date(`${range.from}T00:00:00`);
   const end = new Date(`${range.to}T00:00:00`);
@@ -282,6 +318,7 @@ export function computeInsightsChart(
   const positive = zeros();
   const negative = zeros();
   const users = keys.map(() => new Set<string>());
+  const durations = keys.map((): number[] => []);
 
   for (const c of filtered) {
     const i = index.get(keyOf(c.createdAt));
@@ -289,6 +326,8 @@ export function computeInsightsChart(
     convCount[i] += 1;
     if (c.metadata.escalated) escalations[i] += 1;
     users[i].add(userKey(c));
+    const duration = durationSeconds(c, lastMessageAt);
+    if (duration !== null) durations[i].push(duration);
   }
   for (const m of filteredMessages) {
     const i = index.get(keyOf(m.createdAt));
@@ -323,6 +362,11 @@ export function computeInsightsChart(
     "Messages / Conversation": convCount.map((c, i) =>
       c > 0 ? round1((aiAnswers[i] + userMessages[i]) / c) : 0
     ),
+    "Questions / Conversation": convCount.map((c, i) =>
+      c > 0 ? round1(userMessages[i] / c) : 0
+    ),
+    // Seconds, bucketed by when the conversation started, like its count.
+    "Avg. conversation time": durations.map((d) => meanSeconds(d) ?? 0),
     "Resolution rate": convCount.map((c, i) =>
       c > 0 ? Math.round(((c - escalations[i]) / c) * 100) : 0
     ),
@@ -453,6 +497,7 @@ export function computeInsightsOverview(
     filters.from,
     filters.to
   );
+  const lastMessageAt = lastMessageTimes(messages);
   const assistantTitleById = new Map(assistants.map((a) => [a.id, a.title]));
   const channelNameByHost = new Map<string, string>();
   for (const channel of channels) {
@@ -469,8 +514,8 @@ export function computeInsightsOverview(
     }, new Map<string, string>());
 
   return {
-    stats: computeInsightsStats(filtered, filteredMessages, proactiveMessages),
-    chart: computeInsightsChart(filtered, filteredMessages, range, proactiveMessages),
+    stats: computeInsightsStats(filtered, filteredMessages, proactiveMessages, lastMessageAt),
+    chart: computeInsightsChart(filtered, filteredMessages, range, proactiveMessages, lastMessageAt),
     assistantBreakdown: computeBreakdown(
       filtered,
       range,

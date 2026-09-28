@@ -11,10 +11,10 @@ import type { TrendDirection } from "./types";
  * Server-component safe, no client hooks, sparkline is plain CSS bars.
  */
 export interface KpiStatCardProps {
-  label: string;
-  value: string | number;
-  /** Small unit/suffix rendered after the value (e.g. "orders"). */
-  unit?: string;
+  /** Plain text in practice; a node lets a caller roll a part of it. */
+  label: ReactNode;
+  /** A formatted string, or a node such as an animated number. */
+  value: ReactNode;
   /** Raw values for the mini sparkline; omitted → no sparkline. */
   sparkline?: readonly number[];
   /** Delta footer text (e.g. "+12% vs previous 30 days"). */
@@ -22,7 +22,6 @@ export interface KpiStatCardProps {
   deltaDirection?: TrendDirection;
   /** Secondary hint line when no delta applies. */
   hint?: string;
-  className?: string;
 }
 
 function Sparkline({ values }: { values: readonly number[] }) {
@@ -57,12 +56,10 @@ function downsample(values: readonly number[], buckets: number): number[] {
 export function KpiStatCard({
   label,
   value,
-  unit,
   sparkline,
   delta,
   deltaDirection = "up",
   hint,
-  className,
 }: KpiStatCardProps) {
   const DeltaIcon =
     deltaDirection === "down"
@@ -78,12 +75,7 @@ export function KpiStatCard({
         : "text-emerald-600";
 
   return (
-    <div
-      className={cn(
-        "flex flex-col justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-[0_4px_16px_rgba(18,18,18,0.04)]",
-        className,
-      )}
-    >
+    <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-[0_4px_16px_rgba(18,18,18,0.04)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-mono text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
@@ -91,11 +83,6 @@ export function KpiStatCard({
           </p>
           <p className="mt-2 truncate font-mono text-2xl font-bold tracking-tight tabular-nums">
             {value}
-            {unit && (
-              <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-                {unit}
-              </span>
-            )}
           </p>
         </div>
         {sparkline && sparkline.length > 1 && (

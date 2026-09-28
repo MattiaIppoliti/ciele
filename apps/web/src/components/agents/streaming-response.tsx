@@ -1,18 +1,12 @@
 "use client";
 // beui.dev/components/agents/streaming-response
 
-import { RotateCcw } from "lucide-react";
 import { ChevronDown } from "lucide-react";
 // Icon data for the copy mark, which reshapes into the check on click.
 import { Check as CheckData, Copy as CopyData } from "lucide";
 import { MorphIcon } from "morphicons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  type ReactNode,
-  useCallback,
-  useId,
-  useState,
-} from "react";
+import { type ReactNode, useId, useState } from "react";
 import {
   type CitationItem,
   CitationList,
@@ -23,6 +17,7 @@ import { useCopied } from "@/lib/hooks/use-copied";
 import { EASE_OUT, SPRING_PRESS, SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import type { FeedbackReactionId } from "@agent-hub/core";
 
 export type StreamingResponseStatus = "streaming" | "complete" | "error";
@@ -34,17 +29,9 @@ export interface StreamingResponseProps {
   status?: StreamingResponseStatus;
   /** Plain-text value copied by the built-in copy action. */
   copyText?: string;
-  /** Overrides the built-in clipboard action. */
-  onCopy?: () => void | Promise<void>;
-  onRetry?: () => void;
   /** Optional sources shown as a compact footer disclosure after streaming. */
   sources?: CitationItem[];
-  sourcesOpen?: boolean;
-  defaultSourcesOpen?: boolean;
-  onSourcesOpenChange?: (open: boolean) => void;
-  sourceIdPrefix?: string;
   feedback?: StreamingResponseFeedback;
-  defaultFeedback?: StreamingResponseFeedback;
   onFeedbackChange?: (feedback: StreamingResponseFeedback) => void;
   /** Set false when a surrounding conversation log announces streamed text. */
   announce?: boolean;
@@ -58,8 +45,6 @@ export interface StreamingResponseProps {
    */
   showFeedback?: boolean;
   className?: string;
-  contentClassName?: string;
-  actionsClassName?: string;
   /** Optional actions beside copy and feedback, such as reading aloud. */
   extraActions?: ReactNode;
 }
@@ -100,62 +85,40 @@ export function StreamingResponse({
   children,
   status = "streaming",
   copyText,
-  onCopy,
-  onRetry,
   sources = [],
-  sourcesOpen,
-  defaultSourcesOpen = false,
-  onSourcesOpenChange,
-  sourceIdPrefix,
   feedback,
-  defaultFeedback = null,
   onFeedbackChange,
   announce = true,
   showActions = true,
   showFeedback = true,
   className,
-  contentClassName,
-  actionsClassName,
   extraActions,
 }: StreamingResponseProps) {
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
   const [copied, markCopied] = useCopied();
   const [internalFeedback, setInternalFeedback] =
-    useState<StreamingResponseFeedback>(defaultFeedback);
-  const [internalSourcesOpen, setInternalSourcesOpen] =
-    useState(defaultSourcesOpen);
+    useState<StreamingResponseFeedback>(null);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const currentFeedback = feedback === undefined ? internalFeedback : feedback;
-  const currentSourcesOpen = sourcesOpen ?? internalSourcesOpen;
   const streaming = status === "streaming";
   const complete = status === "complete";
-  const canCopy = Boolean(copyText || onCopy);
+  const canCopy = Boolean(copyText);
   const hasSources = sources.length > 0;
   const shouldShowActions =
-    showActions && !streaming && (canCopy || onRetry || complete || hasSources);
+    showActions && !streaming && (canCopy || complete || hasSources);
   const sourcesContentId = `${baseId}-sources`;
-  const resolvedSourcePrefix =
-    sourceIdPrefix ?? `response-source-${baseId.replace(/:/g, "")}`;
+  const sourcePrefix = `response-source-${baseId.replace(/:/g, "")}`;
 
-  const handleCopy = useCallback(async () => {
-    if (onCopy) await onCopy();
-    else if (copyText) await navigator.clipboard?.writeText(copyText);
-
+  const handleCopy = async () => {
+    if (copyText) await navigator.clipboard?.writeText(copyText);
     markCopied();
-  }, [copyText, onCopy, markCopied]);
+  };
 
   const setFeedback = (value: StreamingResponseFeedback) => {
     if (feedback === undefined) setInternalFeedback(value);
     onFeedbackChange?.(value);
   };
-
-  const setSourcesOpen = useCallback(
-    (next: boolean) => {
-      if (sourcesOpen === undefined) setInternalSourcesOpen(next);
-      onSourcesOpenChange?.(next);
-    },
-    [onSourcesOpenChange, sourcesOpen],
-  );
 
   return (
     <div
@@ -165,10 +128,7 @@ export function StreamingResponse({
     >
       <div
         aria-live={announce ? "polite" : "off"}
-        className={cn(
-          "text-sm leading-6 text-foreground/90 [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-4 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_p+p]:mt-3 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-muted/45 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5",
-          contentClassName,
-        )}
+        className="text-sm leading-6 text-foreground/90 [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-4 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_p+p]:mt-3 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-muted/45 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
       >
         {children}
       </div>
@@ -182,7 +142,7 @@ export function StreamingResponse({
             transition={{ duration: reduce ? 0.12 : 0.22, ease: EASE_OUT }}
             className="mt-3"
           >
-            <div className={cn("flex items-center gap-0.5", actionsClassName)}>
+            <div className="flex items-center gap-0.5">
               {canCopy ? (
                 <ResponseAction
                   label={copied ? "Copied" : "Copy response"}
@@ -192,11 +152,6 @@ export function StreamingResponse({
                 </ResponseAction>
               ) : null}
               {extraActions}
-              {onRetry ? (
-                <ResponseAction label="Retry response" onClick={onRetry}>
-                  <RotateCcw className="size-3.5" />
-                </ResponseAction>
-              ) : null}
               {complete && showFeedback ? (
                 <EmojiFeedback
                   value={currentFeedback}
@@ -206,19 +161,20 @@ export function StreamingResponse({
               {hasSources ? (
                 <button
                   type="button"
-                  aria-expanded={currentSourcesOpen}
+                  aria-expanded={sourcesOpen}
                   aria-controls={sourcesContentId}
                   data-foley-toggle=""
-                  onClick={() => setSourcesOpen(!currentSourcesOpen)}
+                  onClick={() => setSourcesOpen(!sourcesOpen)}
                   className="group ml-1 inline-flex min-h-7 items-center gap-2 rounded-md px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <CitationStack citations={sources} />
-                  <span className="tabular-nums">
-                    {sources.length} {sources.length === 1 ? "source" : "sources"}
+                  <span>
+                    <RollingNumber value={sources.length} />{" "}
+                    {sources.length === 1 ? "source" : "sources"}
                   </span>
                   <motion.span
                     aria-hidden="true"
-                    animate={{ rotate: currentSourcesOpen ? 180 : 0 }}
+                    animate={{ rotate: sourcesOpen ? 180 : 0 }}
                     transition={reduce ? { duration: 0 } : SPRING_SWAP}
                     className="text-muted-foreground/50 group-hover:text-muted-foreground"
                   >
@@ -231,11 +187,11 @@ export function StreamingResponse({
             {hasSources ? (
               <AgentDisclosure
                 id={sourcesContentId}
-                open={currentSourcesOpen}
+                open={sourcesOpen}
               >
                 <CitationList
                   citations={sources}
-                  idPrefix={resolvedSourcePrefix}
+                  idPrefix={sourcePrefix}
                   className="mt-2 rounded-xl bg-muted p-2"
                 />
               </AgentDisclosure>

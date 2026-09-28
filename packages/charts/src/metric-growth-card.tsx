@@ -20,7 +20,7 @@ import {
 } from "motion/react";
 import { BarChart3, LineChart, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@agent-hub/ui";
-import { APPEARANCE, type AppearanceTokens } from "./appearances";
+import { APPEARANCE } from "./appearances";
 import { DOT_CELL_SIZE, DotChart } from "./dot-chart";
 import { clamp } from "./helpers";
 import type {
@@ -53,7 +53,6 @@ interface SwitchProps {
   onCheckedChange: (checked: boolean) => void;
   id?: string;
   ariaLabel?: string;
-  trackOffClass: string;
 }
 
 function Switch({
@@ -61,7 +60,6 @@ function Switch({
   onCheckedChange,
   id,
   ariaLabel,
-  trackOffClass,
 }: SwitchProps) {
   return (
     <button
@@ -76,7 +74,7 @@ function Switch({
         "transition-colors duration-200 ease-out",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#34c759]",
         "active:scale-[0.97]",
-        checked ? "bg-[#34c759]" : trackOffClass,
+        checked ? "bg-[#34c759]" : APPEARANCE.switchTrackOff,
       )}
     >
       <span
@@ -97,15 +95,15 @@ function Switch({
    Empty state
    ═══════════════════════════════════════════════════════════════ */
 
-function EmptyState({ appearance }: { appearance: AppearanceTokens }) {
+function EmptyState() {
   return (
     <div
       role="status"
       className="flex flex-col items-center justify-center gap-2 py-10 text-center"
     >
-      <LineChart className={cn("h-8 w-8", appearance.subtext)} />
-      <p className={cn("text-sm font-medium", appearance.text)}>No data yet</p>
-      <p className={cn("text-xs", appearance.subtext)}>
+      <LineChart className={cn("h-8 w-8", APPEARANCE.subtext)} />
+      <p className={cn("text-sm font-medium", APPEARANCE.text)}>No data yet</p>
+      <p className={cn("text-xs", APPEARANCE.subtext)}>
         Once data arrives, the trend will appear here.
       </p>
     </div>
@@ -117,7 +115,6 @@ function EmptyState({ appearance }: { appearance: AppearanceTokens }) {
    ═══════════════════════════════════════════════════════════════ */
 
 interface LegendProps {
-  appearance: AppearanceTokens;
   compareLabel?: string;
   currentLabel?: string;
   lineMode: boolean;
@@ -126,7 +123,6 @@ interface LegendProps {
 }
 
 function Legend({
-  appearance,
   compareLabel,
   currentLabel,
   lineMode,
@@ -140,7 +136,7 @@ function Legend({
     <div
       className={cn(
         "flex items-start justify-between gap-x-4 pt-3 text-[12px] font-medium",
-        appearance.subtext,
+        APPEARANCE.subtext,
       )}
     >
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -149,7 +145,7 @@ function Legend({
             <span
               aria-hidden
               className="block h-[2px] w-4 shrink-0 rounded-full"
-              style={{ background: appearance.primaryLineStroke }}
+              style={{ background: APPEARANCE.primaryLineStroke }}
             />
             <span>{currentLabel}</span>
           </div>
@@ -159,7 +155,7 @@ function Legend({
             <span
               aria-hidden
               className="block h-[2px] w-4 shrink-0 rounded-full"
-              style={{ background: appearance.compareLineStroke }}
+              style={{ background: APPEARANCE.compareLineStroke }}
             />
             <span>{compareLabel}</span>
           </div>
@@ -179,7 +175,6 @@ function Legend({
           checked={lineMode}
           onCheckedChange={onLineModeChange}
           ariaLabel="Toggle compare overlay"
-          trackOffClass={appearance.switchTrackOff}
         />
       </label>
     </div>
@@ -232,16 +227,17 @@ export function MetricGrowthCard({
 }: MetricGrowthCardProps) {
   const [lineMode, setLineMode] = useState(false);
   const switchId = useId();
-  const appearance = APPEARANCE;
   const prefersReducedMotion = useReducedMotion();
   const disableAnimation = prefersReducedMotion ?? false;
+  const enterTransition = disableAnimation
+    ? { duration: 0 }
+    : TOOLTIP_ENTER_SPRING;
 
   const effectiveStatus: DotChartStatus =
     statusProp ?? (data.length === 0 ? "empty" : "idle");
 
   const chartRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
   const [chartWidth, setChartWidth] = useState(0);
   const [tooltipWidth, setTooltipWidth] = useState(0);
   const [tooltipSide, setTooltipSide] = useState<"top" | "bottom">("top");
@@ -270,11 +266,7 @@ export function MetricGrowthCard({
     setIsHovering(false);
   }, []);
 
-  const defaultIndex = clamp(
-    Math.max(data.length - 2, 0),
-    0,
-    Math.max(data.length - 1, 0),
-  );
+  const defaultIndex = Math.max(data.length - 2, 0);
 
   const visibleDataPoint = activePoint?.dataPoint ?? data[defaultIndex] ?? null;
   const tooltipValue = visibleDataPoint?.value ?? 0;
@@ -361,17 +353,16 @@ export function MetricGrowthCard({
   const trendClasses =
     trendDirection === "down"
       ? cn(
-          appearance.trendDownBorder,
-          appearance.trendDownBg,
-          appearance.trendDownText,
+          APPEARANCE.trendDownBorder,
+          APPEARANCE.trendDownBg,
+          APPEARANCE.trendDownText,
         )
       : trendDirection === "flat"
-        ? cn("border-current/20", appearance.subtext)
-        : cn(appearance.trendBorder, appearance.trendBg, appearance.trendText);
+        ? cn("border-current/20", APPEARANCE.subtext)
+        : cn(APPEARANCE.trendBorder, APPEARANCE.trendBg, APPEARANCE.trendText);
 
   return (
     <div
-      ref={cardRef}
       className={cn(
         // overflow-clip (not overflow-hidden), both visually clip descendants,
         // but clip also prevents the card from becoming a scroll container.
@@ -380,21 +371,21 @@ export function MetricGrowthCard({
         // to scrollWidth and focus-in-view auto-scroll can shift the entire
         // content horizontally, breaking the legend alignment.
         "relative w-full select-none overflow-clip rounded-2xl p-4 md:p-5",
-        appearance.card,
+        APPEARANCE.card,
       )}
     >
       <div
         aria-hidden
         className={cn(
           "pointer-events-none absolute -top-15 -right-15 z-0 size-30 blur-3xl",
-          appearance.glow,
+          APPEARANCE.glow,
         )}
       />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
-          backgroundImage: `linear-gradient(${appearance.gridLineColor} 1px, transparent 1px), linear-gradient(90deg, ${appearance.gridLineColor} 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(${APPEARANCE.gridLineColor} 1px, transparent 1px), linear-gradient(90deg, ${APPEARANCE.gridLineColor} 1px, transparent 1px)`,
           backgroundSize: "20px 20px",
         }}
       />
@@ -404,15 +395,15 @@ export function MetricGrowthCard({
           <div
             className={cn(
               "flex size-8 items-center justify-center rounded-lg",
-              appearance.iconBg,
+              APPEARANCE.iconBg,
             )}
           >
-            <BarChart3 className={cn("h-5 w-5", appearance.iconFg)} />
+            <BarChart3 className={cn("h-5 w-5", APPEARANCE.iconFg)} />
           </div>
           <span
             className={cn(
               "truncate text-base font-light tracking-tight md:text-lg",
-              appearance.text,
+              APPEARANCE.text,
             )}
           >
             {title}
@@ -424,7 +415,7 @@ export function MetricGrowthCard({
             <span
               className={cn(
                 "font-mono text-2xl font-bold leading-none tabular-nums",
-                appearance.text,
+                APPEARANCE.text,
               )}
             >
               {value}
@@ -444,7 +435,7 @@ export function MetricGrowthCard({
                 </div>
               )}
               {trendLabel != null && (
-                <span className={cn("truncate text-xs", appearance.subtext)}>
+                <span className={cn("truncate text-xs", APPEARANCE.subtext)}>
                   {trendLabel}
                 </span>
               )}
@@ -454,7 +445,7 @@ export function MetricGrowthCard({
       </div>
 
       <div ref={chartRef} className="relative">
-        {effectiveStatus === "empty" && <EmptyState appearance={appearance} />}
+        {effectiveStatus === "empty" && <EmptyState />}
 
         {effectiveStatus === "idle" && (
           <>
@@ -462,7 +453,7 @@ export function MetricGrowthCard({
               aria-hidden
               className={cn(
                 "pointer-events-none absolute inset-y-0 z-0 w-px border-l border-dashed",
-                appearance.dashedLine,
+                APPEARANCE.dashedLine,
               )}
               style={{ left: lineX }}
             />
@@ -481,9 +472,7 @@ export function MetricGrowthCard({
                       y: isHovering ? (tooltipSide === "top" ? -12 : 12) : 0,
                     }
               }
-              transition={
-                disableAnimation ? { duration: 0 } : TOOLTIP_ENTER_SPRING
-              }
+              transition={enterTransition}
             >
               <motion.div
                 key="tooltip"
@@ -492,9 +481,7 @@ export function MetricGrowthCard({
                 }
                 animate={{ y: 0, scale: 1, opacity: 1 }}
                 exit={{ y: 6, scale: 0.94, opacity: 0 }}
-                transition={
-                  disableAnimation ? { duration: 0 } : TOOLTIP_ENTER_SPRING
-                }
+                transition={enterTransition}
               >
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
@@ -514,8 +501,8 @@ export function MetricGrowthCard({
                     }
                     className={cn(
                       "flex flex-col gap-0.5 rounded-xl px-3 py-1.5",
-                      appearance.tooltipBg,
-                      appearance.tooltipShadow,
+                      APPEARANCE.tooltipBg,
+                      APPEARANCE.tooltipShadow,
                     )}
                   >
                     {isHovering && tooltipLabel != null && (
@@ -525,14 +512,10 @@ export function MetricGrowthCard({
                         initial={disableAnimation ? false : { opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={
-                          disableAnimation
-                            ? { duration: 0 }
-                            : TOOLTIP_ENTER_SPRING
-                        }
+                        transition={enterTransition}
                         className={cn(
                           "text-[11px] font-medium tracking-tight uppercase",
-                          appearance.tooltipSub,
+                          APPEARANCE.tooltipSub,
                         )}
                       >
                         {tooltipLabel}
@@ -540,7 +523,7 @@ export function MetricGrowthCard({
                     )}
 
                     <NumberFlow
-                      className={cn("text-sm font-bold", appearance.tooltipText)}
+                      className={cn("text-sm font-bold", APPEARANCE.tooltipText)}
                       format={TOOLTIP_FORMAT}
                       locales="en-US"
                       value={tooltipValue}
@@ -551,7 +534,7 @@ export function MetricGrowthCard({
                       <NumberFlow
                         className={cn(
                           "text-[12px] font-medium",
-                          appearance.tooltipSub,
+                          APPEARANCE.tooltipSub,
                         )}
                         format={TOOLTIP_FORMAT}
                         locales="en-US"
@@ -572,14 +555,7 @@ export function MetricGrowthCard({
                 defaultActiveIndex={defaultIndex}
                 onActivePointChange={handleActivePointChange}
                 onPointerLeave={handlePointerLeave}
-                idleColor={appearance.idleDot}
-                hoverColor={appearance.hoverDot}
-                showPrimaryLine={lineMode}
-                showCompareLine={lineMode}
-                primaryLineStroke={appearance.primaryLineStroke}
-                compareLineStroke={appearance.compareLineStroke}
-                compareLineFill={appearance.compareLineFill}
-                status={effectiveStatus}
+                showLines={lineMode}
                 disableAnimation={disableAnimation}
                 ariaLabel={ariaLabel}
               />
@@ -589,7 +565,6 @@ export function MetricGrowthCard({
 
         {hasCompare && effectiveStatus === "idle" && (
           <Legend
-            appearance={appearance}
             compareLabel={compareLabel}
             currentLabel={currentLabel}
             lineMode={lineMode}

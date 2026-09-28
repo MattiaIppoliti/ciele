@@ -6,7 +6,9 @@ import { Skeleton } from "@agent-hub/ui";
  */
 export function DocumentSkeleton() {
   return (
-    <div className="flex h-full flex-col" aria-busy="true">
+    // `@container`, like the view it stands in for: without it the `@2xl`
+    // columns below never apply and the skeleton stacks where the page won't.
+    <div className="@container flex h-full flex-col" aria-busy="true">
       <header className="shrink-0 px-6 pt-5 pb-3">
         <Skeleton className="mb-3 h-4 w-48" />
         <Skeleton className="h-8 w-80" />

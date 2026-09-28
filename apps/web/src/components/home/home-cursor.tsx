@@ -143,7 +143,6 @@ export function HomeCursor() {
     // Snappy, critically-damped spring, near-1:1 with the real pointer and a
     // hair of smoothing, no float/lag.
     <Cursor
-      attachToParent
       visible={visible}
       variants={{
         initial: { scale: 0.3, opacity: 0 },

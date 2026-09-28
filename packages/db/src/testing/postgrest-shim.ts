@@ -283,9 +283,11 @@ export class PgliteRest {
         type: string;
         retset: boolean;
         retcomposite: boolean;
+        defaults: number;
       }>(
         `select p.oid::text as "functionOid", a.name, a.type,
-                p.proretset as retset, (t.typtype = 'c') as retcomposite
+                p.proretset as retset, (t.typtype = 'c') as retcomposite,
+                p.pronargdefaults as defaults
            from pg_proc p
            join pg_type t on t.oid = p.prorettype
            join pg_namespace n on n.oid = p.pronamespace
@@ -310,15 +312,32 @@ export class PgliteRest {
         overloads.set(row.functionOid, rows);
       }
       const providedNames = Object.keys(args);
-      const selected = [...overloads.values()].find((rows) => {
+      // PostgREST resolves a call that omits trailing parameters with
+      // defaults, so the shim does too: every provided name is a parameter,
+      // and every omitted one is among the trailing defaulted ones.
+      const matchingPrefix = (rows: typeof proc.rows): number | null => {
         const names = rows.flatMap((row) => row.name == null ? [] : [row.name]);
-        return names.length === providedNames.length
-          && names.every((name) => Object.hasOwn(args, name));
-      });
+        if (!providedNames.every((name) => names.includes(name))) return null;
+        const defaults = Number(rows[0]?.defaults ?? 0);
+        let prefix = names.length;
+        while (prefix > 0 && !Object.hasOwn(args, names[prefix - 1]!)) prefix -= 1;
+        const omittedInside = names.slice(0, prefix).some((name) => !Object.hasOwn(args, name));
+        if (omittedInside || names.length - prefix > defaults) return null;
+        return prefix;
+      };
+      let selected: typeof proc.rows | undefined;
+      let prefix = 0;
+      for (const rows of overloads.values()) {
+        const matched = matchingPrefix(rows);
+        if (matched === null) continue;
+        selected = rows;
+        prefix = matched;
+        break;
+      }
       if (!selected) {
         throw new ShimError(`function public.${fn} does not exist`, "42883");
       }
-      const inArgs = selected.filter((r) => r.name != null);
+      const inArgs = selected.filter((r) => r.name != null).slice(0, prefix);
       const names = inArgs.map((r) => r.name);
       const types = inArgs.map((r) => r.type);
       const row = selected[0];

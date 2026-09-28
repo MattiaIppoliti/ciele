@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { CONNECTOR_FILENAME } from "./src/lib/local-connector-installer";
+
+const appDir = dirname(fileURLToPath(import.meta.url));
 
 // The filename comes from the same constant the runtime route reads, so a
 // connector bump can never leave the trace list pointing at a stale version.
@@ -15,6 +19,12 @@ if (!existsSync(connectorArtifact)) {
 }
 
 const nextConfig: NextConfig = {
+  // Pin the workspace root. On machines with a parent package-lock.json,
+  // Next can otherwise mistake that directory for the workspace root and
+  // produce a different build from Vercel's repository-root build.
+  turbopack: {
+    root: resolve(appDir, "../.."),
+  },
   // Self-contained server bundle for the Docker image (#439): `next build`
   // traces every runtime file into .next/standalone, so the container ships
   // node_modules-free (see apps/web/Dockerfile). No effect on Vercel deploys.

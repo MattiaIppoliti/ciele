@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { isSupabaseConfigured } from "@agent-hub/db";
 import type { ObjectAccessObjectKind } from "@agent-hub/core";
 import { requireMember } from "@/lib/authz";
-import { CAPABILITY_GUARDS } from "@/lib/rbac";
+import { canEdit } from "@/lib/rbac";
 import {
   deliverObject,
   objectAccessLedger,
@@ -66,7 +66,7 @@ export async function serveAdminDownload(
 
   // Checked here rather than by `requireMember("edit")`, which throws: a
   // refused download should be a 403 with a ledger row, not a 500 with none.
-  if (!CAPABILITY_GUARDS.edit(session.role)) {
+  if (!canEdit(session.role)) {
     await recordObjectAccess({ ...ledger, result: "refused" });
     return new Response("Forbidden", { status: 403 });
   }

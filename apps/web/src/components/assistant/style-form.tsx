@@ -32,6 +32,8 @@ import {
   resolveWidgetStyle,
 } from "@/lib/widget-style";
 import { cn } from "@/lib/utils";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 /**
  * The SETUP Style section (§4.7 of the reference map): Colors, launcher
@@ -84,9 +86,15 @@ export function StyleForm({
   );
   const [draft, setDraft] = React.useState<WidgetStyle>(saved);
   const [isPending, startTransition] = React.useTransition();
+  const fieldId = React.useId();
+  const cornerRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const resolved = resolveWidgetStyle(draft);
+
+  // A reload or closed tab would drop the unsaved style; the browser's own
+  // "Leave site?" prompt is the guard. In-app navigation is not covered.
+  useUnsavedChanges({ dirty });
 
   const patch = (next: Partial<WidgetStyle>) =>
     setDraft((current) => {
@@ -101,8 +109,20 @@ export function StyleForm({
 
   function save() {
     startTransition(async () => {
-      await updateAssistantAction(assistant.id, { style: draft });
-      toast.success("Widget style saved, publish to make it live");
+      try {
+        await updateAssistantAction(assistant.id, { style: draft });
+        toast.success("Widget style saved, publish to make it live");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not save the widget style");
+      }
+    });
+  }
+
+  function pickCorner(corner: WidgetCorner) {
+    patch({
+      corner,
+      // Keep the legacy field coherent for pre-corner readers.
+      position: corner.endsWith("left") ? "left" : "right",
     });
   }
 
@@ -214,6 +234,7 @@ export function StyleForm({
         <Card size="sm" className="mt-3 flex-row items-center justify-between gap-4 p-4">
           <span className="text-sm">Show launch button on mobile screen sizes</span>
           <Switch
+            aria-label="Show launch button on mobile screen sizes"
             checked={resolved.showOnMobile}
             disabled={!canEdit}
             onCheckedChange={(checked) =>
@@ -276,22 +297,35 @@ export function StyleForm({
           aria-label="Launcher corner"
           className="mt-4 grid gap-3 md:grid-cols-2"
         >
-          {CORNERS.map((corner) => {
+          {CORNERS.map((corner, index) => {
             const selected = resolved.corner === corner.value;
             return (
               <button
                 key={corner.value}
+                ref={(el) => {
+                  cornerRefs.current[index] = el;
+                }}
                 type="button"
                 role="radio"
                 aria-checked={selected}
+                // Roving tab stop, as a native radio group has: Tab lands on
+                // the checked corner, the arrow keys move and select.
+                tabIndex={selected ? 0 : -1}
                 disabled={!canEdit}
-                onClick={() =>
-                  patch({
-                    corner: corner.value,
-                    // Keep the legacy field coherent for pre-corner readers.
-                    position: corner.value.endsWith("left") ? "left" : "right",
-                  })
-                }
+                onClick={() => pickCorner(corner.value)}
+                onKeyDown={(event) => {
+                  const step =
+                    event.key === "ArrowRight" || event.key === "ArrowDown"
+                      ? 1
+                      : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                        ? -1
+                        : 0;
+                  if (!step) return;
+                  event.preventDefault();
+                  const next = (index + step + CORNERS.length) % CORNERS.length;
+                  pickCorner(CORNERS[next]!.value);
+                  cornerRefs.current[next]?.focus();
+                }}
                 className={cn(
                   "bg-muted/50 flex items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
                   selected
@@ -323,7 +357,7 @@ export function StyleForm({
         </p>
         <div className="mt-3 space-y-4">
           <div className="space-y-2">
-            <Label>Font family</Label>
+            <Label htmlFor={`${fieldId}-font-family`}>Font family</Label>
             <Select
               value={draft.fontFamily ?? ""}
               onValueChange={(value) =>
@@ -331,7 +365,7 @@ export function StyleForm({
               }
               disabled={!canEdit}
             >
-              <SelectTrigger size="sm" className="max-w-md">
+              <SelectTrigger id={`${fieldId}-font-family`} size="sm" className="max-w-md">
                 <SelectValue>
                   {(v: string) => v || "Default (inherit)"}
                 </SelectValue>
@@ -362,7 +396,7 @@ export function StyleForm({
             </Card>
           </div>
           <div className="space-y-2">
-            <Label>Font size</Label>
+            <Label htmlFor={`${fieldId}-font-size`}>Font size</Label>
             <Select
               value={String(resolved.fontSize)}
               onValueChange={(value) => {
@@ -374,7 +408,7 @@ export function StyleForm({
               }}
               disabled={!canEdit}
             >
-              <SelectTrigger size="sm" className="max-w-md">
+              <SelectTrigger id={`${fieldId}-font-size`} size="sm" className="max-w-md">
                 <SelectValue>
                   {(v: string) =>
                     Number(v) === WIDGET_STYLE_DEFAULTS.fontSize
@@ -427,13 +461,12 @@ export function StyleForm({
       {/* Aligned with the sections, which the rail indents past its dots. */}
       <div className="flex justify-end pl-10">
         <Button onClick={save} disabled={isPending || !dirty || !canEdit}>
-          Save
+          <RollInText text={isPending ? "Saving…" : "Save"} />
         </Button>
       </div>
     </div>
   );
 }
-
 
 /**
  * One color row in the reference's shape: `#` prefix + hex text + swatch,
@@ -466,6 +499,7 @@ function ColorCard({
     effective.replace(/^#/, "").toUpperCase()
   );
   const [lastEffective, setLastEffective] = React.useState(effective);
+  const hexValid = /^[0-9a-fA-F]{6}$/.test(hexDraft.trim());
   if (effective !== lastEffective) {
     setLastEffective(effective);
     setHexDraft(effective.replace(/^#/, "").toUpperCase());
@@ -486,7 +520,9 @@ function ColorCard({
             aria-label={`${label} color`}
             value={hexDraft}
             disabled={!canEdit}
+            autoComplete="off"
             spellCheck={false}
+            aria-invalid={hexValid ? undefined : true}
             className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent font-mono text-xs uppercase shadow-none focus-visible:ring-0"
             onChange={(e) => {
               const raw = e.target.value;
@@ -497,10 +533,14 @@ function ColorCard({
             }}
             onBlur={() => setHexDraft(effective.replace(/^#/, "").toUpperCase())}
           />
+          {/* A pointer shortcut to the pencil's picker. Out of the tab order
+              and the accessibility tree, or keyboard and screen-reader users
+              meet "Edit color" twice in a row. */}
           <button
             type="button"
             disabled={!canEdit}
-            aria-label={`Edit ${label} color`}
+            tabIndex={-1}
+            aria-hidden
             onClick={() => setPickerOpen(true)}
             className="mx-2 shrink-0 self-center rounded-full disabled:cursor-not-allowed"
           >
@@ -520,7 +560,7 @@ function ColorCard({
             <Pencil className="size-4" />
           </PopoverTrigger>
           <PopoverContent align="end" className="w-auto p-3">
-            <ColorPicker alpha={false} value={effective} onChange={onChange} />
+            <ColorPicker value={effective} onChange={onChange} />
           </PopoverContent>
         </Popover>
         <Button
@@ -553,11 +593,13 @@ function PxField({
   canEdit: boolean;
   onChange: (value: number | undefined) => void;
 }) {
+  const id = React.useId();
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       <div className="flex items-center gap-2">
         <Input
+          id={id}
           type="number"
           inputMode="numeric"
           min={limits.min}
@@ -617,12 +659,18 @@ function IconUploadCard({
       toast.error("Icon too large, keep it under 64KB");
       return;
     }
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
+    let dataUrl: string;
+    try {
+      dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+    } catch {
+      toast.error("Could not read that file");
+      return;
+    }
     // Dimension gate (skipped for SVG, which scales losslessly anyway).
     if (!file.type.includes("svg")) {
       const okSize = await new Promise<boolean>((resolve) => {

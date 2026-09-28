@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import type { RoutineCadence, TeammateRoutine } from "@agent-hub/core";
 import { ROUTINE_CADENCES, TEAMMATE_ROUTINE_CAP } from "@agent-hub/core";
 import { Button, Input, Label } from "@agent-hub/ui";
@@ -21,6 +21,13 @@ import {
   updateRoutineAction,
 } from "@/app/(admin)/teammates/actions";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { onRadioKeyDown } from "@/components/teammates/radio-keys";
+
+const NOOP_SUBSCRIBE = () => () => {};
+/** The current minute: stable between renders, so the store never loops. */
+const currentMinute = () => Math.floor(Date.now() / 60_000);
+/** The server has no "now" worth rendering relative times from. */
+const noMinute = () => null;
 
 /**
  * Standing instructions this Teammate carries out on its own (#772).
@@ -48,9 +55,11 @@ export function RoutinesPanel({
   const [hour, setHour] = useState(8);
   const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
-  // Rendered once per mount rather than per row: every relative time in the
-  // panel should be measured from the same moment.
-  const [now] = useState(() => new Date());
+  // One moment for every row, read only after hydration: the server's clock and
+  // the browser's disagree, and "in 3 hours" rendered on both is a hydration
+  // mismatch waiting for a slow response. The first paint holds the line empty.
+  const minute = useSyncExternalStore(NOOP_SUBSCRIBE, currentMinute, noMinute);
+  const now = minute === null ? null : new Date(minute * 60_000);
   const blocked = capReason(routines.length, TEAMMATE_ROUTINE_CAP);
 
   function run(work: () => Promise<unknown>, done: string) {
@@ -106,7 +115,16 @@ export function RoutinesPanel({
               {routine.lastStatus === "failed" && routine.enabled && (
                 <AlertTriangle className="size-3 shrink-0" />
               )}
-              {statusLine(routine, now)}
+              {now !== null ||
+              !routine.enabled ||
+              routine.lastStatus === "failed" ? (
+                // Paused and failed read no clock, so they need not wait.
+                <span className="min-w-0 [overflow-wrap:anywhere]">
+                  {statusLine(routine, now ?? new Date(0))}
+                </span>
+              ) : (
+                <span aria-hidden="true">&nbsp;</span>
+              )}
             </p>
           </div>
           {canEdit && (
@@ -170,13 +188,17 @@ export function RoutinesPanel({
             onChange={(e) => setInstruction(e.target.value.slice(0, 2000))}
           />
           <div className="flex flex-wrap items-end gap-2">
-            <div className="flex gap-2">
+            <div role="radiogroup" aria-label="How often" className="flex gap-2">
               {ROUTINE_CADENCES.map((option) => (
                 <button
                   key={option}
                   type="button"
+                  role="radio"
                   onClick={() => setCadence(option)}
-                  aria-pressed={cadence === option}
+                  aria-checked={cadence === option}
+                  tabIndex={cadence === option ? 0 : -1}
+                  onKeyDown={onRadioKeyDown}
+                  data-foley-toggle="switch"
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     cadence === option
                       ? "border-primary ring-primary/30 ring-1"

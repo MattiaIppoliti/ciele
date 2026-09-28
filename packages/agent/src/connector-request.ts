@@ -196,6 +196,11 @@ function str(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/** A picker option labelled "Label (value)", or just the value when unlabelled. */
+function labelled(value: unknown, label: unknown): ConnectorOption {
+  return { value: str(value), label: label ? `${str(label)} (${str(value)})` : str(value) };
+}
+
 function recordsJson(value: unknown): string {
   const json = JSON.stringify(value ?? []);
   return json.length > RECORDS_JSON_CHARS ? `${json.slice(0, RECORDS_JSON_CHARS)}…` : json;
@@ -267,10 +272,7 @@ const servicenow: ProviderAdapter = {
         url: url.toString(),
         method: "GET",
         parse: (body) =>
-          rows(body).map((row) => ({
-            value: str(row.name),
-            label: row.label ? `${str(row.label)} (${str(row.name)})` : str(row.name),
-          })),
+          rows(body).map((row) => labelled(row.name, row.label)),
       };
     },
     "servicenow.columns": (rawTable, credentials) => {
@@ -287,10 +289,7 @@ const servicenow: ProviderAdapter = {
         url: url.toString(),
         method: "GET",
         parse: (body) =>
-          rows(body).map((row) => ({
-            value: str(row.element),
-            label: row.column_label ? `${str(row.column_label)} (${str(row.element)})` : str(row.element),
-          })),
+          rows(body).map((row) => labelled(row.element, row.column_label)),
       };
     },
   },
@@ -374,10 +373,7 @@ const salesforce: ProviderAdapter = {
       parse: (body) => {
         const fields = (body as { fields?: Array<Record<string, unknown>> } | null)?.fields;
         return Array.isArray(fields)
-          ? fields.map((field) => ({
-              value: str(field.name),
-              label: field.label ? `${str(field.label)} (${str(field.name)})` : str(field.name),
-            }))
+          ? fields.map((field) => labelled(field.name, field.label))
           : [];
       },
     }),
@@ -392,7 +388,7 @@ const salesforce: ProviderAdapter = {
 
 /* ------------------------------------ Slack ------------------------------------ */
 
-const SLACK_AUTH_ERRORS = new Set([
+export const SLACK_AUTH_ERRORS = new Set([
   "invalid_auth",
   "not_authed",
   "token_revoked",
@@ -1041,12 +1037,11 @@ export async function loadConnectorOptions(
   const provider = loader.split(".")[0] as ConnectorProvider;
   // The loader name comes from the client. One it does not know is an error
   // outcome, not a thrown `undefined.probeAction` on the way to one.
-  if (!(provider in ADAPTERS)) {
-    return {
-      options: [],
-      error: { provider: null, code: "not_configured", message: `No loader ${loader}`, status: null },
-    };
-  }
+  const noLoader = (known: ConnectorProvider | null) => ({
+    options: [],
+    error: { provider: known, code: "not_configured" as const, message: `No loader ${loader}`, status: null },
+  });
+  if (!(provider in ADAPTERS)) return noLoader(null);
   // The runtime's read is what scopes the id to the caller's Organization, so
   // it runs before the cache is consulted: a cached list must never answer for
   // an id the caller cannot see.
@@ -1065,7 +1060,7 @@ export async function loadConnectorOptions(
   try {
     const session = await openSession(probe, connectionId, runtime, client);
     const build = session.adapter.loaders[loader];
-    if (!build) return { options: [], error: { provider, code: "not_configured", message: `No loader ${loader}`, status: null } };
+    if (!build) return noLoader(provider);
     const prepared = build(arg, session.credentials, session.connection);
     const response = await send(session, prepared, client);
     session.adapter.check?.(response);

@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import { OperationError, listSourceDocumentsOp } from "@ciele/ops";
+import { listSourceDocumentsOp } from "@ciele/ops";
 import { SourceDocumentsView } from "@/components/knowledge/source-documents-view";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit } from "@/lib/rbac";
-import { runOperation } from "@/lib/operations";
+import { runPageOperation } from "@/lib/operations";
 import { isKnowledgeTabSlug } from "@/lib/knowledge-hub";
 import {
   libraryDocumentsHref,
@@ -34,22 +34,13 @@ export default async function LibrarySourceDocumentsPage({
   const search = parseSourceDocumentsParams(await searchParams);
   const { role } = await requirePageMember();
 
-  let page;
-  try {
-    page = await runOperation(listSourceDocumentsOp, {
-      sourceId,
-      page: search.page,
-      ascending: search.ascending,
-      sort: search.sort || undefined,
-      status: search.status || undefined,
-    });
-  } catch (error) {
-    // A Source in another Organization and a Source that never existed answer
-    // the same way: the console does not confirm that someone else's row
-    // exists. Anything else is a real failure and keeps being one.
-    if (error instanceof OperationError && error.code === "not_found") notFound();
-    throw error;
-  }
+  const page = await runPageOperation(listSourceDocumentsOp, {
+    sourceId,
+    page: search.page,
+    ascending: search.ascending,
+    sort: search.sort || undefined,
+    status: search.status || undefined,
+  });
 
   return (
     <SourceDocumentsView

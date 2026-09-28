@@ -1,6 +1,13 @@
 ﻿"use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Link from "next/link";
 import {
   SectionTimeline,
@@ -13,9 +20,12 @@ import { updateAssistantAction } from "@/app/actions";
 import { Card } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 /** Descriptions shorter than this flag a desk as "Needs attention". */
 const AI_RECOGNITION_TARGET = 200;
+const DEFAULT_BUTTON_LABEL = "Contact support";
 
 type View = "selected" | "attention" | "all";
 
@@ -34,7 +44,7 @@ function SettingToggle({
 }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <div>
+      <div className="min-w-0">
         <p className="font-semibold">{title}</p>
         <p className="text-muted-foreground mt-1 text-sm">{description}</p>
       </div>
@@ -72,36 +82,82 @@ export function AssistantHelpDesks({
   const latest = useRef(settings);
 
   function save(patch: Partial<HelpDeskSettings>, message?: string) {
-    const next = { ...latest.current, ...patch };
+    const previous = latest.current;
+    const next = { ...previous, ...patch };
     latest.current = next;
     setSettings(next);
     startTransition(async () => {
-      await updateAssistantAction(assistantId, { helpDeskSettings: next });
-      if (message) toast.success(message);
+      try {
+        await updateAssistantAction(assistantId, { helpDeskSettings: next });
+        if (message) toast.success(message);
+      } catch (error) {
+        // Roll the switch back to what is stored. A newer save already carries
+        // this patch, so only the last one in flight reverts.
+        if (latest.current === next) {
+          latest.current = previous;
+          setSettings(previous);
+          if ("contactButtonLabel" in patch)
+            setButtonLabel(previous.contactButtonLabel ?? DEFAULT_BUTTON_LABEL);
+        }
+        toast.error(error instanceof Error ? error.message : "Could not save the setting");
+      }
     });
   }
 
   const labelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingLabel = useRef<string | null>(null);
+  const [labelPending, setLabelPending] = useState(false);
 
   function commitButtonLabel(value: string) {
-    const label = value.trim() || "Contact support";
-    if (label === (latest.current.contactButtonLabel ?? "Contact support"))
+    const label = value.trim() || DEFAULT_BUTTON_LABEL;
+    if (label === (latest.current.contactButtonLabel ?? DEFAULT_BUTTON_LABEL))
       return;
     save({ contactButtonLabel: label }, "Button name saved");
+  }
+
+  function clearLabelTimer() {
+    if (labelTimer.current) clearTimeout(labelTimer.current);
+    labelTimer.current = null;
+    pendingLabel.current = null;
+    setLabelPending(false);
   }
 
   function onButtonLabelChange(value: string) {
     setButtonLabel(value);
     if (labelTimer.current) clearTimeout(labelTimer.current);
-    labelTimer.current = setTimeout(() => commitButtonLabel(value), 800);
+    pendingLabel.current = value;
+    setLabelPending(true);
+    labelTimer.current = setTimeout(() => {
+      clearLabelTimer();
+      commitButtonLabel(value);
+    }, 800);
   }
 
   function onButtonLabelBlur() {
-    if (labelTimer.current) clearTimeout(labelTimer.current);
-    const label = buttonLabel.trim() || "Contact support";
+    clearLabelTimer();
+    const label = buttonLabel.trim() || DEFAULT_BUTTON_LABEL;
     setButtonLabel(label);
     commitButtonLabel(label);
   }
+
+  // Leaving the section inside the debounce window must not drop the name
+  // typed last: the cleanup sends it straight away instead.
+  useEffect(
+    () => () => {
+      if (!labelTimer.current || pendingLabel.current === null) return;
+      clearTimeout(labelTimer.current);
+      const label = pendingLabel.current.trim() || DEFAULT_BUTTON_LABEL;
+      if (label === (latest.current.contactButtonLabel ?? DEFAULT_BUTTON_LABEL)) return;
+      updateAssistantAction(assistantId, {
+        helpDeskSettings: { ...latest.current, contactButtonLabel: label },
+      }).catch(() => toast.error("Could not save the button name"));
+    },
+    [assistantId]
+  );
+
+  // A reload inside the same window has no cleanup to run, so the browser's
+  // own "Leave site?" prompt guards it.
+  useUnsavedChanges({ dirty: labelPending });
 
   const selectedIds = useMemo(
     () => settings.selectedIds ?? [],
@@ -112,7 +168,7 @@ export function AssistantHelpDesks({
     const next = on
       ? [...selectedIds, desk.id]
       : selectedIds.filter((id) => id !== desk.id);
-    save({ selectedIds: next }, `"${desk.name}" ${on ? "selected" : "removed"}`);
+    save({ selectedIds: next }, `“${desk.name}” ${on ? "selected" : "removed"}`);
   }
 
   const needsAttention = useMemo(
@@ -140,9 +196,23 @@ export function AssistantHelpDesks({
     });
   }, [desks, view, search, selectedIds]);
 
-  const VIEWS: Array<{ key: View; label: string }> = [
-    { key: "selected", label: `Selected (${selectedIds.length})` },
-    { key: "attention", label: `Needs attention (${needsAttention.length})` },
+  const VIEWS: Array<{ key: View; label: ReactNode }> = [
+    {
+      key: "selected",
+      label: (
+        <>
+          Selected (<RollingNumber value={selectedIds.length} />)
+        </>
+      ),
+    },
+    {
+      key: "attention",
+      label: (
+        <>
+          Needs attention (<RollingNumber value={needsAttention.length} />)
+        </>
+      ),
+    },
     { key: "all", label: "All" },
   ];
 
@@ -173,7 +243,7 @@ export function AssistantHelpDesks({
         <div className="rounded-lg border bg-muted/30 p-3.5">
           <SettingToggle
             title="Hide Always Available Escalation Button"
-            description="Check the box below to disable the 'contact support' button that is always floating at the bottom of the chat screen."
+            description="Turn on to hide the contact support button that always floats at the bottom of the chat window."
             checked={settings.hideEscalationButton ?? false}
             disabled={!canEdit}
             onCheckedChange={(hideEscalationButton) =>
@@ -232,7 +302,7 @@ export function AssistantHelpDesks({
             ))}
           </div>
           <span className="text-muted-foreground ml-auto rounded-full border px-3 py-1 text-xs font-semibold">
-            {selectedIds.length} selected
+            <RollingNumber value={selectedIds.length} /> selected
           </span>
         </div>
 
@@ -259,7 +329,7 @@ export function AssistantHelpDesks({
             <div key={desk.id} className="rounded-lg border bg-muted/20 p-3.5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-base font-semibold">{desk.name}</p>
+                  <p className="text-base font-semibold break-words">{desk.name}</p>
                   <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
                     {desk.description || "No description yet."}
                   </p>

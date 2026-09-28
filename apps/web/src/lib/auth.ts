@@ -88,6 +88,16 @@ export const getSession = cache(async (): Promise<Session | null> => {
   };
 });
 
+/** The caller's display name: first + last name, else the username, else
+ *  undefined (each caller picks its own last fallback). */
+export function profileName(profile: Profile | null): string | undefined {
+  return (
+    [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") ||
+    profile?.username ||
+    undefined
+  );
+}
+
 /* There was a `hasActiveSession()` here: a presence-only check for surfaces that
    needed "is anyone signed in?" without getSession's three Db reads. Its only
    callers were the marketing pages, and they no longer ask the server at all,

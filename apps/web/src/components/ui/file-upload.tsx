@@ -10,8 +10,6 @@ import { cn } from "@/lib/utils";
 const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export type FileUploadStatus = "queued" | "uploading" | "success" | "error";
-export type FileUploadVariant = "default" | "centered";
-
 export type FileUploadItem = {
   id: string;
   name: string;
@@ -23,36 +21,14 @@ export type FileUploadItem = {
   file?: File;
 };
 
-export type FileUploadClassNames = {
-  root?: string;
-  dropzone?: string;
-  queue?: string;
-  item?: string;
-  leading?: string;
-  content?: string;
-  name?: string;
-  meta?: string;
-  progress?: string;
-  action?: string;
-};
-
 export interface FileUploadProps {
-  value?: FileUploadItem[];
-  defaultValue?: FileUploadItem[];
-  onValueChange?: (items: FileUploadItem[]) => void;
-  onFilesAdded?: (items: FileUploadItem[], files: File[]) => void;
-  onRemove?: (item: FileUploadItem) => void;
-  onRetry?: (item: FileUploadItem) => void;
-  accept?: string;
-  multiple?: boolean;
-  maxFiles?: number;
-  disabled?: boolean;
-  variant?: FileUploadVariant;
-  title?: string;
-  description?: string;
-  browseLabel?: string;
-  className?: string;
-  classNames?: FileUploadClassNames;
+  value: FileUploadItem[];
+  onValueChange: (items: FileUploadItem[]) => void;
+  onFilesAdded: (items: FileUploadItem[]) => void;
+  onRetry: (item: FileUploadItem) => void;
+  accept: string;
+  title: string;
+  description: string;
 }
 
 const ROW_TRANSITION = { duration: 0.22, ease: EASE_OUT } as const;
@@ -71,33 +47,6 @@ const STATUS_TONE: Record<FileUploadStatus, string> = {
   success: "text-emerald-600 dark:text-emerald-400",
   error: "text-destructive",
 };
-
-function useControllableUpload({
-  value,
-  defaultValue,
-  onValueChange,
-}: {
-  value?: FileUploadItem[];
-  defaultValue?: FileUploadItem[];
-  onValueChange?: (items: FileUploadItem[]) => void;
-}) {
-  const [internalValue, setInternalValue] = useState(defaultValue ?? []);
-  const isControlled = value !== undefined;
-  const items = value ?? internalValue;
-
-  const setItems = useCallback(
-    (next: FileUploadItem[]) => {
-      if (!isControlled) {
-        setInternalValue(next);
-      }
-
-      onValueChange?.(next);
-    },
-    [isControlled, onValueChange],
-  );
-
-  return [items, setItems] as const;
-}
 
 function clampProgress(value: number | undefined, status: FileUploadStatus) {
   if (status === "success") return 100;
@@ -181,7 +130,7 @@ function fileIcon(item: FileUploadItem, className: string) {
   return <FileIcon className={className} />;
 }
 
-export function createFileUploadItem(file: File, index = 0): FileUploadItem {
+function createFileUploadItem(file: File, index = 0): FileUploadItem {
   return {
     id: `${Date.now()}-${index}-${file.name}`,
     name: file.name,
@@ -243,12 +192,10 @@ function FileUploadRow({
   item,
   onRemove,
   onRetry,
-  classNames,
 }: {
   item: FileUploadItem;
   onRemove: (item: FileUploadItem) => void;
   onRetry: (item: FileUploadItem) => void;
-  classNames?: FileUploadClassNames;
 }) {
   const reduce = useReducedMotion() ?? false;
   const status = item.status ?? "queued";
@@ -267,38 +214,20 @@ function FileUploadRow({
         reduce ? { opacity: 0 } : { opacity: 0, transform: "translateY(-6px)" }
       }
       transition={ROW_TRANSITION}
-      className={cn(
-        "relative overflow-hidden rounded-2xl border border-border bg-background p-3",
-        classNames?.item,
-      )}
+      className="relative overflow-hidden rounded-2xl border border-border bg-background p-3"
     >
       <div className="flex items-center gap-3">
-        <div
-          className={cn(
-            "grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground",
-            classNames?.leading,
-          )}
-        >
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
           {fileIcon(item, "h-5 w-5")}
         </div>
 
-        <div className={cn("min-w-0 flex-1", classNames?.content)}>
+        <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p
-                className={cn(
-                  "truncate text-sm font-medium text-foreground",
-                  classNames?.name,
-                )}
-              >
+              <p className="truncate text-sm font-medium text-foreground">
                 {item.name}
               </p>
-              <p
-                className={cn(
-                  "mt-0.5 text-xs text-muted-foreground",
-                  classNames?.meta,
-                )}
-              >
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {fileKind(item)} · {formatBytes(item.size)}
                 {status === "error" && item.error ? ` · ${item.error}` : null}
               </p>
@@ -311,10 +240,7 @@ function FileUploadRow({
                   type="button"
                   onClick={() => onRetry(item)}
                   aria-label={`Retry ${item.name}`}
-                  className={cn(
-                    "grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground active:scale-95",
-                    classNames?.action,
-                  )}
+                  className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground active:scale-95"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
@@ -323,10 +249,7 @@ function FileUploadRow({
                 type="button"
                 onClick={() => onRemove(item)}
                 aria-label={`Remove ${item.name}`}
-                className={cn(
-                  "grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground active:scale-95",
-                  classNames?.action,
-                )}
+                className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground active:scale-95"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -340,10 +263,7 @@ function FileUploadRow({
               aria-valuemax={100}
               aria-valuenow={Math.round(progress)}
               aria-label={`${item.name} upload progress`}
-              className={cn(
-                "mt-3 h-1.5 overflow-hidden rounded-full bg-muted",
-                classNames?.progress,
-              )}
+              className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"
             >
               <motion.div
                 className={cn(
@@ -369,71 +289,35 @@ function FileUploadRow({
 }
 
 export function FileUpload({
-  value,
-  defaultValue,
-  onValueChange,
+  value: items,
+  onValueChange: commit,
   onFilesAdded,
-  onRemove,
   onRetry,
   accept,
-  multiple = true,
-  maxFiles,
-  disabled = false,
-  variant = "default",
-  title = "Drop files here",
-  description = "Add files to the upload queue",
-  browseLabel = "Browse",
-  className,
-  classNames,
+  title,
+  description,
 }: FileUploadProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepthRef = useRef(0);
   const reduce = useReducedMotion() ?? false;
-  const [items, setItems] = useControllableUpload({
-    value,
-    defaultValue,
-    onValueChange,
-  });
   const [dragging, setDragging] = useState(false);
 
-  const commit = useCallback(
-    (next: FileUploadItem[]) => {
-      setItems(next);
-    },
-    [setItems],
-  );
-
   const addFiles = useCallback(
-    (incomingFiles: File[]) => {
-      if (disabled || incomingFiles.length === 0) return;
-
-      const remainingSlots =
-        maxFiles === undefined ? incomingFiles.length : maxFiles - items.length;
-      if (remainingSlots <= 0) return;
-
-      const files = incomingFiles.slice(
-        0,
-        multiple ? remainingSlots : Math.min(1, remainingSlots),
-      );
-      const added = files.map((file, index) =>
-        createFileUploadItem(file, index),
-      );
-
-      if (added.length === 0) return;
-
+    (files: File[]) => {
+      if (files.length === 0) return;
+      const added = files.map((file, index) => createFileUploadItem(file, index));
       commit([...items, ...added]);
-      onFilesAdded?.(added, files);
+      onFilesAdded(added);
     },
-    [commit, disabled, items, maxFiles, multiple, onFilesAdded],
+    [commit, items, onFilesAdded],
   );
 
   const removeItem = useCallback(
     (item: FileUploadItem) => {
       commit(items.filter((entry) => entry.id !== item.id));
-      onRemove?.(item);
     },
-    [commit, items, onRemove],
+    [commit, items],
   );
 
   const retryItem = useCallback(
@@ -448,7 +332,7 @@ export function FileUpload({
       commit(
         items.map((entry) => (entry.id === item.id ? retryingItem : entry)),
       );
-      onRetry?.(retryingItem);
+      onRetry(retryingItem);
     },
     [commit, items, onRetry],
   );
@@ -458,19 +342,15 @@ export function FileUpload({
     setDragging(false);
   }, []);
 
-  const maxReached = maxFiles !== undefined && items.length >= maxFiles;
-  const centered = variant === "centered";
-
   return (
-    <div className={cn("w-full space-y-3", className, classNames?.root)}>
+    <div className="w-full space-y-3">
       <input
         ref={inputRef}
         id={inputId}
         type="file"
         aria-label="Upload files"
         accept={accept}
-        multiple={multiple}
-        disabled={disabled || maxReached}
+        multiple
         tabIndex={-1}
         className="sr-only"
         onChange={(event) => {
@@ -481,29 +361,24 @@ export function FileUpload({
 
       <button
         type="button"
-        disabled={disabled || maxReached}
         data-dragging={dragging}
         onClick={() => inputRef.current?.click()}
         onDragEnter={(event) => {
-          if (disabled || maxReached) return;
           event.preventDefault();
           dragDepthRef.current += 1;
           setDragging(true);
         }}
         onDragOver={(event) => {
-          if (disabled || maxReached) return;
           event.preventDefault();
           event.dataTransfer.dropEffect = "copy";
           setDragging(true);
         }}
         onDragLeave={(event) => {
-          if (disabled || maxReached) return;
           event.preventDefault();
           dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
           if (dragDepthRef.current === 0) setDragging(false);
         }}
         onDrop={(event) => {
-          if (disabled || maxReached) return;
           event.preventDefault();
           resetDrag();
           addFiles(Array.from(event.dataTransfer.files));
@@ -514,20 +389,12 @@ export function FileUpload({
           "hover:border-foreground/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           "data-[dragging=true]:border-foreground",
           "disabled:pointer-events-none disabled:opacity-55",
-          centered
-            ? "min-h-56 flex-col items-center justify-center gap-3 p-7 text-center"
-            : "items-center gap-4 p-5 text-left",
-          classNames?.dropzone,
+          "min-h-56 flex-col items-center justify-center gap-3 p-7 text-center",
         )}
       >
         <motion.span
           aria-hidden="true"
-          className={cn(
-            "grid shrink-0 place-items-center bg-muted text-foreground",
-            centered
-              ? "h-16 w-16 rounded-[1.35rem] border border-border"
-              : "h-14 w-14 rounded-[1.25rem]",
-          )}
+          className="grid shrink-0 place-items-center bg-muted text-foreground h-16 w-16 rounded-[1.35rem] border border-border"
           animate={
             reduce
               ? undefined
@@ -537,41 +404,24 @@ export function FileUpload({
           }
           transition={FAST_TRANSITION}
         >
-          <UploadCloud className={centered ? "h-7 w-7" : "h-6 w-6"} />
+          <UploadCloud className="h-7 w-7" />
         </motion.span>
 
-        <span className={cn("min-w-0", centered ? "max-w-xs" : "flex-1")}>
-          <span
-            className={cn(
-              "block font-semibold text-foreground",
-              centered ? "text-base" : "text-sm",
-            )}
-          >
-            {maxReached ? "Upload limit reached" : title}
+        <span className="min-w-0 max-w-xs">
+          <span className="block font-semibold text-foreground text-base">
+            {title}
           </span>
-          <span
-            className={cn(
-              "block text-xs text-muted-foreground",
-              centered ? "mt-1 leading-5" : "mt-0.5",
-            )}
-          >
-            {maxReached
-              ? `${items.length} of ${maxFiles} files added`
-              : description}
+          <span className="block text-xs text-muted-foreground mt-1 leading-5">
+            {description}
           </span>
         </span>
 
-        <span
-          className={cn(
-            "shrink-0 rounded-full border border-border text-xs font-medium text-foreground transition-colors duration-150 group-hover:bg-muted",
-            centered ? "mt-1 px-4 py-2" : "px-3.5 py-2",
-          )}
-        >
-          {browseLabel}
+        <span className="shrink-0 rounded-full border border-border text-xs font-medium text-foreground transition-colors duration-150 group-hover:bg-muted mt-1 px-4 py-2">
+          Browse
         </span>
       </button>
 
-      <ul className={cn("space-y-2", classNames?.queue)}>
+      <ul className="space-y-2">
         <AnimatePresence initial={false}>
           {items.map((item) => (
             <FileUploadRow
@@ -579,7 +429,6 @@ export function FileUpload({
               item={item}
               onRemove={removeItem}
               onRetry={retryItem}
-              classNames={classNames}
             />
           ))}
         </AnimatePresence>

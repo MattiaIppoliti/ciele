@@ -18,7 +18,7 @@ import type {
   FlowTrust,
 } from "@agent-hub/core";
 import { MousePointerClick, Trash2, Workflow, type LucideIcon } from "lucide-react";
-import { Check, ChevronDown, ChevronLeft, Info, LayoutList, ListFilter, MessageSquareReply, Redo2, Undo2, Zap } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronLeft, Info, LayoutList, ListFilter, MessageSquareReply, Redo2, Undo2, Zap } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import {
@@ -68,10 +68,18 @@ import {
   redoDraft,
   undoDraft,
 } from "@/lib/flow-draft-history";
-import { flowViewKey, insertActionAt, parseFlowView, type FlowView } from "@/lib/flow-canvas";
+import {
+  flowViewKey,
+  insertActionAt,
+  moveAction,
+  parseFlowView,
+  type FlowView,
+} from "@/lib/flow-canvas";
 import { cn } from "@/lib/utils";
+import { isTypingTarget } from "@/lib/typing-target";
 import { TrustBadge } from "@/components/assistant/trust-badge";
-import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { isRedirectError, useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
 import { useShell } from "@/components/shell/shell-provider";
 import {
   FlowActionConfig,
@@ -141,33 +149,37 @@ function StepCard({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // The heading holds the button, not the other way round: a heading inside
+  // a button is flattened into the button's name and leaves the outline.
   return (
     <Card className="overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="hover:bg-muted/40 press flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
-      >
-        <Icon className="text-muted-foreground size-4 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold">{title}</h2>
-            {badge && (
-              <Badge variant="outline" className="text-muted-foreground rounded-full capitalize">
-                {badge}
-              </Badge>
+      <h2>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="hover:bg-muted/40 press flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
+        >
+          <Icon className="text-muted-foreground size-4 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <span className="text-sm font-semibold">{title}</span>
+              {badge && (
+                <Badge variant="outline" className="text-muted-foreground rounded-full capitalize">
+                  {badge}
+                </Badge>
+              )}
+            </span>
+            <span className="text-muted-foreground block text-xs">{subtitle}</span>
+          </span>
+          <ChevronDown
+            className={cn(
+              "text-muted-foreground size-4 shrink-0 transition-transform",
+              open && "rotate-180"
             )}
-          </div>
-          <p className="text-muted-foreground text-xs">{subtitle}</p>
-        </div>
-        <ChevronDown
-          className={cn(
-            "text-muted-foreground size-4 shrink-0 transition-transform",
-            open && "rotate-180"
-          )}
-        />
-      </button>
+          />
+        </button>
+      </h2>
       {open && <CardContent className="border-t px-4 pt-4 pb-4">{children}</CardContent>}
     </Card>
   );
@@ -177,10 +189,13 @@ function StatusItem({
   ok,
   required,
   label,
+  rolling = false,
 }: {
   ok: boolean;
   required: boolean;
   label: string;
+  /** Rolls between values, for the one item whose wording changes. */
+  rolling?: boolean;
 }) {
   return (
     <span
@@ -190,16 +205,20 @@ function StatusItem({
       )}
     >
       {ok ? (
-        <Check className="size-4 text-emerald-600" strokeWidth={3} />
+        <Check aria-hidden className="size-4 text-emerald-600" strokeWidth={3} />
       ) : (
         <span
+          aria-hidden
           className={cn(
             "size-3.5 rounded-full border-2",
             required ? "border-muted-foreground/60" : "border-muted-foreground/30"
           )}
         />
       )}
-      {label}
+      {rolling ? <RollInText text={label} /> : label}
+      {/* The tick is the only difference between done and not, and a screen
+          reader never sees it. */}
+      {!ok && <span className="sr-only"> (not done)</span>}
     </span>
   );
 }
@@ -208,37 +227,37 @@ export function FlowBuilder({
   assistantId,
   flow,
   memberId,
-  canEdit = true,
+  canEdit,
   assistants,
   helpDesks,
   faqs,
-  connections = [],
-  trust = null,
-  agentProviderReady = true,
+  connections,
+  trust,
+  agentProviderReady,
 }: {
   assistantId: string;
   flow: Flow | null;
   /** The signed-in Member, for browser-stored preferences keyed per person. */
   memberId: string;
   /** False for a Viewer: both renderings open read-only, nothing saves. */
-  canEdit?: boolean;
+  canEdit: boolean;
   /** Other assistants in the org, for the Handover action. */
   assistants: AssistantOption[];
   /** The Organization's Application Connections a Connector may use (#839). */
-  connections?: ConnectorConnectionOption[];
+  connections: ConnectorConnectionOption[];
   /** Help desks available to a response Button of type Help desk. */
   helpDesks: HelpDeskOption[];
   /** FAQ questions available to a response Button of type FAQ. */
   faqs: FaqOption[];
   /** Materialized trust for this flow, when it exists. */
-  trust?: FlowTrust | null;
+  trust: FlowTrust | null;
   /**
    * Whether the Flows Agent has a provider to run on (#838): an Organization
    * Provider Connection, or the opt-in that lets this Member's own subscription
    * run their Teammate turns. The page computes it; the panel disables its
    * composer when it is false.
    */
-  agentProviderReady?: boolean;
+  agentProviderReady: boolean;
 }) {
   const router = useRouter();
   const isEdit = flow !== null;
@@ -344,6 +363,15 @@ export function FlowBuilder({
   );
   const undo = useCallback(() => setHistory((h) => undoDraft(h)), []);
   const redo = useCallback(() => setHistory((h) => redoDraft(h)), []);
+
+  /**
+   * Back to the saved Flow, as one edit: the storage writer then drops the
+   * stored draft on its own, and Undo brings the changes back.
+   */
+  const discardDraft = useCallback(() => {
+    update(savedDraft);
+    toast.info("Changes discarded. Undo brings them back.");
+  }, [update, savedDraft]);
 
   /**
    * The Flows Agent (#838): a validated `flows.draft` hand-back lands here as
@@ -452,11 +480,7 @@ export function FlowBuilder({
     if (!canEdit) return;
     function onKeyDown(event: KeyboardEvent) {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
-      if (
-        event.target instanceof HTMLElement &&
-        (event.target.matches("input, textarea, select") || event.target.isContentEditable)
-      )
-        return;
+      if (isTypingTarget(event.target)) return;
       event.preventDefault();
       if (event.shiftKey) redo();
       else undo();
@@ -507,18 +531,29 @@ export function FlowBuilder({
     if (!canSave || !canEdit) return;
     const payload = flowSavePayload(draft, flow);
     startTransition(async () => {
-      if (isEdit) {
-        await updateFlowAction(assistantId, flow.id, {
-          ...(flow.builtIn ? {} : { name: draft.name.trim() }),
-          ...payload,
-        });
-        toast.success("Flow updated");
-      } else {
-        const created = await createFlowAction(assistantId, { name: draft.name.trim(), ...payload });
-        // The Flows Agent thread held on the new-Flow canvas follows the Flow
-        // it became; a failure here loses nothing the Editor can see now.
-        await adoptFlowsAgentThreadAction(assistantId, created.id).catch(() => undefined);
-        toast.success("Flow created");
+      // A failed save stays on the page with the draft intact: leaving would
+      // strand the edits behind a toast that already went away.
+      try {
+        if (isEdit) {
+          await updateFlowAction(flow.id, {
+            ...(flow.builtIn ? {} : { name: draft.name.trim() }),
+            ...payload,
+          });
+          toast.success("Flow updated");
+        } else {
+          const created = await createFlowAction(assistantId, {
+            name: draft.name.trim(),
+            ...payload,
+          });
+          // The Flows Agent thread held on the new-Flow canvas follows the Flow
+          // it became; a failure here loses nothing the Editor can see now.
+          await adoptFlowsAgentThreadAction(assistantId, created.id).catch(() => undefined);
+          toast.success("Flow created");
+        }
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        toast.error(error instanceof Error ? error.message : "The flow could not be saved");
+        return;
       }
       clearStoredDraft();
       router.push(flowsHref);
@@ -534,7 +569,7 @@ export function FlowBuilder({
         "This permanently removes the flow from this assistant and cannot be undone.",
       confirmLabel: "Delete flow",
       onConfirm: async () => {
-        await deleteFlowAction(assistantId, target.id);
+        await deleteFlowAction(target.id);
         toast.success("Flow deleted");
         clearStoredDraft();
         router.push(flowsHref);
@@ -584,7 +619,7 @@ export function FlowBuilder({
         <ChevronLeft className="size-4" strokeWidth={3} />
         All flows
       </Link>
-      <span className="text-muted-foreground">/</span>
+      <span aria-hidden className="text-muted-foreground">/</span>
       <Input
         value={draft.name}
         onChange={(e) => update({ name: e.target.value }, "name")}
@@ -629,9 +664,10 @@ export function FlowBuilder({
           </Hint>
         </div>
       )}
-      {/* Form ↔ Canvas: two renderings of one draft. */}
+      {/* Form ↔ Canvas: two renderings of one draft. Toggle buttons rather
+          than tabs: there is no tab panel to point at, the whole editor swaps. */}
       <div
-        role="tablist"
+        role="group"
         aria-label="Editor view"
         className="border-input flex items-center rounded-lg border p-0.5"
       >
@@ -644,8 +680,7 @@ export function FlowBuilder({
           <button
             key={option.value}
             type="button"
-            role="tab"
-            aria-selected={view === option.value}
+            aria-pressed={view === option.value}
             onClick={() => chooseView(option.value)}
             className={cn(
               "press-control flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
@@ -675,9 +710,22 @@ export function FlowBuilder({
       {/* Quiet reassurance, not a control: it says the draft in this browser is
           current, which is the question an Editor who just reloaded has. */}
       {hasDraft && (
-        <Hint label="Your unsaved changes are kept in this browser until you save or discard them.">
-          <span className="text-muted-foreground hidden text-xs sm:inline">{draftLabel}</span>
-        </Hint>
+        <div className="flex items-center gap-1">
+          <Hint label="Your unsaved changes are kept in this browser until you save or discard them.">
+            <span className="text-muted-foreground hidden text-xs sm:inline">
+              <RollInText text={draftLabel} />
+            </span>
+          </Hint>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={discardDraft}
+          >
+            Discard
+          </Button>
+        </div>
       )}
       {isEdit && (
         <div className="flex items-center gap-2">
@@ -710,6 +758,7 @@ export function FlowBuilder({
     <div className="sticky bottom-2 z-20 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card/95 px-3 py-2 shadow-md backdrop-blur">
       <StatusItem ok={triggerOk} required label="Trigger set" />
       <StatusItem
+        rolling
         ok={proactive || inbound || (draft.conditions.length > 0 && conditionsOk)}
         required={false}
         label={
@@ -736,7 +785,7 @@ export function FlowBuilder({
             onClick={save}
             className="h-9 rounded-lg px-4 font-semibold"
           >
-            {isPending ? "Saving…" : isEdit ? "Save changes" : "Create flow"}
+            <RollInText text={isPending ? "Saving…" : isEdit ? "Save changes" : "Create flow"} />
           </Button>
         ) : (
           <span className="text-muted-foreground text-sm">Read-only</span>
@@ -853,7 +902,10 @@ export function FlowBuilder({
 
       {/* A disabled fieldset is how a Viewer reads the same form without a
           second, read-only rendering of every field. */}
-      <fieldset disabled={!canEdit} className="mt-4 min-w-0 space-y-4 pb-3">
+      {/* The sticky footer covers the bottom of the viewport; a scroll margin on
+          every field keeps a focused one from landing underneath it. The
+          scroller is the console's, so this is the side of it we own. */}
+      <fieldset disabled={!canEdit} className="mt-4 min-w-0 space-y-4 pb-3 [&_*]:scroll-mb-20">
         <StepCard
           icon={MousePointerClick}
           title="Trigger"
@@ -902,7 +954,7 @@ export function FlowBuilder({
           defaultOpen={!responseOk}
         >
           <div className="space-y-3">
-            {draft.actions.map((action) => {
+            {draft.actions.map((action, index) => {
               const meta = FLOW_ACTIONS[action];
               const Icon = meta.icon;
               return (
@@ -923,6 +975,40 @@ export function FlowBuilder({
                       </div>
                       <p className="text-muted-foreground text-sm">{meta.subtitle}</p>
                     </div>
+                    {/* Order is the run order, and these are its keyboard
+                        route; the canvas reorders by dragging too. */}
+                    {canEdit && draft.actions.length > 1 && (
+                      <div className="flex gap-1">
+                        <Hint label={`Move ${meta.label} earlier`}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Move ${meta.label} earlier`}
+                            disabled={index === 0}
+                            onClick={() =>
+                              stepHandlers.setActions(moveAction(draft.actions, action, index - 1))
+                            }
+                          >
+                            <ArrowUp className="size-4" />
+                          </Button>
+                        </Hint>
+                        <Hint label={`Move ${meta.label} later`}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Move ${meta.label} later`}
+                            disabled={index === draft.actions.length - 1}
+                            onClick={() =>
+                              stepHandlers.setActions(moveAction(draft.actions, action, index + 1))
+                            }
+                          >
+                            <ArrowDown className="size-4" />
+                          </Button>
+                        </Hint>
+                      </div>
+                    )}
                     {canEdit && (
                       <Hint label={`Remove ${meta.label}`}>
                         <Button

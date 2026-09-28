@@ -9,12 +9,17 @@ import type { ExportJobFormat } from "@agent-hub/core";
  */
 export const ANALYTICS_EXPORTS_BUCKET = "analytics-exports";
 
-const FORMAT_EXTENSIONS: Record<ExportJobFormat, string> = {
+export const FORMAT_EXTENSIONS: Record<ExportJobFormat, string> = {
   csv: "csv",
+  json: "json",
+  xlsx: "xlsx",
 };
 
+/** Must stay within the bucket's `allowed_mime_types` (20260927140000_export_kinds_formats.sql). */
 const FORMAT_CONTENT_TYPES: Record<ExportJobFormat, string> = {
   csv: "text/csv",
+  json: "application/json",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
 export function exportObjectPath(input: {
@@ -33,7 +38,7 @@ export async function uploadExportArtifact(
     organizationId: string;
     jobId: string;
     format: ExportJobFormat;
-    body: string;
+    body: string | Uint8Array;
   }
 ): Promise<{ path: string }> {
   const path = exportObjectPath(input);

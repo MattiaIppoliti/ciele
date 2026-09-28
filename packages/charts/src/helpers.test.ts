@@ -5,12 +5,8 @@ import {
   interpolateHeight,
   normalizeValues,
   percentChange,
-  resolveSectionPalette,
   toDenseDailySeries,
 } from "./helpers";
-import type { DotPalette, DotSection } from "./types";
-
-const FALLBACK: DotPalette = { filled: "f", active: "a", topDot: "t" };
 
 describe("clamp", () => {
   it("clamps below, inside and above the range", () => {
@@ -44,23 +40,6 @@ describe("interpolateHeight", () => {
 
   it("degenerates to the first value for single-column charts", () => {
     expect(interpolateHeight(0, 1, [7, 9])).toBe(7);
-  });
-});
-
-describe("resolveSectionPalette", () => {
-  const sections: DotSection[] = [
-    { start: 0, end: 0.5, palette: { filled: "1f", active: "1a", topDot: "1t" } },
-    { start: 0.5, end: 1, palette: { filled: "2f", active: "2a", topDot: "2t" } },
-  ];
-
-  it("picks the section containing the column position", () => {
-    expect(resolveSectionPalette(0, 10, sections, FALLBACK).active).toBe("1a");
-    expect(resolveSectionPalette(9, 10, sections, FALLBACK).active).toBe("2a");
-  });
-
-  it("falls back when no sections are provided", () => {
-    expect(resolveSectionPalette(3, 10, undefined, FALLBACK)).toBe(FALLBACK);
-    expect(resolveSectionPalette(3, 10, [], FALLBACK)).toBe(FALLBACK);
   });
 });
 

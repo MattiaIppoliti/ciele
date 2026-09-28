@@ -1,5 +1,5 @@
 import type { Role } from "@agent-hub/core";
-import { memberRoleRank } from "@agent-hub/core";
+import { memberRoleRank, roleAllowsCapability } from "@agent-hub/core";
 
 /**
  * The ladder itself lives in `@agent-hub/core` (ADR-0019: the domain and its
@@ -8,22 +8,19 @@ import { memberRoleRank } from "@agent-hub/core";
  * reachable. This file keeps the app-facing names and the copy that explains
  * each rung; it no longer keeps a second copy of the numbers.
  */
-export function roleRank(role: Role | null): number {
-  return memberRoleRank(role);
-}
 
 /** Editors and above can create/edit assistants, flows and knowledge. */
 export function canEdit(role: Role | null): boolean {
-  return roleRank(role) >= 2;
+  return roleAllowsCapability(role, "edit");
 }
 
 /** Admins and above can publish, delete assistants and manage members. */
 export function canPublish(role: Role | null): boolean {
-  return roleRank(role) >= 3;
+  return roleAllowsCapability(role, "publish");
 }
 
 export function canManageMembers(role: Role | null): boolean {
-  return roleRank(role) >= 3;
+  return roleAllowsCapability(role, "manageMembers");
 }
 
 /**
@@ -34,37 +31,23 @@ export function canManageMembers(role: Role | null): boolean {
  * whatever the knowledge base returned back verbatim (#557).
  */
 export function canViewReasoning(role: Role | null): boolean {
-  return roleRank(role) >= 3;
+  return memberRoleRank(role) >= 3;
 }
 
 /** Editors and above can view the member roster (managing it stays admin+). */
 export function canViewMembers(role: Role | null): boolean {
-  return roleRank(role) >= 2;
+  return memberRoleRank(role) >= 2;
 }
 
 /** Only owners can change member roles and org settings. */
 export function canChangeRoles(role: Role | null): boolean {
-  return roleRank(role) >= 4;
+  return roleAllowsCapability(role, "changeRoles");
 }
 
 /** Admins and above manage the Organization's API keys (#618). */
 export function canManageApiKeys(role: Role | null): boolean {
-  return roleRank(role) >= 3;
+  return roleAllowsCapability(role, "manageApiKeys");
 }
-
-/**
- * One guard per named capability. The /api/v1 auth seam and the Developer
- * Panel's Role badges both index this map, so what a key may do and what the
- * panel says it may do cannot diverge. "member" (any valid key) is deliberately
- * absent: it guards nothing.
- */
-export const CAPABILITY_GUARDS = {
-  edit: canEdit,
-  publish: canPublish,
-  manageMembers: canManageMembers,
-  manageApiKeys: canManageApiKeys,
-  changeRoles: canChangeRoles,
-} satisfies Record<string, (role: Role | null) => boolean>;
 
 /**
  * An API key may never carry a Role above its creator's, the key acts as a
@@ -74,5 +57,5 @@ export function canAssignApiKeyRole(
   creator: Role | null,
   keyRole: Role
 ): boolean {
-  return roleRank(keyRole) <= roleRank(creator);
+  return memberRoleRank(keyRole) <= memberRoleRank(creator);
 }

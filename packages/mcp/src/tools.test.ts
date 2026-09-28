@@ -83,6 +83,52 @@ describe("ciele MCP tools", () => {
     ]);
   });
 
+  it("searches the knowledge, read-only included, and needs a query", async () => {
+    const { calls, tool } = harness(() => ({
+      json: { query: "vpn", assistantId: null, results: [] },
+    }));
+
+    // A read-only agent's first job is answering from the knowledge.
+    const result = await callTool(tool("manage_knowledge"), { action: "search", query: "vpn" }, true);
+    expect(result.isError).toBeUndefined();
+    expect(calls[0]).toMatchObject({ method: "POST" });
+    expect(calls[0].url).toContain("/knowledge/search");
+    expect(JSON.parse(calls[0].body!)).toEqual({ query: "vpn" });
+
+    await callTool(
+      tool("manage_knowledge"),
+      { action: "search", query: "vpn", assistantId: "a1" },
+      false
+    );
+    expect(JSON.parse(calls[1].body!)).toEqual({ query: "vpn", assistantId: "a1" });
+
+    const missing = await callTool(tool("manage_knowledge"), { action: "search" }, false);
+    expect(missing.isError).toBe(true);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("asks an Assistant, and read-only refuses it because it creates a Conversation", async () => {
+    const { calls, tool } = harness(() => ({
+      json: { conversationId: "conv", messageId: "m", flowName: null, answer: "Yes.", sources: [], error: null },
+    }));
+    const refused = await callTool(
+      tool("manage_assistants"),
+      { action: "ask", id: "a1", question: "Open on Sunday?" },
+      true
+    );
+    expect(refused.isError).toBe(true);
+    expect(calls).toHaveLength(0);
+
+    await callTool(
+      tool("manage_assistants"),
+      { action: "ask", id: "a1", question: "Open on Sunday?", conversationId: "conv-0" },
+      false
+    );
+    expect(calls[0]).toMatchObject({ method: "POST" });
+    expect(calls[0].url).toContain("/assistants/a1/ask");
+    expect(JSON.parse(calls[0].body!)).toEqual({ question: "Open on Sunday?", conversationId: "conv-0" });
+  });
+
   it("reaches Projects and the Agent memory layer, and not the User one", async () => {
     const { calls, tool } = harness(() => ({ json: { ok: true } }));
 

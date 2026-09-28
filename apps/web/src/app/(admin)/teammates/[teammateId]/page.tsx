@@ -7,6 +7,7 @@ import {
 import { chatModelOptions } from "@agent-hub/agent";
 import { TeammateWorkspace } from "@/components/teammates/teammate-workspace";
 import { requirePageMember } from "@/lib/authz";
+import { starterSkills } from "@/lib/composer/skills";
 import { findVisibleTeammate } from "@/lib/teammates/access";
 
 export const dynamic = "force-dynamic";
@@ -71,14 +72,7 @@ export default async function TeammatePage({
     db.table("skills").list({ organizationId }),
   ]);
 
-  const skills = orgSkills
-    .filter((skill) => (skill.starter ?? "").trim().length > 0)
-    .map((skill) => ({
-      id: skill.id,
-      name: skill.name,
-      description: skill.description,
-      starter: skill.starter,
-    }));
+  const skills = starterSkills(orgSkills);
 
   const channelCandidates = visibleTeammates(roster, viewer)
     .filter((candidate) => candidate.id !== teammate.id)

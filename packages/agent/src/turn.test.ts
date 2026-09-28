@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as engine from "./engine";
+import { ACTION_HANDLERS } from "./actions";
 import type { Assistant, Flow, RuntimeEventInput } from "@agent-hub/core";
 import { buildPublicationConfig } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
@@ -143,6 +144,86 @@ describe("streamConversationTurn", () => {
     expect(events.some((event) => event.type === "done")).toBe(false);
     const messages = await db.listMessages(started.conversationId);
     expect(messages.map((message) => message.role)).toEqual(["user"]);
+  });
+
+  describe("spend a turn already made when it does not finish", () => {
+    const spent = {
+      stage: "generate" as const,
+      provider: "anthropic" as const,
+      modelId: "claude-sonnet-5",
+      credentialKind: "platform" as const,
+      inputTokens: 1200,
+      outputTokens: 340,
+    };
+
+    let recorded: Parameters<Db["recordAiUsage"]>[0] = [];
+    let recordSpy: { mockRestore(): void } | null = null;
+    beforeEach(() => {
+      recorded = [];
+      const original = db.recordAiUsage.bind(db);
+      recordSpy = vi.spyOn(db, "recordAiUsage").mockImplementation(async (rows) => {
+        recorded.push(...rows);
+        return original(rows);
+      });
+    });
+    afterEach(() => recordSpy?.mockRestore());
+
+    async function usageFor(conversationId: string) {
+      return recorded.filter((row) => row.conversationId === conversationId);
+    }
+
+    it("settles the usage of a run that throws after a model call", async () => {
+      const spy = vi
+        .spyOn(engine, "runAssistantChat")
+        .mockImplementation(async (options) => {
+          options.usageSink?.push(spent);
+          throw new Error("provider stream broke");
+        });
+      try {
+        const { assistant, flows } = await fixture();
+        const events = await runTurn({ assistant, flows, message: "a long question" });
+        const started = events.find((event) => event.type === "turn");
+        if (started?.type !== "turn") throw new Error("turn did not start");
+        expect(events.some((event) => event.type === "error")).toBe(true);
+        const rows = await usageFor(started.conversationId);
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({ inputTokens: 1200, outputTokens: 340, messageId: null });
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it("settles the usage of a run whose Visitor disconnected", async () => {
+      const controller = new AbortController();
+      const spy = vi
+        .spyOn(engine, "runAssistantChat")
+        .mockImplementation(async (options) => {
+          options.usageSink?.push(spent);
+          controller.abort();
+          return {
+            parts: [{ type: "text", action: "fallback", text: "half an answer" }],
+            effects: [],
+            flowId: null,
+            flowName: "Default behavior",
+            usage: options.usageSink ?? [],
+          } as Awaited<ReturnType<typeof engine.runAssistantChat>>;
+        });
+      try {
+        const { assistant, flows } = await fixture();
+        const events = await runTurn({
+          assistant,
+          flows,
+          message: "a long question",
+          signal: controller.signal,
+        });
+        const started = events.find((event) => event.type === "turn");
+        if (started?.type !== "turn") throw new Error("turn did not start");
+        expect(events.some((event) => event.type === "done")).toBe(false);
+        expect(await usageFor(started.conversationId)).toHaveLength(1);
+      } finally {
+        spy.mockRestore();
+      }
+    });
   });
 
   it("answers an FAQ quick reply verbatim with a citation and no flow run (#313)", async () => {
@@ -588,6 +669,26 @@ describe("streamConversationTurn (AI Teammates, #768)", () => {
     expect(reply).not.toMatch(/knowledge base/i);
   });
 
+  it("delivers nothing for a proactive trigger and opens no Conversation", async () => {
+    const teammate = await teammateFixture();
+    const stream = await streamConversationTurn({
+      db,
+      teammate,
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "member",
+      subjectId: "member-proactive",
+      conversationId: null,
+      message: "",
+      trigger: "chat_open",
+      signal: new AbortController().signal,
+    });
+    expect((await new Response(stream).text()).trim()).toBe("");
+    expect(
+      await db.listTeammateConversations(teammate.id, "member-proactive")
+    ).toEqual([]);
+  });
+
   it("attributes telemetry to the Organization and to no Assistant", async () => {
     const teammate = await teammateFixture();
     const events: RuntimeEventInput[] = [];
@@ -842,6 +943,22 @@ describe("streamConversationTurn (proactive triggers)", () => {
     expect(
       await db.listConversations(assistant.id, "visitor", visitorId)
     ).toEqual([]);
+  });
+
+  it("never runs a proactive flow that carries a non-Notification action", async () => {
+    // A row the save path would refuse: written before the pairing rule, or
+    // around the operations layer. proactiveFlowCandidates is the runtime
+    // gate; this pins that it holds, since nothing keys proactive effects.
+    const { assistant, flows } = await proactiveFixture({
+      actions: ["notification", "send_email"],
+    });
+    const sendEmail = vi.spyOn(ACTION_HANDLERS, "send_email");
+    try {
+      expect(await runProactive({ assistant, flows })).toEqual([]);
+      expect(sendEmail).not.toHaveBeenCalled();
+    } finally {
+      sendEmail.mockRestore();
+    }
   });
 
   it("suppresses a second delivery in the same conversation", async () => {

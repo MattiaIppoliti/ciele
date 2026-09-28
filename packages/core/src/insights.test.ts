@@ -102,6 +102,48 @@ describe("filterMessages", () => {
   });
 });
 
+describe("conversation time and questions per conversation", () => {
+  const FILTER: InsightsFilter = { ...FILTER_CASES[0], from: "2026-06-15", to: "2026-06-16", aggregate: "daily" };
+  const at = (seconds: number) => new Date(Date.parse("2026-06-15T12:00:00.000Z") + seconds * 1000).toISOString();
+
+  it("averages start-to-last-message over conversations that have a message", () => {
+    const a = conv({ createdAt: at(0) });
+    const b = conv({ createdAt: at(0) });
+    const silent = conv({ createdAt: at(0) });
+    const messages = [
+      msg({ conversationId: a.id, role: "user", createdAt: at(5) }),
+      msg({ conversationId: a.id, role: "assistant", createdAt: at(60) }),
+      msg({ conversationId: a.id, role: "user", createdAt: at(90) }),
+      msg({ conversationId: b.id, role: "user", createdAt: at(10) }),
+      msg({ conversationId: b.id, role: "assistant", createdAt: at(31) }),
+    ];
+    const overview = computeInsightsOverview([a, b, silent], messages, ASSISTANTS, CHANNELS, FILTER);
+    // (90 + 31) / 2 = 60.5, and the conversation with no message is left out.
+    expect(overview.stats.avgConversationSeconds).toBe(61);
+    // Three Visitor messages over three conversations.
+    expect(overview.stats.questionsPerConversation).toBe(1);
+    const series = (key: string) => overview.chart.series.find((s) => s.key === key)?.values;
+    expect(series("Avg. conversation time")).toEqual([61, 0]);
+    expect(series("Questions / Conversation")).toEqual([1, 0]);
+  });
+
+  it("keeps a conversation's full length when its last message falls after the range", () => {
+    const c = conv({ createdAt: at(0) });
+    const messages = [
+      msg({ conversationId: c.id, role: "user", createdAt: at(1) }),
+      msg({ conversationId: c.id, role: "assistant", createdAt: at(2 * 86_400) }),
+    ];
+    const overview = computeInsightsOverview([c], messages, ASSISTANTS, CHANNELS, { ...FILTER, to: "2026-06-15" });
+    expect(overview.stats.avgConversationSeconds).toBe(2 * 86_400);
+  });
+
+  it("reports no average rather than zero when no conversation has a message", () => {
+    const overview = computeInsightsOverview([conv({ createdAt: at(0) })], [], ASSISTANTS, CHANNELS, FILTER);
+    expect(overview.stats.avgConversationSeconds).toBeNull();
+    expect(overview.stats.questionsPerConversation).toBe(0);
+  });
+});
+
 describe("computeInsightsStats", () => {
   it("computes resolution rate, answer rating, and per-user ratios", () => {
     const convs = [

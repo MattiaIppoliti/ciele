@@ -1,6 +1,5 @@
 import type {
   Alert,
-  Assistant,
   AssistantGoal,
   GoalExpectations,
   Skill,
@@ -9,16 +8,9 @@ import type {
 } from "@agent-hub/core";
 import { z } from "zod";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
+import { requireAssistant } from "./assistants";
 
 const idSchema = z.string().min(1);
-
-async function requireAssistant(ctx: OperationContext, id: string): Promise<Assistant> {
-  const assistant = await ctx.db.getAssistant(id);
-  if (!assistant || assistant.organizationId !== ctx.organizationId) {
-    throw new OperationError("not_found", "Assistant not found");
-  }
-  return assistant;
-}
 
 async function requireSkill(ctx: OperationContext, id: string): Promise<Skill> {
   const skill = await ctx.db.table("skills").get(id);

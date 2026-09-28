@@ -1,15 +1,17 @@
 import { ExportsClient, type ExportRow } from "@/components/insights/exports-client";
 import { requirePageMember } from "@/lib/authz";
+import { defaultInsightsFilter } from "@/lib/insights/report";
 
 export const dynamic = "force-dynamic";
 
 export default async function ExportsPage() {
-  const { organizationId, db } = await requirePageMember();
+  const { organizationId, db, reads } = await requirePageMember();
 
-  const jobs = await db.listExportJobs(organizationId);
+  const [jobs, assistants] = await Promise.all([db.listExportJobs(organizationId), reads.assistants()]);
 
   const rows: ExportRow[] = jobs.map((job) => ({
     id: job.id,
+    name: typeof job.params.name === "string" && job.params.name ? job.params.name : null,
     kind: job.kind,
     status: job.status,
     format: job.format,
@@ -25,5 +27,11 @@ export default async function ExportsPage() {
         : null,
   }));
 
-  return <ExportsClient rows={rows} />;
+  return (
+    <ExportsClient
+      rows={rows}
+      assistants={assistants.map((a) => ({ id: a.id, title: a.title }))}
+      defaultFilter={defaultInsightsFilter()}
+    />
+  );
 }

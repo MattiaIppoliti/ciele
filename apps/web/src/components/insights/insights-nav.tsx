@@ -1,38 +1,46 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useOptimistic, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 
 const ITEMS = [
   { label: "Insights", href: "/insights" },
+  { label: "Costs", href: "/insights/costs" },
+  { label: "Observability", href: "/insights/observability" },
   { label: "Exports", href: "/insights/exports" },
 ];
 
+/**
+ * The Insights section's pill rail, the same component and treatment as the
+ * Library's. It lives in the layout, so the pill glides between tabs instead
+ * of remounting at each destination, and it moves on click rather than when
+ * the server answers.
+ */
 export function InsightsNav() {
+  const router = useRouter();
   const pathname = usePathname();
+  const current = ITEMS.find((item) => item.href === pathname)?.href ?? "/insights";
+  const [, startTransition] = useTransition();
+  const [tab, setTab] = useOptimistic(current);
 
   return (
-    // One list, two shapes: a scrollable horizontal strip on small screens
-    // (`no-scrollbar` because a visible bar under four tabs is noise) and the
-    // stacked rail from `lg` up.
-    <ul className="no-scrollbar flex gap-1 overflow-x-auto lg:flex-col lg:gap-0 lg:space-y-1 lg:overflow-visible">
-      {ITEMS.map((item) => {
-        const active = pathname === item.href;
-        return (
-          <li key={item.href} className="shrink-0 lg:shrink">
-            <Link
-              href={item.href}
-              className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                active
-                  ? "bg-primary/8 text-primary ring-primary/30 ring-1"
-                  : "hover:bg-muted"
-              }`}
-            >
-              {item.label}
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+    <Tabs
+      value={tab}
+      onValueChange={(href) =>
+        startTransition(() => {
+          setTab(href);
+          router.push(href);
+        })
+      }
+    >
+      <TabsList aria-label="Insights tabs" className="bg-muted">
+        {ITEMS.map((item) => (
+          <TabsTrigger key={item.href} value={item.href} href={item.href}>
+            {item.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

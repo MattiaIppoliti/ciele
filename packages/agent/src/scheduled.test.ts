@@ -45,6 +45,8 @@ import {
   CRAWL_FINALIZE_BATCH_SIZE,
   GOAL_EVAL_BATCH_SIZE,
   RECRAWL_SWEEP_BATCH_SIZE,
+  drainRetentionBatches,
+  RETENTION_SWEEP_BATCH,
   finalizeDueCrawls,
   runDueAgenticOps,
   sweepDueRecrawls,
@@ -81,6 +83,7 @@ const NO_EFFECTS = {
 /** A Db stub with the claim methods a tick touches; everything else is absent. */
 function stubDb(overrides: Partial<Db>): Db {
   return {
+    deleteExpiredMemories: vi.fn().mockResolvedValue(0),
     claimDueRecrawlSources: vi.fn().mockResolvedValue([]),
     claimProcessingCrawlSources: vi.fn().mockResolvedValue([]),
     claimBackgroundJobs: vi.fn().mockResolvedValue([]),
@@ -326,6 +329,31 @@ describe("finalizeDueCrawls", () => {
     error.mockRestore();
   });
 
+  it("reports terminally failed jobs, which the queue-age check never sees", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await finalizeDueCrawls(
+      {
+        db: stubDb({
+          getWorkQueueHealth: vi.fn().mockResolvedValue({
+            backgroundJobs: {
+              draft_improvement_proposal: { due: 0, failed: 2, oldestDueAt: null },
+              ingest_source: { due: 0, failed: 0, oldestDueAt: null },
+            },
+            turnEffects: { due: 0, failed: 1, oldestDueAt: null },
+          }),
+        }),
+      },
+      { now: new Date("2026-08-29T12:00:00.000Z") }
+    );
+    expect(error).toHaveBeenCalledWith("[runtime] durable jobs failed terminally", {
+      failed: [
+        { queue: "background:draft_improvement_proposal", failed: 2 },
+        { queue: "turn-effects", failed: 1 },
+      ],
+    });
+    error.mockRestore();
+  });
+
   it("finalizes only one bounded batch, leaving later crawls for another tick", async () => {
     const batch = Array.from({ length: CRAWL_FINALIZE_BATCH_SIZE }, (_, i) => dueSource(i));
     const claim = vi.fn().mockResolvedValue(batch);
@@ -412,11 +440,13 @@ describe("sweepExpiredTraces", () => {
 
     expect(clearExpiredTraces).toHaveBeenCalledWith(
       "org-30",
-      "2026-06-30T12:00:00.000Z"
+      "2026-06-30T12:00:00.000Z",
+      RETENTION_SWEEP_BATCH
     );
     expect(clearExpiredTraces).toHaveBeenCalledWith(
       "org-7",
-      "2026-07-23T12:00:00.000Z"
+      "2026-07-23T12:00:00.000Z",
+      RETENTION_SWEEP_BATCH
     );
     expect(report.traces).toMatchObject({
       organizations: 2,
@@ -536,6 +566,25 @@ describe("sweepExpiredObjectAccess", () => {
 });
 
 describe("sweepExpiredTranscripts", () => {
+  it("sweeps the Visitor memories distilled from transcripts under the same window", async () => {
+    const now = new Date("2026-08-30T12:00:00.000Z");
+    const deleteExpiredMemories = vi.fn().mockResolvedValue(4);
+    const db = stubDb({
+      listTranscriptRetentionPolicies: async () => [
+        { organizationId: "org-30", retentionDays: 30 },
+      ],
+      deleteExpiredConversations: vi.fn().mockResolvedValue(2),
+      deleteExpiredMemories,
+    });
+    const report = await sweepExpiredTranscripts({ db }, { now });
+    expect(deleteExpiredMemories).toHaveBeenCalledWith(
+      "org-30",
+      "2026-07-31T12:00:00.000Z",
+      RETENTION_SWEEP_BATCH
+    );
+    expect(report.transcripts.deleted).toBe(6);
+  });
+
   it("computes each org's cutoff from its own window and reports totals", async () => {
     const now = new Date("2026-08-30T12:00:00.000Z");
     const deleteExpiredConversations = vi
@@ -554,11 +603,13 @@ describe("sweepExpiredTranscripts", () => {
 
     expect(deleteExpiredConversations).toHaveBeenCalledWith(
       "org-90",
-      "2026-06-01T12:00:00.000Z"
+      "2026-06-01T12:00:00.000Z",
+      RETENTION_SWEEP_BATCH
     );
     expect(deleteExpiredConversations).toHaveBeenCalledWith(
       "org-30",
-      "2026-07-31T12:00:00.000Z"
+      "2026-07-31T12:00:00.000Z",
+      RETENTION_SWEEP_BATCH
     );
     expect(report.transcripts).toMatchObject({
       organizations: 2,
@@ -659,5 +710,34 @@ describe("sweepExpiredTranscripts", () => {
       deleted: 0,
       results: [],
     });
+  });
+});
+
+describe("drainRetentionBatches", () => {
+  it("keeps calling while a batch comes back full, and stops on a short one", async () => {
+    const answers = [3, 3, 1, 3];
+    const calls: number[] = [];
+    const total = await drainRetentionBatches(
+      async (limit) => {
+        calls.push(limit);
+        return answers.shift() ?? 0;
+      },
+      { batch: 3 }
+    );
+    expect(total).toBe(7);
+    expect(calls).toEqual([3, 3, 3]);
+  });
+
+  it("stops at the batch cap, leaving the rest for the next tick", async () => {
+    let calls = 0;
+    const total = await drainRetentionBatches(
+      async () => {
+        calls += 1;
+        return 2;
+      },
+      { batch: 2, maxBatches: 4 }
+    );
+    expect(calls).toBe(4);
+    expect(total).toBe(8);
   });
 });

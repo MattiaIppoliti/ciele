@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import {
   endpointPathParams,
+  HTTP_FLOW_METHODS,
   type ApiEndpointSpec,
   type ApiIntegrationAuthType,
 } from "@agent-hub/core";
@@ -15,6 +16,8 @@ import {
 } from "@/app/actions";
 import { Button, Hint, Input, Label } from "@agent-hub/ui";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import {
   Select,
   SelectContent,
@@ -23,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 /**
  * The API integration editor (spec #559): one base URL, one credential, and the
@@ -38,14 +42,6 @@ import { Textarea } from "@/components/ui/textarea";
  * to the browser; the field shows whether one is set, and saving without
  * touching it keeps it.
  */
-
-const METHODS: ApiEndpointSpec["method"][] = [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-];
 
 const AUTH_LABELS: Record<ApiIntegrationAuthType, string> = {
   none: "None",
@@ -180,6 +176,21 @@ function toEndpoint(draft: EndpointDraft): ApiEndpointSpec {
   };
 }
 
+/**
+ * What a save would send, as one comparable string. Drafts carry a render key
+ * that changes on every load, so the comparison runs over `toEndpoint`.
+ */
+function snapshotOf(fields: {
+  name: string;
+  baseUrl: string;
+  authType: ApiIntegrationAuthType;
+  authHeaderName: string;
+  authUsername: string;
+  endpoints: EndpointDraft[];
+}): string {
+  return JSON.stringify({ ...fields, endpoints: fields.endpoints.map(toEndpoint) });
+}
+
 export function ApiIntegrationEditor({
   assistantId,
   integration,
@@ -210,6 +221,21 @@ export function ApiIntegrationEditor({
   );
   const [configured, setConfigured] = useState(integration !== null);
   const [pending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  const fieldId = useId();
+  const current = snapshotOf({
+    name,
+    baseUrl,
+    authType,
+    authHeaderName,
+    authUsername,
+    endpoints,
+  });
+  const [saved, setSaved] = useState(current);
+  const dirty = credential !== null || current !== saved;
+
+  // A reload would drop a described catalogue nobody saved.
+  useUnsavedChanges({ dirty });
 
   function patchEndpoint(key: string, patch: Partial<EndpointDraft>) {
     setEndpoints((prev) =>
@@ -219,39 +245,65 @@ export function ApiIntegrationEditor({
 
   function save() {
     startTransition(async () => {
-      const result = await setApiIntegrationAction(assistantId, {
-        name,
-        baseUrl,
-        authType,
-        authHeaderName,
-        authUsername,
-        ...(credential === null ? {} : { credential }),
-        endpoints: endpoints.map(toEndpoint),
-      });
-      if (result.error) {
-        toast.error(result.error);
-        return;
+      try {
+        const result = await setApiIntegrationAction(assistantId, {
+          name,
+          baseUrl,
+          authType,
+          authHeaderName,
+          authUsername,
+          ...(credential === null ? {} : { credential }),
+          endpoints: endpoints.map(toEndpoint),
+        });
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
+        if (credential !== null) setHasCredential(credential !== "");
+        setCredential(null);
+        setConfigured(true);
+        setSaved(current);
+        toast.success("API integration saved");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not save the integration"
+        );
       }
-      if (credential !== null) setHasCredential(credential !== "");
-      setCredential(null);
-      setConfigured(true);
-      toast.success("API integration saved");
     });
   }
 
   function remove() {
-    startTransition(async () => {
-      await deleteApiIntegrationAction(assistantId);
-      setConfigured(false);
-      setEndpoints([]);
-      setHasCredential(false);
-      setCredential(null);
-      toast.success("API integration removed");
+    confirmDelete({
+      title: "Remove this API integration?",
+      description:
+        "The assistant stops querying this API at once, and the stored credential and endpoint catalogue are deleted.",
+      confirmLabel: "Remove integration",
+      // Returned, not wrapped: the modal awaits it for its pending state and
+      // turns a rejection into a toast.
+      onConfirm: async () => {
+        await deleteApiIntegrationAction(assistantId);
+        setConfigured(false);
+        setEndpoints([]);
+        setHasCredential(false);
+        setCredential(null);
+        setSaved(
+          snapshotOf({
+            name,
+            baseUrl,
+            authType,
+            authHeaderName,
+            authUsername,
+            endpoints: [],
+          })
+        );
+        toast.success("API integration removed");
+      },
     });
   }
 
   return (
     <section>
+      {confirmDeleteModal}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-muted-foreground text-sm">
@@ -283,6 +335,10 @@ export function ApiIntegrationEditor({
             <Label htmlFor="api-base-url">Base URL (https)</Label>
             <Input
               id="api-base-url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
               placeholder="https://api.example.com/v1"
               value={baseUrl}
               disabled={!canEdit}
@@ -293,7 +349,7 @@ export function ApiIntegrationEditor({
 
         <div className="flex flex-wrap gap-3">
           <div className="w-44 space-y-2">
-            <Label>Authentication</Label>
+            <Label htmlFor="api-auth-type">Authentication</Label>
             <Select
               value={authType}
               disabled={!canEdit}
@@ -301,7 +357,7 @@ export function ApiIntegrationEditor({
                 setAuthType(value as ApiIntegrationAuthType)
               }
             >
-              <SelectTrigger>
+              <SelectTrigger id="api-auth-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -330,6 +386,8 @@ export function ApiIntegrationEditor({
               <Label htmlFor="api-username">Username</Label>
               <Input
                 id="api-username"
+                autoComplete="off"
+                spellCheck={false}
                 value={authUsername}
                 disabled={!canEdit}
                 onChange={(e) => setAuthUsername(e.target.value)}
@@ -344,7 +402,11 @@ export function ApiIntegrationEditor({
               <Input
                 id="api-credential"
                 type="password"
-                autoComplete="off"
+                // A service credential, not the admin's own login: keep the
+                // browser and password managers from filling or saving it.
+                autoComplete="new-password"
+                data-1p-ignore
+                data-lpignore="true"
                 placeholder={
                   hasCredential
                     ? "•••••••• stored, type to replace"
@@ -381,11 +443,13 @@ export function ApiIntegrationEditor({
           </p>
         )}
 
-        {endpoints.map((draft) => (
+        {endpoints.map((draft) => {
+          const id = (field: string) => `${fieldId}-${draft.key}-${field}`;
+          return (
           <div key={draft.key} className="space-y-3 rounded-lg border px-4 py-3">
             <div className="flex flex-wrap gap-3">
               <div className="w-28 space-y-2">
-                <Label>Method</Label>
+                <Label htmlFor={id("method")}>Method</Label>
                 <Select
                   value={draft.method}
                   disabled={!canEdit}
@@ -395,11 +459,11 @@ export function ApiIntegrationEditor({
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id={id("method")}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {METHODS.map((method) => (
+                    {HTTP_FLOW_METHODS.map((method) => (
                       <SelectItem key={method} value={method}>
                         {method}
                       </SelectItem>
@@ -408,8 +472,12 @@ export function ApiIntegrationEditor({
                 </Select>
               </div>
               <div className="min-w-0 flex-1 space-y-2">
-                <Label>Path, put path parameters in {"{braces}"}</Label>
+                <Label htmlFor={id("path")}>
+                  Path, put path parameters in {"{braces}"}
+                </Label>
                 <Input
+                  id={id("path")}
+                  spellCheck={false}
                   placeholder="/tickets/{ticketId}/comments"
                   value={draft.path}
                   disabled={!canEdit}
@@ -439,8 +507,9 @@ export function ApiIntegrationEditor({
             </div>
             <div className="flex flex-wrap gap-3">
               <div className="w-48 space-y-2">
-                <Label>Name</Label>
+                <Label htmlFor={id("name")}>Name</Label>
                 <Input
+                  id={id("name")}
                   placeholder="Ticket comments"
                   value={draft.name}
                   disabled={!canEdit}
@@ -450,8 +519,9 @@ export function ApiIntegrationEditor({
                 />
               </div>
               <div className="min-w-0 flex-1 space-y-2">
-                <Label>Purpose, what it answers</Label>
+                <Label htmlFor={id("purpose")}>Purpose, what it answers</Label>
                 <Input
+                  id={id("purpose")}
                   placeholder="The comments on one ticket"
                   value={draft.purpose}
                   disabled={!canEdit}
@@ -462,12 +532,14 @@ export function ApiIntegrationEditor({
               </div>
             </div>
             <div className="space-y-2">
-              <Label>
+              <Label htmlFor={id("params")}>
                 Parameters, one per line: name | path, query or header | type |
                 description | required | server value. Server values may use
                 {" {{identity.subject}} or {{identity.claim}}"}.
               </Label>
               <Textarea
+                id={id("params")}
+                spellCheck={false}
                 rows={2}
                 placeholder={
                   "ticketId | path | string | The ticket identifier\ncustomer | header | string | | required | {{identity.claim}}"
@@ -480,8 +552,12 @@ export function ApiIntegrationEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label>Response keys, comma separated</Label>
+              <Label htmlFor={id("response-keys")}>
+                Response keys, comma separated
+              </Label>
               <Input
+                id={id("response-keys")}
+                spellCheck={false}
                 placeholder="items, total"
                 value={draft.responseKeys}
                 disabled={!canEdit}
@@ -491,7 +567,7 @@ export function ApiIntegrationEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label>Idempotency key</Label>
+              <Label htmlFor={id("idempotency-name")}>Idempotency key</Label>
               <div className="flex gap-2">
                 <Select
                   value={draft.idempotencyIn}
@@ -515,6 +591,13 @@ export function ApiIntegrationEditor({
                   </SelectContent>
                 </Select>
                 <Input
+                  id={id("idempotency-name")}
+                  aria-label={
+                    draft.idempotencyIn === "header"
+                      ? "Idempotency key header name"
+                      : "Idempotency key body field name"
+                  }
+                  spellCheck={false}
                   placeholder={
                     draft.idempotencyIn === "header"
                       ? "Idempotency-Key"
@@ -536,12 +619,13 @@ export function ApiIntegrationEditor({
               </p>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {canEdit && (
           <div className="flex gap-2">
             <Button onClick={save} disabled={pending}>
-              Save integration
+              <RollInText text={pending ? "Saving…" : "Save integration"} />
             </Button>
             {configured && (
               <Button variant="outline" onClick={remove} disabled={pending}>

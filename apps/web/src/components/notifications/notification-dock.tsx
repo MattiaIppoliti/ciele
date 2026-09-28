@@ -27,8 +27,13 @@ import { RIGHT_RAIL_TRANSITION_VAR } from "@/components/shell/right-rail";
  * have hidden the alerts, which is the wrong way round: an active alert has to
  * stay readable.
  *
+ * The offset is a `translateX`, not a moving `right`: the rail's collapse
+ * animates it over 200ms, and a transform travels on the compositor where
+ * `right` re-lays-out the column every frame.
+ *
  * `right-3`/`sm:right-6` leaves room for the banner's dismiss control, which
- * floats past its own right edge.
+ * floats past its own right edge. The bottom inset adds the safe area, so a
+ * phone's home indicator never sits on the banner.
  */
 export function NotificationDock({
   alerts,
@@ -45,7 +50,7 @@ export function NotificationDock({
   return (
     <div
       style={{ transition: `var(${RIGHT_RAIL_TRANSITION_VAR})` }}
-      className="pointer-events-none fixed right-3 bottom-3 z-40 flex w-[22rem] max-w-[calc(100vw-1.5rem)] flex-col items-end gap-3 sm:right-6 sm:bottom-4 sm:max-w-[calc(100vw-3rem)] md:right-[calc(var(--right-rail-width)_+_1.5rem)] md:max-w-[calc(100vw_-_var(--right-rail-width)_-_3rem)]"
+      className="pointer-events-none fixed right-3 bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] z-40 flex w-[22rem] max-w-[calc(100vw-1.5rem)] flex-col items-end gap-3 sm:right-6 sm:bottom-[calc(1rem_+_env(safe-area-inset-bottom))] sm:max-w-[calc(100vw-3rem)] md:[transform:translateX(calc(var(--right-rail-width)*-1))] md:max-w-[calc(100vw_-_var(--right-rail-width)_-_3rem)]"
     >
       <NotificationCenter
         alerts={alerts}

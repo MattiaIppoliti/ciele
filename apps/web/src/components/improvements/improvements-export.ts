@@ -5,7 +5,7 @@ import {
   matchesImprovementFilters,
   type ImprovementFilters,
 } from "@/lib/improvements";
-import { recordsToCsv } from "@ciele/ops/csv";
+import { downloadRows } from "@/lib/download";
 
 /**
  * The export path of the Improvements board, loaded with `import()` from the
@@ -16,9 +16,6 @@ import { recordsToCsv } from "@ciele/ops/csv";
  * loaded" is a window, and a report built from a window is wrong in a way
  * nobody notices until an old In-Progress item is missing from it.
  */
-/** The board's filters, applied to the rows the export reads from the server. */
-export type ImprovementExportFilters = ImprovementFilters;
-
 export function toImprovementExportRow(
   row: ImprovementListItem,
   assigneeEmail: string | null,
@@ -36,35 +33,11 @@ export function toImprovementExportRow(
   };
 }
 
-function download(
-  name: string,
-  rows: Record<string, unknown>[],
-  format: "csv" | "json",
-) {
-  let blob: Blob;
-  if (format === "json") {
-    blob = new Blob([JSON.stringify(rows, null, 2)], {
-      type: "application/json",
-    });
-  } else {
-    // Titles and tags are text other people typed, and the file is opened
-    // in a spreadsheet: `recordsToCsv` neutralises what would run there.
-    blob = new Blob([recordsToCsv(rows, rows.length ? undefined : ["key"])], {
-      type: "text/csv",
-    });
-  }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 /** Fetches every matching row from the server and hands the file to the browser. */
 export async function exportImprovements(options: {
   status?: ImprovementStatus;
-  filters: ImprovementExportFilters;
+  /** The board's filters, applied to the rows the export reads from the server. */
+  filters: ImprovementFilters;
   format: "csv" | "json";
   emailOf: (userId: string | null) => string | null;
 }): Promise<number> {
@@ -74,10 +47,13 @@ export async function exportImprovements(options: {
   const name = options.status
     ? `improvements-${options.status}.${options.format}`
     : `improvements.${options.format}`;
-  download(
-    name,
+  // Titles and tags are text other people typed, and the file is opened in a
+  // spreadsheet: `downloadRows` neutralises what would run there.
+  downloadRows(
     rows.map((row) => toImprovementExportRow(row, options.emailOf(row.assigneeId))),
     options.format,
+    name,
+    ["key"],
   );
   return rows.length;
 }

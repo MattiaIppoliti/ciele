@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "@/lib/toast";
 import { createAssistantAction } from "@/app/actions";
 import { Button } from "@agent-hub/ui";
@@ -17,6 +17,9 @@ import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { canAutoFocus } from "@/lib/auto-focus";
+import { isRedirectError, useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 export function CreateAssistantDialog({
   triggerLabel = "Create New Assistant",
@@ -27,25 +30,65 @@ export function CreateAssistantDialog({
   const [title, setTitle] = useState("");
   const [nickname, setNickname] = useState("");
   const [description, setDescription] = useState("");
+  const [titleError, setTitleError] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const titleRef = useRef<HTMLInputElement>(null);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+
+  const dirty =
+    title.trim() !== "" || nickname.trim() !== "" || description.trim() !== "";
+
+  function reset() {
+    setTitle("");
+    setNickname("");
+    setDescription("");
+    setTitleError(false);
+  }
+
+  // Escape, the backdrop and Cancel used to drop whatever was typed.
+  function requestClose() {
+    if (!dirty || isPending) {
+      setOpen(false);
+      return;
+    }
+    confirmDelete({
+      title: "Discard this assistant?",
+      description: "It has not been created yet.",
+      confirmLabel: "Discard",
+      onConfirm: () => {
+        reset();
+        setOpen(false);
+      },
+    });
+  }
+
+  useUnsavedChanges({ dirty: open && dirty });
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) {
-      toast.error("Title is required");
+      setTitleError(true);
+      titleRef.current?.focus();
       return;
     }
     startTransition(async () => {
-      await createAssistantAction({
-        title: title.trim(),
-        nickname: nickname.trim() || undefined,
-        description: description.trim() || undefined,
-      });
+      try {
+        // Redirects to the new assistant on success.
+        await createAssistantAction({
+          title: title.trim(),
+          nickname: nickname.trim() || undefined,
+          description: description.trim() || undefined,
+        });
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        toast.error("Could not create the assistant. Try again.");
+      }
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : requestClose())}>
       <DialogTrigger render={<Button size="lg" className="px-4" />}>
         {triggerLabel}
       </DialogTrigger>
@@ -61,14 +104,25 @@ export function CreateAssistantDialog({
           <div className="space-y-2">
             <Label htmlFor="new-title">Assistant title</Label>
             <Input
+              ref={titleRef}
               id="new-title"
               name="title"
               autoComplete="off"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (e.target.value.trim()) setTitleError(false);
+              }}
+              aria-invalid={titleError || undefined}
+              aria-describedby={titleError ? "new-title-error" : undefined}
               placeholder="e.g. Customer Support Assistant"
               autoFocus={canAutoFocus()}
             />
+            {titleError && (
+              <p id="new-title-error" className="text-destructive text-sm">
+                Give the assistant a title.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-nickname">Nickname</Label>
@@ -97,16 +151,18 @@ export function CreateAssistantDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={requestClose}
             >
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Creating…" : "Create assistant"}
+              <RollInText text={isPending ? "Creating…" : "Create assistant"} />
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }

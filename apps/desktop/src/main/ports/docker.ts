@@ -69,7 +69,6 @@ const DEFAULT_TIMEOUT_MS = 15 * 60_000;
 export interface DockerPortOptions {
   /** Directory compose runs in, the bundled deploy assets. */
   cwd: string;
-  timeoutMs?: number;
 }
 
 export function createDockerPort(options: DockerPortOptions): DockerPort {
@@ -84,7 +83,7 @@ export function createDockerPort(options: DockerPortOptions): DockerPort {
   async function run(
     args: readonly string[],
     onOutput?: (chunk: string) => void,
-    timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
   ): Promise<CommandResult> {
     const binary = await locate();
     if (!binary) throw new Error("Docker Desktop is not installed.");

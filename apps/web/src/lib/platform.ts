@@ -20,19 +20,14 @@ import { getWidgetDb } from "./widget-db";
  * part only the app can do: the tagged, cached, service-role read of the stored
  * override, registered as the runtime's `getPlatformSystemPrompt` port in
  * `instrumentation.ts`.
+ *
+ * Data access goes through `getWidgetDb()`, the app's service-role-backed Db
+ * (falling back to the anon key, and to the in-memory mock when Supabase env
+ * is absent, which keeps the owner flow fully working in demo mode, the mock
+ * store holding the prompt).
  */
 
 const PLATFORM_PROMPT_TAG = "platform-system-prompt";
-
-/**
- * Data access goes through the Db facade: `getWidgetDb()` is the app's
- * service-role-backed Db (falling back to the anon key, and to the in-memory
- * mock when Supabase env is absent, which keeps the owner flow fully working
- * in demo mode, the mock store holding the prompt).
- */
-function platformDb() {
-  return getWidgetDb();
-}
 
 /**
  * Only the platform owner may see or edit the platform prompt. Configured
@@ -60,7 +55,7 @@ export async function getPlatformSystemPrompt(): Promise<string> {
     return readPlatformSystemPrompt();
   }
   return unstable_cache(
-    async () => readPlatformSystemPrompt(),
+    readPlatformSystemPrompt,
     ["platform-system-prompt"],
     { revalidate: 60 * 60 * 24, tags: [PLATFORM_PROMPT_TAG] }
   )();
@@ -68,7 +63,7 @@ export async function getPlatformSystemPrompt(): Promise<string> {
 
 async function readPlatformSystemPrompt(): Promise<string> {
   try {
-    const stored = (await platformDb().getPlatformSystemPromptOverride()).trim();
+    const stored = (await getWidgetDb().getPlatformSystemPromptOverride()).trim();
     return stored || DEFAULT_PLATFORM_PROMPT;
   } catch {
     return DEFAULT_PLATFORM_PROMPT;
@@ -77,7 +72,7 @@ async function readPlatformSystemPrompt(): Promise<string> {
 
 /** The stored override (may be empty = "use the shipped default"). Owner-only surface. */
 export async function getStoredPlatformPrompt(): Promise<string> {
-  return platformDb().getPlatformSystemPromptOverride();
+  return getWidgetDb().getPlatformSystemPromptOverride();
 }
 
 /** Persist the override. Callers MUST have checked isPlatformOwner first. */
@@ -85,7 +80,7 @@ export async function setPlatformSystemPrompt(
   prompt: string,
   updatedBy: string
 ): Promise<void> {
-  await platformDb().setPlatformSystemPrompt(prompt, updatedBy);
+  await getWidgetDb().setPlatformSystemPrompt(prompt, updatedBy);
   // No tagged cache to invalidate in demo mode (and updateTag is
   // server-action-only next to a real deployment anyway).
   if (isSupabaseConfigured()) updateTag(PLATFORM_PROMPT_TAG);

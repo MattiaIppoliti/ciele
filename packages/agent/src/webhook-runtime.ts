@@ -83,7 +83,7 @@ export type WebhookTokenVerdict =
 
 export function verifyWebhookCallbackToken(
   token: string,
-  options: { now?: Date; graceMs?: number } = {}
+  options: { now?: Date } = {}
 ): WebhookTokenVerdict {
   const verdict = callbackTokens.verify(token, options);
   return verdict.ok ? { ok: true, subscriptionId: verdict.id } : verdict;

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  effectivePageSchedule,
   isUnlimitedPages,
   NO_PAGE_LIMIT,
   nextCrawlDue,
@@ -48,18 +47,6 @@ describe("nextCrawlDue", () => {
 
   it("returns null for an unparseable last-crawled timestamp", () => {
     expect(nextCrawlDue("daily", "not-a-date")).toBeNull();
-  });
-});
-
-describe("effectivePageSchedule", () => {
-  it("uses the page's own schedule when set", () => {
-    expect(effectivePageSchedule("daily", "weekly")).toBe("daily");
-    expect(effectivePageSchedule("never", "weekly")).toBe("never");
-  });
-
-  it("inherits the site schedule when the page schedule is null", () => {
-    expect(effectivePageSchedule(null, "weekly")).toBe("weekly");
-    expect(effectivePageSchedule(null, "never")).toBe("never");
   });
 });
 

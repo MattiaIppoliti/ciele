@@ -15,7 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
-import type { VoiceCatalog } from "@/lib/voice-providers";
+import { RollInText } from "@/components/motion/roll-in-text";
+import type { VoiceCatalog, VoiceCatalogVoice } from "@/lib/voice-providers";
 import { availableVoiceLanguages, isVoiceLanguage, selectedVoiceLanguage, voiceSample, VOICE_LANGUAGES } from "@/lib/voice-languages";
 
 export const EMPTY_VOICE_SETTINGS: AssistantVoiceSettings = {
@@ -28,6 +29,9 @@ export const EMPTY_VOICE_SETTINGS: AssistantVoiceSettings = {
 };
 const PROVIDER_LABEL: Record<VoiceProvider, string> = { google: "Google AI Studio", openai: "OpenAI", elevenlabs: "ElevenLabs" };
 const modelKey = (model: VoiceModelRef) => `${model.provider}:${model.modelId}`;
+/** Whether a voice can be spoken by a speech model. */
+const fits = (voice: VoiceCatalogVoice, model: VoiceModelRef) =>
+  voice.provider === model.provider && (!voice.modelIds || voice.modelIds.includes(model.modelId));
 
 export function VoiceSettings({ assistantId, value, onChange }: {
   assistantId: string;
@@ -69,7 +73,7 @@ export function VoiceSettings({ assistantId, value, onChange }: {
 
   const transcription = catalog?.models.filter((model) => model.kind === "transcription") ?? [];
   const speech = catalog?.models.filter((model) => model.kind === "speech") ?? [];
-  const compatibleVoices = catalog?.voices.filter((voice) => voice.provider === value.speech.provider && (!voice.modelIds || voice.modelIds.includes(value.speech.modelId))) ?? [];
+  const compatibleVoices = catalog?.voices.filter((voice) => fits(voice, value.speech)) ?? [];
   const voices = compatibleVoices.slice(0, 3);
   const currentVoice = compatibleVoices.find((voice) => voice.id === value.voiceId);
   // Keep an existing selection visible without increasing the three-choice limit.
@@ -81,6 +85,11 @@ export function VoiceSettings({ assistantId, value, onChange }: {
   const connected = transcription.length > 0 && speech.length > 0;
   const selectedVoice = voices.find((voice) => voice.id === value.voiceId);
 
+  /** The saved voice when the model can speak it, else the model's first voice. */
+  const voiceIdFor = (model: VoiceModelRef) =>
+    catalog?.voices.find((v) => fits(v, model) && v.id === value.voiceId)?.id
+      ?? catalog?.voices.find((v) => fits(v, model))?.id ?? "";
+
   function enable(enabled: boolean) {
     stopPreview();
     const input = transcription.find((m) => modelKey(m) === modelKey(value.transcription)) ?? transcription[0];
@@ -89,8 +98,7 @@ export function VoiceSettings({ assistantId, value, onChange }: {
       ...value, enabled,
       transcription: input ? { provider: input.provider, modelId: input.modelId } : value.transcription,
       speech: output ? { provider: output.provider, modelId: output.modelId } : value.speech,
-      voiceId: catalog?.voices.find((v) => v.provider === output?.provider && (!v.modelIds || v.modelIds.includes(output.modelId)) && v.id === value.voiceId)?.id
-        ?? catalog?.voices.find((v) => v.provider === output?.provider && (!v.modelIds || v.modelIds.includes(output.modelId)))?.id ?? "",
+      voiceId: output ? voiceIdFor(output) : "",
     });
   }
 
@@ -99,8 +107,7 @@ export function VoiceSettings({ assistantId, value, onChange }: {
     if (!model) return;
     stopPreview();
     onChange({ ...value, [kind]: { provider: model.provider, modelId: model.modelId },
-      ...(kind === "speech" ? { outputLanguage: availableVoiceLanguages(model).some((language) => language.value === (value.outputLanguage ?? "auto")) ? value.outputLanguage ?? "auto" : "auto", voiceId: catalog?.voices.find((v) => v.provider === model.provider && (!v.modelIds || v.modelIds.includes(model.modelId)) && v.id === value.voiceId)?.id
-        ?? catalog?.voices.find((v) => v.provider === model.provider && (!v.modelIds || v.modelIds.includes(model.modelId)))?.id ?? "" } : {}),
+      ...(kind === "speech" ? { outputLanguage: availableVoiceLanguages(model).some((language) => language.value === (value.outputLanguage ?? "auto")) ? value.outputLanguage ?? "auto" : "auto", voiceId: voiceIdFor(model) } : {}),
     });
   }
 
@@ -116,7 +123,8 @@ export function VoiceSettings({ assistantId, value, onChange }: {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
         body: JSON.stringify({ assistantId, sample: true, model: value.speech, voiceId, language: outputLanguage }),
       });
-      if (!response.ok) { const result = await response.json(); throw new Error(result.error || "Voice preview unavailable"); }
+      // An error page from a proxy is not JSON; the fallback message still applies.
+      if (!response.ok) { const result: { error?: string } = await response.json().catch(() => ({})); throw new Error(result.error || "Voice preview unavailable"); }
       const blob = await response.blob();
       if (controller.signal.aborted) return;
       const url = URL.createObjectURL(blob);
@@ -133,18 +141,20 @@ export function VoiceSettings({ assistantId, value, onChange }: {
 
   return (
     <Card size="sm" className="gap-0 p-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      {/* Stacks on a narrow screen, like the other toggle cards, so the copy
+          never squeezes into a one-word column beside the switch. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
           <h2 className="text-base font-semibold">Voice mode</h2>
           <p className="text-muted-foreground mt-1 text-sm">Enable microphone input and AI-generated audio playback.</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <Badge variant="outline" className="rounded-full">{value.enabled ? "Active" : "Inactive"}</Badge>
+          <Badge variant="outline" className="rounded-full"><RollInText text={value.enabled ? "Active" : "Inactive"} /></Badge>
           <Switch aria-label="Enable voice mode" checked={value.enabled} onCheckedChange={enable} disabled={!value.enabled && (!connected || loading)} />
         </div>
       </div>
       <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>{loading ? "Loading models from your connected providers…" : "Models available through your connected API keys."}</span>
+        <span role="status" aria-live="polite">{loading ? "Loading models from your connected providers…" : "Models available through your connected API keys."}</span>
         <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={() => { setLoading(true); setRevision((n) => n + 1); }}>
           <RefreshCw className="size-3.5" /> Refresh
         </Button>

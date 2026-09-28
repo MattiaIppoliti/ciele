@@ -11,7 +11,8 @@ import type { Db } from "@agent-hub/db";
 export const EXPORT_JOB_LEASE_MS = 5 * 60_000;
 
 export interface ExportArtifact {
-  body: string;
+  /** Text for CSV and JSON, bytes for an XLSX workbook. */
+  body: string | Uint8Array;
   format: ExportJobFormat;
 }
 

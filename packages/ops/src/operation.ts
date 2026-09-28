@@ -1,5 +1,6 @@
 import type {
   ApplicationScopeOption,
+  AssistantAnswer,
   Concept,
   ConceptFrontmatter,
   DecisionBooleanAnswer,
@@ -8,6 +9,7 @@ import type {
   Entity,
   Improvement,
   ImprovementPatch,
+  KnowledgeSearchResult,
   PriorityQuestionId,
   ProviderConnectionProvider,
   ReviewRequest,
@@ -161,6 +163,32 @@ export interface OperationPorts {
   }): Promise<void>;
 
   /**
+   * One Conversation Turn asked by an API key and read back whole
+   * (`assistants.ask`). A port because the turn is the runtime's, and it runs
+   * on the latest Publication, the way the widget does, so "published" means
+   * the same thing on every channel. Null when the Assistant has none. The
+   * operation has already checked the Assistant's Organization.
+   */
+  askAssistant?(input: {
+    assistantId: string;
+    question: string;
+    /** Continued only when it is this key's own; otherwise a new one starts. */
+    conversationId: string | null;
+  }): Promise<AssistantAnswer | null>;
+  /**
+   * Knowledge search with no Conversation Turn (`knowledge.search`). A port
+   * because retrieval embeds the query and reranks through the runtime, which
+   * this package cannot reach, and because the chunk search is not on the
+   * org-pinned view. The operation has already checked the Assistant's
+   * Organization; the host pins the search to its own. Absent, the operation
+   * refuses rather than answering an empty list that looks like "no match".
+   */
+  searchKnowledge?(input: {
+    query: string;
+    /** Null searches the whole Library. */
+    assistantId: string | null;
+  }): Promise<KnowledgeSearchResult[]>;
+  /**
    * The decision backend for the Improvements board (#959). A port because
    * this package speaks core, db and zod only while the model lives in the
    * runtime; **absent means no backend**, and the routine then dedups the way
@@ -204,6 +232,14 @@ export interface OperationPorts {
    * own Db, which the mock allows.
    */
   decideReviewRequest?: Db["decideReviewRequest"];
+  /**
+   * Deletes uploaded knowledge originals from object storage once their
+   * Source row is gone. A port because the bucket is the host's, and best
+   * effort by contract: the operation has already deleted the row, so a
+   * storage failure is logged, never raised. Absent (the mock), nothing is
+   * stored to remove.
+   */
+  removeKnowledgeOriginals?(paths: string[]): Promise<void>;
   /** Probe a BYOK provider credential before it is persisted. */
   validateProviderApiKey?(
     provider: Exclude<ProviderConnectionProvider, "openai_compatible" | "azure_openai">,

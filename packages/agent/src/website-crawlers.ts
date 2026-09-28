@@ -119,9 +119,20 @@ const apifyAdapter: WebsiteCrawlerAdapter = {
   },
 };
 
+/**
+ * Crawl4AI returns a finished task as one payload of up to
+ * CRAWL4AI_MAX_CRAWL_PAGES pages. Handing it to the finalizer whole meant one
+ * invocation had to stage and embed all of them inside a single function
+ * timeout, with no checkpoint, so a killed run restarted from the first page
+ * two hours later and never finished. The adapter windows the stable result
+ * instead, the same shape as Apify's dataset pagination, and the finalizer's
+ * checkpoint resumes at the next window.
+ */
+export const CRAWL4AI_RESULT_WINDOW = APIFY_DATASET_BATCH_SIZE;
+
 const crawl4aiAdapter: WebsiteCrawlerAdapter = {
   start: startCrawl4ai,
-  async poll({ runId, url }) {
+  async poll({ runId, url, cursor }) {
     const task = await getCrawl4aiTask(runId);
     if (!isCrawl4aiTerminal(task.status)) return { status: "processing" };
     if (task.status.toLowerCase() !== "completed") {
@@ -132,10 +143,13 @@ const crawl4aiAdapter: WebsiteCrawlerAdapter = {
           : `Crawl ${task.status.toLowerCase()}`,
       };
     }
+    const pages = mapCrawl4aiPages(task.results, url);
+    const offset = Math.max(0, Number(cursor ?? 0) || 0);
+    const end = offset + CRAWL4AI_RESULT_WINDOW;
     return {
       status: "succeeded",
-      pages: mapCrawl4aiPages(task.results, url),
-      nextCursor: null,
+      pages: pages.slice(offset, end),
+      nextCursor: end < pages.length ? String(end) : null,
     };
   },
 };

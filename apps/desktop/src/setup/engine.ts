@@ -161,17 +161,9 @@ export function createSetupEngine({
       },
     };
 
-    try {
-      await step.execute(context);
-    } catch (cause) {
-      state.status = "failed";
-      state.error = messageOf(cause);
-      emit();
-      return false;
-    }
-
     let result;
     try {
+      await step.execute(context);
       result = await step.verify(context);
     } catch (cause) {
       state.status = "failed";

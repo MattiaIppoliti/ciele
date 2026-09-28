@@ -11,7 +11,6 @@ import type {
   SourceStatus,
 } from "@agent-hub/core";
 import {
-  AppWindow,
   Copy,
   Maximize2,
   Download,
@@ -28,6 +27,8 @@ import {
   Upload,
 } from "lucide-react";
 import { ScanTextIcon } from "@/components/ui/icons/scan-text";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import {
   ApplicationKnowledgePanel,
 } from "@/components/knowledge/application-knowledge-panel";
@@ -83,10 +84,12 @@ import {
   directAccessSummary,
   type HubSearchParams,
   type KnowledgeTabSlug,
+  SOURCE_STATUS_OPTIONS,
 } from "@/lib/knowledge-hub";
 import { libraryDocumentsHref } from "@/lib/source-documents";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
+import { downloadFile } from "@/lib/download";
 
 /** What the footer counts. FAQs carry their own plural. */
 const TAB_ROW_NOUN: Record<KnowledgeTabSlug, string> = {
@@ -119,7 +122,8 @@ function formatWhen(iso: string): string {
 function StatusBadge({ status }: { status: SourceStatus }) {
   return (
     <Badge tone={STATUS_TONE[status]} className="text-2xs uppercase">
-      {status}
+      {/* Rolls, so a crawl finishing reads as the row changing state. */}
+      <RollInText text={status} />
     </Badge>
   );
 }
@@ -135,8 +139,12 @@ function LinkedAssistantChips({
   const [first, ...rest] = links;
   return (
     <span className="flex items-center gap-1.5">
-      <Badge variant="outline" className="max-w-44 truncate font-normal">
-        {first.assistantName || first.assistantId}
+      {/* The truncation lives on an inner span: the badge is inline-flex, and
+          an ellipsis on a flex container clips without drawing one. */}
+      <Badge variant="outline" className="max-w-44 font-normal">
+        <span className="min-w-0 truncate">
+          {first.assistantName || first.assistantId}
+        </span>
       </Badge>
       {rest.length > 0 && (
         <Badge
@@ -195,9 +203,20 @@ export function KnowledgeHubClient({
     useState<OrgKnowledgeSourceListItem | null>(null);
   const [managingAccess, setManagingAccess] =
     useState<OrgKnowledgeSourceListItem | null>(null);
-  const [adding, setAdding] = useState<"website" | "file" | "faq" | "faq-import" | null>(
-    null
-  );
+  const [adding, setAddingKind] = useState<
+    "website" | "file" | "faq" | "faq-import" | null
+  >(null);
+  /**
+   * Bumped on every open, and the add dialogs are keyed by it, so a reopen
+   * after a success starts empty rather than showing the last submission.
+   * Closing leaves the key alone, which lets the exit animation play.
+   */
+  const [addSession, setAddSession] = useState(0);
+  const setAdding = (kind: typeof adding) => {
+    if (kind) setAddSession((n) => n + 1);
+    setAddingKind(kind);
+  };
+  const [exporting, setExporting] = useState(false);
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const [isPending, startTransition] = useTransition();
   const selection = useRowSelection(items.map((item) => item.id));
@@ -229,11 +248,26 @@ export function KnowledgeHubClient({
               }.`
         );
       } catch (error) {
+        // Nothing was queued, so the row may be asked again.
+        setExtracting((current) => {
+          const next = new Set(current);
+          next.delete(item.id);
+          return next;
+        });
         toast.error(
           error instanceof Error ? error.message : "Could not start extraction"
         );
       }
     });
+  }
+
+  async function copyId(id: string) {
+    try {
+      await navigator.clipboard.writeText(id);
+      toast.success("ID copied.");
+    } catch {
+      toast.error("Could not copy the ID. Check the browser allows clipboard access.");
+    }
   }
 
   // The columns differ per tab, and so does what a reader chose to widen, so
@@ -296,13 +330,17 @@ export function KnowledgeHubClient({
   }, [query]);
 
   async function exportFaqs() {
-    const { csv } = await exportOrgFaqsAction();
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "faqs.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    setExporting(true);
+    try {
+      const { csv } = await exportOrgFaqsAction();
+      downloadFile(csv, "text/csv", "faqs.csv");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not export the FAQs."
+      );
+    } finally {
+      setExporting(false);
+    }
   }
 
   function downloadOriginal(item: OrgKnowledgeSourceListItem) {
@@ -332,515 +370,485 @@ export function KnowledgeHubClient({
             oauthAvailability={applicationOAuthAvailability}
           />
         )}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-72">
-            <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}…`}
-              aria-label={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}`}
-              type="search"
-              autoComplete="off"
-              className="pl-8"
-            />
+        {/* Applications has no flat Source table: the Configured imports
+            table above opens each Import onto the items it brought in, so
+            a second list of the same Sources would say it twice. */}
+        {tab !== "applications" && (
+          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-72">
+              <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}…`}
+                aria-label={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}`}
+                type="search"
+                autoComplete="off"
+                className="pl-8"
+              />
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              {tab === "faqs" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={exporting}
+                  onClick={exportFaqs}
+                >
+                  <Download className="mr-1.5 size-4" />{" "}
+                  <RollInText text={exporting ? "Exporting…" : "Export"} />
+                </Button>
+              )}
+              {canEdit && tab === "faqs" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAdding("faq-import")}
+                >
+                  <Upload className="mr-1.5 size-4" /> Import
+                </Button>
+              )}
+              {canEdit && (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    setAdding(
+                      tab === "websites" ? "website" : tab === "files" ? "file" : "faq"
+                    )
+                  }
+                >
+                  <Plus className="mr-1.5 size-4" /> Add
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            {tab === "faqs" && (
-              <Button variant="outline" size="sm" onClick={exportFaqs}>
-                <Download className="mr-1.5 size-4" /> Export
-              </Button>
-            )}
-            {canEdit && tab === "faqs" && (
+
+          <TableCard
+            className={isPending ? "opacity-60" : undefined}
+            footer={
+              <TablePagination
+                page={filters.page}
+                pageSize={pageSize}
+                total={total}
+                noun={TAB_ROW_NOUN[tab]}
+                pluralNoun={TAB_ROW_NOUN_PLURAL[tab]}
+                onPageChange={(page) => apply({ page })}
+                onPageSizeChange={(size) => apply({ size, page: 1 })}
+              />
+            }
+          >
+            <TableBulkBar
+              count={selection.count}
+              noun={TAB_ROW_NOUN[tab]}
+              pluralNoun={TAB_ROW_NOUN_PLURAL[tab]}
+              onClear={selection.clear}
+            >
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setAdding("faq-import")}
+                disabled={isPending}
+                onClick={() => {
+                  const ids = selection.ids;
+                  const one = ids.length === 1;
+                  confirmDelete({
+                    title: `Delete ${ids.length} ${
+                      one
+                        ? TAB_ROW_NOUN[tab]
+                        : (TAB_ROW_NOUN_PLURAL[tab] ?? `${TAB_ROW_NOUN[tab]}s`)
+                    }?`,
+                    description: one
+                      ? "This removes it for every linked assistant at once, including its indexed content."
+                      : "This removes them for every linked assistant at once, including their indexed content.",
+                    onConfirm: async () => {
+                      await deleteOrgSourcesAction(ids);
+                      selection.clear();
+                      toast.success("Deleted.");
+                    },
+                  });
+                }}
               >
-                <Upload className="mr-1.5 size-4" /> Import
+                <Trash2 className="mr-1.5 size-4" /> Delete
               </Button>
-            )}
-            {canEdit && tab !== "applications" && (
-              <Button
-                size="sm"
-                onClick={() =>
-                  setAdding(
-                    tab === "websites" ? "website" : tab === "files" ? "file" : "faq"
-                  )
-                }
-              >
-                <Plus className="mr-1.5 size-4" /> Add
-              </Button>
-            )}
-          </div>
-        </div>
+            </TableBulkBar>
 
-        <TableCard
-          className={isPending ? "opacity-60" : undefined}
-          footer={
-            <TablePagination
-              page={filters.page}
-              pageSize={pageSize}
-              total={total}
-              noun={TAB_ROW_NOUN[tab]}
-              pluralNoun={TAB_ROW_NOUN_PLURAL[tab]}
-              onPageChange={(page) => apply({ page })}
-              onPageSizeChange={(size) => apply({ size, page: 1 })}
-            />
-          }
-        >
-          <TableBulkBar
-            count={selection.count}
-            noun={TAB_ROW_NOUN[tab]}
-            pluralNoun={TAB_ROW_NOUN_PLURAL[tab]}
-            onClear={selection.clear}
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isPending}
-              onClick={() => {
-                const ids = selection.ids;
-                const one = ids.length === 1;
-                confirmDelete({
-                  title: `Delete ${ids.length} ${
-                    one
-                      ? TAB_ROW_NOUN[tab]
-                      : (TAB_ROW_NOUN_PLURAL[tab] ?? `${TAB_ROW_NOUN[tab]}s`)
-                  }?`,
-                  description: one
-                    ? "This removes it for every linked assistant at once, including its indexed content."
-                    : "This removes them for every linked assistant at once, including their indexed content.",
-                  onConfirm: async () => {
-                    await deleteOrgSourcesAction(ids);
-                    selection.clear();
-                    toast.success("Deleted.");
-                  },
-                });
-              }}
-            >
-              <Trash2 className="mr-1.5 size-4" /> Delete
-            </Button>
-          </TableBulkBar>
-
-          <Table fixed empty={items.length === 0}>
-            {columns.colGroup}
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                {canEdit && (
-                  <SelectAllHead
-                    state={selection.allState}
-                    onToggle={selection.toggleAll}
-                    disabled={items.length === 0}
-                  />
-                )}
-                <TableColumnHeader
-                  label={tab === "faqs" ? "Question" : "Name"}
-                  resize={columns.handleFor("name")}
-                  sort={{
-                    direction: filters.sort === "name" ? direction : null,
-                    ascLabel: "A to Z",
-                    descLabel: "Z to A",
-                    onSort: (next) =>
-                      apply({ sort: "name", ascending: next === "asc", page: 1 }),
-                    onClear: () => apply({ sort: "", page: 1 }),
-                  }}
-                  filter={{
-                    kind: "text",
-                    value: query,
-                    placeholder: `Search ${KNOWLEDGE_TAB_LABELS[
-                      tab
-                    ].toLowerCase()}…`,
-                    onChange: setQuery,
-                  }}
-                />
-                {tab === "faqs" && (
-                  <TableColumnHeader
-                    label="Answer"
-                    resize={columns.handleFor("answer")}
-                  />
-                )}
-                {tab === "websites" && (
-                  <TableColumnHeader
-                    label="Content"
-                    resize={columns.handleFor("content")}
-                  />
-                )}
-                <TableColumnHeader
-                  label="Linked assistants"
-                  resize={columns.handleFor("linked")}
-                  filter={{
-                    kind: "options",
-                    value: filters.assistant,
-                    anyLabel: "All assistants",
-                    options: assistants.map((a) => ({
-                      value: a.id,
-                      label: a.title,
-                    })),
-                    onChange: (value) => apply({ assistant: value, page: 1 }),
-                  }}
-                />
-                {tab === "files" && (
-                  <TableColumnHeader
-                    label="Direct access"
-                    resize={columns.handleFor("access")}
-                  />
-                )}
-                {/* Status, where "Created at" used to be. When a row was first
-                    added answers nothing anyone asks of this table; whether it
-                    is answering questions yet is the whole question, and a
-                    crawling website had no status column at all. */}
-                <TableColumnHeader
-                  label="Status"
-                  resize={columns.handleFor("status")}
-                  sort={{
-                    direction: filters.sort === "status" ? direction : null,
-                    ascLabel: "Errors first",
-                    descLabel: "Ready first",
-                    onSort: (next) =>
-                      apply({ sort: "status", ascending: next === "asc", page: 1 }),
-                    onClear: () => apply({ sort: "", page: 1 }),
-                  }}
-                  filter={{
-                    kind: "options",
-                    value: filters.status,
-                    anyLabel: "Any status",
-                    options: [
-                      { value: "ready", label: "Ready" },
-                      { value: "processing", label: "Processing" },
-                      { value: "error", label: "Error" },
-                    ],
-                    onChange: (value) =>
-                      apply({ status: value as "" | SourceStatus, page: 1 }),
-                  }}
-                />
-                <TableColumnHeader
-                  label="Last updated at"
-                  resize={columns.handleFor("updated")}
-                  sort={{
-                    direction: filters.sort === "updatedAt" ? direction : null,
-                    ascLabel: "Oldest first",
-                    descLabel: "Newest first",
-                    onSort: (next) =>
-                      apply({
-                        sort: "updatedAt",
-                        ascending: next === "asc",
-                        page: 1,
-                      }),
-                    onClear: () => apply({ sort: "", page: 1 }),
-                  }}
-                />
-                {/* Named, rather than the blank cell it was: a column of
-                    controls with no heading reads as an overflow of the one
-                    before it. */}
-                <TableColumnHeader label="Actions" align="right" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.length === 0 && (
-                <TableRow>
-                  {/* The mark rather than a sentence in a 24px-tall cell: an
-                      empty tab is the same fact the rest of the console draws
-                      the same way. `hover:bg-transparent` because there is no
-                      row here to highlight. */}
-                  <TableCell
-                    colSpan={columnCount}
-                    className="hover:bg-transparent"
-                  >
-                    <EmptyState size="sm" title="Nothing here yet" />
-                  </TableCell>
-                </TableRow>
-              )}
-              {items.map((item) => (
-                <TableRowMenu
-                  key={item.id}
-                  title={item.name}
-                  onOpen={
-                    canEdit ? () => selection.selectForMenu(item.id) : undefined
-                  }
-                  actions={[
-                    {
-                      label: "Open",
-                      icon: Maximize2,
-                      href: libraryDocumentsHref(item.kind, item.id),
-                    },
-                    {
-                      label: "Copy ID",
-                      icon: Copy,
-                      onSelect: () => {
-                        void navigator.clipboard?.writeText(item.id);
-                        toast.success("ID copied.");
-                      },
-                    },
-                    canEdit && {
-                      label: "Manage linked assistants",
-                      icon: Link2,
-                      onSelect: () => setLinking(item),
-                    },
-                    canEdit &&
-                      tab === "files" && {
-                        label: "Manage direct access",
-                        icon: Pencil,
-                        disabled: !item.originalObjectPath,
-                        onSelect: () => setManagingAccess(item),
-                      },
-                    tab === "files" && {
-                      label: "Download original",
-                      icon: Download,
-                      disabled: !item.originalObjectPath,
-                      onSelect: () => downloadOriginal(item),
-                    },
-                    canEdit &&
-                      tab === "faqs" && {
-                        label: "Edit FAQ",
-                        icon: Pencil,
-                        onSelect: () => setEditingFaq(item),
-                      },
-                    canEdit && {
-                      label: "Extract memories",
-                      icon: ScanTextIcon,
-                      disabled: extracting.has(item.id),
-                      onSelect: () => extractRowMemories(item),
-                    },
-                    canEdit && {
-                      label: "Delete",
-                      icon: Trash2,
-                      destructive: true,
-                      onSelect: () => confirmRowDelete(item),
-                    },
-                  ]}
-                >
-                <TableRow
-                  data-state={
-                    selection.isSelected(item.id) ? "selected" : undefined
-                  }
-                >
+            <Table fixed empty={items.length === 0}>
+              {columns.colGroup}
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
                   {canEdit && (
-                    <SelectRowCell
-                      checked={selection.isSelected(item.id)}
-                      onToggle={() => selection.toggle(item.id)}
-                      label={item.name}
+                    <SelectAllHead
+                      state={selection.allState}
+                      onToggle={selection.toggleAll}
+                      disabled={items.length === 0}
                     />
                   )}
-                  {tab === "faqs" ? (
-                    <>
-                      <TableCell className="align-top font-medium">
+                  <TableColumnHeader
+                    label={tab === "faqs" ? "Question" : "Name"}
+                    resize={columns.handleFor("name")}
+                    sort={{
+                      direction: filters.sort === "name" ? direction : null,
+                      ascLabel: "A to Z",
+                      descLabel: "Z to A",
+                      onSort: (next) =>
+                        apply({ sort: "name", ascending: next === "asc", page: 1 }),
+                      onClear: () => apply({ sort: "", page: 1 }),
+                    }}
+                    filter={{
+                      kind: "text",
+                      value: query,
+                      placeholder: `Search ${KNOWLEDGE_TAB_LABELS[
+                        tab
+                      ].toLowerCase()}…`,
+                      onChange: setQuery,
+                    }}
+                  />
+                  {tab === "faqs" && (
+                    <TableColumnHeader
+                      label="Answer"
+                      resize={columns.handleFor("answer")}
+                    />
+                  )}
+                  {tab === "websites" && (
+                    <TableColumnHeader
+                      label="Content"
+                      resize={columns.handleFor("content")}
+                    />
+                  )}
+                  <TableColumnHeader
+                    label="Linked assistants"
+                    resize={columns.handleFor("linked")}
+                    filter={{
+                      kind: "options",
+                      value: filters.assistant,
+                      anyLabel: "All assistants",
+                      options: assistants.map((a) => ({
+                        value: a.id,
+                        label: a.title,
+                      })),
+                      onChange: (value) => apply({ assistant: value, page: 1 }),
+                    }}
+                  />
+                  {tab === "files" && (
+                    <TableColumnHeader
+                      label="Direct access"
+                      resize={columns.handleFor("access")}
+                    />
+                  )}
+                  {/* Status, where "Created at" used to be. When a row was first
+                      added answers nothing anyone asks of this table; whether it
+                      is answering questions yet is the whole question, and a
+                      crawling website had no status column at all. */}
+                  <TableColumnHeader
+                    label="Status"
+                    resize={columns.handleFor("status")}
+                    sort={{
+                      direction: filters.sort === "status" ? direction : null,
+                      ascLabel: "Errors first",
+                      descLabel: "Ready first",
+                      onSort: (next) =>
+                        apply({ sort: "status", ascending: next === "asc", page: 1 }),
+                      onClear: () => apply({ sort: "", page: 1 }),
+                    }}
+                    filter={{
+                      kind: "options",
+                      value: filters.status,
+                      anyLabel: "Any status",
+                      options: SOURCE_STATUS_OPTIONS,
+                      onChange: (value) =>
+                        apply({ status: value as "" | SourceStatus, page: 1 }),
+                    }}
+                  />
+                  <TableColumnHeader
+                    label="Last updated at"
+                    resize={columns.handleFor("updated")}
+                    sort={{
+                      direction: filters.sort === "updatedAt" ? direction : null,
+                      ascLabel: "Oldest first",
+                      descLabel: "Newest first",
+                      onSort: (next) =>
+                        apply({
+                          sort: "updatedAt",
+                          ascending: next === "asc",
+                          page: 1,
+                        }),
+                      onClear: () => apply({ sort: "", page: 1 }),
+                    }}
+                  />
+                  {/* Named, rather than the blank cell it was: a column of
+                      controls with no heading reads as an overflow of the one
+                      before it. */}
+                  <TableColumnHeader label="Actions" align="right" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.length === 0 && (
+                  <TableRow>
+                    {/* The mark rather than a sentence in a 24px-tall cell: an
+                        empty tab is the same fact the rest of the console draws
+                        the same way. `hover:bg-transparent` because there is no
+                        row here to highlight. */}
+                    <TableCell
+                      colSpan={columnCount}
+                      className="hover:bg-transparent"
+                    >
+                      <EmptyState size="sm" title="Nothing here yet" />
+                    </TableCell>
+                  </TableRow>
+                )}
+                {items.map((item) => (
+                  <TableRowMenu
+                    key={item.id}
+                    title={item.name}
+                    onOpen={
+                      canEdit ? () => selection.selectForMenu(item.id) : undefined
+                    }
+                    actions={[
+                      {
+                        label: "Open",
+                        icon: Maximize2,
+                        href: libraryDocumentsHref(item.kind, item.id),
+                      },
+                      {
+                        label: "Copy ID",
+                        icon: Copy,
+                        onSelect: () => void copyId(item.id),
+                      },
+                      canEdit && {
+                        label: "Manage linked assistants",
+                        icon: Link2,
+                        onSelect: () => setLinking(item),
+                      },
+                      canEdit &&
+                        tab === "files" && {
+                          label: "Manage direct access",
+                          icon: Pencil,
+                          disabled: !item.originalObjectPath,
+                          onSelect: () => setManagingAccess(item),
+                        },
+                      tab === "files" && {
+                        label: "Download original",
+                        icon: Download,
+                        disabled: !item.originalObjectPath,
+                        onSelect: () => downloadOriginal(item),
+                      },
+                      canEdit &&
+                        tab === "faqs" && {
+                          label: "Edit FAQ",
+                          icon: Pencil,
+                          onSelect: () => setEditingFaq(item),
+                        },
+                      canEdit && {
+                        label: "Extract memories",
+                        icon: ScanTextIcon,
+                        disabled: extracting.has(item.id),
+                        onSelect: () => extractRowMemories(item),
+                      },
+                      canEdit && {
+                        label: "Delete",
+                        icon: Trash2,
+                        destructive: true,
+                        onSelect: () => confirmRowDelete(item),
+                      },
+                    ]}
+                  >
+                  <TableRow
+                    data-state={
+                      selection.isSelected(item.id) ? "selected" : undefined
+                    }
+                  >
+                    {canEdit && (
+                      <SelectRowCell
+                        checked={selection.isSelected(item.id)}
+                        onToggle={() => selection.toggle(item.id)}
+                        label={item.name}
+                      />
+                    )}
+                    {tab === "faqs" ? (
+                      <>
+                        <TableCell className="align-top font-medium">
+                          <TableOpenCell
+                            href={libraryDocumentsHref(item.kind, item.id)}
+                            label={item.name}
+                          >
+                            <span className="block truncate">{item.name}</span>
+                          </TableOpenCell>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground align-top">
+                          <span className="block truncate">
+                            {item.answerPreview || "—"}
+                          </span>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <TableCell>
                         <TableOpenCell
                           href={libraryDocumentsHref(item.kind, item.id)}
                           label={item.name}
+                          className="flex items-start gap-2"
                         >
-                          <span className="block truncate">{item.name}</span>
+                          {item.kind === "website" ? (
+                            <Globe className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                          ) : item.kind === "url" ? (
+                            <List className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                          ) : item.kind === "faq" ? (
+                            <MessageCircleQuestion className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                          ) : (
+                            <FileText className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                          )}
+                          <span className="min-w-0">
+                            <Link
+                              href={libraryDocumentsHref(item.kind, item.id)}
+                              className="press-text block truncate font-medium hover:underline"
+                            >
+                              {item.name}
+                            </Link>
+                            {tab === "websites" && item.config.url && (
+                              <a
+                                href={item.config.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+                              >
+                                <span className="truncate">
+                                  {item.config.url}
+                                </span>
+                                <ExternalLink className="size-3 shrink-0" />
+                              </a>
+                            )}
+                            </span>
                         </TableOpenCell>
                       </TableCell>
-                      <TableCell className="text-muted-foreground align-top">
-                        <span className="block truncate">
-                          {item.answerPreview || "—"}
-                        </span>
-                      </TableCell>
-                    </>
-                  ) : (
-                    <TableCell>
-                      <TableOpenCell
-                        href={libraryDocumentsHref(item.kind, item.id)}
-                        label={item.name}
-                        className="flex items-start gap-2"
-                      >
-                        {item.kind === "website" ? (
-                          <Globe className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        ) : item.kind === "url" ? (
-                          <List className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        ) : item.kind === "faq" ? (
-                          <MessageCircleQuestion className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        ) : item.kind === "application" ? (
-                          <AppWindow className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        ) : (
-                          <FileText className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        )}
-                        <span className="min-w-0">
-                          <Link
-                            href={libraryDocumentsHref(item.kind, item.id)}
-                            className="press-text block truncate font-medium hover:underline"
-                          >
-                            {item.name}
-                          </Link>
-                          {tab === "websites" && item.config.url && (
-                            <a
-                              href={item.config.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-                            >
-                              <span className="truncate">
-                                {item.config.url}
-                              </span>
-                              <ExternalLink className="size-3 shrink-0" />
-                            </a>
-                          )}
-                          {tab === "applications" && item.config.remoteUrl && (
-                            <a
-                              href={item.config.remoteUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-                            >
-                              Open in source application
-                              <ExternalLink className="size-3 shrink-0" />
-                            </a>
-                          )}
-                        </span>
-                      </TableOpenCell>
-                    </TableCell>
-                  )}
-                  {tab === "websites" && (
-                    <TableCell>
-                      <Link
-                        href={libraryDocumentsHref(item.kind, item.id)}
-                        className="text-primary press-text font-medium hover:underline tabular-nums"
-                      >
-                        {item.conceptCount}{" "}
-                        {item.conceptCount === 1 ? "Document" : "Documents"}
-                      </Link>
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <span className="flex items-center gap-1.5">
-                      <LinkedAssistantChips item={item} />
-                      {canEdit && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7"
-                          title="Manage linked assistants" aria-label="Manage linked assistants"
-                          onClick={() => setLinking(item)}
+                    )}
+                    {tab === "websites" && (
+                      <TableCell>
+                        <Link
+                          href={libraryDocumentsHref(item.kind, item.id)}
+                          className="text-primary press-text font-medium hover:underline tabular-nums"
                         >
-                          <Link2 className="size-3.5" />
-                        </Button>
-                      )}
-                    </span>
-                  </TableCell>
-                  {tab === "files" && (
-                    <TableCell className="text-muted-foreground text-sm">
+                          <RollingNumber value={item.conceptCount} />{" "}
+                          {item.conceptCount === 1 ? "Document" : "Documents"}
+                        </Link>
+                      </TableCell>
+                    )}
+                    <TableCell>
                       <span className="flex items-center gap-1.5">
-                        {directAccessSummary(item.linkedAssistants)}
+                        <LinkedAssistantChips item={item} />
                         {canEdit && (
                           <Button
                             variant="ghost"
                             size="icon"
                             className="size-7"
-                            aria-label="Manage direct access"
-                            title={
-                              item.originalObjectPath
-                                ? "Manage direct access"
-                                : "No stored original, direct access unavailable"
-                            }
-                            onClick={() => setManagingAccess(item)}
+                            title="Manage linked assistants" aria-label="Manage linked assistants"
+                            onClick={() => setLinking(item)}
                           >
-                            <Pencil className="size-3.5" />
+                            <Link2 className="size-3.5" />
                           </Button>
                         )}
                       </span>
                     </TableCell>
-                  )}
-                  <TableCell>
-                    <StatusBadge status={item.status} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                    {formatWhen(item.updatedAt)}
-                  </TableCell>
-                  <TableCell>
-                    <TableActions>
-                      {tab === "files" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Download original"
-                          title={
-                            item.originalObjectPath
-                              ? "Download original"
-                              : "No stored original"
-                          }
-                          disabled={!item.originalObjectPath}
-                          onClick={() => downloadOriginal(item)}
-                        >
-                          <Download className="size-4" />
-                        </Button>
-                      )}
-                      {canEdit && (
-                        <>
-                          {/* The memories backfill (#933), on the row rather
-                              than only inside the Source: an admin catching up
-                              a whole Library should not have to open each one. */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Extract memories" aria-label="Extract memories"
-                            disabled={extracting.has(item.id)}
-                            onClick={() =>
-                              startTransition(async () => {
-                                setExtracting((current) =>
-                                  new Set(current).add(item.id)
-                                );
-                                try {
-                                  const { queued } =
-                                    await extractSourceMemoriesAction(item.id);
-                                  toast.success(
-                                    queued === 0
-                                      ? "Nothing to extract: every Document is up to date or already queued."
-                                      : `Extracting memories for ${queued} ${
-                                          queued === 1 ? "Document" : "Documents"
-                                        }.`
-                                  );
-                                } catch (error) {
-                                  toast.error(
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Could not start extraction"
-                                  );
-                                }
-                              })
-                            }
-                          >
-                            <ScanTextIcon className="size-4" />
-                          </Button>
-                          {tab === "faqs" && (
+                    {tab === "files" && (
+                      <TableCell className="text-muted-foreground text-sm">
+                        <span className="flex items-center gap-1.5">
+                          {directAccessSummary(item.linkedAssistants)}
+                          {canEdit && (
                             <Button
                               variant="ghost"
                               size="icon"
-                              title="Edit FAQ" aria-label="Edit FAQ"
-                              onClick={() => setEditingFaq(item)}
+                              className="size-7"
+                              aria-label="Manage direct access"
+                              title={
+                                item.originalObjectPath
+                                  ? "Manage direct access"
+                                  : "No stored original, direct access unavailable"
+                              }
+                              onClick={() => setManagingAccess(item)}
                             >
-                              <Pencil className="size-4" />
+                              <Pencil className="size-3.5" />
                             </Button>
                           )}
+                        </span>
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <StatusBadge status={item.status} />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                      {formatWhen(item.updatedAt)}
+                    </TableCell>
+                    <TableCell>
+                      <TableActions>
+                        {tab === "files" && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            data-destructive=""
-                            title="Delete" aria-label={`Delete ${item.name}`}
-                            onClick={() =>
-                              confirmDelete({
-                                title: `Delete “${item.name}”?`,
-                                description:
-                                  "This removes it for every linked assistant at once, including its indexed content.",
-                                onConfirm: async () => {
-                                  await deleteOrgSourceAction(item.id);
-                                  toast.success("Deleted.");
-                                },
-                              })
+                            aria-label="Download original"
+                            title={
+                              item.originalObjectPath
+                                ? "Download original"
+                                : "No stored original"
                             }
+                            disabled={!item.originalObjectPath}
+                            onClick={() => downloadOriginal(item)}
                           >
-                            <Trash2 className="size-4" />
+                            <Download className="size-4" />
                           </Button>
-                        </>
-                      )}
-                    </TableActions>
-                  </TableCell>
-                </TableRow>
-                </TableRowMenu>
-              ))}
-            </TableBody>
-          </Table>
-        </TableCard>
+                        )}
+                        {canEdit && (
+                          <>
+                            {/* The memories backfill (#933), on the row rather
+                                than only inside the Source: an admin catching up
+                                a whole Library should not have to open each one. */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Extract memories" aria-label="Extract memories"
+                              disabled={extracting.has(item.id)}
+                              onClick={() => extractRowMemories(item)}
+                            >
+                              <ScanTextIcon className="size-4" />
+                            </Button>
+                            {tab === "faqs" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Edit FAQ" aria-label="Edit FAQ"
+                                onClick={() => setEditingFaq(item)}
+                              >
+                                <Pencil className="size-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              data-destructive=""
+                              title="Delete" aria-label={`Delete ${item.name}`}
+                              onClick={() =>
+                                confirmDelete({
+                                  title: `Delete “${item.name}”?`,
+                                  description:
+                                    "This removes it for every linked assistant at once, including its indexed content.",
+                                  onConfirm: async () => {
+                                    await deleteOrgSourceAction(item.id);
+                                    toast.success("Deleted.");
+                                  },
+                                })
+                              }
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </>
+                        )}
+                      </TableActions>
+                    </TableCell>
+                  </TableRow>
+                  </TableRowMenu>
+                ))}
+              </TableBody>
+            </Table>
+          </TableCard>
+          </>
+        )}
       </div>
 
       {/* Keyed by item so every open starts from fresh state. */}
@@ -856,11 +864,13 @@ export function KnowledgeHubClient({
         onClose={() => setManagingAccess(null)}
       />
       <AddWebsiteDialog
+        key={`website-${addSession}`}
         open={adding === "website"}
         assistants={assistants}
         onClose={() => setAdding(null)}
       />
       <AddFileDialog
+        key={`file-${addSession}`}
         open={adding === "file"}
         assistants={assistants}
         onClose={() => setAdding(null)}
@@ -876,6 +886,7 @@ export function KnowledgeHubClient({
         }}
       />
       <ImportFaqsDialog
+        key={`faq-import-${addSession}`}
         open={adding === "faq-import"}
         assistants={assistants}
         onClose={() => setAdding(null)}

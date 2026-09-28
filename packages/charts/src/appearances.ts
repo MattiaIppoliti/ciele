@@ -1,37 +1,5 @@
-/** Card appearance tokens, orthogonal to dot sections. */
-export interface AppearanceTokens {
-  card: string;
-  glow: string;
-  gridLineColor: string;
-  text: string;
-  subtext: string;
-  iconBg: string;
-  iconFg: string;
-  trendBorder: string;
-  trendBg: string;
-  trendText: string;
-  trendDownBorder: string;
-  trendDownBg: string;
-  trendDownText: string;
-  dashedLine: string;
-  tooltipBg: string;
-  tooltipText: string;
-  tooltipSub: string;
-  tooltipShadow: string;
-  idleDot: string;
-  hoverDot: string;
-  /** Stroke color of the primary (current) series polyline overlay */
-  primaryLineStroke: string;
-  /** Stroke color of the compare (previous) series polyline overlay */
-  compareLineStroke: string;
-  /** Fill color of the compare series area below the line */
-  compareLineFill: string;
-  /** Switch track background when inactive */
-  switchTrackOff: string;
-}
-
-/** The one card appearance in use (light). */
-export const APPEARANCE: AppearanceTokens = {
+/** The one card appearance in use (light), shared by the card and the DotChart. */
+export const APPEARANCE = {
   card: "bg-card border border-border shadow-[0_8px_32px_rgba(18,18,18,0.06)]",
   glow: "bg-indigo-200/50",
   gridLineColor: "rgba(18,18,18,0.7)",

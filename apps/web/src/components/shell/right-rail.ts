@@ -31,8 +31,9 @@ export const RIGHT_RAIL_TRANSITION_VAR = "--right-rail-transition";
  * A collapse or expand animates the panel's width over 200ms, so anything
  * tracking the rail has to travel with it instead of jumping to the end state.
  * A resize drag is already following the pointer and must not lag behind it.
+ * Tracking is a transform, not `right`, so it moves on the compositor.
  */
-const TRACKING_TRANSITION = "right 200ms ease-out";
+const TRACKING_TRANSITION = "transform 200ms ease-out";
 const NO_TRANSITION = "none";
 
 export interface RightRail {

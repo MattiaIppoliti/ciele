@@ -16,7 +16,7 @@ describe("playFeedback", () => {
 
   it("forwards to the mounted runtime", () => {
     const play = vi.fn();
-    const runtime: FeedbackRuntime = { play, unlocked: true, destroy: () => {} };
+    const runtime: FeedbackRuntime = { play, destroy: () => {} };
     setActiveFeedbackRuntime(runtime);
     playFeedback("error");
     expect(play).toHaveBeenCalledWith("error");

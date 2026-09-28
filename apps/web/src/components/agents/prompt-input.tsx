@@ -301,7 +301,6 @@ export function PromptInput({
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
                 disabled={disabled || inputBusy}
                 aria-label="Add to prompt"
                 className="size-8 rounded-full"
@@ -319,8 +318,6 @@ export function PromptInput({
             <MorphPopoverContent
               side="top"
               align="start"
-              sideOffset={8}
-              radius={12}
               className="w-56 p-1.5"
             >
               {actions.map((action) => (
@@ -413,7 +410,6 @@ export function PromptInput({
         ) : null}
         <Button
           type={loading ? "button" : "submit"}
-          size="icon"
           disabled={loading ? !onStop : !canSubmit}
           aria-label={loading ? stopLabel : "Send prompt"}
           title={loading ? stopLabel : undefined}

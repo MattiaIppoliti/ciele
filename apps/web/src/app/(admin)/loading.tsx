@@ -8,7 +8,8 @@ import { Skeleton } from "@agent-hub/ui";
  */
 export default function AdminLoading() {
   return (
-    <div className="mx-auto max-w-4xl px-8 py-8" aria-busy="true">
+    <div className="mx-auto max-w-4xl px-8 py-8" role="status" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       <Skeleton className="h-8 w-56" />
       <Skeleton className="mt-2 h-4 w-80" />
       <div className="mt-8 space-y-3">

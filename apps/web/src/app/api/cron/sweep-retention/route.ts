@@ -1,4 +1,9 @@
 import { withCronAuth } from "@/lib/cron-auth";
+import { sweepOrphanedKnowledgeOriginals } from "@/lib/storage/knowledge-orphans";
+import {
+  createSupabaseServiceClient,
+  isSupabaseServiceConfigured,
+} from "@/lib/supabase/service";
 import { getWidgetDb } from "@/lib/widget-db";
 import {
   sweepExpiredObjectAccess,
@@ -29,10 +34,19 @@ export const GET = withCronAuth(async () => {
   // Three policies, one tick: the two tenant-set windows (either, both, or
   // neither, #801/CYB-12) and the fixed operational window on the
   // object-access ledger (#801/CYB-19). One schedule, one report to read.
-  const [traces, transcripts, objectAccess] = await Promise.all([
+  // Plus the storage backstop: knowledge originals no Source names any more
+  // (an Organization deleted whole, or files orphaned before Source deletes
+  // removed them). Isolated, a storage outage must not fail the row sweeps.
+  const [traces, transcripts, objectAccess, knowledgeOrphans] = await Promise.all([
     sweepExpiredTraces({ db }),
     sweepExpiredTranscripts({ db }),
     sweepExpiredObjectAccess({ db }),
+    isSupabaseServiceConfigured()
+      ? sweepOrphanedKnowledgeOriginals(createSupabaseServiceClient()).catch((error) => {
+          console.error("[retention] knowledge orphan sweep failed:", error);
+          return { knowledgeOrphansScannedOrgs: 0, knowledgeOrphansRemoved: 0 };
+        })
+      : Promise.resolve({ knowledgeOrphansScannedOrgs: 0, knowledgeOrphansRemoved: 0 }),
   ]);
-  return Response.json({ ...traces, ...transcripts, ...objectAccess });
+  return Response.json({ ...traces, ...transcripts, ...objectAccess, ...knowledgeOrphans });
 });

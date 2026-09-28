@@ -6,9 +6,7 @@ import { serializeFaqCsv } from "@/lib/faq-csv";
 export async function GET(request: Request) {
   const outcome = await runApiOperation(request, listOrgFaqsOp, {});
   if (outcome instanceof Response) return outcome;
-  const csv = serializeFaqCsv(
-    outcome.result.map((e) => ({ question: e.question, answer: e.answer }))
-  );
+  const csv = serializeFaqCsv(outcome.result);
   return new Response(csv, {
     headers: {
       "content-type": "text/csv; charset=utf-8",

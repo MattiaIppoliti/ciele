@@ -36,11 +36,14 @@ function TimeSelect({
   value,
   options,
   label,
+  errorId,
   onChange,
 }: {
   value: number;
   options: TimeOption[];
   label: string;
+  /** Set when this edge is invalid: marks the trigger and points at the message. */
+  errorId?: string;
   onChange: (minutes: number) => void;
 }) {
   const current = options.find((o) => o.minutes === value);
@@ -49,7 +52,13 @@ function TimeSelect({
       value={String(value)}
       onValueChange={(v) => onChange(Number(v))}
     >
-      <SelectTrigger aria-label={label} size="sm" className="w-[6.25rem] px-2.5">
+      <SelectTrigger
+        aria-label={label}
+        aria-invalid={errorId ? true : undefined}
+        aria-describedby={errorId}
+        size="sm"
+        className="w-[6.25rem] px-2.5"
+      >
         <SelectValue>{() => current?.label ?? "--:--"}</SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -160,43 +169,59 @@ export function DayRow({
         ) : (
           <div className="space-y-2">
             <AnimatePresence initial={false}>
-              {state.ranges.map((r) => (
-                <motion.div
-                  key={r.id}
-                  layout={!reduce}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: dur }}
-                  className="flex items-center gap-2 overflow-hidden"
-                >
-                  <TimeSelect
-                    value={opensMinutes(r)}
-                    options={options}
-                    label={`${label} window opens`}
-                    onChange={(m) => setOpens(r.id, m)}
-                  />
-                  <span className="text-muted-foreground">, </span>
-                  <TimeSelect
-                    value={closesMinutes(r)}
-                    options={options}
-                    label={`${label} window closes`}
-                    onChange={(m) => setCloses(r.id, m)}
-                  />
-                  <Hint label="Remove window">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Remove window"
-                      className="text-muted-foreground hover:text-destructive size-9 shrink-0"
-                      onClick={() => removeRange(r.id)}
-                    >
-                      <AnimatedIcon icon={Trash2} size={15} />
-                    </Button>
-                  </Hint>
-                </motion.div>
-              ))}
+              {state.ranges.map((r) => {
+                // A window that closes at or before it opens is never open;
+                // say so beside it instead of saving a dead range silently.
+                const errorId =
+                  closesMinutes(r) <= opensMinutes(r) ? `${day}-${r.id}-error` : undefined;
+                return (
+                  <motion.div
+                    key={r.id}
+                    layout={!reduce}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: dur }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center gap-2">
+                      <TimeSelect
+                        value={opensMinutes(r)}
+                        options={options}
+                        label={`${label} window opens`}
+                        onChange={(m) => setOpens(r.id, m)}
+                      />
+                      <span aria-hidden className="text-muted-foreground">
+                        –
+                      </span>
+                      <TimeSelect
+                        value={closesMinutes(r)}
+                        options={options}
+                        label={`${label} window closes`}
+                        errorId={errorId}
+                        onChange={(m) => setCloses(r.id, m)}
+                      />
+                      <Hint label="Remove window">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remove window"
+                          className="text-muted-foreground hover:text-destructive size-9 shrink-0"
+                          onClick={() => removeRange(r.id)}
+                        >
+                          <AnimatedIcon icon={Trash2} size={15} />
+                        </Button>
+                      </Hint>
+                    </div>
+                    {errorId && (
+                      <p id={errorId} role="alert" className="text-destructive mt-1 text-xs">
+                        Closing time must be later than opening time.
+                      </p>
+                    )}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         )}

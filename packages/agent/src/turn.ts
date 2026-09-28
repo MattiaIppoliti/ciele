@@ -41,8 +41,11 @@ import type { Db } from "@agent-hub/db";
 import type {
   ChatReplyPart,
   ActionEffect,
+  HistoryMessage,
+  KnowledgeSearcher,
   MemorySearcher,
   ReferralCandidate,
+  RuntimeEvent,
   TeammateActionTool,
   UsageEvent,
 } from "./types";
@@ -52,19 +55,13 @@ import {
   runApprovalGate,
 } from "./approval-gate";
 import { resolveDecisionModel } from "./decision-model";
-import { contactLabel } from "./actions";
+import { contactLabel, faqAnswerParts } from "./actions";
 import type { UntrustedEnvelope } from "./untrusted-content";
 import { summarizeTurnUsage, turnUsageAttribution } from "./usage";
 import { recordRuntimeEvent, errorClassOf } from "./telemetry";
 import { embedText } from "./embeddings";
 import { buildKnowledgeSearcher } from "./retrieval";
-import {
-  runAssistantChat,
-  runProactiveFlows,
-  type HistoryMessage,
-  type KnowledgeSearcher,
-  type RuntimeEvent,
-} from "./engine";
+import { runAssistantChat, runProactiveFlows } from "./engine";
 import { applyEffects, drainTurnEffects } from "./effects";
 import { buildTemplateContext, platformAppOrigin } from "./template";
 import { dbReviewRuntime, reviewPart } from "./review-runtime";
@@ -678,10 +675,11 @@ async function streamProactiveTurn(
  * thousand-line function; three of them had already drifted into subtly
  * different conditions.
  *
- * So every pure decision about *kind* is taken here. Two places below still
- * branch on `teammate` because they need the row itself, not a decision about
- * it: the collection searcher wants its Knowledge Scope, and the memory read
- * wants its id. Those read a field first and use the row second.
+ * So every pure decision about *kind* is taken here, and the body reads a
+ * named flag rather than asking which row it holds. The places that still
+ * touch `teammate` need the row itself, not a decision about it: the memory
+ * layers want its id, the Teammate answer module wants the whole persona, and
+ * the Agent-layer distiller is keyed on it.
  */
 interface TurnSubject {
   /** The runtime config, whichever row it came from. */
@@ -720,6 +718,28 @@ interface TurnSubject {
    * ledger and no escalation ramp to offer.
    */
   gradesFlowTrust: boolean;
+  /**
+   * Whether a page-load, dwell or chat-open event can deliver anything.
+   * Nothing fires those inside the console, and a Teammate turn carries no
+   * flows to select a Notification from.
+   */
+  firesProactiveTriggers: boolean;
+  /**
+   * Whether the turn builds the Assistant's knowledge searcher. A Teammate
+   * searches its own Knowledge Scope inside the Teammate answer module, and an
+   * empty scope must leave the tool unregistered rather than always empty
+   * (#768).
+   */
+  searchesAssistantKnowledge: boolean;
+  /** Whether a Study Mode answer can be graded: an Assistant setting (#556). */
+  offersStudyMode: boolean;
+  /**
+   * Whether Flow actions can open the Human review gate (#841) or the
+   * callback gate (#842). Both are Flow actions, and a Teammate has no Flows.
+   */
+  runsFlowGates: boolean;
+  /** Whether a handover action continues inside its target Assistant (#314). */
+  continuesHandover: boolean;
 }
 
 function resolveTurnSubject(input: ConversationTurnInput): TurnSubject {
@@ -737,6 +757,11 @@ function resolveTurnSubject(input: ConversationTurnInput): TurnSubject {
       hasApiCatalogue: false,
       readsKnowledgeDocuments: false,
       gradesFlowTrust: false,
+      firesProactiveTriggers: false,
+      searchesAssistantKnowledge: false,
+      offersStudyMode: false,
+      runsFlowGates: false,
+      continuesHandover: false,
     };
   }
   const assistant = input.assistant;
@@ -753,6 +778,11 @@ function resolveTurnSubject(input: ConversationTurnInput): TurnSubject {
     hasApiCatalogue: true,
     readsKnowledgeDocuments: true,
     gradesFlowTrust: true,
+    firesProactiveTriggers: true,
+    searchesAssistantKnowledge: true,
+    offersStudyMode: assistant.tools.studyMode?.enabled === true,
+    runsFlowGates: true,
+    continuesHandover: true,
   };
 }
 
@@ -822,13 +852,12 @@ export async function streamConversationTurn(
     });
 
   // A proactive trigger takes the same seam but a different path: no
-  // classification, no model, no user message (#541). Teammates have no
-  // proactive triggers: nothing fires a page-load event inside the console.
+  // classification, no model, no user message (#541).
   const trigger = input.trigger ?? "message";
   if (trigger !== "message") {
-    // Teammates have no proactive triggers: nothing fires a page-load event
-    // inside the console, and a Teammate turn carries no flows to select from.
-    if (input.teammate) return silentTurn();
+    // The flag decides; the `teammate` test only narrows the union for the
+    // compiler, and never disagrees with it.
+    if (!subject.firesProactiveTriggers || input.teammate) return silentTurn();
     return streamProactiveTurn({ ...input, trigger });
   }
 
@@ -949,13 +978,7 @@ export async function streamConversationTurn(
   // The one retrieval port: embedding, hybrid search and the rerank stage
   // (ADR-0025) live behind buildKnowledgeSearcher, the same factory every
   // other retrieval caller uses.
-  /**
-   * A Teammate with an empty Knowledge Scope gets NO searcher, which is what
-   * leaves the tool unregistered downstream (`buildToolset`): a pure-persona
-   * Teammate must not be handed a search that always comes back empty, or it
-   * spends the turn calling it (#768).
-   */
-  const searchKnowledge: KnowledgeSearcher | undefined = teammate
+  const searchKnowledge: KnowledgeSearcher | undefined = !subject.searchesAssistantKnowledge
     ? undefined
     : buildKnowledgeSearcher({
         db,
@@ -963,7 +986,7 @@ export async function streamConversationTurn(
         assistant,
         collectionId,
         conversationId: conversation.id,
-        waitForIndexing: assistant.tools.studyMode?.enabled === true,
+        waitForIndexing: subject.offersStudyMode,
         usage: { spenders: usageSpenders, surface: usageSurface },
       });
 
@@ -1273,9 +1296,20 @@ export async function streamConversationTurn(
       };
       let teammateFailureRecorded = false;
       let releaseConcurrency: (() => Promise<void>) | null = null;
+      // Every model call this turn has already paid for, in call order. The
+      // success path settles it against the persisted message; a turn that
+      // throws or whose client disconnects settles it with no message, so a
+      // Visitor who leaves mid-answer never spends off the ledger or past the
+      // budget gate, which reads that ledger.
+      const spentUsage: UsageEvent[] = [];
+      const spentGateUsage: UsageEvent[] = [];
+      let spentTeammateRows:
+        | ((messageId: string | null) => Parameters<typeof spendAdmission.settle>[0])
+        | null = null;
+      let usageSettled = false;
       try {
         if (input.studyAnswer !== undefined) {
-          if (teammate || !assistant.tools.studyMode?.enabled) throw new Error("Study mode is disabled.");
+          if (!subject.offersStudyMode) throw new Error("Study mode is disabled.");
           const exercise = gradeStudyAnswer(session, input.studyAnswer, await db.listMessages(conversationId));
           emit({ type: "part", part: exercise });
           await finishTurn({ parts: [exercise], flowId: null, flowName: "Study Mode" });
@@ -1312,25 +1346,12 @@ export async function streamConversationTurn(
             .catch(() => null);
           if (match) {
             emit({ type: "flow", flowId: null, flowName: "FAQ", isDefault: false });
-            const textPart: ChatReplyPart = {
-              type: "text",
-              action: "custom_message",
-              text: match.concept.body,
-            };
-            const sourcesPart: ChatReplyPart = {
-              type: "sources",
-              action: "search_knowledge",
-              sources: [
-                {
-                  conceptId: match.concept.id,
-                  conceptTitle:
-                    match.concept.frontmatter.title ?? match.concept.path,
-                  collectionName: match.collectionName,
-                  sourceName: null,
-                  url: match.concept.frontmatter.resource ?? null,
-                },
-              ],
-            };
+            const [textPart, sourcesPart] = faqAnswerParts(match.concept.id, {
+              body: match.concept.body,
+              title: match.concept.frontmatter.title ?? match.concept.path,
+              collectionName: match.collectionName,
+              url: match.concept.frontmatter.resource ?? null,
+            });
             emit({ type: "part", part: textPart });
             emit({ type: "part", part: sourcesPart });
             await finishTurn({
@@ -1364,18 +1385,22 @@ export async function streamConversationTurn(
         // "AI recommended help desk" candidates: resolved live (desk
         // descriptions are org data, never snapshotted into Publications);
         // any failure degrades to the generic escalation menu.
+        const listSelectedDesks = async (
+          selected: readonly string[]
+        ): Promise<EscalationDeskCandidate[]> =>
+          (await db.listHelpDesks(input.organizationId))
+            .filter((desk) => selected.includes(desk.id))
+            .map((desk) => ({
+              id: desk.id,
+              name: desk.name,
+              description: desk.description ?? "",
+            }));
         let escalationDesks: EscalationDeskCandidate[] = [];
         if (assistant.helpDeskSettings?.aiRecommended) {
           const selected = assistant.helpDeskSettings.selectedIds ?? [];
           if (selected.length > 0) {
             try {
-              escalationDesks = (await db.listHelpDesks(input.organizationId))
-                .filter((desk) => selected.includes(desk.id))
-                .map((desk) => ({
-                  id: desk.id,
-                  name: desk.name,
-                  description: desk.description ?? "",
-                }));
+              escalationDesks = await listSelectedDesks(selected);
             } catch {
               escalationDesks = [];
             }
@@ -1384,7 +1409,7 @@ export async function streamConversationTurn(
         // What the gate's own decisions cost. Collected here rather than in
         // the engine's `usageEvents` because the gate runs inside a tool call,
         // which is past the point the engine hands that array out.
-        const gateUsage: UsageEvent[] = [];
+        const gateUsage = spentGateUsage;
         // The approval gate (#958). Bound here rather than where the actions
         // are built, because this is what holds the decision backend, the Db
         // and the Teammate's Standing Role all at once; the host hands over a
@@ -1523,16 +1548,15 @@ export async function streamConversationTurn(
           // Conversation; simulated on the operator surfaces, where nobody is
           // notified and the transcript decides inline.
           // Bound to the system Db: the review table has no member insert
-          // policy, the runtime is its only writer. A Teammate turn has no
-          // Flows, so it never reaches the gate.
-          reviewRuntime: teammate
+          // policy, the runtime is its only writer.
+          reviewRuntime: !subject.runsFlowGates
             ? undefined
             : dbReviewRuntime(systemDb, {
                 conversation,
                 assistant,
                 simulated: isOperatorSurface(input.keyResolution ?? {}),
               }),
-          webhookRuntime: teammate
+          webhookRuntime: !subject.runsFlowGates
             ? undefined
             : dbWebhookRuntime(systemDb, {
                 conversation,
@@ -1566,18 +1590,7 @@ export async function streamConversationTurn(
               db.listAssistantFaqOptions(assistant.id).catch(() => []),
               escalationDesks.length > 0 || selected.length === 0
                 ? Promise.resolve(escalationDesks)
-                : db
-                    .listHelpDesks(input.organizationId)
-                    .then((all) =>
-                      all
-                        .filter((desk) => selected.includes(desk.id))
-                        .map((desk) => ({
-                          id: desk.id,
-                          name: desk.name,
-                          description: desk.description ?? "",
-                        }))
-                    )
-                    .catch(() => []),
+                : listSelectedDesks(selected).catch(() => []),
             ]);
             return { faqs, desks };
           },
@@ -1630,6 +1643,7 @@ export async function streamConversationTurn(
             throw outcome.error;
           }
           teammateExecution = outcome;
+          spentTeammateRows = outcome.usageRows;
           result = outcome.result;
         } else {
           result = await runAssistantChat({
@@ -1638,6 +1652,7 @@ export async function streamConversationTurn(
               flows: subject.flows,
               connections: input.connections,
               searchKnowledge,
+              usageSink: spentUsage,
             });
         }
         if (signal.aborted) {
@@ -1654,7 +1669,9 @@ export async function streamConversationTurn(
         // inside the target Assistant's Publication. One hop, same
         // Organization only, and any failure keeps the acknowledgement
         // already streamed (handover.ts).
-        const handoverTo = teammate ? null : handoverTarget(result, assistant.id);
+        const handoverTo = subject.continuesHandover
+          ? handoverTarget(result, assistant.id)
+          : null;
         if (handoverTo) {
           const continuation = await runHandoverContinuation({
             db,
@@ -1702,9 +1719,7 @@ export async function streamConversationTurn(
           afterPersist: async (messageId) => {
             // AI usage ledger, written post-commit and isolated like session
             // state: losing accounting must never break the chat.
-            // A gate decision is spend of the turn that made it (#848), so it
-            // settles with the turn's own rows rather than on its own.
-            const gateUsageRows = gateUsage.map((u) => ({
+            const toRow = (u: UsageEvent) => ({
               organizationId: input.organizationId,
               assistantId: attributedAssistantId,
               conversationId,
@@ -1715,28 +1730,19 @@ export async function streamConversationTurn(
               credentialKind: u.credentialKind,
               inputTokens: u.inputTokens,
               outputTokens: u.outputTokens,
+              // The Flow that answered is on the row too (#849): a Flow whose
+              // Search knowledge action runs an agent loop costs a multiple of
+              // one that replies verbatim, and that is worth being able to see.
               spenders: { ...usageSpenders, flowId: result.flowId },
               surface: usageSurface,
-            }));
+            });
+            // A gate decision is spend of the turn that made it (#848), so it
+            // settles with the turn's own rows rather than on its own.
+            const gateUsageRows = gateUsage.map(toRow);
             const usageRows = teammateExecution
               ? [...teammateExecution.usageRows(messageId), ...gateUsageRows]
-              : result.usage.map((u) => ({
-                organizationId: input.organizationId,
-                assistantId: attributedAssistantId,
-                conversationId,
-                messageId,
-                stage: u.stage,
-                provider: u.provider,
-                modelId: u.modelId,
-                credentialKind: u.credentialKind,
-                inputTokens: u.inputTokens,
-                outputTokens: u.outputTokens,
-                // The Flow that answered is on the row too (#849): a Flow whose
-                // Search knowledge action runs an agent loop costs a multiple of
-                // one that replies verbatim, and that is worth being able to see.
-                spenders: { ...usageSpenders, flowId: result.flowId },
-                surface: usageSurface,
-              })).concat(gateUsageRows);
+              : result.usage.map(toRow).concat(gateUsageRows);
+            usageSettled = true;
             await spendAdmission.settle(usageRows);
             // Counted, never priced, and isolated like every other accounting
             // write: losing the count must not lose the work.
@@ -1845,6 +1851,34 @@ export async function streamConversationTurn(
             errorMessage: message,
           });
         }
+        if (!usageSettled) {
+          usageSettled = true;
+          const toRow = (u: UsageEvent) => ({
+            organizationId: input.organizationId,
+            assistantId: attributedAssistantId,
+            conversationId,
+            messageId: null,
+            stage: u.stage,
+            provider: u.provider,
+            modelId: u.modelId,
+            credentialKind: u.credentialKind,
+            inputTokens: u.inputTokens,
+            outputTokens: u.outputTokens,
+            spenders: usageSpenders,
+            surface: usageSurface,
+          });
+          const rows = [
+            ...(spentTeammateRows ? spentTeammateRows(null) : spentUsage.map(toRow)),
+            ...spentGateUsage.map(toRow),
+          ];
+          if (rows.length > 0) {
+            try {
+              await spendAdmission.settle(rows);
+            } catch (settleError) {
+              console.error("[runtime] failed-turn usage settle failed:", settleError);
+            }
+          }
+        }
       } finally {
         await releaseConcurrency?.();
         await spendAdmission.release();
@@ -1888,13 +1922,3 @@ function resumeCursor(
   }
   return undefined;
 }
-
-/**
- * The Teammate's three memory documents, rendered into prompt sections (#771).
- *
- * Read here rather than handed in by the host, because the runtime already
- * holds the Teammate and the Db and this is a fact about the turn, not about
- * the surface that started it. Which layers exist is a domain rule
- * (`memoryPromptSections`), including the one that matters most: all three
- * empty means nothing is injected at all, not three empty headings.
- */

@@ -1,14 +1,13 @@
 import { z } from "zod";
 import type {
   TeammateCapabilityCeiling,
-  TeammateGrant,
   TeammateGrantDomain,
 } from "@agent-hub/core";
 import {
   TEAMMATE_CAPABILITY_CEILINGS,
   TEAMMATE_GRANT_DOMAINS,
 } from "@agent-hub/core";
-import { defineOperation, type OperationContext } from "./operation";
+import { defineOperation } from "./operation";
 import { requireReadableTeammate } from "./teammate-access";
 
 /**
@@ -30,15 +29,8 @@ import { requireReadableTeammate } from "./teammate-access";
  * mutate one element at a time across two round-trips that can half-fail.
  */
 
-const domainSchema = z.enum(
-  TEAMMATE_GRANT_DOMAINS as unknown as [TeammateGrantDomain, ...TeammateGrantDomain[]]
-);
-const ceilingSchema = z.enum(
-  TEAMMATE_CAPABILITY_CEILINGS as unknown as [
-    TeammateCapabilityCeiling,
-    ...TeammateCapabilityCeiling[],
-  ]
-);
+const domainSchema = z.enum(TEAMMATE_GRANT_DOMAINS);
+const ceilingSchema = z.enum(TEAMMATE_CAPABILITY_CEILINGS);
 
 /** The whole governance state of one Teammate, as one screen reads it. */
 export interface TeammateGovernance {
@@ -48,14 +40,6 @@ export interface TeammateGovernance {
   approvalBypass: boolean;
 }
 
-/** This Teammate's grant rows. Guarded through the Teammate, not the row. */
-export async function readTeammateGrants(
-  ctx: OperationContext,
-  teammateId: string
-): Promise<TeammateGrant[]> {
-  return ctx.db.table("teammateGrants").list({ teammateId });
-}
-
 export const listTeammateGrantsOp = defineOperation({
   name: "teammates.grants.list",
   capability: "member",
@@ -63,7 +47,8 @@ export const listTeammateGrantsOp = defineOperation({
   entities: () => [],
   run: async (ctx, { id }): Promise<TeammateGovernance> => {
     const teammate = await requireReadableTeammate(ctx, id);
-    const grants = await readTeammateGrants(ctx, id);
+    // Guarded through the Teammate above, not the row.
+    const grants = await ctx.db.table("teammateGrants").list({ teammateId: id });
     return {
       teammateId: teammate.id,
       domains: grants.map((grant) => grant.domain),
@@ -91,7 +76,7 @@ export const setTeammateGrantsOp = defineOperation({
   run: async (ctx, input): Promise<TeammateGovernance> => {
     const teammate = await requireReadableTeammate(ctx, input.id);
     const wanted = new Set(input.domains);
-    const held = await readTeammateGrants(ctx, input.id);
+    const held = await ctx.db.table("teammateGrants").list({ teammateId: input.id });
     const heldDomains = new Set(held.map((grant) => grant.domain));
 
     // Revoke first. If the two halves cannot both land, the state to be caught

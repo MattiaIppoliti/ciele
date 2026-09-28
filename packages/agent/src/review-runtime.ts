@@ -121,7 +121,7 @@ export type ReviewLinkVerdict =
 
 export function verifyReviewLinkToken(
   token: string,
-  options: { now?: Date; graceMs?: number } = {}
+  options: { now?: Date } = {}
 ): ReviewLinkVerdict {
   const verdict = reviewTokens.verify(token, options);
   return verdict.ok ? { ok: true, reviewId: verdict.id } : verdict;
@@ -350,6 +350,23 @@ export async function enqueueReviewResumptionJob(
   await enqueueReviewJob(deps.db, RESUME_REVIEW_KIND, review, 3);
 }
 
+/**
+ * Best effort by design: on a database one migration behind the columns do not
+ * exist, and the delivery then behaves as it did before them rather than not at
+ * all.
+ */
+async function stampDelivery(
+  db: Db,
+  id: string,
+  patch: { deliveryAttemptedAt?: string | null; deliveredAt?: string | null }
+): Promise<void> {
+  try {
+    await db.table("reviewRequests").update(id, patch);
+  } catch (error) {
+    console.error("[review] delivery stamp failed:", error);
+  }
+}
+
 export const deliverReviewRequestHandler: JobHandler = {
   async perform(record, deps) {
     const payload = record.payload as Partial<ReviewJobPayload>;
@@ -358,16 +375,42 @@ export const deliverReviewRequestHandler: JobHandler = {
     if (!review || review.simulated) return;
     // Decided while the delivery waited in the ledger: nothing left to ask.
     if (review.status !== "pending") return;
+    // Sent at most once. A run that died after the send and before the ledger
+    // settled is reclaimed and re-runs this handler: `deliveredAt` says the
+    // send landed, and an attempt with no delivery says nobody can know, which
+    // is a person's call (an Alert), not a second email.
+    if (review.deliveredAt) return;
+    if (review.deliveryAttemptedAt) {
+      await deps.db.raiseAlert(review.organizationId, {
+        type: "system",
+        title: "A Human review request may not have been delivered",
+        detail: `Delivery of review ${review.id} started and did not confirm, so it was not sent again. Check that the assignees received it; they can also decide it from the Inbox.`,
+        sourceKey: `review-delivery:${review.id}`,
+      });
+      return;
+    }
     const flow = await deps.db.getFlow(review.flowId);
     const settings = flow?.actionSettings?.human_review;
-    await deliverReviewRequest(
-      review,
-      {
-        senderConnectionId: settings?.senderConnectionId,
-        slackTarget: settings?.slackTarget,
-      },
-      { db: deps.db }
-    );
+    await stampDelivery(deps.db, review.id, {
+      deliveryAttemptedAt: new Date().toISOString(),
+    });
+    try {
+      await deliverReviewRequest(
+        review,
+        {
+          senderConnectionId: settings?.senderConnectionId,
+          slackTarget: settings?.slackTarget,
+        },
+        { db: deps.db }
+      );
+    } catch (error) {
+      // The send itself said it failed, so a retry may send.
+      await stampDelivery(deps.db, review.id, { deliveryAttemptedAt: null });
+      throw error;
+    }
+    await stampDelivery(deps.db, review.id, {
+      deliveredAt: new Date().toISOString(),
+    });
   },
   async onTerminalFailure(record, deps, message) {
     const payload = record.payload as Partial<ReviewJobPayload>;

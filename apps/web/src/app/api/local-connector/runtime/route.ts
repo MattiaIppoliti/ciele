@@ -3,8 +3,6 @@ import {
   readVerifiedConnectorRuntime,
 } from "@/lib/local-connector-installer";
 
-export const runtime = "nodejs";
-
 // Public, unauthenticated download of the connector runtime for terminal
 // self-service (`curl … | node`). The runtime is generic client code with no
 // org, member or provider secret, its security rests on the connector binding

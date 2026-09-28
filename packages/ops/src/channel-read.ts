@@ -43,6 +43,19 @@ export interface ChannelView extends ChannelRosterProjection {
 
 const UNREAD_SCAN_LIMIT = 30;
 
+/** Rows grouped by their channel, each group in input order. */
+function byChannel<T extends { channelId: string }>(
+  rows: readonly T[],
+): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const group = groups.get(row.channelId);
+    if (group) group.push(row);
+    else groups.set(row.channelId, [row]);
+  }
+  return groups;
+}
+
 /** One channel/seat index shared by ordinary and oversight list adapters. */
 export async function loadChannelReadIndex(
   ctx: OperationContext,
@@ -55,16 +68,7 @@ export async function loadChannelReadIndex(
       organizationId: ctx.organizationId,
     }),
   ]);
-  const participantsByChannel = new Map<
-    string,
-    TeammateChannelParticipant[]
-  >();
-  for (const participant of participants) {
-    const rows = participantsByChannel.get(participant.channelId);
-    if (rows) rows.push(participant);
-    else participantsByChannel.set(participant.channelId, [participant]);
-  }
-  return { channels, participantsByChannel };
+  return { channels, participantsByChannel: byChannel(participants) };
 }
 
 /** Names and live Teammate rows, with each Organization table read once. */
@@ -107,12 +111,7 @@ export async function summarizeChannels(
     channels.map((channel) => channel.id),
     UNREAD_SCAN_LIMIT,
   );
-  const messagesByChannel = new Map<string, ChannelMessage[]>();
-  for (const message of messages) {
-    const rows = messagesByChannel.get(message.channelId);
-    if (rows) rows.push(message);
-    else messagesByChannel.set(message.channelId, [message]);
-  }
+  const messagesByChannel = byChannel(messages);
   return channels
     .map((channel) => {
       const participants = participantsByChannel.get(channel.id) ?? [];

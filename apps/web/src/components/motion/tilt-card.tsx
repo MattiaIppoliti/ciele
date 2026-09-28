@@ -16,13 +16,6 @@ export interface TiltCardProps {
    * the pointer is over the card. Turn it down on large, text-heavy surfaces.
    */
   glareOpacity?: number;
-  /**
-   * Flips both rotation axes. Upstream tips the edge under the pointer *away*
-   * from the viewer; with `invert` that edge lifts toward the viewer instead,
-   * so the card reads as being pressed down under the cursor rather than
-   * pushed back by it.
-   */
-  invert?: boolean;
   className?: string;
 }
 

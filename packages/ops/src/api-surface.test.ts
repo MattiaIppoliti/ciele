@@ -17,9 +17,10 @@ import {
   listCollectionsOp,
   listDocumentMemoriesOp,
   restoreKnowledgeMemoryOp,
+  searchKnowledgeOp,
 } from "./knowledge";
 import { readUsageMetersOp, readUsageSpendersOp } from "./usage";
-import { createAssistantOp } from "./assistants";
+import { askAssistantOp, createAssistantOp } from "./assistants";
 import {
   createFlowOp,
   listFlowsOp,
@@ -247,6 +248,64 @@ describe("the org-level knowledge add over an API key", () => {
         (collection) => collection.id
       )
     ).toEqual([library.id]);
+  });
+});
+
+describe("knowledge search over an API key", () => {
+  it("checks the Assistant through the pinned view, then hands the search to the port", async () => {
+    const inner = getMockDb();
+    const calls: Array<{ query: string; assistantId: string | null }> = [];
+    const ctx: OperationContext = {
+      ...keyContext(pinned(inner)),
+      ports: {
+        searchKnowledge: async (input) => {
+          calls.push(input);
+          return [];
+        },
+      },
+    };
+    const assistant = await createAssistantOp.run(ctx, { title: "Key Search" });
+    await searchKnowledgeOp.run(ctx, { query: "opening hours", assistantId: assistant.id });
+    await searchKnowledgeOp.run(ctx, { query: "opening hours" });
+    expect(calls).toEqual([
+      { query: "opening hours", assistantId: assistant.id },
+      { query: "opening hours", assistantId: null },
+    ]);
+
+    // Another Organization's Assistant never reaches the port.
+    const foreign = await inner.createAssistant("org_other", { title: "Theirs" });
+    await expect(
+      searchKnowledgeOp.run(ctx, { query: "opening hours", assistantId: foreign.id })
+    ).rejects.toThrow();
+    expect(calls).toHaveLength(2);
+  });
+});
+
+describe("asking an Assistant over an API key", () => {
+  it("checks the Assistant through the pinned view, then hands the turn to the port", async () => {
+    const inner = getMockDb();
+    const asked: string[] = [];
+    const ctx: OperationContext = {
+      ...keyContext(pinned(inner)),
+      ports: {
+        askAssistant: async ({ assistantId }) => {
+          asked.push(assistantId);
+          return {
+            conversationId: "conv",
+            messageId: "msg",
+            flowName: null,
+            answer: "ok",
+            sources: [],
+            error: null,
+          };
+        },
+      },
+    };
+    const assistant = await createAssistantOp.run(ctx, { title: "Key Ask" });
+    await askAssistantOp.run(ctx, { id: assistant.id, question: "Hello?" });
+    const foreign = await inner.createAssistant("org_other", { title: "Theirs" });
+    await expect(askAssistantOp.run(ctx, { id: foreign.id, question: "Hello?" })).rejects.toThrow();
+    expect(asked).toEqual([assistant.id]);
   });
 });
 

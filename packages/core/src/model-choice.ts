@@ -35,20 +35,11 @@ export function modelChoices(
 ): ModelRef[] {
   if (allowed.length === 0) return [configured];
   const rest = allowed.filter((ref) => !sameModel(ref, configured));
-  return [configured, ...dedupeModels(rest)];
-}
-
-/** First occurrence wins, so an admin's ordering survives. */
-function dedupeModels(refs: readonly ModelRef[]): ModelRef[] {
-  const seen = new Set<string>();
-  const out: ModelRef[] = [];
-  for (const ref of refs) {
-    const key = `${ref.provider}:${ref.modelId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(ref);
-  }
-  return out;
+  // First occurrence wins, so an admin's ordering survives.
+  const unique = rest.filter(
+    (ref, i) => rest.findIndex((other) => sameModel(other, ref)) === i
+  );
+  return [configured, ...unique];
 }
 
 /**

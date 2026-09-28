@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { CieleClient } from "@ciele/client";
 import type { CliDeps } from "../index.ts";
 
@@ -21,11 +22,7 @@ export type FlagValue = string | boolean | Array<string | boolean>;
 
 /** The last string value of a flag, or undefined if it carries none. */
 export function str(flag: FlagValue | undefined): string | undefined {
-  if (Array.isArray(flag)) {
-    const strings = flag.filter((value): value is string => typeof value === "string");
-    return strings.length ? strings[strings.length - 1] : undefined;
-  }
-  return typeof flag === "string" ? flag : undefined;
+  return strList(flag).at(-1);
 }
 
 /**
@@ -51,3 +48,23 @@ export function usage(deps: CliDeps, hint: string): number {
   deps.stderr(`Usage: ciele ${hint}`);
   return 2;
 }
+
+/**
+ * The `--file` flag's JSON, or `undefined` (usage already printed) when the
+ * flag is missing. Not an exit code: a file holding a bare number is valid JSON.
+ */
+export function jsonFile<T>(ctx: CommandContext, hint: string): T | undefined {
+  const path = str(ctx.flags.file);
+  if (!path) {
+    usage(ctx.deps, hint);
+    return undefined;
+  }
+  return JSON.parse(readFileSync(path, "utf8")) as T;
+}
+
+/** A comma-separated flag value as trimmed, non-empty items. */
+export const csv = (value: string) =>
+  value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);

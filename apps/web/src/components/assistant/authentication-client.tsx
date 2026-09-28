@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useSyncExternalStore, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   EntraSsoConfig,
@@ -8,6 +8,7 @@ import type {
   SsoValidationStatus,
 } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
+import { useBrowserOrigin } from "@/lib/hooks/use-browser-origin";
 import {
   Badge,
   Button,
@@ -36,9 +37,11 @@ import {
   setSsoConnectionAction,
   validateSsoConnectionAction,
 } from "@/app/actions";
-
-/** window.location.origin never changes at runtime. */
-const NOOP_SUBSCRIBE = () => () => {};
+import { RollInText } from "@/components/motion/roll-in-text";
+import {
+  isRedirectError,
+  useConfirmDelete,
+} from "@/components/ui/confirm-delete-modal";
 
 interface ConnectionView {
   provider: SsoProviderKind;
@@ -67,7 +70,10 @@ function CopyField({ label, value }: { label: string; value: string }) {
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <div className="flex items-center gap-2">
-        <code className="bg-muted text-muted-foreground min-w-0 flex-1 truncate rounded-md px-2.5 py-1.5 text-xs">
+        <code
+          title={value}
+          className="bg-muted text-muted-foreground min-w-0 flex-1 truncate rounded-md px-2.5 py-1.5 text-xs"
+        >
           {value}
         </code>
         <Button
@@ -75,7 +81,9 @@ function CopyField({ label, value }: { label: string; value: string }) {
           variant="ghost"
           size="sm"
           aria-label={copied ? `${label} copied` : `Copy ${label}`}
-          onClick={() => void copyText(value, value)}
+          onClick={async () => {
+            if (!(await copyText(value, value))) toast.error(`Could not copy the ${label}`);
+          }}
         >
           <CopyFeedbackIcon copied={copied} className="size-4" />
         </Button>
@@ -85,9 +93,11 @@ function CopyField({ label, value }: { label: string; value: string }) {
 }
 
 function StatusBadge({ status }: { status: SsoValidationStatus }) {
-  if (status === "valid") return <Badge variant="default">Validated</Badge>;
-  if (status === "invalid") return <Badge variant="destructive">Invalid</Badge>;
-  return <Badge variant="secondary">Not validated</Badge>;
+  if (status === "valid")
+    return <Badge variant="default"><RollInText text="Validated" /></Badge>;
+  if (status === "invalid")
+    return <Badge variant="destructive"><RollInText text="Invalid" /></Badge>;
+  return <Badge variant="secondary"><RollInText text="Not validated" /></Badge>;
 }
 
 export function AuthenticationClient({
@@ -109,12 +119,9 @@ export function AuthenticationClient({
   const [tenantId, setTenantId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [identityClaim, setIdentityClaim] = useState("none");
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
-  const origin = useSyncExternalStore(
-    NOOP_SUBSCRIBE,
-    () => window.location.origin,
-    () => "https://your-app.example"
-  );
+  const origin = useBrowserOrigin();
   const redirectUri = `${origin}/api/sso/entra/callback`;
   const logoutUri = `${origin}/api/sso/entra/logout`;
 
@@ -122,14 +129,17 @@ export function AuthenticationClient({
     startTransition(async () => {
       try {
         await fn();
-      } catch {
-        toast.error("Something went wrong. Please try again.");
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        toast.error(
+          error instanceof Error ? error.message : "Something went wrong. Please try again."
+        );
       }
     });
 
   const connect = () =>
     run(async () => {
-      const result = await setSsoConnectionAction(assistantId, {
+      const result = await setSsoConnectionAction({
         provider: "entra",
         clientId,
         tenantId,
@@ -150,17 +160,23 @@ export function AuthenticationClient({
 
   const validate = () =>
     run(async () => {
-      const result = await validateSsoConnectionAction(assistantId);
+      const result = await validateSsoConnectionAction();
       if (result.ok) toast.success("Connection validated.");
       else toast.error(result.error ?? "Validation failed.");
       router.refresh();
     });
 
   const disconnect = () =>
-    run(async () => {
-      await disconnectSsoConnectionAction(assistantId);
-      toast.success("Provider disconnected.");
-      router.refresh();
+    confirmDelete({
+      title: "Disconnect Microsoft Entra ID?",
+      description:
+        "The stored credentials are removed. If sign-in is required, visitors can't get in until a provider is connected and validated again.",
+      confirmLabel: "Disconnect",
+      onConfirm: async () => {
+        await disconnectSsoConnectionAction();
+        toast.success("Provider disconnected.");
+        router.refresh();
+      },
     });
 
   const toggleEnforce = (next: boolean) =>
@@ -199,20 +215,33 @@ export function AuthenticationClient({
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Application (client) ID</Label>
-                <code className="bg-muted block truncate rounded-md px-2.5 py-1.5 text-xs">
+                <code
+                  title={connection.config.clientId}
+                  className="bg-muted block truncate rounded-md px-2.5 py-1.5 text-xs"
+                >
                   {connection.config.clientId}
                 </code>
               </div>
               <div className="space-y-1.5">
                 <Label>Directory (tenant) ID</Label>
-                <code className="bg-muted block truncate rounded-md px-2.5 py-1.5 text-xs">
+                <code
+                  title={connection.config.tenantId}
+                  className="bg-muted block truncate rounded-md px-2.5 py-1.5 text-xs"
+                >
                   {connection.config.tenantId}
                 </code>
               </div>
             </div>
             <div className="space-y-1.5">
               <Label>Identity claim</Label>
-              <code className="bg-muted block truncate rounded-md px-2.5 py-1.5 text-xs">
+              <code
+                title={
+                  connection.config.identityClaim
+                    ? claimLabel(connection.config.identityClaim)
+                    : "Off, subject only"
+                }
+                className="bg-muted block truncate rounded-md px-2.5 py-1.5 text-xs"
+              >
                 {connection.config.identityClaim
                   ? claimLabel(connection.config.identityClaim)
                   : "Off, subject only"}
@@ -245,6 +274,9 @@ export function AuthenticationClient({
               <Label htmlFor="sso-client-id">Application (client) ID</Label>
               <Input
                 id="sso-client-id"
+                name="clientId"
+                autoComplete="off"
+                spellCheck={false}
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
                 placeholder="00000000-0000-0000-0000-000000000000"
@@ -254,6 +286,9 @@ export function AuthenticationClient({
               <Label htmlFor="sso-tenant-id">Directory (tenant) ID</Label>
               <Input
                 id="sso-tenant-id"
+                name="tenantId"
+                autoComplete="off"
+                spellCheck={false}
                 value={tenantId}
                 onChange={(e) => setTenantId(e.target.value)}
                 placeholder="00000000-0000-0000-0000-000000000000"
@@ -263,6 +298,9 @@ export function AuthenticationClient({
               <Label htmlFor="sso-client-secret">Client secret</Label>
               <PasswordInput
                 id="sso-client-secret"
+                name="clientSecret"
+                // Not the admin's own password: keep the manager from filling it.
+                autoComplete="new-password"
                 value={clientSecret}
                 onChange={(e) => setClientSecret(e.target.value)}
                 placeholder="Value from Certificates & secrets"
@@ -315,19 +353,21 @@ export function AuthenticationClient({
             When on, visitors must sign in before this assistant will chat.
           </p>
           <Switch
+            aria-label="Require sign-in"
             checked={requireSignIn}
             disabled={!canEdit || isPending}
             onCheckedChange={toggleEnforce}
           />
         </div>
         {enforceableWithoutValid && (
-          <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <p role="status" className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
             Sign-in is required but no provider is validated yet, so visitors can&apos;t get in.
           </p>
         )}
       </Card>
       </TimelineSection>
       </SectionTimeline>
+      {confirmDeleteModal}
     </div>
   );
 }

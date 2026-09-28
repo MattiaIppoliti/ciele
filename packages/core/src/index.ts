@@ -64,19 +64,13 @@ export {
   proactiveFlowCandidates,
   proactiveTriggers,
 } from "./engine";
-export type {
-  NotificationDeliveryContext,
-  ProactiveTriggerContext,
-} from "./engine";
+export type { ProactiveTriggerContext } from "./engine";
 
 // Objective Flow Conditions (URL, Schedule): the deterministic gate both
 // routers apply through `messageFlowCandidates` before Intent Classification,
 // plus the completeness rule the Flow Builder validates against so the editor
 // and the runtime cannot disagree about what "configured" means (spec #550).
-export {
-  flowConditionDefect,
-  flowConditionsAllowRouting,
-} from "./flow-conditions";
+export { flowConditionDefect } from "./flow-conditions";
 export type { FlowConditionDefect, FlowRoutingContext } from "./flow-conditions";
 
 // One rule for an admin-typed outbound link's scheme, shared by the Flow
@@ -101,27 +95,11 @@ export { STUDY_MODE_FLOW_ID, studyModeFlow, studyRequestFormat } from "./study-m
 // questions and answers, the generic derivations over them, and the pre-flight
 // question map with its thresholds, routing and Thinking-line table. Pure; the
 // call itself lives in `@agent-hub/agent`.
-export {
-  CHOICE_OPTION_CAP,
-  SCORE_LEVEL_CAP,
-  answeredByFallback,
-  clearsThreshold,
-  compositeScore,
-  scoreLevel,
-} from "./decision";
+export { CHOICE_OPTION_CAP, answeredByFallback, scoreLevel } from "./decision";
 export type {
-  AnswerFor,
-  AnswersFor,
-  CompositePart,
-  DecisionAnswer,
   DecisionBooleanAnswer,
-  DecisionBooleanQuestion,
-  DecisionChoiceAnswer,
-  DecisionChoiceQuestion,
   DecisionConfidence,
-  DecisionQuestion,
   DecisionScoreAnswer,
-  DecisionScoreQuestion,
 } from "./decision";
 export {
   FLOW_DEFAULT,
@@ -146,33 +124,21 @@ export {
   thinkingOutcome,
 } from "./preflight";
 export {
-  DEFAULT_THRESHOLD_CANDIDATES,
   cohenKappa,
   suggestThreshold,
   thresholdSweep,
 } from "./preflight-calibration";
-export type {
-  AgreementFigures,
-  CalibrationObservation,
-  ThresholdPoint,
-  ThresholdSuggestion,
-} from "./preflight-calibration";
+export type { CalibrationObservation } from "./preflight-calibration";
 export {
   APPROVAL_GATE_MAP_VERSION,
-  APPROVAL_GATE_QUESTION_IDS,
   APPROVAL_GATE_THRESHOLDS,
-  REVERSIBILITY_OPTIONS,
   approvalReviewTitle,
   approvalVerdict,
   buildApprovalQuestions,
 } from "./approval-gate";
 export {
-  DEDUP_CANDIDATE_LIMIT,
-  IMPROVEMENT_DEDUP_THRESHOLD,
-  PRIORITY_CUTS,
   PRIORITY_LEVELS,
   PRIORITY_QUESTION_IDS,
-  PRIORITY_WEIGHTS,
   buildDedupQuestions,
   buildPriorityQuestions,
   dedupCandidates,
@@ -184,51 +150,26 @@ export type {
   PriorityQuestionId,
 } from "./improvement-decisions";
 export {
-  MAX_CLAIMS,
-  TIER_ONE_THRESHOLD,
   buildClaimQuestions,
-  carriesNumericFact,
-  splitClaims,
   splitForTiers,
   tierOneOutcome,
 } from "./verification";
 export type { ClaimSplit, TierOneOutcome } from "./verification";
-export type { ConversationPreflightSignals } from "./types";
 export type {
-  ActionApproval,
-  ActionApprovalInput,
-  ActionApprovalPatch,
-  ApprovalReviewReason,
-} from "./types";
-export type {
-  ApprovalDecision,
-  ApprovalGateAnswers,
-  ApprovalGateQuestionId,
-  ApprovalGateQuestionMap,
   ApprovalSubject,
   ApprovalVerdict,
   Reversibility,
 } from "./approval-gate";
 export type {
-  PreflightAnswers,
   PreflightCatalogue,
   PreflightDecision,
-  PreflightDesk,
-  PreflightFaq,
   PreflightFailure,
-  PreflightLanguage,
   PreflightQuestionId,
   PreflightQuestionMap,
   PreflightRouting,
   PreflightTraceAnswer,
   PreflightTraceRecord,
-  ReasoningLevel,
-  ThinkingOutcome,
 } from "./preflight";
-export type {
-  CourtesyHistoryTurn,
-  CourtesyRoutingContext,
-} from "./basic-interaction";
 
 // AI Teammates (#768): the persona prompt layer, the empty-scope rule, and who
 // may see or edit one. Pure derivations over the row plus the asking Member, so
@@ -238,7 +179,6 @@ export {
   canViewTeammate,
   danglingScopeAlertCopy,
   danglingSourceScopeAlertCopy,
-  isSystemTeammate,
   isTeammateRetired,
   rosterTeammates,
   teammateDefaultFlow,
@@ -251,12 +191,9 @@ export type { TeammateKnowledgeScope, TeammateViewer } from "./teammate";
 
 // Human review (#841): the approval gate's state machine and its settings rule.
 export {
-  DEFAULT_REVIEW_EXPIRED_MESSAGE,
   DEFAULT_REVIEW_HALT_MESSAGE,
   DEFAULT_REVIEW_TIMEOUT_HOURS,
   DEFAULT_REVIEW_WAITING_MESSAGE,
-  MAX_REVIEW_TIMEOUT_HOURS,
-  MIN_REVIEW_TIMEOUT_HOURS,
   REVIEW_MAIL_SCOPE,
   REVIEW_SLACK_SCOPE,
   canDecideReview,
@@ -283,11 +220,9 @@ export {
   MAX_WEBHOOK_TIMEOUT_MINUTES,
   MIN_WEBHOOK_TIMEOUT_MINUTES,
   WEBHOOK_CALLBACK_TOKEN,
-  WEBHOOK_PAYLOAD_MAX_CHARS,
   expireWebhook,
   httpWebhookSettingsIssue,
   receiveWebhook,
-  isWebhookOverdue,
   webhookExpiresAt,
   webhookHaltMessage,
   webhookTemplateVariables,
@@ -304,7 +239,6 @@ export {
   httpFlowMethods,
   httpFlowRequestVariables,
   isHttpTrigger,
-  jsonBodyPaths,
   respondHeaders,
   respondSettingsIssue,
   respondStatus,
@@ -339,10 +273,7 @@ export {
   memoryPromptSections,
   projectInjects,
 } from "./memory-documents";
-export type {
-  MemoryDocumentChange,
-  MemoryLayerInput,
-} from "./memory-documents";
+export type { MemoryDocumentChange } from "./memory-documents";
 // Memory extraction's pure half (#930): the verbatim-quote gate that refuses an
 // invented fact, the cap, and the re-crawl reconciliation that never undoes a
 // Member's forget.
@@ -355,12 +286,7 @@ export {
   filterExtractedMemories,
   reconcileKnowledgeMemories,
 } from "./knowledge-memory-extraction";
-export type {
-  ExistingMemory,
-  ExtractedMemory,
-  FilteredMemories,
-  MemoryReconciliation,
-} from "./knowledge-memory-extraction";
+export type { ExtractedMemory } from "./knowledge-memory-extraction";
 // A Source's Documents table (#927): the status pill, derived at read time
 // from the two columns that already carry the answer.
 export {
@@ -377,19 +303,11 @@ export {
   compareOrgKnowledgeSources,
   compareSourceDocuments,
 } from "./knowledge-order";
-export type {
-  OrgKnowledgeSourceOrder,
-  SourceDocumentOrder,
-} from "./knowledge-order";
 
 // Near-duplicate detection for auto-filed Improvements (#767, story 15): the
 // cross-conversation half of the dedup, lexical rather than embedding-based on
 // purpose (see the module comment).
-export {
-  IMPROVEMENT_DUPLICATE_THRESHOLD,
-  findDuplicateImprovement,
-  titleSimilarity,
-} from "./improvement-dedup";
+export { findDuplicateImprovement } from "./improvement-dedup";
 
 // Routines (#772): when an unattended run is due, and how its Conversation is
 // marked. The schedule is pure here so both Db implementations and the cron
@@ -402,7 +320,6 @@ export {
   isRoutineDue,
   routineConversationMetadata,
   routineNextRun,
-  routineSlotStart,
   routineTitle,
 } from "./routines";
 
@@ -430,7 +347,6 @@ export {
 } from "./channel";
 export type {
   ChainCapReason,
-  ChainVerdict,
   ChannelRosterEntry,
   ChannelUnread,
 } from "./channel";
@@ -438,11 +354,7 @@ export type {
 // Teammate referral (#773): who a Teammate may hand a request to, and what the
 // colleague on the other end reads when it arrives. Human-mediated by design:
 // the card is an offer, and nothing runs until the Member clicks.
-export {
-  referralCandidates,
-  referralContextSection,
-  standingContextSections,
-} from "./referral";
+export { referralCandidates, standingContextSections } from "./referral";
 export type { ReferralCandidate } from "./referral";
 
 // The API catalogue (spec #559): what the model is told an API integration can
@@ -453,43 +365,28 @@ export type { ReferralCandidate } from "./referral";
 export {
   apiCatalogSummary,
   apiEndpointDetail,
-  endpointIdempotencyExposure,
   endpointIdempotencyKey,
   endpointPathParams,
   resolveCatalogPath,
   validateEndpointIdempotency,
 } from "./api-catalog";
-export type {
-  ApiCatalogSummary,
-  ApiEndpointDetail,
-  CatalogPathMatch,
-  CatalogPathRefusal,
-  CatalogPathRejection,
-  IdempotencyRejection,
-} from "./api-catalog";
+export type { CatalogPathRejection, IdempotencyRejection } from "./api-catalog";
 
 // Resolving one operation out of an OpenAPI / Swagger document (#837): a fact
 // about the document, so the builder's test and the runtime's request read it
 // the same way.
 export { resolveOpenApiOperation } from "./openapi";
-export type {
-  OpenApiResolution,
-  OpenApiResolveError,
-  ResolvedOperation,
-} from "./openapi";
 
 // The Connector catalogue (#839): catalogued actions over Application
 // Connections, read by the builder, Publish and the runtime alike.
 export {
   CONNECTOR_ACTIONS,
-  CONNECTOR_INTERNAL_ONLY_REASON,
   CONNECTOR_PROVIDERS,
   CONNECTOR_PROVIDER_LABELS,
   connectorAction,
   connectorRunsInternalOnly,
   connectorActionsFor,
   connectorConnectionIssue,
-  connectorMissingParams,
   connectorMissingScopes,
   connectorOutputVariable,
   connectorParamValue,
@@ -497,18 +394,35 @@ export {
 } from "./connector-catalog";
 export type {
   ConnectorAction,
-  ConnectorEffect,
   ConnectorField,
-  ConnectorFieldDynamic,
-  ConnectorFieldType,
   ConnectorLoader,
-  ConnectorOutput,
 } from "./connector-catalog";
 
 // The Insights read model. `computeInsightsOverview` is the oracle the SQL
 // aggregate `get_insights_overview` is checked against (ADR-0010); the seven
 // helpers it composes stay internal, and its tests reach them directly.
 export { computeInsightsOverview, colorizeOverview, isoDay } from "./insights";
+
+// The Insights Dashboard: spend, reliability, latency, verifier and autonomy
+// over one window, derived from the fine-grained `DashboardFacts`.
+export {
+  DASHBOARD_LATENCY_BOUNDS_MS,
+  computeUsageDashboard,
+  dashboardSurfaceOf,
+  dashboardSurfaceOfTurn,
+  daysBetween,
+  latencyBucketOf,
+} from "./usage-dashboard";
+export type {
+  DashboardDay,
+  DashboardFlowSeries,
+  DashboardLatencyBucket,
+  DashboardModelRow,
+  DashboardStageRow,
+  DashboardSurfaceRow,
+  UsageDashboard,
+  UsageDashboardFilter,
+} from "./usage-dashboard";
 
 // Shipped defaults for a new Assistant and for support-channel availability.
 export {
@@ -529,7 +443,6 @@ export { buildPublicationConfig } from "./publication";
 // Per-site re-crawl cadence: when a Website Source next falls due. Clock-free.
 export {
   DEFAULT_PAGE_BUDGET,
-  effectivePageSchedule,
   isUnlimitedPages,
   NO_PAGE_LIMIT,
   nextCrawlDue,
@@ -544,11 +457,6 @@ export { isProactiveMessage, messageText } from "./message";
 // only at export time from the structured Thinking Steps we actually store, and
 // read back by the round-trip test that keeps the two representations honest.
 export { parseAgenticTrace, serializeAgenticTrace } from "./agentic-trace";
-export type {
-  AgenticTraceMarker,
-  AgenticTraceSegment,
-  SerializeAgenticTraceInput,
-} from "./agentic-trace";
 
 // Per-model token prices and the cost estimate derived from them.
 export { estimateCostEur } from "./pricing";
@@ -584,22 +492,18 @@ export type { FundingBucket } from "./funding";
 
 // AES-256-GCM sealing for stored secrets. Sealed by the app when a credential is
 // saved (provider connections, SSO, session cookies), opened by the agent
-// runtime when it resolves a provider credential. `encryptSecret` stays private
-// so a caller cannot reach past the pair and write a row `openSecret` cannot
-// read back; `isLegacyPlaintextSecret` identifies rows the removed no-key
-// fallback wrote, which a rotation has to find before it can re-seal them.
+// runtime when it resolves a provider credential. `isLegacyPlaintextSecret`
+// identifies rows the removed no-key fallback wrote, which a rotation has to
+// find before it can re-seal them.
 export { sealSecret, openSecret, isLegacyPlaintextSecret } from "./crypto";
 
 // What an uploaded file actually is, before a parser reads it (#801, CYB-09):
 // magic-byte agreement with the claimed extension, and the two things an
 // OOXML package can carry that a document has no use for.
 export {
-  documentExtension,
   triageDocument,
   zipDirectory,
   DOCUMENT_TRIAGE_VERSION,
-  type DocumentTriage,
-  type DocumentTriageCode,
   type TriageEvidence,
   type ZipEntry,
 } from "./document-triage";
@@ -619,12 +523,7 @@ export { thrownMessage } from "./thrown-message";
 
 // The Slack conversational opt-in (#857): the parser every surface shares
 // and the readiness predicate the dialog, the save and the worker agree on.
-export {
-  SLACK_BOT_SCOPES,
-  SLACK_CHANNEL_ID,
-  slackBotConfig,
-  slackBotReady,
-} from "./slack-bot";
+export { SLACK_BOT_SCOPES, slackBotConfig, slackBotReady } from "./slack-bot";
 export type { SlackBotConfig } from "./slack-bot";
 export { isOpenImprovement } from "./improvements";
 

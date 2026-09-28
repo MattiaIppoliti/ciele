@@ -8,9 +8,16 @@
 //
 //   node scripts/rotate-legacy-secrets.mjs             # inventory, read-only
 //   node scripts/rotate-legacy-secrets.mjs --rotate    # re-seal what it found
+//   node scripts/rotate-legacy-secrets.mjs --rekey     # move every row to a new key
 //
 // Environment: NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL) and
 // SUPABASE_SERVICE_ROLE_KEY always; APP_ENCRYPTION_KEY for --rotate.
+//
+// Key rotation (--rekey): set the new value as APP_ENCRYPTION_KEY and the old
+// one as APP_ENCRYPTION_KEY_PREVIOUS, in the app first (it reads both, see
+// packages/core/src/crypto.ts), then here. Every sealed value that does not
+// open under the new key but does under the old one is re-sealed under the
+// new key. Once it reports nothing left, remove APP_ENCRYPTION_KEY_PREVIOUS.
 //
 // Deliberately dependency-free (plain fetch against PostgREST, node:crypto for
 // the seal), because the root workspace installs no Supabase client and an
@@ -96,11 +103,53 @@ export function rotateTicketingIntegration(integration, appEncryptionKey) {
   return changed ? { ...integration, config: rotated } : null;
 }
 
-// --- PostgREST plumbing (main only, nothing below is imported by the test) ---
-
-function env(name, fallback) {
-  return process.env[name] ?? (fallback ? process.env[fallback] : undefined);
+/** Opens under `key`, or returns null when the tag says it was another key. */
+function tryOpen(stored, key) {
+  try {
+    return openSecret(stored, key);
+  } catch {
+    return null;
+  }
 }
+
+/**
+ * One value's re-key: null when there is nothing to do (plaintext is --rotate's
+ * job, a value already under the current key stays), the new seal otherwise.
+ * Throws for a value neither key opens, which is an operator problem to see,
+ * not a row to skip silently.
+ */
+export function rekeySealedValue(stored, currentKey, previousKey) {
+  if (typeof stored !== "string" || stored === "" || isLegacyPlaintextSecret(stored)) {
+    return null;
+  }
+  if (tryOpen(stored, currentKey) !== null) return null;
+  const plaintext = tryOpen(stored, previousKey);
+  if (plaintext === null) {
+    throw new Error("A sealed value opens under neither the current nor the previous key");
+  }
+  return sealSecret(plaintext, currentKey);
+}
+
+/** The same, over the sealed leaves of one ticketing_integration document. */
+export function rekeyTicketingIntegration(integration, currentKey, previousKey) {
+  if (!integration || typeof integration !== "object") return null;
+  const config = integration.config;
+  if (!config || typeof config !== "object") return null;
+  let changed = false;
+  const rekeyed = {};
+  for (const [key, value] of Object.entries(config)) {
+    // Only values shaped like a seal (iv.tag.data); plain config stays as is.
+    const next =
+      typeof value === "string" && value.split(".").length === 3
+        ? rekeySealedValue(value, currentKey, previousKey)
+        : null;
+    rekeyed[key] = next ?? value;
+    if (next) changed = true;
+  }
+  return changed ? { ...integration, config: rekeyed } : null;
+}
+
+// --- PostgREST plumbing (main only, nothing below is imported by the test) ---
 
 /** One PostgREST page. Kept explicit so a capped server answer is never
  * mistaken for the whole table (Supabase defaults max-rows to 1000). */
@@ -143,10 +192,52 @@ async function rest(base, serviceKey, path, init = {}) {
   return response.status === 204 ? null : response.json();
 }
 
+async function rekeyAll(base, serviceKey, currentKey, previousKey) {
+  let rekeyed = 0;
+  for (const { table, column } of SEALED_TEXT_COLUMNS) {
+    // Re-keyed rows stay non-null, so pages never shift: always advance.
+    const filter = `select=id,${column}&${column}=not.is.null`;
+    for await (const rows of pages(base, serviceKey, table, filter, { advance: true })) {
+      for (const row of rows) {
+        const next = rekeySealedValue(row[column], currentKey, previousKey);
+        if (!next) continue;
+        console.log(`rekeying: ${table}.${column} id=${row.id}`);
+        await rest(base, serviceKey, `${table}?id=eq.${row.id}`, {
+          method: "PATCH",
+          headers: { prefer: "return=minimal" },
+          body: JSON.stringify({ [column]: next }),
+        });
+        rekeyed += 1;
+      }
+    }
+  }
+  const { table, column } = SEALED_JSON_COLUMN;
+  const filter = `select=id,${column}&${column}=not.is.null`;
+  for await (const desks of pages(base, serviceKey, table, filter, { advance: true })) {
+    for (const desk of desks) {
+      const next = rekeyTicketingIntegration(desk[column], currentKey, previousKey);
+      if (!next) continue;
+      console.log(`rekeying: ${table}.${column} id=${desk.id}`);
+      await rest(base, serviceKey, `${table}?id=eq.${desk.id}`, {
+        method: "PATCH",
+        headers: { prefer: "return=minimal" },
+        body: JSON.stringify({ [column]: next }),
+      });
+      rekeyed += 1;
+    }
+  }
+  console.log(
+    rekeyed === 0
+      ? "Nothing sealed under the previous key. APP_ENCRYPTION_KEY_PREVIOUS can be removed."
+      : `Re-sealed ${rekeyed} row(s) under the current key.`
+  );
+}
+
 async function main() {
   const rotate = process.argv.includes("--rotate");
-  const base = env("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL");
-  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const rekey = process.argv.includes("--rekey");
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!base || !serviceKey) {
     console.error(
       "NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY are required."
@@ -158,9 +249,19 @@ async function main() {
     console.error("APP_ENCRYPTION_KEY is required to rotate (it is what the re-seal writes under).");
     process.exit(2);
   }
+  if (rekey) {
+    const previousKey = process.env.APP_ENCRYPTION_KEY_PREVIOUS;
+    if (!appKey || !previousKey) {
+      console.error("--rekey needs APP_ENCRYPTION_KEY (new) and APP_ENCRYPTION_KEY_PREVIOUS (old).");
+      process.exit(2);
+    }
+    await rekeyAll(base, serviceKey, appKey, previousKey);
+    return;
+  }
 
+  // A failed PATCH throws out of main, so when the summary prints every
+  // found row in a --rotate run was rotated.
   let found = 0;
-  let rotated = 0;
 
   for (const { table, column } of SEALED_TEXT_COLUMNS) {
     // `like.plain:*` matches only rows the removed fallback wrote; a sealed
@@ -180,7 +281,6 @@ async function main() {
             [column]: sealSecret(row[column].slice(LEGACY_PREFIX.length), appKey),
           }),
         });
-        rotated += 1;
       }
     }
   }
@@ -201,14 +301,13 @@ async function main() {
         headers: { prefer: "return=minimal" },
         body: JSON.stringify({ [column]: next }),
       });
-      rotated += 1;
     }
   }
 
   if (found === 0) {
     console.log("No legacy plaintext credentials found.");
   } else if (rotate) {
-    console.log(`Rotated ${rotated} of ${found} legacy credential row(s).`);
+    console.log(`Rotated ${found} of ${found} legacy credential row(s).`);
   } else {
     console.log(
       `${found} legacy credential row(s) found. Re-run with --rotate (APP_ENCRYPTION_KEY set) to re-seal them.`

@@ -1036,6 +1036,124 @@
       "endpoints"
     ]
   },
+  "post /assistants/{id}/ask": {
+    "type": "object",
+    "properties": {
+      "conversationId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "messageId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "flowName": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "answer": {
+        "type": "string"
+      },
+      "sources": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "documentId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "documentTitle": {
+              "type": "string"
+            },
+            "sourceId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "sourceName": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "collectionName": {
+              "type": "string"
+            },
+            "url": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "documentId",
+            "documentTitle",
+            "sourceId",
+            "sourceName",
+            "collectionName",
+            "url"
+          ]
+        }
+      },
+      "error": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "required": [
+      "conversationId",
+      "messageId",
+      "flowName",
+      "answer",
+      "sources",
+      "error"
+    ]
+  },
   "get /assistants/{id}/collections": {
     "type": "object",
     "properties": {
@@ -1262,6 +1380,9 @@
                     }
                   }
                 }
+              },
+              "apiKeyId": {
+                "type": "string"
               },
               "routineId": {
                 "type": "string"
@@ -1762,6 +1883,9 @@
                       "additionalProperties": {}
                     }
                   }
+                },
+                "apiKeyId": {
+                  "type": "string"
                 },
                 "routineId": {
                   "type": "string"
@@ -7829,6 +7953,9 @@
               }
             }
           },
+          "apiKeyId": {
+            "type": "string"
+          },
           "routineId": {
             "type": "string"
           },
@@ -8159,6 +8286,9 @@
                     }
                   }
                 }
+              },
+              "apiKeyId": {
+                "type": "string"
               },
               "routineId": {
                 "type": "string"
@@ -8658,6 +8788,9 @@
                 }
               }
             }
+          },
+          "apiKeyId": {
+            "type": "string"
           },
           "routineId": {
             "type": "string"
@@ -9161,6 +9294,9 @@
                       "additionalProperties": {}
                     }
                   }
+                },
+                "apiKeyId": {
+                  "type": "string"
                 },
                 "routineId": {
                   "type": "string"
@@ -16247,6 +16383,9 @@
                         "languageTally": {}
                       }
                     },
+                    "apiKeyId": {
+                      "type": "string"
+                    },
                     "routineId": {
                       "type": "string"
                     },
@@ -17068,6 +17207,96 @@
       "question",
       "answer",
       "path"
+    ]
+  },
+  "post /knowledge/search": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string"
+      },
+      "assistantId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "rank": {
+              "type": "number"
+            },
+            "content": {
+              "type": "string"
+            },
+            "documentId": {
+              "type": "string"
+            },
+            "documentTitle": {
+              "type": "string"
+            },
+            "sourceId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "sourceName": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "collectionName": {
+              "type": "string"
+            },
+            "url": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "score": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "rank",
+            "content",
+            "documentId",
+            "documentTitle",
+            "sourceId",
+            "sourceName",
+            "collectionName",
+            "url",
+            "score"
+          ]
+        }
+      }
+    },
+    "required": [
+      "query",
+      "assistantId",
+      "results"
     ]
   },
   "get /knowledge/sources": {
@@ -19487,6 +19716,26 @@
           }
         ]
       },
+      "deliveryAttemptedAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "deliveredAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
       "createdAt": {
         "type": "string"
       },
@@ -19710,6 +19959,26 @@
           }
         ]
       },
+      "deliveryAttemptedAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "deliveredAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
       "createdAt": {
         "type": "string"
       },
@@ -19909,6 +20178,26 @@
               "type": "boolean"
             },
             "resumedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "deliveryAttemptedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "deliveredAt": {
               "oneOf": [
                 {
                   "type": "null"
@@ -20747,6 +21036,9 @@
                   }
                 }
               },
+              "apiKeyId": {
+                "type": "string"
+              },
               "routineId": {
                 "type": "string"
               },
@@ -21246,6 +21538,9 @@
                       "additionalProperties": {}
                     }
                   }
+                },
+                "apiKeyId": {
+                  "type": "string"
                 },
                 "routineId": {
                   "type": "string"

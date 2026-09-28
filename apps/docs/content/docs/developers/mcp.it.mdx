@@ -4,16 +4,16 @@ description: Concedi a un client MCP l'accesso controllato alle operazioni di am
 ---
 
 Il server Ciele Model Context Protocol (MCP) espone le operazioni di
-amministrazione a un agente IA. Dispone di due transport, ed entrambi registrano
-gli stessi strumenti.
+amministrazione a un agente IA. Dispone di due transport, entrambi i quali
+registrano gli stessi tool.
 
 - L'**hosted endpoint** è `POST /api/mcp` sulla tua distribuzione. Usalo per un
   client che si connette tramite HTTP.
 - Il **local server** è un processo `stdio` che avvii da un checkout del
   repository.
 
-Ogni chiamata a uno strumento raggiunge l'Organization tramite `/api/v1`, quindi
-un'operazione ha un unico percorso di esecuzione, indipendentemente dal
+Ogni chiamata a uno strumento raggiunge l'Organization tramite `/api/v1`,
+pertanto un'operazione ha un unico percorso di esecuzione, indipendentemente dal
 trasporto che l'ha richiesta.
 
 ## Endpoint ospitato
@@ -26,15 +26,16 @@ L'endpoint non richiede alcuna configurazione.
 https://ciele.example.edu/api/mcp
 ```
 
-Esegui l'autenticazione con una [Organization API key](/developers/api-keys)
-nell'header `Authorization`:
+Esegui l'autenticazione con una
+[chiave API dell'organizzazione](/developers/api-keys) nell'intestazione
+`Authorization`:
 
 ```text
 Authorization: Bearer ciele_sk_...
 ```
 
 Una chiave sconosciuta o assente viene rifiutata con `401` prima che venga
-elencato qualsiasi strumento.
+elencato qualsiasi tool.
 
 <Callout title="The key Role is the permission boundary">
 The hosted endpoint has no read-only switch. Its permissions are the Role of the key: the operations layer refuses a mutation the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. Use `CIELE_MCP_READ_ONLY=1` on a stdio server when you need an agent that cannot write at all.
@@ -43,7 +44,7 @@ The hosted endpoint has no read-only switch. Its permissions are the Role of the
 ## Revisioni del protocollo
 
 Il server supporta la revisione `2026-07-28` e le revisioni 2025. Determina la
-revisione fin dallo scambio iniziale, perciò un client che non è passato a
+revisione fin dallo scambio iniziale, quindi un client che non è passato a
 `2026-07-28` continua a funzionare.
 
 La revisione `2026-07-28` ha rimosso le sessioni di protocollo. Ogni richiesta è
@@ -89,29 +90,73 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 | Tool | Operazioni correnti |
 | --- | --- |
-| `ciele_identity` | Leggi le informazioni su Deployment, Organization e Role. |
-| `manage_assistants` | Elenca, leggi, crea, aggiorna, duplica o elimina gli Assistants. |
+| `ciele_identity` | Leggi le informazioni su deployment, Organization e Role. |
+| `manage_assistants` | Poni una domanda a un Assistente, quindi elenca, leggi, crea, aggiorna, duplica o elimina gli Assistenti. |
 | `manage_flows` | Leggi il catalogo dei Flow, controlla un Flow senza salvarlo, leggi le esecuzioni di un HTTP Flow, quindi elenca, leggi, crea, aggiorna, riordina o elimina i Flow. |
-| `manage_knowledge` | Gestisci Collections, Sources e FAQ. |
+| `manage_knowledge` | Cerca nella knowledge, quindi gestisci Collections, Sources e FAQ. |
 | `publish_assistant` | Leggi lo stato, pubblica, annulla la pubblicazione o ripristina una pubblicazione. |
 | `read_inbox` | Elenca, leggi, esporta, appunta, annota, valuta o elimina le Conversations. Elenca, leggi e decidi le richieste di revisione umana. |
 | `manage_improvements` | Elenca, leggi o aggiorna gli Improvements. |
 | `manage_entities` | Gestisci le Organization Entities e i Records tipizzati. |
 | `manage_memories` | Verifica le impostazioni ed esegui la cancellazione della memoria con ambito definito. |
-| `manage_sso` | Gestisci le identity claim e la connessione SSO dell'organizzazione. |
+| `manage_sso` | Gestisci le attestazioni di identità e la connessione SSO dell'organizzazione. |
 | `manage_help_desks` | Gestisci Help Desk, canali, ordinamento e ServiceNow. |
 | `manage_teammates` | Gestisci gli AI Teammate, i loro grant, le loro Routine e la loro memoria. `provision` esegue la configurazione completa con una sola azione. |
 | `manage_projects` | Gestisci i progetti e il documento di memoria di ciascun progetto. |
 | `manage_channels` | Leggi e modella i canali dei teammate in cui sei presente. |
-| `manage_configuration` | Gestisci Skills, la selezione di Assistant Skills, Goals e Alerts. |
-| `manage_organization` | Gestisci le impostazioni dell'organizzazione, i Members, gli Invites e le API keys. Consulta i contatori di utilizzo e gli spender del piano. |
+| `manage_configuration` | Gestisci Skills, la selezione delle Assistant Skills, Goals e Alerts. |
+| `manage_organization` | Gestisci le impostazioni dell'organizzazione, i Members, gli Invites e le API keys. Consulta i contatori di utilizzo e gli elementi di spesa del piano. |
 | `manage_integrations` | Gestisci le integrazioni API dell'Assistente e i provider di modelli. |
 
-Il server registra diciassette tool: un identity tool e sedici domain tool. Ogni
-strumento di dominio utilizza un campo `action` per le proprie operazioni.
+Il server registra diciassette strumenti: uno strumento di identità e sedici
+strumenti di dominio. Ogni strumento di dominio utilizza un campo `action` per
+le proprie operazioni.
 
 La modalità di sola lettura classifica ogni azione. Consente le azioni list,
-read, status, query ed export, mentre rifiuta le mutazioni.
+read, status, query, search ed export, mentre rifiuta le mutazioni.
+
+## Cerca nella knowledge base
+
+L'azione `search` di `manage_knowledge` trova i passaggi che corrispondono a una
+domanda. Ogni risultato riporta il testo del passaggio, il titolo del Documento,
+il nome della Source e, se presente, l'URL. Ciele non genera una risposta. Il
+tuo client AI scrive la risposta e cita le Sources.
+
+```json
+{ "action": "search", "query": "How do I connect Salesforce?", "assistantId": "<assistant-id>" }
+```
+
+Con `assistantId`, la ricerca utilizza solo le Sources collegate a
+quell'Assistant. Senza di essa, la ricerca utilizza l'intera Library
+dell'Organization. Una viewer key può eseguire ricerche e la modalità di sola
+lettura lo consente. Una ricerca non crea una Conversation, quindi non compare
+né nell'Inbox né in Insights. Ogni chiave API può eseguire 60 ricerche in un
+minuto.
+
+## Chiedi a un Assistente
+
+L'azione `ask` di `manage_assistants` invia una domanda a un Assistente e
+restituisce la sua risposta insieme alle Sources che ha citato. Usalo quando il
+client deve mostrare la risposta di Ciele, non la propria risposta.
+
+```json
+{ "action": "ask", "id": "<assistant-id>", "question": "How do I connect Salesforce?" }
+```
+
+L'Assistente risponde come fa il suo widget pubblicato, utilizzando i suoi Flows
+e la sua ricerca nella knowledge base. Se l'Assistant non è pubblicato, l'azione
+non riesce. Invia il `conversationId` di una risposta insieme alla domanda
+successiva per proseguire la stessa Conversation. Solo l'API key che ha avviato
+una Conversation può proseguirla. Con un ID diverso, la domanda avvia una nuova
+Conversation.
+
+Ogni domanda crea una Conversation. Insights non lo conteggia. L'Inbox lo mostra
+con l'etichetta **API key** quando imposti il filtro **Staff conversations** su
+**Include staff** o **Staff only**. La domanda utilizza un model turn nelle
+Provider Connections dell'Organization. Per questo motivo, la modalità di sola
+lettura rifiuta `ask`. Ogni chiave API può porre 20 domande in un minuto. Una
+risposta può richiedere un po' di tempo, perché l'Assistente può eseguire più di
+una ricerca.
 
 Consulta [AI clients](/developers/ai-clients) per la configurazione di ciascun
 client supportato.

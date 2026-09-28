@@ -8,7 +8,6 @@ import { getRuntimeDb } from "@/lib/runtime-db";
 import { isSupabaseServiceConfigured } from "@/lib/supabase/service";
 import { parseSlackMention, verifySlackSignature } from "@/lib/slack/events";
 
-export const runtime = "nodejs";
 export const maxDuration = 300;
 
 async function boundedBody(request: Request): Promise<string | null> {

@@ -50,7 +50,7 @@ Slack, OneDrive, and Google Drive ask you to sign in and authorize access. Membe
 The Ciele deployment supplies those credentials. **Not now** closes the connection window without connecting an account.
 
 The Assistant editor shows Organization Imports that you can link. The Library is the full
-Organization view and includes every imported Source.
+Organization view and includes every Import.
 
 ## Provider scopes
 
@@ -71,9 +71,15 @@ Select **Sync now** for an immediate run. **Pause** stops scheduled runs without
 **Resume** queues a new run. Editing a scope resets its checkpoint and schedules a complete refresh
 of the new selection.
 
-The Import row shows its last and next sync, Source and Assistant-link counts, and the latest run's
-discovered, updated, removed, skipped, and failed totals. Provider authorization failures mark the
-Connection for reconnection and create an Alert. A successful later run clears the Alert.
+The **Configured imports** table shows one row for each Import. The row shows its status, its last
+and next sync, its number of Documents, and the latest run's updated and failed totals. Hold the
+pointer on the totals to see the discovered, removed, and skipped counts. Provider authorization
+failures mark the Connection for reconnection and create an Alert. A successful later run clears
+the Alert.
+
+Select an Import, or its number of Documents, to see every item that it imported. Select an item
+to open its Document with its **Memories**, **Content**, and **Chunks** tabs and its summary. An
+item that Ciele has not processed yet opens its Source page instead.
 
 While a sync runs, the console shows an activity card in the bottom-right corner. The card shows
 the number of complete items and the total, for example 261/291. Select the arrow to show a maximum

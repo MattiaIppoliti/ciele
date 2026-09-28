@@ -199,7 +199,6 @@ export function useResizableWidth({
     width,
     fade,
     resizing,
-    setResizing,
     beginResize,
     resizeTo,
     containerRef,

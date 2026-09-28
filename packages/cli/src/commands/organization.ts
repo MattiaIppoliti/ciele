@@ -1,8 +1,7 @@
-import { readFileSync } from "node:fs";
 import type { OrganizationPatch, Role } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { jsonFile, str, usage, type CommandContext } from "./shared.ts";
 
 const roles = new Set<Role>(["owner", "admin", "editor", "viewer"]);
 function role(value: string | undefined): Role | undefined {
@@ -10,7 +9,7 @@ function role(value: string | undefined): Role | undefined {
 }
 
 export async function organization(verb: string | undefined, ctx: CommandContext) {
-  const { client, flags, emit, deps } = ctx;
+  const { client, emit, deps } = ctx;
   switch (verb) {
     case "get": {
       const org = await client.organization.get();
@@ -18,9 +17,8 @@ export async function organization(verb: string | undefined, ctx: CommandContext
       return EXIT.ok;
     }
     case "update": {
-      const file = str(flags.file);
-      if (!file) return usage(deps, "organization update --file <patch.json>");
-      const patch = JSON.parse(readFileSync(file, "utf8")) as OrganizationPatch;
+      const patch = jsonFile<OrganizationPatch>(ctx, "organization update --file <patch.json>");
+      if (patch === undefined) return EXIT.usage;
       const org = await client.organization.update(patch);
       emit(`Updated ${org.id}`, org);
       return EXIT.ok;

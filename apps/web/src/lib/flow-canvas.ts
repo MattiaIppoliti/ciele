@@ -23,6 +23,7 @@ import {
   type FlowConditionKindMeta,
 } from "@/lib/flow-conditions";
 import { actionConfigured, triggerHasConditions, type FlowDraft } from "@/lib/flow-editor";
+import { countLabel } from "@/lib/pagination";
 
 /**
  * The Flow Canvas (spec #836, ticket #837): the Flow Builder's second
@@ -136,7 +137,7 @@ export function projectFlowCanvas(
       subtitle:
         count === 0
           ? "Optional, none added"
-          : `${count} condition${count === 1 ? "" : "s"}, ${
+          : `${countLabel(count, "condition")}, ${
               draft.conditionLogic === "all" ? "all must match" : "any may match"
             }`,
       status:

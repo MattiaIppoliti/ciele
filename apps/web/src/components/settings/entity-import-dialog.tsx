@@ -17,6 +17,8 @@ import {
   importEntityRecordsAction,
   type EntityImportReport,
 } from "@/app/actions";
+import { Textarea } from "@/components/ui/textarea";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 export function EntityImportDialog({
   entity,
@@ -63,29 +65,41 @@ export function EntityImportDialog({
             accept=".csv,text/csv"
             onChange={async (event) => {
               const file = event.target.files?.[0];
-              if (file) setCsvText(await file.text());
+              if (!file) return;
+              try {
+                setCsvText(await file.text());
+              } catch {
+                toast.error("Couldn't read that file. Is it a text CSV?");
+              }
             }}
           />
-          <textarea
+          <Textarea
             aria-label="CSV data to import"
             value={csvText}
             onChange={(event) => setCsvText(event.target.value)}
             placeholder={`${entity.attributes.map((attribute) => attribute.key).join(",")}\n…`}
-            className="border-input bg-background min-h-32 w-full rounded-md border px-3 py-2 font-mono text-xs"
+            spellCheck={false}
+            autoComplete="off"
+            className="min-h-32 font-mono text-xs"
           />
+          <div role="status" aria-live="polite">
           {report && (
             <div className="space-y-1 text-sm">
               <p>
-                <strong>{report.upserted}</strong> record{report.upserted === 1 ? "" : "s"} imported
+                <strong>
+                  <RollingNumber value={report.upserted} />
+                </strong>{" "}
+                record{report.upserted === 1 ? "" : "s"} imported
                 {report.rejected.length > 0 && `, ${report.rejected.length} rejected`}.
               </p>
               {report.rejected.length > 0 && (
                 <ul className="text-destructive max-h-32 list-disc space-y-0.5 overflow-y-auto pl-5 text-xs">
-                  {report.rejected.map((reason, index) => <li key={index}>{reason}</li>)}
+                  {report.rejected.map((reason, index) => <li key={index} className="break-words">{reason}</li>)}
                 </ul>
               )}
             </div>
           )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Close</Button>

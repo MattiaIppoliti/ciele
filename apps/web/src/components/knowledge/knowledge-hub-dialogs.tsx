@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import type { OrgKnowledgeSourceListItem } from "@agent-hub/core";
 import { ChevronDown } from "lucide-react";
 import {
@@ -15,6 +15,8 @@ import {
   Input,
   Label,
 } from "@agent-hub/ui";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,7 +32,24 @@ import {
 } from "@/app/actions";
 import { FAQ_ANSWER_MAX, FAQ_QUESTION_MAX } from "@/lib/faq-csv";
 import { ingestionStarted } from "@/lib/ingestion-bus";
+import { formatCount } from "@/lib/format";
 import { toast } from "@/lib/toast";
+import { useDiscardGuard } from "./use-discard-guard";
+
+/** Shared by the two crawl filter boxes, which the input cuts at this length. */
+const FILTER_MAX = 2000;
+
+/**
+ * "412 / 2,000" under an input that stops at a maximum, so the cut is visible
+ * instead of keystrokes silently going nowhere.
+ */
+function LimitCounter({ value, max }: { value: string; max: number }) {
+  return (
+    <p className="text-muted-foreground text-right text-xs">
+      <RollingNumber value={value.length} /> / {formatCount(max)}
+    </p>
+  );
+}
 
 /** Searchable multi-select over the Organization's Assistants. */
 export function AssistantMultiSelect({
@@ -43,6 +62,7 @@ export function AssistantMultiSelect({
   onChange: (ids: string[]) => void;
 }) {
   const [query, setQuery] = useState("");
+  const labelId = useId();
   const filtered = useMemo(
     () =>
       assistants.filter((a) =>
@@ -57,11 +77,13 @@ export function AssistantMultiSelect({
         : [...selected, id]
     );
   return (
-    <div className="space-y-2">
+    <div role="group" aria-labelledby={labelId} className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label>Linked assistants</Label>
+        <span id={labelId} className="text-sm leading-none font-medium">
+          Linked assistants
+        </span>
         <span className="text-muted-foreground text-xs">
-          {selected.length} selected
+          <RollingNumber value={selected.length} /> selected
         </span>
       </div>
       <Input
@@ -104,17 +126,29 @@ export function LinkAssistantsDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
-  const [selected, setSelected] = useState<string[]>(
-    item?.linkedAssistants.map((l) => l.assistantId) ?? []
+  const [initial] = useState(
+    () => item?.linkedAssistants.map((l) => l.assistantId) ?? []
   );
+  const [selected, setSelected] = useState<string[]>(initial);
   const [isPending, startTransition] = useTransition();
+  const dirty =
+    selected.length !== initial.length ||
+    selected.some((id) => !initial.includes(id));
+  const { requestClose, confirmDeleteModal } = useDiscardGuard({
+    open: item !== null,
+    dirty,
+    pending: isPending,
+    onClose,
+    description: "The link changes are not saved yet.",
+  });
 
   return (
-    <Dialog open={item !== null} onOpenChange={(open) => !open && onClose()}>
+    <>
+    <Dialog open={item !== null} onOpenChange={(open) => !open && requestClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Link assistants</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="[overflow-wrap:anywhere]">
             Choose which assistants can use “{item?.name}”. Unlinking takes
             effect immediately.
           </DialogDescription>
@@ -125,7 +159,7 @@ export function LinkAssistantsDialog({
           onChange={setSelected}
         />
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={requestClose}>
             Cancel
           </Button>
           <Button
@@ -142,11 +176,13 @@ export function LinkAssistantsDialog({
               })
             }
           >
-            Save
+            <RollInText text={isPending ? "Saving…" : "Save"} />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }
 
@@ -186,7 +222,7 @@ export function ManageDirectAccessDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Manage direct access</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="[overflow-wrap:anywhere]">
             When direct access is on, chat users can open “{item?.name}”
             directly from the AI chat. When off, it&apos;s still cited inline
             but the link stays hidden. Set this per assistant.
@@ -238,24 +274,34 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const contentId = useId();
   return (
     <div className="rounded-md border">
       <button
         type="button"
+        aria-expanded={open}
+        aria-controls={contentId}
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium"
       >
         {title}
         <ChevronDown
+          aria-hidden="true"
           className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
-      {open && <div className="space-y-3 border-t p-3">{children}</div>}
+      {/* Always mounted, so `aria-controls` names an element that exists. */}
+      <div id={contentId} hidden={!open} className="space-y-3 border-t p-3">
+        {children}
+      </div>
     </div>
   );
 }
 
-/** Hub "Add website", entire site or page list, with the advanced knobs. */
+/**
+ * Hub "Add website", entire site or page list, with the advanced knobs. The
+ * parent remounts it per open, so a reopen after a success starts empty.
+ */
 export function AddWebsiteDialog({
   open,
   assistants,
@@ -274,6 +320,22 @@ export function AddWebsiteDialog({
   const [waitSecs, setWaitSecs] = useState("2");
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+  const dirty =
+    name.trim() !== "" ||
+    url.trim() !== "" ||
+    includeGlobs !== "" ||
+    excludeGlobs !== "" ||
+    throttle ||
+    pageTimeoutSecs !== "30" ||
+    waitSecs !== "2" ||
+    selected.length > 0;
+  const { requestClose, confirmDeleteModal } = useDiscardGuard({
+    open,
+    dirty,
+    pending: isPending,
+    onClose,
+    description: "This website has not been added yet.",
+  });
 
   const submit = () =>
     startTransition(async () => {
@@ -301,7 +363,8 @@ export function AddWebsiteDialog({
     });
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <>
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Add website</DialogTitle>
@@ -315,6 +378,7 @@ export function AddWebsiteDialog({
             <Label htmlFor="hub-site-name">Name</Label>
             <Input
               id="hub-site-name"
+              autoComplete="off"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Main website"
@@ -335,24 +399,34 @@ export function AddWebsiteDialog({
           </div>
           <CollapsibleSection title="Custom URL filtering rules">
             <div className="space-y-1.5">
-              <Label>Positive search filters (one per line)</Label>
+              <Label htmlFor="hub-site-include">
+                Positive search filters (one per line)
+              </Label>
               <Textarea
-                aria-label="Positive search filters"
+                id="hub-site-include"
                 spellCheck={false}
                 value={includeGlobs}
-                onChange={(e) => setIncludeGlobs(e.target.value.slice(0, 2000))}
+                onChange={(e) =>
+                  setIncludeGlobs(e.target.value.slice(0, FILTER_MAX))
+                }
                 rows={3}
               />
+              <LimitCounter value={includeGlobs} max={FILTER_MAX} />
             </div>
             <div className="space-y-1.5">
-              <Label>Negative search filters (one per line)</Label>
+              <Label htmlFor="hub-site-exclude">
+                Negative search filters (one per line)
+              </Label>
               <Textarea
-                aria-label="Negative search filters"
+                id="hub-site-exclude"
                 spellCheck={false}
                 value={excludeGlobs}
-                onChange={(e) => setExcludeGlobs(e.target.value.slice(0, 2000))}
+                onChange={(e) =>
+                  setExcludeGlobs(e.target.value.slice(0, FILTER_MAX))
+                }
                 rows={3}
               />
+              <LimitCounter value={excludeGlobs} max={FILTER_MAX} />
             </div>
           </CollapsibleSection>
           <CollapsibleSection title="Additional settings">
@@ -365,18 +439,22 @@ export function AddWebsiteDialog({
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Page timeout (seconds)</Label>
+                <Label htmlFor="hub-site-timeout">Page timeout (seconds)</Label>
                 <Input
-                  aria-label="Page timeout in seconds"
+                  id="hub-site-timeout"
+                  autoComplete="off"
                   value={pageTimeoutSecs}
                   onChange={(e) => setPageTimeoutSecs(e.target.value)}
                   inputMode="numeric"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Wait before extraction (seconds)</Label>
+                <Label htmlFor="hub-site-wait">
+                  Wait before extraction (seconds)
+                </Label>
                 <Input
-                  aria-label="Wait before content extraction in seconds"
+                  id="hub-site-wait"
+                  autoComplete="off"
                   value={waitSecs}
                   onChange={(e) => setWaitSecs(e.target.value)}
                   inputMode="numeric"
@@ -391,22 +469,24 @@ export function AddWebsiteDialog({
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={requestClose}>
             Cancel
           </Button>
           <Button
             disabled={isPending || !url.trim() || selected.length === 0}
             onClick={submit}
           >
-            Add website
+            <RollInText text={isPending ? "Adding…" : "Add website"} />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }
 
-/** Hub "Add file", upload + link in one step. */
+/** Hub "Add file", upload + link in one step. Remounted per open, like the above. */
 export function AddFileDialog({
   open,
   assistants,
@@ -416,29 +496,42 @@ export function AddFileDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+  const { requestClose, confirmDeleteModal } = useDiscardGuard({
+    open,
+    dirty: file !== null || selected.length > 0,
+    pending: isPending,
+    onClose,
+    description: "This file has not been uploaded yet.",
+  });
 
   const submit = () =>
     startTransition(async () => {
-      const file = fileRef.current?.files?.[0];
       if (!file) return;
       const formData = new FormData();
       formData.set("file", file);
       formData.set("assistantIds", JSON.stringify(selected));
-      const result = await uploadOrgFileSourceAction(formData);
-      if (result?.error) {
-        toast.error(result.error);
-        return;
+      try {
+        const result = await uploadOrgFileSourceAction(formData);
+        if (result?.error) {
+          toast.error(result.error);
+          return;
+        }
+        ingestionStarted();
+        toast.success("File uploaded, indexing in the background.");
+        onClose();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not upload the file."
+        );
       }
-      ingestionStarted();
-      toast.success("File uploaded, indexing in the background.");
-      onClose();
     });
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <>
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add file</DialogTitle>
@@ -447,7 +540,11 @@ export function AddFileDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Input ref={fileRef} type="file" aria-label="File to upload" />
+          <Input
+            type="file"
+            aria-label="File to upload"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
           <AssistantMultiSelect
             assistants={assistants}
             selected={selected}
@@ -455,18 +552,20 @@ export function AddFileDialog({
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={requestClose}>
             Cancel
           </Button>
           <Button
-            disabled={isPending || selected.length === 0}
+            disabled={isPending || !file || selected.length === 0}
             onClick={submit}
           >
-            Upload
+            <RollInText text={isPending ? "Uploading…" : "Upload"} />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }
 
@@ -483,27 +582,55 @@ export function FaqDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
+  const editingId = editing?.id ?? null;
   const [question, setQuestion] = useState(editing?.name ?? "");
-  // The table row only carries an answer excerpt; load the full answer once.
+  // The table row only carries an answer excerpt. Saving that excerpt would
+  // overwrite the real answer with its first few lines, so an edit stays
+  // locked until the full FAQ has loaded, and for good if it never does.
   // The parent keys this dialog by the edited row, so state starts fresh.
   const [answer, setAnswer] = useState(editing?.answerPreview ?? "");
+  const [load, setLoad] = useState<"loading" | "ready" | "failed">(
+    editing ? "loading" : "ready"
+  );
+  /** What the load returned, so closing an untouched edit asks nothing. */
+  const [loaded, setLoaded] = useState<{ question: string; answer: string } | null>(
+    null
+  );
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   useEffect(() => {
-    if (!editing) return;
+    if (!editingId) return;
     let cancelled = false;
-    getOrgFaqAction(editing.id)
+    getOrgFaqAction(editingId)
       .then((faq) => {
         if (cancelled) return;
         setQuestion(faq.question);
         setAnswer(faq.answer);
+        setLoaded(faq);
+        setLoad("ready");
       })
-      .catch(() => toast.error("Could not load the FAQ."));
+      .catch(() => {
+        if (!cancelled) setLoad("failed");
+      });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [editingId]);
+
+  const ready = load === "ready";
+  const dirty = editing
+    ? loaded !== null &&
+      (question !== loaded.question || answer !== loaded.answer)
+    : question.trim() !== "" || answer.trim() !== "" || selected.length > 0;
+  const { requestClose, confirmDeleteModal } = useDiscardGuard({
+    open,
+    dirty,
+    pending: isPending,
+    onClose,
+    description: editing
+      ? "The edits to this FAQ are not saved yet."
+      : "This FAQ has not been created yet.",
+  });
 
   const submit = () =>
     startTransition(async () => {
@@ -522,8 +649,17 @@ export function FaqDialog({
       }
     });
 
+  const submitLabel = editing
+    ? isPending
+      ? "Saving…"
+      : "Save"
+    : isPending
+      ? "Creating…"
+      : "Create";
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <>
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit FAQ" : "New FAQ"}</DialogTitle>
@@ -532,26 +668,47 @@ export function FaqDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          {load === "failed" && (
+            <p
+              role="alert"
+              className="border-destructive/40 text-destructive rounded-md border p-3 text-sm"
+            >
+              Could not load the full answer, so this FAQ cannot be saved from
+              here. Close the dialog and try again.
+            </p>
+          )}
           <div className="space-y-1.5">
-            <Label>Question</Label>
+            <Label htmlFor="hub-faq-question">Question</Label>
             <Input
-              aria-label="FAQ question"
+              id="hub-faq-question"
+              autoComplete="off"
+              disabled={!ready}
               value={question}
               onChange={(e) =>
                 setQuestion(e.target.value.slice(0, FAQ_QUESTION_MAX))
               }
             />
+            <LimitCounter value={question} max={FAQ_QUESTION_MAX} />
           </div>
           <div className="space-y-1.5">
-            <Label>Answer</Label>
+            <Label htmlFor="hub-faq-answer">Answer</Label>
             <Textarea
-              aria-label="FAQ answer"
+              id="hub-faq-answer"
+              disabled={!ready}
+              aria-busy={load === "loading"}
               value={answer}
               onChange={(e) =>
                 setAnswer(e.target.value.slice(0, FAQ_ANSWER_MAX))
               }
               rows={6}
             />
+            {load === "loading" ? (
+              <p role="status" className="text-muted-foreground text-xs">
+                Loading the full answer…
+              </p>
+            ) : (
+              <LimitCounter value={answer} max={FAQ_ANSWER_MAX} />
+            )}
           </div>
           {!editing && (
             <AssistantMultiSelect
@@ -569,27 +726,30 @@ export function FaqDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={requestClose}>
             Cancel
           </Button>
           <Button
             disabled={
               isPending ||
+              !ready ||
               !question.trim() ||
               !answer.trim() ||
               (!editing && selected.length === 0)
             }
             onClick={submit}
           >
-            {editing ? "Save" : "Create"}
+            <RollInText text={submitLabel} />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }
 
-/** Hub CSV import, two columns, question then answer. */
+/** Hub CSV import, two columns, question then answer. Remounted per open. */
 export function ImportFaqsDialog({
   open,
   assistants,
@@ -599,13 +759,19 @@ export function ImportFaqsDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+  const { requestClose, confirmDeleteModal } = useDiscardGuard({
+    open,
+    dirty: file !== null || selected.length > 0,
+    pending: isPending,
+    onClose,
+    description: "These FAQs have not been imported yet.",
+  });
 
   const submit = () =>
     startTransition(async () => {
-      const file = fileRef.current?.files?.[0];
       if (!file) return;
       const formData = new FormData();
       formData.set("file", file);
@@ -619,12 +785,13 @@ export function ImportFaqsDialog({
         );
         onClose();
       } catch {
-        toast.error("Import failed.");
+        toast.error("Import failed. Check the CSV has two columns and try again.");
       }
     });
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <>
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Import FAQs</DialogTitle>
@@ -634,10 +801,10 @@ export function ImportFaqsDialog({
         </DialogHeader>
         <div className="space-y-3">
           <Input
-            ref={fileRef}
             type="file"
             accept=".csv,text/csv"
             aria-label="FAQ CSV file"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
           <AssistantMultiSelect
             assistants={assistants}
@@ -646,17 +813,19 @@ export function ImportFaqsDialog({
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={requestClose}>
             Cancel
           </Button>
           <Button
-            disabled={isPending || selected.length === 0}
+            disabled={isPending || !file || selected.length === 0}
             onClick={submit}
           >
-            Import
+            <RollInText text={isPending ? "Importing…" : "Import"} />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }

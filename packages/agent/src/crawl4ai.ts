@@ -23,7 +23,7 @@
  */
 
 import { pageBudget } from "@agent-hub/core";
-import type { CrawledPage, CrawlOptions } from "./apify";
+import type { CrawledPage, CrawlOptions, StartedCrawl } from "./apify";
 import { bearerRequest } from "./bearer-fetch";
 import { redactBearerSecrets } from "./redact";
 
@@ -239,12 +239,6 @@ function requireConfig(): { baseUrl: string; token: string } {
   return { baseUrl: baseUrl.replace(/\/+$/, ""), token };
 }
 
-/** A started (still-running) crawl: what we persist on the Source to track it. */
-export interface StartedCrawl4ai {
-  runId: string;
-  datasetId: string;
-}
-
 /**
  * Submits an async crawl job and returns its task id immediately. A fast POST,
  * safe to await inside a request. The token is sent as a Bearer header and
@@ -253,7 +247,7 @@ export interface StartedCrawl4ai {
 export async function startCrawl4ai(
   url: string,
   options: CrawlOptions = {}
-): Promise<StartedCrawl4ai> {
+): Promise<StartedCrawl> {
   const { baseUrl, token } = requireConfig();
   const { task_id: taskId } = await bearerRequest<{ task_id?: string }>(
     `${baseUrl}${SUBMIT_PATH}`,

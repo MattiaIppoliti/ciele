@@ -206,16 +206,10 @@ describe("createCoalescer", () => {
   it("lets one success through per window and the next after it", () => {
     let t = 1000;
     const c = createCoalescer(SUCCESS_COALESCE_MS, () => t);
-    expect(c.allow("success")).toBe(true);
+    expect(c.allow()).toBe(true);
     t += 100;
-    expect(c.allow("success")).toBe(false);
+    expect(c.allow()).toBe(false);
     t += SUCCESS_COALESCE_MS;
-    expect(c.allow("success")).toBe(true);
-  });
-
-  it("keys are independent", () => {
-    const c = createCoalescer(250, () => 0);
-    expect(c.allow("a")).toBe(true);
-    expect(c.allow("b")).toBe(true);
+    expect(c.allow()).toBe(true);
   });
 });

@@ -492,7 +492,6 @@ export function resolveChatModel(
       provider !== preferredProvider && providers.indexOf(provider) === index
   );
   for (const provider of fallbackOrder) {
-    if (provider === preferredProvider) continue;
     const credential = resolveProviderCredential(
       provider,
       connections,
@@ -511,12 +510,7 @@ export function resolveChatModel(
   return null;
 }
 
-export interface ResolvedClassifierModel {
-  model: LanguageModel;
-  provider: Provider;
-  modelId: string;
-  credentialKind: ProviderCredential["kind"];
-}
+export type ResolvedClassifierModel = Omit<ResolvedChatModel, "usedFallback">;
 
 /**
  * Cheap classifier model for intent routing, with the resolved provider/model
@@ -531,9 +525,7 @@ export function getClassifierModel(
   const order: Provider[] = [
     preferredProvider,
     ...orderedLocalProviders(resolution),
-    ...(["google", "anthropic", "openai", "openai_compatible"] as Provider[]).filter(
-      (p) => p !== preferredProvider
-    ),
+    ...(["google", "anthropic", "openai", "openai_compatible"] as Provider[]),
   ].filter((provider, index, providers) => providers.indexOf(provider) === index);
   for (const provider of order) {
     const credential = resolveProviderCredential(

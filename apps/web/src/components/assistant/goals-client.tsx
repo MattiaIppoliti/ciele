@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { toast } from "@/lib/toast";
 import type { AssistantGoal, GoalExpectations } from "@agent-hub/core";
 import {
@@ -14,7 +14,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDateTime } from "@/lib/format";
+import { formatCount, formatDateTime } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 /**
  * Standing goals authoring (spec: scheduled golden-question checks). Admins
@@ -68,11 +71,14 @@ function GoalForm({
   saving: boolean;
   saveLabel: string;
 }) {
+  const id = useId();
   return (
     <div className="grid gap-3 rounded-lg border p-4">
       <div className="grid gap-1.5">
-        <Label>Question</Label>
+        <Label htmlFor={`${id}-question`}>Question</Label>
         <Textarea
+          id={`${id}-question`}
+          name="question"
           rows={2}
           placeholder="e.g. What does shipping cost?"
           value={draft.question}
@@ -81,8 +87,12 @@ function GoalForm({
       </div>
       <div className="grid gap-1.5 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label>Cited Source URL must contain (optional)</Label>
+          <Label htmlFor={`${id}-source-url`}>Cited Source URL must contain (optional)</Label>
           <Input
+            id={`${id}-source-url`}
+            name="expectedSourceUrl"
+            autoComplete="off"
+            spellCheck={false}
             placeholder="e.g. /shipping"
             value={draft.expectedSourceUrl}
             onChange={(e) =>
@@ -91,8 +101,11 @@ function GoalForm({
           />
         </div>
         <div className="grid gap-1.5">
-          <Label>Answer must contain (comma-separated, optional)</Label>
+          <Label htmlFor={`${id}-must-contain`}>Answer must contain (comma-separated, optional)</Label>
           <Input
+            id={`${id}-must-contain`}
+            name="mustContain"
+            autoComplete="off"
             placeholder="e.g. free, 3-5 days"
             value={draft.mustContain}
             onChange={(e) => setDraft({ ...draft, mustContain: e.target.value })}
@@ -114,7 +127,7 @@ function GoalForm({
       </p>
       <div className="flex gap-2">
         <Button size="sm" onClick={onSave} disabled={saving || !draft.question.trim()}>
-          {saving ? "Saving…" : saveLabel}
+          <RollInText text={saving ? "Saving…" : saveLabel} />
         </Button>
         {onCancel && (
           <Button size="sm" variant="ghost" onClick={onCancel} disabled={saving}>
@@ -142,19 +155,29 @@ export function GoalsClient({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<GoalDraft>(EMPTY_DRAFT);
   const [isPending, startTransition] = useTransition();
+  // Which goal (or "new") the running transition belongs to, so quarantining
+  // one goal does not disable every other goal's buttons.
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const busy = (key: string) => isPending && pendingKey === key;
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
-  const run = (work: () => Promise<void>, ok: string) =>
+  const run = (
+    key: string,
+    work: () => Promise<void>,
+    ok: string,
+    onDone?: () => void
+  ) => {
+    setPendingKey(key);
     startTransition(async () => {
       try {
         await work();
         toast.success(ok);
-        setAdding(false);
-        setEditingId(null);
-        setDraft(EMPTY_DRAFT);
+        onDone?.();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Something went wrong");
       }
     });
+  };
 
   return (
     <div className="mt-6 grid gap-4">
@@ -170,17 +193,19 @@ export function GoalsClient({
             key={goal.id}
             draft={editDraft}
             setDraft={setEditDraft}
-            saving={isPending}
+            saving={busy(goal.id)}
             saveLabel="Save goal"
             onCancel={() => setEditingId(null)}
             onSave={() =>
               run(
+                goal.id,
                 () =>
                   updateGoalAction(assistantId, goal.id, {
                     question: editDraft.question,
                     expectations: expectationsFromDraft(editDraft),
                   }),
-                "Goal saved"
+                "Goal saved",
+                () => setEditingId(null)
               )
             }
           />
@@ -188,7 +213,7 @@ export function GoalsClient({
           <div key={goal.id} className="flex items-start justify-between gap-4 rounded-lg border p-4">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{goal.question}</span>
+                <span className="min-w-0 font-medium break-words">{goal.question}</span>
                 {goal.status === "quarantined" && (
                   <Badge variant="outline">Quarantined</Badge>
                 )}
@@ -200,7 +225,7 @@ export function GoalsClient({
                   <Badge variant="secondary">Not run yet</Badge>
                 )}
               </div>
-              <p className="text-muted-foreground mt-1 text-xs">
+              <p className="text-muted-foreground mt-1 text-xs break-words">
                 {[
                   goal.expectations.mustCiteSources ? "must cite a Source" : null,
                   goal.expectations.expectedSourceUrl
@@ -234,9 +259,10 @@ export function GoalsClient({
                 <Button
                   size="sm"
                   variant="ghost"
-                  disabled={isPending}
+                  disabled={busy(goal.id)}
                   onClick={() =>
                     run(
+                      goal.id,
                       () =>
                         updateGoalAction(assistantId, goal.id, {
                           status:
@@ -246,15 +272,22 @@ export function GoalsClient({
                     )
                   }
                 >
-                  {goal.status === "active" ? "Quarantine" : "Reactivate"}
+                  <RollInText text={goal.status === "active" ? "Quarantine" : "Reactivate"} />
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="text-destructive"
-                  disabled={isPending}
+                  disabled={busy(goal.id)}
                   onClick={() =>
-                    run(() => deleteGoalAction(assistantId, goal.id), "Goal deleted")
+                    confirmDelete({
+                      title: "Delete this goal?",
+                      description: `“${goal.question}” stops being checked on its schedule.`,
+                      onConfirm: async () => {
+                        await deleteGoalAction(assistantId, goal.id);
+                        toast.success("Goal deleted");
+                      },
+                    })
                   }
                 >
                   Delete
@@ -270,17 +303,22 @@ export function GoalsClient({
           <GoalForm
             draft={draft}
             setDraft={setDraft}
-            saving={isPending}
+            saving={busy("new")}
             saveLabel="Add goal"
             onCancel={() => setAdding(false)}
             onSave={() =>
               run(
+                "new",
                 () =>
                   createGoalAction(assistantId, {
                     question: draft.question,
                     expectations: expectationsFromDraft(draft),
                   }),
-                "Goal added"
+                "Goal added",
+                () => {
+                  setAdding(false);
+                  setDraft(EMPTY_DRAFT);
+                }
               )
             }
           />
@@ -291,10 +329,15 @@ export function GoalsClient({
               onClick={() => setAdding(true)}
               disabled={goals.length >= cap}
             >
-              Add goal ({goals.length}/{cap})
+              Add goal (
+              <span className="tabular-nums">
+                <RollingNumber value={goals.length} />/{formatCount(cap)}
+              </span>
+              )
             </Button>
           </div>
         ))}
+      {confirmDeleteModal}
     </div>
   );
 }

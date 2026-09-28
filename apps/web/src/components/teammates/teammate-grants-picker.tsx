@@ -4,7 +4,9 @@ import type {
   TeammateCapabilityCeiling,
   TeammateGrantDomain,
 } from "@agent-hub/core";
+import { useId } from "react";
 import { Label } from "@agent-hub/ui";
+import { onRadioKeyDown } from "@/components/teammates/radio-keys";
 import { ShieldAlert } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -42,6 +44,8 @@ export function TeammateGrantsPicker({
   canGrant: boolean;
 }) {
   const blocked = bypassBlockedReason(value.domains);
+  const ceilingId = useId();
+  const selectedCeiling = CEILING_COPY.find((copy) => copy.ceiling === value.ceiling);
 
   function toggleDomain(domain: TeammateGrantDomain) {
     const held = value.domains.includes(domain);
@@ -102,17 +106,28 @@ export function TeammateGrantsPicker({
           </div>
 
           <div className="space-y-2">
-            <Label>How far it can go</Label>
-            <div className="flex gap-2">
+            <Label id={`${ceilingId}-label`}>How far it can go</Label>
+            {/* One of several, so a radiogroup; and the explanation is on the
+                page, not only in a hover title that touch and keyboard never
+                reach. */}
+            <div
+              role="radiogroup"
+              aria-labelledby={`${ceilingId}-label`}
+              className="flex gap-2"
+            >
               {CEILING_COPY.map((copy) => (
                 <button
                   key={copy.ceiling}
                   type="button"
-                  title={copy.detail}
                   onClick={() =>
                     onChange({ ...value, ceiling: copy.ceiling })
                   }
-                  aria-pressed={value.ceiling === copy.ceiling}
+                  role="radio"
+                  aria-checked={value.ceiling === copy.ceiling}
+                  aria-describedby={`${ceilingId}-${copy.ceiling}`}
+                  tabIndex={value.ceiling === copy.ceiling ? 0 : -1}
+                  onKeyDown={onRadioKeyDown}
+                  data-foley-toggle="switch"
 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     value.ceiling === copy.ceiling
                       ? "border-primary ring-primary/30 ring-1"
@@ -120,9 +135,17 @@ className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-co
                   }`}
                 >
                   {copy.label}
+                  <span id={`${ceilingId}-${copy.ceiling}`} className="sr-only">
+                    {copy.detail}
+                  </span>
                 </button>
               ))}
             </div>
+            {selectedCeiling && (
+              <p aria-hidden="true" className="text-muted-foreground text-xs">
+                {selectedCeiling.detail}
+              </p>
+            )}
           </div>
 
           <button

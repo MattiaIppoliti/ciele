@@ -72,7 +72,9 @@ export function subjectName(c: InboxConversation): string {
   if (c.metadata.userName) return c.metadata.userName;
   if (c.metadata.userEmail) return c.metadata.userEmail.split("@")[0];
   if (c.metadata.ssoClaimValue) return c.metadata.ssoClaimValue;
-  if (c.subjectType === "member") return "Member";
+  // A question an API key asked (`assistants.ask`) shares the Preview's
+  // subject, the Member the key delegates for; the key is what tells them apart.
+  if (c.subjectType === "member") return c.metadata.apiKeyId ? "API key" : "Member";
   return c.subjectType === "sso" ? "Signed-in user" : "Visitor";
 }
 

@@ -101,6 +101,21 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Chart components copied from two shadcn registries (beui.dev, the heat
+  // calendar and bump chart; evilcharts.com, the ECharts bar chart) and kept
+  // close to upstream so they can be re-pulled. They read refs during render
+  // and set state in effects on purpose (ECharts owns an imperative instance;
+  // the heat calendar reads "today" after mount so server and client agree),
+  // which the React Compiler rules flag. Scoped to those two folders only:
+  // every Ciele component that renders them is still checked in full.
+  {
+    files: ["src/components/charts/beui/**", "src/components/charts/evilcharts/**"],
+    rules: {
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/immutability": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

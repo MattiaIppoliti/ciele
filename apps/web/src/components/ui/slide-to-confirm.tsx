@@ -44,24 +44,28 @@ import { ArrowRight, Check } from "lucide-react";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
+/* the track's length, px. Everything that reads as distance
+   in this component (the mark, the label's fade, the arrow's)
+   is a fraction of the travel rather than a fixed number of
+   pixels, so all of it follows this. */
 const SPAN = 280;
 const H = 56;
 /* the inset the handle keeps from the track, all four sides */
 const PAD = 4;
 /* the handle is a circle in a 56 track, so it is sized by the
-   HEIGHT and the width knob does not touch it. Widening the
+   HEIGHT and the track's length does not touch it. A longer
    track buys travel, not a longer handle: the thing you push
    stays the thing you push. */
 const GRIP = H - PAD * 2;
-/* the shortest track worth drawing. Below this the centred
-   label starts to sit under the resting handle, which is the
-   one collision this layout has. */
-const MIN = 220;
-const MAX = 380;
+const TRAVEL = SPAN - PAD * 2 - GRIP;
 
-/* a pill, and the top of the Corner knob */
+/* the track's corner: a pill */
 const CORNER = H / 2;
-const SPEED = 50;
+/* ── the handle's corner is DERIVED ──────────────────────
+   `CORNER - PAD`: the radius of a thing inside another, less
+   the gap between them, is what keeps the two curves
+   parallel. */
+const GRIP_CORNER = CORNER - PAD;
 
 /* ── how far the swell is, and it is TINY ──────────────────
    The dot sits four pixels inside the track, so the ring round
@@ -70,7 +74,7 @@ const SPEED = 50;
 const SWELL = 1.03;
 
 /* ── the keyboard's step, as a fraction of the travel ──────
-   Twelve presses to cross, whatever the width: enough that a
+   Twelve presses to cross: enough that a
    stray arrow key is not a delete, few enough that holding the
    key gets you there. `End` still crosses in one, which is the
    keyboard's equivalent of a decisive push rather than a
@@ -83,28 +87,12 @@ export function SlideToConfirm({
      puts the handle back instead of leaving a confirmed slider
      over a delete that did not happen. */
   onConfirm,
-  label = "Slide to confirm",
-  confirmedLabel = "Confirmed",
-  /* the track's corner, px. The handle's is this less the
-     inset, which is the concentric rule every nested pair on
-     this bench follows. */
-  corner = CORNER,
-  /* how quickly it takes over once you let go, 0..100 */
-  speed = SPEED,
-  /* the track's length, px. Everything that reads as distance
-     in this component (the mark, the label's fade, the
-     arrow's) is a fraction of the travel rather than a fixed
-     number of pixels, so all of it follows this. */
-  width = SPAN,
-  disabled = false,
+  label,
+  confirmedLabel,
 }: {
   onConfirm: () => void | Promise<void>;
-  label?: string;
-  confirmedLabel?: string;
-  corner?: number;
-  speed?: number;
-  width?: number;
-  disabled?: boolean;
+  label: string;
+  confirmedLabel: string;
 }) {
   const reduce = useReducedMotion() ?? false;
   const [done, setDone] = useState(false);
@@ -161,22 +149,6 @@ export function SlideToConfirm({
      than on x: see where it is read */
   const shown = useMotionValue(1);
 
-  /* ── the width is READ EVERY RENDER, not captured ────────
-     Every derived value below is built with an inline closure,
-     and useTransform re-runs those during the render that
-     changes them, so moving this knob re-derives the mark,
-     the fade and the wash on the same frame the number
-     changes. Nothing here has to be told the width moved. */
-  const span = clamp(Math.round(width), MIN, MAX);
-  const TRAVEL = span - PAD * 2 - GRIP;
-
-  const r = clamp(corner, 0, CORNER);
-  /* ── the handle's corner is DERIVED ──────────────────────
-     `r - PAD`, floored at zero: the radius of a thing inside
-     another, less the gap between them, is what keeps the two
-     curves parallel. At r = 0 both are square together rather
-     than a square track holding a rounded handle. */
-  const gripR = Math.max(0, r - PAD);
   /* ── the end IS the commit, and there is no knob ─────────
      There was a Commit dial, 40..100, and it had no meaning to
      set: a slide-to-confirm that fires at 60% is one you can
@@ -185,7 +157,7 @@ export function SlideToConfirm({
      the end of the track, so the end is what it is. */
   const mark = TRAVEL;
 
-  /* ── SPEED, and deliberately not Bounce ──────────────────
+  /* ── how fast it takes over, and deliberately no bounce ──
      There was a Bounce knob and it had to go: this shape has a
      hard wall at both ends. On commit the handle exactly fills
      the track, so there is nowhere for an overshoot to go, and
@@ -193,24 +165,18 @@ export function SlideToConfirm({
      the overshoot came out of the LEFT edge instead. Measured
      at Bounce 50: the handle shot 42px out of its own track.
 
-     A dial whose every setting above zero breaks the component
-     is not a dial. Speed is the real question here, how fast
-     it takes over once you let go, and the damping is derived
-     to sit exactly on critical, so nothing overshoots at any
-     setting of it.
-
-     zeta = c / (2 * sqrt(k * m)), so c at zeta 1 is
-     2 * sqrt(k * m). Written that way the knob can move the
-     stiffness freely and the spring stays honest. */
-  const stiff = 260 + (clamp(speed, 0, 100) / 100) * 640;
+     So the stiffness is the one number, how fast it takes over
+     once you let go (580 is what the old Speed knob gave at its
+     default, the only value any caller ever used), and the
+     damping is derived to sit exactly on critical:
+     zeta = c / (2 * sqrt(k * m)), so c at zeta 1 is 2 * sqrt(k * m). */
+  const stiff = 580;
   /* These springs are derived rather than taken from
      `lib/ease.ts`, and they keep that file's rule: the commit
      sits exactly on critical, so it can never overshoot. The
      return below is the one exception and it earns it, because
      its overshoot is clamped out of the position and spent on
-     the squash instead. Pinning either to a token would take
-     the `speed` knob away, which is the only thing left to
-     tune once the commit point stopped being a dial. */
+     the squash instead. */
   /* the COMMIT stays exactly on critical. It has a wall at the
      far end and the settle is what gives it a landing. */
   const spring = {
@@ -364,7 +330,7 @@ export function SlideToConfirm({
        laid out at IS that scale, and dividing by it puts the
        finger back into the coordinates the geometry above is
        written in. */
-    const k = box.width / span;
+    const k = box.width / SPAN;
     return (clientX - box.left) / (k || 1);
   };
 
@@ -445,7 +411,7 @@ export function SlideToConfirm({
   };
 
   const down = (e: React.PointerEvent) => {
-    if (done || disabled) return;
+    if (done) return;
     e.stopPropagation();
     /* ── NO OFFSET YET, it is taken at the first MOVE ───────
        Deciding it here is what made the toggle teleport: a
@@ -541,7 +507,7 @@ export function SlideToConfirm({
   };
 
   const key = (e: React.KeyboardEvent) => {
-    if (done || disabled) return;
+    if (done) return;
     const at = x.get();
     const step = TRAVEL * STEP;
     switch (e.key) {
@@ -569,11 +535,11 @@ export function SlideToConfirm({
   };
 
   return (
-    <div className="sld" style={{ width: span, height: H }} data-disabled={disabled || undefined}>
+    <div className="sld" style={{ width: SPAN, height: H }}>
       <motion.div
         className="sld-track"
         ref={track}
-        style={{ borderRadius: r, scale: pulse }}
+        style={{ borderRadius: CORNER, scale: pulse }}
         data-held={held || undefined}
         data-done={done || undefined}
         onPointerDown={down}
@@ -584,7 +550,7 @@ export function SlideToConfirm({
         <motion.i
           className="sld-wash"
           aria-hidden="true"
-          style={{ width: wash, borderRadius: gripR }}
+          style={{ width: wash, borderRadius: GRIP_CORNER }}
         />
 
         <motion.span className="sld-say" style={{ opacity: say }}>
@@ -597,7 +563,6 @@ export function SlideToConfirm({
           onPointerEnter={() => setHot(true)}
           onPointerLeave={() => setHot(false)}
           onKeyDown={key}
-          disabled={disabled}
           style={{
             x: seen,
             scaleX: sx,
@@ -610,7 +575,7 @@ export function SlideToConfirm({
                 radius with it, which is the one thing this
                 shape cannot afford. */
             width: wide,
-            borderRadius: gripR,
+            borderRadius: GRIP_CORNER,
           }}
           transition={
             reduce

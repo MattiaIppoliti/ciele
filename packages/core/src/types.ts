@@ -164,6 +164,14 @@ export interface ReviewRequest {
   simulated: boolean;
   /** Set once the approval turn (or the halt message) has been persisted. */
   resumedAt: string | null;
+  /**
+   * Stamped just before the request is sent, and `deliveredAt` just after
+   * (20260927140000). A retried delivery that finds the first without the
+   * second cannot know whether the send went out, so it raises an Alert rather
+   * than send twice. Optional: absent on a database one migration behind.
+   */
+  deliveryAttemptedAt?: string | null;
+  deliveredAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -242,11 +250,31 @@ export type ActionApprovalInput = Omit<
 
 export type ReviewRequestInput = Omit<
   ReviewRequest,
-  "id" | "status" | "decision" | "decidedBy" | "decidedByName" | "decidedAt" | "resumedAt" | "createdAt" | "updatedAt"
+  | "id"
+  | "status"
+  | "decision"
+  | "decidedBy"
+  | "decidedByName"
+  | "decidedAt"
+  | "resumedAt"
+  | "deliveryAttemptedAt"
+  | "deliveredAt"
+  | "createdAt"
+  | "updatedAt"
 > & { id?: string };
 
 export type ReviewRequestPatch = Partial<
-  Pick<ReviewRequest, "status" | "decision" | "decidedBy" | "decidedByName" | "decidedAt" | "resumedAt">
+  Pick<
+    ReviewRequest,
+    | "status"
+    | "decision"
+    | "decidedBy"
+    | "decidedByName"
+    | "decidedAt"
+    | "resumedAt"
+    | "deliveryAttemptedAt"
+    | "deliveredAt"
+  >
 >;
 
 /** One half of an `http_webhook` action's pair of calls. */
@@ -2827,9 +2855,15 @@ export interface BackgroundJob {
 }
 
 /** Report exports generated off the request path (ADR-0010). */
-export type ExportJobKind = "insights_overview";
+/**
+ * What an Insights export contains: the per-bucket chart series
+ * (`insights_overview`, "Aggregated insights"), the headline KPI values
+ * (`insights_datapoints`), or conversations per spoken language
+ * (`insights_languages`).
+ */
+export type ExportJobKind = "insights_overview" | "insights_datapoints" | "insights_languages";
 export type ExportJobStatus = "queued" | "running" | "done" | "error";
-export type ExportJobFormat = "csv";
+export type ExportJobFormat = "csv" | "json" | "xlsx";
 
 export interface ExportJob {
   id: string;
@@ -2871,8 +2905,8 @@ export interface Concept {
   /** Excluded pages keep the document but leave the search index. */
   excluded: boolean;
   /**
-   * Per-page re-crawl override; null = inherit the website source's
-   * site-level schedule. See `effectivePageSchedule`.
+   * Per-page re-crawl override; null = the page inherits the website
+   * source's site-level schedule.
    */
   recrawlSchedule: RecrawlSchedule | null;
   /**
@@ -3023,6 +3057,61 @@ export interface KnowledgeSearchResult {
   similarity: number;
 }
 
+/**
+ * One passage `knowledge.search` found, with the Source it cites: a
+ * `KnowledgeSearchResult` as it leaves the platform, in the words a caller
+ * outside it uses (a Concept is a Document there).
+ *
+ * The wire shapes of `knowledge.search` and `assistants.ask` live here, not
+ * in the operations package, because two packages speak them: the operation
+ * that produces them and `@ciele/client`, which may not import the operations.
+ */
+export interface KnowledgeSearchHit {
+  /** 1 is the best match: the reranker's order, not the retrieval score's. */
+  rank: number;
+  content: string;
+  documentId: string;
+  documentTitle: string;
+  sourceId: string | null;
+  sourceName: string | null;
+  collectionName: string;
+  /** The page or file the passage came from, when the Source has one. */
+  url: string | null;
+  /** The hybrid retrieval score in [0,1]. */
+  score: number;
+}
+
+/** What `knowledge.search` returns. */
+export interface KnowledgeSearchResponse {
+  query: string;
+  /** Null when the whole Library was searched. */
+  assistantId: string | null;
+  results: KnowledgeSearchHit[];
+}
+
+/** One citation in an `assistants.ask` answer: the Document and its Source. */
+export interface AssistantAnswerSource {
+  documentId: string | null;
+  documentTitle: string;
+  sourceId: string | null;
+  sourceName: string | null;
+  collectionName: string;
+  url: string | null;
+}
+
+/** An Assistant's answer to one question, as `assistants.ask` returns it. */
+export interface AssistantAnswer {
+  /** Pass it back as `conversationId` to ask a follow-up in the same thread. */
+  conversationId: string | null;
+  messageId: string | null;
+  /** The Flow that handled the question, when one matched. */
+  flowName: string | null;
+  answer: string;
+  sources: AssistantAnswerSource[];
+  /** Set when the turn failed; `answer` is then the fallback a Visitor would read. */
+  error: string | null;
+}
+
 export type ConversationSubject = "member" | "visitor" | "sso";
 
 /** Best-effort session context captured when a conversation starts. */
@@ -3059,6 +3148,12 @@ export interface ConversationPreflightSignals {
 export interface ConversationMetadata {
   /** What the pre-flight read about this Conversation (#956), when it ran. */
   preflight?: ConversationPreflightSignals;
+  /**
+   * Set when an API key asked this question (`assistants.ask`): the key, so
+   * the Inbox can tell a scripted question from the Member's own Preview,
+   * which shares its subject.
+   */
+  apiKeyId?: string;
   /**
    * Set when this Conversation is an unattended Routine run (#772). A run is
    * an ordinary Teammate Conversation in every way the runtime cares about, so
@@ -3523,6 +3618,16 @@ export interface InsightsStats {
    * of how often people want out, not of how often they said so.
    */
   escalationIntentRate: number | null;
+  /** Visitor messages per conversation: how many questions a session asks. */
+  questionsPerConversation: number;
+  /**
+   * Mean time from a conversation's start to its last message, in whole
+   * seconds, over the conversations that have a message. The last message is
+   * read from the whole history, not the window, so a conversation that runs
+   * past the range's end keeps its real length. Null with no such
+   * conversation, never zero: a zero-second average is not a quiet week.
+   */
+  avgConversationSeconds: number | null;
 }
 
 /** One named time-series in the Insights chart. */
@@ -4178,6 +4283,84 @@ export interface UsageDailyRow {
  * a billing anchor, so the read takes whole closed days from the rollup and the
  * partial ends live from the raw sources.
  */
+/**
+ * The three kinds of traffic the Insights Dashboard can be narrowed to. A
+ * grouping of `UsageSurface` (and of the narrower `RuntimeEventSurface`), not a
+ * stored value: `assistants` is Visitor and Preview traffic plus inbound HTTP
+ * Flows, `teammates` is every AI Teammate turn (1:1, channel, Routine), and
+ * `internal` is the platform's own work (ingestion, scheduled jobs, `/api/v1`
+ * and MCP callers).
+ */
+export type DashboardSurface = "assistants" | "teammates" | "internal";
+
+/**
+ * Model calls for one UTC day at the Dashboard's grain. The whole tuple is the
+ * grain, so any filter the Dashboard offers selects whole rows and every sum
+ * stays a sum.
+ */
+export interface DashboardUsageFact {
+  /** UTC day, YYYY-MM-DD. */
+  day: string;
+  /** Null on a ledger row recorded before surface attribution (#848). */
+  surface: UsageSurface | null;
+  stage: AiUsageStage;
+  provider: string;
+  modelId: string;
+  assistantId: string | null;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/**
+ * Finished Conversation Turns (`runtime_events`, kind `chat_turn`) for one UTC
+ * day. Latency arrives as a histogram bucket (`latencyBucketOf`) rather than as
+ * a percentile, because a percentile of a filtered subset cannot be rebuilt
+ * from percentiles of its parts, and a bucket count can.
+ */
+export interface DashboardTurnFact {
+  day: string;
+  surface: RuntimeEventSurface | null;
+  assistantId: string | null;
+  status: "succeeded" | "failed";
+  flowName: string | null;
+  /** Null on a successful turn. */
+  errorClass: string | null;
+  /** Index into `DASHBOARD_LATENCY_BOUNDS_MS`; see `latencyBucketOf`. */
+  latencyBucket: number;
+  turns: number;
+  durationMs: number;
+  toolCalls: number;
+}
+
+/** Answer verifier verdicts for one UTC day, one row per (assistant, verdict). */
+export interface DashboardVerdictFact {
+  day: string;
+  assistantId: string | null;
+  verdict: "pass" | "fail";
+  count: number;
+}
+
+/**
+ * Visitor Conversations started on one UTC day: the Insights population
+ * (Assistant-owned, Member Preview excluded), split by whether a human was
+ * asked in.
+ */
+export interface DashboardConversationFact {
+  day: string;
+  assistantId: string;
+  escalated: boolean;
+  conversations: number;
+}
+
+/** Everything the Insights Dashboard derives from, for one window. */
+export interface DashboardFacts {
+  usage: DashboardUsageFact[];
+  turns: DashboardTurnFact[];
+  verdicts: DashboardVerdictFact[];
+  conversations: DashboardConversationFact[];
+}
+
 export interface UsageMeterRow {
   resource: UsageResource;
   credentialKind: AiCredentialKind | "unknown";

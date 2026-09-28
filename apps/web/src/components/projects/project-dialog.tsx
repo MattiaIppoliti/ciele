@@ -12,6 +12,7 @@ import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { FoldersIcon } from "@/components/ui/icons/folders";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 import { toast } from "@/lib/toast";
 import { MemoryHistory } from "@/components/teammates/memory-history";
 import {
@@ -22,6 +23,8 @@ import {
   writeProjectDocumentAction,
 } from "@/app/actions";
 import { canAutoFocus } from "@/lib/auto-focus";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * The Project view (#771): one screen for a Project's name, what it is about,
@@ -66,9 +69,14 @@ export function ProjectDialog({
     name: string;
     description: string;
     body: string;
+    /** The document version read, so a save over a newer write is refused. */
+    updatedAt: string | null;
   } | null>(null);
   const [unreadable, setUnreadable] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // Apart from the save, so "Saving…" never labels an archive in flight.
+  const [archiving, startArchive] = useTransition();
+  const busy = isPending || archiving;
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   useEffect(() => {
@@ -88,6 +96,7 @@ export function ProjectDialog({
           name: project.name,
           description: project.description,
           body: document?.body ?? "",
+          updatedAt: document?.updatedAt ?? null,
         });
       })
       .catch(() => {
@@ -109,27 +118,15 @@ export function ProjectDialog({
         description !== saved.description ||
         body !== saved.body);
 
-  function requestClose() {
-    if (!dirty || isPending) {
-      onClose();
-      return;
-    }
-    confirmDelete({
-      title: "Discard your changes?",
-      description: creating
-        ? "This project has not been created yet."
-        : "The edits to this project are not saved yet.",
-      confirmLabel: "Discard changes",
-      onConfirm: onClose,
-    });
-  }
-
-  useEffect(() => {
-    if (!open || !dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [open, dirty]);
+  const { leave } = useUnsavedChanges({
+    dirty: open && dirty,
+    saving: busy,
+    confirmDelete,
+    description: creating
+      ? "This project has not been created yet."
+      : "The edits to this project are not saved yet.",
+  });
+  const requestClose = () => leave(onClose);
 
   function run(work: () => Promise<unknown>, done: string) {
     startTransition(async () => {
@@ -174,7 +171,7 @@ export function ProjectDialog({
       // A separate document, written only when it changed: an untouched one
       // must not gain a history entry saying somebody edited it.
       if (body !== saved.body) {
-        await writeProjectDocumentAction(projectId, body);
+        await writeProjectDocumentAction(projectId, body, "", saved.updatedAt);
       }
       onClose();
     }, "Saved, attached teammates read it from the next message");
@@ -275,7 +272,11 @@ export function ProjectDialog({
               <div className="flex items-center justify-between border-b px-4 py-2.5">
                 <p className="text-sm font-medium">
                   History
-                  {changes.length > 0 ? ` (${changes.length})` : ""}
+                  {changes.length > 0 && (
+                    <>
+                      {" "}(<RollingNumber value={changes.length} />)
+                    </>
+                  )}
                 </p>
               </div>
               <div className="max-h-64 overflow-y-auto p-3">
@@ -299,12 +300,24 @@ export function ProjectDialog({
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={isPending}
+                disabled={busy}
                 onClick={() =>
-                  run(
-                    () => updateProjectAction(projectId, { archived: !archived }),
-                    archived ? "Restored" : "Archived, teammates no longer read it"
-                  )
+                  startArchive(async () => {
+                    const next = !archived;
+                    try {
+                      await updateProjectAction(projectId, { archived: next });
+                      // The read is not repeated, so the header note and this
+                      // button follow the write that just landed.
+                      setArchived(next);
+                      toast.success(
+                        next ? "Archived, teammates no longer read it" : "Restored"
+                      );
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error ? error.message : "Something went wrong"
+                      );
+                    }
+                  })
                 }
               >
                 {archived ? (
@@ -318,7 +331,7 @@ export function ProjectDialog({
                 variant="ghost"
                 size="sm"
                 className="text-destructive"
-                disabled={isPending}
+                disabled={busy}
                 aria-label="Delete project"
                 onClick={() => {
                   confirmDelete({
@@ -343,10 +356,20 @@ export function ProjectDialog({
             Cancel
           </Button>
           <Button
-            disabled={!name.trim() || isPending || loading}
+            disabled={!name.trim() || busy || loading}
             onClick={creating ? create : save}
           >
-            {creating ? "Create project" : "Save"}
+            <RollInText
+              text={
+                creating
+                  ? isPending
+                    ? "Creating…"
+                    : "Create project"
+                  : isPending
+                    ? "Saving…"
+                    : "Save"
+              }
+            />
           </Button>
         </footer>
       </DialogContent>

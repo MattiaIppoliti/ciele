@@ -9,11 +9,12 @@
 type FilterRecord<T> = { [K in keyof T]: string };
 
 /** What a page gets from Next.js, or a URLSearchParams. */
-type SearchParamsLike =
+export type SearchParamsLike =
   | URLSearchParams
   | Record<string, string | string[] | undefined>;
 
-function read(params: SearchParamsLike, key: string): string | undefined {
+/** One parameter's value; a repeated key reads as its first value. */
+export function readSearchParam(params: SearchParamsLike, key: string): string | undefined {
   if (params instanceof URLSearchParams) return params.get(key) ?? undefined;
   const value = params[key];
   return Array.isArray(value) ? value[0] : value;
@@ -32,7 +33,7 @@ export function filtersFromSearchParams<T extends FilterRecord<T>>(
 ): T {
   const result: Record<string, string> = { ...defaults };
   for (const key of Object.keys(defaults) as Array<keyof T & string>) {
-    const value = read(params, key);
+    const value = readSearchParam(params, key);
     if (value === undefined) continue;
     const options = allowed[key];
     if (options && !options.includes(value)) continue;

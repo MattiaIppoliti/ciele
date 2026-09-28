@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { WidgetChat } from "@/components/widget/widget-chat";
+import { starterSkills } from "@/lib/composer/skills";
 import { getLatestPublicationCached } from "@/lib/widget-db";
 
 /**
@@ -33,17 +34,7 @@ export default async function WidgetPage({
   }
 
   const { assistant, collections } = publication.config;
-  // Only the Skills an admin gave an opening line to: the rest are prompt
-  // layers with nothing to insert, and a `/` entry that inserts nothing is
-  // worse than no entry.
-  const skills = (publication.config.skills ?? [])
-    .filter((skill) => (skill.starter ?? "").trim().length > 0)
-    .map((skill) => ({
-      id: skill.id,
-      name: skill.name,
-      description: skill.description,
-      starter: skill.starter,
-    }));
+  const skills = starterSkills(publication.config.skills ?? []);
 
   return (
     // useSearchParams in WidgetChat needs a Suspense boundary on a static

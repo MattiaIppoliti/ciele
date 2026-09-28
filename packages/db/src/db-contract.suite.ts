@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type {
   AiUsageStage,
+  ExportJobFormat,
+  ExportJobKind,
   FlowCondition,
   UsageOperation,
   UsageSurface,
@@ -12,6 +14,7 @@ import {
   USAGE_OPERATIONS,
   USAGE_SURFACES,
   apiKeySecretHint,
+  latencyBucketOf,
   buildPublicationConfig,
   generateApiKeySecret,
   hashApiKeySecret,
@@ -847,6 +850,16 @@ export function describeDbContract(
         expect(latest?.version).toBe(2);
         expect(latest?.config.assistant.nickname).toBe("Second");
       });
+
+      it("lands two publishes started together, each with its own version", async () => {
+        const assistant = await newAssistant();
+        const config = buildPublicationConfig(assistant, await db.listFlows(assistant.id), []);
+        const [a, b] = await Promise.all([
+          db.createPublication(assistant.id, config),
+          db.createPublication(assistant.id, config),
+        ]);
+        expect([a.version, b.version].sort()).toEqual([1, 2]);
+      });
     });
 
     describe("provider connections", () => {
@@ -1210,6 +1223,48 @@ export function describeDbContract(
         });
         expect(second.id).toBe(first.id);
         expect(second.body).toBe("Second.");
+      });
+
+      it("refuses a write based on a version that has since changed", async () => {
+        const project = await db.table("projects").insert({
+          organizationId: ctx.organizationId,
+          name: "Lost update",
+        });
+        const owner = { scope: "project" as const, projectId: project.id };
+        // Nobody had written it yet, and a writer that saw that goes first.
+        const base = await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner,
+          body: "B0",
+          expectedUpdatedAt: null,
+        });
+        // Two writers read B0; the first lands.
+        const first = await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner,
+          body: "B1",
+          expectedUpdatedAt: base.updatedAt,
+        });
+        // The second was written from B0 too, and must not erase B1.
+        await expect(
+          db.writeMemoryDocument({
+            organizationId: ctx.organizationId,
+            owner,
+            body: "B2",
+            expectedUpdatedAt: base.updatedAt,
+          })
+        ).rejects.toThrow(/changed since it was read/);
+        expect((await db.getMemoryDocument(ctx.organizationId, owner))?.body).toBe("B1");
+        // And a writer that saw no document refuses to create over one.
+        await expect(
+          db.writeMemoryDocument({
+            organizationId: ctx.organizationId,
+            owner,
+            body: "B3",
+            expectedUpdatedAt: null,
+          })
+        ).rejects.toThrow(/changed since it was read/);
+        expect(first.body).toBe("B1");
       });
 
       it("records who wrote what, and keeps the body it replaced", async () => {
@@ -2832,6 +2887,32 @@ export function describeDbContract(
           });
         }
         expect(await db.listTranscriptRetentionPolicies()).toEqual([]);
+      });
+
+      it("deletes a bounded batch, oldest first", async () => {
+        const assistant = await newAssistant();
+        const older = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-batch-old",
+        });
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        const newer = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-batch-new",
+        });
+        const cutoff = new Date(Date.now() + 86_400_000).toISOString();
+        // Everything expired in the org is a candidate; a limit of one takes
+        // only the single oldest, so the newer of these two survives it.
+        expect(await db.deleteExpiredConversations(ctx.organizationId, cutoff, 1)).toBe(1);
+        expect(await db.getConversation(newer.id)).not.toBeNull();
+        let guard = 0;
+        while ((await db.getConversation(older.id)) && guard++ < 1000) {
+          await db.deleteExpiredConversations(ctx.organizationId, cutoff, 1);
+        }
+        expect(await db.getConversation(older.id)).toBeNull();
+        expect(await db.getConversation(newer.id)).not.toBeNull();
       });
     });
 
@@ -6374,6 +6455,27 @@ export function describeDbContract(
     });
 
     describe("export jobs", () => {
+      it("accepts every export kind and file type (type ↔ constraint drift guard)", async () => {
+        const kinds: Record<ExportJobKind, true> = {
+          insights_overview: true,
+          insights_datapoints: true,
+          insights_languages: true,
+        };
+        const formats: Record<ExportJobFormat, true> = { csv: true, json: true, xlsx: true };
+        for (const kind of Object.keys(kinds) as ExportJobKind[]) {
+          for (const format of Object.keys(formats) as ExportJobFormat[]) {
+            const job = await db.createExportJob(ctx.organizationId, {
+              kind,
+              format,
+              params: { name: `guard ${kind} ${format}` },
+            });
+            expect(job).toMatchObject({ kind, format, params: { name: `guard ${kind} ${format}` } });
+            // Done at once, so no later claim in this suite picks it up.
+            await db.updateExportJob(job.id, { status: "done", storagePath: null });
+          }
+        }
+      });
+
       it("creates queued, claims due jobs once, and completes them", async () => {
         const created = await db.createExportJob(ctx.organizationId, {
           kind: "insights_overview",
@@ -6806,6 +6908,33 @@ export function describeDbContract(
         expect(mineAfter[0].calls).toBe(1);
         expect(mineAfter[0].inputTokens).toBe(40);
         expect(mineAfter[0].spenders.teammateId).toBe("t-rollup");
+      });
+
+      it("catches up without moving a total, run after run", async () => {
+        const now = Date.now();
+        const from = new Date(now - 60 * 60 * 1000).toISOString();
+        const to = new Date(now + 60 * 60 * 1000).toISOString();
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "google",
+            modelId: "rollup-catch-up",
+            inputTokens: 7,
+            outputTokens: 1,
+          },
+        ]);
+        const system = ctx.systemDb ?? db;
+        // The first run has no closed day on record and reaches back the cap;
+        // the second covers only the two-day window. Neither may double count.
+        expect(await system.rollupUsageCatchUp(35)).toBeGreaterThanOrEqual(0);
+        await system.rollupUsageCatchUp(35);
+        const rows = (await db.getOrgUsageSpenders(ctx.organizationId, from, to)).filter(
+          (r) => r.modelId === "rollup-catch-up"
+        );
+        expect(rows).toHaveLength(1);
+        expect(rows[0].calls).toBe(1);
       });
 
       it("scopes the spender read to the organization and the half-open window", async () => {
@@ -7321,6 +7450,142 @@ export function describeDbContract(
       });
     });
 
+    describe("dashboard facts", () => {
+      // Rows are stamped at now() by both adapters, so the window brackets it.
+      const window = (): [string, string] => [
+        new Date(Date.now() - 3_600_000).toISOString(),
+        new Date(Date.now() + 3_600_000).toISOString(),
+      ];
+      const today = () => new Date().toISOString().slice(0, 10);
+
+      it("groups model calls by day, surface, stage, model and Assistant", async () => {
+        const row = {
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          stage: "generate" as const,
+          provider: "google" as const,
+          modelId: "dashboard-usage-guard",
+          credentialKind: "platform" as const,
+          inputTokens: 300,
+          outputTokens: 40,
+          surface: "routine" as const,
+        };
+        await db.recordAiUsage([row, row]);
+        const [from, to] = window();
+        const facts = await db.getOrgDashboardFacts(ctx.organizationId, from, to);
+        const mine = facts.usage.filter((r) => r.modelId === "dashboard-usage-guard");
+        expect(mine).toEqual([
+          {
+            day: today(),
+            surface: "routine",
+            stage: "generate",
+            provider: "google",
+            modelId: "dashboard-usage-guard",
+            assistantId: null,
+            calls: 2,
+            inputTokens: 600,
+            outputTokens: 80,
+          },
+        ]);
+      });
+
+      it("buckets turn latency exactly as latencyBucketOf does, on the bucket edges", async () => {
+        // The SQL passes its own threshold array to width_bucket; recording on
+        // the edges is what proves it is the same array as the TypeScript one.
+        const flowName = `dashboard-flow-${shortId()}`;
+        const durations = [0, 249, 250, 59_999, 60_000];
+        for (const durationMs of durations) {
+          await db.recordRuntimeEvent({
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            kind: "chat_turn",
+            status: "succeeded",
+            surface: "widget",
+            flowName,
+            durationMs,
+            toolCalls: 1,
+          });
+        }
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "chat_turn",
+          status: "failed",
+          surface: "teammate",
+          flowName,
+          durationMs: 900,
+          errorClass: "provider_timeout",
+        });
+        // A turn still open carries no outcome and must not be counted.
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "chat_turn",
+          status: "started",
+          surface: "widget",
+          flowName,
+        });
+        const [from, to] = window();
+        const facts = await db.getOrgDashboardFacts(ctx.organizationId, from, to);
+        const mine = facts.turns.filter((r) => r.flowName === flowName);
+        const succeeded = mine.filter((r) => r.status === "succeeded");
+        const buckets = succeeded.map((r) => r.latencyBucket).sort((a, b) => a - b);
+        expect(buckets).toEqual([...new Set(durations.map(latencyBucketOf))]);
+        // 0 and 249 share the first bucket, so they collapse into one row of two.
+        expect(succeeded.find((r) => r.latencyBucket === 0)).toMatchObject({ turns: 2, durationMs: 249 });
+        expect(succeeded.reduce((sum, r) => sum + r.toolCalls, 0)).toBe(durations.length);
+        expect(mine.filter((r) => r.status === "failed")).toEqual([
+          {
+            day: today(),
+            surface: "teammate",
+            assistantId: null,
+            status: "failed",
+            flowName,
+            errorClass: "provider_timeout",
+            latencyBucket: latencyBucketOf(900),
+            turns: 1,
+            durationMs: 900,
+            toolCalls: 0,
+          },
+        ]);
+      });
+
+      it("counts Visitor Conversations by escalation and leaves Member Preview out", async () => {
+        const assistant = await newAssistant();
+        const visitor = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: `dash-${shortId()}`,
+        });
+        await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: `dash-${shortId()}`,
+        });
+        await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "member",
+          subjectId: ctx.userId,
+        });
+        await db.updateConversationMetadata(visitor.id, { escalated: true });
+        const [from, to] = window();
+        const facts = await db.getOrgDashboardFacts(ctx.organizationId, from, to);
+        const mine = facts.conversations
+          .filter((r) => r.assistantId === assistant.id)
+          .sort((a, b) => Number(a.escalated) - Number(b.escalated));
+        expect(mine).toEqual([
+          { day: today(), assistantId: assistant.id, escalated: false, conversations: 1 },
+          { day: today(), assistantId: assistant.id, escalated: true, conversations: 1 },
+        ]);
+      });
+
+      it("never reads another Organization's facts", async () => {
+        const [from, to] = window();
+        const facts = await db.getOrgDashboardFacts(ctx.foreignOrganizationId, from, to);
+        expect(facts.usage.some((r) => r.modelId === "dashboard-usage-guard")).toBe(false);
+      });
+    });
+
     describe("usage meters over an arbitrary window", () => {
       // The seam can only ever record rows at `now()`, so every window here
       // lands inside today and exercises the LIVE branch. The closed-day and
@@ -7458,6 +7723,19 @@ export function describeDbContract(
         // ends at today's start must therefore see none of them, whether or not
         // the rollup has run. This is the boundary where the read switches from
         // the rollup to the raw sources.
+        //
+        // Measured as a delta, not as zero: the mock's demo org carries weeks of
+        // seeded history (the Insights Dashboard's), and the claim is about the
+        // rows recorded now, not about the org having no past.
+        const startOfToday = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+        const closedWindow = (): Promise<Awaited<ReturnType<Db["getOrgUsageMeters"]>>> =>
+          db.getOrgUsageMeters(
+            ctx.organizationId,
+            new Date(Date.parse(startOfToday) - 7 * 86_400_000).toISOString(),
+            startOfToday
+          );
+        await db.rollupUsageDaily(2);
+        const closedBefore = sumOf(await closedWindow(), "ai").tokens;
         await db.recordAiUsage([
           {
             organizationId: ctx.organizationId,
@@ -7471,18 +7749,13 @@ export function describeDbContract(
           },
         ]);
         await db.rollupUsageDaily(2);
-        const startOfToday = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
-        const closed = await db.getOrgUsageMeters(
-          ctx.organizationId,
-          new Date(Date.parse(startOfToday) - 7 * 86_400_000).toISOString(),
-          startOfToday
-        );
+        const closed = await closedWindow();
         const today = await db.getOrgUsageMeters(
           ctx.organizationId,
           startOfToday,
           new Date(Date.now() + 3_600_000).toISOString()
         );
-        expect(sumOf(closed, "ai").tokens).toBe(0);
+        expect(sumOf(closed, "ai").tokens).toBe(closedBefore);
         expect(sumOf(today, "ai").tokens).toBeGreaterThanOrEqual(990);
       });
 

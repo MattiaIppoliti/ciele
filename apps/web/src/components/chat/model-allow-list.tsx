@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * Which models the chat window lets the asker switch to, beside the configured
@@ -38,6 +39,7 @@ export function ModelAllowList({
   onChange,
   disabled = false,
   unavailable = [],
+  audience = "visitors",
 }: {
   configured: ModelRef;
   value: ModelRef[];
@@ -45,6 +47,11 @@ export function ModelAllowList({
   disabled?: boolean;
   /** Providers the Organization has no credential for (`providersWithoutCredential`). */
   unavailable?: Provider[];
+  /**
+   * Who picks from the chat window: an Assistant's visitors, or the colleagues
+   * who chat with a Teammate, who are never visitors.
+   */
+  audience?: "visitors" | "colleagues";
 }) {
   const providers = (Object.keys(PROVIDER_NAMES) as Provider[]).filter(
     (provider) => MODEL_CATALOG[provider].length > 0
@@ -73,11 +80,16 @@ export function ModelAllowList({
         onChange([...retainedUnknownModels, ...selected]);
       }}
     >
-      <SelectTrigger aria-label="Models visitors may choose" className="w-full max-w-xl">
+      <SelectTrigger aria-label={`Models ${audience} may choose`} className="w-full max-w-xl">
         <SelectValue>
-          {additionalCount === 0
-            ? "Choose models for visitors"
-            : `${additionalCount} additional ${additionalCount === 1 ? "model" : "models"} selected`}
+          {additionalCount === 0 ? (
+            `Choose models for ${audience}`
+          ) : (
+            <>
+              <RollingNumber value={additionalCount} /> additional{" "}
+              {additionalCount === 1 ? "model" : "models"} selected
+            </>
+          )}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>

@@ -100,6 +100,9 @@ export function WidgetHistory({
           </p>
         ) : (
           <AISidebar
+            // History has nowhere to persist a rename or a move, so the rows
+            // offer neither (they used to rename, then snap back).
+            editable={false}
             items={groups}
             activeId={activeId}
             defaultExpandedIds={groups.map((group) => group.id)}

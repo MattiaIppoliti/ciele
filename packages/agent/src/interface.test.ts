@@ -53,6 +53,8 @@ describe("runtime public interface", () => {
       // Alert sourceKey registry: a deliberate widening so EE capability
       // implementations mint keys through the one namespace registry (#442).
       "alertKeys",
+      // A turn read back whole, for callers that cannot read a stream.
+      "answerConversationTurn",
       "beginWebsiteCrawl",
       // The models a chat window may offer: the admin's allow-list intersected
       // with what the Organization's Provider Connections can actually run.
@@ -119,6 +121,8 @@ describe("runtime public interface", () => {
       "runPreflightDriftReplay",
       "runSecurityDetections",
       "runTriageDecision",
+      // Retrieval without a turn: passages + Sources for an outside model.
+      "searchKnowledge",
       "sendEmail",
       "sendEscalationApiRequest",
       "sessionMetadata",

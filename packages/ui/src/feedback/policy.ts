@@ -197,17 +197,16 @@ export function decide(
 }
 
 /**
- * Collapses a burst of the same key into one event. Injected clock so the
- * window is asserted, not timed.
+ * Collapses a burst into one event. Injected clock so the window is asserted,
+ * not timed.
  */
 export function createCoalescer(windowMs: number, now: () => number = () => Date.now()) {
-  const last = new Map<string, number>();
+  let last: number | undefined;
   return {
-    allow(key: string): boolean {
+    allow(): boolean {
       const t = now();
-      const previous = last.get(key);
-      if (previous !== undefined && t - previous < windowMs) return false;
-      last.set(key, t);
+      if (last !== undefined && t - last < windowMs) return false;
+      last = t;
       return true;
     },
   };

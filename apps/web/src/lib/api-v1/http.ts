@@ -13,6 +13,13 @@ export function apiError(
   return Response.json({ error: { code, message } }, { status });
 }
 
+/** The 429 envelope, with `retry-after` in whole seconds (never 0). */
+export function apiRateLimited(message: string, retryAfterMs: number): Response {
+  const response = apiError(429, "rate_limited", message);
+  response.headers.set("retry-after", String(Math.max(1, Math.ceil(retryAfterMs / 1000))));
+  return response;
+}
+
 export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 100;
 

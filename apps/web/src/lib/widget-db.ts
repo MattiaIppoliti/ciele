@@ -1,30 +1,18 @@
-import { createClient } from "@supabase/supabase-js";
 import { revalidateTag, unstable_cache, updateTag } from "next/cache";
 import { type Conversation, type ConversationSubject, type Publication } from "@agent-hub/core";
-import { createDb, getMockDb, isSupabaseConfigured, type Db } from "@agent-hub/db";
+import { getMockDb, isSupabaseConfigured, type Db } from "@agent-hub/db";
+import { getServiceRoleDb } from "@/lib/service-db";
 import { SSO_GATE_COOKIE, gateForOrg, type SsoGatePayload } from "@/lib/sso";
-
-let widgetDb: Db | null = null;
 
 /**
  * Db for the public widget routes: service-role client (bypasses RLS,
  * these routes only ever expose data that belongs to a Publication).
- * Falls back to the anon key (read-mostly) and to the demo store.
- * Module-level singleton: the client is env-configured and stateless
- * (no cookies), so one instance serves every widget request.
+ * Falls back to the anon key (read-mostly) and to the demo store. The same
+ * singleton as `getServiceRoleDb`: the client is env-configured and stateless
+ * (no cookies), so one instance serves every request.
  */
 export function getWidgetDb(): Db {
-  if (!isSupabaseConfigured()) return getMockDb();
-  if (!widgetDb) {
-    const key =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
-      auth: { persistSession: false },
-    });
-    widgetDb = createDb(client);
-  }
-  return widgetDb;
+  return getServiceRoleDb();
 }
 
 const publicationTag = (assistantId: string) => `publication:${assistantId}`;
@@ -116,12 +104,6 @@ export async function resolveWidgetContext(
   };
 }
 
-/**
- * The widget surface's conversation-ownership rule, written once: a Visitor
- * may only act on a conversation that exists, belongs to this assistant, and
- * was started by them. Shared by the history endpoint and the escalation
- * operation.
- */
 /** A conversation subject reference: who a request claims to speak for. */
 export interface SubjectRef {
   type: ConversationSubject;

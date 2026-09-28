@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import { useApplicationConnectedToast } from "@/components/knowledge/use-application-connected";
@@ -12,7 +13,17 @@ import type {
 } from "@agent-hub/core";
 import { applicationConnectionOwnerType } from "@agent-hub/core";
 import type { ApplicationScopeOption } from "@agent-hub/agent";
-import { AppWindow, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  AppWindow,
+  Copy,
+  Maximize2,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Unlink,
+} from "lucide-react";
 import { Settings2 } from "lucide-react";
 import {
   Badge,
@@ -38,6 +49,26 @@ import {
   updateApplicationImportConfigurationAction,
 } from "@/app/actions";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { useDiscardGuard } from "@/components/knowledge/use-discard-guard";
+import {
+  Table,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TableColumnHeader } from "@/components/ui/table-column-header";
+import { useColumnWidths, type TableColumnLayout } from "@/components/ui/table-columns";
+import { TableOpenCell } from "@/components/ui/table-open-cell";
+import { TableRowMenu } from "@/components/ui/table-menu";
+import {
+  applicationImportHref,
+  applicationImportStatusLabel,
+  applicationImportStatusTone,
+} from "@/lib/application-import-documents";
 import {
   Select,
   SelectContent,
@@ -94,6 +125,11 @@ function when(value: string | null): string {
   return formatDateTime(value);
 }
 
+/** "1 import", "3 imports": the count and its noun, agreeing. */
+function counted(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "The operation failed.";
 }
@@ -130,6 +166,17 @@ function OAuthSetupDialog({
   }));
   const [isPending, startTransition] = useTransition();
   const definition = provider ? PROVIDER_BY_ID[provider] : null;
+  const { requestClose, confirmDeleteModal } = useDiscardGuard({
+    open: provider !== null,
+    dirty:
+      form.connectionName !== (initialName ?? "") ||
+      form.baseUrl !== "" ||
+      form.clientId !== "" ||
+      form.clientSecret !== "",
+    pending: isPending,
+    onClose,
+    description: "This connection has not been set up yet.",
+  });
 
   const complete = Boolean(
     form.connectionName.trim() &&
@@ -178,7 +225,8 @@ function OAuthSetupDialog({
   }
 
   return (
-    <Dialog open={provider !== null} onOpenChange={(open) => !open && onClose()}>
+    <>
+    <Dialog open={provider !== null} onOpenChange={(open) => !open && requestClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Connect {definition?.label}</DialogTitle>
@@ -191,6 +239,7 @@ function OAuthSetupDialog({
             <Label htmlFor="application-connection-name">Name of integration</Label>
             <Input
               id="application-connection-name"
+              autoComplete="off"
               value={form.connectionName}
               onChange={(event) =>
                 setForm({ ...form, connectionName: event.target.value })
@@ -207,6 +256,9 @@ function OAuthSetupDialog({
               <Input
                 id="application-base-url"
                 type="url"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
                 value={form.baseUrl}
                 onChange={(event) =>
                   setForm({ ...form, baseUrl: event.target.value })
@@ -256,15 +308,17 @@ function OAuthSetupDialog({
           )}
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={requestClose}>
             Cancel
           </Button>
           <Button type="button" disabled={isPending || !complete} onClick={submit}>
-            {isPending ? "Connecting…" : "Connect"}
+            <RollInText text={isPending ? "Connecting…" : "Connect"} />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }
 
@@ -277,16 +331,28 @@ function providerConfigFields(
 ) {
   const update = (key: string, value: string) =>
     setConfig({ ...config, [key]: value });
+  const csvIds = (key: string) =>
+    new Set((config[key] ?? "").split(",").filter(Boolean));
+  /** Adds or removes `id` in the comma-separated list at `key`. */
+  const toggleCsv = (key: string, id: string) => {
+    const ids = csvIds(key);
+    if (ids.has(id)) ids.delete(id);
+    else ids.add(id);
+    update(key, [...ids].join(","));
+  };
   if (provider === "slack") {
-    const selected = new Set(
-      (config.channelIds ?? "").split(",").filter(Boolean)
-    );
+    const selected = csvIds("channelIds");
     const channels = scopes.filter((scope) => scope.kind === "channel");
     return (
       <div className="space-y-2">
-        <Label>Channels</Label>
+        <fieldset className="min-w-0 space-y-2">
+        <legend className="text-sm leading-none font-medium">Channels</legend>
         <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
-          {scopesLoading && <p className="p-2 text-sm">Loading channels…</p>}
+          {scopesLoading && (
+            <p role="status" className="p-2 text-sm">
+              Loading channels…
+            </p>
+          )}
           {!scopesLoading && channels.length === 0 && (
             <p className="p-2 text-sm text-muted-foreground">
               No Slack channels were found. Invite Ciele to a channel, then
@@ -306,11 +372,7 @@ function providerConfigFields(
                   type="checkbox"
                   checked={isSelected}
                   disabled={!isMember && !isSelected}
-                  onChange={() => {
-                    if (isSelected) selected.delete(scope.id);
-                    else selected.add(scope.id);
-                    update("channelIds", [...selected].join(","));
-                  }}
+                  onChange={() => toggleCsv("channelIds", scope.id)}
                 />
                 <span className="min-w-0 flex-1 truncate">{scope.label}</span>
                 {!isMember && (
@@ -324,6 +386,7 @@ function providerConfigFields(
             );
           })}
         </div>
+        </fieldset>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="application-history-days">Initial history</Label>
@@ -347,13 +410,15 @@ function providerConfigFields(
       </div>
     );
   }
-  if (provider === "onedrive") {
+  if (provider === "onedrive" || provider === "google_drive") {
+    const onedrive = provider === "onedrive";
+    const label = onedrive ? "Drive or folder" : "My Drive, Shared Drive, or folder";
     const selectable = scopes.filter(
       (scope) => scope.kind === "drive" || scope.kind === "folder"
     );
     return (
       <div className="space-y-2">
-        <Label>Drive or folder</Label>
+        <Label>{label}</Label>
         <Select
           value={config.scopeId ?? ""}
           onValueChange={(value) => {
@@ -362,40 +427,13 @@ function providerConfigFields(
             setConfig({
               ...config,
               scopeId: scope.id,
-              driveId: String(scope.metadata.driveId ?? "me"),
+              // OneDrive addresses the signed-in user's own drive as "me".
+              driveId: String(scope.metadata.driveId ?? (onedrive ? "me" : "")),
               folderId: String(scope.metadata.folderId ?? ""),
             });
           }}
         >
-          <SelectTrigger className="w-full" aria-label="Drive or folder"><SelectValue placeholder={scopesLoading ? "Loading…" : "Select a drive or folder"} /></SelectTrigger>
-          <SelectContent>
-            {selectable.map((scope) => <SelectItem key={scope.id} value={scope.id}>{scope.kind === "folder" ? `Folder · ${scope.label}` : scope.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-    );
-  }
-  if (provider === "google_drive") {
-    const selectable = scopes.filter(
-      (scope) => scope.kind === "drive" || scope.kind === "folder"
-    );
-    return (
-      <div className="space-y-2">
-        <Label>My Drive, Shared Drive, or folder</Label>
-        <Select
-          value={config.scopeId ?? ""}
-          onValueChange={(value) => {
-            const scope = selectable.find((item) => item.id === value);
-            if (!scope) return;
-            setConfig({
-              ...config,
-              scopeId: scope.id,
-              driveId: String(scope.metadata.driveId ?? ""),
-              folderId: String(scope.metadata.folderId ?? ""),
-            });
-          }}
-        >
-          <SelectTrigger className="w-full" aria-label="My Drive, Shared Drive, or folder"><SelectValue placeholder={scopesLoading ? "Loading…" : "Select a scope"} /></SelectTrigger>
+          <SelectTrigger className="w-full" aria-label={label}><SelectValue placeholder={scopesLoading ? "Loading…" : onedrive ? "Select a drive or folder" : "Select a scope"} /></SelectTrigger>
           <SelectContent>
             {selectable.map((scope) => <SelectItem key={scope.id} value={scope.id}>{scope.kind === "folder" ? `Folder · ${scope.label}` : scope.label}</SelectItem>)}
           </SelectContent>
@@ -406,9 +444,7 @@ function providerConfigFields(
   if (provider === "salesforce") {
     const categories = scopes.filter((scope) => scope.kind === "category");
     const languages = scopes.filter((scope) => scope.kind === "language");
-    const selected = new Set(
-      (config.dataCategories ?? "").split(",").filter(Boolean)
-    );
+    const selected = csvIds("dataCategories");
     return (
       <>
         <div className="space-y-2">
@@ -432,51 +468,48 @@ function providerConfigFields(
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Data categories (optional)</Label>
+        <fieldset className="min-w-0 space-y-2">
+          <legend className="text-sm leading-none font-medium">
+            Data categories (optional)
+          </legend>
           <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
-            {scopesLoading && <p className="p-2 text-sm">Loading categories…</p>}
+            {scopesLoading && (
+              <p role="status" className="p-2 text-sm">
+                Loading categories…
+              </p>
+            )}
             {categories.map((scope) => (
               <label key={scope.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm">
-                <input type="checkbox" checked={selected.has(scope.id)} onChange={() => {
-                  if (selected.has(scope.id)) selected.delete(scope.id);
-                  else selected.add(scope.id);
-                  update("dataCategories", [...selected].join(","));
-                }} />
-                {scope.label}
+                <input type="checkbox" checked={selected.has(scope.id)} onChange={() => toggleCsv("dataCategories", scope.id)} />
+                <span className="min-w-0 [overflow-wrap:anywhere]">{scope.label}</span>
               </label>
             ))}
           </div>
-        </div>
+        </fieldset>
       </>
     );
   }
   const knowledgeBases = scopes.filter(
     (scope) => scope.kind === "knowledge_base"
   );
-  const selectedKnowledgeBases = new Set(
-    (config.knowledgeBaseIds ?? "").split(",").filter(Boolean)
-  );
+  const selectedKnowledgeBases = csvIds("knowledgeBaseIds");
   return (
-    <div className="space-y-2">
-      <Label>Knowledge bases</Label>
+    <fieldset className="min-w-0 space-y-2">
+      <legend className="text-sm leading-none font-medium">Knowledge bases</legend>
       <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
-        {scopesLoading && <p className="p-2 text-sm">Loading knowledge bases…</p>}
+        {scopesLoading && (
+          <p role="status" className="p-2 text-sm">
+            Loading knowledge bases…
+          </p>
+        )}
         {knowledgeBases.map((scope) => (
           <label key={scope.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm">
-            <input type="checkbox" checked={selectedKnowledgeBases.has(scope.id)} onChange={() => {
-              if (selectedKnowledgeBases.has(scope.id)) {
-                selectedKnowledgeBases.delete(scope.id);
-              } else {
-                selectedKnowledgeBases.add(scope.id);
-              }
-              update("knowledgeBaseIds", [...selectedKnowledgeBases].join(","));
-            }} />
-            {scope.label}
+            <input type="checkbox" checked={selectedKnowledgeBases.has(scope.id)} onChange={() => toggleCsv("knowledgeBaseIds", scope.id)} />
+            <span className="min-w-0 [overflow-wrap:anywhere]">{scope.label}</span>
           </label>
         ))}
       </div>
-    </div>
+    </fieldset>
   );
 }
 
@@ -514,6 +547,22 @@ function ImportDialog({
   const [scopes, setScopes] = useState<ApplicationScopeOption[]>([]);
   const [scopesLoading, setScopesLoading] = useState(connection !== null);
   const [isPending, startTransition] = useTransition();
+  // A flag rather than a diff against the opening values: the Salesforce
+  // language is filled in by discovery, and that is not the reader's edit.
+  const [touched, setTouched] = useState(false);
+  const { requestClose, confirmDeleteModal } = useDiscardGuard({
+    open: connection !== null,
+    dirty: touched,
+    pending: isPending,
+    onClose,
+    description: editingImport
+      ? "The changes to this import are not saved yet."
+      : "This import has not been created yet.",
+  });
+  const editConfig = (next: Record<string, string>) => {
+    setTouched(true);
+    setConfig(next);
+  };
 
   const definition = connection
     ? PROVIDER_BY_ID[connection.provider]
@@ -608,7 +657,8 @@ function ImportDialog({
   }
 
   return (
-    <Dialog open={connection !== null} onOpenChange={(open) => !open && onClose()}>
+    <>
+    <Dialog open={connection !== null} onOpenChange={(open) => !open && requestClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
@@ -623,8 +673,12 @@ function ImportDialog({
             <Label htmlFor="application-import-name">Import name</Label>
             <Input
               id="application-import-name"
+              autoComplete="off"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setTouched(true);
+                setName(event.target.value);
+              }}
               placeholder={`${definition?.label ?? "Application"} knowledge`}
             />
           </div>
@@ -632,7 +686,7 @@ function ImportDialog({
             providerConfigFields(
               connection.provider,
               config,
-              setConfig,
+              editConfig,
               scopes,
               scopesLoading
             )}
@@ -640,9 +694,10 @@ function ImportDialog({
             <Label>Synchronization</Label>
             <Select
               value={cadence}
-              onValueChange={(value) =>
-                setCadence((value ?? "daily") as "manual" | "daily")
-              }
+              onValueChange={(value) => {
+                setTouched(true);
+                setCadence((value ?? "daily") as "manual" | "daily");
+              }}
             >
               <SelectTrigger className="w-full" aria-label="Synchronization">
                 <SelectValue />
@@ -667,15 +722,16 @@ function ImportDialog({
                       type="checkbox"
                       checked={checked}
                       disabled={assistant.id === contextAssistantId}
-                      onChange={() =>
+                      onChange={() => {
+                        setTouched(true);
                         setAssistantIds(
                           checked
                             ? assistantIds.filter((id) => id !== assistant.id)
                             : [...assistantIds, assistant.id]
-                        )
-                      }
+                        );
+                      }}
                     />
-                    {assistant.title}
+                    <span className="min-w-0 truncate">{assistant.title}</span>
                   </label>
                 );
               })}
@@ -686,7 +742,7 @@ function ImportDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={requestClose}>
             Cancel
           </Button>
           <Button
@@ -694,19 +750,33 @@ function ImportDialog({
             disabled={isPending || assistantIds.length === 0}
             onClick={submit}
           >
-            {isPending
-              ? editingImport
-                ? "Saving…"
-                : "Creating…"
-              : editingImport
-                ? "Save and sync"
-                : "Create import"}
+            <RollInText
+              text={
+                isPending
+                  ? editingImport
+                    ? "Saving…"
+                    : "Creating…"
+                  : editingImport
+                    ? "Save and sync"
+                    : "Create import"
+              }
+            />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }
+
+/** The Configured imports table, laid out like the Library's Websites table. */
+const IMPORT_COLUMNS: TableColumnLayout[] = [
+  { key: "name", width: 360, min: 200 },
+  { key: "status", width: 190 },
+  { key: "content", width: 130 },
+  { key: "actions", width: 140, fixed: true },
+];
 
 function importScopeSummary(item: ApplicationImport): string {
   const config = item.config;
@@ -748,22 +818,23 @@ export function ApplicationKnowledgePanel({
   >;
 }) {
   const pathname = usePathname();
-  const [credentialProvider, setCredentialProvider] = useState<
-    "salesforce" | "servicenow" | null
-  >(null);
+  // The OAuth setup dialog: which provider, and the connection being
+  // reconnected when it is not a new one.
+  const [oauth, setOauth] = useState<{
+    provider: "salesforce" | "servicenow";
+    connectionId?: string;
+    connectionName?: string;
+  } | null>(null);
   const [slackBotConnection, setSlackBotConnection] = useState<PublicApplicationConnection | null>(null);
-  const [reconnectingConnectionId, setReconnectingConnectionId] = useState<
-    string | undefined
-  >(undefined);
-  const [reconnectingConnectionName, setReconnectingConnectionName] = useState<
-    string | undefined
-  >(undefined);
-  const [importConnection, setImportConnection] =
-    useState<PublicApplicationConnection | null>(null);
-  const [editingImport, setEditingImport] = useState<ApplicationImport | null>(
-    null
-  );
+  // The import dialog: the connection it imports from, and the import being
+  // edited (null for a new one).
+  const [importing, setImporting] = useState<{
+    connection: PublicApplicationConnection | null;
+    editing: ApplicationImport | null;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
+  /** The row control that started the request in flight, for its label. */
+  const [rowPending, setRowPending] = useState<string | null>(null);
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const visibleImports = useMemo(
     () =>
@@ -782,6 +853,8 @@ export function ApplicationKnowledgePanel({
     [contextAssistantId, imports]
   );
 
+  const importColumns = useColumnWidths("application-imports", IMPORT_COLUMNS);
+
   useApplicationConnectedToast("Application connected.");
 
   function connect(
@@ -790,11 +863,11 @@ export function ApplicationKnowledgePanel({
     connectionName?: string
   ) {
     if (definition.auth === "configured_oauth") {
-      setReconnectingConnectionId(connectionId);
-      setReconnectingConnectionName(connectionName);
-      setCredentialProvider(
-        definition.provider as "salesforce" | "servicenow"
-      );
+      setOauth({
+        provider: definition.provider as "salesforce" | "servicenow",
+        connectionId,
+        connectionName,
+      });
       return;
     }
     const params = new URLSearchParams({ returnTo: pathname });
@@ -808,8 +881,10 @@ export function ApplicationKnowledgePanel({
   function run(
     operation: () => Promise<void>,
     success: string,
-    startsIngestion = false
+    startsIngestion = false,
+    control: string | null = null
   ) {
+    setRowPending(control);
     startTransition(async () => {
       try {
         await operation();
@@ -817,9 +892,13 @@ export function ApplicationKnowledgePanel({
         toast.success(success);
       } catch (error) {
         toast.error(errorMessage(error));
+      } finally {
+        setRowPending(null);
       }
     });
   }
+  const busy = (id: string, action: string) =>
+    isPending && rowPending === `${action}:${id}`;
 
   return (
     <div className="space-y-6">
@@ -896,14 +975,22 @@ export function ApplicationKnowledgePanel({
                             : connection.error || connection.status.replaceAll("_", " ")}
                         </span>
                         <span className="text-muted-foreground block truncate text-xs">
-                          {imports.filter((item) => item.connectionId === connection.id).length} imports ·{" "}
-                          {imports
-                            .filter((item) => item.connectionId === connection.id)
-                            .reduce(
-                              (sum, item) =>
-                                sum + (operationalState[item.id]?.sourceCount ?? 0),
-                              0
-                            )} sources
+                          {counted(
+                            imports.filter((item) => item.connectionId === connection.id)
+                              .length,
+                            "import"
+                          )}{" "}
+                          ·{" "}
+                          {counted(
+                            imports
+                              .filter((item) => item.connectionId === connection.id)
+                              .reduce(
+                                (sum, item) =>
+                                  sum + (operationalState[item.id]?.sourceCount ?? 0),
+                                0
+                              ),
+                            "source"
+                          )}
                         </span>
                         {connection.providerAccountId && (
                           <span className="text-muted-foreground block truncate text-xs">
@@ -931,10 +1018,9 @@ export function ApplicationKnowledgePanel({
                               size="icon-sm"
                               variant="ghost"
                               title="Configure import" aria-label="Configure import"
-                              onClick={() => {
-                                setEditingImport(null);
-                                setImportConnection(connection);
-                              }}
+                              onClick={() =>
+                                setImporting({ connection, editing: null })
+                              }
                             >
                               <Settings2 className="size-4" />
                             </Button>
@@ -1001,169 +1087,242 @@ export function ApplicationKnowledgePanel({
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold">Configured imports</h3>
-          <Badge variant="secondary">{visibleImports.length}</Badge>
+          <Badge variant="secondary">
+            <RollingNumber value={visibleImports.length} />
+          </Badge>
         </div>
         {visibleImports.length === 0 ? (
           <div className="text-muted-foreground rounded-xl border border-dashed px-4 py-8 text-center text-sm">
             Connect an application, then configure an import to add its content.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border">
-            {visibleImports.map((item) => {
-              const connection = connections.find(
-                (candidate) => candidate.id === item.connectionId
-              );
-              const provider = connection
-                ? PROVIDER_BY_ID[connection.provider]
-                : undefined;
-              const state = operationalState[item.id];
-              const lastRun = state?.lastRun;
-              return (
-                <div
-                  key={item.id}
-                  className="flex flex-wrap items-center gap-3 border-b px-4 py-3 last:border-b-0"
-                >
-                  <AppWindow className="text-muted-foreground size-4 shrink-0" />
-                  <span className="min-w-52 flex-1">
-                    <span className="block font-medium">{item.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {provider?.label ?? "Application"} · {state?.sourceCount ?? 0} sources · {item.assistantIds.length} Assistants
-                    </span>
-                    <span className="text-muted-foreground block text-xs">
-                      Last: {when(item.lastSyncedAt)} · Next: {when(item.nextSyncAt)}
-                    </span>
-                    <span className="text-muted-foreground block text-xs">
-                      {importScopeSummary(item)}
-                    </span>
-                    {lastRun && (
-                      <span className="text-muted-foreground block text-xs">
-                        {lastRun.discovered} discovered · {lastRun.upserted} updated · {lastRun.deleted} removed · {lastRun.skipped} skipped · {lastRun.failed} failed
-                      </span>
-                    )}
-                    {lastRun?.skippedReasons.length ? (
-                      <span className="block text-xs text-amber-700 dark:text-amber-300">
-                        Skipped: {lastRun.skippedReasons
-                          .slice(0, 3)
-                          .map((reason) => `${reason.remoteId ?? "unknown"} (${reason.reason.replaceAll("_", " ")})`)
-                          .join(" · ")}
-                        {lastRun.skippedReasons.length > 3
-                          ? ` · +${lastRun.skippedReasons.length - 3} more`
-                          : ""}
-                      </span>
-                    ) : null}
-                    {item.error && (
-                      <span className="block text-xs text-red-700 dark:text-red-300">
-                        {item.error}
-                      </span>
-                    )}
-                  </span>
-                  <Badge
-                    variant={item.status === "error" ? "destructive" : "outline"}
-                    title={item.error || undefined}
-                  >
-                    {item.status}
-                  </Badge>
-                  <span className="text-muted-foreground text-xs capitalize">
-                    {item.cadence}
-                  </span>
-                  {canEdit && (
-                    <span className="flex gap-1">
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label="Edit import"
-                        title={
-                          item.status === "syncing"
-                            ? "Wait for synchronization to finish"
-                            : "Edit import"
-                        }
-                        disabled={item.status === "syncing"}
-                        onClick={() => {
-                          setEditingImport(item);
-                          setImportConnection(connection ?? null);
-                        }}
-                      >
-                        <Settings2 className="size-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={isPending}
-                        onClick={() =>
+          <TableCard className={isPending ? "opacity-60" : undefined}>
+            <Table fixed>
+              {importColumns.colGroup}
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableColumnHeader label="Name" resize={importColumns.handleFor("name")} />
+                  <TableColumnHeader label="Status" resize={importColumns.handleFor("status")} />
+                  <TableColumnHeader label="Content" resize={importColumns.handleFor("content")} />
+                  <TableColumnHeader label="Actions" align="right" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleImports.map((item) => {
+                  const connection = connections.find(
+                    (candidate) => candidate.id === item.connectionId
+                  );
+                  const provider = connection
+                    ? PROVIDER_BY_ID[connection.provider]
+                    : undefined;
+                  const state = operationalState[item.id];
+                  const lastRun = state?.lastRun;
+                  const documentCount = state?.sourceCount ?? 0;
+                  const href = applicationImportHref(item.id, contextAssistantId);
+                  const editImport = () =>
+                    setImporting({ connection: connection ?? null, editing: item });
+                  const toggleEnabled = () =>
+                    run(
+                      () => setApplicationImportEnabledAction(item.id, !item.enabled),
+                      item.enabled ? "Import paused." : "Import resumed."
+                    );
+                  // The toast only says the run was accepted; the activity
+                  // card follows it from here on.
+                  const syncNow = () =>
+                    run(
+                      () => syncApplicationImportNowAction(item.id),
+                      "Synchronization queued.",
+                      true
+                    );
+                  const deleteImport = () =>
+                    confirmDelete({
+                      title: `Delete “${item.name}”?`,
+                      description:
+                        "Every knowledge source synchronized by this import will also be deleted.",
+                      onConfirm: async () => {
+                        await deleteApplicationImportAction(item.id);
+                        toast.success("Import deleted.");
+                      },
+                    });
+                  const unlink =
+                    contextAssistantId && item.assistantIds.length > 1
+                      ? () =>
                           run(
                             () =>
-                              setApplicationImportEnabledAction(
+                              setApplicationImportAssistantsAction(
                                 item.id,
-                                !item.enabled
+                                item.assistantIds.filter((id) => id !== contextAssistantId)
                               ),
-                            item.enabled ? "Import paused." : "Import resumed."
+                            "Import unlinked from this Assistant."
                           )
-                        }
-                      >
-                        {item.enabled ? "Pause" : "Resume"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={
-                          isPending || item.status === "syncing" || !item.enabled
-                        }
-                        onClick={() =>
-                          // The toast only says the run was accepted; the
-                          // activity card follows it from here on.
-                          run(
-                            () => syncApplicationImportNowAction(item.id),
-                            "Synchronization queued.",
-                            true
-                          )
-                        }
-                      >
-                        <RefreshCw className="size-3.5" /> Sync now
-                      </Button>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        title="Delete import" aria-label="Delete import"
-                        onClick={() =>
-                          confirmDelete({
-                            title: `Delete “${item.name}”?`,
-                            description:
-                              "Every knowledge source synchronized by this import will also be deleted.",
-                            onConfirm: async () => {
-                              await deleteApplicationImportAction(item.id);
-                              toast.success("Import deleted.");
-                            },
-                          })
-                        }
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                      {contextAssistantId && item.assistantIds.length > 1 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            run(
-                              () =>
-                                setApplicationImportAssistantsAction(
-                                  item.id,
-                                  item.assistantIds.filter(
-                                    (id) => id !== contextAssistantId
-                                  )
-                                ),
-                              "Import unlinked from this Assistant."
-                            )
-                          }
-                        >
-                          Unlink
-                        </Button>
-                      )}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                      : null;
+                  const syncing = item.status === "syncing";
+                  return (
+                    <TableRowMenu
+                      key={item.id}
+                      title={item.name}
+                      actions={[
+                        { label: "Open", icon: Maximize2, href },
+                        {
+                          label: "Copy ID",
+                          icon: Copy,
+                          // Toast by the result: the clipboard can be missing or refuse.
+                          onSelect: () => {
+                            void (async () => {
+                              try {
+                                await navigator.clipboard.writeText(item.id);
+                                toast.success("ID copied.");
+                              } catch {
+                                toast.error("Could not copy the ID.");
+                              }
+                            })();
+                          },
+                        },
+                        canEdit && {
+                          label: "Edit import",
+                          icon: Settings2,
+                          disabled: syncing,
+                          onSelect: editImport,
+                        },
+                        canEdit && {
+                          label: "Sync now",
+                          icon: RefreshCw,
+                          disabled: isPending || syncing || !item.enabled,
+                          onSelect: syncNow,
+                        },
+                        canEdit && {
+                          label: item.enabled ? "Pause" : "Resume",
+                          icon: item.enabled ? Pause : Play,
+                          disabled: isPending,
+                          onSelect: toggleEnabled,
+                        },
+                        canEdit &&
+                          unlink && { label: "Unlink from this Assistant", icon: Unlink, onSelect: unlink },
+                        canEdit && {
+                          label: "Delete",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: deleteImport,
+                        },
+                      ]}
+                    >
+                      <TableRow>
+                        <TableCell className="align-top">
+                          <TableOpenCell
+                            href={href}
+                            label={item.name}
+                            className="flex items-start gap-2"
+                          >
+                            {connection ? (
+                              <AppBrandMark
+                                provider={connection.provider}
+                                size="size-5"
+                                className="mt-0.5 shrink-0"
+                              />
+                            ) : (
+                              <AppWindow className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                            )}
+                            <span className="min-w-0">
+                              <Link
+                                href={href}
+                                className="press-text block truncate font-medium hover:underline"
+                              >
+                                {item.name}
+                              </Link>
+                              <span className="text-muted-foreground block truncate text-xs">
+                                {provider?.label ?? "Application"} · {importScopeSummary(item)}
+                              </span>
+                              <span className="text-muted-foreground block truncate text-xs">
+                                {item.assistantIds.length}{" "}
+                                {item.assistantIds.length === 1 ? "Assistant" : "Assistants"} ·{" "}
+                                <span className="capitalize">{item.cadence}</span>
+                              </span>
+                              {item.error && (
+                                <span className="block truncate text-xs text-red-700 dark:text-red-300">
+                                  {item.error}
+                                </span>
+                              )}
+                            </span>
+                          </TableOpenCell>
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <Badge
+                            tone={applicationImportStatusTone(item.status, item.enabled)}
+                            title={item.error || undefined}
+                          >
+                            <RollInText text={applicationImportStatusLabel(item.status, item.enabled)} />
+                          </Badge>
+                          <span className="text-muted-foreground mt-1 block text-xs">
+                            Last update: {when(item.lastSyncedAt)}
+                          </span>
+                          {item.enabled && item.nextSyncAt && (
+                            <span className="text-muted-foreground block text-xs">
+                              Next: {when(item.nextSyncAt)}
+                            </span>
+                          )}
+                          {lastRun && (
+                            <span
+                              className="text-muted-foreground block truncate text-xs"
+                              title={`${lastRun.discovered} discovered · ${lastRun.upserted} updated · ${lastRun.deleted} removed · ${lastRun.skipped} skipped · ${lastRun.failed} failed`}
+                            >
+                              {lastRun.upserted} updated · {lastRun.failed} failed
+                            </span>
+                          )}
+                          {lastRun?.skippedReasons.length ? (
+                            <span
+                              className="block truncate text-xs text-amber-700 dark:text-amber-300"
+                              title={lastRun.skippedReasons
+                                .map(
+                                  (reason) =>
+                                    `${reason.remoteId ?? "unknown"} (${reason.reason.replaceAll("_", " ")})`
+                                )
+                                .join(" · ")}
+                            >
+                              {lastRun.skippedReasons.length} skipped
+                            </span>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <Link
+                            href={href}
+                            className="text-primary press-text font-medium hover:underline tabular-nums"
+                          >
+                            {documentCount} {documentCount === 1 ? "Document" : "Documents"}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="align-top text-right">
+                          {canEdit && (
+                            <span className="inline-flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isPending || syncing || !item.enabled}
+                                onClick={syncNow}
+                              >
+                                <RefreshCw className="size-3.5" /> Sync now
+                              </Button>
+                              <Button
+                                size="icon-sm"
+                                variant="ghost"
+                                aria-label="Edit import"
+                                title={
+                                  syncing ? "Wait for synchronization to finish" : "Edit import"
+                                }
+                                disabled={syncing}
+                                onClick={editImport}
+                              >
+                                <Settings2 className="size-4" />
+                              </Button>
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    </TableRowMenu>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableCard>
         )}
       </section>
 
@@ -1188,6 +1347,7 @@ export function ApplicationKnowledgePanel({
                   <Button
                     size="sm"
                     variant="outline"
+                    disabled={isPending}
                     onClick={() =>
                       run(
                         () =>
@@ -1195,11 +1355,15 @@ export function ApplicationKnowledgePanel({
                             ...item.assistantIds,
                             contextAssistantId,
                           ]),
-                        "Import linked to this Assistant."
+                        "Import linked to this Assistant.",
+                        false,
+                        `link:${item.id}`
                       )
                     }
                   >
-                    Link
+                    <RollInText
+                      text={busy(item.id, "link") ? "Linking…" : "Link"}
+                    />
                   </Button>
                 )}
               </div>
@@ -1209,30 +1373,23 @@ export function ApplicationKnowledgePanel({
       )}
 
       <OAuthSetupDialog
-        key={`oauth:${credentialProvider ?? "closed"}:${reconnectingConnectionId ?? "new"}`}
-        provider={credentialProvider}
-        connectionId={reconnectingConnectionId}
-        initialName={reconnectingConnectionName}
-        onClose={() => {
-          setCredentialProvider(null);
-          setReconnectingConnectionId(undefined);
-          setReconnectingConnectionName(undefined);
-        }}
+        key={`oauth:${oauth?.provider ?? "closed"}:${oauth?.connectionId ?? "new"}`}
+        provider={oauth?.provider ?? null}
+        connectionId={oauth?.connectionId}
+        initialName={oauth?.connectionName}
+        onClose={() => setOauth(null)}
       />
       {slackBotConnection && (
         <SlackBotDialog key={`slack-bot:${slackBotConnection.id}`} connection={slackBotConnection}
           assistants={assistants} onClose={() => setSlackBotConnection(null)} />
       )}
       <ImportDialog
-        key={`import:${importConnection?.id ?? "closed"}:${editingImport?.id ?? "new"}`}
-        connection={importConnection}
-        editingImport={editingImport}
+        key={`import:${importing?.connection?.id ?? "closed"}:${importing?.editing?.id ?? "new"}`}
+        connection={importing?.connection ?? null}
+        editingImport={importing?.editing ?? null}
         assistants={assistants}
         contextAssistantId={contextAssistantId}
-        onClose={() => {
-          setImportConnection(null);
-          setEditingImport(null);
-        }}
+        onClose={() => setImporting(null)}
       />
       {confirmDeleteModal}
     </div>

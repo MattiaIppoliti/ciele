@@ -2,9 +2,6 @@ import { NextRequest } from "next/server";
 import { SSO_GATE_COOKIE, isGateValidForOrg } from "@/lib/sso";
 import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
 
-// Per-visitor gate state (depends on the gate cookie), so never cached.
-export const runtime = "nodejs";
-
 /**
  * Widget SSO session state for the current visitor: whether this assistant
  * requires sign-in, whether the visitor is already authenticated, and which

@@ -26,9 +26,9 @@ export function createRealPorts(config: SetupConfig): SetupPorts {
     },
 
     probe: {
-      async get(url, timeoutMs = PROBE_TIMEOUT_MS) {
+      async get(url) {
         try {
-          const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+          const response = await fetch(url, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
           // Only the first slice: a health check reads a status, and the app's
           // home page would otherwise pull a megabyte of HTML into memory for
           // nothing.

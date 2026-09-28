@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, Trash2, Unlink } from "lucide-react";
 import { Ellipsis } from "lucide-react";
@@ -19,6 +20,7 @@ import {
   unlinkSourceAction,
 } from "@/app/actions";
 import { toast } from "@/lib/toast";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 /**
  * The Source's actions, at the top right of its Documents route (#927): the
@@ -42,6 +44,8 @@ export function SourceHeaderMenu({
   const router = useRouter();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const canRecrawl = source.kind === "website";
+  /** Held until the server answers, so a second click cannot queue a second crawl. */
+  const [recrawling, setRecrawling] = useState(false);
 
   return (
     <>
@@ -61,7 +65,10 @@ export function SourceHeaderMenu({
         <DropdownMenuContent align="end">
           {canRecrawl && (
             <DropdownMenuItem
+              disabled={recrawling}
               onSelect={async () => {
+                if (recrawling) return;
+                setRecrawling(true);
                 try {
                   await recrawlSourceAction(source.id);
                   toast.success("Re-crawl started.");
@@ -70,11 +77,13 @@ export function SourceHeaderMenu({
                   toast.error(
                     error instanceof Error ? error.message : "Re-crawl failed"
                   );
+                } finally {
+                  setRecrawling(false);
                 }
               }}
             >
               <RefreshCw className="size-4" />
-              Re-crawl now
+              <RollInText text={recrawling ? "Starting re-crawl…" : "Re-crawl now"} />
             </DropdownMenuItem>
           )}
           {assistantId && (

@@ -3,8 +3,6 @@ import { deliverWebhookCallback, verifyWebhookCallbackToken } from "@agent-hub/a
 import { clientAddress, createRateLimiter } from "@/lib/rate-limit";
 import { getServiceRoleDb } from "@/lib/service-db";
 
-export const runtime = "nodejs";
-
 /**
  * The callback an `http_webhook` step is waiting for (#842).
  *

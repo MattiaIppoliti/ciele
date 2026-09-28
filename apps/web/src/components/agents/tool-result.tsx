@@ -1,15 +1,13 @@
 "use client";
 // beui.dev/components/agents/tool-result
 
-import { Braces, CircleCheck, RotateCcw, Wrench } from "lucide-react";
-import { Ban, ChevronDown, CircleX, LoaderCircle, SquareTerminal } from "lucide-react";
+import { Ban, ChevronDown, CircleCheck, CircleX, LoaderCircle } from "lucide-react";
 // Icon data for the copy mark, which reshapes into the check on click.
 import { Check as CheckData, Copy as CopyData } from "lucide";
 import { MorphIcon } from "morphicons/react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,
-  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -27,26 +25,19 @@ import { useCopied } from "@/lib/hooks/use-copied";
 import { cn } from "@/lib/utils";
 
 export type ToolResultStatus = "running" | "success" | "error" | "cancelled";
-export type ToolResultKind = "terminal" | "request" | "custom";
 
+// Trimmed from upstream to what the Thinking panel passes: uncontrolled,
+// collapsing when the call finishes, with a copy action and no retry.
 export interface ToolResultProps {
   tool: ReactNode;
   title: ReactNode;
   children: ReactNode;
   status?: ToolResultStatus;
-  kind?: ToolResultKind;
   meta?: ReactNode;
-  icon?: ReactNode;
-  open?: boolean;
+  icon: ReactNode;
   defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  collapseOnComplete?: boolean;
-  maxHeight?: number;
   copyText?: string;
-  onCopy?: () => void | Promise<void>;
-  onRetry?: () => void;
   className?: string;
-  contentClassName?: string;
 }
 
 export interface ToolResultOutputProps {
@@ -79,12 +70,6 @@ function getStatusClass(status: ToolResultStatus) {
     return "text-rose-600 dark:text-rose-400";
   }
   return "text-muted-foreground";
-}
-
-function KindIcon({ kind }: { kind: ToolResultKind }) {
-  if (kind === "terminal") return <SquareTerminal className="size-4" />;
-  if (kind === "request") return <Braces className="size-4" />;
-  return <Wrench className="size-4" />;
 }
 
 function StatusIcon({
@@ -150,19 +135,11 @@ export function ToolResult({
   title,
   children,
   status = "running",
-  kind = "custom",
   meta,
   icon,
-  open,
   defaultOpen = true,
-  onOpenChange,
-  collapseOnComplete = true,
-  maxHeight = 220,
   copyText,
-  onCopy,
-  onRetry,
   className,
-  contentClassName,
 }: ToolResultProps) {
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
@@ -171,36 +148,22 @@ export function ToolResult({
   const viewportRef = useRef<HTMLDivElement>(null);
   const previousStatus = useRef(status);
   const [copied, markCopied] = useCopied();
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
-  const currentOpen = open ?? internalOpen;
+  const [currentOpen, setOpen] = useState(defaultOpen);
   const running = status === "running";
-  const canCopy = Boolean(copyText || onCopy);
   const titleKey = getSwapKey(title, status);
   const metaKey = getSwapKey(meta, `${status}-meta`);
   const toolKey = getSwapKey(tool, `${status}-tool`);
   const statusLabel = getStatusLabel(status);
 
-  const setOpen = useCallback(
-    (next: boolean) => {
-      if (open === undefined) setInternalOpen(next);
-      onOpenChange?.(next);
-    },
-    [onOpenChange, open],
-  );
-
   useEffect(() => {
     if (previousStatus.current !== "running" && status === "running") {
       setOpen(true);
     }
-    if (
-      previousStatus.current === "running" &&
-      status !== "running" &&
-      collapseOnComplete
-    ) {
+    if (previousStatus.current === "running" && status !== "running") {
       setOpen(false);
     }
     previousStatus.current = status;
-  }, [collapseOnComplete, setOpen, status]);
+  }, [status]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -219,12 +182,10 @@ export function ToolResult({
     return () => cancelAnimationFrame(frame);
   });
 
-  const handleCopy = useCallback(async () => {
-    if (onCopy) await onCopy();
-    else if (copyText) await navigator.clipboard?.writeText(copyText);
-
+  const handleCopy = async () => {
+    if (copyText) await navigator.clipboard?.writeText(copyText);
     markCopied();
-  }, [copyText, onCopy, markCopied]);
+  };
 
   return (
     <div
@@ -244,23 +205,23 @@ export function ToolResult({
           aria-hidden="true"
           className="grid size-4 shrink-0 place-items-center text-muted-foreground"
         >
-          {icon ?? <KindIcon kind={kind} />}
+          {icon}
         </span>
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="min-w-0 truncate font-medium text-foreground/90">
-            <ActionSwapText value={titleKey} animation="roll">
+            <ActionSwapText value={titleKey}>
               {title}
             </ActionSwapText>
           </span>
           {meta ? (
             <span className="shrink-0 text-xs text-muted-foreground/60">
-              <ActionSwapText value={metaKey} animation="roll">
+              <ActionSwapText value={metaKey}>
                 {meta}
               </ActionSwapText>
             </span>
           ) : null}
           <span className="min-w-0 truncate font-mono text-2xs text-muted-foreground/55">
-            <ActionSwapText value={toolKey} animation="roll">
+            <ActionSwapText value={toolKey}>
               {tool}
             </ActionSwapText>
           </span>
@@ -272,7 +233,7 @@ export function ToolResult({
           )}
         >
           <StatusIcon status={status} reduce={reduce} />
-          <ActionSwapText value={status} animation="roll">
+          <ActionSwapText value={status}>
             {statusLabel}
           </ActionSwapText>
         </span>
@@ -299,28 +260,21 @@ export function ToolResult({
             role="log"
             aria-live="polite"
             className="scrollbar-hide overflow-y-auto"
-            style={{ maxHeight }}
+            style={{ maxHeight: 220 }}
           >
-            <div className={cn("p-3", contentClassName)}>{children}</div>
+            <div className="p-3">{children}</div>
           </div>
 
-            {canCopy || onRetry ? (
+            {copyText ? (
               <div className="flex items-center gap-0.5 px-2 pb-1.5">
-              {canCopy ? (
-                <ToolResultAction
-                  label={copied ? "Copied" : "Copy result"}
-                  onClick={handleCopy}
-                >
-                  <MorphIcon icon={copied ? CheckData : CopyData} size={14} />
-                </ToolResultAction>
-              ) : null}
-              {onRetry ? (
-                <ToolResultAction label="Run again" onClick={onRetry}>
-                  <RotateCcw className="size-3.5" />
-                </ToolResultAction>
-              ) : null}
+              <ToolResultAction
+                label={copied ? "Copied" : "Copy result"}
+                onClick={handleCopy}
+              >
+                <MorphIcon icon={copied ? CheckData : CopyData} size={14} />
+              </ToolResultAction>
               <span className="ml-auto text-2xs text-muted-foreground/55">
-                <ActionSwapText value={status} animation="roll">
+                <ActionSwapText value={status}>
                   {statusLabel}
                 </ActionSwapText>
               </span>

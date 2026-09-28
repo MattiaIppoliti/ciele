@@ -59,3 +59,7 @@ export type MutatedEntity =
    * so an id would be a second way to say the same thing.
    */
   | { kind: "myMemory" };
+
+/** The editor of each Assistant in `ids`, in order. */
+export const assistantEditors = (ids: readonly string[]): MutatedEntity[] =>
+  ids.map((assistantId) => ({ kind: "assistantEditor", assistantId }));

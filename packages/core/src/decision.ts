@@ -31,7 +31,7 @@ export interface DecisionChoiceQuestion {
 export interface DecisionScoreQuestion {
   readonly type: "score";
   readonly instructions: string;
-  /** Ordered levels, indexed from zero; two to SCORE_LEVEL_CAP of them. */
+  /** Ordered levels, indexed from zero; two to ten of them. */
   readonly criteria: readonly string[];
 }
 
@@ -46,9 +46,8 @@ export type DecisionQuestion =
   | DecisionScoreQuestion
   | DecisionBooleanQuestion;
 
-/** Jev's option and level limits; the SDK and the provider enforce the same. */
+/** Jev's option limit; the SDK and the provider enforce the same. */
 export const CHOICE_OPTION_CAP = 255;
-export const SCORE_LEVEL_CAP = 10;
 
 export interface DecisionChoiceAnswer<Option extends string = string> {
   readonly type: "choice";

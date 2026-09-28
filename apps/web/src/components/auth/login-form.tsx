@@ -28,7 +28,6 @@ function LoginFormInner() {
         // The action reports one error for the pair, shake both fields, print
         // the message once, under the password.
         error={Boolean(state.error)}
-        classNames={{ field: "bg-white" }}
         required
       />
       <Input
@@ -39,7 +38,6 @@ function LoginFormInner() {
         autoComplete="current-password"
         placeholder="••••••••"
         error={state.error ?? undefined}
-        classNames={{ field: "bg-white" }}
         required
       />
 

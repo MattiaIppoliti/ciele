@@ -109,12 +109,10 @@ export function defaultTimezone(): string {
 export function timezoneOptions(
   now: Date = new Date()
 ): Array<{ value: string; label: string }> {
-  const supported = (
-    Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
-  ).supportedValuesOf;
   let zones: string[];
   try {
-    zones = supported ? supported("timeZone") : [];
+    // Throws where the runtime has no supportedValuesOf at all.
+    zones = Intl.supportedValuesOf("timeZone");
   } catch {
     zones = [];
   }

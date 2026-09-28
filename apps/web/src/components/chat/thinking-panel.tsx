@@ -10,6 +10,8 @@ import { StepIcon, stepIconName } from "./tool-icons";
 import { ThinkingTimeline } from "./thinking-timeline";
 import { ThinkingShimmer } from "@/components/agents/loading-states/thinking-shimmer";
 import { ThinkingOrb } from "@/components/orbs/thinking-orb";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { chatVisibleSteps, liveOrbState, liveTraceLabel, thinkingIconSteps } from "./stored-trace";
 
 /**
@@ -126,14 +128,14 @@ export function ThinkingPanel({
             </span>
             {searchCount > 1 && (
               <span className="text-2xs font-semibold text-muted-foreground">
-                ×{searchCount}
+                ×<RollingNumber value={searchCount} />
               </span>
             )}
           </span>
         )}
         <span className="flex min-w-0 items-center text-sm leading-5 font-medium text-muted-foreground">
           {finished ? (
-            (summaryLabel ?? `Thought for ${seconds ?? "a few"}s`)
+            <RollInText text={summaryLabel ?? `Thought for ${seconds ?? "a few"}s`} />
           ) : (
             <span className="flex min-w-0 items-center gap-1.5">
               {/* The thinking orb (vendored thinking-orbs) sits between the

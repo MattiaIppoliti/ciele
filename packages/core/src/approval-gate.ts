@@ -230,7 +230,6 @@ export function approvalReviewTitle(verdict: Extract<ApprovalVerdict, { kind: "r
     case "out_of_mandate":
       return "An action outside this colleague's stated role is waiting for your approval";
     case "unsure":
-      return "An action needs your approval before it runs";
     case "no_decision":
       return "An action needs your approval before it runs";
   }

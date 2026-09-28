@@ -10,6 +10,10 @@ import { Button, Label } from "@agent-hub/ui";
 import { Undo2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/toast";
+import { formatCount } from "@/lib/format";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { useSettingsDirty } from "@/components/settings/settings-dirty";
 import { MEMORY_EMPTY_HINT, revertLabel } from "@/lib/teammates/memory-copy";
 import { MemoryHistory } from "@/components/teammates/memory-history";
 import {
@@ -28,16 +32,21 @@ import {
  */
 export function MemoryClient({
   body: initial,
+  updatedAt,
   entries,
   teammateNames,
 }: {
   body: string;
+  /** The loaded version, so a save over a newer write is refused, not applied. */
+  updatedAt: string | null;
   entries: MemoryDocumentEntry[];
   teammateNames: Record<string, string>;
 }) {
   const [body, setBody] = useState(initial);
   const [isPending, startTransition] = useTransition();
   const dirty = body !== initial;
+  useSettingsDirty(dirty);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   /**
    * Each write paired with the text it produced (#767, story 19's "what").
    * Against `initial` rather than the edited `body`: the history describes
@@ -49,7 +58,7 @@ export function MemoryClient({
   function save() {
     startTransition(async () => {
       try {
-        await writeMyMemoryAction(body);
+        await writeMyMemoryAction(body, "", updatedAt);
         toast.success("Saved, your teammates read it from the next message");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Could not save");
@@ -57,12 +66,28 @@ export function MemoryClient({
     });
   }
 
+  async function restore(entry: MemoryDocumentEntry) {
+    const restored = await revertMyMemoryAction(entry.id);
+    setBody(restored.body);
+    toast.success("Undone");
+  }
+
   function revert(entry: MemoryDocumentEntry) {
+    // The restored text replaces the textarea, so an unsaved draft would go
+    // with it.
+    if (dirty) {
+      confirmDelete({
+        title: "Discard your unsaved edits?",
+        description:
+          "Undoing this change replaces the text above with the restored version. What you typed since the last save is lost.",
+        confirmLabel: "Discard and undo",
+        onConfirm: () => restore(entry),
+      });
+      return;
+    }
     startTransition(async () => {
       try {
-        const restored = await revertMyMemoryAction(entry.id);
-        setBody(restored.body);
-        toast.success("Undone");
+        await restore(entry);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Could not undo");
       }
@@ -78,13 +103,22 @@ export function MemoryClient({
           value={body}
           rows={10}
           placeholder={MEMORY_EMPTY_HINT}
-          onChange={(e) =>
-            setBody(e.target.value.slice(0, MEMORY_DOCUMENT_MAX_CHARS))
-          }
+          onChange={(e) => {
+            const next = e.target.value;
+            // A paste can overshoot the cap; say what was cut instead of
+            // dropping the tail silently.
+            if (next.length > MEMORY_DOCUMENT_MAX_CHARS) {
+              toast.warning(
+                `Only the first ${formatCount(MEMORY_DOCUMENT_MAX_CHARS)} characters were kept`,
+              );
+            }
+            setBody(next.slice(0, MEMORY_DOCUMENT_MAX_CHARS));
+          }}
         />
         <div className="text-muted-foreground flex items-center justify-between text-sm">
-          <span>
-            {body.length} / {MEMORY_DOCUMENT_MAX_CHARS} characters
+          <span className="tabular-nums">
+            <RollingNumber value={body.length} /> /{" "}
+            {formatCount(MEMORY_DOCUMENT_MAX_CHARS)} characters
           </span>
           <Button
             size="sm"
@@ -97,7 +131,8 @@ export function MemoryClient({
       </div>
 
       <div className="space-y-2">
-        <Label>History</Label>
+        {/* A heading, not a Label: there is no control for it to name. */}
+        <h2 className="text-sm leading-none font-medium">History</h2>
         <MemoryHistory
           changes={changes}
           teammateNames={teammateNames}
@@ -115,6 +150,7 @@ export function MemoryClient({
           )}
         />
       </div>
+      {confirmDeleteModal}
     </div>
   );
 }

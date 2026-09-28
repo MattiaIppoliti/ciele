@@ -8,17 +8,13 @@ import {
   MorphingDialogContainer,
   MorphingDialogContent,
   MorphingDialogDescription,
-  MorphingDialogImage,
   MorphingDialogSubtitle,
   MorphingDialogTitle,
   MorphingDialogTrigger,
 } from "@/components/core/morphing-dialog";
 import { Spotlight } from "@/components/core/spotlight";
 import { TiltCard } from "@/components/motion/tilt-card";
-import {
-  VisualSkeleton,
-  type Feature,
-} from "@/components/home/feature-card-face";
+import type { Feature } from "@/components/home/feature-card-face";
 
 /**
  * The live feature card: tilt, spotlight and the dialog it morphs into.
@@ -28,15 +24,7 @@ import {
  * and swaps this in when the section comes near, which is what keeps the
  * animation library out of every marketing page's first-load JS.
  */
-export function FeatureCard({
-  feature,
-  mounted,
-}: {
-  feature: Feature;
-  /** Once the Features section is near view, render the real (lazy) visual;
-   * until then a same-height skeleton stands in so nothing loads/animates. */
-  mounted: boolean;
-}) {
+export function FeatureCard({ feature }: { feature: Feature }) {
   return (
     <MorphingDialog
       transition={{
@@ -46,7 +34,7 @@ export function FeatureCard({
       }}
     >
       {/* TiltCard's `max` is peak-to-peak, so 16 is the 8deg edge tilt. */}
-      <TiltCard max={16} invert glare={false} className="h-full">
+      <TiltCard max={16} glare={false} className="h-full">
         {/* Spotlight border glow: the wrapper's translucent bg reads as the
             card border; the cursor-following glow shines through the 1px
             inset around the opaque trigger on top. data-feature-card marks the
@@ -64,17 +52,7 @@ export function FeatureCard({
             ariaLabel={`Learn more about ${feature.title}`}
             className="bg-card flex h-full flex-col overflow-hidden text-left"
           >
-            {feature.visual ? (
-              <div className="border-b">
-                {mounted ? feature.visual(false) : <VisualSkeleton />}
-              </div>
-            ) : (
-              <MorphingDialogImage
-                src={feature.image ?? ""}
-                alt={`${feature.title} | Ciele`}
-                className="h-44 w-full border-b object-cover object-top"
-              />
-            )}
+            <div className="border-b">{feature.visual(false)}</div>
             <div className="flex grow flex-col p-5">
               <div className="flex grow flex-col">
                 <MorphingDialogTitle className="text-foreground font-medium">
@@ -102,15 +80,7 @@ export function FeatureCard({
           ariaLabel={feature.title}
           className="bg-card pointer-events-auto relative flex h-auto w-full flex-col overflow-hidden border sm:w-[500px]"
         >
-          {feature.visual ? (
-            <div className="border-b">{feature.visual(true)}</div>
-          ) : (
-            <MorphingDialogImage
-              src={feature.image ?? ""}
-              alt={`${feature.title} | Ciele`}
-              className="w-full border-b object-cover"
-            />
-          )}
+          <div className="border-b">{feature.visual(true)}</div>
           <div className="p-6">
             <MorphingDialogTitle className="text-foreground text-2xl font-semibold">
               {feature.title}
@@ -119,7 +89,6 @@ export function FeatureCard({
               {feature.body}
             </MorphingDialogSubtitle>
             <MorphingDialogDescription
-              disableLayoutAnimation
               variants={{
                 initial: { opacity: 0, scale: 0.8, y: 100 },
                 animate: { opacity: 1, scale: 1, y: 0 },

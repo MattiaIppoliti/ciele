@@ -10,7 +10,7 @@ import { fileConfigStore, type ConfigStore } from "./config.ts";
 import { table } from "./output.ts";
 import { assistants } from "./commands/assistants.ts";
 import { flows } from "./commands/flows.ts";
-import { collections, faqs, sources } from "./commands/knowledge.ts";
+import { collections, faqs, knowledge, sources } from "./commands/knowledge.ts";
 import { publish } from "./commands/publish.ts";
 import { conversations, messages } from "./commands/inbox.ts";
 import { improvements } from "./commands/improvements.ts";
@@ -39,6 +39,7 @@ const COMMAND_GROUPS: Record<
   collections,
   sources,
   faqs,
+  knowledge,
   publish,
   conversations,
   messages,
@@ -152,6 +153,7 @@ Commands:
   assistants update <id> [--file patch.json|--title|--nickname|--description|--answering-style]
   assistants delete <id> --yes
   assistants get-entities <id>
+  assistants ask <id> "<question>" [--conversation <id>]  Published answer + Sources
   assistants set-entities <id> --ids <entityId,…>
   assistants get-skills <id>
   assistants set-skills <id> --ids <skillId,…>
@@ -179,6 +181,7 @@ Commands:
   faqs add-org --question <q> --answer <a> --assistants <a,b,…>
   faqs import-org --file <faqs.csv> --assistants <a,b,…>
   faqs export                                     Every FAQ as CSV on stdout
+  knowledge search "<query>" [--assistant <id>]   Passages + Sources; no answer is generated
 
   Adding knowledge always names the Assistants it reaches: a Collection has no
   owner, so --assistants is the link set, and an empty one is refused.

@@ -235,6 +235,19 @@ describe("the card", () => {
     expect(card.overflow).toBe(0);
   });
 
+  // A bare template literal printed "1204/2310": the grouping is formatCount's,
+  // so the header reads like every other count in the console.
+  it("groups large counts in the header and the title", () => {
+    const state = mergeIngestionSnapshot(
+      emptyIngestionActivity(),
+      snapshot([importRun(2310, 1204)]),
+      T0,
+    );
+    const card = ingestionActivityCard(state)!;
+    expect(card.title).toBe("Importing 2,310 items");
+    expect(card.count).toBe("1,204/2,310");
+  });
+
   it("shows no fraction for a crawl whose page total is not known yet", () => {
     const state = mergeIngestionSnapshot(
       emptyIngestionActivity(),

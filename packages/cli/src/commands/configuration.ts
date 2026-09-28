@@ -1,14 +1,7 @@
-import { readFileSync } from "node:fs";
 import type { GoalExpectations, GoalStatus, SkillInput, SkillPatch } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
-
-function jsonFile<T>(ctx: CommandContext, hint: string): T | number {
-  const path = str(ctx.flags.file);
-  if (!path) return usage(ctx.deps, hint);
-  return JSON.parse(readFileSync(path, "utf8")) as T;
-}
+import { jsonFile, usage, type CommandContext } from "./shared.ts";
 
 export async function skills(verb: string | undefined, ctx: CommandContext) {
   const { client, rest, flags, emit, deps } = ctx;
@@ -24,7 +17,7 @@ export async function skills(verb: string | undefined, ctx: CommandContext) {
     }
     case "create": {
       const input = jsonFile<SkillInput>(ctx, "skills create --file <skill.json>");
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const skill = await client.skills.create(input);
       emit(`Created ${skill.id}`, skill);
       return EXIT.ok;
@@ -32,7 +25,7 @@ export async function skills(verb: string | undefined, ctx: CommandContext) {
     case "update": {
       if (!rest[0]) return usage(deps, "skills update <id> --file <patch.json>");
       const patch = jsonFile<SkillPatch>(ctx, "skills update <id> --file <patch.json>");
-      if (typeof patch === "number") return patch;
+      if (patch === undefined) return EXIT.usage;
       const skill = await client.skills.update(rest[0], patch);
       emit(`Updated ${skill.id}`, skill);
       return EXIT.ok;
@@ -67,7 +60,7 @@ export async function goals(verb: string | undefined, ctx: CommandContext) {
         ctx,
         "goals create <assistantId> --file <goal.json>"
       );
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const goal = await client.goals.create(rest[0], input);
       emit(`Created ${goal.id}`, goal);
       return EXIT.ok;
@@ -81,7 +74,7 @@ export async function goals(verb: string | undefined, ctx: CommandContext) {
         expectations?: GoalExpectations;
         status?: GoalStatus;
       }>(ctx, "goals update <assistantId> <goalId> --file <patch.json>");
-      if (typeof patch === "number") return patch;
+      if (patch === undefined) return EXIT.usage;
       const goal = await client.goals.update(rest[0], rest[1], patch);
       emit(`Updated ${goal.id}`, goal);
       return EXIT.ok;

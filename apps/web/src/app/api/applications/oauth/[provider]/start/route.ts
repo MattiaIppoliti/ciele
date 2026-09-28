@@ -16,8 +16,6 @@ import {
   sealApplicationOAuthTransaction,
 } from "@/lib/application-oauth";
 
-export const runtime = "nodejs";
-
 async function beginOAuth(input: {
   request: NextRequest;
   provider: string;

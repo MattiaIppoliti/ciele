@@ -1,4 +1,6 @@
-import type { Operation, OperationContext } from "@ciele/ops";
+import { notFound } from "next/navigation";
+import { OperationError, type Operation, type OperationContext } from "@ciele/ops";
+import { profileName } from "@/lib/auth";
 import { requireMember } from "@/lib/authz";
 import { webOperationPorts } from "@/lib/op-ports";
 import { revalidateEntities } from "@/lib/org-mutation";
@@ -21,10 +23,7 @@ export async function runOperation<In, Out>(
     userId: session.userId,
     role: session.role ?? "viewer",
     actorEmail: session.email,
-    actorName:
-      [session.profile?.firstName, session.profile?.lastName].filter(Boolean).join(" ") ||
-      session.profile?.username ||
-      null,
+    actorName: profileName(session.profile) ?? null,
     db,
     ports: webOperationPorts(db, {
       organizationId: session.organization.id,
@@ -34,4 +33,22 @@ export async function runOperation<In, Out>(
   const result = await op.run(ctx, input);
   revalidateEntities(op.entities(input, result), session.organization.id);
   return result;
+}
+
+/**
+ * `runOperation` for a page render: an operation's `not_found` becomes the
+ * route's 404. A row in another Organization and a row that never existed
+ * answer the same way, so the console does not confirm that someone else's
+ * row exists. Anything else is a real failure and keeps being one.
+ */
+export async function runPageOperation<In, Out>(
+  op: Operation<In, Out>,
+  rawInput: In
+): Promise<Out> {
+  try {
+    return await runOperation(op, rawInput);
+  } catch (error) {
+    if (error instanceof OperationError && error.code === "not_found") notFound();
+    throw error;
+  }
 }

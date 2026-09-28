@@ -15,7 +15,6 @@ import {
 } from "@/lib/widget-rate-limit";
 
 export const maxDuration = 300;
-export const runtime = "nodejs";
 
 /**
  * Public widget chat. Always serves the latest Publication (snapshot

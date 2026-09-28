@@ -104,8 +104,6 @@ type StoredIngestJob =
   | (Omit<IngestJob, "rawText"> & { payloadVersion: number })
   | (IngestJob & { schemaLagFallback?: boolean });
 
-export type IngestJobDeps = JobDeps;
-
 /** Executes one job to completion. Rehydrates everything from the Db so the
  *  payload stays serializable; any failure lands in the Source's `error`. */
 async function performIngest(
@@ -115,7 +113,7 @@ async function performIngest(
     leaseToken?: string;
   },
   rawText: string,
-  deps: IngestJobDeps,
+  deps: JobDeps,
   renewLease?: () => Promise<boolean>,
   drafts?: SourceConceptDraft[] | null
 ): Promise<void> {
@@ -126,6 +124,11 @@ async function performIngest(
   ]);
   if (!assistant || !source) throw new Error("Not found");
   const connections = await db.listProviderConnections(assistant.organizationId);
+  // The durable job's fence; a legacy payload with no version runs unfenced.
+  const fence =
+    job.payloadVersion === undefined
+      ? undefined
+      : { jobId: job.jobId!, leaseToken: job.leaseToken!, version: job.payloadVersion };
   const completed = await ingestSource({
     db,
     assistantId: job.assistantId,
@@ -136,38 +139,20 @@ async function performIngest(
     renewLease,
     drafts,
     initializeAttempt:
-      job.payloadVersion === undefined
-        ? undefined
-        : (nextDrafts) =>
-            db.initializeSourceIngestAttempt({
-              jobId: job.jobId!,
-              leaseToken: job.leaseToken!,
-              sourceId: job.sourceId,
-              version: job.payloadVersion!,
-              drafts: nextDrafts,
-            }),
+      fence &&
+      ((nextDrafts) =>
+        db.initializeSourceIngestAttempt({ ...fence, sourceId: job.sourceId, drafts: nextDrafts })),
     persistCursor:
-      job.payloadVersion === undefined
-        ? undefined
-        : (generationId, cursor) =>
-            db.checkpointSourceIngestCursor({
-              jobId: job.jobId!,
-              leaseToken: job.leaseToken!,
-              sourceId: job.sourceId,
-              version: job.payloadVersion!,
-              generationId,
-              cursor,
-            }),
+      fence &&
+      ((generationId, cursor) =>
+        db.checkpointSourceIngestCursor({
+          ...fence,
+          sourceId: job.sourceId,
+          generationId,
+          cursor,
+        })),
     commitGeneration:
-      job.payloadVersion === undefined
-        ? undefined
-        : (generation) =>
-            db.commitSourceIngestGeneration({
-              jobId: job.jobId!,
-              leaseToken: job.leaseToken!,
-              version: job.payloadVersion!,
-              ...generation,
-            }),
+      fence && ((generation) => db.commitSourceIngestGeneration({ ...fence, ...generation })),
   });
 
   if (!completed) {
@@ -462,16 +447,13 @@ const distillAgentMemoryHandler: JobHandler = {
  */
 export async function enqueueAgentMemoryJob(
   job: { organizationId: string; teammateId: string; conversationId: string },
-  deps: JobDeps,
-  options: { delayMs?: number } = {}
+  deps: JobDeps
 ): Promise<void> {
   await deps.db.createBackgroundJob({
     organizationId: job.organizationId,
     kind: DISTILL_AGENT_MEMORY_KIND,
     payload: { kind: DISTILL_AGENT_MEMORY_KIND, ...job },
-    nextRunAt: new Date(
-      Date.now() + (options.delayMs ?? MEMORY_QUIET_MS)
-    ).toISOString(),
+    nextRunAt: new Date(Date.now() + MEMORY_QUIET_MS).toISOString(),
   });
   getRuntimeHost().scheduleAfterResponse(() =>
     runDueJobs(deps, { kinds: [DISTILL_AGENT_MEMORY_KIND], limit: 5 })
@@ -603,6 +585,19 @@ type ExtractMemoriesJob = {
   documentPath: string;
 };
 
+function extractMemoriesPayload(
+  input: { organizationId: string; collectionId: string; sourceId: string },
+  documentPath: string
+): ExtractMemoriesJob {
+  return {
+    kind: EXTRACT_MEMORIES_KIND,
+    organizationId: input.organizationId,
+    collectionId: input.collectionId,
+    sourceId: input.sourceId,
+    documentPath,
+  };
+}
+
 const extractMemoriesHandler: JobHandler = {
   async perform(record, deps) {
     const payload = record.payload as Partial<ExtractMemoriesJob>;
@@ -711,13 +706,7 @@ export async function enqueueDocumentMemoryExtractions(
           organizationId: input.organizationId,
           kind: EXTRACT_MEMORIES_KIND,
           sourceId: input.sourceId,
-          payload: {
-            kind: EXTRACT_MEMORIES_KIND,
-            organizationId: input.organizationId,
-            collectionId: input.collectionId,
-            sourceId: input.sourceId,
-            documentPath: document.path,
-          } satisfies ExtractMemoriesJob,
+          payload: extractMemoriesPayload(input, document.path),
         });
       }
       if (documents.items.length < EXTRACT_MEMORIES_ENQUEUE_PAGE) break;
@@ -791,13 +780,7 @@ export async function enqueueStaleDocumentMemoryExtractions(
       organizationId: input.organizationId,
       kind: EXTRACT_MEMORIES_KIND,
       sourceId: input.sourceId,
-      payload: {
-        kind: EXTRACT_MEMORIES_KIND,
-        organizationId: input.organizationId,
-        collectionId: input.collectionId,
-        sourceId: input.sourceId,
-        documentPath: listed.path,
-      } satisfies ExtractMemoriesJob,
+      payload: extractMemoriesPayload(input, listed.path),
     });
     count += 1;
   }
@@ -823,13 +806,12 @@ function drainMemoryExtractionsAfterResponse(deps: JobDeps): void {
 /** The drain itself, exported for tests. */
 export async function drainMemoryExtractions(
   deps: JobDeps,
-  options: { budgetMs?: number; now?: () => number } = {}
+  options: { budgetMs?: number } = {}
 ): Promise<number> {
-  const now = options.now ?? Date.now;
-  const deadline = now() + (options.budgetMs ?? MEMORY_DRAIN_BUDGET_MS);
+  const deadline = Date.now() + (options.budgetMs ?? MEMORY_DRAIN_BUDGET_MS);
   const db = getRuntimeHost().getSystemDb() ?? deps.db;
   let claimed = 0;
-  while (now() < deadline) {
+  while (Date.now() < deadline) {
     const batch = await runDueJobs(
       { ...deps, db },
       { kinds: [EXTRACT_MEMORIES_KIND], limit: MEMORY_DRAIN_BATCH }
@@ -1014,7 +996,7 @@ export async function runDueJobs(
  */
 export async function enqueueIngestJob(
   job: IngestJob,
-  deps: IngestJobDeps
+  deps: JobDeps
 ): Promise<void> {
   await deps.db.stageSourceIngestJob(job);
   getRuntimeHost().scheduleAfterResponse(() =>
@@ -1142,16 +1124,13 @@ export async function enqueueDraftProposalJob(
  */
 export async function enqueueMemoryPromotionJob(
   job: { conversationId: string; organizationId: string },
-  deps: JobDeps,
-  options: { delayMs?: number } = {}
+  deps: JobDeps
 ): Promise<void> {
   await deps.db.createBackgroundJob({
     organizationId: job.organizationId,
     kind: PROMOTE_MEMORIES_KIND,
     payload: { kind: PROMOTE_MEMORIES_KIND, ...job },
-    nextRunAt: new Date(
-      Date.now() + (options.delayMs ?? MEMORY_QUIET_MS)
-    ).toISOString(),
+    nextRunAt: new Date(Date.now() + MEMORY_QUIET_MS).toISOString(),
   });
   getRuntimeHost().scheduleAfterResponse(() =>
     runDueJobs(deps, { kinds: [PROMOTE_MEMORIES_KIND], limit: 5 })
@@ -1228,10 +1207,9 @@ export async function enqueueApplicationSyncJob(
 /** Enqueues every daily Application Import whose next run is due. */
 export async function enqueueDueApplicationSyncs(
   deps: JobDeps,
-  now: Date = new Date(),
-  limit = 50
+  now: Date = new Date()
 ): Promise<{ enqueued: number }> {
-  const due = await deps.db.listDueApplicationImports(now.toISOString(), limit);
+  const due = await deps.db.listDueApplicationImports(now.toISOString(), 50);
   let enqueued = 0;
   for (const applicationImport of due) {
     if (await deps.db.createApplicationSyncJobIfAbsent({

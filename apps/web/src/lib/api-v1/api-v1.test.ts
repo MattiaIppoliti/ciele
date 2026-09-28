@@ -126,6 +126,28 @@ describe("API key authentication", () => {
     const body = await denied!.json();
     expect(body.error.code).toBe("forbidden");
   });
+
+  it("pins the whole capability × key Role table", () => {
+    const roles = ["owner", "admin", "editor", "viewer"] as const;
+    const allowed = {
+      member: ["owner", "admin", "editor", "viewer"],
+      edit: ["owner", "admin", "editor"],
+      publish: ["owner", "admin"],
+      manageMembers: ["owner", "admin"],
+      manageApiKeys: ["owner", "admin"],
+      changeRoles: ["owner"],
+    } as const;
+    for (const [capability, expected] of Object.entries(allowed)) {
+      const actual = roles.filter(
+        (role) =>
+          requireApiCapability(
+            { role } as Parameters<typeof requireApiCapability>[0],
+            capability as keyof typeof allowed
+          ) === null
+      );
+      expect([capability, actual]).toEqual([capability, expected]);
+    }
+  });
 });
 
 describe("GET /api/v1/assistants (tracer read)", () => {

@@ -4,11 +4,8 @@ import type {
   ApplicationImport,
   ApplicationProvider,
 } from "@agent-hub/core";
-import {
-  createApplicationConnectorRegistry,
-  type ApplicationHttpClient,
-  type ApplicationHttpResponse,
-} from "./application-provider-connectors";
+import { createApplicationConnectorRegistry } from "./application-provider-connectors";
+import type { ApplicationHttpClient, ApplicationHttpResponse } from "./application-provider-http";
 
 function response(body: unknown, status = 200): ApplicationHttpResponse {
   const text = typeof body === "string" ? body : JSON.stringify(body);

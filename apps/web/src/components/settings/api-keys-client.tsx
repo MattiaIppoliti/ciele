@@ -7,6 +7,7 @@ import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { createApiKeyAction, revokeApiKeyAction } from "@/app/actions";
 import { MorphingModal } from "@/components/motion/morphing-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
 import { Table, type TableColumn } from "@/components/motion/table";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { formatDay } from "@/lib/format";
@@ -28,6 +29,12 @@ import {
 
 const ALL_ROLES: Role[] = ["owner", "admin", "editor", "viewer"];
 
+/** "viewer" to "Viewer": rolled text is drawn glyph by glyph, so it cannot
+ * lean on `capitalize`. */
+function roleLabel(role: Role): string {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
 export function ApiKeysClient({
   keys,
   currentRole,
@@ -43,6 +50,10 @@ export function ApiKeysClient({
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>("viewer");
   const [mintedSecret, setMintedSecret] = useState<string | null>(null);
+  // The secret cannot be shown twice, so a stray Escape or backdrop click must
+  // not throw it away before it was copied.
+  const [secretCopied, setSecretCopied] = useState(false);
+  const [confirmingClose, setConfirmingClose] = useState(false);
   const [pendingRevoke, setPendingRevoke] = useState<OrgApiKey | null>(null);
   const [isPending, startTransition] = useTransition();
   const { copyText, isCopied } = useCopyFeedback<string>();
@@ -54,19 +65,38 @@ export function ApiKeysClient({
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const { secret } = await createApiKeyAction(name, role);
-      setMintedSecret(secret);
-      setName("");
+      try {
+        const { secret } = await createApiKeyAction(name, role);
+        setSecretCopied(false);
+        setConfirmingClose(false);
+        setMintedSecret(secret);
+        setName("");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not create the key",
+        );
+      }
     });
   }
 
   function handleRevoke() {
     if (!pendingRevoke || isPending) return;
     startTransition(async () => {
-      await revokeApiKeyAction(pendingRevoke.id);
-      toast.success("API key revoked");
-      setPendingRevoke(null);
+      try {
+        await revokeApiKeyAction(pendingRevoke.id);
+        toast.success("API key revoked");
+        setPendingRevoke(null);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not revoke the key",
+        );
+      }
     });
+  }
+
+  function closeSecret() {
+    setMintedSecret(null);
+    setConfirmingClose(false);
   }
 
   const columns: TableColumn<OrgApiKey>[] = [
@@ -134,9 +164,13 @@ export function ApiKeysClient({
       width: "12%",
       cell: (key) =>
         key.revokedAt ? (
-          <Badge variant="outline">Revoked</Badge>
+          <Badge variant="outline">
+            <RollInText text="Revoked" />
+          </Badge>
         ) : (
-          <Badge variant="secondary">Active</Badge>
+          <Badge variant="secondary">
+            <RollInText text="Active" />
+          </Badge>
         ),
     },
     {
@@ -205,12 +239,11 @@ export function ApiKeysClient({
                 <Button
                   type="button"
                   variant="outline"
-                  className="capitalize"
                   aria-label={`Role: ${role}`}
                 />
               }
             >
-              {role}
+              <RollInText text={roleLabel(role)} />
               <ChevronDown className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
@@ -226,7 +259,8 @@ export function ApiKeysClient({
             </DropdownMenuContent>
           </DropdownMenu>
           <Button type="submit" disabled={isPending}>
-            <Plus className="size-4" /> Create key
+            <Plus className="size-4" />
+            <RollInText text={isPending ? "Creating…" : "Create key"} />
           </Button>
         </form>
       </div>
@@ -235,7 +269,10 @@ export function ApiKeysClient({
       <MorphingModal
         viewId={mintedSecret ? "secret" : null}
         title="Your new API key"
-        onClose={() => setMintedSecret(null)}
+        onClose={() => {
+          if (secretCopied) closeSecret();
+          else setConfirmingClose(true);
+        }}
         placement="bottom"
       >
         <div className="space-y-4">
@@ -253,21 +290,41 @@ export function ApiKeysClient({
           </div>
           <button
             type="button"
+            aria-label="Copy API key"
             onClick={() =>
               mintedSecret &&
-              void copyText("minted", mintedSecret).then((ok) =>
-                ok
-                  ? toast.success("API key copied")
-                  : toast.error("Could not copy the key")
-              )
+              void copyText("minted", mintedSecret).then((ok) => {
+                if (ok) {
+                  setSecretCopied(true);
+                  setConfirmingClose(false);
+                  toast.success("API key copied");
+                } else {
+                  toast.error("Could not copy the key");
+                }
+              })
             }
             className="bg-muted hover:bg-muted/70 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left font-mono text-sm break-all transition-colors"
           >
             {mintedSecret}
             <CopyFeedbackIcon copied={isCopied("minted")} className="size-4 shrink-0" />
           </button>
+          {confirmingClose && (
+            <p role="alert" className="text-destructive text-sm">
+              You have not copied this key. Once you close this, it cannot be
+              shown again.
+            </p>
+          )}
           <div className="flex justify-end">
-            <Button onClick={() => setMintedSecret(null)}>Done</Button>
+            {secretCopied || confirmingClose ? (
+              <Button
+                variant={secretCopied ? "default" : "destructive"}
+                onClick={closeSecret}
+              >
+                {secretCopied ? "Done" : "Close without copying"}
+              </Button>
+            ) : (
+              <Button onClick={() => setConfirmingClose(true)}>Done</Button>
+            )}
           </div>
         </div>
       </MorphingModal>

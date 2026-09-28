@@ -21,14 +21,6 @@ import type {
  * snooze the installing admin, never a Visitor).
  */
 
-export const CONNECTOR_PROVIDERS: readonly ConnectorProvider[] = [
-  "servicenow",
-  "salesforce",
-  "slack",
-  "onedrive",
-  "google_drive",
-];
-
 export const CONNECTOR_PROVIDER_LABELS: Record<ConnectorProvider, string> = {
   servicenow: "ServiceNow",
   salesforce: "Salesforce",
@@ -36,6 +28,10 @@ export const CONNECTOR_PROVIDER_LABELS: Record<ConnectorProvider, string> = {
   onedrive: "OneDrive",
   google_drive: "Google Drive",
 };
+
+export const CONNECTOR_PROVIDERS = Object.keys(
+  CONNECTOR_PROVIDER_LABELS
+) as readonly ConnectorProvider[];
 
 /**
  * Providers whose Connections are personal grants (ADR-0021): a Drive action

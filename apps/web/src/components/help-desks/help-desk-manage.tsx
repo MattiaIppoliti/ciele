@@ -24,7 +24,18 @@ import { Hint } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
 import { CHANNEL_KINDS, CHANNEL_KIND_ORDER } from "@/lib/support-channels";
-import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import {
+  isRedirectError,
+  useConfirmDelete,
+} from "@/components/ui/confirm-delete-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { discardChangesRequest, useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (isRedirectError(error)) throw error;
+  return error instanceof Error ? error.message : fallback;
+}
 
 const AI_RECOGNITION_TARGET = 200;
 
@@ -45,7 +56,12 @@ export function HelpDeskManage({
   const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
-  const dirty = name !== desk.name || description !== desk.description;
+  const dirty =
+    canEdit && (name !== desk.name || description !== desk.description);
+
+  // The name and description live only in local state until Save changes, so
+  // a reload or a closed tab gets the browser's prompt while they differ.
+  useUnsavedChanges({ dirty });
 
   // Local ordering, optimistically reordered by chevrons/drag, then
   // persisted; resynced whenever the server list changes underneath us
@@ -64,6 +80,7 @@ export function HelpDeskManage({
 
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);
+  const dragStartOrderRef = useRef<SupportChannel[]>([]);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Mirrors the resize-drag effect in app-sidebar.tsx: side effects (cursor,
@@ -96,25 +113,45 @@ export function HelpDeskManage({
     function onUp() {
       dragIndexRef.current = null;
       setDraggingIndex(null);
-      persistOrder(orderRef.current);
+      // A grab that ends where it started changed nothing worth a round trip.
+      const start = dragStartOrderRef.current;
+      const moved = orderRef.current.some((c, i) => c.id !== start[i]?.id);
+      if (moved) persistOrder(orderRef.current);
+    }
+    function onCancel() {
+      // The browser took the pointer (a scroll, a system gesture): put the
+      // rows back rather than saving an order nobody dropped.
+      dragIndexRef.current = null;
+      setDraggingIndex(null);
+      orderRef.current = dragStartOrderRef.current;
+      setOrder(dragStartOrderRef.current);
     }
     document.body.style.cursor = "grabbing";
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
     return () => {
       document.body.style.cursor = "";
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- persistOrder is stable for this instance
   }, [draggingIndex]);
 
   function persistOrder(next: SupportChannel[]) {
     startTransition(async () => {
-      await reorderSupportChannelsAction(
-        desk.id,
-        next.map((c) => c.id)
-      );
+      try {
+        await reorderSupportChannelsAction(
+          desk.id,
+          next.map((c) => c.id)
+        );
+      } catch (error) {
+        // Put the rows back where the server still has them.
+        orderRef.current = channels;
+        setOrder(channels);
+        toast.error(errorMessage(error, "Could not reorder the channels"));
+      }
     });
   }
 
@@ -132,7 +169,15 @@ export function HelpDeskManage({
     if (!canEdit || order.length < 2) return;
     e.preventDefault();
     dragIndexRef.current = index;
+    dragStartOrderRef.current = order;
     setDraggingIndex(index);
+  }
+
+  // The drag handle's keyboard path: the arrows do what the drag does.
+  function onDragKeyDown(e: React.KeyboardEvent, index: number) {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    move(index, e.key === "ArrowUp" ? -1 : 1);
   }
 
   function openPanel(state: ChannelPanelState) {
@@ -156,10 +201,32 @@ export function HelpDeskManage({
       toast.error("Help desk name is required");
       return;
     }
+    const trimmed = name.trim();
     startTransition(async () => {
-      await updateHelpDeskAction(desk.id, { name: name.trim(), description });
+      try {
+        await updateHelpDeskAction(desk.id, { name: trimmed, description });
+      } catch (error) {
+        toast.error(errorMessage(error, "Could not save the help desk"));
+        return;
+      }
+      // The saved name is the trimmed one; match it so the form reads clean.
+      setName(trimmed);
       toast.success("Help desk updated");
     });
+  }
+
+  function onBackClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    // A modified click opens a new tab and leaves this page and its edits alone.
+    if (!dirty || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      return;
+    }
+    e.preventDefault();
+    confirmDelete(
+      discardChangesRequest(
+        "The edits to this help desk's name and description are not saved yet.",
+        () => router.push("/help-desks"),
+      ),
+    );
   }
 
   function handleDelete() {
@@ -190,14 +257,11 @@ export function HelpDeskManage({
   }
 
   return (
-    <div
-      className={`flex h-full flex-col overflow-y-auto ${
-        isPending ? "pointer-events-none opacity-70" : ""
-      }`}
-    >
+    <div className="flex h-full flex-col overflow-y-auto">
       <header className="flex shrink-0 items-center gap-3 px-6 pt-5 pb-4">
         <Link
           href="/help-desks"
+          onClick={onBackClick}
           className="text-muted-foreground flex items-center gap-1 text-sm font-medium hover:opacity-70"
         >
           <ChevronLeft className="size-4" strokeWidth={3} />
@@ -212,6 +276,7 @@ export function HelpDeskManage({
             onChange={(e) => setName(e.target.value)}
             disabled={!canEdit}
             aria-label="Help desk name"
+            autoComplete="off"
             className="focus:ring-ring/50 -mx-2 min-w-0 flex-1 rounded-lg px-2 py-1 text-3xl font-bold tracking-tight outline-none focus:ring-2"
           />
           {canEdit && (
@@ -229,13 +294,16 @@ export function HelpDeskManage({
           )}
         </div>
 
-        <p className="text-muted-foreground mt-4 text-sm">
+        <p id="help-desk-description-hint" className="text-muted-foreground mt-4 text-sm">
           Add at least {AI_RECOGNITION_TARGET} characters for best AI
           recognition (
-          {Math.min(description.trim().length, AI_RECOGNITION_TARGET)}/
-          {AI_RECOGNITION_TARGET}).
+          <RollingNumber
+            value={Math.min(description.trim().length, AI_RECOGNITION_TARGET)}
+          />
+          /{AI_RECOGNITION_TARGET}).
         </p>
         <Textarea
+          aria-describedby="help-desk-description-hint"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe what this help desk handles…"
@@ -247,7 +315,7 @@ export function HelpDeskManage({
         {canEdit && dirty && (
           <div className="mt-3 flex justify-end">
             <Button className="h-10 px-5" onClick={save} disabled={isPending}>
-              {isPending ? "Saving…" : "Save changes"}
+              <RollInText text={isPending ? "Saving…" : "Save changes"} />
             </Button>
           </div>
         )}
@@ -269,7 +337,12 @@ export function HelpDeskManage({
         <section className="mt-5 rounded-xl border bg-card">
           <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
             <div>
-              <p className="font-semibold">Active channels</p>
+              <p className="font-semibold">
+                Active channels{" "}
+                <span className="text-muted-foreground font-normal">
+                  (<RollingNumber value={order.length} />)
+                </span>
+              </p>
               <p className="text-muted-foreground text-sm">
                 Support methods available to users during chat.
               </p>
@@ -298,8 +371,9 @@ export function HelpDeskManage({
                       <button
                         key={kind}
                         type="button"
-                        onClick={() => canEdit && openKind(kind)}
-                        className="hover:bg-muted flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors"
+                        disabled={!canEdit}
+                        onClick={() => openKind(kind)}
+                        className="hover:bg-muted flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-60"
                       >
                         <span className="bg-muted flex size-8 items-center justify-center rounded-md">
                           <Icon className="size-4" />
@@ -373,13 +447,15 @@ export function HelpDeskManage({
                             <AnimatedIcon icon={Trash2} size={16} />
                           </Button>
                         </Hint>
-                        <Hint label="Reorder escalation option">
+                        <Hint label="Drag or use the arrow keys to reorder">
                           <Button
                             variant="ghost"
                             size="icon"
-                            aria-label="Drag to reorder"
+                            aria-label="Drag or use the arrow keys to reorder"
+                            aria-keyshortcuts="ArrowUp ArrowDown"
                             className="cursor-grab touch-none active:cursor-grabbing"
                             onPointerDown={(e) => onDragPointerDown(e, index)}
+                            onKeyDown={(e) => onDragKeyDown(e, index)}
                           >
                             <Move className="size-4" />
                           </Button>
@@ -417,9 +493,14 @@ export function HelpDeskManage({
               aria-label="Auto-generate improvements"
               onCheckedChange={(checked) =>
                 startTransition(async () => {
-                  await updateHelpDeskAction(desk.id, {
-                    autoGenerateImprovements: checked,
-                  });
+                  try {
+                    await updateHelpDeskAction(desk.id, {
+                      autoGenerateImprovements: checked,
+                    });
+                  } catch (error) {
+                    toast.error(errorMessage(error, "Could not update the setting"));
+                    return;
+                  }
                   toast.success(
                     checked
                       ? "Improvements will be auto-generated on escalation"
@@ -443,6 +524,7 @@ export function HelpDeskManage({
           key={panelKey}
           helpDeskId={desk.id}
           initial={panel}
+          canEdit={canEdit}
           onClose={() => setPanel(null)}
         />
       )}

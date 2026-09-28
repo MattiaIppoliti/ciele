@@ -1,4 +1,5 @@
 import type { SourceKind } from "@agent-hub/core";
+import { chunkPreview } from "./document-chunks";
 
 /**
  * Pure derivations for the Document route (#928): its tabs, the Details
@@ -65,10 +66,5 @@ export function documentExcerpt(body: string, limit = 280): string {
     .split(/\n\s*\n/)
     .map((block) => block.trim())
     .find((block) => block.length > 0 && !/^#{1,6}\s/.test(block));
-  if (!paragraph) return "";
-  const flat = paragraph.replace(/\s+/g, " ");
-  if (flat.length <= limit) return flat;
-  const cut = flat.slice(0, limit);
-  const lastSpace = cut.lastIndexOf(" ");
-  return `${cut.slice(0, lastSpace > limit / 2 ? lastSpace : limit)}…`;
+  return paragraph ? chunkPreview(paragraph, limit) : "";
 }

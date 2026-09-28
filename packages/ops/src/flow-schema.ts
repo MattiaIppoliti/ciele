@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { CONNECTOR_PROVIDERS, HTTP_FLOW_METHODS } from "@agent-hub/core";
 import type {
-  ConnectorProvider,
   FlowAction,
   FlowActionSettings,
   FlowCondition,
@@ -220,16 +219,7 @@ const flowActionSettingsObject = z.looseObject({
       headers: z.array(keyValueSchema).max(50).optional(),
       queryParams: z.array(keyValueSchema).max(50).optional(),
       bodyTemplate: z.string().max(20000).optional(),
-      jsonPaths: z
-        .array(
-          z.looseObject({
-            id: z.string(),
-            path: z.string().max(500),
-            variable: z.string().max(100),
-          })
-        )
-        .max(50)
-        .optional(),
+      jsonPaths: z.array(jsonPathSchema).max(50).optional(),
     })
     .optional(),
   // The callback gate (#842). Two calls and a wait; no credential of its own,
@@ -258,7 +248,7 @@ const flowActionSettingsObject = z.looseObject({
   // No credential field, by construction: the Connection row holds it (#839).
   connector: z
     .looseObject({
-      provider: z.enum(CONNECTOR_PROVIDERS as [ConnectorProvider, ...ConnectorProvider[]]).optional(),
+      provider: z.enum(CONNECTOR_PROVIDERS).optional(),
       connectionId: z.string().max(200).optional(),
       action: z.string().max(200).optional(),
       params: z.record(z.string().max(100), z.string().max(20000)).optional(),
@@ -343,14 +333,7 @@ export const flowConfigShape = {
 
 export const flowInputSchema = z.object({
   name: z.string().min(1).max(200),
-  description: flowConfigShape.description.optional(),
-  trigger: flowConfigShape.trigger.optional(),
-  triggerSettings: flowConfigShape.triggerSettings.optional(),
-  conditionLogic: flowConfigShape.conditionLogic.optional(),
-  conditions: flowConfigShape.conditions.optional(),
-  actions: flowConfigShape.actions.optional(),
-  actionSettings: flowConfigShape.actionSettings.optional(),
-  customMessage: flowConfigShape.customMessage.optional(),
+  ...z.object(flowConfigShape).partial().shape,
 }) as unknown as z.ZodType<FlowInput, FlowInput>;
 
 export const flowPatchSchema = z

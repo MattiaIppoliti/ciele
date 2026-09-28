@@ -1,5 +1,4 @@
 import {
-  Button,
   Card,
   CardContent,
   CardDescription,
@@ -7,6 +6,9 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import { startTopupCheckoutAction } from "@/app/(admin)/settings/billing/actions";
+import { RollingNumber } from "@/components/motion/rolling-number";
+import { formatCount, formatDay, formatEur } from "@/lib/format";
+import { PendingSubmitButton } from "@/components/settings/pending-submit-button";
 
 /**
  * Top-up credit packs on Billing (#852).
@@ -38,11 +40,6 @@ const SOURCE_LABELS: Record<string, string> = {
   onboarding: "Onboarding",
 };
 
-const eur = (amount: number) =>
-  amount.toLocaleString("en-US", { style: "currency", currency: "EUR" });
-
-const day = (iso: string) => new Date(iso).toISOString().slice(0, 10);
-
 export function CreditPacksCard({
   packs,
   balance,
@@ -66,9 +63,7 @@ export function CreditPacksCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm">
-          <span className="font-medium tabular-nums">
-            {Math.round(balance).toLocaleString("en-US")}
-          </span>{" "}
+          <RollingNumber value={Math.round(balance)} className="font-medium" />{" "}
           <span className="text-muted-foreground">credits held</span>
         </p>
 
@@ -83,14 +78,20 @@ export function CreditPacksCard({
               >
                 <input type="hidden" name="pack" value={pack.slug} />
                 <p className="font-medium tabular-nums">
-                  {pack.credits.toLocaleString("en-US")} credits
+                  {formatCount(pack.credits)} credits
                 </p>
                 <p className="text-muted-foreground text-sm tabular-nums">
-                  {eur(pack.priceEur)} · {eur(perCredit)} per credit
+                  {formatEur(pack.priceEur)} · {formatEur(perCredit, 3)} per credit
                 </p>
-                <Button type="submit" size="sm" variant="outline" className="mt-2">
+                <PendingSubmitButton
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  pendingLabel="Opening checkout…"
+                  aria-label={`Buy ${formatCount(pack.credits)} credits`}
+                >
                   Buy
-                </Button>
+                </PendingSubmitButton>
               </form>
             );
           })}
@@ -98,7 +99,7 @@ export function CreditPacksCard({
 
         {planCreditPriceEur ? (
           <p className="text-muted-foreground text-xs">
-            Your plan works out at {eur(planCreditPriceEur)} per credit. Packs
+            Your plan works out at {formatEur(planCreditPriceEur, 3)} per credit. Packs
             cost more on purpose: if you are buying one every month, moving up a
             tier is the cheaper answer.
           </p>
@@ -110,10 +111,10 @@ export function CreditPacksCard({
             <ul className="text-muted-foreground mt-1 space-y-1 text-xs">
               {grants.map((grant) => (
                 <li key={grant.id} className="tabular-nums">
-                  {day(grant.createdAt)} ·{" "}
-                  {grant.credits.toLocaleString("en-US")} credits ·{" "}
+                  {formatDay(grant.createdAt)} ·{" "}
+                  {formatCount(grant.credits)} credits ·{" "}
                   {SOURCE_LABELS[grant.source] ?? grant.source}
-                  {grant.expiresAt ? ` · expires ${day(grant.expiresAt)}` : ""}
+                  {grant.expiresAt ? ` · expires ${formatDay(grant.expiresAt)}` : ""}
                 </li>
               ))}
             </ul>

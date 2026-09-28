@@ -8,7 +8,6 @@ import {
 } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import {
-  useCallback,
   useId,
   useLayoutEffect,
   useRef,
@@ -28,29 +27,11 @@ export type BouncyAccordionItem = {
   id: string;
   title: ReactNode;
   description?: ReactNode;
-  icon?: ReactNode;
-  disabled?: boolean;
-};
-
-export type BouncyAccordionClassNames = {
-  root?: string;
-  item?: string;
-  trigger?: string;
-  icon?: string;
-  title?: string;
-  chevron?: string;
-  content?: string;
-  description?: string;
 };
 
 export interface BouncyAccordionProps {
   items: BouncyAccordionItem[];
-  value?: string | null;
-  defaultValue?: string | null;
-  onValueChange?: (value: string | null) => void;
-  collapsible?: boolean;
   className?: string;
-  classNames?: BouncyAccordionClassNames;
 }
 
 // Shared springs keep the accordion's connected groups moving together while
@@ -74,34 +55,6 @@ const DESCRIPTION_TRANSITION: Transition = {
 
 const CHEVRON_TRANSITION: Transition = SPRING_NUDGE;
 
-
-function useControllableAccordionValue({
-  value,
-  defaultValue,
-  onValueChange,
-}: {
-  value?: string | null;
-  defaultValue?: string | null;
-  onValueChange?: (value: string | null) => void;
-}) {
-  const [internalValue, setInternalValue] = useState(defaultValue ?? null);
-  const isControlled = value !== undefined;
-  const currentValue = value ?? internalValue;
-
-  const setValue = useCallback(
-    (next: string | null) => {
-      if (!isControlled) {
-        setInternalValue(next);
-      }
-
-      onValueChange?.(next);
-    },
-    [isControlled, onValueChange],
-  );
-
-  return [currentValue, setValue] as const;
-}
-
 function BouncyAccordionRow({
   item,
   open,
@@ -111,7 +64,6 @@ function BouncyAccordionRow({
   contentId,
   triggerId,
   reduce,
-  classNames,
   onToggle,
 }: {
   item: BouncyAccordionItem;
@@ -122,7 +74,6 @@ function BouncyAccordionRow({
   contentId: string;
   triggerId: string;
   reduce: boolean | null;
-  classNames?: BouncyAccordionClassNames;
   onToggle: () => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -165,14 +116,14 @@ function BouncyAccordionRow({
         transition={reduce ? { duration: 0 } : ROW_TRANSITION}
         className={cn(
           "overflow-hidden bg-card text-card-foreground",
-          item.disabled && "opacity-50",
-          classNames?.item,
+          // Match the translucent surfaces the marketing pages sit on, so the
+          // rows read as part of the sky shell rather than as opaque cards.
+          "bg-card/60 ring-1 ring-border/60 backdrop-blur-sm",
         )}
       >
         <button
           id={triggerId}
           type="button"
-          disabled={item.disabled}
           aria-expanded={open}
           aria-controls={contentId}
           onClick={onToggle}
@@ -180,23 +131,12 @@ function BouncyAccordionRow({
             "flex min-h-[54px] w-full items-center gap-4 px-5 text-left outline-none transition-colors",
             "focus-visible:bg-muted/25",
             "disabled:pointer-events-none",
-            classNames?.trigger,
           )}
         >
-          {item.icon ? (
-            <span
-              className={cn(
-                "grid h-7 w-7 shrink-0 place-items-center text-muted-foreground",
-                classNames?.icon,
-              )}
-            >
-              {item.icon}
-            </span>
-          ) : null}
           <span
             className={cn(
               "min-w-0 flex-1 truncate text-[0.9375rem] font-medium text-foreground",
-              classNames?.title,
+              "whitespace-normal text-wrap",
             )}
           >
             {item.title}
@@ -205,10 +145,7 @@ function BouncyAccordionRow({
             aria-hidden
             animate={{ rotate: open ? 180 : 0 }}
             transition={reduce ? { duration: 0 } : CHEVRON_TRANSITION}
-            className={cn(
-              "grid h-6 w-6 shrink-0 place-items-center text-muted-foreground",
-              classNames?.chevron,
-            )}
+            className="grid h-6 w-6 shrink-0 place-items-center text-muted-foreground"
           >
             <ChevronDown className="h-4 w-4" />
           </motion.span>
@@ -229,7 +166,7 @@ function BouncyAccordionRow({
                 ? CONTENT_OPEN_TRANSITION
                 : CONTENT_CLOSE_TRANSITION
           }
-          className={cn("overflow-hidden", classNames?.content)}
+          className="overflow-hidden"
         >
           <motion.div
             ref={contentRef}
@@ -239,12 +176,7 @@ function BouncyAccordionRow({
             transition={reduce ? { duration: 0 } : DESCRIPTION_TRANSITION}
             className="px-5 pb-5"
           >
-            <div
-              className={cn(
-                "text-[0.9375rem] leading-6 text-muted-foreground",
-                classNames?.description,
-              )}
-            >
+            <div className="text-[0.9375rem] leading-6 text-muted-foreground">
               {item.description}
             </div>
           </motion.div>
@@ -254,40 +186,14 @@ function BouncyAccordionRow({
   );
 }
 
-export function BouncyAccordion({
-  items,
-  value,
-  defaultValue = null,
-  onValueChange,
-  collapsible = true,
-  className,
-  classNames,
-}: BouncyAccordionProps) {
+export function BouncyAccordion({ items, className }: BouncyAccordionProps) {
   const reduce = useReducedMotion();
   const baseId = useId();
-  const [activeValue, setActiveValue] = useControllableAccordionValue({
-    value,
-    defaultValue,
-    onValueChange,
-  });
+  const [activeValue, setActiveValue] = useState<string | null>(null);
   const activeIndex = items.findIndex((item) => item.id === activeValue);
 
-  const toggleItem = useCallback(
-    (id: string) => {
-      if (activeValue === id) {
-        if (collapsible) {
-          setActiveValue(null);
-        }
-        return;
-      }
-
-      setActiveValue(id);
-    },
-    [activeValue, collapsible, setActiveValue],
-  );
-
   return (
-    <div className={cn("w-full", className, classNames?.root)}>
+    <div className={cn("w-full", className)}>
       {items.map((item, index) => {
         const open = activeValue === item.id;
         const previousIsOpen = activeIndex === index - 1;
@@ -309,8 +215,7 @@ export function BouncyAccordion({
             contentId={contentId}
             triggerId={triggerId}
             reduce={reduce}
-            classNames={classNames}
-            onToggle={() => toggleItem(item.id)}
+            onToggle={() => setActiveValue(open ? null : item.id)}
           />
         );
       })}

@@ -351,8 +351,7 @@ export interface DbTableSpec<K extends DbTableName> {
   id: "shortId" | "uuid";
   /** Values merged under `insert` input (identical across adapters). */
   defaults: Partial<DbTableRow<K>>;
-  /** Default list ordering. */
-  orderBy: Extract<keyof DbTableRow<K>, string>;
+  /** Default list direction; lists order by `createdAt` unless told otherwise. */
   ascending: boolean;
   /** Whether `update` stamps `updatedAt` (tables with an updated_at column). */
   touchesUpdatedAt: boolean;
@@ -363,7 +362,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     table: "entities",
     id: "shortId",
     defaults: { description: "", identityAttribute: null },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: true,
   },
@@ -379,7 +377,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     },
     // Newest first: the question asked of this table is always "what is the
     // latest decision", not "what was the first".
-    orderBy: "createdAt",
     ascending: false,
     touchesUpdatedAt: false,
   },
@@ -387,7 +384,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     table: "skills",
     id: "shortId",
     defaults: { description: "", starter: "" },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: true,
   },
@@ -411,7 +407,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       assistantId: null,
       deletedAt: null,
     },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: true,
   },
@@ -419,7 +414,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     table: "projects",
     id: "shortId",
     defaults: { description: "", archived: false, createdBy: null },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: true,
   },
@@ -434,7 +428,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       lastStatus: null,
       lastDetail: "",
     },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: true,
   },
@@ -443,7 +436,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     id: "shortId",
     defaults: { grantedBy: null },
     // Oldest first: the grants list reads as the order an admin built it in.
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: false,
   },
@@ -451,7 +443,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     table: "teammate_roster_hidden",
     id: "shortId",
     defaults: {},
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: false,
   },
@@ -459,7 +450,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     table: "teammate_channels",
     id: "shortId",
     defaults: { projectId: null, createdBy: null },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: true,
   },
@@ -473,7 +463,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       lastReadAt: null,
     },
     // Oldest first: the roster reads as the order the channel was built in.
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: false,
   },
@@ -481,7 +470,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     table: "local_connector_pairings",
     id: "uuid",
     defaults: { usedAt: null },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: false,
   },
@@ -489,7 +477,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     table: "local_connector_devices",
     id: "uuid",
     defaults: { providers: [], lastSeenAt: null, revokedAt: null },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: false,
   },
@@ -503,7 +490,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       claimedAt: null,
       completedAt: null,
     },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: false,
   },
@@ -516,7 +502,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       lastResult: null,
       lastDetail: null,
     },
-    orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: false,
   },
@@ -535,7 +520,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       simulated: false,
       resumedAt: null,
     },
-    orderBy: "createdAt",
     ascending: false,
     touchesUpdatedAt: true,
   },
@@ -556,7 +540,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       decidedAt: null,
       executedAt: null,
     },
-    orderBy: "createdAt",
     ascending: false,
     touchesUpdatedAt: true,
   },
@@ -575,7 +558,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       simulated: false,
       resumedAt: null,
     },
-    orderBy: "createdAt",
     ascending: false,
     touchesUpdatedAt: true,
   },
@@ -588,7 +570,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       failedAction: null,
       failedMessage: null,
     },
-    orderBy: "createdAt",
     ascending: false,
     touchesUpdatedAt: false,
   },
@@ -605,7 +586,6 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       sourceCount: 1,
     },
     // Newest first: a Document's memories read as what it most recently said.
-    orderBy: "createdAt",
     ascending: false,
     touchesUpdatedAt: true,
   },
@@ -633,19 +613,25 @@ export function snakeToCamelKey(key: string): string {
 export function domainToRow(
   values: Record<string, unknown>
 ): Record<string, unknown> {
-  const row: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(values)) {
-    if (value === undefined) continue;
-    row[camelToSnakeKey(key)] = value;
-  }
-  return row;
+  return Object.fromEntries(
+    Object.entries(values)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [camelToSnakeKey(key), value])
+  );
+}
+
+/** The update row for a partial patch: each listed key that is set, as its
+ * column. Only the listed keys, so a caller's extra fields never reach SQL. */
+export function patchRow<T extends object>(
+  patch: T,
+  keys: readonly (keyof T & string)[]
+): Record<string, unknown> {
+  return domainToRow(Object.fromEntries(keys.map((key) => [key, patch[key]])));
 }
 
 /** Rewrites an object's keys snake_case → camelCase. */
 export function rowToDomain(row: Record<string, unknown>): Record<string, unknown> {
-  const domain: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(row)) {
-    domain[snakeToCamelKey(key)] = value;
-  }
-  return domain;
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [snakeToCamelKey(key), value])
+  );
 }

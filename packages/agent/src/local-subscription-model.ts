@@ -473,6 +473,16 @@ export function createLocalSubscriptionModel(input: {
           : toolsSchema,
       signal: options.abortSignal,
     });
+    const reply = (
+      content: LanguageModelV3GenerateResult["content"],
+      unified: "stop" | "tool-calls" = "stop"
+    ): LanguageModelV3GenerateResult => ({
+      content,
+      finishReason: { unified, raw: unified },
+      usage: usageOf(result),
+      warnings: [],
+      response: { modelId },
+    });
     if (toolsSchema) {
       let envelope: {
         kind?: string;
@@ -488,19 +498,13 @@ export function createLocalSubscriptionModel(input: {
         // connectors forwarded that text instead of `structured_output`.
         // In auto tool mode, natural text is a valid terminal answer.
         if (provider === "anthropic" && result.text.trim()) {
-          return {
-            content: [{ type: "text", text: result.text }],
-            finishReason: { unified: "stop", raw: "stop" },
-            usage: usageOf(result),
-            warnings: [],
-            response: { modelId },
-          };
+          return reply([{ type: "text", text: result.text }]);
         }
         throw error;
       }
       if (envelope.kind === "tool_call" && envelope.toolName) {
-        return {
-          content: [
+        return reply(
+          [
             {
               type: "tool-call",
               toolCallId: randomUUID(),
@@ -508,30 +512,15 @@ export function createLocalSubscriptionModel(input: {
               input: JSON.stringify(envelope.input ?? {}),
             },
           ],
-          finishReason: { unified: "tool-calls", raw: "tool-calls" },
-          usage: usageOf(result),
-          warnings: [],
-          response: { modelId },
-        };
+          "tool-calls"
+        );
       }
       if (envelope.kind === "text" && typeof envelope.text === "string") {
-        return {
-          content: [{ type: "text", text: envelope.text }],
-          finishReason: { unified: "stop", raw: "stop" },
-          usage: usageOf(result),
-          warnings: [],
-          response: { modelId },
-        };
+        return reply([{ type: "text", text: envelope.text }]);
       }
       throw new Error("The local provider returned an invalid Ciele tool response.");
     }
-    return {
-      content: [{ type: "text", text: result.text }],
-      finishReason: { unified: "stop", raw: "stop" },
-      usage: usageOf(result),
-      warnings: [],
-      response: { modelId },
-    };
+    return reply([{ type: "text", text: result.text }]);
   }
 
   return {

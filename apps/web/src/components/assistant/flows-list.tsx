@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { studyModeFlow, type Flow, type FlowTrust, type StudyModeSettings } from "@agent-hub/core";
 import {
@@ -14,6 +14,7 @@ import {
 import { toast } from "@/lib/toast";
 import { reorderFlowsAction, updateFlowAction } from "@/app/actions";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { isRedirectError } from "@/components/ui/confirm-delete-modal";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
@@ -53,13 +54,13 @@ function ActionChips({ flow }: { flow: Flow }) {
 export function FlowsList({
   assistantId,
   flows,
-  trust = [],
+  trust,
   studyMode,
 }: {
   assistantId: string;
   flows: Flow[];
   /** Materialized trust rows for this assistant's flows (may be empty). */
-  trust?: FlowTrust[];
+  trust: FlowTrust[];
   studyMode?: StudyModeSettings;
 }) {
   const studyFlow = studyModeFlow({ id: assistantId, tools: { studyMode } });
@@ -81,6 +82,7 @@ export function FlowsList({
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [reorderAnnouncement, setReorderAnnouncement] = useState("");
   const defaultFlow = flows.find((f) => f.isDefault);
+  const handleHintId = useId();
 
   function setOrder(next: string[]) {
     orderedIdsRef.current = next;
@@ -131,15 +133,24 @@ export function FlowsList({
   }
 
   function toggle(flow: Flow, enabled: boolean) {
+    if (isPending) return;
     startTransition(async () => {
-      await updateFlowAction(assistantId, flow.id, { enabled });
-      toast.success(`"${flow.name}" ${enabled ? "enabled" : "disabled"}`);
+      try {
+        await updateFlowAction(flow.id, { enabled });
+        toast.success(`"${flow.name}" ${enabled ? "enabled" : "disabled"}`);
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        toast.error(`Could not ${enabled ? "enable" : "disable"} "${flow.name}"`);
+      }
     });
   }
 
   return (
-    <div className={isPending ? "pointer-events-none opacity-70" : ""}>
+    <div aria-busy={isPending} className={isPending ? "pointer-events-none opacity-70" : ""}>
       <p className="sr-only" aria-live="polite">{reorderAnnouncement}</p>
+      <p id={handleHintId} className="sr-only">
+        Use the up and down arrow keys to move.
+      </p>
       <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
         <Button
           render={<Link href={`/assistants/${assistantId}/flows/new`} />}
@@ -193,6 +204,11 @@ export function FlowsList({
                 <Hint label="Drag to change priority">
                   <SortableHandle
                     aria-label={`Drag ${flow.name} to change its priority`}
+                    aria-describedby={handleHintId}
+                    // aria-disabled, not disabled: disabling the focused handle
+                    // mid-save would drop focus after every arrow-key move.
+                    // `move` already refuses while a save is in flight.
+                    aria-disabled={isPending || undefined}
                     onKeyDown={(event) => {
                       if (event.key === "ArrowUp") {
                         event.preventDefault();
@@ -214,7 +230,7 @@ export function FlowsList({
                   on a phone the trigger and trust badges drop to a second line
                   instead of pushing out past the card's edge. */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <h2 className="min-w-0 text-base font-semibold">{flow.name}</h2>
+                <h2 className="min-w-0 text-base font-semibold break-words">{flow.name}</h2>
                 {flow.builtIn && (
                   <Badge
                     variant="outline"
@@ -261,6 +277,7 @@ export function FlowsList({
                 checked={flow.enabled}
                 onCheckedChange={(checked) => toggle(flow, checked)}
                 aria-label={`Toggle ${flow.name}`}
+                aria-disabled={isPending || undefined}
               />
                 </div>
               </Card>
@@ -285,7 +302,7 @@ export function FlowsList({
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold">{defaultFlow.name}</h2>
+                <h2 className="min-w-0 text-base font-semibold break-words">{defaultFlow.name}</h2>
                 <Badge
                   variant="outline"
                   className="text-muted-foreground rounded-full"

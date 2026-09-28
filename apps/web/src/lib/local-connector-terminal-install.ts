@@ -1,5 +1,5 @@
 import { CONNECTOR_BOOTSTRAP_PORT } from "@/lib/local-connector-protocol";
-import { normalizeConnectorOrigin } from "@/lib/local-connector-installer";
+import { normalizeSafeOrigin } from "@/lib/safe-origin";
 
 export type ConnectorInstallShell = "sh" | "ps1";
 
@@ -19,7 +19,7 @@ export function buildConnectorInstallScript(
   rawOrigin: string,
   shell: ConnectorInstallShell
 ): string {
-  const origin = normalizeConnectorOrigin(rawOrigin);
+  const origin = normalizeSafeOrigin(rawOrigin);
   const runtimeUrl = `${origin}/api/local-connector/runtime`;
   const returnUrl = `${origin}/settings/ai`;
   const port = CONNECTOR_BOOTSTRAP_PORT;

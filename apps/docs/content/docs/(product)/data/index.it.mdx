@@ -1,16 +1,16 @@
 ---
 title: Dati e memoria
-description: Basa le risposte su Record strutturati e ricorda i Visitatori che hanno effettuato l'accesso in tutte le Conversazioni.
+description: Fonda le risposte su Records strutturati e ricorda i Visitor connessi nelle varie Conversations.
 ---
 
 import { Brain, Database } from 'lucide-react';
 
-Ciele può combinare i Record dell'Organizzazione con informazioni permanenti sui
-Visitatori che hanno effettuato l'accesso. Queste funzionalità utilizzano
-l'identità verificata e rimangono sotto il controllo dell'Organizzazione.
+Ciele può combinare gli Organization Records con informazioni persistenti sui
+Visitor connessi. Queste funzionalità utilizzano un'identità verificata e
+rimangono sotto il controllo dell'Organization.
 
 <Mermaid
-  title="I record diventano strumenti solo quando li pubblichi"
+  title="I Records diventano strumenti solo quando li pubblichi"
   chart={`
 flowchart TB
   DATA["Entity schema and imported Records"]
@@ -25,17 +25,17 @@ flowchart TB
 `}
 />
 
-La Pubblicazione controlla quali strumenti di Entità esistono. I valori dei
-Record rimangono attivi, quindi una successiva importazione CSV può modificare
-le risposte senza un'altra Pubblicazione.
+La Publication determina quali strumenti Entity esistono. I valori dei record
+rimangono attivi, pertanto un'importazione CSV successiva può modificare le
+risposte senza richiedere un'altra Publication.
 
-Un'Entità con ambito utente necessita di un claim di identità verificato. Il
+Un'Entity con ambito utente richiede un'attestazione di identità verificata. Il
 server aggiunge quel filtro dopo aver convalidato l'input dello strumento,
-quindi un modello non può né rimuoverlo né nominare un altro Visitatore.
+quindi un modello non può né rimuoverlo né indicare un altro Visitor.
 
-La memoria a lungo termine è una funzionalità separata con un proprio ciclo di
-vita. Non dipende dalle Entità. Vedi
-[Memoria a lungo termine](/data/long-term-memory).
+La memoria a lungo termine è una funzionalità distinta, con un proprio ciclo di
+vita. Non dipende dalle Entità. Consulta
+[Long-term memory](/data/long-term-memory).
 
 <Cards>
   <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
@@ -44,12 +44,12 @@ vita. Non dipende dalle Entità. Vedi
 
 ## Due tipi di memoria
 
-**Session memory** appartiene a una Conversazione. Non segue un Visitatore in
-una nuova Conversazione.
+**Session memory** appartiene a una sola Conversation. Non segue un Visitor in
+una nuova Conversation.
 
-**Long-term memory** appartiene a un soggetto SSO verificato all'interno di
-un'Organizzazione. Può supportare Conversazioni successive quando
-l'Organizzazione lo abilita.
+**Long-term memory** appartiene a un soggetto SSO verificato all'interno di una
+Organization. Può supportare Conversazioni successive quando l'Organization lo
+abilita.
 
 <Callout title="Signed-in Visitors only">
 Anonymous Visitors never receive user-scoped Entity tools. They also never produce or recall long-term memories.

@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { AnimatePresence, motion, MotionConfig } from 'motion/react'
+import { AnimatePresence, motion, MotionConfig, useReducedMotion } from 'motion/react'
 import {
   CircleCheckIcon,
   InfoIcon,
@@ -47,34 +47,13 @@ export const LINE_HEIGHT = 36
 
 const TEXT_LINE = 20
 
-export type ToastSide = 'top' | 'bottom'
-export type ToastAlign = 'left' | 'center' | 'right'
-export type ToastPosition = `${ToastSide}-${ToastAlign}`
-export const toastPositions = [
-  'top-left',
-  'top-center',
-  'top-right',
-  'bottom-left',
-  'bottom-center',
-  'bottom-right',
-] as const satisfies readonly ToastPosition[]
-
-const ALIGN: Record<ToastAlign, string> = {
-  left: 'justify-start',
-  center: 'justify-center',
-  right: 'justify-end',
-}
-
 export type ToastState = ToastStatus
-export type { ToastAction, ToastInput, ToastNote as Note } from '@/lib/toast-events'
 export type ToastClock = { waits: Map<string, number>; since: number | null }
 export type StackSlot = { y: number; scale: number; opacity: number }
 export type StackCard = {
   id: string
   render: (behind: boolean) => ReactNode
 }
-
-export { dismissToast } from '@/lib/toast-events'
 
 export function upsertToast(notes: readonly ToastNote[], note: ToastNote): ToastNote[] {
   const index = notes.findIndex((item) => item.id === note.id)
@@ -161,7 +140,14 @@ function ToastLine({ message }: { message: string }) {
       transition={MORPH}
       className="flex items-center overflow-hidden"
     >
-      <motion.span {...TEXT_SLIDE} transition={MORPH} className="w-max max-w-lg shrink-0 truncate">
+      {/* Wraps up to three lines rather than truncating: a toast has no other
+          place to read the rest of its message. The width is its own, not the
+          parent's, so the width morph clips it instead of reflowing it. */}
+      <motion.span
+        {...TEXT_SLIDE}
+        transition={MORPH}
+        className="line-clamp-3 w-max max-w-[min(32rem,calc(100vw-7rem))] shrink-0 [overflow-wrap:anywhere]"
+      >
         {message}
       </motion.span>
     </motion.div>
@@ -187,10 +173,19 @@ function ToastPill({
   behind: boolean
 }) {
   const pill = useRef<HTMLDivElement>(null)
+  const reduce = useReducedMotion()
   return (
     <motion.div
       ref={pill}
-      style={{ borderRadius: 9999 }}
+      // 20px, not 9999: CSS clamps it to a full pill on one line, and a
+      // wrapped message gets rounded corners instead of clipped text.
+      style={{ borderRadius: 20 }}
+      // Escape from a focused action dismisses the toast it belongs to.
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || behind) return
+        event.stopPropagation()
+        onDismiss()
+      }}
 
       drag={behind ? false : true}
       dragSnapToOrigin
@@ -205,12 +200,16 @@ function ToastPill({
 
         const element = pill.current
         if (!element) return onDismiss()
+        // No blur: filtering a backdrop-blurred pill every frame is the
+        // expensive part, and reduced motion keeps only the fade.
         const animation = element.animate(
-          [
-            { opacity: 1, filter: 'blur(0px)', transform: 'scale(1)' },
-            { opacity: 0, filter: 'blur(8px)', transform: 'scale(0.92)' },
-          ],
-          { duration: 180, easing: 'ease-out', fill: 'forwards' },
+          reduce
+            ? [{ opacity: 1 }, { opacity: 0 }]
+            : [
+                { opacity: 1, transform: 'scale(1)' },
+                { opacity: 0, transform: 'scale(0.92)' },
+              ],
+          { duration: reduce ? 120 : 180, easing: 'ease-out', fill: 'forwards' },
         )
         animation.onfinish = onDismiss
       }}
@@ -287,14 +286,14 @@ function sameBoxes(
   )
 }
 
+/** The stack hangs from the top centre of the viewport, the one position
+ *  the app uses; cards fall downward from it. */
 function ToastStack({
   cards,
   onOpen,
-  position,
 }: {
   cards: StackCard[]
   onOpen: (open: boolean) => void
-  position: ToastPosition
 }) {
   const [pointing, setPointing] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -386,25 +385,23 @@ function ToastStack({
 
   useLayoutEffect(() => {
     const next: Record<string, { width: number; height: number }> = {}
-    for (const card of cards) {
+    // Clear every cap, read every box, then restore: interleaving the write
+    // and the read per card forced one layout per card.
+    const elements = cards.flatMap((card) => {
       const element = measured.current.get(card.id)
-      if (!element) continue
-
-      const capped = element.style.maxWidth
-      element.style.maxWidth = ''
-      next[card.id] = { width: element.offsetWidth, height: element.offsetHeight }
-      element.style.maxWidth = capped
+      return element ? [{ id: card.id, element, capped: element.style.maxWidth }] : []
+    })
+    for (const { element } of elements) element.style.maxWidth = ''
+    for (const { id, element } of elements) {
+      next[id] = { width: element.offsetWidth, height: element.offsetHeight }
     }
+    for (const { element, capped } of elements) element.style.maxWidth = capped
     setBoxes((current) => (sameBoxes(current, next) ? current : next))
   }, [cards])
 
   const heights = cards.map((card) => boxes[card.id]?.height ?? LINE_HEIGHT)
 
   const deckWidth = cards[0] ? boxes[cards[0].id]?.width : undefined
-  const [side, align] = position.split('-') as [ToastSide, ToastAlign]
-
-  const fall = side === 'top' ? 1 : -1
-
   return (
     <motion.div
       ref={root}
@@ -415,34 +412,27 @@ function ToastStack({
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
       }}
-      className={cn(
-        'pointer-events-none fixed inset-x-0 z-[100001]',
-        side === 'top' ? 'top-4' : 'bottom-4',
-      )}
+      className="pointer-events-none fixed inset-x-0 z-[100001] top-[calc(1rem+env(safe-area-inset-top))]"
     >
       <AnimatePresence initial={false}>
         {cards.map((card, index) => {
           const slot = piled ? pileSlot(index) : fanSlot(index, heights)
 
-          const y = slot.y * fall
-          const from = (slot.y - 8) * fall
+          const y = slot.y
+          const from = slot.y - 8
           return (
             <motion.div
               key={card.id}
               style={{
 
-                transformOrigin: `${side} ${align}`,
+                transformOrigin: 'top center',
                 zIndex: cards.length - index,
               }}
               initial={{ opacity: 0, y: from, scale: slot.scale * 0.98 }}
               animate={{ opacity: slot.opacity, y, scale: slot.scale }}
               exit={{ opacity: 0, y: from, scale: slot.scale * 0.96, transition: EXIT }}
               transition={MORPH}
-              className={cn(
-                'absolute inset-x-0 flex px-4',
-                side === 'top' ? 'top-0' : 'bottom-0',
-                ALIGN[align],
-              )}
+              className="absolute inset-x-0 flex px-4 top-0 justify-center"
               aria-hidden={slot.opacity === 0 || undefined}
             >
               <motion.div
@@ -468,7 +458,7 @@ function ToastStack({
   )
 }
 
-export function Toasts({ position = 'top-center' }: { position?: ToastPosition }) {
+export function Toasts() {
   const [notes, setNotes] = useState<ToastNote[]>([])
   const [reading, setReading] = useState(false)
   const clock = useRef<ToastClock>({ waits: new Map(), since: null })
@@ -531,7 +521,6 @@ export function Toasts({ position = 'top-center' }: { position?: ToastPosition }
   return (
     <MotionConfig reducedMotion="user">
       <ToastStack
-        position={position}
         onOpen={setReading}
         cards={notes.map((note) => {
           const drop = () => {

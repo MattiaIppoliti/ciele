@@ -14,6 +14,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { formatCredits } from "@/lib/usage-summary";
 
 /**
  * The Usage tab's two donuts: where the credits went (by metered resource) and
@@ -44,15 +45,6 @@ function configFor(slices: UsageSlice[]): ChartConfig {
   );
 }
 
-/** Credits as the rings label them, one decimal below 100, none above. */
-function formatCredits(credits: number): string {
-  if (credits === 0) return "0";
-  if (credits < 0.1) return "<0.1";
-  return credits.toLocaleString("en-US", {
-    maximumFractionDigits: credits < 100 ? 1 : 0,
-  });
-}
-
 function Donut({
   title,
   description,
@@ -64,6 +56,8 @@ function Donut({
 }) {
   const total = slices.reduce((sum, slice) => sum + slice.credits, 0);
   const config = configFor(slices);
+  const percent = (slice: UsageSlice) =>
+    Math.round((slice.credits / total) * 100);
 
   return (
     <Card>
@@ -83,6 +77,10 @@ function Donut({
             <ChartContainer
               config={config}
               className="aspect-square h-32 w-32 shrink-0"
+              role="img"
+              aria-label={`${title}: ${slices
+                .map((slice) => `${slice.label} ${percent(slice)}%`)
+                .join(", ")}`}
             >
               <PieChart>
                 <ChartTooltip
@@ -124,7 +122,7 @@ function Donut({
                   />
                   <span className="min-w-0 flex-1 truncate">{slice.label}</span>
                   <span className="shrink-0 tabular-nums">
-                    {Math.round((slice.credits / total) * 100)}%
+                    {percent(slice)}%
                   </span>
                   <span className="text-muted-foreground w-14 shrink-0 text-right tabular-nums">
                     {formatCredits(slice.credits)}

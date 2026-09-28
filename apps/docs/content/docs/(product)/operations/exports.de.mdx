@@ -1,44 +1,69 @@
 ---
 title: Exporte
-description: Erstellen und laden Sie strukturierte Konversationsexporte herunter.
+description: Erstellen und laden Sie Insights-Berichte sowie Konversations-Exporte herunter.
 ---
 
-Exporte erstellen herunterladbare Datensätze für ausgewählte Konversationen.
-Ciele erstellt den Export als Hintergrundjob.
+Ciele bietet zwei Arten von Exporten. Ein Insights-Export ist eine Berichtsdatei
+Ihrer Insights-Kennzahlen. Ein Conversation-Export enthält die vollständigen
+Datensätze ausgewählter Conversations.
 
-## Einen Export erstellen
+## Einen Insights-Export erstellen
 
 1. Öffnen Sie **Insights**.
-2. Wählen Sie **Exports**.
-3. Wählen Sie den Exportbereich „Conversations“ oder einen der verfügbaren
-   Exportbereiche aus.
-4. Starten Sie den Export.
-5. Warten Sie, bis der Auftragsstatus „Bereit“ lautet.
-6. Laden Sie die Datei herunter, bevor der Link abläuft.
+2. Wählen Sie **Exports** aus.
+3. Wählen Sie **New export** aus.
+4. Geben Sie einen Namen in **Export name** ein.
+5. Legen Sie die Filter für den Bericht fest: den Datumsbereich, den Assistant,
+   **Aggregated**, **Feedback** und **Escalated**.
+6. Wählen Sie den Exporttyp aus.
+7. Wählen Sie den Dateityp aus: **CSV**, **JSON** oder **XLSX**.
+8. Wählen Sie **Create** aus.
 
-Für den Download wird eine zeitlich begrenzte signierte URL verwendet. Starten
-Sie einen neuen Export, wenn der Link nicht mehr gültig ist.
+Ciele erstellt die Datei als Hintergrundjob. Der Export wird in der Liste mit
+seinem Namen, seinem Typ und seinem Dateityp angezeigt. Wenn der Status
+**Ready** lautet, wählen Sie **Download** aus.
 
-## Inhalte exportieren
+Die Filter sind dieselben wie auf der Seite „Insights“. Ein Export und die Seite
+„Insights“ zeigen für dieselben Filter die gleichen Zahlen an.
 
-Jeder Gesprächsdatensatz verwendet das aktuelle Exportformat mit 29 Feldern. Der
-Datensatz enthält Informationen zu Konversation, Assistent, Besucher, Sitzung
-und Ergebnis.
+## Exporttypen für Insights
 
-Die Details zur Begründung hängen vom API-Schlüssel oder der Mitgliederrolle ab.
-Eine niedrigere Rolle kann keine versteckte Begründung über eine Exportoption
-anfordern.
+- **Aggregated insights**: Jede Diagrammreihe, mit jeweils einer Zeile pro Tag,
+  Woche oder Monat.
+- **Datapoints**: die wichtigsten Kennzahlen für den Zeitraum, mit jeweils einer
+  Zeile pro Kennzahl. Eine Kennzahl ohne Daten für den Zeitraum weist eine leere
+  Zelle auf.
+- **Languages**: die Anzahl der Conversations für jede Sprache, in der Visitors
+  geschrieben haben.
+
+**Shortcut button clicks** wird in der Liste angezeigt, kann aber nicht
+ausgewählt werden. Ciele erfasst diese Klicks derzeit noch nicht.
+
+## Downloads
+
+Ciele überprüft Ihren Zugriff bei jedem Herunterladen einer Datei. Ciele
+protokolliert außerdem jeden Download.
+
+## Inhalt des Konversationsexports
+
+Jeder Conversation-Datensatz verwendet das aktuelle Exportformat mit 29 Feldern.
+Der Datensatz enthält Informationen zu Conversation, Assistant, Visitor, Session
+und Outcome.
+
+Die Details zur Begründung hängen vom API-Schlüssel oder von der Member-Rolle
+ab. Eine niedrigere Role kann über eine Exportoption keine verborgenen
+Reasoning-Details anfordern.
 
 ## API- und CLI-Zugriff
 
-Die API akzeptiert ausgewählte Conversation-IDs unter
+Die API akzeptiert ausgewählte Conversation IDs unter
 `POST /api/v1/conversations/export`.
 
-Die CLI kann dieselbe Datensatzform in eine Datei schreiben:
+Die CLI kann dasselbe Record-Format in eine Datei schreiben:
 
 ```bash
 ciele conversations export <conversation-id> --out export.json
 ```
 
-Das MCP-Tool `read_inbox` kann auch einen Export anfordern. Die Exportaktion
-bleibt im schreibgeschützten MCP-Modus verfügbar.
+Das MCP-Tool `read_inbox` kann ebenfalls einen Export anfordern. Die
+Export-Aktion bleibt auch im MCP-Schreibschutzmodus verfügbar.

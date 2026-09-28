@@ -1,44 +1,132 @@
 ---
 title: Insights
-description: Überprüfen Sie die aktuellen Metriken für Konversation, Antwort, Eskalation, Feedback und Benachrichtigung.
+description: Überprüfen Sie die aktuellen Metriken für Conversation, Answer, Escalation, Feedback und Notification.
 ---
 
-Insights berechnet Organisationsmetriken aus gespeicherten Laufzeitereignissen.
-Verwenden Sie den verfügbaren Datumsbereich und die Assistenten-Filter, um den
+Insights berechnet Organisationsmetriken auf Basis gespeicherter Laufzeitevents.
+Verwenden Sie den verfügbaren Datumsbereich und die Assistant-Filter, um den
 Datensatz zu ändern.
 
 ## Aktuelle Übersicht
 
-Die Übersicht kann diese Kennzahlen enthalten:
+Die Übersicht kann folgende Kennzahlen enthalten:
 
-- Konversationen und eindeutige Besucher
+- Conversations und Unique Visitors
 - KI-Antworten
-- KI-Lösungsrate
-- Antwortbewertungen und Kundenzufriedenheitsdaten
+- AI Resolution Rate
+- Bewertungen von Antworten und Daten zur Kundenzufriedenheit
 - Eskalationen
-- Antworten pro Konversation
-- Sprachen und Engagement-Quoten
-- Feedback und Bewertungsmaßstäbe
+- Antworten pro Conversation
+- questions per Conversation: die Anzahl der Nachrichten, die der Besucher
+  gesendet hat
+- Durchschnittliche Gesprächsdauer: die Zeit vom Beginn einer Conversation bis
+  zu ihrer letzten Nachricht
+- Sprachen und Engagement-Raten
+- Feedback- und Bewertungsmetriken
 - Gesendete Benachrichtigungen
 
-Die genauen Karten hängen von den verfügbaren Daten für den ausgewählten
-Zeitraum ab.
+Welche Karten genau angezeigt werden, hängt von den für den ausgewählten
+Zeitraum verfügbaren Daten ab.
+
+Das Diagramm **Conversation depth** zeigt die durchschnittliche Gesprächsdauer
+und die Anzahl der Fragen pro Gespräch für jeden Tag, jede Woche oder jeden
+Monat. Ciele ordnet jede Conversation dem Zeitraum zu, in dem sie begonnen hat.
+Eine Conversation, die nach dem Ende des Zeitraums fortgesetzt wird, behält ihre
+volle Dauer.
+
+## Kosten und Beobachtbarkeit
+
+Zwei Dashboards zeigen, was die KI Ihrer Organisation kostet und wie gut sie
+funktioniert. **Costs** zeigt Ausgaben und Nutzung. **Observability** zeigt
+Zuverlässigkeit, Geschwindigkeit und Antwortqualität.
+
+Beide Dashboards verwenden dieselben Filter. Wählen Sie einen Datumsbereich aus
+und wählen Sie anschließend **All**, **Assistants**, **Teammates** oder
+**Internal**.
+
+- **Assistants** zeigt den Traffic von Widgets und der Vorschau sowie eingehende
+  HTTP-Flows an.
+- **Teammates** zeigt AI Teammate Chats, Channel Turns und Routines an.
+- **Internal** zeigt die Plattformaktivitäten: Indexierung, geplante Jobs sowie
+  Aufrufe über API-Schlüssel und MCP.
+
+Wenn **All** oder **Assistants** ausgewählt ist, können Sie außerdem einen
+Assistant auswählen.
+
+Jedes Dashboard beginnt mit Stat-Karten. Eine Karte zeigt einen Wert für den
+Zeitraum, eine Linie mit den Tageswerten sowie die Veränderung gegenüber dem
+vorherigen Zeitraum. Der vorherige Zeitraum hat die gleiche Länge und endet am
+Tag vor dem Beginn des ausgewählten Zeitraums. Bewegen Sie den Mauszeiger
+entlang der Linie, um den Wert für jeden Tag abzulesen.
+
+### Kosten
+
+- geschätzte Ausgaben, Kosten pro Turn, Modellaufrufe und Tokens
+- geschätzte Ausgaben pro Tag, aufgeschlüsselt nach Surface
+- der Anteil der Ausgaben für jede Oberfläche in jedem Zeitraum
+- ein Kalender der täglichen Token-Nutzung
+- Ausgaben pro Modell und pro Pipeline-Phase
+
+Die Ausgaben sind eine Schätzung in Euro. Ciele berechnet dies anhand der Anzahl
+der Token und der Listenpreise. Dies ist keine Rechnung.
+
+### Observability
+
+- abgeschlossene Turns, Erfolgsquote, fehlgeschlagene Turns und Tool-Aufrufe pro
+  Turn
+- Turn-Latenz: Median, 95. Perzentil, ein Histogramm und ein täglicher Trend
+- **Answer accuracy**: der Anteil der Antworten des Assistenten, die der
+  Verifizierer als erfolgreich bewertet hat
+- **Autonomy**: der Anteil der Besuchergespräche, die nicht an einen Helpdesk
+  weitergeleitet wurden
+- die häufigsten Fehlerklassen
+- die fünf am häufigsten verwendeten Flows, im Vergleich zueinander pro Tag oder
+  pro Woche
+
+**Answer accuracy** und **Autonomy** gelten nur für Assistants. Für
+**Teammates** und **Internal** werden diese Kennzahlen nicht angezeigt.
+
+### Hinweise
+
+Tage sind UTC-Tage. Ein Modellaufruf, der vor der Surface-Zuordnung
+aufgezeichnet wurde, hat keine Surface. Es wird in **All** als **Unattributed**
+gezählt und in keiner anderen Oberfläche.
+
+Verwenden Sie **Export CSV**, um für jeden Tag im Zeitraum eine Zeile
+herunterzuladen. Für eine Berichtsdatei mit weiteren Optionen verwenden Sie
+[Exports](/operations/exports).
+
+## Aktualität der Daten
+
+Insights speichert die berechnete Übersicht und die Dashboards für jede
+Organisation und jede Filterkombination bis zu fünf Minuten lang. Jedes Mitglied
+der Organisation liest dieselben gespeicherten Daten.
+
+Eine Änderung, die ein Mitglied in der Konsole vornimmt (an einem Assistant,
+einer Conversation oder einer Improvement), löscht die gespeicherte Übersicht
+sofort. Der Widget-Traffic (neue Conversations, Antwortbewertungen, Satisfaction
+Scores, Eskalationen) erreicht die Zahlen innerhalb von fünf Minuten.
+
+Um eine neue Berechnung vor Ablauf der fünf Minuten zu erzwingen, senden Sie
+`DELETE /api/insights` von einer angemeldeten Browsersitzung aus. Die Antwort
+lautet `204`, und beim nächsten Lesen wird die Übersicht erneut berechnet. Jedes
+Mitglied der Organisation kann diese Anfrage senden.
 
 ## Zählung von Benachrichtigungen
 
-Eine Benachrichtigung ist keine KI-Antwort. Eine reine Benachrichtigungssitzung
-erhöht weder die Konversations-KPIs noch die Antwort-KPIs.
+Eine Notification ist keine KI-Antwort. Eine reine Notification-Sitzung erhöht
+weder die KPIs für Conversations noch die KPIs für Answers.
 
-Die Kennzahl **Notifications Sent** und die zugehörige Diagrammreihe erfassen
-die proaktive Bereitstellung separat.
+Die Kennzahl **Notifications Sent** und ihre Diagrammreihen erfassen die
+proaktive Bereitstellung separat.
 
 ## Eine Änderung untersuchen
 
-1. Wählen Sie den gewünschten Datumsbereich und den gewünschten Assistenten aus.
+1. Wählen Sie den gewünschten Datumsbereich und den gewünschten Assistant aus.
 2. Identifizieren Sie die Metrik, die sich geändert hat.
-3. Öffnen Sie den Posteingang mit demselben Bereich.
-4. Lesen Sie repräsentative Konversationen.
-5. Erstellen Sie Verbesserungen für umsetzbare Antwortprobleme.
+3. Öffnen Sie den Inbox mit demselben Scope.
+4. Lesen Sie repräsentative Conversations.
+5. Erstellen Sie Improvements für umsetzbare Probleme bei Antworten.
 
 Verwenden Sie [Exports](/operations/exports) für strukturierte
-Gesprächsaufzeichnungen.
+Gesprächsdatensätze.

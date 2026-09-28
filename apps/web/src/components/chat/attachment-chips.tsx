@@ -5,6 +5,7 @@ import { Image as ImageIcon, Loader2 } from "lucide-react";
 import { isImageAttachment } from "@/lib/attachments";
 import type { AttachmentEntry } from "@/components/chat/use-attachments";
 import { formatCount } from "@/lib/format";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 /**
  * The strip above the composer: what is attached, and therefore what is still
@@ -35,9 +36,9 @@ export function AttachmentChips({
                 : "bg-muted/60 text-muted-foreground"
             }`}
           >
-            <span className="shrink-0 [&_svg]:size-3.5">
+            <span aria-hidden="true" className="shrink-0 [&_svg]:size-3.5">
               {entry.state === "reading" ? (
-                <Loader2 className="animate-spin" />
+                <Loader2 className="animate-spin motion-reduce:animate-none" />
               ) : isImageAttachment(entry.name) ? (
                 <ImageIcon />
               ) : (
@@ -45,12 +46,21 @@ export function AttachmentChips({
               )}
             </span>
             <span className="min-w-0 truncate font-medium">{entry.name}</span>
-            <span className="shrink-0 whitespace-nowrap">
-              {entry.state === "reading"
-                ? "reading…"
-                : entry.state === "ready"
-                  ? `${formatCount(entry.chars)} characters`
-                  : entry.message}
+            {/* Polite: a file finishing its read, or failing, is news the
+                composer's user would otherwise only see. */}
+            <span aria-live="polite" className="shrink-0 whitespace-nowrap">
+              {entry.state === "failed" ? (
+                entry.message
+              ) : (
+                <RollInText
+                  text={
+                    entry.state === "reading"
+                      ? "reading…"
+                      : `${formatCount(entry.chars)} characters`
+                  }
+                  duration={380}
+                />
+              )}
             </span>
             <button
               type="button"

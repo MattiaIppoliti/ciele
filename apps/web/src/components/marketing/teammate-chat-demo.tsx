@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
+import { useRef } from "react";
+import type { TurnStep } from "@agent-hub/agent/client";
 import {
   Message,
   MessageBubble,
@@ -18,6 +18,11 @@ import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { AuthorLine, type ChatAuthor } from "@/components/chat/chat-thread";
 import { useShouldAnimate } from "@/components/home/use-in-viewport";
+import {
+  finalSteps,
+  useScriptedTurn,
+  type BuildScript,
+} from "@/components/marketing/use-scripted-turn";
 import { cn } from "@agent-hub/ui";
 
 /* The shot on /features/teammates, played rather than framed: one scripted
@@ -95,16 +100,8 @@ const THOUGHT_TEXT =
 const PROJECT_MEMO =
   "Project: Q3 activation. Goal is first-import completion above 60%.";
 
-interface ScriptApi {
-  setSteps: (update: (steps: TurnStep[]) => TurnStep[]) => void;
-  setPhase: (phase: TurnPhase) => void;
-  setProgress: (lines: string[]) => void;
-  setStreaming: (text: string | null) => void;
-  setAnswered: (answered: boolean) => void;
-}
-
 /** The scripted step sequence, (delayMs, apply) pairs run in order. */
-function buildScript(api: ScriptApi): Array<[number, () => void]> {
+const buildScript: BuildScript = (api) => {
   const { setSteps, setPhase, setProgress, setStreaming, setAnswered } = api;
   const upsert = (step: TurnStep) =>
     setSteps((steps) => {
@@ -265,34 +262,12 @@ function buildScript(api: ScriptApi): Array<[number, () => void]> {
       },
     ],
   ];
-}
+};
 
-/** The frame every loop ends on, also the still shown before the loop has ever
- *  run (reduced motion, or the observer's first tick). */
-const FINAL_STEPS: TurnStep[] = (() => {
-  const steps: TurnStep[] = [];
-  const script = buildScript({
-    setSteps: (update) => {
-      const next = update(steps);
-      steps.length = 0;
-      steps.push(...next);
-    },
-    setPhase: () => {},
-    setProgress: () => {},
-    setStreaming: () => {},
-    setAnswered: () => {},
-  });
-  for (const [, apply] of script) apply();
-  return steps;
-})();
+const FINAL_STEPS = finalSteps(buildScript);
 
 /** Loop pacing: how long the finished answer holds before replaying. */
 const DWELL_MS = 4500;
-
-/* One dial over the whole script's tempo, same reason as the assistant demo:
-   the delays are written as the turn's shape, and at their raw speed the
-   Teammate reasons faster than a reader can follow the panel. */
-const PACE = 1.5;
 
 const noop = () => {};
 
@@ -306,47 +281,8 @@ export function TeammateChatDemo({
   const frameRef = useRef<HTMLDivElement>(null);
   const active = useShouldAnimate(frameRef);
 
-  const [steps, setSteps] = useState<TurnStep[]>(FINAL_STEPS);
-  const [phase, setPhase] = useState<TurnPhase>("done");
-  const [progress, setProgress] = useState<string[]>([]);
-  const [streaming, setStreaming] = useState<string | null>(null);
-  const [answered, setAnswered] = useState(true);
-  // Remounts the scripted turn per replay, so the panel's elapsed clock and
-  // entrance animations start fresh each run.
-  const [runId, setRunId] = useState(0);
-
-  useEffect(() => {
-    if (!active) return;
-    const timers: number[] = [];
-    // Deferred a tick so the effect body itself never calls setState.
-    timers.push(
-      window.setTimeout(() => {
-        setSteps([]);
-        setPhase("running");
-        setProgress([]);
-        setStreaming(null);
-        setAnswered(false);
-      }, 0)
-    );
-
-    let at = 0;
-    for (const [delay, apply] of buildScript({
-      setSteps,
-      setPhase,
-      setProgress,
-      setStreaming,
-      setAnswered,
-    })) {
-      at += delay * PACE;
-      timers.push(window.setTimeout(apply, at));
-    }
-    timers.push(
-      window.setTimeout(() => setRunId((run) => run + 1), at + DWELL_MS)
-    );
-    return () => {
-      for (const timer of timers) window.clearTimeout(timer);
-    };
-  }, [active, runId]);
+  const { steps, phase, progress, streaming, answered, runId } =
+    useScriptedTurn(active, buildScript, FINAL_STEPS, DWELL_MS);
 
   const pending = phase !== "done";
 

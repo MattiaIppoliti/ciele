@@ -1,14 +1,10 @@
-import { createDb, type Db } from "@agent-hub/db";
-import {
-  createSupabaseServiceClient,
-  isSupabaseServiceConfigured,
-} from "@/lib/supabase/service";
+import type { Db } from "@agent-hub/db";
+import { getRelayDb, isRelayDbConfigured } from "@/lib/relay-db";
 
-let runtimeDb: Db | null = null;
-
-/** Trusted coordination client; local/demo deployments keep their existing DB. */
+/**
+ * Trusted coordination client, the relay's service-role singleton;
+ * local/demo deployments keep their existing DB.
+ */
 export function getRuntimeDb(fallback: Db): Db {
-  if (!isSupabaseServiceConfigured()) return fallback;
-  runtimeDb ??= createDb(createSupabaseServiceClient());
-  return runtimeDb;
+  return isRelayDbConfigured() ? getRelayDb() : fallback;
 }

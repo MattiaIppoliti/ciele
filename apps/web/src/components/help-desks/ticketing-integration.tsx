@@ -22,7 +22,12 @@ import {
 import { Input, PasswordInput } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import { TICKETING_PLATFORMS } from "@/lib/ticketing-integrations";
-import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import {
+  isRedirectError,
+  useConfirmDelete,
+} from "@/components/ui/confirm-delete-modal";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 interface ServiceNowFormState {
   name: string;
@@ -41,6 +46,22 @@ const EMPTY_FORM: ServiceNowFormState = {
   username: "",
   password: "",
 };
+
+/** The connect form, in display order, which is also the order errors focus in. */
+const FIELDS: Array<{
+  key: keyof ServiceNowFormState;
+  label: string;
+  hint: string;
+  placeholder: string;
+  kind: "text" | "code" | "url" | "secret";
+}> = [
+  { key: "name", label: "Name of Integration", hint: "A generic name that can help you remember this.", placeholder: "Name", kind: "text" },
+  { key: "baseUrl", label: "Base URL", hint: "Enter the base URL of your account.", placeholder: "Base URL", kind: "url" },
+  { key: "clientId", label: "Client ID", hint: "Enter your client ID.", placeholder: "Client ID", kind: "code" },
+  { key: "clientSecret", label: "Client secret", hint: "Enter your integration client secret.", placeholder: "Client secret", kind: "secret" },
+  { key: "username", label: "Username", hint: "Enter your username.", placeholder: "Username", kind: "code" },
+  { key: "password", label: "Password", hint: "Enter your password.", placeholder: "Password", kind: "secret" },
+];
 
 function PlatformLogo({ platform }: { platform: TicketingPlatform }) {
   const meta = TICKETING_PLATFORMS[platform];
@@ -68,25 +89,62 @@ export function TicketingIntegrationSection({
   const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
+  const [missing, setMissing] = useState<ReadonlySet<keyof ServiceNowFormState>>(
+    () => new Set(),
+  );
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   function openConnectDialog() {
     setForm(EMPTY_FORM);
+    setMissing(new Set());
+    setSubmitError(null);
     setDialogOpen(true);
   }
 
+  function update(key: keyof ServiceNowFormState, value: string) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setSubmitError(null);
+    if (missing.has(key)) {
+      setMissing((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
+  // Credentials typed here exist nowhere else, so a stray Escape or backdrop
+  // click asks before throwing them away. While the connect is in flight the
+  // dialog stays put: closing it would hide the outcome.
+  const { leave } = useUnsavedChanges({
+    dirty: dialogOpen && Object.values(form).some((value) => value !== ""),
+    confirmDelete,
+    description: "The connection details you entered are not saved.",
+  });
+
+  function requestCloseDialog() {
+    if (isPending) return;
+    leave(() => setDialogOpen(false));
+  }
+
   function connect() {
-    if (
-      !form.name.trim() ||
-      !form.baseUrl.trim() ||
-      !form.clientId.trim() ||
-      !form.clientSecret.trim() ||
-      !form.username.trim() ||
-      !form.password.trim()
-    ) {
-      toast.error("All fields are required");
+    const empty = FIELDS.filter((f) => !form[f.key].trim()).map((f) => f.key);
+    if (empty.length > 0) {
+      setMissing(new Set(empty));
+      document.getElementById(`${fieldId}-${empty[0]}`)?.focus();
       return;
     }
+    setSubmitError(null);
     startTransition(async () => {
-      await connectServiceNowIntegrationAction(helpDeskId, form);
+      try {
+        await connectServiceNowIntegrationAction(helpDeskId, form);
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        setSubmitError(
+          error instanceof Error ? error.message : "Could not connect ServiceNow",
+        );
+        return;
+      }
       toast.success("ServiceNow connected");
       setDialogOpen(false);
     });
@@ -170,7 +228,10 @@ export function TicketingIntegrationSection({
         )}
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => (open ? setDialogOpen(true) : requestCloseDialog())}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <div className="flex items-center gap-2">
@@ -180,117 +241,62 @@ export function TicketingIntegrationSection({
               </DialogTitle>
             </div>
           </DialogHeader>
-          <div className="max-h-[60vh] space-y-4 overflow-y-auto rounded-xl bg-muted/40 p-4">
-            <div>
-              <Label htmlFor={`${fieldId}-name`} className="font-semibold">
-                Name of Integration <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                A generic name that can help you remember this.
-              </p>
-              <Input
-                id={`${fieldId}-name`}
-                autoComplete="off"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Name"
-                className="mt-2 h-11"
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${fieldId}-baseUrl`} className="font-semibold">
-                Base URL <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                Enter the base URL of your account.
-              </p>
-              <Input
-                id={`${fieldId}-baseUrl`}
-                type="url"
-                inputMode="url"
-                autoComplete="off"
-                spellCheck={false}
-                value={form.baseUrl}
-                onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
-                placeholder="Base URL"
-                className="mt-2 h-11"
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${fieldId}-clientId`} className="font-semibold">
-                Client ID <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                Enter your client ID.
-              </p>
-              <Input
-                id={`${fieldId}-clientId`}
-                autoComplete="off"
-                spellCheck={false}
-                value={form.clientId}
-                onChange={(e) => setForm({ ...form, clientId: e.target.value })}
-                placeholder="Client ID"
-                className="mt-2 h-11"
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${fieldId}-clientSecret`} className="font-semibold">
-                Client secret <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                Enter your integration client secret.
-              </p>
-              <PasswordInput
-                id={`${fieldId}-clientSecret`}
-                autoComplete="new-password"
-                value={form.clientSecret}
-                onChange={(e) =>
-                  setForm({ ...form, clientSecret: e.target.value })
-                }
-                placeholder="Client secret"
-                className="mt-2 h-11"
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${fieldId}-username`} className="font-semibold">
-                Username <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                Enter your username.
-              </p>
-              <Input
-                id={`${fieldId}-username`}
-                autoComplete="off"
-                spellCheck={false}
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                placeholder="Username"
-                className="mt-2 h-11"
-              />
-            </div>
-            <div>
-              <Label htmlFor={`${fieldId}-password`} className="font-semibold">
-                Password <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                Enter your password.
-              </p>
-              <PasswordInput
-                id={`${fieldId}-password`}
-                autoComplete="new-password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Password"
-                className="mt-2 h-11"
-              />
-            </div>
+          <div className="max-h-[60vh] space-y-4 overflow-y-auto overscroll-contain rounded-xl bg-muted/40 p-4">
+            {FIELDS.map((f) => {
+              const id = `${fieldId}-${f.key}`;
+              const errorId = `${id}-error`;
+              const invalid = missing.has(f.key);
+              const common = {
+                id,
+                value: form[f.key],
+                onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                  update(f.key, e.target.value),
+                placeholder: f.placeholder,
+                "aria-invalid": invalid || undefined,
+                "aria-describedby": invalid ? errorId : undefined,
+                className: "mt-2 h-11",
+              };
+              return (
+                <div key={f.key}>
+                  <Label htmlFor={id} className="font-semibold">
+                    {f.label} <span className="text-destructive">*</span>
+                  </Label>
+                  <p className="text-muted-foreground mt-0.5 text-sm">{f.hint}</p>
+                  {f.kind === "secret" ? (
+                    <PasswordInput {...common} autoComplete="new-password" />
+                  ) : (
+                    <Input
+                      {...common}
+                      type={f.kind === "url" ? "url" : undefined}
+                      inputMode={f.kind === "url" ? "url" : undefined}
+                      autoComplete="off"
+                      spellCheck={f.kind === "text" ? undefined : false}
+                    />
+                  )}
+                  {invalid && (
+                    <p id={errorId} className="text-destructive mt-1.5 text-sm">
+                      {f.label} is required.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
+          {submitError && (
+            <p role="alert" className="text-destructive text-sm break-words">
+              {submitError}
+            </p>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={requestCloseDialog}
+              disabled={isPending}
+            >
               Cancel
             </Button>
             <Button onClick={connect} disabled={isPending}>
-              {isPending ? "Connecting…" : "Connect"}
+              <RollInText text={isPending ? "Connecting…" : "Connect"} />
             </Button>
           </DialogFooter>
         </DialogContent>

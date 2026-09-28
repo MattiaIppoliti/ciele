@@ -46,13 +46,15 @@ export default function InsightsLoading() {
             className="col-span-12 h-40 rounded-xl sm:col-span-6 xl:col-span-4"
           />
         ))}
-        {/* Rows 3–4: half-width cards */}
+        {/* Row 3: four quarter-width ratio cards */}
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton
             key={`r3-${i}`}
-            className="col-span-12 h-40 rounded-xl xl:col-span-6"
+            className="col-span-12 h-40 rounded-xl sm:col-span-6 xl:col-span-3"
           />
         ))}
+        {/* Conversation depth */}
+        <Skeleton className="col-span-12 h-[22rem] rounded-xl" />
         {/* Usage chart */}
         <Skeleton className="col-span-12 h-80 rounded-xl" />
       </div>

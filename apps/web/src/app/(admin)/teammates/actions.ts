@@ -120,9 +120,11 @@ export async function readTeammateMemoryAction(
 export async function writeTeammateMemoryAction(
   id: string,
   body: string,
-  note = ""
+  note = "",
+  /** The version the editor loaded; a newer one refuses the save. */
+  expectedUpdatedAt?: string | null
 ): Promise<MemoryDocument> {
-  return runOperation(writeTeammateMemoryOp, { id, body, note });
+  return runOperation(writeTeammateMemoryOp, { id, body, note, expectedUpdatedAt });
 }
 
 /**
@@ -161,14 +163,6 @@ export async function readTeammateConversationAction(
 }
 
 /**
- * Accept a referral (#773): open a conversation with the colleague another
- * Teammate suggested, carrying the summary it wrote.
- *
- * The click is what makes this happen; nothing runs until a person decides.
- * Both conversations record the link, so a handoff is a fact in the data
- * rather than a coincidence of timing between two threads.
- */
-/**
  * Decides an action the approval gate stopped (#958). Approving runs the
  * action the row carries, with the arguments a Member read on the card; the
  * operation re-reads the grants first, so an approval is never a way to run
@@ -182,6 +176,14 @@ export async function decideActionApprovalAction(input: {
   return { ran: result.ran };
 }
 
+/**
+ * Accept a referral (#773): open a conversation with the colleague another
+ * Teammate suggested, carrying the summary it wrote.
+ *
+ * The click is what makes this happen; nothing runs until a person decides.
+ * Both conversations record the link, so a handoff is a fact in the data
+ * rather than a coincidence of timing between two threads.
+ */
 export async function startReferredConversationAction(input: {
   originConversationId: string;
   teammateId: string;

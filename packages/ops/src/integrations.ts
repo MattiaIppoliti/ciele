@@ -2,6 +2,7 @@ import { validateEndpointIdempotency } from "@agent-hub/core";
 import type {
   AnthropicWifFederatedConfig,
   ApiEndpointSpec,
+  ApiIntegration,
   IdempotencyRejection,
   ApiIntegrationAuthType,
   AzureOpenAiFederatedConfig,
@@ -12,7 +13,8 @@ import type {
 } from "@agent-hub/core";
 import { sealSecret } from "@agent-hub/core";
 import { z } from "zod";
-import { OperationError, defineOperation, type OperationContext } from "./operation";
+import { OperationError, defineOperation } from "./operation";
+import { requireAssistant } from "./assistants";
 
 const idSchema = z.string().min(1);
 const identityClaimSchema = z
@@ -20,14 +22,6 @@ const identityClaimSchema = z
   .trim()
   .regex(/^[a-zA-Z0-9_.:-]{1,64}$/, "That identity claim name isn't valid")
   .optional();
-
-async function requireAssistant(ctx: OperationContext, id: string) {
-  const assistant = await ctx.db.getAssistant(id);
-  if (!assistant || assistant.organizationId !== ctx.organizationId) {
-    throw new OperationError("not_found", "Assistant not found");
-  }
-  return assistant;
-}
 
 export interface ApiIntegrationView {
   name: string;
@@ -37,6 +31,19 @@ export interface ApiIntegrationView {
   authUsername: string;
   hasCredential: boolean;
   endpoints: ApiEndpointSpec[];
+}
+
+/** What leaves the server: the sealed credential only as whether one is set. */
+function apiIntegrationView(integration: ApiIntegration): ApiIntegrationView {
+  return {
+    name: integration.name,
+    baseUrl: integration.baseUrl,
+    authType: integration.authType,
+    authHeaderName: integration.authHeaderName,
+    authUsername: integration.authUsername,
+    hasCredential: integration.encryptedCredential !== null,
+    endpoints: integration.endpoints,
+  };
 }
 
 const endpointSchema = z.object({
@@ -83,17 +90,7 @@ export const getApiIntegrationOp = defineOperation({
   run: async (ctx, { assistantId }): Promise<ApiIntegrationView | null> => {
     await requireAssistant(ctx, assistantId);
     const integration = await ctx.db.getApiIntegration(assistantId);
-    return integration
-      ? {
-          name: integration.name,
-          baseUrl: integration.baseUrl,
-          authType: integration.authType,
-          authHeaderName: integration.authHeaderName,
-          authUsername: integration.authUsername,
-          hasCredential: integration.encryptedCredential !== null,
-          endpoints: integration.endpoints,
-        }
-      : null;
+    return integration ? apiIntegrationView(integration) : null;
   },
 });
 
@@ -157,15 +154,7 @@ export const setApiIntegrationOp = defineOperation({
         : { encryptedCredential: input.credential ? sealSecret(input.credential) : null }),
       endpoints,
     });
-    return {
-      name: stored.name,
-      baseUrl: stored.baseUrl,
-      authType: stored.authType,
-      authHeaderName: stored.authHeaderName,
-      authUsername: stored.authUsername,
-      hasCredential: stored.encryptedCredential !== null,
-      endpoints: stored.endpoints,
-    };
+    return apiIntegrationView(stored);
   },
 });
 
@@ -257,7 +246,7 @@ export const listProviderConnectionsOp = defineOperation({
     (await ctx.db.listProviderConnections(ctx.organizationId)).map(providerView),
 });
 
-function keyHintOf(secret: string): string {
+export function keyHintOf(secret: string): string {
   return secret.length >= 4 ? `…${secret.slice(-4)}` : "";
 }
 

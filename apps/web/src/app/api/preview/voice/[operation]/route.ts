@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/lib/data";
 import { checkVoiceRate, readVoiceBody, runVoiceRequest, voiceErrorResponse, VoiceRequestError } from "@/lib/voice-http";
-export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function POST(request: NextRequest, { params }: { params: Promise<{ operation: string }> }) {
   try {

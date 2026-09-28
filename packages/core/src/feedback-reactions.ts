@@ -17,11 +17,10 @@ export function isFeedbackReactionId(value: unknown): value is FeedbackReactionI
 }
 
 export function feedbackReactionById(id: FeedbackReactionId | null | undefined) {
-  return id ? FEEDBACK_REACTIONS.find((reaction) => reaction.id === id) ?? null : null;
+  return FEEDBACK_REACTIONS.find((reaction) => reaction.id === id) ?? null;
 }
 
 /** Map each emoji to the existing positive/negative analytics score. */
 export function feedbackReactionScore(id: FeedbackReactionId | null): -1 | 0 | 1 {
-  if (!id) return 0;
   return feedbackReactionById(id)?.score ?? 0;
 }

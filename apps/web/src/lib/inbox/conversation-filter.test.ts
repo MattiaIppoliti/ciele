@@ -55,6 +55,9 @@ describe("subjectName", () => {
       subjectName(conversation({ metadata: { ssoClaimValue: "ada@idp" } }))
     ).toBe("ada@idp");
     expect(subjectName(conversation({ subjectType: "member" }))).toBe("Member");
+    expect(
+      subjectName(conversation({ subjectType: "member", metadata: { apiKeyId: "key_1" } }))
+    ).toBe("API key");
     expect(subjectName(conversation({ subjectType: "sso" }))).toBe("Signed-in user");
     expect(subjectName(conversation())).toBe("Visitor");
   });

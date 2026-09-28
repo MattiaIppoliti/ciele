@@ -26,6 +26,8 @@ import {
   discoverApplicationScopesAction,
 } from "@/app/actions";
 import { toast } from "@/lib/toast";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useDiscardGuard } from "@/components/knowledge/use-discard-guard";
 
 export function SlackBotDialog({
   connection,
@@ -46,6 +48,20 @@ export function SlackBotDialog({
   );
   const [channelsLoading, setChannelsLoading] = useState(true);
   const [pending, startTransition] = useTransition();
+  /** Which footer button started the save in flight, for its label. */
+  const [saving, setSaving] = useState<"save" | "disable" | null>(null);
+  const savedChannels = config?.channelIds ?? [];
+  const dirty =
+    assistantId !== (config?.assistantId ?? "") ||
+    channelIds.length !== savedChannels.length ||
+    channelIds.some((id) => !savedChannels.includes(id));
+  const { requestClose, confirmDeleteModal } = useDiscardGuard({
+    open: true,
+    dirty,
+    pending,
+    onClose,
+    description: "The Slack assistant settings are not saved yet.",
+  });
   const selectedChannels = useMemo(() => new Set(channelIds), [channelIds]);
   const visibleChannels = channelOptions.filter(
     (scope) => scope.kind === "channel",
@@ -92,6 +108,7 @@ export function SlackBotDialog({
   }
 
   function save(disable = false) {
+    setSaving(disable ? "disable" : "save");
     startTransition(async () => {
       try {
         await configureSlackBotAction(
@@ -113,6 +130,8 @@ export function SlackBotDialog({
             ? error.message
             : "Could not save Slack settings.",
         );
+      } finally {
+        setSaving(null);
       }
     });
   }
@@ -150,7 +169,8 @@ export function SlackBotDialog({
     });
   }
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <>
+    <Dialog open onOpenChange={(open) => !open && requestClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Conversational Ciele in Slack</DialogTitle>
@@ -191,11 +211,13 @@ export function SlackBotDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Channels</Label>
+          <fieldset className="min-w-0 space-y-2">
+            <legend className="text-sm leading-none font-medium">Channels</legend>
             <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border p-2">
               {channelsLoading && (
-                <p className="p-2 text-sm">Loading channels…</p>
+                <p role="status" className="p-2 text-sm">
+                  Loading channels…
+                </p>
               )}
               {!channelsLoading && visibleChannels.length === 0 && (
                 <p className="p-2 text-sm text-muted-foreground">
@@ -252,7 +274,7 @@ export function SlackBotDialog({
             <p className="text-xs text-muted-foreground">
               Invite Ciele to each channel first. Private channels appear once invited. Replies stay in the thread.
             </p>
-          </div>
+          </fieldset>
         </div>
         <DialogFooter>
           {config && (
@@ -261,7 +283,9 @@ export function SlackBotDialog({
               disabled={pending}
               onClick={() => save(true)}
             >
-              Disable replies
+              <RollInText
+                text={saving === "disable" ? "Disabling…" : "Disable replies"}
+              />
             </Button>
           )}
           <Button
@@ -270,10 +294,14 @@ export function SlackBotDialog({
             }
             onClick={() => save()}
           >
-            Save Slack assistant
+            <RollInText
+              text={saving === "save" ? "Saving…" : "Save Slack assistant"}
+            />
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmDeleteModal}
+    </>
   );
 }

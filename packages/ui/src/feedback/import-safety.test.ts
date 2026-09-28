@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 /**
  * The barrel must be safe to evaluate where there is no browser: a server
- * component that imports a primitive from `@agent-hub/ui` pulls this in, and
+ * layout that mounts the provider from `@agent-hub/ui/feedback` pulls this in, and
  * `@foleyjs/core` reaches for `AudioContext` the moment anyone plays a cue.
  * So the libraries are imported dynamically inside the first gesture, and this
  * test is what makes that a rule rather than a habit.
@@ -27,7 +27,7 @@ describe("feedback barrel", () => {
     const mod = await import("./index");
 
     expect(typeof mod.FeedbackProvider).toBe("function");
-    expect(typeof mod.decide).toBe("function");
+    expect(typeof mod.playFeedback).toBe("function");
     expect(touched).toEqual([]);
     vi.unstubAllGlobals();
   });

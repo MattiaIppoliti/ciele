@@ -38,7 +38,6 @@ afterAll(() => {
 describe("SSO connection actions", () => {
   const requireMemberMock = vi.mocked(requireMember);
   let db: Db;
-  const assistantId = "assistant-x";
 
   beforeEach(async () => {
     db = getMockDb();
@@ -56,7 +55,7 @@ describe("SSO connection actions", () => {
   });
 
   it("connects: seals the secret and stores non-secret config (admin capability)", async () => {
-    const result = await setSsoConnectionAction(assistantId, {
+    const result = await setSsoConnectionAction({
       provider: "entra",
       clientId: "client-1",
       tenantId: "tenant-1",
@@ -74,7 +73,7 @@ describe("SSO connection actions", () => {
   });
 
   it("connects: rejects missing fields without writing", async () => {
-    const result = await setSsoConnectionAction(assistantId, {
+    const result = await setSsoConnectionAction({
       provider: "entra",
       clientId: "",
       tenantId: "tenant-1",
@@ -85,7 +84,7 @@ describe("SSO connection actions", () => {
   });
 
   it("connects: rejects a not-yet-available provider", async () => {
-    const result = await setSsoConnectionAction(assistantId, {
+    const result = await setSsoConnectionAction({
       provider: "clerk",
       clientId: "a",
       tenantId: "b",
@@ -96,7 +95,7 @@ describe("SSO connection actions", () => {
   });
 
   it("validates: records the provider result as the validation status", async () => {
-    await setSsoConnectionAction(assistantId, {
+    await setSsoConnectionAction({
       provider: "entra",
       clientId: "client-1",
       tenantId: "tenant-1",
@@ -106,13 +105,13 @@ describe("SSO connection actions", () => {
       validate: vi.fn().mockResolvedValue({ ok: true }),
     });
 
-    const result = await validateSsoConnectionAction(assistantId);
+    const result = await validateSsoConnectionAction();
     expect(result).toEqual({ ok: true });
     expect((await db.getSsoConnection(DEMO_ORG.id))?.validationStatus).toBe("valid");
   });
 
   it("validates: surfaces the failure reason and marks invalid", async () => {
-    await setSsoConnectionAction(assistantId, {
+    await setSsoConnectionAction({
       provider: "entra",
       clientId: "client-1",
       tenantId: "tenant-1",
@@ -122,24 +121,24 @@ describe("SSO connection actions", () => {
       validate: vi.fn().mockResolvedValue({ ok: false, error: "AADSTS7000215" }),
     });
 
-    const result = await validateSsoConnectionAction(assistantId);
+    const result = await validateSsoConnectionAction();
     expect(result).toEqual({ ok: false, error: "AADSTS7000215" });
     expect((await db.getSsoConnection(DEMO_ORG.id))?.validationStatus).toBe("invalid");
   });
 
   it("validates: fails cleanly when there is no connection", async () => {
-    const result = await validateSsoConnectionAction(assistantId);
+    const result = await validateSsoConnectionAction();
     expect(result.ok).toBe(false);
   });
 
   it("disconnects: removes the connection", async () => {
-    await setSsoConnectionAction(assistantId, {
+    await setSsoConnectionAction({
       provider: "entra",
       clientId: "client-1",
       tenantId: "tenant-1",
       clientSecret: "super-secret",
     });
-    await disconnectSsoConnectionAction(assistantId);
+    await disconnectSsoConnectionAction();
     expect(await db.getSsoConnection(DEMO_ORG.id)).toBeNull();
   });
 
@@ -163,7 +162,7 @@ describe("SSO connection actions", () => {
     it("is gated (unauthenticated) with the branded provider when enforced and no cookie", async () => {
       const a = await db.createAssistant(DEMO_ORG.id, { title: "Gated" });
       await db.updateAssistant(a.id, { requireSignIn: true });
-      await setSsoConnectionAction(a.id, {
+      await setSsoConnectionAction({
         provider: "entra",
         clientId: "c",
         tenantId: "t",
@@ -181,7 +180,7 @@ describe("SSO connection actions", () => {
     it("is authenticated when a valid gate cookie for the org is present", async () => {
       const a = await db.createAssistant(DEMO_ORG.id, { title: "Gated" });
       await db.updateAssistant(a.id, { requireSignIn: true });
-      await setSsoConnectionAction(a.id, {
+      await setSsoConnectionAction({
         provider: "entra",
         clientId: "c",
         tenantId: "t",

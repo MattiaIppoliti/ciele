@@ -3,6 +3,7 @@ import type {
   ApplicationArtifact,
   ApplicationConnector,
   ApplicationConnectorRegistry,
+  ApplicationCredentials,
   ApplicationScopeOption,
 } from "./application-connectors";
 import {
@@ -21,15 +22,26 @@ import {
   refreshApplicationCredentials as refreshCredentials,
   trustedUrl,
   type ApplicationHttpClient,
-  type ApplicationHttpResponse,
 } from "./application-provider-http";
 
-export {
-  ApplicationAuthorizationError,
-  ApplicationRateLimitError,
-  type ApplicationHttpClient,
-  type ApplicationHttpResponse,
-};
+/** The connection's credentials, refreshed when due; a refresh is persisted first. */
+async function openToken(
+  provider: ApplicationConnector["provider"],
+  connection: { sealedCredentials: string },
+  client: ApplicationHttpClient,
+  onRefreshed?: (credentials: ApplicationCredentials) => Promise<void>
+): Promise<{ active: ApplicationCredentials; refreshed?: ApplicationCredentials }> {
+  const token = await refreshCredentials(provider, credentials(connection), client);
+  if (token.refreshed) await onRefreshed?.(token.refreshed);
+  return token;
+}
+
+/** Slack's pagination cursor off a page; empty on the last one. */
+function slackNextCursor(page: Record<string, unknown>): string {
+  return String(
+    (page.response_metadata as Record<string, unknown> | undefined)?.next_cursor ?? ""
+  );
+}
 
 const FILE_MAX_BYTES = 20 * 1024 * 1024;
 /** Provider list pages consumed by one leased durable claim. */
@@ -56,12 +68,7 @@ export function salesforceConnector(baseClient: ApplicationHttpClient): Applicat
     provider: "salesforce",
     async discoverScopes({ connection, onCredentialsRefreshed }) {
       const client = observeHttpClient(baseClient).client;
-      const token = await refreshCredentials(
-        "salesforce",
-        credentials(connection),
-        client
-      );
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("salesforce", connection, client, onCredentialsRefreshed);
       const baseUrl = (token.active.instanceUrl ?? "").replace(/\/$/, "");
       const host = new URL(baseUrl).hostname;
       const apiVersion = "v65.0";
@@ -144,8 +151,7 @@ export function salesforceConnector(baseClient: ApplicationHttpClient): Applicat
     async synchronize({ connection, applicationImport, syncStartedAt, knownArtifacts, onCredentialsRefreshed, onProgress }) {
       const observed = observeHttpClient(baseClient, onProgress);
       const client = observed.client;
-      const token = await refreshCredentials("salesforce", credentials(connection), client);
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("salesforce", connection, client, onCredentialsRefreshed);
       const baseUrl = (token.active.instanceUrl ?? token.active.baseUrl ?? "").replace(/\/$/, "");
       if (!baseUrl) throw new Error("Salesforce instance URL is missing");
       const host = new URL(baseUrl).hostname;
@@ -262,12 +268,7 @@ export function serviceNowConnector(baseClient: ApplicationHttpClient): Applicat
     provider: "servicenow",
     async discoverScopes({ connection, onCredentialsRefreshed }) {
       const client = observeHttpClient(baseClient).client;
-      const token = await refreshCredentials(
-        "servicenow",
-        credentials(connection),
-        client
-      );
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("servicenow", connection, client, onCredentialsRefreshed);
       const baseUrl = (token.active.baseUrl ?? "").replace(/\/$/, "");
       const host = new URL(baseUrl).hostname;
       const url = new URL(`${baseUrl}/api/now/table/kb_knowledge_base`);
@@ -300,8 +301,7 @@ export function serviceNowConnector(baseClient: ApplicationHttpClient): Applicat
     async synchronize({ connection, applicationImport, syncStartedAt, knownArtifacts, onCredentialsRefreshed, onProgress }) {
       const observed = observeHttpClient(baseClient, onProgress);
       const client = observed.client;
-      const token = await refreshCredentials("servicenow", credentials(connection), client);
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("servicenow", connection, client, onCredentialsRefreshed);
       const baseUrl = (token.active.baseUrl ?? "").replace(/\/$/, "");
       if (!baseUrl) throw new Error("ServiceNow base URL is missing");
       const host = new URL(baseUrl).hostname;
@@ -410,12 +410,7 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
     provider: "slack",
     async discoverScopes({ connection, onCredentialsRefreshed }) {
       const client = observeHttpClient(baseClient).client;
-      const token = await refreshCredentials(
-        "slack",
-        credentials(connection),
-        client
-      );
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("slack", connection, client, onCredentialsRefreshed);
       const options: ApplicationScopeOption[] = [];
       let cursor = "";
       do {
@@ -447,18 +442,14 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
             },
           });
         }
-        cursor = String(
-          (page.response_metadata as Record<string, unknown> | undefined)
-            ?.next_cursor ?? ""
-        );
+        cursor = slackNextCursor(page);
       } while (cursor);
       return { scopes: options, refreshedCredentials: token.refreshed };
     },
     async synchronize({ connection, applicationImport, knownArtifacts, onCredentialsRefreshed, onProgress }) {
       const observed = observeHttpClient(baseClient, onProgress);
       const client = observed.client;
-      const token = await refreshCredentials("slack", credentials(connection), client);
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("slack", connection, client, onCredentialsRefreshed);
       const channelIds = applicationImport.config.channelIds as string[] | undefined;
       if (!channelIds?.length) throw new Error("Select at least one Slack channel");
       const rawChannelOffset = Number(
@@ -528,13 +519,7 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
           ).trim();
           if (id && label) memberNames.set(id, label);
         }
-        membersCursor = String(
-          (
-            membersPage.response_metadata as
-              | Record<string, unknown>
-              | undefined
-          )?.next_cursor ?? ""
-        );
+        membersCursor = slackNextCursor(membersPage);
       } while (membersCursor && memberPages < PROVIDER_PAGE_BUDGET);
       let remainingPageBudget = PROVIDER_PAGE_BUDGET;
       const attributedMessage = (message: Record<string, unknown>): string => {
@@ -653,13 +638,7 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
             );
           }
           pending.firstRepliesPage = false;
-          pending.repliesCursor = String(
-            (
-              replies.response_metadata as
-                | Record<string, unknown>
-                | undefined
-            )?.next_cursor ?? ""
-          );
+          pending.repliesCursor = slackNextCursor(replies);
           if (!pending.repliesCursor) {
             finishThread(pending);
             return null;
@@ -767,10 +746,7 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
             }
             throw new Error(`Slack error: ${error}`);
           }
-          const nextHistoryCursor = String(
-            (page.response_metadata as Record<string, unknown> | undefined)
-              ?.next_cursor ?? ""
-          );
+          const nextHistoryCursor = slackNextCursor(page);
           for (const message of valueArray(page, "messages")) {
             const ts = String(message.ts ?? "");
             const rootText = String(message.text ?? "").trim();
@@ -793,22 +769,23 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
             if (!latestByChannel[channelId] || ts > latestByChannel[channelId]) {
               latestByChannel[channelId] = ts;
             }
+            const root: SlackPendingThread = {
+              mode: "history",
+              channelId,
+              ts,
+              rootText,
+              rootUserId,
+              thread: [attributedMessage(message)],
+              revisionParts: [
+                String((message.edited as Record<string, unknown> | undefined)?.ts ?? ts),
+              ],
+              participantIds: rootUserId ? [rootUserId] : [],
+              repliesCursor: "",
+              firstRepliesPage: false,
+            };
             if (Number(message.reply_count ?? 0) > 0) {
               const pending = await continueThread({
-                mode: "history",
-                channelId,
-                ts,
-                rootText,
-                rootUserId,
-                thread: [attributedMessage(message)],
-                revisionParts: [
-                  String(
-                    (message.edited as Record<string, unknown> | undefined)
-                      ?.ts ?? ts
-                  ),
-                ],
-                participantIds: rootUserId ? [rootUserId] : [],
-                repliesCursor: "",
+                ...root,
                 firstRepliesPage: true,
                 historyCursor: nextHistoryCursor,
                 historyOldest,
@@ -819,23 +796,7 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
                 return continuationResult(pending);
               }
             } else {
-              finishThread({
-                mode: "history",
-                channelId,
-                ts,
-                rootText,
-                rootUserId,
-                thread: [attributedMessage(message)],
-                revisionParts: [
-                  String(
-                    (message.edited as Record<string, unknown> | undefined)
-                      ?.ts ?? ts
-                  ),
-                ],
-                participantIds: rootUserId ? [rootUserId] : [],
-                repliesCursor: "",
-                firstRepliesPage: false,
-              });
+              finishThread(root);
             }
           }
           cursor = nextHistoryCursor;
@@ -968,12 +929,7 @@ export function oneDriveConnector(baseClient: ApplicationHttpClient): Applicatio
     provider: "onedrive",
     async discoverScopes({ connection, onCredentialsRefreshed }) {
       const client = observeHttpClient(baseClient).client;
-      const token = await refreshCredentials(
-        "onedrive",
-        credentials(connection),
-        client
-      );
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("onedrive", connection, client, onCredentialsRefreshed);
       const drive = await jsonRequest<Record<string, unknown>>(
         client,
         "https://graph.microsoft.com/v1.0/me/drive?$select=id,name,driveType",
@@ -1024,8 +980,7 @@ export function oneDriveConnector(baseClient: ApplicationHttpClient): Applicatio
     async synchronize({ connection, applicationImport, onCredentialsRefreshed, onProgress }) {
       const observed = observeHttpClient(baseClient, onProgress);
       const client = observed.client;
-      const token = await refreshCredentials("onedrive", credentials(connection), client);
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("onedrive", connection, client, onCredentialsRefreshed);
       const driveId = String(applicationImport.config.driveId ?? "me");
       const folderId = String(applicationImport.config.folderId ?? "");
       const driveRoot =
@@ -1198,12 +1153,7 @@ export function googleDriveConnector(baseClient: ApplicationHttpClient): Applica
     provider: "google_drive",
     async discoverScopes({ connection, onCredentialsRefreshed }) {
       const client = observeHttpClient(baseClient).client;
-      const token = await refreshCredentials(
-        "google_drive",
-        credentials(connection),
-        client
-      );
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("google_drive", connection, client, onCredentialsRefreshed);
       const drivesPage = await jsonRequest<Record<string, unknown>>(
         client,
         "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name)",
@@ -1282,8 +1232,7 @@ export function googleDriveConnector(baseClient: ApplicationHttpClient): Applica
     async synchronize({ connection, applicationImport, onCredentialsRefreshed, onProgress }) {
       const observed = observeHttpClient(baseClient, onProgress);
       const client = observed.client;
-      const token = await refreshCredentials("google_drive", credentials(connection), client);
-      if (token.refreshed) await onCredentialsRefreshed?.(token.refreshed);
+      const token = await openToken("google_drive", connection, client, onCredentialsRefreshed);
       const pageToken = String(applicationImport.checkpoint.pageToken ?? "");
       const folderId = String(applicationImport.config.folderId ?? "");
       const driveId = String(applicationImport.config.driveId ?? "");

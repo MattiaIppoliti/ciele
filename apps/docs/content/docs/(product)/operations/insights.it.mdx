@@ -1,43 +1,128 @@
 ---
 title: Insights
-description: Esamina le metriche attuali relative a Conversazione, risposta, escalation, feedback e Notifica.
+description: Esamina le metriche attuali relative a Conversation, answer, escalation, feedback e Notification.
 ---
 
-Insights calcola le metriche dell'organizzazione a partire dagli eventi di
+Insights calcola le metriche dell'organizzazione sulla base degli eventi di
 runtime memorizzati. Utilizza l'intervallo di date disponibile e i filtri
-dell'Assistente per modificare il set di dati.
+Assistant per modificare il set di dati.
 
 ## Panoramica attuale
 
-La panoramica può includere queste metriche:
+La panoramica può includere le seguenti metriche:
 
-- Conversazioni e visitatori unici
+- Conversazioni e Visitatori univoci
 - Risposte dell'IA
-- Tasso di risoluzione dell'IA
+- Tasso di risoluzione tramite IA
 - valutazioni delle risposte e dati sulla soddisfazione dei clienti
 - escalation
-- risposte per Conversazione
-- lingue e tassi di coinvolgimento
-- feedback e misure di valutazione
+- risposte per Conversation
+- domande per Conversazione: il numero di messaggi inviati dal Visitatore
+- durata media della conversazione: il tempo che intercorre dall'inizio di una
+  conversazione fino al suo ultimo messaggio
+- lingue e tassi di engagement
+- feedback e parametri di valutazione
 - Notifiche inviate
 
 Le schede esatte dipendono dai dati disponibili per il periodo selezionato.
 
+Il grafico **Conversation depth** mostra la durata media delle Conversazioni e
+il numero di domande per Conversazione per ogni giorno, settimana o mese. Ciele
+assegna ogni Conversation al periodo in cui è iniziata. Una Conversation che
+prosegue oltre la fine dell'intervallo mantiene la sua durata complessiva.
+
+## Costi e osservabilità
+
+Due dashboard mostrano i costi dell'IA della tua organizzazione e il suo livello
+di efficienza. **Costs** mostra la spesa e l'utilizzo. **Observability** mostra
+l'affidabilità, la velocità e la qualità delle risposte.
+
+Entrambe le dashboard utilizzano gli stessi filtri. Seleziona un intervallo di
+date, quindi seleziona **All**, **Assistants**, **Teammates** o **Internal**.
+
+- **Assistants** mostra il traffico dei widget e di Preview, nonché gli HTTP
+  Flow in entrata.
+- **Teammates** mostra le chat degli AI Teammate, i turni dei canali e le
+  Routine.
+- **Internal** mostra le attività della piattaforma: indexing, scheduled jobs e
+  chiamate provenienti da API keys e MCP.
+
+Con **All** o **Assistants** selezionati, puoi anche selezionare un Assistant.
+
+Ogni dashboard inizia con le stat cards. Una card mostra un valore per
+l'intervallo, una linea dei suoi valori giornalieri e la variazione rispetto al
+periodo precedente. Il periodo precedente ha la stessa durata e termina il
+giorno prima dell'inizio dell'intervallo. Sposta il puntatore lungo la linea per
+leggere il valore di ogni giorno.
+
+### Costi
+
+- spesa stimata, costo per turno, chiamate al modello e token
+- spesa stimata giornaliera, suddivisa per superficie
+- la quota di spesa per ciascuna surface in ciascun periodo
+- un calendario dell'utilizzo dei token per giorno
+- spesa per modello e per fase della pipeline
+
+La spesa è una stima in euro. Ciele lo calcola in base al numero di token e ai
+prezzi di listino. Non si tratta di una fattura.
+
+### Osservabilità
+
+- turni completati, tasso di successo, turni non riusciti e chiamate agli
+  strumenti per turno
+- latenza per turno: mediana, 95° percentile, istogramma e trend giornaliero
+- **Answer accuracy**: la percentuale di risposte dell'Assistente che il
+  verifier ha approvato
+- **Autonomy**: la percentuale di Visitor Conversations che non sono state
+  inoltrate a un help desk
+- le classi di errore più frequenti
+- i cinque Flows più utilizzati, confrontati tra loro per giorno o per settimana
+
+**Answer accuracy** e **Autonomy** si applicano solo agli Assistenti. Per
+**Teammates** e **Internal**, queste metriche non vengono visualizzate.
+
+### Note
+
+I giorni sono giorni UTC. Una chiamata al modello registrata prima
+dell'attribuzione della surface non ha alcuna surface. Viene conteggiato in
+**All** come **Unattributed** e in nessun'altra surface.
+
+Usa **Export CSV** per scaricare una riga per ogni giorno dell'intervallo. Per
+un file di report con più opzioni, utilizza [Exports](/operations/exports).
+
+## Aggiornamento dei dati
+
+Insights memorizza la panoramica calcolata e le dashboard per un massimo di
+cinque minuti per ogni Organization e per ogni set di filtri. Ogni Member
+dell'Organization legge gli stessi dati memorizzati.
+
+Una modifica apportata da un Member nella console (a un Assistant, a una
+Conversation o a un Improvement) azzera immediatamente l'overview memorizzata.
+Il traffico dei widget (nuove Conversations, valutazioni delle risposte,
+punteggi di soddisfazione, escalation) raggiunge i valori indicati entro cinque
+minuti.
+
+Per forzare un nuovo calcolo prima che scadano i cinque minuti, invia
+`DELETE /api/insights` da una sessione del browser in cui hai effettuato
+l'accesso. La risposta è `204` e la successiva lettura ricalcola nuovamente la
+panoramica. Qualsiasi Member dell'Organization può inviare questa richiesta.
+
 ## Conteggio delle notifiche
 
-Una notifica non è una risposta dell'IA. Una sessione di sola notifica non
-incrementa i KPI relativi a conversazione o risposta.
+Una notifica non è una risposta dell'IA. Una sessione di solo tipo Notification
+non incrementa i KPI relativi a Conversation o alle risposte.
 
-La metrica **Notifications Sent** e la relativa serie di grafici registrano
+La metrica **Notifications Sent** e le relative serie di grafici registrano
 separatamente la consegna proattiva.
 
-## Analizza una modifica
+## Indaga su una modifica
 
-1. Seleziona l'intervallo di date richiesto e l'Assistente.
+1. Seleziona l'intervallo di date desiderato e l'Assistente.
 2. Identifica la metrica che è cambiata.
-3. Apri la Posta in arrivo con lo stesso ambito.
-4. Leggi le Conversazioni rappresentative.
-5. Crea Miglioramenti per problemi di risposta che richiedono un'azione.
+3. Apri l'Inbox con lo stesso ambito.
+4. Leggi le Conversations rappresentative.
+5. Crea Improvements per i problemi relativi alle risposte su cui è possibile
+   intervenire.
 
-Utilizza [Exports](/operations/exports) per i record strutturati di
-Conversation.
+Utilizza [Exports](/operations/exports) per i record strutturati delle
+Conversations.

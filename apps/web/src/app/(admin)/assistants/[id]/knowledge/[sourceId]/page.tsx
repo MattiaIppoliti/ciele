@@ -1,9 +1,9 @@
-import { notFound } from "next/navigation";
-import { OperationError, listSourceDocumentsOp } from "@ciele/ops";
+import { assistantKnowledgeHref } from "@/lib/knowledge-mode";
+import { listSourceDocumentsOp } from "@ciele/ops";
 import { SourceDocumentsView } from "@/components/knowledge/source-documents-view";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit } from "@/lib/rbac";
-import { runOperation } from "@/lib/operations";
+import { runPageOperation } from "@/lib/operations";
 import {
   assistantDocumentsHref,
   parseSourceDocumentsParams,
@@ -31,20 +31,14 @@ export default async function AssistantSourceDocumentsPage({
   const search = parseSourceDocumentsParams(await searchParams);
   const { role } = await requirePageMember();
 
-  let page;
-  try {
-    page = await runOperation(listSourceDocumentsOp, {
-      sourceId,
-      assistantId: id,
-      page: search.page,
-      ascending: search.ascending,
-      sort: search.sort || undefined,
-      status: search.status || undefined,
-    });
-  } catch (error) {
-    if (error instanceof OperationError && error.code === "not_found") notFound();
-    throw error;
-  }
+  const page = await runPageOperation(listSourceDocumentsOp, {
+    sourceId,
+    assistantId: id,
+    page: search.page,
+    ascending: search.ascending,
+    sort: search.sort || undefined,
+    status: search.status || undefined,
+  });
 
   return (
     <SourceDocumentsView
@@ -55,7 +49,7 @@ export default async function AssistantSourceDocumentsPage({
       pageSize={page.pageSize}
       params={search}
       basePath={assistantDocumentsHref(id, page.source.id)}
-      backHref={`/assistants/${id}/knowledge`}
+      backHref={assistantKnowledgeHref(id, page.source.kind)}
       canEdit={canEdit(role)}
       backLabel="Knowledge"
       assistantId={id}

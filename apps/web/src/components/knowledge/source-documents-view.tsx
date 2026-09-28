@@ -59,7 +59,7 @@ export function SourceDocumentsView({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="flex flex-wrap items-center gap-2">
-              <span className="text-2xl font-semibold break-all">
+              <span className="text-2xl font-semibold [overflow-wrap:anywhere]">
                 {source.name}
               </span>
               <CopyIdButton id={source.id} />
@@ -68,18 +68,19 @@ export function SourceDocumentsView({
                 right there, on a page reached from the Websites tab, is the
                 third time the same fact is stated. */}
             <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-sm">
-              <span suppressHydrationWarning>
-                Added {formatDay(source.createdAt)}
-              </span>
+              {/* No hydration guard: `formatDay` is fixed to UTC and en-GB. */}
+              <span>Added {formatDay(source.createdAt)}</span>
               {source.config.url && (
                 <a
                   href={source.config.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-primary inline-flex max-w-96 items-center gap-1 truncate hover:underline"
+                  className="text-primary press-text inline-flex max-w-96 min-w-0 items-center gap-1 hover:underline"
                 >
-                  {source.config.url}
-                  <ExternalLink className="size-3 shrink-0" />
+                  {/* The ellipsis goes on a text child: on the inline-flex link
+                      itself it clips without drawing one. */}
+                  <span className="min-w-0 truncate">{source.config.url}</span>
+                  <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
                 </a>
               )}
             </p>

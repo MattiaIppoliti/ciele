@@ -20,7 +20,9 @@ import { internalApiOrigin } from "@/lib/internal-origin";
  * this at its own origin with no configuration.
  */
 
-export const runtime = "nodejs";
+// `manage_assistants` action `ask` waits for a whole Conversation Turn through
+// /api/v1, whose route allows 300s; the MCP request holding it open must too.
+export const maxDuration = 300;
 
 const handler = createMcpHandler((ctx) => {
   // The tools reach the Organization the same way the stdio server does,

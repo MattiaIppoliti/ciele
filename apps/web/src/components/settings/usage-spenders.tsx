@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import { formatCredits } from "@/lib/usage-summary";
+import { formatCount } from "@/lib/format";
 import type { SpenderSectionView } from "@/lib/usage-spenders-view";
 
 /**
@@ -60,7 +61,7 @@ export function UsageSpendersBlock({
                     />
                   </div>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    {entry.calls.toLocaleString("en-US")} calls
+                    {formatCount(entry.calls)} calls
                     {entry.ownCredits > 0
                       ? ` · ${formatCredits(entry.ownCredits)} on your own credentials`
                       : null}

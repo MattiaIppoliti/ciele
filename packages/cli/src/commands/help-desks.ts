@@ -1,14 +1,7 @@
-import { readFileSync } from "node:fs";
 import type { SupportChannelInput, SupportChannelPatch } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
-
-function jsonFile<T>(ctx: CommandContext, hint: string): T | number {
-  const path = str(ctx.flags.file);
-  if (!path) return usage(ctx.deps, hint);
-  return JSON.parse(readFileSync(path, "utf8")) as T;
-}
+import { jsonFile, str, usage, type CommandContext } from "./shared.ts";
 
 export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
   const { client, flags, rest, emit, deps } = ctx;
@@ -69,7 +62,7 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
     case "add-channel": {
       if (!rest[0]) return usage(deps, "help-desks add-channel <deskId> --file <channel.json>");
       const input = jsonFile<SupportChannelInput>(ctx, "help-desks add-channel <deskId> --file <channel.json>");
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const channel = await client.helpDesks.addChannel(rest[0], input);
       emit(`Created channel ${channel.id}`, channel);
       return EXIT.ok;
@@ -82,7 +75,7 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
         ctx,
         "help-desks update-channel <deskId> <channelId> --file <patch.json>"
       );
-      if (typeof patch === "number") return patch;
+      if (patch === undefined) return EXIT.usage;
       const channel = await client.helpDesks.updateChannel(rest[0], rest[1], patch);
       emit(`Updated channel ${channel.id}`, channel);
       return EXIT.ok;
@@ -109,7 +102,7 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
         ctx,
         "help-desks connect-servicenow <deskId> --file <credentials.json>"
       );
-      if (typeof input === "number") return input;
+      if (input === undefined) return EXIT.usage;
       const desk = await client.helpDesks.connectServiceNow(rest[0], input);
       emit(`Connected ServiceNow to ${desk.id}`, desk);
       return EXIT.ok;

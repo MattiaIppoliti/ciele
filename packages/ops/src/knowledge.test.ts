@@ -20,6 +20,7 @@ import {
   listDocumentMemoriesOp,
   restoreKnowledgeMemoryOp,
   listSourceDocumentsOp,
+  searchKnowledgeOp,
   setDirectAccessOp,
   setSourceLinksOp,
   unlinkSourceOp,
@@ -1198,6 +1199,46 @@ describe("bulk Source removal from a table selection", () => {
     expect(await db.getSource(sources[1].id)).toBeNull();
   });
 
+  it("removes a deleted Source's uploaded original from storage, best effort", async () => {
+    const db = getMockDb();
+    const assistant = await newAssistant("Original Remover");
+    const collection = await db.createCollection(assistant.id, {
+      name: "Originals Collection",
+    });
+    const own = await db.createSource({
+      collectionId: collection.id,
+      name: "handbook.pdf",
+      kind: "file",
+      originalObjectPath: `org/${DEMO_ORG.id}/knowledge/one.pdf`,
+    });
+    const foreign = await db.createSource({
+      collectionId: collection.id,
+      name: "stray.pdf",
+      kind: "file",
+      originalObjectPath: "org/someone-else/knowledge/two.pdf",
+    });
+    const removed: string[][] = [];
+    const base = ctx();
+    await deleteSourcesOp.run(
+      {
+        ...base,
+        ports: {
+          ...base.ports,
+          removeKnowledgeOriginals: async (paths) => {
+            removed.push(paths);
+            throw new Error("bucket unavailable");
+          },
+        },
+      },
+      { ids: [own.id, foreign.id] }
+    );
+    // Only this Organization's own prefix reaches the host, and a storage
+    // failure does not undo or fail the row delete.
+    expect(removed).toEqual([[`org/${DEMO_ORG.id}/knowledge/one.pdf`]]);
+    expect(await db.getSource(own.id)).toBeNull();
+    expect(await db.getSource(foreign.id)).toBeNull();
+  });
+
   it("unlinks a selection from one Assistant and leaves the Sources standing", async () => {
     const db = getMockDb();
     const mine = await newAssistant("Unlinker");
@@ -1221,5 +1262,65 @@ describe("bulk Source removal from a table selection", () => {
     expect(
       (await db.listSourceAssistantLinks(source.id)).map((l) => l.assistantId)
     ).toEqual([other.id]);
+  });
+});
+
+describe("searchKnowledgeOp", () => {
+  const hit = {
+    conceptId: "c1",
+    conceptTitle: "Reset your password",
+    conceptPath: "kb/reset.md",
+    collectionId: "col-1",
+    collectionName: "Knowledge Library",
+    sourceName: "Help center",
+    sourceId: "src-1",
+    resourceUrl: "https://help.example/reset",
+    content: "Go to the account page and choose Reset.",
+    similarity: 0.82,
+  };
+
+  it("returns the passages in the reranker's order, each citing its Document and Source", async () => {
+    const result = await searchKnowledgeOp.run(
+      ctx({ ports: { searchKnowledge: async () => [hit, { ...hit, conceptId: "c2" }] } }),
+      { query: "reset password" }
+    );
+    expect(result.assistantId).toBeNull();
+    expect(result.results).toEqual([
+      {
+        rank: 1,
+        content: "Go to the account page and choose Reset.",
+        documentId: "c1",
+        documentTitle: "Reset your password",
+        sourceId: "src-1",
+        sourceName: "Help center",
+        collectionName: "Knowledge Library",
+        url: "https://help.example/reset",
+        score: 0.82,
+      },
+      expect.objectContaining({ rank: 2, documentId: "c2" }),
+    ]);
+    expect(searchKnowledgeOp.capability).toBe("member");
+    expect(searchKnowledgeOp.entities({} as never, result as never)).toEqual([]);
+  });
+
+  it("refuses without a search backend instead of answering an empty list", async () => {
+    await expect(
+      searchKnowledgeOp.run(ctx({ ports: {} }), { query: "anything" })
+    ).rejects.toMatchObject({ code: "invalid_input" });
+  });
+
+  it("answers another Organization's Assistant as not found", async () => {
+    const foreign = await getMockDb().createAssistant("org_other", { title: "Theirs" });
+    await expect(
+      searchKnowledgeOp.run(ctx({ ports: { searchKnowledge: async () => [hit] } }), {
+        query: "reset",
+        assistantId: foreign.id,
+      })
+    ).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  it("trims the query and refuses an empty one", () => {
+    expect(searchKnowledgeOp.input.safeParse({ query: "   " }).success).toBe(false);
+    expect(searchKnowledgeOp.input.parse({ query: "  vpn  " }).query).toBe("vpn");
   });
 });

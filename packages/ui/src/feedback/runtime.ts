@@ -73,7 +73,6 @@ const INTERACTIVE_SELECTOR = [
 ].join(",");
 
 type FoleyModule = typeof import("@foleyjs/core");
-type WebKitsAudioModule = typeof import("@web-kits/audio");
 
 /** The Minimal patch covers the shared platform UI; chat keeps its Foley identity. */
 const MINIMAL_CUES: Partial<Record<Interaction, string>> = {
@@ -100,29 +99,29 @@ function performMinimalCue(
   cue: string,
   options: CueOptions | undefined,
 ): void {
-  const playOptions: { volume: number; detune?: number } = {
+  patch.play(cue, {
     // The patch's definitions already carry their quiet gain levels.
     volume: options?.volume ?? 1,
-  };
-  if (options?.pitch !== undefined) playOptions.detune = options.pitch * 100;
-  patch.play(cue, playOptions);
+    ...(options?.pitch === undefined ? {} : { detune: options.pitch * 100 }),
+  });
 }
 
 export interface FeedbackRuntime {
   /** Play an interaction from code (toasts, stream lifecycle, snaps). */
   play(interaction: Interaction): void;
-  /** Whether the first gesture has happened and the libraries are loading or loaded. */
-  readonly unlocked: boolean;
   destroy(): void;
 }
 
 export interface AttachOptions {
   isMuted: () => boolean;
-  /** Test seam: replaces the dynamic imports. */
-  loadFoley?: () => Promise<Pick<FoleyModule, "play" | "set">>;
-  /** Test seam: replaces the dynamic Minimal-patch import. */
-  loadWebKitsAudio?: () => Promise<Pick<WebKitsAudioModule, "createPatchInstance">>;
-  loadHaptics?: () => Promise<{ trigger: (input: unknown) => Promise<void> } | null>;
+}
+
+/** One cue to play, or the latest one waiting while the audio modules unlock. */
+interface CueRequest {
+  interaction: Interaction;
+  cue: CueName;
+  options: CueOptions | undefined;
+  theme: FoleyTheme | undefined;
 }
 
 /**
@@ -151,15 +150,8 @@ function performCue(
   }
 }
 
-function closestAttr(target: EventTarget | null, attr: string): Element | null {
-  if (!(target instanceof Element)) return null;
-  return target.closest(`[${attr}]`);
-}
-
-/** The nearest ancestor that activates on a click, if the target is inside one. */
-function interactive(target: EventTarget | null): Element | null {
-  if (!(target instanceof Element)) return null;
-  return target.closest(INTERACTIVE_SELECTOR);
+function closest(target: EventTarget | null, selector: string): Element | null {
+  return target instanceof Element ? target.closest(selector) : null;
 }
 
 function silenced(el: Element): boolean {
@@ -229,25 +221,9 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   let minimalSettled = false;
   let unlocked = false;
   let destroyed = false;
-  let pendingCue: {
-    interaction: Interaction;
-    cue: CueName;
-    options: CueOptions | undefined;
-    theme: FoleyTheme | undefined;
-  } | null = null;
+  let pendingCue: CueRequest | null = null;
   let hapticsReady = false;
   const successCoalescer = createCoalescer(SUCCESS_COALESCE_MS);
-
-  const loadFoley = options.loadFoley ?? (() => import("@foleyjs/core"));
-  const loadWebKitsAudio = options.loadWebKitsAudio ?? (() => import("@web-kits/audio"));
-  const loadHaptics =
-    options.loadHaptics ??
-    (async () => {
-      const mod = await import("web-haptics");
-      // `showSwitch: false` keeps the iOS `<input switch>` WebHaptics clicks
-      // for the Taptic Engine out of sight; it is still there and still works.
-      return new mod.WebHaptics({ showSwitch: false });
-    });
 
   function environment(): FeedbackEnvironment {
     return {
@@ -264,32 +240,38 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   function play(interaction: Interaction): void {
     if (destroyed) return;
     // A burst of successes (bulk resolve) is one event, cue and haptic alike.
-    if (interaction === "success" && !successCoalescer.allow("success")) return;
+    if (interaction === "success" && !successCoalescer.allow()) return;
     // A copy that also toasts ("Assistant ID copied") is still one event, and
     // `glide` is the one the button asked for, so it claims the slot the
     // toast's `success` would have taken.
-    if (interaction === "copy") successCoalescer.allow("success");
+    if (interaction === "copy") successCoalescer.allow();
     const decision = decide(interaction, environment(), { muted: options.isMuted() });
     if (decision.cue) {
-      const minimalCue = MINIMAL_CUES[interaction];
-      if (minimalCue && minimalPatch) {
-        performMinimalCue(minimalPatch, minimalCue, decision.options);
-      } else if (!minimalCue && foley) {
-        performCue(foley, decision.cue, decision.options, decision.theme);
-      } else if ((minimalCue && minimalSettled && foley) || (!minimalCue && foleySettled && foley)) {
-        // If the patch could not load, retain the established Foley fallback.
-        performCue(foley!, decision.cue, decision.options, decision.theme);
-      } else {
-        // Keep only the latest interaction while audio modules are unlocking.
-        pendingCue = {
-          interaction,
-          cue: decision.cue,
-          options: decision.options,
-          theme: decision.theme,
-        };
-      }
+      const request: CueRequest = {
+        interaction,
+        cue: decision.cue,
+        options: decision.options,
+        theme: decision.theme,
+      };
+      // Keep only the latest interaction while audio modules are unlocking.
+      if (!perform(request)) pendingCue = request;
     }
     if (decision.haptic) haptic(decision.haptic);
+  }
+
+  /** Play on the engine that owns the cue; false while that engine is still loading. */
+  function perform(request: CueRequest): boolean {
+    const minimalCue = MINIMAL_CUES[request.interaction];
+    if (minimalCue && minimalPatch) {
+      performMinimalCue(minimalPatch, minimalCue, request.options);
+      return true;
+    }
+    // If the patch could not load, retain the established Foley fallback.
+    if ((!minimalCue || minimalSettled) && foley) {
+      performCue(foley, request.cue, request.options, request.theme);
+      return true;
+    }
+    return false;
   }
 
   function flushPendingCue(): void {
@@ -298,14 +280,8 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
       return;
     }
     const queued = pendingCue;
-    const minimalCue = MINIMAL_CUES[queued.interaction];
-    if (minimalCue && minimalPatch) {
-      performMinimalCue(minimalPatch, minimalCue, queued.options);
-      pendingCue = null;
-    } else if ((!minimalCue || minimalSettled) && foley) {
-      performCue(foley, queued.cue, queued.options, queued.theme);
-      pendingCue = null;
-    } else if ((!minimalCue || minimalSettled) && foleySettled) {
+    // Played, or its engine has settled without loading: either way it is done.
+    if (perform(queued) || ((!MINIMAL_CUES[queued.interaction] || minimalSettled) && foleySettled)) {
       pendingCue = null;
     }
   }
@@ -313,7 +289,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   function unlock(): void {
     if (unlocked || destroyed) return;
     unlocked = true;
-    void loadFoley()
+    void import("@foleyjs/core")
       .then((mod) => {
         if (destroyed) return;
         foley = mod;
@@ -326,7 +302,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
         foleySettled = true;
         flushPendingCue();
       });
-    void loadWebKitsAudio()
+    void import("@web-kits/audio")
       .then((mod) => {
         if (destroyed) return;
         minimalPatch = mod.createPatchInstance(minimal._patch);
@@ -337,9 +313,12 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
         minimalSettled = true;
         flushPendingCue();
       });
-    void loadHaptics()
-      .then((instance) => {
-        if (destroyed || !instance) return;
+    void import("web-haptics")
+      .then((mod) => {
+        // `showSwitch: false` keeps the iOS `<input switch>` WebHaptics clicks
+        // for the Taptic Engine out of sight; it is still there and still works.
+        const instance = new mod.WebHaptics({ showSwitch: false });
+        if (destroyed) return;
         hapticsReady = true;
         setHapticTransport((kind) => {
           void instance.trigger(HAPTIC_PATTERNS[kind]);
@@ -354,7 +333,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   let toggleBefore: boolean | null = null;
 
   const onCaptureClick = (e: Event) => {
-    const el = closestAttr(e.target, TOGGLE_ATTR);
+    const el = closest(e.target, `[${TOGGLE_ATTR}]`);
     toggleBefore = el ? readToggleState(el) : null;
   };
 
@@ -364,13 +343,13 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
     // The menu itself emits the shared `open` cue when it actually appears.
     const pointer = e as PointerEvent;
     if (pointer.pointerType === "mouse" && pointer.button !== 0) return;
-    const el = closestAttr(e.target, PRESS_ATTR);
+    const el = closest(e.target, `[${PRESS_ATTR}]`);
     if (!el || silenced(el) || disabled(el)) return;
     play("press");
   };
 
   const onPointerUp = (e: Event) => {
-    const el = closestAttr(e.target, RELEASE_ATTR);
+    const el = closest(e.target, `[${RELEASE_ATTR}]`);
     if (!el || silenced(el) || disabled(el)) return;
     play("release");
   };
@@ -387,22 +366,22 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
     // to route on the client. Treating that as "nothing happened" made the
     // sidebar, the assistant cards and every marketing link silent.
     const detail = (e as MouseEvent).detail;
-    const clickEl = closestAttr(e.target, CLICK_ATTR);
+    const clickEl = closest(e.target, `[${CLICK_ATTR}]`);
+    const toggleEl = closest(e.target, `[${TOGGLE_ATTR}]`);
+    const pressEl = closest(e.target, `[${PRESS_ATTR}]`);
     const claimed =
       clickEl !== null ||
-      closestAttr(e.target, TOGGLE_ATTR) !== null ||
-      closestAttr(e.target, PRESS_ATTR) !== null ||
-      closestAttr(e.target, RELEASE_ATTR) !== null;
+      toggleEl !== null ||
+      pressEl !== null ||
+      closest(e.target, `[${RELEASE_ATTR}]`) !== null;
     if (clickEl && !silenced(clickEl) && !disabled(clickEl)) {
       const named = clickEl.getAttribute(CLICK_ATTR);
       play(isInteraction(named) ? named : "tap");
     } else if (detail === 0) {
       // Keyboard activation of a pressable control: no pointer, so no
       // press/release pair happened. `tap` is the keyboard's click.
-      const pressEl = closestAttr(e.target, PRESS_ATTR);
       if (pressEl && !silenced(pressEl) && !disabled(pressEl)) play("tap");
     }
-    const toggleEl = closestAttr(e.target, TOGGLE_ATTR);
     if (toggleEl && !silenced(toggleEl) && !disabled(toggleEl)) {
       // A native checkbox has already flipped `checked` by the time `click`
       // dispatches, at capture and bubble alike, so its reading *is* the new
@@ -427,7 +406,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
     // tick. Foley's own 60ms per-cue cooldown absorbs the second click a
     // label dispatches onto its input.
     if (!claimed) {
-      const activatable = interactive(e.target);
+      const activatable = closest(e.target, INTERACTIVE_SELECTOR);
       if (activatable && !silenced(activatable) && !disabled(activatable)) play("click");
     }
     toggleBefore = null;
@@ -436,7 +415,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   const onKeyDown = (e: Event) => {
     unlock();
     if ((e as KeyboardEvent).key !== "Enter") return;
-    const el = closestAttr(e.target, TYPE_ATTR);
+    const el = closest(e.target, `[${TYPE_ATTR}]`);
     if (el && !silenced(el) && !disabled(el)) play("complete");
   };
 
@@ -448,9 +427,6 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
 
   return {
     play,
-    get unlocked() {
-      return unlocked;
-    },
     destroy() {
       destroyed = true;
       doc.removeEventListener("pointerdown", onPointerDown, { capture: true });

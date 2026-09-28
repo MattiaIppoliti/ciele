@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import type {
   ConnectorAction,
@@ -53,6 +53,8 @@ import {
 } from "@/app/actions";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * The Connector action's configuration (spec #836, #839): provider →
@@ -97,6 +99,14 @@ export function ConnectorConfig({
       : null;
   const missingScopes =
     action && connection ? connectorMissingScopes(action, connection.scopes) : [];
+  const uid = useId();
+  const ids = {
+    provider: `${uid}-provider`,
+    connection: `${uid}-connection`,
+    action: `${uid}-action`,
+    success: `${uid}-success`,
+    failure: `${uid}-failure`,
+  };
 
   function chooseProvider(next: ConnectorProvider) {
     if (next === provider) return;
@@ -142,18 +152,20 @@ export function ConnectorConfig({
   function connectNew() {
     if (!provider) return;
     const params = new URLSearchParams({ returnTo: window.location.pathname });
-    window.open(
+    const popup = window.open(
       `/api/applications/oauth/${provider}/start?${params}`,
       OAUTH_POPUP,
       "popup,width=560,height=760"
     );
+    // A blocked pop-up is otherwise a button that did nothing.
+    if (!popup) toast.error("Allow pop-ups to continue authorization.");
   }
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>Provider</Label>
-        <div className="grid grid-cols-3 gap-1.5">
+        <Label id={ids.provider}>Provider</Label>
+        <div role="group" aria-labelledby={ids.provider} className="grid grid-cols-3 gap-1.5">
           {CONNECTOR_PROVIDERS.map((candidate) => (
             <button
               key={candidate}
@@ -185,7 +197,7 @@ export function ConnectorConfig({
 
       {provider && (
         <div className="space-y-1.5">
-          <Label>Connection</Label>
+          <Label htmlFor={candidates.length > 0 ? ids.connection : undefined}>Connection</Label>
           {candidates.length === 0 ? (
             <div className="text-muted-foreground flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm">
               <span className="min-w-0 flex-1">
@@ -212,7 +224,11 @@ export function ConnectorConfig({
                 value={settings?.connectionId ?? ""}
                 onValueChange={(value) => onChange({ connectionId: (value as string) || undefined })}
               >
-                <SelectTrigger className="bg-background min-w-0 flex-1" aria-label="Connection">
+                <SelectTrigger
+                  id={ids.connection}
+                  className="bg-background min-w-0 flex-1"
+                  aria-label="Connection"
+                >
                   <SelectValue>
                     {(value: string) =>
                       candidates.find((c) => c.id === value)?.name || "Choose a connection…"
@@ -243,9 +259,9 @@ export function ConnectorConfig({
 
       {provider && (
         <div className="space-y-1.5">
-          <Label>Action</Label>
+          <Label htmlFor={ids.action}>Action</Label>
           <Select value={settings?.action ?? ""} onValueChange={(value) => value && chooseAction(value as string)}>
-            <SelectTrigger className="bg-background" aria-label="Connector action">
+            <SelectTrigger id={ids.action} className="bg-background" aria-label="Connector action">
               <SelectValue>
                 {(value: string) => connectorAction(value)?.title || "Choose an action…"}
               </SelectValue>
@@ -267,7 +283,8 @@ export function ConnectorConfig({
         <div className="border-destructive/30 bg-destructive/5 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm">
           <AlertCircle className="text-destructive size-4 shrink-0" />
           <span className="min-w-0 flex-1">
-            This connection lacks <code className="text-xs">{missingScopes.join(", ")}</code>.
+            This connection lacks{" "}
+            <code className="text-xs break-all">{missingScopes.join(", ")}</code>.
           </span>
           <Button type="button" size="sm" variant="outline" onClick={reconsent}>
             <RefreshCw className="size-4" /> Grant access
@@ -302,8 +319,10 @@ export function ConnectorConfig({
         <>
           {action.effect === "write" && (
             <div className="space-y-1.5">
-              <Label>Success message</Label>
+              <Label htmlFor={ids.success}>Success message</Label>
               <Textarea
+                id={ids.success}
+                name="successMessage"
                 value={settings?.successMessage ?? ""}
                 onChange={(e) => onChange({ successMessage: e.target.value })}
                 placeholder="Your request was submitted successfully."
@@ -313,8 +332,10 @@ export function ConnectorConfig({
             </div>
           )}
           <div className="space-y-1.5">
-            <Label>Failure message</Label>
+            <Label htmlFor={ids.failure}>Failure message</Label>
             <Textarea
+              id={ids.failure}
+              name="failureMessage"
               value={settings?.failureMessage ?? ""}
               onChange={(e) => onChange({ failureMessage: e.target.value })}
               placeholder="Sorry, that request couldn't be completed right now."
@@ -368,21 +389,26 @@ function ConnectorFieldInput({
   const dependsOn = field.dynamic?.dependsOn;
   const loaderArg = field.dynamic?.arg ?? (dependsOn ? params[dependsOn] ?? "" : "");
   const listId = `connector-${action.key}-${field.name}`.replace(/\W/g, "-");
+  const fieldId = `${useId()}-field`;
 
   function load() {
     if (!field.dynamic || !connectionId) return;
     const dynamic = field.dynamic;
     startLoading(async () => {
-      const result = await connectorOptionsAction(connectionId, dynamic.loader, loaderArg);
-      setOptions(result.options);
-      setLoadError(result.error ? result.error.message : null);
+      try {
+        const result = await connectorOptionsAction(connectionId, dynamic.loader, loaderArg);
+        setOptions(result.options);
+        setLoadError(result.error ? result.error.message : null);
+      } catch {
+        setLoadError("The options could not be loaded.");
+      }
     });
   }
 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <Label>
+        <Label htmlFor={fieldId}>
           {field.label}
           {field.required && <span className="text-destructive"> *</span>}
         </Label>
@@ -395,14 +421,16 @@ function ConnectorFieldInput({
             onClick={load}
             className="h-7 text-xs"
           >
-            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-            {options ? "Reload options" : "Load options"}
+            <RefreshCw
+              className={cn("size-3.5", loading && "animate-spin motion-reduce:animate-none")}
+            />
+            <RollInText text={options ? "Reload options" : "Load options"} />
           </Button>
         )}
       </div>
       {field.type === "options" ? (
         <Select value={value} onValueChange={(next) => onChange(next as string)}>
-          <SelectTrigger className="bg-background" aria-label={field.label}>
+          <SelectTrigger id={fieldId} className="bg-background" aria-label={field.label}>
             <SelectValue>
               {(current: string) =>
                 field.options?.find((option) => option.value === current)?.label ?? current
@@ -419,6 +447,7 @@ function ConnectorFieldInput({
         </Select>
       ) : field.type === "text" || field.type === "json" ? (
         <Textarea
+          id={fieldId}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
@@ -429,6 +458,7 @@ function ConnectorFieldInput({
       ) : (
         <>
           <Input
+            id={fieldId}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder}
@@ -457,7 +487,11 @@ function ConnectorFieldInput({
       {field.template && (
         <p className="text-muted-foreground text-xs">Template variables allowed.</p>
       )}
-      {loadError && <p className="text-destructive text-xs">{loadError}</p>}
+      {loadError && (
+        <p role="status" className="text-destructive text-xs">
+          {loadError}
+        </p>
+      )}
     </div>
   );
 }
@@ -475,18 +509,26 @@ function TestConnectionControl({ connectionId }: { connectionId: string }) {
         disabled={pending}
         onClick={() =>
           start(async () => {
-            setResult(await testConnectorConnectionAction(connectionId));
+            try {
+              setResult(await testConnectorConnectionAction(connectionId));
+            } catch {
+              setResult({ ok: false, error: null });
+            }
           })
         }
       >
-        {pending ? "Testing…" : "Test connection"}
+        <RollInText text={pending ? "Testing…" : "Test connection"} />
       </Button>
-      {result &&
-        (result.ok ? (
-          <span className="text-emerald-600">Connected</span>
-        ) : (
-          <span className="text-destructive">{result.error?.message ?? "Failed"}</span>
-        ))}
+      <span role="status">
+        {result &&
+          (result.ok ? (
+            <span className="text-emerald-600">Connected</span>
+          ) : (
+            <span className="text-destructive">
+              {result.error?.message ?? "The test could not be run."}
+            </span>
+          ))}
+      </span>
     </div>
   );
 }
@@ -536,16 +578,22 @@ export function TestConnectorControl({ settings }: { settings: ConnectorActionSe
         disabled={!ready || pending}
         onClick={() => (action?.effect === "write" ? setConfirming(true) : run(false))}
       >
-        {pending ? "Running…" : action?.effect === "write" ? "Run write action…" : "Run node"}
+        <RollInText
+          text={pending ? "Running…" : action?.effect === "write" ? "Run write action…" : "Run node"}
+        />
       </Button>
       {!ready && <p className="text-muted-foreground text-xs">Complete the configuration first.</p>}
       {outcome && (
-        <div className="bg-muted/30 space-y-2 rounded-lg border p-3 text-xs">
+        <div role="status" className="bg-muted/30 space-y-2 rounded-lg border p-3 text-xs">
           <p className="flex items-center gap-2">
             <Badge variant="outline" className={cn("rounded-full", outcome.ok ? "text-emerald-600" : "text-destructive")}>
               {outcome.ok ? "ok" : outcome.error?.code ?? "failed"}
             </Badge>
-            {outcome.status !== null && <span className="font-mono">HTTP {outcome.status}</span>}
+            {outcome.status !== null && (
+              <span className="font-mono">
+                HTTP <RollingNumber value={outcome.status} />
+              </span>
+            )}
           </p>
           {outcome.error && <p className="text-destructive">{outcome.error.message}</p>}
           {Object.keys(outcome.outputs).length > 0 && (

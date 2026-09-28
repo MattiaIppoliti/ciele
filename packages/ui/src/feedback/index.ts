@@ -10,48 +10,7 @@
  * one-shot cue); code plays the rest through `useFeedback().play(...)`.
  * `data-foley-silent` on an ancestor mutes a subtree.
  */
-export {
-  FALLBACK_DURATIONS_MS,
-  HAPTIC_PATTERNS,
-  haptic,
-  readHapticEnvironment,
-  setHapticTransport,
-  shouldVibrate,
-  type Haptic,
-  type HapticEnvironment,
-  type HapticTransport,
-} from "./haptics";
-export { MUTE_STORAGE_KEY, mutedFromStorageEvent, readMuted, writeMuted, type StorageLike } from "./mute";
-export {
-  FOLEY_SETTINGS,
-  INTERACTIONS,
-  INTERACTION_NAMES,
-  SUCCESS_COALESCE_MS,
-  createCoalescer,
-  decide,
-  isInteraction,
-  shouldPlayCue,
-  type CueOptions,
-  type FeedbackDecision,
-  type FeedbackEnvironment,
-  type FeedbackPreferences,
-  type FoleyTheme,
-  type Interaction,
-  type InteractionSpec,
-} from "./policy";
+export { haptic } from "./haptics";
+export type { Interaction } from "./policy";
 export { FeedbackProvider, useFeedback, useOpenChangeFeedback } from "./provider";
-export {
-  CLICK_ATTR,
-  PRESS_ATTR,
-  RELEASE_ATTR,
-  SILENT_ATTR,
-  TOGGLE_ATTR,
-  TYPE_ATTR,
-  attachFeedback,
-  nextToggleState,
-  playFeedback,
-  readToggleState,
-  setActiveFeedbackRuntime,
-  type AttachOptions,
-  type FeedbackRuntime,
-} from "./runtime";
+export { playFeedback, setActiveFeedbackRuntime, type FeedbackRuntime } from "./runtime";

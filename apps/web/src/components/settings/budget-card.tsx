@@ -26,6 +26,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/motion-switch";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { useSettingsDirty } from "@/components/settings/settings-dirty";
+import { formatCount, formatEur } from "@/lib/format";
 
 /**
  * Daily AI budget (AI usage ledger spec): admins set a per-org daily token
@@ -67,6 +70,7 @@ export function BudgetCard({
     limit !== (dailyTokenLimit == null ? "" : String(dailyTokenLimit)) ||
     euroLimit !== (dailyEuroLimit == null ? "" : String(dailyEuroLimit)) ||
     mode !== enforcement;
+  useSettingsDirty(dirty);
 
   function toggleCompost(next: boolean) {
     setCompostOn(next);
@@ -118,8 +122,8 @@ export function BudgetCard({
         <CardDescription>
           Cap how many model tokens and/or estimated euros your assistants may
           use per day (UTC), either limit crossing today&apos;s usage
-          triggers enforcement. Used today: {usedToday.toLocaleString("en-US")}{" "}
-          tokens (~€{usedTodayEur.toFixed(2)}). Leave a limit empty for
+          triggers enforcement. Used today: {formatCount(usedToday)}{" "}
+          tokens (~{formatEur(usedTodayEur)}). Leave a limit empty for
           unmetered usage on that dimension.
         </CardDescription>
       </CardHeader>
@@ -131,6 +135,7 @@ export function BudgetCard({
             className="w-44"
             inputMode="numeric"
             placeholder="Unmetered"
+            autoComplete="off"
             value={limit}
             onChange={(e) => setLimit(e.target.value)}
             disabled={!canManage || isPending}
@@ -143,6 +148,7 @@ export function BudgetCard({
             className="w-44"
             inputMode="decimal"
             placeholder="Unmetered"
+            autoComplete="off"
             value={euroLimit}
             onChange={(e) => setEuroLimit(e.target.value)}
             disabled={!canManage || isPending}
@@ -166,7 +172,7 @@ export function BudgetCard({
         </div>
         {canManage && (
           <Button onClick={save} disabled={!dirty || isPending}>
-            {isPending ? "Saving…" : "Save budget"}
+            <RollInText text={isPending ? "Saving…" : "Save budget"} />
           </Button>
         )}
       </CardContent>
