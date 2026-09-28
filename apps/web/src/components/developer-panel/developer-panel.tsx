@@ -22,6 +22,7 @@ import {
   type SnippetTab,
 } from "@/lib/developer-panel/types";
 import type { ApiV1Domain } from "@/lib/api-v1/meta";
+import { capitalize } from "@/lib/format";
 
 /**
  * The Developer Panel (#754): every way to drive the current page programmatically,
@@ -46,10 +47,6 @@ function MethodLabel({ method }: { method: PanelOperation["method"] }) {
       {method}
     </code>
   );
-}
-
-function capitalize(role: string): string {
-  return role[0].toUpperCase() + role.slice(1);
 }
 
 function Operation({

@@ -42,12 +42,12 @@ export function formatDay(iso: Instant): string {
   return DAY_FORMATTER.format(new Date(iso));
 }
 
-/** "03 Jul 26 07:44". */
 /** "3 Jul": a recent date where the year goes without saying. */
 export function formatShortDay(iso: Instant): string {
   return SHORT_DAY_FORMATTER.format(new Date(iso));
 }
 
+/** "03 Jul 26 07:44". */
 export function formatDateTime(iso: Instant): string {
   return DATE_TIME_FORMATTER.format(new Date(iso)).replace(",", "");
 }
@@ -63,6 +63,14 @@ export function formatTime(iso: Instant): string {
  */
 export function formatCount(value: number): string {
   return COUNT_FORMATTER.format(value);
+}
+
+/**
+ * "viewer" to "Viewer". For text that cannot lean on CSS `capitalize`, such as
+ * rolled text, which is drawn glyph by glyph.
+ */
+export function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /** "1,234" or "2.5": a KPI or chart value, grouped, at most one decimal. */

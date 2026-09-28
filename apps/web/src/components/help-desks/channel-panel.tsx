@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/confirm-delete-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
+import { onRadioKeyDown } from "@/lib/radio-keys";
 
 export type ChannelPanelState =
   | { mode: "select" }
@@ -181,6 +182,26 @@ function KeyValueListEditor({
   );
 }
 
+/**
+ * An input's validation wiring: the id, `aria-invalid` and `aria-describedby`
+ * to spread on it, and the message rendered under it.
+ */
+function fieldError(id: string, message: string | null) {
+  const errorId = `${id}-error`;
+  return {
+    props: {
+      id,
+      "aria-invalid": message ? true : undefined,
+      "aria-describedby": message ? errorId : undefined,
+    },
+    text: message ? (
+      <p id={errorId} className="text-destructive mt-1.5 text-sm">
+        {message}
+      </p>
+    ) : null,
+  };
+}
+
 /** Kind-specific destination inputs, shared by the create and edit steps. */
 function ConfigFields({
   kind,
@@ -197,17 +218,7 @@ function ConfigFields({
   /** The `channelSetupError` message, rendered under the input it is about. */
   error: string | null;
 }) {
-  const errorId = `${primaryId}-error`;
-  const primary = {
-    id: primaryId,
-    "aria-invalid": error ? true : undefined,
-    "aria-describedby": error ? errorId : undefined,
-  };
-  const errorText = error ? (
-    <p id={errorId} className="text-destructive mt-1.5 text-sm">
-      {error}
-    </p>
-  ) : null;
+  const { props: primary, text: errorText } = fieldError(primaryId, error);
   if (kind === "email") {
     return (
       <div>
@@ -724,16 +735,6 @@ function AvailabilityTab({
         role="radiogroup"
         aria-label="Availability"
         className="space-y-3"
-        onKeyDown={(e) => {
-          // Radio semantics: the arrows move the choice, Tab leaves the group.
-          if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
-          e.preventDefault();
-          const next = availability.mode === "always" ? "limited" : "always";
-          onChange({ mode: next });
-          e.currentTarget
-            .querySelector<HTMLElement>(`[data-mode="${next}"]`)
-            ?.focus();
-        }}
       >
         {(
           [
@@ -749,8 +750,8 @@ function AvailabilityTab({
               role="radio"
               aria-checked={selected}
               tabIndex={selected ? 0 : -1}
-              data-mode={option.value}
               onClick={() => onChange({ mode: option.value })}
+              onKeyDown={onRadioKeyDown}
               className={`flex w-full items-center gap-3 rounded-xl border-2 px-4 py-4 text-left font-semibold transition-colors ${
                 selected
                   ? "border-primary bg-background"
@@ -1026,17 +1027,10 @@ export function ChannelPanel({
     if (error) setError(null);
   }
 
-  const nameError =
-    error?.target === "name" ? (
-      <p id={`${nameInputId}-error`} className="text-destructive mt-1.5 text-sm">
-        {error.message}
-      </p>
-    ) : null;
-  const nameErrorProps = {
-    id: nameInputId,
-    "aria-invalid": nameError ? true : undefined,
-    "aria-describedby": nameError ? `${nameInputId}-error` : undefined,
-  };
+  const { props: nameErrorProps, text: nameError } = fieldError(
+    nameInputId,
+    error?.target === "name" ? error.message : null
+  );
   const configError = error?.target === "config" ? error.message : null;
 
   return (

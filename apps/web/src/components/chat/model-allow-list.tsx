@@ -1,8 +1,12 @@
 "use client";
 
-import type { ModelRef, Provider } from "@agent-hub/core";
-import { sameModel } from "@agent-hub/core";
-import { MODEL_CATALOG, PROVIDER_NAMES } from "@agent-hub/agent/client";
+import type { ModelRef, ModelSource, Provider } from "@agent-hub/core";
+import { modelSelector, parseModelSelector, sameModel } from "@agent-hub/core";
+import {
+  MODEL_CATALOG,
+  MODEL_SOURCE_NAMES,
+  PROVIDER_NAMES,
+} from "@agent-hub/agent/client";
 import {
   Select,
   SelectContent,
@@ -14,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import type { ChatCatalog } from "@/lib/platform-model-catalog";
 
 /**
  * Which models the chat window lets the asker switch to, beside the configured
@@ -32,6 +37,10 @@ import { RollingNumber } from "@/components/motion/rolling-number";
  * It is *said* here, though. A provider with no credential is labelled and its
  * models are marked, because a selected model whose provider has no credential
  * is not offered in the chat window.
+ *
+ * A model two or more sources can serve also gets one tagged row per source
+ * ("Claude Sonnet 5 · AI Gateway") beside its automatic row, so the asker can
+ * be offered the same model on two routes.
  */
 export function ModelAllowList({
   configured,
@@ -40,6 +49,8 @@ export function ModelAllowList({
   disabled = false,
   unavailable = [],
   audience = "visitors",
+  catalog = MODEL_CATALOG,
+  sources = {},
 }: {
   configured: ModelRef;
   value: ModelRef[];
@@ -52,13 +63,25 @@ export function ModelAllowList({
    * who chat with a Teammate, who are never visitors.
    */
   audience?: "visitors" | "colleagues";
+  catalog?: ChatCatalog;
+  /** Sources per model, keyed by the automatic selector (`modelSourcesByModel`). */
+  sources?: Record<string, ModelSource[]>;
 }) {
+  const pinnable = (provider: Provider, modelId: string): ModelSource[] => {
+    const available = sources[modelSelector({ provider, modelId })] ?? [];
+    return available.length >= 2 ? available : [];
+  };
   const providers = (Object.keys(PROVIDER_NAMES) as Provider[]).filter(
-    (provider) => MODEL_CATALOG[provider].length > 0
+    (provider) => catalog[provider].length > 0
   );
   const optionKeys = new Set(
     providers.flatMap((provider) =>
-      MODEL_CATALOG[provider].map((model) => modelKey({ provider, modelId: model.id }))
+      catalog[provider].flatMap((model) => [
+        modelKey({ provider, modelId: model.id }),
+        ...pinnable(provider, model.id).map((source) =>
+          modelKey({ provider, modelId: model.id, source })
+        ),
+      ])
     )
   );
   const configuredKey = modelKey(configured);
@@ -104,24 +127,29 @@ export function ModelAllowList({
                 <span className="font-normal"> · no credential yet</span>
               )}
             </SelectGroupLabel>
-            {MODEL_CATALOG[provider].map((model) => {
-              const ref: ModelRef = { provider, modelId: model.id };
-              const isConfigured = sameModel(ref, configured);
-              return (
-                <SelectItem
-                  key={model.id}
-                  value={modelKey(ref)}
-                  disabled={isConfigured}
-                  className={cn(
-                    isConfigured || unavailable.includes(provider)
-                      ? "text-muted-foreground"
-                      : "",
-                  )}
-                >
-                  {model.label}{isConfigured ? " (configured)" : ""}
-                </SelectItem>
-              );
-            })}
+            {catalog[provider].flatMap((model) =>
+              [undefined, ...pinnable(provider, model.id)].map((source) => {
+                const ref: ModelRef = { provider, modelId: model.id, ...(source ? { source } : {}) };
+                const isConfigured = sameModel(ref, configured);
+                return (
+                  <SelectItem
+                    key={modelKey(ref)}
+                    value={modelKey(ref)}
+                    disabled={isConfigured}
+                    className={cn(
+                      source ? "pl-6" : "",
+                      isConfigured || unavailable.includes(provider)
+                        ? "text-muted-foreground"
+                        : "",
+                    )}
+                  >
+                    {model.label}
+                    {source ? ` · ${MODEL_SOURCE_NAMES[source]}` : ""}
+                    {isConfigured ? " (configured)" : ""}
+                  </SelectItem>
+                );
+              })
+            )}
           </SelectGroup>
         ))}
       </SelectContent>
@@ -129,16 +157,11 @@ export function ModelAllowList({
   );
 }
 
-function modelKey(ref: ModelRef): string {
-  return `${ref.provider}\u0000${ref.modelId}`;
-}
+const modelKey = modelSelector;
 
 function modelFromKey(key: string): ModelRef {
-  const separator = key.indexOf("\u0000");
-  return {
-    provider: key.slice(0, separator) as Provider,
-    modelId: key.slice(separator + 1),
-  };
+  // Every key came from `modelKey` over a catalogue row, so it parses.
+  return parseModelSelector(key)!;
 }
 
 /**

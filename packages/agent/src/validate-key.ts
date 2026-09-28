@@ -36,6 +36,14 @@ function probeFor(provider: ProviderConnectionProvider, apiKey: string): ProbeRe
         headers: {},
         invalidStatuses: [400, 401, 403],
       };
+    case "ai_gateway":
+      // The model list is public, so it proves nothing; the credit balance
+      // needs the key and answers 401 without a valid one.
+      return {
+        url: "https://ai-gateway.vercel.sh/v1/credits",
+        headers: { authorization: `Bearer ${apiKey}` },
+        invalidStatuses: [401, 403],
+      };
     case "elevenlabs":
       return {
         url: "https://api.elevenlabs.io/v1/user",

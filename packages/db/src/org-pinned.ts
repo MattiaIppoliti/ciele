@@ -365,6 +365,12 @@ export type TableExposureMap = {
 };
 
 export const TABLE_EXPOSURE: TableExposureMap = {
+  evaluationDatasets: {
+    hidden: "Console-only uploads. The API-key surface has no evaluation dataset operation.",
+  },
+  evaluationRuns: {
+    hidden: "Console-only synthetic experiments. API keys cannot start model spend through the generic table accessor.",
+  },
   entities: "pinned",
   skills: "pinned",
   projects: "pinned",

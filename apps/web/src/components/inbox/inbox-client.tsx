@@ -79,6 +79,7 @@ import { downloadFile } from "@/lib/download";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { isPlainClick } from "@/lib/plain-click";
 
 // Transcript-only UI stays out of the Inbox list's initial bundle. In
 // particular ChatMarkdown owns syntax highlighting, which is wasted until a
@@ -122,11 +123,6 @@ const Calendar = dynamic(
 interface AssistantOption {
   id: string;
   title: string;
-}
-
-/** A timestamp's day, in UTC like every other date here, so SSR and hydration agree. */
-function dayLabel(iso: string): string {
-  return formatDay(iso);
 }
 
 /**
@@ -1327,15 +1323,7 @@ export function InboxClient({
               data-conversation-row={c.id}
               aria-current={selectedId === c.id ? "page" : undefined}
               onClick={(event) => {
-                if (
-                  event.button !== 0 ||
-                  event.metaKey ||
-                  event.ctrlKey ||
-                  event.shiftKey ||
-                  event.altKey
-                ) {
-                  return;
-                }
+                if (!isPlainClick(event)) return;
                 event.preventDefault();
                 select(c);
               }}
@@ -1366,7 +1354,7 @@ export function InboxClient({
                   </span>
                 )}
                 <span className="text-muted-foreground mt-1 block text-xs">
-                  {dayLabel(c.updatedAt)}
+                  {formatDay(c.updatedAt)}
                 </span>
               </span>
             </a>
@@ -1465,7 +1453,7 @@ export function InboxClient({
               <p className="text-muted-foreground text-xs font-medium">
                 <RollingNumber value={selected.messageCount} />{" "}
                 {selected.messageCount === 1 ? "message" : "messages"} •{" "}
-                {dayLabel(selected.createdAt)}{" "}
+                {formatDay(selected.createdAt)}{" "}
                 <span className="ml-1 inline-block h-px w-40 translate-y-[-3px] bg-current opacity-30" />
               </p>
 

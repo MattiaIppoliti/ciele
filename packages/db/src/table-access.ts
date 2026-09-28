@@ -3,6 +3,8 @@ import type {
   CookieConsentRecord,
   Entity,
   EntityInput,
+  EvaluationDataset,
+  EvaluationRun,
   GoalExpectations,
   LocalConnectorDevice,
   LocalConnectorPairing,
@@ -55,6 +57,16 @@ import { shortId } from "@agent-hub/core";
  * (plus a store binding in the mock), not three hand-written methods.
  */
 export interface DbTableMap {
+  evaluationDatasets: {
+    row: EvaluationDataset;
+    insert: Pick<EvaluationDataset, "organizationId" | "name" | "examples">;
+    update: Pick<EvaluationDataset, "name" | "examples">;
+  };
+  evaluationRuns: {
+    row: EvaluationRun;
+    insert: Pick<EvaluationRun, "organizationId" | "assistantId" | "assistantName" | "assistantModel" | "datasetId" | "datasetName" | "examples" | "stage" | "candidates">;
+    update: Partial<Pick<EvaluationRun, "status" | "results" | "error">>;
+  };
   entities: {
     row: Entity;
     insert: EntityInput & { organizationId: string };
@@ -323,6 +335,7 @@ export interface DbTableListOptions<K extends DbTableName> {
   orderBy?: Extract<keyof DbTableRow<K>, string>;
   ascending?: boolean;
   limit?: number;
+  offset?: number;
 }
 
 /**
@@ -358,6 +371,20 @@ export interface DbTableSpec<K extends DbTableName> {
 }
 
 export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
+  evaluationDatasets: {
+    table: "evaluation_datasets",
+    id: "shortId",
+    defaults: {},
+    ascending: false,
+    touchesUpdatedAt: true,
+  },
+  evaluationRuns: {
+    table: "evaluation_runs",
+    id: "shortId",
+    defaults: { status: "running", results: [], error: null },
+    ascending: false,
+    touchesUpdatedAt: true,
+  },
   entities: {
     table: "entities",
     id: "shortId",

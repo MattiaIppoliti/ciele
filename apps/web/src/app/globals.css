@@ -1330,6 +1330,24 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
   box-shadow: var(--flow-selection), var(--flow-shadow-lift);
 }
 
+/* React Flow's own selection chrome is a dotted square: the box it draws
+   while you drag with the Select tool, and the one it leaves around what that
+   drag caught. Both follow the card instead, the same corner and the same
+   ring a selected card wears. */
+.flow-canvas .react-flow__selection {
+  border: 1px solid color-mix(in oklab, var(--foreground) 30%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--foreground) 4%, transparent);
+}
+.flow-canvas .react-flow__nodesselection-rect {
+  border: none;
+  border-radius: 0.875rem;
+  background: transparent;
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklab, var(--foreground) 55%, transparent),
+    0 0 0 5px color-mix(in oklab, var(--foreground) 7%, transparent);
+}
+
 /* The connection points: a ring on the card's own face, not a filled dot. */
 .flow-canvas .react-flow__handle.flow-surface-handle {
   width: 10px;

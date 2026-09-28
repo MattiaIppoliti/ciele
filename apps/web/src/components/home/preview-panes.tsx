@@ -1098,6 +1098,25 @@ export function PreviewGrid() {
 }
 
 /* ---------------------------------------------------------------- */
+/* Eval                                                             */
+/* ---------------------------------------------------------------- */
+
+function EvalPane() {
+  const compact = useContext(CompactContext);
+  return (
+    <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
+      <PaneHeading icon={FlaskConical} title="Eval" description="Compare models on the same questions." />
+      <div className="mt-5 overflow-hidden rounded-xl border bg-card">
+        <div className="grid grid-cols-[1fr_1fr_1fr_80px] border-b bg-muted/40 px-4 py-3 text-xs text-muted-foreground"><span>Run</span><span>Dataset</span><span>Models</span><span>Accuracy</span></div>
+        {[["Answer", "Returns policy", "3 models", "88%"], ["Classifier", "Support routing", "2 models", "94%"], ["Reranker", "Product search", "2 models", "91%"]].map((row) => (
+          <div key={row[0]} className="grid grid-cols-[1fr_1fr_1fr_80px] border-b px-4 py-3 text-sm last:border-0">{row.map((value) => <span key={value}>{value}</span>)}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- */
 /* Pane registry                                                     */
 /* ---------------------------------------------------------------- */
 
@@ -1110,6 +1129,7 @@ export const GLOBAL_PANES: Record<GlobalView, () => React.ReactNode> = {
   Teammates: TeammatesPane,
   Improvements: ImprovementsPane,
   Insights: InsightsPane,
+  Eval: EvalPane,
   Library: LibraryPane,
 };
 

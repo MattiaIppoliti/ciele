@@ -37,15 +37,6 @@ export function applicationImportRowHref(
   return row.documentId ? `${source}/${row.documentId}` : source;
 }
 
-/** `?page=` parsed and clamped; anything else is page one. */
-export function parseApplicationImportPage(
-  params: Record<string, string | string[] | undefined>
-): number {
-  const raw = Array.isArray(params.page) ? params.page[0] : params.page;
-  const page = Number.parseInt(raw ?? "", 10);
-  return Number.isFinite(page) && page >= 1 ? page : 1;
-}
-
 /** One page's href; page one is the bare route. */
 export function applicationImportPageHref(base: string, page: number): string {
   return page > 1 ? `${base}?page=${page}` : base;

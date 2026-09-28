@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { allowedModelsSchema } from "./model-allow-list";
+import { allowedModelsSchema, modelSourceSchema } from "./model-allow-list";
 import type {
   Assistant,
   AssistantPatch,
@@ -53,6 +53,7 @@ export const assistantPatchSchema = z
     chatLauncherEnabled: z.boolean(),
     modelProvider: z.custom<Provider>((v) => typeof v === "string"),
     modelId: z.string().max(200),
+    modelSource: modelSourceSchema,
     allowedModels: allowedModelsSchema,
     attachmentsEnabled: z.boolean(),
     voice: z.object({
@@ -212,6 +213,7 @@ export const duplicateAssistantOp = defineOperation({
       chatLauncherEnabled: source.chatLauncherEnabled,
       modelProvider: source.modelProvider,
       modelId: source.modelId,
+      ...(source.modelSource ? { modelSource: source.modelSource } : {}),
       allowedModels: source.allowedModels,
       attachmentsEnabled: source.attachmentsEnabled,
       voice: source.voice,
@@ -280,7 +282,7 @@ export const duplicateAssistantOp = defineOperation({
 });
 
 /** The longest question `assistants.ask` accepts. */
-export const ASK_QUESTION_MAX = 4000;
+const ASK_QUESTION_MAX = 4000;
 
 /** Exported so the v1 registry documents the body as this schema minus `id`. */
 export const askAssistantInput = z.object({

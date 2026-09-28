@@ -73,7 +73,13 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 /** Providers the generic hosted-API-key dialog can connect. OpenAI-compatible
  *  endpoints have their own form (base URL + models, key optional). */
 type ApiKeyProvider = Exclude<ProviderConnectionProvider, "azure_openai" | "openai_compatible">;
-const BYOK_PROVIDERS: ApiKeyProvider[] = ["anthropic", "openai", "google", "elevenlabs"];
+const BYOK_PROVIDERS: ApiKeyProvider[] = [
+  "anthropic",
+  "openai",
+  "google",
+  "ai_gateway",
+  "elevenlabs",
+];
 
 type OpenAiCompatibleTestResult = Awaited<
   ReturnType<typeof testOpenAiCompatibleConnectionAction>
@@ -83,6 +89,7 @@ const CONNECTION_PROVIDER_LABELS: Record<ProviderConnectionProvider, string> = {
   ...PROVIDER_LABELS,
   azure_openai: "Azure OpenAI",
   elevenlabs: "ElevenLabs (Voice)",
+  ai_gateway: "AI Gateway (Anthropic, OpenAI, Google)",
 };
 
 function isGoogleVertexConfig(
@@ -409,7 +416,9 @@ export function AiSettingsClient({
           )}
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Use your own provider key and billing. Keys are stored encrypted.
+          Use your own provider key and billing. Keys are stored encrypted. An AI
+          Gateway key serves Anthropic, OpenAI, and Google models through your own
+          Vercel AI Gateway account.
         </p>
         <div className="mt-3 space-y-2">
           {byokConnections.length === 0 && (

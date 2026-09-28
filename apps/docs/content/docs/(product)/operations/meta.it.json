@@ -1,11 +1,12 @@
 {
-  "title": "Gestire i tuoi assistenti",
+  "title": "Gestione dei tuoi assistenti",
   "pages": [
     "index",
     "inbox",
     "improvements",
     "insights",
     "exports",
+    "eval",
     "alerts"
   ]
 }

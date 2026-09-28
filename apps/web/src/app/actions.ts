@@ -1,6 +1,6 @@
 "use server";
 
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import type {
   ApiEndpointSpec,
   ApiIntegrationAuthType,
@@ -53,7 +53,7 @@ import type {
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
 import { connectorAction } from "@agent-hub/core";
-import { thrownMessage } from "@agent-hub/core";
+import { modelSelector, thrownMessage } from "@agent-hub/core";
 import {
   isSupabaseConfigured,
   raiseImprovement,
@@ -109,7 +109,17 @@ import {
 } from "@/lib/attachments";
 import { orgMutation, revalidateEntities } from "@/lib/org-mutation";
 import { runOperation } from "@/lib/operations";
+import { allEvaluationModels } from "@/lib/evaluation-models";
 import {
+  discoverPlatformModel,
+  listDiscoverableModels,
+  type CatalogModelOption,
+} from "@/lib/platform-model-discovery";
+import {
+  createEvaluationDatasetOp,
+  evaluationDatasetSchema,
+  evaluationRunSchema,
+  startEvaluationRunOp,
   acceptSuggestedFixOp,
   configureEntitySyncOp,
   dismissSuggestedFixOp,
@@ -224,7 +234,12 @@ import {
 } from "@ciele/ops";
 import type { InboxConversationDetail } from "@ciele/ops";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv, serializeFaqCsv } from "@/lib/faq-csv";
-import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
+import {
+  addPlatformEvalModel,
+  isPlatformOwner,
+  listPlatformEvalModels,
+  setPlatformSystemPrompt,
+} from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { getWidgetDb } from "@/lib/widget-db";
 import { starterSkills, type StarterSkill } from "@/lib/composer/skills";
@@ -481,6 +496,112 @@ export async function updatePlatformPromptAction(prompt: string) {
   }
   await setPlatformSystemPrompt(prompt.trim(), session.email);
   revalidatePath("/settings/ai");
+}
+
+/**
+ * The AI Gateway's text models, each marked when the shared catalog already
+ * has it. Platform-owner only, like the prompt above.
+ */
+export async function listDiscoverablePlatformModelsAction(): Promise<
+  | { ok: true; models: (CatalogModelOption & { added: boolean })[] }
+  | { ok: false; error: string }
+> {
+  const session = await requireSession();
+  if (!isPlatformOwner(session.email))
+    return { ok: false, error: "Only a Ciele platform admin can view the model catalog." };
+  try {
+    const [models, addedModels] = await Promise.all([
+      listDiscoverableModels(),
+      listPlatformEvalModels(),
+    ]);
+    const added = new Set(allEvaluationModels([], addedModels).map(modelSelector));
+    return {
+      ok: true,
+      models: models.map((model) => ({ ...model, added: added.has(modelSelector(model)) })),
+    };
+  } catch (error) {
+    return { ok: false, error: thrownMessage(error, "Could not load the model catalog.") };
+  }
+}
+
+const platformModelIdentity = z.object({
+  provider: z.enum(["google", "anthropic", "openai"]),
+  modelId: z.string().trim().min(1).max(160).regex(/^[\w./:-]+$/),
+});
+
+/**
+ * Adds one AI Gateway text model to the shared catalog, with the name and EUR
+ * prices the Gateway and the ECB rate give it. Platform-owner only.
+ */
+export async function addPlatformModelAction(
+  input: z.input<typeof platformModelIdentity>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await requireSession();
+  if (!isPlatformOwner(session.email))
+    return { ok: false, error: "Only a Ciele platform admin can add models." };
+  const parsed = platformModelIdentity.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: "Choose a provider and enter a valid model ID." };
+  const identity = parsed.data;
+  try {
+    const existing = allEvaluationModels([], await listPlatformEvalModels());
+    if (existing.some((model) => modelSelector(model) === modelSelector(identity)))
+      return { ok: false, error: "This model is already in the catalog." };
+    const model = await discoverPlatformModel(identity.provider, identity.modelId);
+    await addPlatformEvalModel({
+      ...model,
+      addedBy: session.email,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    return { ok: false, error: thrownMessage(error, "Could not add the model.") };
+  }
+  // Every model picker reads the catalog: settings, Eval, the Assistant
+  // editor and the Teammate pages.
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// --- Eval -----------------------------------------------------------------------
+
+/** Every failing field, so a rejected upload says which example to fix. */
+function issuesMessage(error: ZodError): string {
+  return error.issues
+    .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+    .join("; ");
+}
+
+/** Takes the uploaded file's parsed JSON as it is; the schema decides. */
+export async function createEvaluationDatasetAction(
+  input: unknown,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const parsed = evaluationDatasetSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: issuesMessage(parsed.error) };
+  try {
+    const { id } = await runOperation(createEvaluationDatasetOp, parsed.data);
+    return { ok: true, id };
+  } catch (error) {
+    return { ok: false, error: thrownMessage(error, "Could not save the dataset.") };
+  }
+}
+
+/**
+ * Runs synchronously, so it inherits the Eval page's `maxDuration`. A run the
+ * platform kills mid-way reads as failed later (`settleStaleEvaluationRun`).
+ */
+export async function startEvaluationRunAction(
+  input: unknown,
+): Promise<
+  | { ok: true; id: string; status: "completed" | "failed"; error: string | null }
+  | { ok: false; error: string }
+> {
+  const parsed = evaluationRunSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: issuesMessage(parsed.error) };
+  try {
+    return { ok: true, ...(await runOperation(startEvaluationRunOp, parsed.data)) };
+  } catch (error) {
+    return { ok: false, error: thrownMessage(error, "Could not start the run.") };
+  }
 }
 
 // --- Assistants ----------------------------------------------------------------
@@ -816,15 +937,17 @@ export async function chatComposerOptionsAction(assistantId: string): Promise<{
   if (!assistant || assistant.organizationId !== session.organization.id) {
     return { models: [], skills: [] };
   }
-  const [connections, attached] = await Promise.all([
+  const [connections, attached, platformModels] = await Promise.all([
     db.listProviderConnections(session.organization.id),
     db.listAssistantSkills(assistantId),
+    listPlatformEvalModels(),
   ]);
   return {
     models: chatModelOptions(
-      { provider: assistant.modelProvider, modelId: assistant.modelId },
+      { provider: assistant.modelProvider, modelId: assistant.modelId, source: assistant.modelSource ?? undefined },
       assistant.allowedModels,
-      connections
+      connections,
+      platformModels,
     ),
     skills: starterSkills(attached),
   };

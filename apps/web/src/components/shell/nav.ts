@@ -15,6 +15,7 @@ import {
   Plane,
   Settings,
   SlidersHorizontal,
+  Telescope,
   Workflow,
   Wrench,
   type LucideIcon,
@@ -102,6 +103,7 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     apiDomains: ["improvements"],
   },
   { label: "Insights", icon: ChartLine, href: "/insights" },
+  { label: "Eval", icon: Telescope, href: "/eval" },
   // The org-level knowledge hub, shown as "Library" so it never reads as the
   // per-Assistant SETUP → Knowledge section (PRD #726).
   {

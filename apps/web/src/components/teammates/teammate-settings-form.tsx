@@ -3,7 +3,18 @@
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { ModelRef, Provider, Teammate, TeammateRoutine } from "@agent-hub/core";
+import type {
+  ModelRef,
+  ModelSource,
+  PlatformEvalModel,
+  Provider,
+  Teammate,
+  TeammateRoutine,
+} from "@agent-hub/core";
+import { modelSelector } from "@agent-hub/core";
+import { currentModelId } from "@agent-hub/agent/client";
+import { ModelSourceSelect } from "@/components/chat/model-source-select";
+import { modelCatalogWith } from "@/lib/platform-model-catalog";
 import { MEMORY_DOCUMENT_MAX_CHARS } from "@agent-hub/core";
 import { ChevronRight, Shuffle } from "lucide-react";
 import { Button, Input, Label } from "@agent-hub/ui";
@@ -68,6 +79,8 @@ export function TeammateSettingsForm({
   learnings,
   routines,
   unavailableProviders,
+  platformModels,
+  modelSources,
   headerActions,
   onDone,
 }: {
@@ -88,6 +101,9 @@ export function TeammateSettingsForm({
   routines: TeammateRoutine[];
   /** Providers with no credential; their models stay out of the picker. */
   unavailableProviders: Provider[];
+  platformModels: PlatformEvalModel[];
+  /** Sources per catalogue model (`modelSourcesByModel`), for the Source select. */
+  modelSources: Record<string, ModelSource[]>;
   /** What it may do today; the picker is read-only unless `canGrant`. */
   governance: TeammateGovernanceState;
   /** Granting is admin work, one rung above editing the persona. */
@@ -116,6 +132,10 @@ export function TeammateSettingsForm({
   const [allowedModels, setAllowedModels] = useState<ModelRef[]>(
     teammate.allowedModels ?? []
   );
+  const [modelSource, setModelSource] = useState<ModelSource | null>(
+    teammate.modelSource ?? null
+  );
+  const modelSourceDirty = modelSource !== (teammate.modelSource ?? null);
   const [agentMemory, setAgentMemory] = useState(learnings);
   /**
    * The Agent layer as it actually stands, read when this mounts. `null` until
@@ -174,6 +194,8 @@ export function TeammateSettingsForm({
           avatarSeed,
           projectId,
           allowedModels,
+          // Only when it moved: see the Assistant's General form.
+          ...(modelSourceDirty ? { modelSource } : {}),
         });
         // A separate write because it is a separate document, and only when
         // it changed against what the read on open returned: an untouched
@@ -218,6 +240,7 @@ export function TeammateSettingsForm({
     avatarSeed !== teammate.avatarSeed ||
     projectId !== teammate.projectId ||
     JSON.stringify(allowedModels) !== JSON.stringify(teammate.allowedModels ?? []) ||
+    modelSourceDirty ||
     (loadedMemory !== null && agentMemory !== loadedMemory) ||
     changedGrants;
 
@@ -353,15 +376,30 @@ export function TeammateSettingsForm({
 
       <div className="space-y-2">
         <Label>Models it can answer with</Label>
+        <ModelSourceSelect
+          sources={
+            modelSources[
+              modelSelector({
+                provider: teammate.modelProvider,
+                modelId: currentModelId(teammate.modelProvider, teammate.modelId),
+              })
+            ] ?? []
+          }
+          value={modelSource}
+          onChange={setModelSource}
+        />
         <ModelAllowList
+          catalog={modelCatalogWith(platformModels)}
           configured={{
             provider: teammate.modelProvider,
             modelId: teammate.modelId,
+            ...(modelSource ? { source: modelSource } : {}),
           }}
           value={allowedModels}
           onChange={setAllowedModels}
           unavailable={unavailableProviders}
           audience="colleagues"
+          sources={modelSources}
         />
         <p className="text-muted-foreground text-sm">
           {modelAllowListSummary(allowedModels, unavailableProviders)} Your own connected

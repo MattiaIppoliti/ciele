@@ -1,7 +1,7 @@
 "use client";
 
 import { EvilPieChart } from "@/components/charts/evilcharts/recharts-pie-chart";
-import type { ChartConfig } from "@/components/charts/evilcharts/ui/recharts-chart";
+import type { ChartConfig } from "@/components/charts/evilcharts/ui/chart-colors";
 import { formatCount } from "@/lib/format";
 import { OUTCOME_COLORS } from "./palette";
 

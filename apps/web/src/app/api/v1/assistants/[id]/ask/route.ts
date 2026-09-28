@@ -16,7 +16,6 @@ import { perKeyThrottle } from "@/lib/api-v1/throttle";
  */
 
 export const maxDuration = 300;
-export const runtime = "nodejs";
 
 const throttle = perKeyThrottle("assistant-ask", {
   limit: 20,

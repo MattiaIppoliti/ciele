@@ -31,6 +31,7 @@ import {
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { discardChangesRequest, useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
+import { isPlainClick } from "@/lib/plain-click";
 
 function errorMessage(error: unknown, fallback: string): string {
   if (isRedirectError(error)) throw error;
@@ -217,9 +218,7 @@ export function HelpDeskManage({
 
   function onBackClick(e: React.MouseEvent<HTMLAnchorElement>) {
     // A modified click opens a new tab and leaves this page and its edits alone.
-    if (!dirty || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
-      return;
-    }
+    if (!dirty || !isPlainClick(e)) return;
     e.preventDefault();
     confirmDelete(
       discardChangesRequest(

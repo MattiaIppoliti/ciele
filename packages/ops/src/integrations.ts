@@ -254,7 +254,9 @@ export const createProviderApiKeyOp = defineOperation({
   name: "providers.createApiKey",
   capability: "manageMembers",
   input: z.object({
-    provider: z.enum(["anthropic", "openai", "google", "elevenlabs"]),
+    // `ai_gateway` is one key for every catalog provider's models through AI
+    // Gateway, the Organization's own account.
+    provider: z.enum(["anthropic", "openai", "google", "elevenlabs", "ai_gateway"]),
     apiKey: z.string().trim().min(1),
     displayName: z.string().trim().max(200).optional(),
   }),
@@ -279,13 +281,14 @@ export const createProviderApiKeyOp = defineOperation({
     } catch (error) {
       // Deploys can precede the additive constraint migration.
       if (
-        input.provider === "elevenlabs" &&
+        (input.provider === "elevenlabs" || input.provider === "ai_gateway") &&
         typeof error === "object" && error !== null &&
         "code" in error && error.code === "23514" &&
         "message" in error && typeof error.message === "string" &&
         error.message.includes("provider_connections_provider_check")
       ) {
-        return { error: "ElevenLabs connections are not ready yet. Apply the latest database migration and try again." };
+        const name = input.provider === "elevenlabs" ? "ElevenLabs" : "AI Gateway";
+        return { error: `${name} connections are not ready yet. Apply the latest database migration and try again.` };
       }
       throw error;
     }

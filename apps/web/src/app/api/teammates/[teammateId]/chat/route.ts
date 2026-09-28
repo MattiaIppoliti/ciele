@@ -107,7 +107,11 @@ export async function POST(
   // is (`personalSubscriptionInCharge`, read by the workspace).
   const chosen = resolveRequestedModel(
     parseModelSelector(body.model),
-    { provider: teammate.modelProvider, modelId: teammate.modelId },
+    {
+      provider: teammate.modelProvider,
+      modelId: teammate.modelId,
+      source: teammate.modelSource ?? undefined,
+    },
     teammate.allowedModels ?? []
   );
 
@@ -118,6 +122,7 @@ export async function POST(
       ...teammate,
       modelProvider: chosen.provider,
       modelId: chosen.modelId,
+      modelSource: chosen.source ?? null,
     },
     teammateActions,
     referralCandidates: referralCandidates(roster, teammate, {

@@ -85,11 +85,20 @@ export async function POST(request: NextRequest) {
   // in the Teammate chat both.
   const chosen = resolveRequestedModel(
     parseModelSelector(body.model),
-    { provider: assistant.modelProvider, modelId: assistant.modelId },
+    {
+      provider: assistant.modelProvider,
+      modelId: assistant.modelId,
+      source: assistant.modelSource ?? undefined,
+    },
     assistant.allowedModels ?? []
   );
   const effectiveAssistant = applyLocalPreviewModelPreference(
-    { ...assistant, modelProvider: chosen.provider, modelId: chosen.modelId },
+    {
+      ...assistant,
+      modelProvider: chosen.provider,
+      modelId: chosen.modelId,
+      modelSource: chosen.source ?? null,
+    },
     body.modelPreference,
     personal.providers
   );

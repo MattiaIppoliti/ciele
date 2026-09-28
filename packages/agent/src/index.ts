@@ -31,7 +31,8 @@ export { searchKnowledge } from "./knowledge-search";
 // A whole turn folded into one answer, for a caller that cannot read a stream
 // (the `assistants.ask` operation behind /api/v1, the CLI and MCP).
 export { answerConversationTurn } from "./turn-answer";
-export type { TurnAnswer, TurnAnswerSource } from "./turn-answer";
+// Synthetic, effect-free stage experiments. The console is the only caller.
+export { evaluateCase } from "./evaluation";
 export type { TriageDecisionResult } from "./improvement-decisions";
 export { registerRuntimeHost, DEFAULT_PLATFORM_PROMPT } from "./host";
 export type { RuntimeHost } from "./host";
@@ -169,7 +170,7 @@ export type { AgenticOpsReport } from "./scheduled";
 
 // Provider/model resolution (which LLMs an org can actually run on) and
 // pre-flight validation of a provider API key.
-export { providerAvailability } from "./models";
+export { availableModelSources, providerAvailability } from "./models";
 // The models a chat window may offer (allow-list ∩ the org's connections), and
 // the row shape the client draws. Server-side because capability is read from
 // the Provider Connections and the platform environment.

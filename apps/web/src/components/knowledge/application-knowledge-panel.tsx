@@ -78,6 +78,8 @@ import {
 } from "@/components/ui/select";
 import { ingestionStarted } from "@/lib/ingestion-bus";
 import { toast } from "@/lib/toast";
+import { countLabel } from "@/lib/pagination";
+import { copyToClipboard } from "@/lib/clipboard";
 import type { ApplicationOAuthAvailability } from "@/lib/application-oauth";
 import type { PublicApplicationConnection } from "@/lib/application-connections";
 import {
@@ -123,11 +125,6 @@ function when(value: string | null): string {
   // Same formatter as the rest of the Library: server and browser must agree
   // on the text or the row fails hydration.
   return formatDateTime(value);
-}
-
-/** "1 import", "3 imports": the count and its noun, agreeing. */
-function counted(n: number, one: string, many = `${one}s`): string {
-  return `${n} ${n === 1 ? one : many}`;
 }
 
 function errorMessage(error: unknown): string {
@@ -975,13 +972,13 @@ export function ApplicationKnowledgePanel({
                             : connection.error || connection.status.replaceAll("_", " ")}
                         </span>
                         <span className="text-muted-foreground block truncate text-xs">
-                          {counted(
+                          {countLabel(
                             imports.filter((item) => item.connectionId === connection.id)
                               .length,
                             "import"
                           )}{" "}
                           ·{" "}
-                          {counted(
+                          {countLabel(
                             imports
                               .filter((item) => item.connectionId === connection.id)
                               .reduce(
@@ -1167,16 +1164,8 @@ export function ApplicationKnowledgePanel({
                           label: "Copy ID",
                           icon: Copy,
                           // Toast by the result: the clipboard can be missing or refuse.
-                          onSelect: () => {
-                            void (async () => {
-                              try {
-                                await navigator.clipboard.writeText(item.id);
-                                toast.success("ID copied.");
-                              } catch {
-                                toast.error("Could not copy the ID.");
-                              }
-                            })();
-                          },
+                          onSelect: () =>
+                            void copyToClipboard(item.id, "ID copied.", "Could not copy the ID."),
                         },
                         canEdit && {
                           label: "Edit import",
@@ -1233,8 +1222,7 @@ export function ApplicationKnowledgePanel({
                                 {provider?.label ?? "Application"} · {importScopeSummary(item)}
                               </span>
                               <span className="text-muted-foreground block truncate text-xs">
-                                {item.assistantIds.length}{" "}
-                                {item.assistantIds.length === 1 ? "Assistant" : "Assistants"} ·{" "}
+                                {countLabel(item.assistantIds.length, "Assistant")} ·{" "}
                                 <span className="capitalize">{item.cadence}</span>
                               </span>
                               {item.error && (
@@ -1287,7 +1275,7 @@ export function ApplicationKnowledgePanel({
                             href={href}
                             className="text-primary press-text font-medium hover:underline tabular-nums"
                           >
-                            {documentCount} {documentCount === 1 ? "Document" : "Documents"}
+                            {countLabel(documentCount, "Document")}
                           </Link>
                         </TableCell>
                         <TableCell className="align-top text-right">

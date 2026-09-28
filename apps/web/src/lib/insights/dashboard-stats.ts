@@ -1,5 +1,5 @@
 import type { DashboardDay, UsageDashboard } from "@agent-hub/core";
-import { shortDay } from "./dashboard-view";
+import { formatShortDay } from "@/lib/format";
 
 /**
  * The stat cards on the Costs and Observability dashboards, as data. Pure and
@@ -54,10 +54,17 @@ function prior(previous: Totals | null, pick: (t: Totals) => number | null): num
 
 const NO_EARLIER = "No earlier data to compare";
 
+type Card = Omit<StatSpec, "labels" | "caption"> & { caption?: string };
+
+/** Every card shares the window's day labels; a null card is left out. */
+function withDays(daily: readonly DashboardDay[], cards: Array<Card | null>): StatSpec[] {
+  const labels = daily.map((d) => formatShortDay(d.day));
+  return cards.flatMap((card) => (card ? [{ ...card, labels, caption: card.caption ?? NO_EARLIER }] : []));
+}
+
 export function costStats(dashboard: UsageDashboard, previous: Totals | null): StatSpec[] {
   const { daily, totals } = dashboard;
-  const labels = daily.map((d) => shortDay(d.day));
-  return [
+  return withDays(daily, [
     {
       key: "spend",
       label: "Estimated spend",
@@ -65,9 +72,7 @@ export function costStats(dashboard: UsageDashboard, previous: Totals | null): S
       value: totals.spendEur,
       previous: prior(previous, (t) => t.spendEur),
       series: daily.map((d) => d.spendEur),
-      labels,
       goodWhen: "down",
-      caption: NO_EARLIER,
     },
     {
       key: "costPerTurn",
@@ -76,7 +81,6 @@ export function costStats(dashboard: UsageDashboard, previous: Totals | null): S
       value: totals.costPerTurnEur ?? 0,
       previous: prior(previous, (t) => t.costPerTurnEur),
       series: carryForward(daily.map((d) => (d.turns > 0 ? d.spendEur / d.turns : null))),
-      labels,
       goodWhen: "down",
       caption: totals.costPerTurnEur === null ? "No finished turns" : NO_EARLIER,
     },
@@ -87,9 +91,7 @@ export function costStats(dashboard: UsageDashboard, previous: Totals | null): S
       value: totals.calls,
       previous: prior(previous, (t) => t.calls),
       series: daily.map((d) => d.calls),
-      labels,
       goodWhen: "neutral",
-      caption: NO_EARLIER,
     },
     {
       key: "tokens",
@@ -98,11 +100,9 @@ export function costStats(dashboard: UsageDashboard, previous: Totals | null): S
       value: totals.inputTokens + totals.outputTokens,
       previous: prior(previous, (t) => t.inputTokens + t.outputTokens),
       series: daily.map((d) => d.inputTokens + d.outputTokens),
-      labels,
       goodWhen: "neutral",
-      caption: NO_EARLIER,
     },
-  ];
+  ]);
 }
 
 /**
@@ -111,9 +111,8 @@ export function costStats(dashboard: UsageDashboard, previous: Totals | null): S
  */
 export function observabilityStats(dashboard: UsageDashboard, previous: Totals | null): StatSpec[] {
   const { daily, totals } = dashboard;
-  const labels = daily.map((d) => shortDay(d.day));
   const percent = (rate: number | null) => (rate === null ? null : rate * 100);
-  const cards: Array<StatSpec | null> = [
+  return withDays(daily, [
     {
       key: "turns",
       label: "Finished turns",
@@ -121,9 +120,7 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
       value: totals.turns,
       previous: prior(previous, (t) => t.turns),
       series: daily.map((d) => d.turns),
-      labels,
       goodWhen: "neutral",
-      caption: NO_EARLIER,
     },
     totals.successRate === null
       ? null
@@ -134,10 +131,8 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
           value: totals.successRate * 100,
           previous: prior(previous, (t) => percent(t.successRate)),
           series: ratioSeries(daily, (d) => d.turns - d.failedTurns, (d) => d.turns),
-          labels,
-          goodWhen: "up",
-          caption: NO_EARLIER,
-        },
+              goodWhen: "up",
+            },
     {
       key: "p50",
       label: "Median latency",
@@ -145,7 +140,6 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
       value: totals.latencyP50Ms ?? 0,
       previous: prior(previous, (t) => t.latencyP50Ms),
       series: carryForward(daily.map((d) => d.latencyP50Ms)),
-      labels,
       goodWhen: "down",
       caption: totals.latencyP50Ms === null ? "No finished turns" : NO_EARLIER,
     },
@@ -156,7 +150,6 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
       value: totals.latencyP95Ms ?? 0,
       previous: prior(previous, (t) => t.latencyP95Ms),
       series: carryForward(daily.map((d) => d.latencyP95Ms)),
-      labels,
       goodWhen: "down",
       caption: totals.latencyP95Ms === null ? "No finished turns" : NO_EARLIER,
     },
@@ -169,10 +162,8 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
           value: totals.evalPassRate * 100,
           previous: prior(previous, (t) => percent(t.evalPassRate)),
           series: ratioSeries(daily, (d) => d.passes, (d) => d.passes + d.fails),
-          labels,
-          goodWhen: "up",
-          caption: NO_EARLIER,
-        },
+              goodWhen: "up",
+            },
     totals.autonomyRate === null
       ? null
       : {
@@ -182,10 +173,8 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
           value: totals.autonomyRate * 100,
           previous: prior(previous, (t) => percent(t.autonomyRate)),
           series: ratioSeries(daily, (d) => d.conversations - d.escalated, (d) => d.conversations),
-          labels,
-          goodWhen: "up",
-          caption: NO_EARLIER,
-        },
+              goodWhen: "up",
+            },
     {
       key: "failed",
       label: "Failed turns",
@@ -193,9 +182,7 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
       value: totals.failedTurns,
       previous: prior(previous, (t) => t.failedTurns),
       series: daily.map((d) => d.failedTurns),
-      labels,
       goodWhen: "down",
-      caption: NO_EARLIER,
     },
     {
       key: "toolCalls",
@@ -204,12 +191,10 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
       value: totals.toolCallsPerTurn ?? 0,
       previous: prior(previous, (t) => t.toolCallsPerTurn),
       series: [],
-      labels,
       goodWhen: "neutral",
       caption: totals.toolCallsPerTurn === null ? "No finished turns" : NO_EARLIER,
     },
-  ];
-  return cards.filter((card): card is StatSpec => card !== null);
+  ]);
 }
 
 /**
@@ -219,9 +204,8 @@ export function observabilityStats(dashboard: UsageDashboard, previous: Totals |
  */
 export function activityStats(dashboard: UsageDashboard, previous: Totals | null): StatSpec[] {
   const { daily, totals } = dashboard;
-  const labels = daily.map((d) => shortDay(d.day));
   const failure = (t: Totals) => (t.turns > 0 ? (t.failedTurns / t.turns) * 100 : null);
-  return [
+  return withDays(daily, [
     {
       key: "turns",
       label: "Turns",
@@ -229,9 +213,7 @@ export function activityStats(dashboard: UsageDashboard, previous: Totals | null
       value: totals.turns,
       previous: prior(previous, (t) => t.turns),
       series: daily.map((d) => d.turns),
-      labels,
       goodWhen: "neutral",
-      caption: NO_EARLIER,
     },
     {
       key: "failure",
@@ -239,10 +221,8 @@ export function activityStats(dashboard: UsageDashboard, previous: Totals | null
       kind: "percent",
       value: failure(totals) ?? 0,
       previous: prior(previous, failure),
-      series: carryForward(daily.map((d) => (d.turns > 0 ? (d.failedTurns / d.turns) * 100 : null))),
-      labels,
+      series: ratioSeries(daily, (d) => d.failedTurns, (d) => d.turns),
       goodWhen: "down",
-      caption: NO_EARLIER,
     },
     {
       key: "p95",
@@ -251,9 +231,7 @@ export function activityStats(dashboard: UsageDashboard, previous: Totals | null
       value: totals.latencyP95Ms ?? 0,
       previous: prior(previous, (t) => t.latencyP95Ms),
       series: carryForward(daily.map((d) => d.latencyP95Ms)),
-      labels,
       goodWhen: "down",
-      caption: NO_EARLIER,
     },
-  ];
+  ]);
 }

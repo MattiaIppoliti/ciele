@@ -1,52 +1,66 @@
 ---
 title: KI-Anbieter
-description: Verbinden Sie einen Modellanbieter und wählen Sie das Modell für jeden Assistenten aus.
+description: Verbinden Sie einen Modellanbieter und wählen Sie für jeden Assistenten das entsprechende Modell aus.
 ---
 
 Ciele verwendet eine einzige Provider-Abstraktion für Modelle von Anthropic,
 OpenAI und Google. Ein Assistant wählt seine Provider-Verbindung und sein Modell
 aus.
 
-## Verbindungstypen von Anbietern
+## Verbindungstypen des Providers
 
 | Type | Use |
 | --- | --- |
 | Platform plan | Verwendet Modelle, die vom verwalteten Ciele-Plan bereitgestellt werden. |
 | Subscription | Verwendet ein Mitgliedsabonnement für die eigenen Chats dieses Mitglieds. |
-| API key | Verwendet einen von der Organisation verwalteten Provider-Schlüssel. |
+| API key | Verwendet einen von der Organisation verwalteten Providerschlüssel. |
+| AI Gateway | Verwendet Anthropic-, OpenAI- und Google-Modelle über das AI Gateway. |
 
 Ein Mitgliedsabonnement betreibt nur die eigenen Chats dieses Mitglieds: die
-Assistant Preview sowie dessen Chats mit einem KI-Teammate. Es bedient kein
+Assistant Preview und dessen Chats mit einem KI-Teammate. Es bedient kein
 veröffentlichtes Widget und führt keinen Chat eines anderen Mitglieds aus.
-Wählen Sie einen Platform-Plan oder eine API-Key-Verbindung für den
-veröffentlichten Traffic aus.
+Wählen Sie einen Platform-Plan oder eine API-Key-Verbindung für veröffentlichten
+Traffic aus.
 
 ## Eine API-Schlüssel-Verbindung hinzufügen
 
 1. Öffnen Sie **Settings**.
 2. Wählen Sie **AI Provider** aus.
 3. Fügen Sie eine Provider-Verbindung hinzu.
-4. Wählen Sie Anthropic, OpenAI, Google oder ElevenLabs aus.
+4. Wählen Sie Anthropic, OpenAI, Google, AI Gateway oder ElevenLabs aus.
 5. Geben Sie die erforderlichen Anmeldeinformationen des Providers ein.
 6. Speichern Sie die Verbindung.
+
+## AI Gateway
+
+Ein AI Gateway-Schlüssel ist ein einziger Schlüssel für Modelle von Anthropic,
+OpenAI und Google. Ciele leitet diese Aufrufe über Ihr eigenes Vercel AI
+Gateway-Konto weiter, und dieses Konto übernimmt die Kosten dafür.
+
+Wenn die Organisation keinen AI Gateway-Schlüssel hat, kann Ciele den AI
+Gateway-Schlüssel der Plattform verwenden, sofern die Bereitstellung über einen
+solchen verfügt. Der Plattformtarif übernimmt die Kosten für diese Aufrufe.
+
+AI Gateway bedient nicht jedes Modell. Ein Modell, das vom AI Gateway nicht
+bedient wird, zeigt das AI Gateway nicht als Quelle an.
 
 ## Andere Verbindungstypen
 
 - **OpenAI-compatible endpoints** Verbinden Sie einen Server wie Ollama, vLLM
-  oder LM Studio. Geben Sie die Base-URL und die Models ein. Der API-Schlüssel
+  oder LM Studio. Geben Sie die Basis-URL und die Modelle ein. Der API-Schlüssel
   ist optional.
 - **Keyless enterprise auth** verbindet Google Vertex, Anthropic oder Azure
-  OpenAI über die Workload Identity Federation. Ciele speichert keinen
-  statischen Schlüssel für diese Verbindungen.
+  OpenAI über die Workload Identity Federation. Ciele speichert für diese
+  Verbindungen keinen statischen Schlüssel.
 
 Ciele verschlüsselt die Anmeldeinformationen vor der Speicherung. Verwenden Sie
 keinen persönlichen Schlüssel erneut, der über nicht zusammenhängende
 Berechtigungen verfügt.
 
 ElevenLabs-Verbindungen stellen Sprachmodelle bereit. Wählen Sie diese Modelle
-in den **General**-Einstellungen des Assistenten unter **Voice mode** aus.
-Google- und OpenAI-Verbindungen können ebenfalls Sprachmodelle bereitstellen.
-Die verfügbaren Modelle hängen vom verbundenen Konto und dessen
+in den **General**-Einstellungen des Assistenten unter **Voice mode** aus. Auch
+Verbindungen zu Google und OpenAI können Sprachmodelle bereitstellen. Welche
+Modelle verfügbar sind, hängt vom verbundenen Konto und dessen
 API-Berechtigungen ab. ElevenLabs wird weder im Textmodell noch in den
 Auswahlfeldern für Knowledge Embeddings angezeigt.
 
@@ -56,10 +70,42 @@ Auswahlfeldern für Knowledge Embeddings angezeigt.
 2. Wählen Sie **General** aus.
 3. Wählen Sie die Provider-Verbindung aus.
 4. Wählen Sie ein verfügbares Modell aus.
-5. Testen Sie den Assistant im Preview-Modus.
-6. Veröffentlichen Sie den Assistenten.
+5. Wählen Sie optional die Modellquelle aus.
+6. Testen Sie den Assistant im Modus „Preview“.
+7. Veröffentlichen Sie den Assistant.
 
-Das veröffentlichte Widget verwendet den Provider und das Modell in seinem
+## Modellquellen
+
+Ein Modell kann über mehr als eine Quelle verfügbar sein. Beispielsweise kann
+Claude Sonnet 5 sowohl Ihren Anthropic-API-Schlüssel als auch AI Gateway
+verwenden. Der Quellenauswahl-Bereich zeigt an, wenn ein Modell zwei oder mehr
+Quellen hat.
+
+- **Automatic** verwendet die erste verfügbare Quelle. Die Reihenfolge ist wie
+  folgt: Ihr API-Schlüssel, die schlüssellose Enterprise-Authentifizierung, der
+  Plattformplan, Ihr AI-Gateway-Schlüssel und der AI-Gateway-Schlüssel der
+  Plattform.
+- **Platform plan**, **API key**, **Keyless**, **AI Gateway · your key** und
+  **AI Gateway · platform** verwenden ausschließlich diese Quelle.
+
+**AI Gateway · your key** verwendet die AI-Gateway-Verbindung der Organisation,
+und Ihr Gateway-Konto zahlt. **AI Gateway · platform** verwendet den
+AI-Gateway-Schlüssel der Plattform, und der Plattformplan zahlt.
+
+Wenn die ausgewählte Quelle das Modell nicht bedienen kann, antwortet Ciele mit
+einem anderen verfügbaren Modell – genau wie dann, wenn ein Provider über keine
+Anmeldeinformationen verfügt.
+
+Die Modelle, die Besucherinnen und Besucher oder Kolleginnen und Kollegen
+auswählen können, können ebenfalls jeweils eine Quelle verwenden. Die Liste
+zeigt ein Modell einmal für jede Quelle an, wobei der Quellname nach dem
+Modellnamen steht.
+
+Das eigene Abonnement eines Mitglieds ist keine Quelle, die Sie auswählen
+können. Es führt die eigenen Chats dieses Mitglieds aus, unabhängig davon,
+welches Modell oder welche Quelle der Assistant verwendet.
+
+Das veröffentlichte Widget verwendet den Provider und das Modell aus seinem
 Veröffentlichungs-Snapshot. Spätere allgemeine Änderungen erfordern eine erneute
 Veröffentlichung.
 

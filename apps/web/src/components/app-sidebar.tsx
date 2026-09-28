@@ -4,7 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
-import { ChevronsUpDown, Fingerprint, LifeBuoy, MessageCircle, Search, Settings, type LucideIcon } from "lucide-react";
+import { ChevronsUpDown, Fingerprint, LifeBuoy, MessageCircle, Search, Settings, Telescope, type LucideIcon } from "lucide-react";
 import { BookOpen, Check, Ellipsis, Loader2, LogOut, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
 // Icon data, not components: the collapse arrow reshapes between the two.
 import {
@@ -12,7 +12,8 @@ import {
   PanelLeftOpen as PanelLeftOpenData,
 } from "lucide";
 import { MorphIcon } from "morphicons/react";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
+import { TelescopeIcon } from "@/components/ui/icons/telescope";
 import { signOutAction, switchOrganizationAction } from "@/app/actions";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { SoundSwitcher } from "@/components/sound-switcher";
@@ -164,6 +165,8 @@ function NavRow({
             alt=""
             className="size-4 shrink-0 rounded-full object-cover"
           />
+        ) : Icon === Telescope ? (
+          <AnimatedGlyph icon={TelescopeIcon} size={16} className="shrink-0" />
         ) : Icon ? (
           <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
         ) : null}

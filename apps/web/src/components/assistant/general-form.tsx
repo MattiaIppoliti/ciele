@@ -4,17 +4,21 @@ import { useId, useRef, useState, useTransition, type ReactNode } from "react";
 import type {
   Assistant,
   ModelRef,
+  ModelSource,
   Provider,
   QuickReplyButton,
   QuickReplyType,
+  PlatformEvalModel,
 } from "@agent-hub/core";
-import { shortId } from "@agent-hub/core";
+import { modelSelector, sameModel, shortId } from "@agent-hub/core";
 
-import { MODEL_CATALOG, PROVIDER_NAMES, currentModelId } from "@agent-hub/agent/client";
+import { PROVIDER_NAMES, currentModelId } from "@agent-hub/agent/client";
+import { modelCatalogWith } from "@/lib/platform-model-catalog";
 import {
   ModelAllowList,
   modelAllowListSummary,
 } from "@/components/chat/model-allow-list";
+import { ModelSourceSelect } from "@/components/chat/model-source-select";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
 import {
   SectionTimeline,
@@ -145,11 +149,17 @@ function FieldHeader({
 export function GeneralForm({
   assistant,
   unavailableProviders,
+  platformModels,
+  modelSources,
 }: {
   assistant: Assistant;
   /** Providers this Organization has no credential for; the picker skips them. */
   unavailableProviders: Provider[];
+  platformModels: PlatformEvalModel[];
+  /** Sources per catalogue model (`modelSourcesByModel`), for the Source select. */
+  modelSources: Record<string, ModelSource[]>;
 }) {
+  const modelCatalog = modelCatalogWith(platformModels);
   const [isPending, startTransition] = useTransition();
   // Its own transition, so an avatar upload never reads as "Saving…".
   const [isUploading, startUpload] = useTransition();
@@ -189,9 +199,17 @@ export function GeneralForm({
   const [modelId, setModelId] = useState(() =>
     currentModelId(assistant.modelProvider, assistant.modelId)
   );
+  const [modelSource, setModelSource] = useState<ModelSource | null>(
+    assistant.modelSource ?? null
+  );
   const [allowedModels, setAllowedModels] = useState<ModelRef[]>(
     assistant.allowedModels ?? []
   );
+  const configured: ModelRef = {
+    provider: modelProvider,
+    modelId,
+    ...(modelSource ? { source: modelSource } : {}),
+  };
   const [voice, setVoice] = useState(assistant.voice ?? EMPTY_VOICE_SETTINGS);
   const [attachmentsEnabled, setAttachmentsEnabled] = useState(
     assistant.attachmentsEnabled ?? false
@@ -206,9 +224,8 @@ export function GeneralForm({
     JSON.stringify(voice) !== JSON.stringify(assistant.voice ?? EMPTY_VOICE_SETTINGS);
   // A configured model that moved is implicitly in the picker, so drop any
   // duplicate of it rather than storing the same model twice.
-  const extraModels = allowedModels.filter(
-    (ref) => !(ref.provider === modelProvider && ref.modelId === modelId)
-  );
+  const extraModels = allowedModels.filter((ref) => !sameModel(ref, configured));
+  const modelSourceDirty = modelSource !== (assistant.modelSource ?? null);
   const dirty =
     voiceDirty ||
     launcherEnabled !== assistant.chatLauncherEnabled ||
@@ -223,6 +240,7 @@ export function GeneralForm({
     // Compared against the resolved id the state opened on, or a retired
     // model would load the form already dirty.
     modelId !== currentModelId(assistant.modelProvider, assistant.modelId) ||
+    modelSourceDirty ||
     JSON.stringify(allowedModels) !==
       JSON.stringify(assistant.allowedModels ?? []) ||
     attachmentsEnabled !== (assistant.attachmentsEnabled ?? false) ||
@@ -258,6 +276,9 @@ export function GeneralForm({
         simplifiedThinking,
         modelProvider,
         modelId,
+        // Only when it moved, so saving the rest of the form never needs the
+        // `model_source` column during the deploy window before it exists.
+        ...(modelSourceDirty ? { modelSource } : {}),
         allowedModels: extraModels,
         attachmentsEnabled,
         ...(voiceDirty ? { voice } : {}),
@@ -352,7 +373,8 @@ export function GeneralForm({
           <Select value={modelProvider} onValueChange={(provider) => {
             const next = provider as Provider;
             setModelProvider(next);
-            setModelId(MODEL_CATALOG[next][0].id);
+            setModelId(modelCatalog[next][0].id);
+            setModelSource(null);
           }} className="w-40">
             <SelectTrigger className="h-11" aria-label="Model provider">
               <SelectValue>{PROVIDER_NAMES[modelProvider]}</SelectValue>
@@ -362,7 +384,7 @@ export function GeneralForm({
                   not offered per-assistant: the runtime reaches them through
                   cross-provider fallback with the connection's chat model. */}
               {(Object.keys(PROVIDER_NAMES) as Provider[])
-                .filter((p) => MODEL_CATALOG[p].length > 0)
+                .filter((p) => modelCatalog[p].length > 0)
                 .map((p) => (
                   <SelectItem key={p} value={p}>
                     {PROVIDER_NAMES[p]}
@@ -370,12 +392,15 @@ export function GeneralForm({
                 ))}
             </SelectContent>
           </Select>
-          <Select value={modelId} onValueChange={setModelId} className="min-w-0 flex-1">
+          <Select value={modelId} onValueChange={(next) => {
+            setModelId(next);
+            setModelSource(null);
+          }} className="min-w-0 flex-1">
             <SelectTrigger className="h-11" aria-label="Model">
-              <SelectValue>{MODEL_CATALOG[modelProvider].find((m) => m.id === modelId)?.label ?? modelId}</SelectValue>
+              <SelectValue>{modelCatalog[modelProvider].find((m) => m.id === modelId)?.label ?? modelId}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {MODEL_CATALOG[modelProvider].map((m) => (
+              {modelCatalog[modelProvider].map((m) => (
                 <SelectItem key={m.id} value={m.id}>
                   {m.label}
                   <span className="text-muted-foreground ml-auto font-mono text-xs">{m.id}</span>
@@ -383,6 +408,11 @@ export function GeneralForm({
               ))}
             </SelectContent>
           </Select>
+          <ModelSourceSelect
+            sources={modelSources[modelSelector({ provider: modelProvider, modelId })] ?? []}
+            value={modelSource}
+            onChange={setModelSource}
+          />
         </div>
       </div>
 
@@ -393,10 +423,12 @@ export function GeneralForm({
           hint="Extra models visitors can switch to. Leave empty to hide the picker."
         />
         <ModelAllowList
-          configured={{ provider: modelProvider, modelId }}
+          catalog={modelCatalog}
+          configured={configured}
           value={allowedModels}
           onChange={setAllowedModels}
           unavailable={unavailableProviders}
+          sources={modelSources}
         />
         <p className="text-muted-foreground text-xs">
           {modelAllowListSummary(extraModels, unavailableProviders)}

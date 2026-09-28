@@ -1,98 +1,11 @@
-import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
-import type { ComponentType, ReactNode } from "react";
+// Vendored from EvilCharts, trimmed to what Ciele's callers use.
+import { CanvasRenderer } from "echarts/renderers";
+import { getColorsCount, type ChartConfig } from "@/components/charts/evilcharts/ui/chart-colors";
 import * as echarts from "echarts/core";
-
-export const ECHARTS_RENDERERS = {
-  canvas: "canvas",
-  svg: "svg",
-} as const;
-
-export type EChartsRenderer = (typeof ECHARTS_RENDERERS)[keyof typeof ECHARTS_RENDERERS];
-
-export const DEFAULT_ECHARTS_RENDERER = ECHARTS_RENDERERS.canvas;
 
 // Renderer registration is shared by every modular ECharts chart. Individual
 // chart modules only register the series and components they use.
-echarts.use([CanvasRenderer, SVGRenderer]);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Theme keys + config — replicated from the repo's <ChartStyle> so the ECharts
-// charts stay self-contained (no recharts ui imports). Shared by every ECharts
-// chart and the tooltip/legend/brush ui modules.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Theme selectors mirror the repo's <ChartStyle>: light is the bare root, dark is `.dark`.
-export const THEMES = { light: "", dark: ".dark" } as const;
-export type ThemeKey = keyof typeof THEMES;
-export const THEME_KEYS = Object.keys(THEMES) as ThemeKey[];
-
-// Require at least one theme key — identical constraint to the repo's ChartConfig.
-export type AtLeastOneThemeColor =
-  | { light: string[]; dark?: string[] }
-  | { light?: string[]; dark: string[] };
-
-export type ChartConfig = Record<
-  string,
-  {
-    label?: ReactNode;
-    icon?: ComponentType;
-    colors?: AtLeastOneThemeColor;
-  }
->;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Color plumbing — replicated from the repo's <ChartStyle> so the charts stay
-// self-contained (no @/registry/ui/recharts imports).
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Max slots a key needs = longest color array across themes (min 1). Both themes
-// always emit the same number of `--color-{key}-{n}` vars.
-export function getColorsCount(item: ChartConfig[string]): number {
-  if (!item.colors) return 1;
-  const counts = THEME_KEYS.map((theme) => item.colors?.[theme]?.length ?? 0);
-  return Math.max(...counts, 1);
-}
-
-// Distribute colors evenly across slots; extra slots go to the LAST color(s).
-// 2 colors / 4 slots → [c0, c0, c1, c1]; 3 colors / 4 slots → [c0, c1, c2, c2].
-export function distributeColors(colors: string[], maxCount: number): string[] {
-  const available = colors.length;
-  if (available >= maxCount) return colors.slice(0, maxCount);
-
-  const result: string[] = [];
-  const baseSlots = Math.floor(maxCount / available);
-  const extraSlots = maxCount % available;
-
-  for (let i = 0; i < available; i++) {
-    const isExtra = i >= available - extraSlots;
-    const slots = baseSlots + (isExtra ? 1 : 0);
-    for (let j = 0; j < slots; j++) result.push(colors[i]);
-  }
-
-  return result;
-}
-
-// Emits the same CSS <ChartStyle> would: `--color-{key}-{n}` scoped to
-// `[data-chart={id}]` (light) and `.dark [data-chart={id}]` (dark).
-export function buildChartCss(id: string, config: ChartConfig): string {
-  const colorConfig = Object.entries(config).filter(([, item]) => item.colors);
-  if (!colorConfig.length) return "";
-
-  const varsFor = (theme: ThemeKey) =>
-    colorConfig
-      .flatMap(([key, item]) => {
-        const authored = item.colors?.[theme];
-        if (!authored || authored.length === 0) return [];
-        return distributeColors(authored, getColorsCount(item)).map(
-          (color, index) => `  --color-${key}-${index}: ${color};`,
-        );
-      })
-      .join("\n");
-
-  return Object.entries(THEMES)
-    .map(([theme, prefix]) => `${prefix} [data-chart=${id}] {\n${varsFor(theme as ThemeKey)}\n}`)
-    .join("\n");
-}
+echarts.use([CanvasRenderer]);
 
 // A single reusable 1×1 canvas normalizes ANY CSS color (hex, named, oklch, …)
 // to a concrete rgba string by painting it and reading the pixel back.
@@ -175,26 +88,6 @@ export function resolveColors(
   container.removeChild(probe);
 
   return { series, tokens };
-}
-
-// Horizontal multi-stop color for a series — a solid string when there is only
-// one color, else an evenly-distributed left→right LinearGradient. Reused for the
-// stroke, symbol fills, and as the base tint for the area fill.
-export function seriesPaint(slots: string[]): string | echarts.graphic.LinearGradient {
-  if (slots.length <= 1) return slots[0] ?? "rgba(120, 120, 120, 1)";
-  const stops = slots.map((color, i) => ({ offset: i / (slots.length - 1), color }));
-  return new echarts.graphic.LinearGradient(0, 0, 1, 0, stops);
-}
-
-// Solid var / gradient of vars for a series indicator — mirrors getIndicatorColorStyle.
-// Used by BOTH the tooltip rows and the legend indicators.
-export function indicatorBackground(key: string, colorsCount: number): string {
-  if (colorsCount <= 1) return `var(--color-${key}-0)`;
-  const stops = Array.from({ length: colorsCount }, (_, i) => {
-    const offset = (i / (colorsCount - 1)) * 100;
-    return `var(--color-${key}-${i}) ${offset}%`;
-  }).join(", ");
-  return `linear-gradient(to right, ${stops})`;
 }
 
 // Composites a translucent color over an opaque base into a FLAT color. The

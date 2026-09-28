@@ -53,12 +53,16 @@ export function useChatModels(
   return models;
 }
 
-/** The `models` rows `PromptInput` renders, from the runtime's option shape. */
+/**
+ * The `models` rows `PromptInput` renders, from the runtime's option shape. A
+ * choice pinned to one source carries its tag, which is what tells "Claude
+ * Sonnet 5 · API key" from "Claude Sonnet 5 · AI Gateway".
+ */
 export function toPromptModels(
   options: ChatModelOption[]
 ): Array<{ value: string; label: string }> {
   return options.map((option) => ({
     value: option.selector,
-    label: option.label,
+    label: option.sourceName ? `${option.label} · ${option.sourceName}` : option.label,
   }));
 }

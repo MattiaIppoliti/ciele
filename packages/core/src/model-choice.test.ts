@@ -114,3 +114,53 @@ describe("parseModelSelector", () => {
     expect(parseModelSelector("anthropic:   ")).toBeNull();
   });
 });
+
+describe("a model choice that names its source", () => {
+  const viaGateway: ModelRef = { ...SONNET, source: "ai_gateway" };
+  const viaKey: ModelRef = { ...SONNET, source: "api_key" };
+
+  it("is a different choice from the same model on another source", () => {
+    expect(sameModel(viaGateway, viaKey)).toBe(false);
+    expect(sameModel(viaGateway, { ...viaGateway })).toBe(true);
+    expect(sameModel(viaGateway, SONNET)).toBe(false);
+  });
+
+  it("lists the same model once per source an admin allowed", () => {
+    expect(modelChoices(CONFIGURED, [viaKey, viaGateway, viaKey])).toEqual([
+      CONFIGURED,
+      viaKey,
+      viaGateway,
+    ]);
+  });
+
+  it("round-trips through the selector a client sends", () => {
+    expect(modelSelector(viaGateway)).toBe("anthropic:claude-sonnet-5#ai_gateway");
+    expect(parseModelSelector(modelSelector(viaGateway))).toEqual(viaGateway);
+    expect(modelSelector(SONNET)).toBe("anthropic:claude-sonnet-5");
+    expect(parseModelSelector(modelSelector(SONNET))).toEqual(SONNET);
+  });
+
+  it("keeps an unknown source as part of the id", () => {
+    expect(parseModelSelector("anthropic:claude-sonnet-5#carrier-pigeon")).toEqual({
+      provider: "anthropic",
+      modelId: "claude-sonnet-5#carrier-pigeon",
+    });
+  });
+
+  it("selects only a source that is on the list", () => {
+    expect(resolveRequestedModel(viaGateway, CONFIGURED, [viaKey])).toEqual(
+      CONFIGURED
+    );
+    expect(resolveRequestedModel(viaGateway, CONFIGURED, [viaGateway])).toEqual(
+      viaGateway
+    );
+  });
+});
+
+it("trims the model id before a pinned source", () => {
+  expect(parseModelSelector("anthropic: claude-sonnet-5 #api_key")).toEqual({
+    provider: "anthropic",
+    modelId: "claude-sonnet-5",
+    source: "api_key",
+  });
+});

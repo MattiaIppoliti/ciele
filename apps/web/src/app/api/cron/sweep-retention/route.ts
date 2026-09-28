@@ -29,6 +29,8 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+const noOrphans = { knowledgeOrphansScannedOrgs: 0, knowledgeOrphansRemoved: 0 };
+
 export const GET = withCronAuth(async () => {
   const db = getWidgetDb();
   // Three policies, one tick: the two tenant-set windows (either, both, or
@@ -44,9 +46,9 @@ export const GET = withCronAuth(async () => {
     isSupabaseServiceConfigured()
       ? sweepOrphanedKnowledgeOriginals(createSupabaseServiceClient()).catch((error) => {
           console.error("[retention] knowledge orphan sweep failed:", error);
-          return { knowledgeOrphansScannedOrgs: 0, knowledgeOrphansRemoved: 0 };
+          return noOrphans;
         })
-      : Promise.resolve({ knowledgeOrphansScannedOrgs: 0, knowledgeOrphansRemoved: 0 }),
+      : noOrphans,
   ]);
   return Response.json({ ...traces, ...transcripts, ...objectAccess, ...knowledgeOrphans });
 });

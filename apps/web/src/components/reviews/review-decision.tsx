@@ -45,8 +45,6 @@ function utc(iso: string): string {
   return `${formatDateTime(iso)} UTC`;
 }
 
-const noopSubscribe = () => () => {};
-
 /**
  * The decision form (#841, stories 50–51): the Inputs, Approve / Reject, and
  * once decided, who decided. Whatever channel brought the assignee here, the
@@ -91,7 +89,7 @@ export function ReviewDecision({
     [expiresAt, status],
   );
   const overdue = useSyncExternalStore(
-    status === "pending" ? subscribeToExpiry : noopSubscribe,
+    subscribeToExpiry,
     () => isReviewOverdue({ status, expiresAt }, new Date()),
     () => false,
   );

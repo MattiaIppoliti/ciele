@@ -33,6 +33,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { setDocumentsExcludedAction } from "@/app/actions";
 import { toast } from "@/lib/toast";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   relativeTimeLabel,
   sourceDocumentHref,
@@ -266,17 +267,12 @@ export function SourceDocumentsTable({
                   {
                     label: "Copy ID",
                     icon: Copy,
-                    onSelect: async () => {
-                      // Only claim the copy once the clipboard took it.
-                      try {
-                        await navigator.clipboard.writeText(document.id);
-                        toast.success("ID copied.");
-                      } catch {
-                        toast.error(
-                          "Could not copy the ID. Check the browser allows clipboard access."
-                        );
-                      }
-                    },
+                    onSelect: () =>
+                      copyToClipboard(
+                        document.id,
+                        "ID copied.",
+                        "Could not copy the ID. Check the browser allows clipboard access."
+                      ),
                   },
                   canEdit &&
                     (document.excluded

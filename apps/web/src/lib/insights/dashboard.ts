@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
-import type { DashboardFacts, UsageDashboard, UsageDashboardFilter } from "@agent-hub/core";
+import type { DashboardFacts, UsageDashboardFilter } from "@agent-hub/core";
 import { computeUsageDashboard } from "@agent-hub/core";
-import { createDb, isSupabaseConfigured } from "@agent-hub/db";
+import { createDb, isSupabaseConfigured, type Db } from "@agent-hub/db";
 
 import { requirePageMember } from "@/lib/authz";
 import { getDb } from "@/lib/data";
@@ -18,7 +18,6 @@ import {
 } from "@/lib/supabase/server";
 
 export { dashboardFilterFromSearchParams };
-export type { DashboardView };
 
 const EMPTY_FACTS: DashboardFacts = { usage: [], turns: [], verdicts: [], conversations: [] };
 
@@ -39,13 +38,14 @@ function isMissingFunction(error: unknown): boolean {
  * which is what makes "vs previous period" compare like with like.
  */
 async function read(
-  facts: (window: { from: string; to: string }) => Promise<DashboardFacts>,
+  db: Db,
+  organizationId: string,
   filter: UsageDashboardFilter
 ): Promise<DashboardView> {
   const before = previousPeriodFilter(filter);
   const window = { from: dashboardWindow(before).from, to: dashboardWindow(filter).to };
   try {
-    const all = await facts(window);
+    const all = await db.getOrgDashboardFacts(organizationId, window.from, window.to);
     const previous = computeUsageDashboard(all, before).totals;
     const active = previous.calls > 0 || previous.turns > 0 || previous.conversations > 0;
     return {
@@ -71,7 +71,7 @@ function getCachedRlsDashboard(accessToken: string, organizationId: string, filt
     async () => {
       const filter = JSON.parse(filterJson) as UsageDashboardFilter;
       const db = createDb(createSupabaseRlsClient(accessToken));
-      return read((window) => db.getOrgDashboardFacts(organizationId, window.from, window.to), filter);
+      return read(db, organizationId, filter);
     },
     ["usage-dashboard-rls-v2", organizationId, filterJson],
     { revalidate: 300, tags: [insightsOrganizationTag(organizationId)] }
@@ -90,7 +90,7 @@ export async function getUsageDashboardCached(
 ): Promise<DashboardView> {
   if (!isSupabaseConfigured()) {
     const db = await getDb();
-    return read((window) => db.getOrgDashboardFacts(organizationId, window.from, window.to), filter);
+    return read(db, organizationId, filter);
   }
   const rlsContext = await getSupabaseSessionRlsContext();
   if (!rlsContext) throw new Error("Authenticated session required");
@@ -106,12 +106,7 @@ export async function loadDashboardPage(
   searchParams: Promise<Record<string, string | string[] | undefined>>
 ) {
   const { organizationId, reads } = await requirePageMember();
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(await searchParams)) {
-    const first = Array.isArray(value) ? value[0] : value;
-    if (first !== undefined) params.set(key, first);
-  }
-  const filter = dashboardFilterFromSearchParams(params);
+  const filter = dashboardFilterFromSearchParams(await searchParams);
   const [view, assistants] = await Promise.all([
     getUsageDashboardCached(organizationId, filter),
     reads.assistants(),
@@ -122,5 +117,3 @@ export async function loadDashboardPage(
     assistants: assistants.map((a) => ({ id: a.id, title: a.title })),
   };
 }
-
-export type { UsageDashboard, UsageDashboardFilter };

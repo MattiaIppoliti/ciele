@@ -1,5 +1,7 @@
 import type {
   Provider,
+  ModelSource,
+  PlatformEvalModel,
   SourceKind,
   Teammate,
   TeammateRoutine,
@@ -9,7 +11,9 @@ import type { MemberOption } from "@/components/teammates/teammate-editors-picke
 import type { TeammateGovernanceState } from "@/components/teammates/teammate-grants-picker";
 import type { CollectionOption } from "@/components/teammates/teammates-client";
 import { KNOWLEDGE_TAB_KINDS, KNOWLEDGE_TAB_SLUGS } from "@/lib/knowledge-hub";
-import { providersWithoutCredential } from "@/lib/model-credentials";
+import { modelSourcesByModel, providersWithoutCredential } from "@/lib/model-credentials";
+import { modelCatalogWith } from "@/lib/platform-model-catalog";
+import { listPlatformEvalModels } from "@/lib/platform";
 import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
 
 export interface TeammateSettingsProps {
@@ -25,6 +29,9 @@ export interface TeammateSettingsProps {
   routines: TeammateRoutine[];
   /** Providers with no credential; their models never reach the picker. */
   unavailableProviders: Provider[];
+  platformModels: PlatformEvalModel[];
+  /** Sources per catalogue model, for the Source select and allow-list rows. */
+  modelSources: Record<string, ModelSource[]>;
 }
 
 /** Every Source kind the Library lists, in tab order. */
@@ -90,6 +97,7 @@ export async function loadTeammateSettingsProps(
     projects,
     routines,
     connections,
+    platformModels,
   ] = await Promise.all([
     db.listOrgCollections(organizationId),
     loadScopeSources(db, organizationId),
@@ -106,9 +114,11 @@ export async function loadTeammateSettingsProps(
     db.table("projects").list({ organizationId }),
     db.table("teammateRoutines").list({ teammateId: teammate.id }),
     db.listProviderConnections(organizationId),
+    listPlatformEvalModels(),
   ]);
 
   return {
+    platformModels,
     collections: collections.map((c) => ({ id: c.id, name: c.name })),
     sources: libraryItems.sources,
     sourcesTruncated: libraryItems.truncated,
@@ -132,6 +142,7 @@ export async function loadTeammateSettingsProps(
     learnings: learnings?.body ?? "",
     routines,
     unavailableProviders: providersWithoutCredential(connections),
+    modelSources: modelSourcesByModel(connections, modelCatalogWith(platformModels)),
     projects: projects
       // Archived projects keep their decisions and stop feeding them to a
       // model, so attaching to one would be attaching to nothing.

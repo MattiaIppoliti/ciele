@@ -1,7 +1,16 @@
 "use client";
+// Vendored from beui, trimmed to what Ciele's callers use.
 
 import { useMemo, useRef } from "react";
-import { isHoveringPointer } from "@/components/charts/beui/touch";
+
+/**
+ * Whether this event came from a pointer that is *hovering*: not a touch, and
+ * not currently pressed. A pen resting on the glass is making contact, not
+ * hovering: `buttons` is the tell, and it sends a pen tap down the same route a
+ * finger takes.
+ */
+const isHoveringPointer = (event: { pointerType: string; buttons: number }) =>
+  event.pointerType !== "touch" && event.buttons === 0;
 
 interface BoundaryEvent {
   pointerId: number;

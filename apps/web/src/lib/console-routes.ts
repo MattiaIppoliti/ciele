@@ -13,6 +13,7 @@
 export const CONSOLE_PATH_PREFIXES = [
   "/alerts",
   "/assistants",
+  "/eval",
   "/help-desks",
   "/improvements",
   "/inbox",

@@ -26,7 +26,7 @@ describe("buildModelOptionGroups", () => {
       ],
     });
 
-    expect(groups.map((group) => group.label)).toEqual(["Local subscriptions"]);
+    expect(groups.map((group) => group.label)).toEqual(["Personal subscription"]);
     expect(groups.flatMap((group) => group.options.map((option) => option.value)))
       .toEqual(
         expect.arrayContaining([

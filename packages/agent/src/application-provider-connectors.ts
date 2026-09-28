@@ -157,6 +157,9 @@ export function salesforceConnector(baseClient: ApplicationHttpClient): Applicat
       const host = new URL(baseUrl).hostname;
       const apiVersion = String(applicationImport.config.apiVersion ?? "v65.0");
       const language = String(applicationImport.config.language ?? "en_US");
+      // Salesforce names languages `en_US`, but its Knowledge REST API rejects
+      // that spelling in Accept-Language with 400 ILLEGAL_QUERY_PARAMETER_VALUE.
+      const acceptLanguage = language.replace(/_/g, "-");
       const scanStartedAt = String(
         applicationImport.checkpoint.scanStartedAt ??
           syncStartedAt ??
@@ -200,7 +203,7 @@ export function salesforceConnector(baseClient: ApplicationHttpClient): Applicat
           nextUrl,
           token.active.accessToken,
           [host],
-          { "accept-language": language }
+          { "accept-language": acceptLanguage }
         );
         for (const summary of valueArray(page, "articles", "items", "records")) {
           const remoteId = String(summary.id ?? summary.articleId ?? "");
@@ -221,7 +224,7 @@ export function salesforceConnector(baseClient: ApplicationHttpClient): Applicat
             detailUrl,
             token.active.accessToken,
             [host],
-            { "accept-language": language }
+            { "accept-language": acceptLanguage }
           );
           const rawText = [...contentStrings(summary), ...contentStrings(detail)].join("\n");
           const text = await normalizedHtmlText(rawText);

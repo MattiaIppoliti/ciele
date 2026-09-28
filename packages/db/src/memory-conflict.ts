@@ -6,8 +6,8 @@
  * The caller re-reads and decides again.
  */
 export class MemoryDocumentConflictError extends Error {
-  constructor(message = "This memory document changed since it was read. Reload it and try again.") {
-    super(message);
+  constructor() {
+    super("This memory document changed since it was read. Reload it and try again.");
     this.name = "MemoryDocumentConflictError";
   }
 }

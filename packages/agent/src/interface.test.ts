@@ -55,6 +55,8 @@ describe("runtime public interface", () => {
       "alertKeys",
       // A turn read back whole, for callers that cannot read a stream.
       "answerConversationTurn",
+      // Which sources can serve one model, for the source-tagged pickers.
+      "availableModelSources",
       "beginWebsiteCrawl",
       // The models a chat window may offer: the admin's allow-list intersected
       // with what the Organization's Provider Connections can actually run.
@@ -86,6 +88,7 @@ describe("runtime public interface", () => {
       "enqueueStaleDocumentMemoryExtractions",
       // The one-off verbatim re-ingest (ADR-0025), behind a manual cron route.
       "enqueueVerbatimReingests",
+      "evaluateCase",
       "extractSourceText",
       // The two scheduled drains. The cron endpoints in apps/web are auth-and-
       // serialize adapters over these, so the tick's policy is tested here.
@@ -167,6 +170,8 @@ describe("runtime public interface", () => {
       // The iteration budget the Inbox export quotes back in its `[System note]`.
       "MAX_AGENT_ITERATIONS",
       "MODEL_CATALOG",
+      // The tag a picker shows beside a model pinned to one source.
+      "MODEL_SOURCE_NAMES",
       "PROVIDER_NAMES",
       "TEMPLATE_VARIABLES",
       "canEmbedWithConnection",

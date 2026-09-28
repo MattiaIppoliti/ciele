@@ -8,7 +8,6 @@ import {
   applicationImportStatusLabel,
   applicationImportStatusTone,
   applicationSourcePrefix,
-  parseApplicationImportPage,
 } from "./application-import-documents";
 
 describe("application import drill-down hrefs", () => {
@@ -35,15 +34,11 @@ describe("application import drill-down hrefs", () => {
     ).toBe("/assistants/as_1/knowledge/s1/d1");
   });
 
-  it("keeps page one the bare route and falls back to it on garbage", () => {
+  it("keeps page one the bare route", () => {
     expect(applicationImportPageHref("/library/imports/i", 1)).toBe("/library/imports/i");
     expect(applicationImportPageHref("/library/imports/i", 3)).toBe(
       "/library/imports/i?page=3"
     );
-    expect(parseApplicationImportPage({ page: "3" })).toBe(3);
-    expect(parseApplicationImportPage({ page: ["2", "9"] })).toBe(2);
-    expect(parseApplicationImportPage({ page: "-1" })).toBe(1);
-    expect(parseApplicationImportPage({})).toBe(1);
   });
 });
 

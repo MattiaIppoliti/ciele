@@ -1,6 +1,7 @@
 import { unstable_cache, updateTag } from "next/cache";
 import { isSupabaseConfigured, type Db } from "@agent-hub/db";
 import { DEFAULT_PLATFORM_PROMPT } from "@agent-hub/agent";
+import type { PlatformEvalModel } from "@agent-hub/core";
 import { getWidgetDb } from "./widget-db";
 
 /**
@@ -84,6 +85,20 @@ export async function setPlatformSystemPrompt(
   // No tagged cache to invalidate in demo mode (and updateTag is
   // server-action-only next to a real deployment anyway).
   if (isSupabaseConfigured()) updateTag(PLATFORM_PROMPT_TAG);
+}
+
+/**
+ * The chat models a platform owner added to the shared catalog. Platform-wide
+ * rows, so they are read with the service role like the platform prompt:
+ * org-scoped clients cannot see the table at all.
+ */
+export function listPlatformEvalModels(): Promise<PlatformEvalModel[]> {
+  return getWidgetDb().listPlatformEvalModels();
+}
+
+/** Persist one catalog addition. Callers MUST have checked isPlatformOwner first. */
+export function addPlatformEvalModel(model: PlatformEvalModel): Promise<void> {
+  return getWidgetDb().addPlatformEvalModel(model);
 }
 
 /**

@@ -5,29 +5,43 @@ description: Collega un provider di modelli e seleziona il modello per ciascun A
 
 Ciele utilizza un'unica astrazione del provider per i modelli di Anthropic,
 OpenAI e Google. Un Assistant seleziona la propria connessione al provider e il
-modello.
+proprio modello.
 
 ## Tipi di connessione al provider
 
 | Type | Use |
 | --- | --- |
 | Platform plan | Utilizza i modelli forniti dal piano Ciele gestito. |
-| Subscription | Utilizza l'abbonamento di un membro per le sue chat personali. |
+| Subscription | Utilizza un abbonamento del membro per le sue chat personali. |
 | API key | Utilizza una chiave del provider gestita dall'organizzazione. |
+| AI Gateway | Utilizza i modelli di Anthropic, OpenAI e Google tramite AI Gateway. |
 
 Un abbonamento membro gestisce solo le chat di quel membro: l'Assistant Preview
 e le sue chat con un AI Teammate. Non serve un widget pubblicato e non gestisce
-la chat di un altro membro. Seleziona un Platform plan o una connessione tramite
-API key per il traffico pubblicato.
+la chat di un altro membro. Seleziona un piano Platform o una connessione
+tramite API key per il traffico pubblicato.
 
-## Aggiungi una connessione tramite chiave API
+## Aggiungi una connessione tramite API key
 
 1. Apri **Settings**.
 2. Seleziona **AI Provider**.
 3. Aggiungi una connessione al provider.
-4. Seleziona Anthropic, OpenAI, Google o ElevenLabs.
+4. Seleziona Anthropic, OpenAI, Google, AI Gateway o ElevenLabs.
 5. Inserisci le credenziali del provider richieste.
 6. Salva la connessione.
+
+## AI Gateway
+
+Una chiave AI Gateway è un'unica chiave per i modelli Anthropic, OpenAI e
+Google. Ciele invia queste chiamate tramite il tuo account Vercel AI Gateway, ed
+è tale account a pagarle.
+
+Se l'organizzazione non dispone di una chiave AI Gateway, Ciele può utilizzare
+la chiave AI Gateway della piattaforma quando il deployment ne ha una. Il piano
+della piattaforma copre i costi di queste chiamate.
+
+AI Gateway non supporta tutti i modelli. Un modello non servito da AI Gateway
+non mostra AI Gateway come fonte.
 
 ## Altri tipi di connessione
 
@@ -38,7 +52,7 @@ API key per il traffico pubblicato.
   chiave statica per queste connessioni.
 
 Ciele crittografa le credenziali prima di memorizzarle. Non riutilizzare una
-chiave personale che dispone di autorizzazioni non correlate.
+personal key che dispone di autorizzazioni non correlate.
 
 Le connessioni ElevenLabs forniscono modelli vocali. Seleziona questi modelli
 nelle impostazioni **General** dell'Assistente, alla voce **Voice mode**. Anche
@@ -47,17 +61,47 @@ disponibili dipendono dall'account collegato e dalle sue autorizzazioni API.
 ElevenLabs non compare nei selettori del modello di testo né in quelli
 dell'embedding della conoscenza.
 
-## Seleziona un modello di Assistant
+## Seleziona un modello di Assistente
 
 1. Apri l'Assistente.
 2. Seleziona **General**.
 3. Seleziona la connessione al provider.
 4. Seleziona un modello disponibile.
-5. Prova l'Assistente in Preview.
-6. Pubblica l'Assistente.
+5. Facoltativamente, seleziona la sorgente del modello.
+6. Prova l'Assistente in Preview.
+7. Pubblica l'Assistente.
 
-Il widget pubblicato utilizza il provider e il modello nel suo snapshot di
-pubblicazione. Le modifiche generali apportate successivamente richiedono
+## Origini dei modelli
+
+Un modello può essere disponibile da più di una fonte. Ad esempio, Claude Sonnet
+5 può utilizzare la tua chiave API di Anthropic e anche AI Gateway. Il selettore
+della sorgente viene visualizzato quando un modello ha due o più sorgenti.
+
+- **Automatic** utilizza la prima fonte disponibile. L'ordine è il seguente: la
+  tua API key, l'autenticazione aziendale senza chiave, il piano della
+  piattaforma, la tua AI Gateway key e la AI Gateway key della piattaforma.
+- **Platform plan**, **API key**, **Keyless**, **AI Gateway · your key** e **AI
+  Gateway · platform** utilizzano solo quella fonte.
+
+**AI Gateway · your key** utilizza la connessione AI Gateway
+dell'organizzazione, e il costo viene addebitato sul tuo account Gateway. **AI
+Gateway · platform** utilizza la chiave AI Gateway della piattaforma, e il costo
+viene addebitato sul piano della piattaforma.
+
+Se la source selezionata non è in grado di servire il modello, Ciele risponde
+con un altro modello disponibile, come fa quando un provider non dispone di
+credenziali.
+
+I modelli che i visitatori o i colleghi possono scegliere possono anch'essi
+utilizzare una sola fonte ciascuno. L'elenco mostra un modello una volta per
+ogni source, con il nome della source dopo il nome del modello.
+
+L'abbonamento personale di un membro non è una fonte che puoi selezionare.
+Gestisce le chat personali di quel membro, indipendentemente dal modello o dalla
+source utilizzati dall'Assistente.
+
+Il widget pubblicato utilizza il provider e il modello presenti nel suo snapshot
+di pubblicazione. Le modifiche generali apportate successivamente richiedono
 un'altra pubblicazione.
 
 <Callout title="Provider accounts are separate">

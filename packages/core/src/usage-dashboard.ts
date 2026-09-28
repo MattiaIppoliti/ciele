@@ -12,12 +12,10 @@
 import { estimateCostEur } from "./pricing";
 import type {
   AiUsageStage,
-  DashboardConversationFact,
   DashboardFacts,
   DashboardSurface,
   DashboardTurnFact,
   DashboardUsageFact,
-  DashboardVerdictFact,
   RuntimeEventSurface,
   UsageProvider,
   UsageSurface,
@@ -44,7 +42,7 @@ export function latencyBucketOf(durationMs: number): number {
 }
 
 /** Which Dashboard surface a ledger row's surface belongs to; null when unrecorded. */
-export function dashboardSurfaceOf(surface: UsageSurface | null): DashboardSurface | null {
+function dashboardSurfaceOf(surface: UsageSurface | null): DashboardSurface | null {
   switch (surface) {
     case "widget":
     case "preview":
@@ -64,7 +62,7 @@ export function dashboardSurfaceOf(surface: UsageSurface | null): DashboardSurfa
 }
 
 /** The same grouping for a runtime event, whose vocabulary has only three chat surfaces. */
-export function dashboardSurfaceOfTurn(surface: RuntimeEventSurface | null): DashboardSurface | null {
+function dashboardSurfaceOfTurn(surface: RuntimeEventSurface | null): DashboardSurface | null {
   if (surface === "widget" || surface === "preview") return "assistants";
   if (surface === "teammate") return "teammates";
   return null;
@@ -228,61 +226,6 @@ function emptyHistogram(): number[] {
   return Array.from({ length: DASHBOARD_LATENCY_BOUNDS_MS.length + 1 }, () => 0);
 }
 
-function inWindow(days: Set<string>, day: string): boolean {
-  return days.has(day);
-}
-
-/**
- * Whether a row survives the surface and Assistant filters. `surfaceOf` maps
- * the row onto a Dashboard surface; a row with no surface only counts when no
- * surface is picked, since it cannot be placed in any one of them.
- */
-function keep(
-  filter: UsageDashboardFilter,
-  surface: DashboardSurface | null,
-  assistantId: string | null
-): boolean {
-  if (filter.surface && surface !== filter.surface) return false;
-  if (filter.assistantId && assistantId !== filter.assistantId) return false;
-  return true;
-}
-
-function selectUsage(facts: DashboardUsageFact[], filter: UsageDashboardFilter, days: Set<string>) {
-  return facts.filter(
-    (row) => inWindow(days, row.day) && keep(filter, dashboardSurfaceOf(row.surface), row.assistantId)
-  );
-}
-
-function selectTurns(facts: DashboardTurnFact[], filter: UsageDashboardFilter, days: Set<string>) {
-  return facts.filter(
-    (row) => inWindow(days, row.day) && keep(filter, dashboardSurfaceOfTurn(row.surface), row.assistantId)
-  );
-}
-
-/**
- * Verdicts and Conversations are Assistant facts: the verifier grades Assistant
- * answers, and only an Assistant's Conversation can be escalated to a help desk.
- * Narrowing to Teammates or internal work therefore selects none of them, which
- * the page reads as "not measured here" rather than as zero.
- */
-function selectVerdicts(facts: DashboardVerdictFact[], filter: UsageDashboardFilter, days: Set<string>) {
-  if (filter.surface && filter.surface !== "assistants") return [];
-  return facts.filter(
-    (row) => inWindow(days, row.day) && (!filter.assistantId || row.assistantId === filter.assistantId)
-  );
-}
-
-function selectConversations(
-  facts: DashboardConversationFact[],
-  filter: UsageDashboardFilter,
-  days: Set<string>
-) {
-  if (filter.surface && filter.surface !== "assistants") return [];
-  return facts.filter(
-    (row) => inWindow(days, row.day) && (!filter.assistantId || row.assistantId === filter.assistantId)
-  );
-}
-
 function ratio(part: number, whole: number): number | null {
   return whole > 0 ? part / whole : null;
 }
@@ -350,10 +293,24 @@ export function computeUsageDashboard(
 ): UsageDashboard {
   const days = daysBetween(filter.from, filter.to);
   const daySet = new Set(days);
-  const usage = selectUsage(facts.usage, filter, daySet);
-  const turns = selectTurns(facts.turns, filter, daySet);
-  const verdicts = selectVerdicts(facts.verdicts, filter, daySet);
-  const conversations = selectConversations(facts.conversations, filter, daySet);
+  const inScope = (row: { day: string; assistantId: string | null }) =>
+    daySet.has(row.day) && (!filter.assistantId || row.assistantId === filter.assistantId);
+  /**
+   * Whether a row survives the surface filter. A row with no surface only
+   * counts when no surface is picked, since it cannot be placed in any one of them.
+   */
+  const onSurface = (surface: DashboardSurface | null) => !filter.surface || surface === filter.surface;
+  const usage = facts.usage.filter((row) => inScope(row) && onSurface(dashboardSurfaceOf(row.surface)));
+  const turns = facts.turns.filter((row) => inScope(row) && onSurface(dashboardSurfaceOfTurn(row.surface)));
+  /**
+   * Verdicts and Conversations are Assistant facts: the verifier grades Assistant
+   * answers, and only an Assistant's Conversation can be escalated to a help desk.
+   * Narrowing to Teammates or internal work therefore selects none of them, which
+   * the page reads as "not measured here" rather than as zero.
+   */
+  const assistantFacts = !filter.surface || filter.surface === "assistants";
+  const verdicts = assistantFacts ? facts.verdicts.filter(inScope) : [];
+  const conversations = assistantFacts ? facts.conversations.filter(inScope) : [];
 
   const daily = new Map<string, DashboardDay>(
     days.map((day) => [
@@ -423,8 +380,7 @@ export function computeUsageDashboard(
   // filter still applies): it is the one card that answers "where did it go".
   const surfaces = new Map<DashboardSurfaceRow["surface"], DashboardSurfaceRow>();
   for (const row of facts.usage) {
-    if (!daySet.has(row.day)) continue;
-    if (filter.assistantId && row.assistantId !== filter.assistantId) continue;
+    if (!inScope(row)) continue;
     const key = dashboardSurfaceOf(row.surface) ?? "unattributed";
     const entry = surfaces.get(key) ?? { surface: key, spendEur: 0, calls: 0, tokens: 0 };
     entry.spendEur += costOf(row);
@@ -495,7 +451,6 @@ export function computeUsageDashboard(
   }
 
   const finished = succeededTurns + failedTurns;
-  const autonomous = ratio(conversationCount - escalated, conversationCount);
   return {
     days,
     totals: {
@@ -517,7 +472,7 @@ export function computeUsageDashboard(
       evalPassRate: ratio(passes, passes + fails),
       conversations: conversationCount,
       escalated,
-      autonomyRate: autonomous,
+      autonomyRate: ratio(conversationCount - escalated, conversationCount),
     },
     daily: [...daily.values()],
     models: [...models.values()]

@@ -78,6 +78,7 @@ import type {
   OrgBudget,
   Organization,
   OrganizationPatch,
+  PlatformEvalModel,
   Profile,
   ProfilePatch,
   Project,
@@ -288,6 +289,8 @@ interface MockStore {
   /** leaseId -> the scopes one admitted turn counts against, and until when. */
   turnConcurrencyLeases: Map<string, { scopeKeys: string[]; expiresAt: string }>;
   goals: Map<string, AssistantGoal>;
+  evaluationDatasets: Map<string, import("@agent-hub/core").EvaluationDataset>;
+  evaluationRuns: Map<string, import("@agent-hub/core").EvaluationRun>;
   actionApprovals: Map<string, ActionApproval>;
   reviewRequests: Map<string, ReviewRequest>;
   knowledgeMemories: Map<string, KnowledgeMemory>;
@@ -414,6 +417,7 @@ interface MockStore {
     updatedBy: string | null;
     updatedAt: string;
   };
+  platformEvalModels: Map<string, PlatformEvalModel>;
 }
 
 function seedAssistant(
@@ -629,6 +633,8 @@ function emptyStore(): MockStore {
     turnConcurrencyLeases: new Map(),
     orgBudgetSpentEur: new Map(),
     goals: new Map(),
+    evaluationDatasets: new Map(),
+    evaluationRuns: new Map(),
     actionApprovals: new Map(),
     reviewRequests: new Map(),
     knowledgeMemories: new Map(),
@@ -679,6 +685,7 @@ function emptyStore(): MockStore {
       updatedBy: null,
       updatedAt: new Date().toISOString(),
     },
+    platformEvalModels: new Map(),
   };
 }
 
@@ -712,6 +719,10 @@ function seedDashboardHistory(store: MockStore): void {
     return weights[weights.length - 1][0];
   };
   const assistants = ["Vrp47KxooVPk", "GlQMYjuZ6xcO"];
+  // Fields are evaluated in source order, so the PRNG draws in each call
+  // happen in the order the row literals used to make them.
+  const spend = (row: Omit<(typeof store.aiUsage)[number], "organizationId" | "credentialKind">) =>
+    store.aiUsage.push({ organizationId: DEMO_ORG.id, credentialKind: "platform", ...row });
   const todayMs = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
   const DAYS = 35;
 
@@ -760,29 +771,16 @@ function seedDashboardHistory(store: MockStore): void {
           createdAt,
         });
         if (failed) continue;
-        const usage = (stage: AiUsageInput["stage"], provider: AiUsageInput["provider"], modelId: string, input: number, output: number) =>
-          store.aiUsage.push({
-            organizationId: DEMO_ORG.id,
-            assistantId,
-            stage,
-            provider,
-            modelId,
-            credentialKind: "platform",
-            inputTokens: input,
-            outputTokens: output,
-            surface,
-            createdAt,
-          });
-        usage("decide", "typesafe", "typesafe-ai/jev", between(450, 700), between(40, 90));
-        usage("generate", "google", "gemini-3.5-flash", between(3_000, 9_000), between(180, 650));
+        spend({ assistantId, stage: "decide", provider: "typesafe", modelId: "typesafe-ai/jev", inputTokens: between(450, 700), outputTokens: between(40, 90), surface, createdAt });
+        spend({ assistantId, stage: "generate", provider: "google", modelId: "gemini-3.5-flash", inputTokens: between(3_000, 9_000), outputTokens: between(180, 650), surface, createdAt });
         if (toolCalls > 0) {
-          usage("embed", "openai", "text-embedding-3-small", between(12, 40), 0);
-          usage("rerank", "voyage", "voyage/rerank-2.5", between(2_000, 5_000), 0);
+          spend({ assistantId, stage: "embed", provider: "openai", modelId: "text-embedding-3-small", inputTokens: between(12, 40), outputTokens: 0, surface, createdAt });
+          spend({ assistantId, stage: "rerank", provider: "voyage", modelId: "voyage/rerank-2.5", inputTokens: between(2_000, 5_000), outputTokens: 0, surface, createdAt });
         }
         // The verifier grades about a third of answers, an hour later.
         if (random() < 0.35) {
           const verdictAt = new Date(Date.parse(createdAt) + 3_600_000).toISOString();
-          usage("verify", "google", "gemini-2.5-flash-lite", between(1_500, 3_000), between(20, 60));
+          spend({ assistantId, stage: "verify", provider: "google", modelId: "gemini-2.5-flash-lite", inputTokens: between(1_500, 3_000), outputTokens: between(20, 60), surface, createdAt });
           const pass = random() < 0.86 + 0.06 * drift;
           const messageId = `demo-verdict-${shortId()}`;
           store.answerVerdicts.set(messageId, {
@@ -818,78 +816,23 @@ function seedDashboardHistory(store: MockStore): void {
         createdAt,
       });
       if (failed) continue;
-      store.aiUsage.push({
-        organizationId: DEMO_ORG.id,
-        assistantId: null,
-        stage: "generate",
-        provider: "google",
-        modelId: "gemini-3.5-flash",
-        credentialKind: "platform",
-        inputTokens: between(9_000, 22_000),
-        outputTokens: between(500, 1_600),
-        surface,
-        createdAt,
-      });
+      spend({ assistantId: null, stage: "generate", provider: "google", modelId: "gemini-3.5-flash", inputTokens: between(9_000, 22_000), outputTokens: between(500, 1_600), surface, createdAt });
       if (random() < 0.4) {
-        store.aiUsage.push({
-          organizationId: DEMO_ORG.id,
-          assistantId: null,
-          stage: "agent_memory",
-          provider: "google",
-          modelId: "gemini-2.5-flash-lite",
-          credentialKind: "platform",
-          inputTokens: between(2_000, 4_000),
-          outputTokens: between(80, 220),
-          surface,
-          createdAt,
-        });
+        spend({ assistantId: null, stage: "agent_memory", provider: "google", modelId: "gemini-2.5-flash-lite", inputTokens: between(2_000, 4_000), outputTokens: between(80, 220), surface, createdAt });
       }
     }
 
     // The platform's own work: nightly indexing, the compost and API callers.
     const nightly = new Date(dayMs + 2 * 3_600_000).toISOString();
     for (let i = 0; i < between(2, 6); i += 1) {
-      store.aiUsage.push({
-        organizationId: DEMO_ORG.id,
-        assistantId: assistants[i % 2],
-        stage: "embed",
-        provider: "openai",
-        modelId: "text-embedding-3-small",
-        credentialKind: "platform",
-        inputTokens: between(20_000, 90_000),
-        outputTokens: 0,
-        surface: "ingestion",
-        createdAt: nightly,
-      });
+      spend({ assistantId: assistants[i % 2], stage: "embed", provider: "openai", modelId: "text-embedding-3-small", inputTokens: between(20_000, 90_000), outputTokens: 0, surface: "ingestion", createdAt: nightly });
     }
     if (weekday === 1) {
-      store.aiUsage.push({
-        organizationId: DEMO_ORG.id,
-        assistantId: assistants[0],
-        stage: "compost",
-        provider: "google",
-        modelId: "gemini-3.5-flash",
-        credentialKind: "platform",
-        inputTokens: between(30_000, 60_000),
-        outputTokens: between(1_500, 3_000),
-        surface: "scheduled",
-        createdAt: nightly,
-      });
+      spend({ assistantId: assistants[0], stage: "compost", provider: "google", modelId: "gemini-3.5-flash", inputTokens: between(30_000, 60_000), outputTokens: between(1_500, 3_000), surface: "scheduled", createdAt: nightly });
     }
     if (!weekend) {
       for (let i = 0; i < between(3, 9); i += 1) {
-        store.aiUsage.push({
-          organizationId: DEMO_ORG.id,
-          assistantId: null,
-          stage: "classify",
-          provider: "google",
-          modelId: "gemini-2.5-flash-lite",
-          credentialKind: "platform",
-          inputTokens: between(800, 2_400),
-          outputTokens: between(20, 80),
-          surface: "api",
-          createdAt: at(),
-        });
+        spend({ assistantId: null, stage: "classify", provider: "google", modelId: "gemini-2.5-flash-lite", inputTokens: between(800, 2_400), outputTokens: between(20, 80), surface: "api", createdAt: at() });
       }
     }
   }
@@ -2137,6 +2080,8 @@ function assistantOfConversation(
 const MOCK_TABLE_STORES: {
   [K in DbTableName]: () => Map<string, DbTableRow<K>>;
 } = {
+  evaluationDatasets: () => getStore().evaluationDatasets,
+  evaluationRuns: () => getStore().evaluationRuns,
   entities: () => getStore().entities,
   cookieConsentRecords: () => getStore().cookieConsentRecords,
   skills: () => getStore().skills,
@@ -2437,7 +2382,8 @@ function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
         const cmp = av < bv ? -1 : av > bv ? 1 : 0;
         return ascending ? cmp : -cmp;
       });
-      return options?.limit === undefined ? rows : rows.slice(0, options.limit);
+      const offset = options?.offset ?? 0;
+      return options?.limit === undefined ? rows.slice(offset) : rows.slice(offset, offset + options.limit);
     },
 
     async get(id) {
@@ -5911,7 +5857,7 @@ export const mockDb: Db = {
         (m) => m.organizationId === organizationId && Date.parse(m.createdAt) < cutoff
       )
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-      .slice(0, Number.isFinite(limit) ? limit : undefined);
+      .slice(0, limit);
     for (const memory of expired) store.memories.delete(memory.id);
     return expired.length;
   },
@@ -7052,7 +6998,7 @@ export const mockDb: Db = {
       const at = Date.parse(iso);
       return at >= fromMs && at < toMs;
     };
-    const dayOf = (iso: string) => new Date(Date.parse(iso)).toISOString().slice(0, 10);
+    const dayOf = (iso: string) => new Date(iso).toISOString().slice(0, 10);
     const group = <T extends object>(
       rows: Map<string, T>,
       key: unknown[],
@@ -7765,6 +7711,18 @@ export const mockDb: Db = {
       updatedBy,
       updatedAt: new Date().toISOString(),
     };
+  },
+
+  async listPlatformEvalModels() {
+    return [...getStore().platformEvalModels.values()].sort((a, b) =>
+      a.provider.localeCompare(b.provider) || a.label.localeCompare(b.label),
+    );
+  },
+
+  async addPlatformEvalModel(model) {
+    const key = `${model.provider}:${model.modelId}`;
+    if (getStore().platformEvalModels.has(key)) throw new Error("Model already exists");
+    getStore().platformEvalModels.set(key, model);
   },
 
   // --- Skills (reusable prompt templates) -----------------------------------

@@ -1,0 +1,87 @@
+---
+title: Évaluation
+description: Comparez deux ou trois modèles sur une même étape d'un Assistant, en utilisant les mêmes questions.
+---
+
+**Eval** soumet les mêmes questions à deux ou trois modèles et compare les
+résultats. Une exécution Eval teste une étape d'un Assistant. Il ne crée aucune
+Conversation ; par conséquent, il n'apparaît ni dans l'Inbox ni dans les
+Insights.
+
+Tout membre peut ouvrir **Eval** et consulter les exécutions. Les Editors, les
+Admins et les Owners peuvent importer des jeux de données et lancer des
+exécutions.
+
+## Étapes
+
+- **Answer** compare la réponse, les Sources citées et la qualité de la réponse
+  de chaque modèle.
+- **Classifier** compare le Flow que chaque modèle sélectionne.
+- **Orchestration** exécute le tour complet avec chaque modèle en tant que
+  classificateur.
+- **Fallback** rend le fournisseur propre de l'Assistant indisponible et compare
+  les modèles de réserve.
+- **Pre-flight** compare la décision de pré-vol et son niveau de confiance.
+- **Reranker** compare les Sources que chaque reranker place dans les six
+  premiers résultats.
+
+Chaque étape affiche uniquement les modèles qui peuvent l'exécuter avec les
+connexions aux fournisseurs de l'organisation.
+
+## Importer un jeu de données
+
+1. Ouvrez **Eval** et sélectionnez l'onglet **Datasets**.
+2. Sélectionnez **Download example format** pour obtenir le format JSON.
+3. Rédigez un exemple pour chaque question. Chaque exemple comporte un `id` et
+   un `inputs.question`.
+4. En option, ajoutez `reference_outputs`. Ciele les utilise pour mesurer la
+   précision.
+5. Saisissez un nom, sélectionnez le fichier, puis sélectionnez **Upload**.
+
+Un jeu de données peut contenir jusqu'à 50 exemples. Chaque ID d'exemple doit
+être unique.
+
+Les champs de référence sont `answer_contains`, `flow_id`, `flow_name` et
+`source_url_contains`. Ciele les vérifie en tant que texte littéral.
+L'exactitude n'est pas un jugement portant sur le sens ni sur les faits.
+
+## Démarrer une exécution
+
+1. Sélectionnez l'onglet **Runs**.
+2. Sélectionnez un Assistant, un jeu de données et une étape.
+3. Sélectionnez deux ou trois modèles.
+4. Sélectionnez **Start run**.
+
+Une exécution peut comporter jusqu'à 24 exécutions. Une exécution correspond à
+un exemple avec un modèle. Par exemple, 12 exemples avec deux modèles
+représentent 24 exécutions.
+
+L'exécution se termine avant que la page n'affiche ses résultats. Une exécution
+qui s'arrête avant d'être terminée s'affiche comme ayant échoué. Ciele conserve
+les résultats qu'elle a enregistrés avant son arrêt.
+
+## Consulter les résultats
+
+Le tableau de bord de fiabilité affiche six graphiques pour chaque modèle :
+
+- **Accuracy**, uniquement pour les exemples avec des sorties de référence.
+- **Cost**, une estimation par exemple qui n'inclut pas les coûts de
+  récupération.
+- **Tokens**, l'entrée et la sortie du modèle par exemple.
+- **Latency**, le temps moyen par exemple.
+- **Autonomy**, les tours qui se sont terminés sans fallback ni refus.
+- **Error rate**, les exécutions qui ont rencontré une erreur technique.
+
+Sélectionnez une ligne dans **Results by question** pour comparer les réponses,
+les Sources et les erreurs de chaque modèle.
+
+## Limites
+
+- Une exécution effectue une recherche dans la Knowledge en temps réel. Une
+  modification apportée à la Knowledge pendant une exécution peut en modifier
+  les résultats.
+- Une exécution n'effectue pas d'actions ayant des effets externes, telles que
+  **Send email** ou **API request**. Un Flow qui en contient un enregistre une
+  erreur.
+- Les appels au modèle Eval utilisent les connexions aux fournisseurs de
+  l'organisation et sont comptabilisés dans son budget.

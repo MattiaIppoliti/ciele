@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escapeHtml, renderBrandedEmail } from "./email-layout";
-
-describe("escapeHtml", () => {
-  it("neutralises the four characters that can break out of an attribute or body", () => {
-    expect(escapeHtml(`<img src="x" onerror=alert(1)> & done`)).toBe(
-      "&lt;img src=&quot;x&quot; onerror=alert(1)&gt; &amp; done"
-    );
-  });
-});
+import { renderBrandedEmail } from "./email-layout";
 
 describe("renderBrandedEmail", () => {
   const base = {

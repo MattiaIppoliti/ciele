@@ -7,14 +7,14 @@ import type {
   DashboardSurface,
 } from "@agent-hub/core";
 import { EChartsBarChart } from "@/components/charts/evilcharts/echarts-bar-chart";
-import type { ChartConfig } from "@/components/charts/evilcharts/ui/echarts-chart";
+import type { ChartConfig } from "@/components/charts/evilcharts/ui/chart-colors";
 import {
   formatCompact,
   formatEur,
   formatEurTick,
   latencyBucketLabel,
-  shortDay,
 } from "@/lib/insights/dashboard-view";
+import { formatShortDay } from "@/lib/format";
 import { OUTCOME_COLORS, SINGLE_SERIES, SURFACE_COLORS, SURFACE_LABELS } from "./palette";
 
 /**
@@ -43,7 +43,7 @@ export function SpendBars({
     keys.map((key) => [key, { label: SURFACE_LABELS[key], colors: colors(SURFACE_COLORS[key]) }])
   ) satisfies ChartConfig;
   const data = daily.map((d) => ({
-    day: shortDay(d.day),
+    day: formatShortDay(d.day),
     ...Object.fromEntries(keys.map((key) => [key, Number(d.spendBySurface[key].toFixed(4))])),
   }));
   return (
@@ -67,7 +67,7 @@ export function OutcomeBars({ daily }: { daily: DashboardDay[] }) {
     failed: { label: "Failed", colors: colors(OUTCOME_COLORS.bad) },
   } satisfies ChartConfig;
   const data = daily.map((d) => ({
-    day: shortDay(d.day),
+    day: formatShortDay(d.day),
     succeeded: d.turns - d.failedTurns,
     failed: d.failedTurns,
   }));
@@ -90,7 +90,7 @@ export function VerdictBars({ daily }: { daily: DashboardDay[] }) {
     passed: { label: "Passed", colors: colors(OUTCOME_COLORS.good) },
     failed: { label: "Failed", colors: colors(OUTCOME_COLORS.bad) },
   } satisfies ChartConfig;
-  const data = daily.map((d) => ({ day: shortDay(d.day), passed: d.passes, failed: d.fails }));
+  const data = daily.map((d) => ({ day: formatShortDay(d.day), passed: d.passes, failed: d.fails }));
   return (
     <EChartsBarChart data={data} config={config} xDataKey="day" stackType="stacked" className="h-56 w-full">
       <EChartsBarChart.Grid />
@@ -130,6 +130,7 @@ const STAGE_LABELS: Record<string, string> = {
   enrich: "Enrich",
   verify: "Verify",
   goal_eval: "Goal evaluation",
+  evaluation: "Evaluation experiments",
   compost: "Compost",
   improvement_proposal: "Improvement proposal",
   graph_search: "Graph search",
@@ -164,4 +165,3 @@ export function StageBars({ stages }: { stages: DashboardStageRow[] }) {
     </EChartsBarChart>
   );
 }
-

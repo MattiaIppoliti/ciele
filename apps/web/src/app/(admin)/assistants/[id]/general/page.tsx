@@ -3,8 +3,10 @@ import { SlidersHorizontal } from "lucide-react";
 import { GeneralForm } from "@/components/assistant/general-form";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
-import { providersWithoutCredential } from "@/lib/model-credentials";
+import { modelSourcesByModel, providersWithoutCredential } from "@/lib/model-credentials";
+import { modelCatalogWith } from "@/lib/platform-model-catalog";
 import { getAssistantCached } from "../get-assistant";
+import { listPlatformEvalModels } from "@/lib/platform";
 
 export default async function GeneralPage({
   params,
@@ -13,9 +15,10 @@ export default async function GeneralPage({
 }) {
   const { id } = await params;
   const { db, organizationId } = await requirePageMember();
-  const [assistant, connections] = await Promise.all([
+  const [assistant, connections, platformModels] = await Promise.all([
     getAssistantCached(id),
     db.listProviderConnections(organizationId),
+    listPlatformEvalModels(),
   ]);
   if (!assistant) notFound();
 
@@ -29,6 +32,8 @@ export default async function GeneralPage({
       <GeneralForm
         assistant={assistant}
         unavailableProviders={providersWithoutCredential(connections)}
+        platformModels={platformModels}
+        modelSources={modelSourcesByModel(connections, modelCatalogWith(platformModels))}
       />
     </div>
   );

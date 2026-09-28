@@ -136,6 +136,61 @@ describe("built-in Application Connectors", () => {
     );
   });
 
+  it("refreshes a Salesforce token that was stored without an expiry", async () => {
+    // Salesforce's token response carries no expires_in, so the connection
+    // was saved with no expiresAt. Treating that as "never expires" left the
+    // connection dead once the org's session timeout passed.
+    const persisted = vi.fn().mockResolvedValue(undefined);
+    const bearers: string[] = [];
+    const client: ApplicationHttpClient = async (url, options) => {
+      if (url.includes("/services/oauth2/token")) {
+        expect(String(options.body)).toContain("grant_type=refresh_token");
+        return response({
+          access_token: "fresh-access",
+          instance_url: "https://acme.my.salesforce.com",
+        });
+      }
+      bearers.push(String(options.headers?.authorization));
+      return response({ dataCategoryGroups: [], records: [] });
+    };
+    const before = Date.now();
+    const connector = createApplicationConnectorRegistry(client).salesforce!;
+    await connector.discoverScopes({
+      connection: connection("salesforce", {
+        expiresAt: undefined,
+        refreshToken: "salesforce-refresh",
+        clientId: "client",
+        instanceUrl: "https://acme.my.salesforce.com",
+      }),
+      onCredentialsRefreshed: persisted,
+    });
+    expect(bearers.length).toBeGreaterThan(0);
+    expect(new Set(bearers)).toEqual(new Set(["Bearer fresh-access"]));
+    const saved = persisted.mock.calls[0][0];
+    expect(saved.accessToken).toBe("fresh-access");
+    expect(saved.refreshToken).toBe("salesforce-refresh");
+    // No expires_in: assume Salesforce's shortest session timeout, 15 minutes.
+    const lifetime = Date.parse(saved.expiresAt) - before;
+    expect(lifetime).toBeGreaterThan(14 * 60_000);
+    expect(lifetime).toBeLessThanOrEqual(15 * 60_000 + 1_000);
+  });
+
+  it("leaves a token with no expiry and no refresh token alone", async () => {
+    const calls: string[] = [];
+    const client: ApplicationHttpClient = async (url) => {
+      calls.push(url);
+      return response({ dataCategoryGroups: [], records: [] });
+    };
+    const connector = createApplicationConnectorRegistry(client).salesforce!;
+    await connector.discoverScopes({
+      connection: connection("salesforce", {
+        expiresAt: undefined,
+        instanceUrl: "https://acme.my.salesforce.com",
+      }),
+    });
+    expect(calls.some((url) => url.includes("oauth2/token"))).toBe(false);
+  });
+
   it("classifies Retry-After without exposing provider payloads", async () => {
     const client: ApplicationHttpClient = async () => ({
       status: 429,
@@ -309,6 +364,53 @@ describe("built-in Application Connectors", () => {
     });
     expect(incremental.artifacts).toEqual([]);
     expect(incremental.unchangedRemoteIds).toEqual(["ka01"]);
+  });
+
+  it("sends the Salesforce language as a hyphenated Accept-Language tag", async () => {
+    // Salesforce stores `en_US`, but the Knowledge REST API answers an
+    // `Accept-Language: en_US` header with 400 ILLEGAL_QUERY_PARAMETER_VALUE.
+    const client = vi.fn(async (url: string) =>
+      url.includes("/detail/ka01")
+        ? response({ id: "ka01", title: "Reset password", articleBody: "Open Settings." })
+        : response({
+            articles: [{ id: "ka01", title: "Reset password", url: "/detail/ka01" }],
+          })) satisfies ApplicationHttpClient;
+    const conn = connection("salesforce", {
+      instanceUrl: "https://acme.my.salesforce.com",
+    });
+
+    await createApplicationConnectorRegistry(client).salesforce!.synchronize({
+      connection: conn,
+      applicationImport: applicationImport(conn.id, { language: "en_US" }),
+      knownArtifacts: {},
+    });
+
+    expect(client).toHaveBeenCalledTimes(2);
+    for (const [, init] of client.mock.calls as unknown as Array<
+      [string, { headers: Record<string, string> }]
+    >) {
+      expect(init.headers["accept-language"]).toBe("en-US");
+    }
+  });
+
+  it("names the provider's error code, and nothing else, when a request fails", async () => {
+    const conn = connection("salesforce", {
+      instanceUrl: "https://acme.my.salesforce.com",
+    });
+    const failWith = (body: unknown) =>
+      createApplicationConnectorRegistry(async () => response(body, 400)).salesforce!.synchronize({
+        connection: conn,
+        applicationImport: applicationImport(conn.id),
+        knownArtifacts: {},
+      });
+
+    await expect(
+      failWith([{ errorCode: "ILLEGAL_QUERY_PARAMETER_VALUE", message: "secret detail" }])
+    ).rejects.toThrow(/^Provider returned HTTP 400 \(ILLEGAL_QUERY_PARAMETER_VALUE\)$/);
+    await expect(failWith({ errorCode: "free text, not a code" })).rejects.toThrow(
+      /^Provider returned HTTP 400$/
+    );
+    await expect(failWith("<html>oops</html>")).rejects.toThrow(/^Provider returned HTTP 400$/);
   });
 
   it("normalizes ServiceNow Knowledge HTML", async () => {

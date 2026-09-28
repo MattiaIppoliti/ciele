@@ -1,13 +1,12 @@
-import { notFound } from "next/navigation";
 import { assistantKnowledgeHref } from "@/lib/knowledge-mode";
-import { OperationError, listApplicationImportDocumentsOp } from "@ciele/ops";
+import { listApplicationImportDocumentsOp } from "@ciele/ops";
 import { ApplicationImportDocumentsView } from "@/components/knowledge/application-import-documents-view";
 import { requirePageMember } from "@/lib/authz";
-import { runOperation } from "@/lib/operations";
+import { runPageOperation } from "@/lib/operations";
+import { parseSourceDocumentsParams } from "@/lib/source-documents";
 import {
   applicationImportHref,
   applicationSourcePrefix,
-  parseApplicationImportPage,
 } from "@/lib/application-import-documents";
 
 export const dynamic = "force-dynamic";
@@ -25,20 +24,14 @@ export default async function AssistantApplicationImportPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id, importId } = await params;
-  const page = parseApplicationImportPage(await searchParams);
+  const page = parseSourceDocumentsParams(await searchParams).page;
   await requirePageMember();
 
-  let result;
-  try {
-    result = await runOperation(listApplicationImportDocumentsOp, {
-      importId,
-      assistantId: id,
-      page,
-    });
-  } catch (error) {
-    if (error instanceof OperationError && error.code === "not_found") notFound();
-    throw error;
-  }
+  const result = await runPageOperation(listApplicationImportDocumentsOp, {
+    importId,
+    assistantId: id,
+    page,
+  });
 
   return (
     <ApplicationImportDocumentsView

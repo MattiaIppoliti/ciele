@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import { Label } from "@agent-hub/ui";
-import { onRadioKeyDown } from "@/components/teammates/radio-keys";
+import { onRadioKeyDown } from "@/lib/radio-keys";
 
 /**
  * Which Project a Teammate reads the decisions of (#771, story 23).

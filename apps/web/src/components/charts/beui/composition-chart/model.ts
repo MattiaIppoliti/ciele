@@ -1,3 +1,5 @@
+// Vendored from beui, trimmed to what Ciele's callers use.
+
 export interface CompositionSeries {
   id: string;
   name: string;
@@ -35,43 +37,4 @@ export function buildComposition(series: readonly CompositionSeries[], periods: 
     return [{ id, valid: valid && scaledTotal > 0, segments }];
   });
   return { rows, columns };
-}
-
-/** Separate polygons for contiguous runs; unknown periods never become interpolated data. */
-export function compositionArea(
-  columns: ReturnType<typeof buildComposition>["columns"],
-  row: number,
-) {
-  const paths: string[] = [];
-  let run: number[] = [];
-  const flush = () => {
-    if (!run.length) return;
-    const top = run.map((index) => {
-      const segment = columns[index].segments[row];
-      return `${((index + 0.5) / columns.length) * 100},${100 - segment.offset - segment.share}`;
-    });
-    const bottom = [...run]
-      .reverse()
-      .map(
-        (index) =>
-          `${((index + 0.5) / columns.length) * 100},${100 - columns[index].segments[row].offset}`,
-      );
-    // A single sample gets a column-width footprint instead of an invisible polygon.
-    if (run.length === 1) {
-      const index = run[0];
-      const segment = columns[index].segments[row];
-      const left = (index / columns.length) * 100;
-      const right = ((index + 1) / columns.length) * 100;
-      paths.push(
-        `M${left},${100 - segment.offset} L${left},${100 - segment.offset - segment.share} L${right},${100 - segment.offset - segment.share} L${right},${100 - segment.offset} Z`,
-      );
-    } else paths.push(`M${top.join(" L")} L${bottom.join(" L")} Z`);
-    run = [];
-  };
-  columns.forEach((column, index) => {
-    if (column.valid) run.push(index);
-    else flush();
-  });
-  flush();
-  return paths.join(" ");
 }

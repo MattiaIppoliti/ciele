@@ -32,17 +32,15 @@ interface AgentActivityProps {
   /** Chronological activity entries. Append or update items as events stream. */
   items: AgentActivityText[];
   /** Current run phase. Active runs always stay expanded. */
-  status?: "working" | "complete";
+  status: "working" | "complete";
   /** Elapsed run time, in seconds. Used by the default summary. */
-  duration?: number;
-  /** Label shown while the run is active. */
-  activeLabel?: ReactNode;
+  duration: number;
   /** Optional completed summary. "Thought for {duration}" by default. */
   summary?: ReactNode;
-  /** Maximum visible activity height before the stream begins gliding. */
-  maxHeight?: number;
-  className?: string;
 }
+
+/** Maximum visible activity height before the stream begins gliding. */
+const MAX_HEIGHT = 140;
 
 function formatDuration(duration: number) {
   const seconds = Math.max(0, Math.round(duration));
@@ -53,15 +51,7 @@ function formatDuration(duration: number) {
   return remainder === 0 ? `${minutes}m` : `${minutes}m ${remainder}s`;
 }
 
-export function AgentActivity({
-  items,
-  status = "working",
-  duration = 0,
-  activeLabel = "Thinking…",
-  summary,
-  maxHeight = 208,
-  className,
-}: AgentActivityProps) {
+export function AgentActivity({ items, status, duration, summary }: AgentActivityProps) {
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
   const triggerId = `${baseId}-trigger`;
@@ -73,9 +63,9 @@ export function AgentActivity({
   const [currentOpen, setOpen] = useState(false);
   const working = status === "working";
   const expanded = working || currentOpen;
-  const cappedHeight = Math.min(contentHeight, Math.max(0, maxHeight));
-  const viewportHeight = working ? Math.max(0, maxHeight) : cappedHeight;
-  const capped = contentHeight > maxHeight;
+  const cappedHeight = Math.min(contentHeight, MAX_HEIGHT);
+  const viewportHeight = working ? MAX_HEIGHT : cappedHeight;
+  const capped = contentHeight > MAX_HEIGHT;
   const streamOffset = working
     ? Math.min(0, viewportHeight - contentHeight)
     : 0;
@@ -122,7 +112,7 @@ export function AgentActivity({
       data-state={working ? "working" : expanded ? "open" : "closed"}
       data-content="text"
       aria-busy={working}
-      className={cn("w-full text-sm", className)}
+      className="w-full text-sm -mt-1"
     >
       {working ? (
         <div
@@ -130,7 +120,7 @@ export function AgentActivity({
           role="status"
           className="flex h-7 min-w-0 items-center text-muted-foreground"
         >
-          <ThinkingShimmer>{activeLabel}</ThinkingShimmer>
+          <ThinkingShimmer>Thinking…</ThinkingShimmer>
         </div>
       ) : (
         <button

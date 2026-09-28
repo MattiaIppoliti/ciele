@@ -1,10 +1,11 @@
 "use client";
+// Vendored from beui, trimmed to what Ciele's callers use.
 
 import { useReducedMotion } from "motion/react";
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
 import type { HeatCalendarCell, HeatCalendarProps, HeatCalendarSelection } from "./types";
-import { addDays, CELL, EMPTY, fmtMonth, GAP, MONTH_ROW, mondayOf, PITCH, STEPS, startOfDay } from "./utils";
+import { addDays, EMPTY, fmtMonth, mondayOf, STEPS, startOfDay } from "./utils";
 
 /**
  * Weeks of activity as a single-hue grid with month labels, so
@@ -25,19 +26,11 @@ export function useHeatCalendarModel({
   values,
   endDate,
   color = "var(--accent)",
-  selection: controlledSelection,
-  defaultSelection = null,
-  onSelectionChange,
-}: HeatCalendarProps) {
+}: Omit<HeatCalendarProps, "children" | "className">) {
   const reduce = useReducedMotion();
   const canHover = useHoverCapable();
   const [storedHover, setHover] = useState<HeatCalendarCell | null>(null);
-  const [internalSelection, setInternalSelection] = useState(defaultSelection);
-  const requestedSelection = controlledSelection === undefined ? internalSelection : controlledSelection;
-  const setSelection = (next: HeatCalendarSelection | null) => {
-    if (controlledSelection === undefined) setInternalSelection(next);
-    onSelectionChange?.(next);
-  };
+  const [requestedSelection, setSelection] = useState<HeatCalendarSelection | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const tooltipId = useId();
   const [step, setStep] = useState<number | null>(null);
@@ -48,13 +41,8 @@ export function useHeatCalendarModel({
     return () => clearTimeout(t);
   }, [weeks, reduce]);
 
-  // "today" is read after mount: the server and a viewer on another calendar
-  // day must produce the same HTML, so the grid renders first and its dates
-  // fill in on the client. An explicit `endDate` is deterministic and skips this.
-  const [today, setToday] = useState<Date | null>(null);
-  useEffect(() => setToday(startOfDay(new Date())), []);
-  const end = useMemo(() => (endDate ? startOfDay(endDate) : today), [endDate, today]);
-  const start = useMemo(() => (end ? addDays(mondayOf(end), -(weeks - 1) * 7) : null), [end, weeks]);
+  const end = useMemo(() => startOfDay(endDate), [endDate]);
+  const start = useMemo(() => addDays(mondayOf(end), -(weeks - 1) * 7), [end, weeks]);
 
   const level = (w: number, d: number) => Math.max(0, Math.min(1, values?.[w]?.[d] ?? 0));
   const bucket = (v: number) => Math.min(4, Math.floor(v * 5));
@@ -80,7 +68,7 @@ export function useHeatCalendarModel({
     (!requestedSelection.end || validCell(requestedSelection.end))
       ? requestedSelection
       : null;
-  if (requestedSelection && !selection && controlledSelection === undefined) setInternalSelection(null);
+  if (requestedSelection && !selection) setSelection(null);
   const pinned = selection?.start ?? null;
   const spanEnd = selection?.end ?? null;
   const hover = storedHover && validCell(storedHover) ? storedHover : null;
@@ -137,8 +125,6 @@ export function useHeatCalendarModel({
   const tip = spanEnd ?? hover ?? pinned;
   const tipDate = tip ? dateOf(tip.w, tip.d) : null;
   const hotMonth = hot ? (dateOf(hot.w, hot.d)?.getUTCMonth() ?? null) : null;
-  const tipX = tip ? tip.w * PITCH + CELL / 2 : 0;
-  const tipY = tip ? MONTH_ROW + GAP + tip.d * PITCH : 0;
   const tooltip =
     tip && tipDate
       ? {
@@ -158,7 +144,6 @@ export function useHeatCalendarModel({
     canHover,
     hover,
     pinned,
-    spanEnd,
     step,
     setStep,
     settled,
@@ -173,20 +158,14 @@ export function useHeatCalendarModel({
     cols,
     clear,
     span,
-    spanTotal,
     select,
     hot,
     tip,
-    tipDate,
     hotMonth,
-    tipX,
-    tipY,
     setHover,
     gridRef,
     tooltipId,
     tooltip,
-    selection,
-    setSelection,
   };
 }
 

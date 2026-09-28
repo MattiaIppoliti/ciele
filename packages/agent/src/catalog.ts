@@ -1,4 +1,4 @@
-import type { Provider } from "@agent-hub/core";
+import type { ModelSource, Provider } from "@agent-hub/core";
 
 /**
  * Editable catalog of models offered per provider. Client-safe (no node
@@ -37,6 +37,43 @@ export const RETIRED_MODELS: Partial<Record<Provider, Readonly<Record<string, st
   google: { "gemini-3.1-flash-lite": "gemini-3.5-flash-lite" },
 };
 
+/**
+ * What AI Gateway calls each built-in model, checked against its public catalog
+ * (`https://ai-gateway.vercel.sh/v1/models`, September 2026). Explicit because
+ * the two naming schemes disagree (`claude-opus-4-8` is `claude-opus-4.8`
+ * there), and null where the Gateway does not serve the model at all.
+ */
+const GATEWAY_MODEL_IDS: Record<
+  Exclude<Provider, "openai_compatible">,
+  Readonly<Record<string, string | null>>
+> = {
+  google: {
+    "gemini-3.5-flash": "google/gemini-3.5-flash",
+    "gemini-3.5-flash-lite": "google/gemini-3.5-flash-lite",
+    "gemini-2.5-flash-lite": "google/gemini-2.5-flash-lite",
+  },
+  anthropic: {
+    "claude-opus-4-8": "anthropic/claude-opus-4.8",
+    "claude-sonnet-5": "anthropic/claude-sonnet-5",
+  },
+  openai: {
+    // The Gateway lists only GPT-5.1's codex and thinking variants.
+    "gpt-5.1": null,
+    "gpt-5.4-mini": "openai/gpt-5.4-mini",
+  },
+};
+
+/**
+ * The Gateway's name for a model, or null when it cannot serve it. A model
+ * outside the built-in table is one a platform owner added from the Gateway's
+ * own catalog, whose id is already the Gateway's, so it maps to itself.
+ */
+export function gatewayModelId(provider: Provider, modelId: string): string | null {
+  if (provider === "openai_compatible") return null;
+  const table = GATEWAY_MODEL_IDS[provider];
+  return Object.hasOwn(table, modelId) ? (table[modelId] ?? null) : `${provider}/${modelId}`;
+}
+
 /** The model a configured id runs today: itself, or a retired id's successor. */
 export function currentModelId(provider: Provider, modelId: string): string {
   return RETIRED_MODELS[provider]?.[modelId] ?? modelId;
@@ -60,7 +97,25 @@ export interface ChatModelOption {
   label: string;
   /** The provider's display name, for the second line and the icon. */
   providerName: string;
+  /** Set when the choice is pinned to one source; absent is automatic. */
+  source?: ModelSource;
+  /** The tag a picker shows beside a pinned choice ("AI Gateway"). */
+  sourceName?: string;
 }
+
+/**
+ * The tag for each model source. A Member's personal subscription has a tag
+ * too, for the local-model rows a Preview or Teammate composer draws, even
+ * though it is never a stored source.
+ */
+export const MODEL_SOURCE_NAMES: Record<ModelSource | "subscription", string> = {
+  platform: "Platform plan",
+  api_key: "API key",
+  federated: "Keyless",
+  ai_gateway: "AI Gateway · your key",
+  platform_gateway: "AI Gateway · platform",
+  subscription: "Personal subscription",
+};
 
 export const PROVIDER_NAMES: Record<Provider, string> = {
   google: "Google",

@@ -5,13 +5,13 @@ import type { SourceKind } from "@agent-hub/core";
  * component so the route can read `?mode=` on the server: a drill-down's
  * breadcrumb returns to the tab it was opened from, not to Websites.
  */
-export type KnowledgeMode = "websites" | "documents" | "applications" | "faqs" | "concepts";
+const MODES = ["websites", "documents", "applications", "faqs", "concepts"] as const;
 
-const MODES: KnowledgeMode[] = ["websites", "documents", "applications", "faqs", "concepts"];
+export type KnowledgeMode = (typeof MODES)[number];
 
 /** Read loosely: an unknown value is the default tab, not an error. */
 export function parseKnowledgeMode(value: string | undefined): KnowledgeMode {
-  return MODES.includes(value as KnowledgeMode) ? (value as KnowledgeMode) : "websites";
+  return MODES.find((mode) => mode === value) ?? "websites";
 }
 
 /**

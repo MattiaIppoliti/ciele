@@ -426,7 +426,7 @@ async function recordSweepAudit(
  */
 /** One retention call's row budget, and how many calls one tick may make per Organization. */
 export const RETENTION_SWEEP_BATCH = 5000;
-export const RETENTION_SWEEP_MAX_BATCHES = 20;
+const RETENTION_SWEEP_MAX_BATCHES = 20;
 
 /**
  * Calls a bounded sweep primitive until a batch comes back short. One

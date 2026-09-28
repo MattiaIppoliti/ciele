@@ -6657,6 +6657,33 @@
             "modelId": {
               "type": "string"
             },
+            "modelSource": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "api_key"
+                },
+                {
+                  "type": "string",
+                  "const": "platform"
+                },
+                {
+                  "type": "string",
+                  "const": "federated"
+                },
+                {
+                  "type": "string",
+                  "const": "ai_gateway"
+                },
+                {
+                  "type": "string",
+                  "const": "platform_gateway"
+                }
+              ]
+            },
             "allowedModels": {
               "type": "array",
               "items": {
@@ -6672,6 +6699,15 @@
                   },
                   "modelId": {
                     "type": "string"
+                  },
+                  "source": {
+                    "oneOf": [
+                      {},
+                      {},
+                      {},
+                      {},
+                      {}
+                    ]
                   }
                 },
                 "required": [
@@ -7221,6 +7257,33 @@
             "modelId": {
               "type": "string"
             },
+            "modelSource": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "api_key"
+                },
+                {
+                  "type": "string",
+                  "const": "platform"
+                },
+                {
+                  "type": "string",
+                  "const": "federated"
+                },
+                {
+                  "type": "string",
+                  "const": "ai_gateway"
+                },
+                {
+                  "type": "string",
+                  "const": "platform_gateway"
+                }
+              ]
+            },
             "allowedModels": {
               "type": "array",
               "items": {
@@ -7236,6 +7299,15 @@
                   },
                   "modelId": {
                     "type": "string"
+                  },
+                  "source": {
+                    "oneOf": [
+                      {},
+                      {},
+                      {},
+                      {},
+                      {}
+                    ]
                   }
                 },
                 "required": [
@@ -18674,11 +18746,11 @@
               },
               {
                 "type": "string",
-                "const": "subscription"
+                "const": "federated"
               },
               {
                 "type": "string",
-                "const": "federated"
+                "const": "subscription"
               }
             ]
           },
@@ -18702,6 +18774,10 @@
               {
                 "type": "string",
                 "const": "openai_compatible"
+              },
+              {
+                "type": "string",
+                "const": "ai_gateway"
               },
               {
                 "type": "string",
@@ -18904,11 +18980,11 @@
           },
           {
             "type": "string",
-            "const": "subscription"
+            "const": "federated"
           },
           {
             "type": "string",
-            "const": "federated"
+            "const": "subscription"
           }
         ]
       },
@@ -18932,6 +19008,10 @@
           {
             "type": "string",
             "const": "openai_compatible"
+          },
+          {
+            "type": "string",
+            "const": "ai_gateway"
           },
           {
             "type": "string",
@@ -19114,11 +19194,11 @@
               },
               {
                 "type": "string",
-                "const": "subscription"
+                "const": "federated"
               },
               {
                 "type": "string",
-                "const": "federated"
+                "const": "subscription"
               }
             ]
           },
@@ -19142,6 +19222,10 @@
               {
                 "type": "string",
                 "const": "openai_compatible"
+              },
+              {
+                "type": "string",
+                "const": "ai_gateway"
               },
               {
                 "type": "string",
@@ -19331,11 +19415,11 @@
                 },
                 {
                   "type": "string",
-                  "const": "subscription"
+                  "const": "federated"
                 },
                 {
                   "type": "string",
-                  "const": "federated"
+                  "const": "subscription"
                 }
               ]
             },
@@ -19359,6 +19443,10 @@
                 {
                   "type": "string",
                   "const": "openai_compatible"
+                },
+                {
+                  "type": "string",
+                  "const": "ai_gateway"
                 },
                 {
                   "type": "string",
@@ -22180,6 +22268,33 @@
       "modelId": {
         "type": "string"
       },
+      "modelSource": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "const": "api_key"
+          },
+          {
+            "type": "string",
+            "const": "platform"
+          },
+          {
+            "type": "string",
+            "const": "federated"
+          },
+          {
+            "type": "string",
+            "const": "ai_gateway"
+          },
+          {
+            "type": "string",
+            "const": "platform_gateway"
+          }
+        ]
+      },
       "allowedModels": {
         "type": "array",
         "items": {
@@ -22207,6 +22322,30 @@
             },
             "modelId": {
               "type": "string"
+            },
+            "source": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "api_key"
+                },
+                {
+                  "type": "string",
+                  "const": "platform"
+                },
+                {
+                  "type": "string",
+                  "const": "federated"
+                },
+                {
+                  "type": "string",
+                  "const": "ai_gateway"
+                },
+                {
+                  "type": "string",
+                  "const": "platform_gateway"
+                }
+              ]
             }
           },
           "required": [
@@ -22379,6 +22518,33 @@
       "modelId": {
         "type": "string"
       },
+      "modelSource": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "const": "api_key"
+          },
+          {
+            "type": "string",
+            "const": "platform"
+          },
+          {
+            "type": "string",
+            "const": "federated"
+          },
+          {
+            "type": "string",
+            "const": "ai_gateway"
+          },
+          {
+            "type": "string",
+            "const": "platform_gateway"
+          }
+        ]
+      },
       "allowedModels": {
         "type": "array",
         "items": {
@@ -22406,6 +22572,30 @@
             },
             "modelId": {
               "type": "string"
+            },
+            "source": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "api_key"
+                },
+                {
+                  "type": "string",
+                  "const": "platform"
+                },
+                {
+                  "type": "string",
+                  "const": "federated"
+                },
+                {
+                  "type": "string",
+                  "const": "ai_gateway"
+                },
+                {
+                  "type": "string",
+                  "const": "platform_gateway"
+                }
+              ]
             }
           },
           "required": [
@@ -22788,6 +22978,33 @@
           "modelId": {
             "type": "string"
           },
+          "modelSource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "api_key"
+              },
+              {
+                "type": "string",
+                "const": "platform"
+              },
+              {
+                "type": "string",
+                "const": "federated"
+              },
+              {
+                "type": "string",
+                "const": "ai_gateway"
+              },
+              {
+                "type": "string",
+                "const": "platform_gateway"
+              }
+            ]
+          },
           "allowedModels": {
             "type": "array",
             "items": {
@@ -22815,6 +23032,30 @@
                 },
                 "modelId": {
                   "type": "string"
+                },
+                "source": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "const": "api_key"
+                    },
+                    {
+                      "type": "string",
+                      "const": "platform"
+                    },
+                    {
+                      "type": "string",
+                      "const": "federated"
+                    },
+                    {
+                      "type": "string",
+                      "const": "ai_gateway"
+                    },
+                    {
+                      "type": "string",
+                      "const": "platform_gateway"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -23186,6 +23427,33 @@
             "modelId": {
               "type": "string"
             },
+            "modelSource": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "api_key"
+                },
+                {
+                  "type": "string",
+                  "const": "platform"
+                },
+                {
+                  "type": "string",
+                  "const": "federated"
+                },
+                {
+                  "type": "string",
+                  "const": "ai_gateway"
+                },
+                {
+                  "type": "string",
+                  "const": "platform_gateway"
+                }
+              ]
+            },
             "allowedModels": {
               "type": "array",
               "items": {
@@ -23201,6 +23469,15 @@
                   },
                   "modelId": {
                     "type": "string"
+                  },
+                  "source": {
+                    "oneOf": [
+                      {},
+                      {},
+                      {},
+                      {},
+                      {}
+                    ]
                   }
                 },
                 "required": [
@@ -23379,6 +23656,33 @@
       "modelId": {
         "type": "string"
       },
+      "modelSource": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "const": "api_key"
+          },
+          {
+            "type": "string",
+            "const": "platform"
+          },
+          {
+            "type": "string",
+            "const": "federated"
+          },
+          {
+            "type": "string",
+            "const": "ai_gateway"
+          },
+          {
+            "type": "string",
+            "const": "platform_gateway"
+          }
+        ]
+      },
       "allowedModels": {
         "type": "array",
         "items": {
@@ -23406,6 +23710,30 @@
             },
             "modelId": {
               "type": "string"
+            },
+            "source": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "api_key"
+                },
+                {
+                  "type": "string",
+                  "const": "platform"
+                },
+                {
+                  "type": "string",
+                  "const": "federated"
+                },
+                {
+                  "type": "string",
+                  "const": "ai_gateway"
+                },
+                {
+                  "type": "string",
+                  "const": "platform_gateway"
+                }
+              ]
             }
           },
           "required": [

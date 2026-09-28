@@ -87,22 +87,17 @@ import {
   SOURCE_STATUS_OPTIONS,
 } from "@/lib/knowledge-hub";
 import { libraryDocumentsHref } from "@/lib/source-documents";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { countLabel, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
+import { copyToClipboard } from "@/lib/clipboard";
 import { downloadFile } from "@/lib/download";
 
-/** What the footer counts. FAQs carry their own plural. */
+/** What the footer counts. */
 const TAB_ROW_NOUN: Record<KnowledgeTabSlug, string> = {
   websites: "website",
   files: "file",
   applications: "application",
   faqs: "FAQ",
-};
-const TAB_ROW_NOUN_PLURAL: Record<KnowledgeTabSlug, string | undefined> = {
-  websites: undefined,
-  files: undefined,
-  applications: undefined,
-  faqs: "FAQs",
 };
 
 const STATUS_TONE: Record<SourceStatus, BadgeTone> = {
@@ -259,15 +254,6 @@ export function KnowledgeHubClient({
         );
       }
     });
-  }
-
-  async function copyId(id: string) {
-    try {
-      await navigator.clipboard.writeText(id);
-      toast.success("ID copied.");
-    } catch {
-      toast.error("Could not copy the ID. Check the browser allows clipboard access.");
-    }
   }
 
   // The columns differ per tab, and so does what a reader chose to widen, so
@@ -432,7 +418,6 @@ export function KnowledgeHubClient({
                 pageSize={pageSize}
                 total={total}
                 noun={TAB_ROW_NOUN[tab]}
-                pluralNoun={TAB_ROW_NOUN_PLURAL[tab]}
                 onPageChange={(page) => apply({ page })}
                 onPageSizeChange={(size) => apply({ size, page: 1 })}
               />
@@ -441,7 +426,6 @@ export function KnowledgeHubClient({
             <TableBulkBar
               count={selection.count}
               noun={TAB_ROW_NOUN[tab]}
-              pluralNoun={TAB_ROW_NOUN_PLURAL[tab]}
               onClear={selection.clear}
             >
               <Button
@@ -452,11 +436,7 @@ export function KnowledgeHubClient({
                   const ids = selection.ids;
                   const one = ids.length === 1;
                   confirmDelete({
-                    title: `Delete ${ids.length} ${
-                      one
-                        ? TAB_ROW_NOUN[tab]
-                        : (TAB_ROW_NOUN_PLURAL[tab] ?? `${TAB_ROW_NOUN[tab]}s`)
-                    }?`,
+                    title: `Delete ${countLabel(ids.length, TAB_ROW_NOUN[tab])}?`,
                     description: one
                       ? "This removes it for every linked assistant at once, including its indexed content."
                       : "This removes them for every linked assistant at once, including their indexed content.",
@@ -612,7 +592,12 @@ export function KnowledgeHubClient({
                       {
                         label: "Copy ID",
                         icon: Copy,
-                        onSelect: () => void copyId(item.id),
+                        onSelect: () =>
+                          void copyToClipboard(
+                            item.id,
+                            "ID copied.",
+                            "Could not copy the ID. Check the browser allows clipboard access."
+                          ),
                       },
                       canEdit && {
                         label: "Manage linked assistants",

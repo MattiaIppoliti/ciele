@@ -354,7 +354,7 @@ function turnModelIdentity(
     assistant.modelProvider,
     assistant.modelId,
     connections,
-    keyResolution
+    { ...keyResolution, source: assistant.modelSource ?? undefined }
   );
   return resolved
     ? { provider: resolved.provider, credentialKind: resolved.credentialKind }
@@ -1307,6 +1307,20 @@ export async function streamConversationTurn(
         | ((messageId: string | null) => Parameters<typeof spendAdmission.settle>[0])
         | null = null;
       let usageSettled = false;
+      const usageRow = (u: UsageEvent, messageId: string | null, spenders: typeof usageSpenders) => ({
+        organizationId: input.organizationId,
+        assistantId: attributedAssistantId,
+        conversationId,
+        messageId,
+        stage: u.stage,
+        provider: u.provider,
+        modelId: u.modelId,
+        credentialKind: u.credentialKind,
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
+        spenders,
+        surface: usageSurface,
+      });
       try {
         if (input.studyAnswer !== undefined) {
           if (!subject.offersStudyMode) throw new Error("Study mode is disabled.");
@@ -1719,23 +1733,11 @@ export async function streamConversationTurn(
           afterPersist: async (messageId) => {
             // AI usage ledger, written post-commit and isolated like session
             // state: losing accounting must never break the chat.
-            const toRow = (u: UsageEvent) => ({
-              organizationId: input.organizationId,
-              assistantId: attributedAssistantId,
-              conversationId,
-              messageId,
-              stage: u.stage,
-              provider: u.provider,
-              modelId: u.modelId,
-              credentialKind: u.credentialKind,
-              inputTokens: u.inputTokens,
-              outputTokens: u.outputTokens,
-              // The Flow that answered is on the row too (#849): a Flow whose
-              // Search knowledge action runs an agent loop costs a multiple of
-              // one that replies verbatim, and that is worth being able to see.
-              spenders: { ...usageSpenders, flowId: result.flowId },
-              surface: usageSurface,
-            });
+            // The Flow that answered is on the row too (#849): a Flow whose
+            // Search knowledge action runs an agent loop costs a multiple of
+            // one that replies verbatim, and that is worth being able to see.
+            const toRow = (u: UsageEvent) =>
+              usageRow(u, messageId, { ...usageSpenders, flowId: result.flowId });
             // A gate decision is spend of the turn that made it (#848), so it
             // settles with the turn's own rows rather than on its own.
             const gateUsageRows = gateUsage.map(toRow);
@@ -1853,20 +1855,7 @@ export async function streamConversationTurn(
         }
         if (!usageSettled) {
           usageSettled = true;
-          const toRow = (u: UsageEvent) => ({
-            organizationId: input.organizationId,
-            assistantId: attributedAssistantId,
-            conversationId,
-            messageId: null,
-            stage: u.stage,
-            provider: u.provider,
-            modelId: u.modelId,
-            credentialKind: u.credentialKind,
-            inputTokens: u.inputTokens,
-            outputTokens: u.outputTokens,
-            spenders: usageSpenders,
-            surface: usageSurface,
-          });
+          const toRow = (u: UsageEvent) => usageRow(u, null, usageSpenders);
           const rows = [
             ...(spentTeammateRows ? spentTeammateRows(null) : spentUsage.map(toRow)),
             ...spentGateUsage.map(toRow),

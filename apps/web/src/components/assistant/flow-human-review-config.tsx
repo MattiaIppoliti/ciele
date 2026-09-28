@@ -64,16 +64,7 @@ export function HumanReviewConfig({
   const issue = humanReviewSettingsIssue(settings);
   // One prefix, a suffix per field: every visible label names its control.
   const uid = useId();
-  const ids = {
-    title: `${uid}-title`,
-    message: `${uid}-message`,
-    assignees: `${uid}-assignees`,
-    channel: `${uid}-channel`,
-    slack: `${uid}-slack`,
-    expires: `${uid}-expires`,
-    waiting: `${uid}-waiting`,
-    halt: `${uid}-halt`,
-  };
+  const id = (field: string) => `${uid}-${field}`;
 
   function connectMailbox() {
     const params = new URLSearchParams({ returnTo: window.location.pathname });
@@ -91,9 +82,9 @@ export function HumanReviewConfig({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor={ids.title}>Title</Label>
+        <Label htmlFor={id("title")}>Title</Label>
         <Input
-          id={ids.title}
+          id={id("title")}
           value={settings?.title ?? ""}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder="Approve a refund"
@@ -101,9 +92,9 @@ export function HumanReviewConfig({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={ids.message}>Message to the reviewer</Label>
+        <Label htmlFor={id("message")}>Message to the reviewer</Label>
         <Textarea
-          id={ids.message}
+          id={id("message")}
           value={settings?.message ?? ""}
           onChange={(e) => onChange({ message: e.target.value })}
           placeholder="A student is asking for a refund on {{workflow.message}}. Approve if the policy allows it."
@@ -115,9 +106,9 @@ export function HumanReviewConfig({
         </p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={ids.assignees}>Assigned to</Label>
+        <Label htmlFor={id("assignees")}>Assigned to</Label>
         <ListInput
-          id={ids.assignees}
+          id={id("assignees")}
           inputMode="email"
           spellCheck={false}
           autoComplete="off"
@@ -132,8 +123,8 @@ export function HumanReviewConfig({
       </div>
 
       <div className="space-y-1.5">
-        <Label id={ids.channel}>Channel</Label>
-        <div role="group" aria-labelledby={ids.channel} className="grid grid-cols-2 gap-1.5">
+        <Label id={id("channel")}>Channel</Label>
+        <div role="group" aria-labelledby={id("channel")} className="grid grid-cols-2 gap-1.5">
           {(["email", "slack"] as const).map((candidate) => (
             <button
               key={candidate}
@@ -199,9 +190,9 @@ export function HumanReviewConfig({
         </div>
       ) : (
         <div className="space-y-1.5">
-          <Label htmlFor={ids.slack}>Slack channel or person</Label>
+          <Label htmlFor={id("slack")}>Slack channel or person</Label>
           <Input
-            id={ids.slack}
+            id={id("slack")}
             spellCheck={false}
             autoComplete="off"
             value={settings?.slackTarget ?? ""}
@@ -306,9 +297,9 @@ export function HumanReviewConfig({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor={ids.expires}>Expires after (hours)</Label>
+          <Label htmlFor={id("expires")}>Expires after (hours)</Label>
           <Input
-            id={ids.expires}
+            id={id("expires")}
             type="number"
             min={1}
             max={24 * 14}
@@ -319,9 +310,9 @@ export function HumanReviewConfig({
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={ids.waiting}>While waiting, the visitor reads</Label>
+        <Label htmlFor={id("waiting")}>While waiting, the visitor reads</Label>
         <Textarea
-          id={ids.waiting}
+          id={id("waiting")}
           value={settings?.waitingMessage ?? ""}
           onChange={(e) => onChange({ waitingMessage: e.target.value })}
           placeholder={DEFAULT_REVIEW_WAITING_MESSAGE}
@@ -330,9 +321,9 @@ export function HumanReviewConfig({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={ids.halt}>If rejected or expired, the visitor reads</Label>
+        <Label htmlFor={id("halt")}>If rejected or expired, the visitor reads</Label>
         <Textarea
-          id={ids.halt}
+          id={id("halt")}
           value={settings?.haltMessage ?? ""}
           onChange={(e) => onChange({ haltMessage: e.target.value })}
           placeholder={DEFAULT_REVIEW_HALT_MESSAGE}

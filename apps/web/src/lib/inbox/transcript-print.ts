@@ -1,6 +1,7 @@
 import type { InboxConversation, StoredMessage } from "@agent-hub/core";
 import { messageContent } from "./conversation-export";
 import { countLabel } from "@/lib/pagination";
+import { escapeMarkup } from "@/lib/escape";
 
 /**
  * A single Conversation transcript as a self-contained, printable HTML document
@@ -15,16 +16,6 @@ import { countLabel } from "@/lib/pagination";
  * Pure and string-returning so the document is testable without a browser; the
  * caller owns the printing (see `printTranscript` in the Inbox client).
  */
-
-/** HTML-escapes a value for text content and attribute use alike. */
-export function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 export interface TranscriptDocumentInput {
   conversation: InboxConversation;
@@ -82,8 +73,8 @@ export function transcriptDocument(input: TranscriptDocumentInput): string {
         vote,
       ].filter(Boolean);
       return `<article class="turn ${message.role}">
-  <p class="meta">${meta.map(escapeHtml).join(" · ")}</p>
-  <div class="body">${escapeHtml(text)}</div>
+  <p class="meta">${meta.map(escapeMarkup).join(" · ")}</p>
+  <div class="body">${escapeMarkup(text)}</div>
 </article>`;
     })
     .join("\n");
@@ -91,7 +82,7 @@ export function transcriptDocument(input: TranscriptDocumentInput): string {
   const details = detailRows(conversation)
     .map(
       ([label, value]) =>
-        `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`
+        `<div><dt>${escapeMarkup(label)}</dt><dd>${escapeMarkup(value)}</dd></div>`
     )
     .join("");
 
@@ -99,7 +90,7 @@ export function transcriptDocument(input: TranscriptDocumentInput): string {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>${escapeHtml(title)}</title>
+<title>${escapeMarkup(title)}</title>
 <style>
   /* Print-first: the browser paginates, so nothing here may clip or scroll. */
   @page { margin: 18mm 16mm; }
@@ -131,11 +122,11 @@ export function transcriptDocument(input: TranscriptDocumentInput): string {
 </style>
 </head>
 <body>
-<h1>${escapeHtml(title)}</h1>
-<p class="subtitle">${escapeHtml(countLabel(messages.length, "message"))}</p>
+<h1>${escapeMarkup(title)}</h1>
+<p class="subtitle">${escapeMarkup(countLabel(messages.length, "message"))}</p>
 <dl>${details}</dl>
 ${turns}
-<footer>${escapeHtml(
+<footer>${escapeMarkup(
     [input.organizationName, "Conversation transcript"].filter(Boolean).join("N/A")
   )}</footer>
 </body>

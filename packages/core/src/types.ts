@@ -1,6 +1,6 @@
 import type { TriageEvidence } from "./document-triage";
 import type { Reversibility } from "./approval-gate";
-import type { ModelRef } from "./model-choice";
+import type { ModelRef, ModelSource } from "./model-choice";
 import type { PreflightTraceRecord } from "./preflight";
 /**
  * The domain vocabulary: every noun in `CONTEXT.md`, as a type.
@@ -1344,7 +1344,16 @@ export type Provider = "anthropic" | "openai" | "google" | "openai_compatible";
  * only through a platform key and are never a Provider Connection.
  */
 export type UsageProvider = Provider | "typesafe" | "voyage";
-export type ProviderConnectionProvider = Provider | "azure_openai" | "elevenlabs";
+/**
+ * `ai_gateway` is one connection serving every catalog provider's models, so
+ * it is a connection provider without being a `Provider`: the model it runs
+ * still names anthropic, openai or google.
+ */
+export type ProviderConnectionProvider =
+  | Provider
+  | "azure_openai"
+  | "elevenlabs"
+  | "ai_gateway";
 export type ProviderConnectionType =
   | "platform"
   | "subscription"
@@ -1803,6 +1812,12 @@ export interface Assistant {
   modelProvider: Provider;
   modelId: string;
   /**
+   * The credential the configured model runs on. Absent or null is automatic,
+   * today's order; a Publication snapshot written before this existed has no
+   * key at all, which is why it is optional.
+   */
+  modelSource?: ModelSource | null;
+  /**
    * The models a Visitor may switch between in the chat window, beside the
    * configured one above.
    *
@@ -1877,6 +1892,7 @@ export interface PublicationConfig {
     | "chatLauncherEnabled"
     | "modelProvider"
     | "modelId"
+    | "modelSource"
     | "allowedModels"
     | "attachmentsEnabled"
     | "voice"
@@ -1951,6 +1967,8 @@ export interface Teammate {
   sourceIds: string[];
   modelProvider: Provider;
   modelId: string;
+  /** Same as the Assistant's: null is automatic. */
+  modelSource?: ModelSource | null;
   /**
    * The models a Member may switch between while chatting with this Teammate.
    * Empty means no picker, the same default the Assistant carries.
@@ -2338,6 +2356,7 @@ export type TeammatePatch = Partial<
     | "editorIds"
     | "modelProvider"
     | "modelId"
+    | "modelSource"
     | "allowedModels"
     | "projectId"
     | "deletedAt"
@@ -3870,6 +3889,7 @@ export type AiUsageStage =
   | "enrich"
   | "verify"
   | "goal_eval"
+  | "evaluation"
   | "compost"
   | "improvement_proposal"
   | "graph_search"
@@ -3897,7 +3917,12 @@ export type AiCredentialKind =
   | "platform"
   | "api_key"
   | "google_vertex_federated"
-  | "local_subscription";
+  | "local_subscription"
+  /**
+   * The Organization's own AI Gateway key. A turn through the platform's
+   * Gateway key records `platform`: the ledger names who paid, not the route.
+   */
+  | "ai_gateway";
 
 /** Max standing goals per assistant, bounds the scheduled runner's cost. */
 export const ASSISTANT_GOAL_CAP = 20;
@@ -4576,6 +4601,7 @@ export type AssistantPatch = Partial<
     | "chatLauncherEnabled"
     | "modelProvider"
     | "modelId"
+    | "modelSource"
     | "allowedModels"
     | "attachmentsEnabled"
     | "voice"

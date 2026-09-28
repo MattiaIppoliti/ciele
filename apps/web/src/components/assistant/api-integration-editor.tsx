@@ -223,14 +223,9 @@ export function ApiIntegrationEditor({
   const [pending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const fieldId = useId();
-  const current = snapshotOf({
-    name,
-    baseUrl,
-    authType,
-    authHeaderName,
-    authUsername,
-    endpoints,
-  });
+  // Key order is the snapshot's JSON order, so all three uses spread this.
+  const fields = { name, baseUrl, authType, authHeaderName, authUsername };
+  const current = snapshotOf({ ...fields, endpoints });
   const [saved, setSaved] = useState(current);
   const dirty = credential !== null || current !== saved;
 
@@ -247,11 +242,7 @@ export function ApiIntegrationEditor({
     startTransition(async () => {
       try {
         const result = await setApiIntegrationAction(assistantId, {
-          name,
-          baseUrl,
-          authType,
-          authHeaderName,
-          authUsername,
+          ...fields,
           ...(credential === null ? {} : { credential }),
           endpoints: endpoints.map(toEndpoint),
         });
@@ -286,16 +277,7 @@ export function ApiIntegrationEditor({
         setEndpoints([]);
         setHasCredential(false);
         setCredential(null);
-        setSaved(
-          snapshotOf({
-            name,
-            baseUrl,
-            authType,
-            authHeaderName,
-            authUsername,
-            endpoints: [],
-          })
-        );
+        setSaved(snapshotOf({ ...fields, endpoints: [] }));
         toast.success("API integration removed");
       },
     });

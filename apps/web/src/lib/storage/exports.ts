@@ -9,7 +9,7 @@ import type { ExportJobFormat } from "@agent-hub/core";
  */
 export const ANALYTICS_EXPORTS_BUCKET = "analytics-exports";
 
-export const FORMAT_EXTENSIONS: Record<ExportJobFormat, string> = {
+const FORMAT_EXTENSIONS: Record<ExportJobFormat, string> = {
   csv: "csv",
   json: "json",
   xlsx: "xlsx",

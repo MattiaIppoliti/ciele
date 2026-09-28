@@ -1,5 +1,7 @@
 import type { DashboardSurface, UsageDashboard, UsageDashboardFilter } from "@agent-hub/core";
 import { dayRangeFromSearchParams } from "@/lib/day-range";
+import { DEFAULT_RANGE_DAYS, lastDaysRange, utcDay } from "@/lib/insights/range";
+import { readSearchParam, type SearchParamsLike } from "@/lib/url-state";
 
 /**
  * The Dashboard tab's filter, parsed from and written back to the address bar.
@@ -19,21 +21,16 @@ export interface DashboardView {
   unavailable: boolean;
 }
 
-export const DASHBOARD_SURFACES: readonly DashboardSurface[] = ["assistants", "teammates", "internal"];
+const DASHBOARD_SURFACES: readonly DashboardSurface[] = ["assistants", "teammates", "internal"];
 
 /** The longest window one read covers; a year of daily facts is still small. */
-export const MAX_DASHBOARD_DAYS = 366;
+const MAX_DASHBOARD_DAYS = 366;
 
 const DAY_MS = 86_400_000;
 
-function utcDay(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
 /** The last 30 UTC days, today included. */
 export function defaultDashboardFilter(now = new Date()): UsageDashboardFilter {
-  const today = Date.parse(`${utcDay(now.getTime())}T00:00:00Z`);
-  return { from: utcDay(today - 29 * DAY_MS), to: utcDay(today), surface: "", assistantId: "" };
+  return { ...lastDaysRange(DEFAULT_RANGE_DAYS, now), surface: "", assistantId: "" };
 }
 
 /**
@@ -42,15 +39,15 @@ export function defaultDashboardFilter(now = new Date()): UsageDashboardFilter {
  * An Assistant is only honoured beside the surface it belongs to.
  */
 export function dashboardFilterFromSearchParams(
-  params: URLSearchParams,
+  params: SearchParamsLike,
   now = new Date()
 ): UsageDashboardFilter {
   const { from, to } = dayRangeFromSearchParams(params, defaultDashboardFilter(now), {
     maxDays: MAX_DASHBOARD_DAYS,
   });
-  const surfaceParam = params.get("surface");
+  const surfaceParam = readSearchParam(params, "surface");
   const surface = DASHBOARD_SURFACES.find((s) => s === surfaceParam) ?? "";
-  const assistantId = surface === "" || surface === "assistants" ? params.get("assistantId") || "" : "";
+  const assistantId = surface === "" || surface === "assistants" ? readSearchParam(params, "assistantId") || "" : "";
   return { from, to, surface, assistantId };
 }
 
@@ -58,7 +55,7 @@ export function dashboardFilterFromSearchParams(
 export function dashboardWindow(filter: UsageDashboardFilter): { from: string; to: string } {
   return {
     from: `${filter.from}T00:00:00.000Z`,
-    to: `${utcDay(Date.parse(`${filter.to}T00:00:00Z`) + DAY_MS)}T00:00:00.000Z`,
+    to: `${utcDay(new Date(Date.parse(`${filter.to}T00:00:00Z`) + DAY_MS))}T00:00:00.000Z`,
   };
 }
 
@@ -69,7 +66,7 @@ export function previousPeriodFilter(filter: UsageDashboardFilter): UsageDashboa
   const length = Math.round((to - from) / DAY_MS) + 1;
   return {
     ...filter,
-    from: utcDay(from - length * DAY_MS),
-    to: utcDay(from - DAY_MS),
+    from: utcDay(new Date(from - length * DAY_MS)),
+    to: utcDay(new Date(from - DAY_MS)),
   };
 }

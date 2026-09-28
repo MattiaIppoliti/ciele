@@ -1,0 +1,82 @@
+---
+title: Valutazione
+description: Confronta due o tre modelli in una singola stage di un Assistant, utilizzando le stesse domande.
+---
+
+**Eval** sottopone le stesse domande a due o tre modelli e ne confronta i
+risultati. Un'esecuzione Eval testa una singola fase di un Assistente. Non crea
+alcuna Conversation, quindi non viene visualizzata né in Inbox né in Insights.
+
+Qualsiasi membro può aprire **Eval** e leggere le esecuzioni. Gli Editors, gli
+Admins e gli Owners possono caricare dataset e avviare le esecuzioni.
+
+## Fasi
+
+- **Answer** confronta la risposta, le Sources citate e la qualità della
+  risposta di ciascun modello.
+- **Classifier** confronta quale Flow seleziona ciascun modello.
+- **Orchestration** esegue il turno completo con ciascun modello come
+  classificatore.
+- **Fallback** rende non disponibile il provider dell'Assistente e confronta i
+  modelli di riserva.
+- **Pre-flight** confronta la decisione pre-flight e il relativo livello di
+  confidenza.
+- **Reranker** confronta le Sources che ciascun reranker inserisce tra i primi
+  sei risultati.
+
+Ogni fase mostra solo i modelli che possono eseguirla con le connessioni ai
+provider dell'organizzazione.
+
+## Carica un dataset
+
+1. Apri **Eval** e seleziona la scheda **Datasets**.
+2. Seleziona **Download example format** per ottenere il formato JSON.
+3. Scrivi un esempio per ogni domanda. Ogni esempio ha un `id` e un
+   `inputs.question`.
+4. Facoltativamente, aggiungi `reference_outputs`. Ciele li utilizza per
+   misurare l'accuratezza.
+5. Inserisci un nome, seleziona il file e seleziona **Upload**.
+
+Un dataset può contenere fino a 50 esempi. Ogni ID di esempio deve essere
+univoco.
+
+I campi di riferimento sono `answer_contains`, `flow_id`, `flow_name` e
+`source_url_contains`. Ciele li verifica come testo letterale. L'accuratezza non
+è un giudizio sul significato o sui fatti.
+
+## Avvia un'esecuzione
+
+1. Seleziona la scheda **Runs**.
+2. Seleziona un Assistant, un dataset e uno stage.
+3. Seleziona due o tre modelli.
+4. Seleziona **Start run**.
+
+Una singola run può eseguire fino a 24 execution. Un'esecuzione è un esempio con
+un modello. Ad esempio, 12 esempi con due modelli corrispondono a 24 esecuzioni.
+
+L'esecuzione termina prima che la pagina mostri i suoi risultati. Un'esecuzione
+che si interrompe prima di essere completata viene contrassegnata come failed.
+Ciele conserva i risultati che ha salvato prima di interrompersi.
+
+## Leggi i risultati
+
+La dashboard di affidabilità mostra sei grafici per ciascun modello:
+
+- **Accuracy**, solo per gli esempi con output di riferimento.
+- **Cost**, una stima per esempio che non include i costi di recupero.
+- **Tokens**, l'input e l'output del modello per ogni esempio.
+- **Latency**, il tempo medio per esempio.
+- **Autonomy**, i turni completati senza fallback né rifiuto.
+- **Error rate**, le esecuzioni che hanno presentato un errore tecnico.
+
+Seleziona una riga in **Results by question** per confrontare le risposte, le
+Sources e gli errori di ciascun modello.
+
+## Limiti
+
+- Un'esecuzione effettua una ricerca nella Knowledge in tempo reale. Una
+  modifica alla Knowledge durante un run può alterarne i risultati.
+- Un'esecuzione non esegue azioni con effetti esterni, come **Send email** o
+  **API request**. Un Flow che ne contiene uno registra un errore.
+- Le chiamate al modello Eval utilizzano le connessioni ai provider
+  dell'organizzazione e vengono conteggiate ai fini del suo budget.

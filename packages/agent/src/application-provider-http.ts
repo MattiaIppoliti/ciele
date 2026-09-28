@@ -131,6 +131,26 @@ export function applicationCredentials(connection: {
   return parsed;
 }
 
+/**
+ * The provider's machine error code (`errorCode` for Salesforce, `error` for
+ * OAuth-style bodies), and only when it is a bare identifier, so the message
+ * that reaches an Alert never carries free text from the response.
+ */
+function providerErrorCode(text: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    const first = (Array.isArray(parsed) ? parsed[0] : parsed) as
+      | Record<string, unknown>
+      | undefined;
+    const code = first?.errorCode ?? first?.error;
+    return typeof code === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(code)
+      ? code
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function applicationJsonRequest<T>(
   client: ApplicationHttpClient,
   url: string,
@@ -151,13 +171,25 @@ export async function applicationJsonRequest<T>(
   if (response.status === 429) {
     throw new ApplicationRateLimitError(applicationRetryAfterMs(response.headers));
   }
-  if (!response.ok) throw new Error(`Provider returned HTTP ${response.status}`);
+  if (!response.ok) {
+    const code = providerErrorCode(response.text);
+    throw new Error(
+      `Provider returned HTTP ${response.status}${code ? ` (${code})` : ""}`
+    );
+  }
   try {
     return JSON.parse(response.text) as T;
   } catch {
     throw new Error("Provider returned invalid JSON");
   }
 }
+
+/**
+ * A refreshed token whose response names no lifetime (Salesforce) is assumed
+ * to live 15 minutes, the shortest session timeout a Salesforce org allows, so
+ * it is renewed before any org setting can expire it.
+ */
+const UNKNOWN_TOKEN_LIFETIME_S = 15 * 60;
 
 export async function refreshApplicationCredentials(
   provider: ApplicationConnector["provider"],
@@ -167,9 +199,14 @@ export async function refreshApplicationCredentials(
   active: ApplicationCredentials;
   refreshed?: ApplicationCredentials;
 }> {
+  // No expiry and no refresh token is a token the provider never expires
+  // (Slack without rotation). No expiry *with* a refresh token is Salesforce,
+  // whose token responses omit expires_in: the lifetime is unknown, so refresh.
   const expiresAt = current.expiresAt
     ? new Date(current.expiresAt).getTime()
-    : Infinity;
+    : current.refreshToken
+      ? 0
+      : Infinity;
   if (expiresAt > Date.now() + 60_000) return { active: current };
   if (!current.refreshToken || !current.clientId) {
     throw new ApplicationAuthorizationError(
@@ -229,7 +266,7 @@ export async function refreshApplicationCredentials(
     accessToken,
     refreshToken: String(token.refresh_token ?? current.refreshToken),
     expiresAt: new Date(
-      Date.now() + Number(token.expires_in ?? 3600) * 1000
+      Date.now() + Number(token.expires_in ?? UNKNOWN_TOKEN_LIFETIME_S) * 1000
     ).toISOString(),
     instanceUrl:
       String(token.instance_url ?? current.instanceUrl ?? "") || undefined,

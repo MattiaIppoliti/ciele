@@ -5,11 +5,10 @@ import { legacyAssistantSectionHref } from "@/components/shell/nav";
 import { requirePageMember } from "@/lib/authz";
 import { recentSources } from "@/lib/assistant-overview";
 import { getUsageDashboardCached } from "@/lib/insights/dashboard";
+import { lastDaysRange } from "@/lib/insights/range";
 import { getAssistantCached } from "./get-assistant";
 
 export const dynamic = "force-dynamic";
-
-const DAY_MS = 86_400_000;
 
 /** Assistant overview and compatibility adapter for the former ?page= URLs. */
 export default async function AssistantPage({
@@ -30,10 +29,8 @@ export default async function AssistantPage({
   // The last seven UTC days, today included: the Activity and Quality cards'
   // window, read through the same cached reader as the Insights dashboards.
   const now = new Date();
-  const today = Date.parse(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
   const week = {
-    from: new Date(today - 6 * DAY_MS).toISOString().slice(0, 10),
-    to: new Date(today).toISOString().slice(0, 10),
+    ...lastDaysRange(7, now),
     surface: "assistants" as const,
     assistantId: id,
   };

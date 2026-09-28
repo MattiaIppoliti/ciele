@@ -102,6 +102,7 @@ import type {
   QuickReplyButton,
   RecrawlSchedule,
   ModelRef,
+  ModelSource,
   ActionApproval,
   ReviewRequest,
   WebhookSubscription,
@@ -189,6 +190,29 @@ function isSchemaLagError(error: unknown): boolean {
 }
 
 /**
+ * A retention sweep RPC, bounded by `limit` when one is given. One migration
+ * behind (20260927150000) the bounded form is missing, so it falls back to the
+ * unbounded two-argument form.
+ */
+async function sweepRpc(
+  client: SupabaseClient,
+  name: string,
+  organizationId: string,
+  cutoffIso: string,
+  limit: number | undefined
+) {
+  const args = { p_organization_id: organizationId, p_cutoff: cutoffIso };
+  let { data, error } = await client.rpc(
+    name,
+    limit === undefined ? args : { ...args, p_limit: limit }
+  );
+  if (error && limit !== undefined && isSchemaLagError(error)) {
+    ({ data, error } = await client.rpc(name, args));
+  }
+  return { data, error };
+}
+
+/**
  * RLS answers a write it refuses with zero rows, not an error. For the Inbox
  * writes that was a pin, a legal hold or a delete that reported success and
  * changed nothing, so these methods read back the affected ids and treat an
@@ -270,6 +294,8 @@ interface AssistantRow {
   chat_launcher_enabled: boolean;
   model_provider: Provider;
   model_id: string;
+  /** Absent until `20260928120000_model_sources_ai_gateway` lands. */
+  model_source?: ModelSource | null;
   allowed_models: ModelRef[] | null;
   attachments_enabled: boolean | null;
   voice: Assistant["voice"] | null;
@@ -1082,6 +1108,7 @@ function toAssistant(row: AssistantRow): Assistant {
     chatLauncherEnabled: row.chat_launcher_enabled,
     modelProvider: row.model_provider ?? "anthropic",
     modelId: row.model_id ?? "claude-opus-4-8",
+    modelSource: row.model_source ?? null,
     allowedModels: row.allowed_models ?? [],
     attachmentsEnabled: row.attachments_enabled ?? false,
     voice: row.voice ?? undefined,
@@ -1367,7 +1394,10 @@ function supabaseTable<K extends DbTableName>(
       query = query.order(camelToSnakeKey(options?.orderBy ?? "createdAt"), {
         ascending: options?.ascending ?? spec.ascending,
       });
-      if (options?.limit !== undefined) query = query.limit(options.limit);
+      if (options?.offset !== undefined) {
+        const pageSize = options.limit ?? 100;
+        query = query.range(options.offset, options.offset + pageSize - 1);
+      } else if (options?.limit !== undefined) query = query.limit(options.limit);
       const data = must(await query);
       return (data ?? []).map((row) => rowToDomain(row) as unknown as DbTableRow<K>);
     },
@@ -1965,8 +1995,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           ...patchRow(patch, [
             "title", "nickname", "description", "avatarUrl", "welcomeMessage",
             "aiDisclaimer", "suggestedQuestions", "quickReplies", "answeringStyle",
-            "chatLauncherEnabled", "modelProvider", "modelId", "allowedModels",
-            "attachmentsEnabled", "voice", "style", "allowedDomains", "helpDeskSettings",
+            "chatLauncherEnabled", "modelProvider", "modelId", "modelSource",
+            "allowedModels", "attachmentsEnabled", "voice", "style", "allowedDomains", "helpDeskSettings",
             "tools", "requireSignIn", "simplifiedThinking",
           ]),
           updated_at: new Date().toISOString(),
@@ -4604,15 +4634,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async clearExpiredTraces(organizationId, cutoffIso, limit) {
-      const args = { p_organization_id: organizationId, p_cutoff: cutoffIso };
-      let { data, error } = await client.rpc(
-        "clear_expired_traces",
-        limit === undefined ? args : { ...args, p_limit: limit }
+      const { data, error } = await sweepRpc(
+        client, "clear_expired_traces", organizationId, cutoffIso, limit
       );
-      // One migration behind (20260927150000): the unbounded two-argument form.
-      if (error && limit !== undefined && isSchemaLagError(error)) {
-        ({ data, error } = await client.rpc("clear_expired_traces", args));
-      }
       if (error) throw error;
       return (data as number) ?? 0;
     },
@@ -4650,15 +4674,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async deleteExpiredConversations(organizationId, cutoffIso, limit) {
-      const args = { p_organization_id: organizationId, p_cutoff: cutoffIso };
-      let { data, error } = await client.rpc(
-        "delete_expired_conversations",
-        limit === undefined ? args : { ...args, p_limit: limit }
+      const { data, error } = await sweepRpc(
+        client, "delete_expired_conversations", organizationId, cutoffIso, limit
       );
-      // One migration behind (20260927150000): the unbounded two-argument form.
-      if (error && limit !== undefined && isSchemaLagError(error)) {
-        ({ data, error } = await client.rpc("delete_expired_conversations", args));
-      }
       // The sweep primitive is not there yet: nothing expired, nothing deleted.
       if (error && isSchemaLagError(error)) return 0;
       if (error) throw error;
@@ -6847,6 +6865,34 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         },
         { onConflict: "id" }
       ));
+    },
+
+    async listPlatformEvalModels() {
+      const data = must(await client.from("platform_eval_models")
+        .select("provider, model_id, label, input_eur_per_million, output_eur_per_million, added_by, created_at")
+        .order("provider")
+        .order("label"));
+      return (data ?? []).map((row) => ({
+        provider: row.provider,
+        modelId: row.model_id,
+        label: row.label,
+        inputEurPerMillion: Number(row.input_eur_per_million),
+        outputEurPerMillion: Number(row.output_eur_per_million),
+        addedBy: row.added_by,
+        createdAt: row.created_at,
+      }));
+    },
+
+    async addPlatformEvalModel(model) {
+      must(await client.from("platform_eval_models").insert({
+        provider: model.provider,
+        model_id: model.modelId,
+        label: model.label,
+        input_eur_per_million: model.inputEurPerMillion,
+        output_eur_per_million: model.outputEurPerMillion,
+        added_by: model.addedBy,
+        created_at: model.createdAt,
+      }));
     },
 
     // --- Skills (reusable prompt templates) ----------------------------------

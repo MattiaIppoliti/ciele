@@ -128,7 +128,7 @@ const apifyAdapter: WebsiteCrawlerAdapter = {
  * instead, the same shape as Apify's dataset pagination, and the finalizer's
  * checkpoint resumes at the next window.
  */
-export const CRAWL4AI_RESULT_WINDOW = APIFY_DATASET_BATCH_SIZE;
+const CRAWL4AI_RESULT_WINDOW = APIFY_DATASET_BATCH_SIZE;
 
 const crawl4aiAdapter: WebsiteCrawlerAdapter = {
   start: startCrawl4ai,

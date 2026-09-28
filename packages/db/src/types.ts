@@ -117,6 +117,7 @@ import type {
   ProviderConnection,
   ProviderConnectionConfig,
   ProviderConnectionProvider,
+  PlatformEvalModel,
   ProviderConnectionType,
   Publication,
   PublicationConfig,
@@ -1848,6 +1849,9 @@ export interface Db {
   getPlatformSystemPromptOverride(): Promise<string>;
   /** Persists the platform prompt override, stamping the editing owner. */
   setPlatformSystemPrompt(prompt: string, updatedBy: string): Promise<void>;
+  /** Platform-owner additions to the built-in Eval chat-model catalog. */
+  listPlatformEvalModels(): Promise<PlatformEvalModel[]>;
+  addPlatformEvalModel(model: PlatformEvalModel): Promise<void>;
 
   // Skills (reusable org-level prompt templates). Plain CRUD lives on
   // `table("skills")` (ADR-0016 stage 3); only the delete stays named, the

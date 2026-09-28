@@ -26,9 +26,7 @@ export function CompositionTooltipContent({ className }: { className?: string })
                   value={row.value ?? 0}
                   // Keep the consumer's exact formatting, including fractional values and units.
                   format={() => formatValue(row.value ?? 0)}
-                  startOnView={false}
                   duration={0.2}
-                  stagger={0}
                   className="whitespace-pre"
                 />
               </span>
@@ -37,9 +35,7 @@ export function CompositionTooltipContent({ className }: { className?: string })
                   value={row.share}
                   format={() => row.share.toFixed(1)}
                   suffix="%"
-                  startOnView={false}
                   duration={0.2}
-                  stagger={0}
                 />
               </span>
             </span>

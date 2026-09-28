@@ -19,7 +19,7 @@ import { AssistantFilterDropdown } from "@/components/insights/assistant-filter-
 import { DateRangeDropdown } from "@/components/insights/date-range-dropdown";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { defaultDashboardFilter, type DashboardView } from "@/lib/insights/dashboard-filter";
-import { shortDay } from "@/lib/insights/dashboard-view";
+import { formatShortDay } from "@/lib/format";
 import { replaceFilterParams } from "@/lib/url-state";
 
 export { DashboardStatCards } from "./dashboard-stat-cards";
@@ -221,7 +221,7 @@ export function DashboardFrame({
 
       <div className="shrink-0 px-4 pb-4 sm:px-6">
         <span className="text-primary border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium">
-          {shortDay(filter.from)} – {shortDay(filter.to)} (UTC days)
+          {formatShortDay(filter.from)} – {formatShortDay(filter.to)} (UTC days)
           <Hint label={hint}>
             <Info className="size-3.5" />
           </Hint>

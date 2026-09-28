@@ -229,6 +229,7 @@ export function teammateRuntimeAssistant(teammate: Teammate): Assistant {
     chatLauncherEnabled: false,
     modelProvider: teammate.modelProvider,
     modelId: teammate.modelId,
+    modelSource: teammate.modelSource ?? null,
     // The Teammate's own allow-list is applied by the route, which resolves
     // the choice before the turn runs; by here a model has been decided, so
     // the runtime Assistant offers none.

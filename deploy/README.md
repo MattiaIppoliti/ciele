@@ -156,7 +156,9 @@ providers work too, set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or
 **Without an embedding model, knowledge search degrades to keyword/lexical
 matching.** Answers still work; retrieval is just less able to match meaning.
 Without `AI_GATEWAY_API_KEY` the knowledge search skips its rerank step and keeps
-the index's order (ADR-0025). The same applies to the worker: without Crawl4AI
+the index's order (ADR-0025). With it, the key is also the last automatic source
+for Anthropic, OpenAI and Google chat models: a model with no provider key of its
+own runs through AI Gateway, billed to that Gateway account. The same applies to the worker: without Crawl4AI
 the built-in fetch-based crawler handles websites (fine for server-rendered
 pages, weaker on JavaScript-heavy ones).
 

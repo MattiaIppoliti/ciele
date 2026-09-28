@@ -1,6 +1,7 @@
 "use client";
+// Vendored from beui, trimmed to what Ciele's callers use.
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
 import { buildComposition, type CompositionSeries } from "./model";
@@ -9,29 +10,19 @@ export interface CompositionChartProps {
   series: readonly CompositionSeries[];
   /** Unique labels in chronological order. */
   periods: readonly string[];
-  view?: "bar" | "area";
-  period?: string;
-  defaultPeriod?: string;
-  onPeriodChange?: (period: string) => void;
-  formatValue?: (value: number) => string;
+  formatValue: (value: number) => string;
   label?: string;
   className?: string;
-  children?: ReactNode;
 }
 
-const number = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
 export function useCompositionModel({
   series,
   periods,
-  view = "bar",
-  period,
-  defaultPeriod,
-  onPeriodChange,
-  formatValue = (value) => number.format(value),
+  formatValue,
   label = "Composition over time",
 }: CompositionChartProps) {
   const model = useMemo(() => buildComposition(series, periods), [series, periods]);
-  const [internal, setInternal] = useState(defaultPeriod);
+  const [internal, setInternal] = useState<string | undefined>(undefined);
   const [pinned, setPinned] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
@@ -41,20 +32,14 @@ export function useCompositionModel({
   if (pinned !== null && !validSeries(pinned)) setPinned(null);
   if (hovered !== null && !validSeries(hovered)) setHovered(null);
   if (focused !== null && !validSeries(focused)) setFocused(null);
-  const selected = period === undefined ? internal : period;
-  const found = model.columns.findIndex((column) => column.id === selected);
+  const found = model.columns.findIndex((column) => column.id === internal);
   const index = found >= 0 ? found : model.columns.length - 1;
-  const select = (next: string) => {
-    if (period === undefined) setInternal(next);
-    if (next !== model.columns[index]?.id) onPeriodChange?.(next);
-  };
   const highlight = [hovered, focused, pinned].find((id) => id !== null && validSeries(id)) ?? null;
   return {
     ...model,
     index,
     column: model.columns[index],
-    select,
-    view,
+    select: setInternal,
     label,
     formatValue,
     pinned,

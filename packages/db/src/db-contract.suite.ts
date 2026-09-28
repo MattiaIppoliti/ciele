@@ -386,6 +386,27 @@ export function describeDbContract(
         expect((await db.getAssistant(assistant.id))?.avatarUrl).toBe(avatarUrl);
       });
 
+      it("defaults the model source to automatic and round-trips a pinned one", async () => {
+        const assistant = await newAssistant();
+        expect(assistant.modelSource ?? null).toBeNull();
+        const pinned = await db.updateAssistant(assistant.id, {
+          modelSource: "ai_gateway",
+          allowedModels: [
+            { provider: "anthropic", modelId: "claude-sonnet-5", source: "api_key" },
+            { provider: "anthropic", modelId: "claude-sonnet-5", source: "ai_gateway" },
+          ],
+        });
+        expect(pinned.modelSource).toBe("ai_gateway");
+        const read = await db.getAssistant(assistant.id);
+        expect(read?.modelSource).toBe("ai_gateway");
+        expect(read?.allowedModels?.map((ref) => ref.source)).toEqual([
+          "api_key",
+          "ai_gateway",
+        ]);
+        const auto = await db.updateAssistant(assistant.id, { modelSource: null });
+        expect(auto.modelSource ?? null).toBeNull();
+      });
+
       it("toggles the per-assistant require-sign-in flag", async () => {
         const assistant = await newAssistant();
         const on = await db.updateAssistant(assistant.id, { requireSignIn: true });
@@ -1382,6 +1403,27 @@ export function describeDbContract(
         await projects().delete(project.id);
         expect((await db.table("teammates").get(teammate.id))?.projectId).toBeNull();
       });
+
+      it("reads a Teammate's model source as automatic until one is pinned", async () => {
+        const teammate = await db.table("teammates").insert({
+          organizationId: ctx.organizationId,
+          ownerId: ctx.userId,
+          name: "Pinned",
+        });
+        expect(teammate.modelSource ?? null).toBeNull();
+        const pinned = await db
+          .table("teammates")
+          .update(teammate.id, {
+            modelSource: "platform_gateway",
+            allowedModels: [
+              { provider: "google", modelId: "gemini-3.5-flash", source: "ai_gateway" },
+            ],
+          });
+        expect(pinned.modelSource).toBe("platform_gateway");
+        const read = await db.table("teammates").get(teammate.id);
+        expect(read?.modelSource).toBe("platform_gateway");
+        expect(read?.allowedModels?.[0]?.source).toBe("ai_gateway");
+      });
     });
 
     describe("Routines (#772)", () => {
@@ -1486,6 +1528,45 @@ export function describeDbContract(
         const routine = await newRoutine();
         await db.table("teammates").delete(routine.teammateId);
         expect(await routines().get(routine.id)).toBeNull();
+      });
+    });
+
+    describe("evaluation tables", () => {
+      it("stores dataset and run snapshots and pages runs by offset", async () => {
+        const assistant = await newAssistant();
+        const examples = [{
+          id: "eval-contract-1",
+          inputs: { question: "Where is my order?" },
+          reference_outputs: { answer_contains: ["order"] },
+        }];
+        const dataset = await db.table("evaluationDatasets").insert({
+          organizationId: ctx.organizationId,
+          name: "Eval contract",
+          examples,
+        });
+        const runs = db.table("evaluationRuns");
+        const run = await runs.insert({
+          organizationId: ctx.organizationId,
+          assistantId: assistant.id,
+          assistantName: assistant.title,
+          assistantModel: { provider: assistant.modelProvider, modelId: assistant.modelId },
+          datasetId: dataset.id,
+          datasetName: dataset.name,
+          examples,
+          stage: "answer",
+          candidates: [
+            { provider: "openai", modelId: "gpt-5.4-mini" },
+            { provider: "google", modelId: "gemini-3.5-flash" },
+          ],
+        });
+        expect(run.status).toBe("running");
+        const finished = await runs.update(run.id, { status: "completed", results: [] });
+        expect(finished.datasetName).toBe(dataset.name);
+        expect(finished.examples).toEqual(examples);
+        const all = await runs.list({ organizationId: ctx.organizationId }, { orderBy: "createdAt", ascending: true });
+        const offset = all.findIndex((item) => item.id === run.id);
+        expect(await runs.list({ organizationId: ctx.organizationId }, { orderBy: "createdAt", ascending: true, limit: 1, offset })).toEqual([finished]);
+        expect(await runs.list({ organizationId: ctx.foreignOrganizationId })).not.toContainEqual(finished);
       });
     });
 
@@ -6644,6 +6725,7 @@ export function describeDbContract(
           enrich: true,
           verify: true,
           goal_eval: true,
+          evaluation: true,
           compost: true,
           improvement_proposal: true,
           graph_search: true,
@@ -9947,6 +10029,19 @@ export function describeDbContract(
         // Overwrite (single-row upsert), including clearing back to default.
         await db.setPlatformSystemPrompt("", "owner@test");
         expect(await db.getPlatformSystemPromptOverride()).toBe("");
+      });
+      it("adds platform Eval models to the catalog", async () => {
+        const model = {
+          provider: "google" as const,
+          modelId: `eval-test-${crypto.randomUUID()}`,
+          label: "Eval test model",
+          inputEurPerMillion: 0.12,
+          outputEurPerMillion: 0.48,
+          addedBy: "owner@test",
+          createdAt: new Date().toISOString(),
+        };
+        await db.addPlatformEvalModel(model);
+        expect(await db.listPlatformEvalModels()).toContainEqual(model);
       });
     });
   });

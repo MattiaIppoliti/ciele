@@ -139,6 +139,8 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
   project: { paths: () => projectPaths(), insights: false },
   projectList: { paths: () => projectPaths(), insights: false },
   myMemory: { paths: () => [{ path: "/settings/memory" }], insights: false },
+  // Synthetic runs create no Conversation, so Insights never sees them.
+  evaluations: { paths: () => [{ path: "/eval", scope: "layout" }], insights: false },
   // The tab segments render the tables; the layout route carries nothing.
   knowledgeHub: {
     paths: () => [

@@ -192,38 +192,32 @@ async function rest(base, serviceKey, path, init = {}) {
   return response.status === 204 ? null : response.json();
 }
 
+/** Writes one sealed column of one row. */
+function patchColumn(base, serviceKey, table, id, column, value) {
+  return rest(base, serviceKey, `${table}?id=eq.${id}`, {
+    method: "PATCH",
+    headers: { prefer: "return=minimal" },
+    body: JSON.stringify({ [column]: value }),
+  });
+}
+
 async function rekeyAll(base, serviceKey, currentKey, previousKey) {
   let rekeyed = 0;
-  for (const { table, column } of SEALED_TEXT_COLUMNS) {
+  const columns = [
+    ...SEALED_TEXT_COLUMNS.map((c) => ({ ...c, rekey: rekeySealedValue })),
+    { ...SEALED_JSON_COLUMN, rekey: rekeyTicketingIntegration },
+  ];
+  for (const { table, column, rekey } of columns) {
     // Re-keyed rows stay non-null, so pages never shift: always advance.
     const filter = `select=id,${column}&${column}=not.is.null`;
     for await (const rows of pages(base, serviceKey, table, filter, { advance: true })) {
       for (const row of rows) {
-        const next = rekeySealedValue(row[column], currentKey, previousKey);
+        const next = rekey(row[column], currentKey, previousKey);
         if (!next) continue;
         console.log(`rekeying: ${table}.${column} id=${row.id}`);
-        await rest(base, serviceKey, `${table}?id=eq.${row.id}`, {
-          method: "PATCH",
-          headers: { prefer: "return=minimal" },
-          body: JSON.stringify({ [column]: next }),
-        });
+        await patchColumn(base, serviceKey, table, row.id, column, next);
         rekeyed += 1;
       }
-    }
-  }
-  const { table, column } = SEALED_JSON_COLUMN;
-  const filter = `select=id,${column}&${column}=not.is.null`;
-  for await (const desks of pages(base, serviceKey, table, filter, { advance: true })) {
-    for (const desk of desks) {
-      const next = rekeyTicketingIntegration(desk[column], currentKey, previousKey);
-      if (!next) continue;
-      console.log(`rekeying: ${table}.${column} id=${desk.id}`);
-      await rest(base, serviceKey, `${table}?id=eq.${desk.id}`, {
-        method: "PATCH",
-        headers: { prefer: "return=minimal" },
-        body: JSON.stringify({ [column]: next }),
-      });
-      rekeyed += 1;
     }
   }
   console.log(
@@ -274,13 +268,10 @@ async function main() {
         found += 1;
         console.log(`${rotate ? "rotating" : "legacy"}: ${table}.${column} id=${row.id}`);
         if (!rotate) continue;
-        await rest(base, serviceKey, `${table}?id=eq.${row.id}`, {
-          method: "PATCH",
-          headers: { prefer: "return=minimal" },
-          body: JSON.stringify({
-            [column]: sealSecret(row[column].slice(LEGACY_PREFIX.length), appKey),
-          }),
-        });
+        await patchColumn(
+          base, serviceKey, table, row.id, column,
+          sealSecret(row[column].slice(LEGACY_PREFIX.length), appKey)
+        );
       }
     }
   }
@@ -296,11 +287,7 @@ async function main() {
       found += 1;
       console.log(`${rotate ? "rotating" : "legacy"}: ${table}.${column} id=${desk.id}`);
       if (!rotate) continue;
-      await rest(base, serviceKey, `${table}?id=eq.${desk.id}`, {
-        method: "PATCH",
-        headers: { prefer: "return=minimal" },
-        body: JSON.stringify({ [column]: next }),
-      });
+      await patchColumn(base, serviceKey, table, desk.id, column, next);
     }
   }
 

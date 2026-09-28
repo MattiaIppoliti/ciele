@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import type { ExportJobFormat, ExportJobKind } from "@agent-hub/core";
 import { tableToCsv } from "@ciele/ops/csv";
 import type { InsightsOverview } from "@/lib/insights/report";
+import { escapeMarkup } from "@/lib/escape";
 
 /**
  * An Insights export in two steps: pick the rows the report kind contains
@@ -77,14 +78,6 @@ export function insightsExportTable(kind: ExportJobKind, overview: InsightsOverv
   }
 }
 
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 /** "A", "B", ... "Z", "AA": the spreadsheet column for a zero-based index. */
 export function columnName(index: number): string {
   let name = "";
@@ -107,7 +100,7 @@ async function tableToXlsx(table: ExportTable, sheetName: string): Promise<Uint8
           const ref = `${columnName(c)}${r + 1}`;
           return typeof value === "number" && Number.isFinite(value)
             ? `<c r="${ref}"><v>${value}</v></c>`
-            : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(String(value))}</t></is></c>`;
+            : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeMarkup(String(value))}</t></is></c>`;
         })
         .join("");
       return `<row r="${r + 1}">${cells}</row>`;
@@ -123,7 +116,7 @@ async function tableToXlsx(table: ExportTable, sheetName: string): Promise<Uint8
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
   );
   // Sheet names are capped at 31 characters and may not contain []:*?/\.
-  const safeName = escapeXml(sheetName.replace(/[[\]:*?/\\]/g, " ").slice(0, 31) || "Export");
+  const safeName = escapeMarkup(sheetName.replace(/[[\]:*?/\\]/g, " ").slice(0, 31) || "Export");
   zip.file(
     "xl/workbook.xml",
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${safeName}" sheetId="1" r:id="rId1"/></sheets></workbook>`

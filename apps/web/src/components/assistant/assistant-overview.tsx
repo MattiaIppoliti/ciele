@@ -45,6 +45,7 @@ import { formatEur } from "@/lib/insights/dashboard-view";
 import { knowledgeTabForKind } from "@/lib/knowledge-hub";
 import { subjectName } from "@/lib/inbox/conversation-filter";
 import { relativeTimeLabel } from "@/lib/source-documents";
+import { countLabel } from "@/lib/pagination";
 
 function DetailRow({
   label,
@@ -171,6 +172,7 @@ const STATUS_LABEL: Record<Source["status"], string> = {
  */
 function QualityRowView({ row }: { row: QualityRow }) {
   const delta = pointsDelta(row.rate, row.previousRate);
+  const rateText = row.rate === null ? row.empty : `${(row.rate * 100).toFixed(1)}%`;
   const content =
     row.rate === null ? (
       <span className="text-muted-foreground">{row.empty} in the last 7 days.</span>
@@ -191,7 +193,7 @@ function QualityRowView({ row }: { row: QualityRow }) {
     <Tooltip content={content} delay={60} wrapperClassName="flex w-full" className="max-w-72 text-xs">
       <div
         tabIndex={0}
-        aria-label={`${row.label}: ${row.rate === null ? row.empty : `${(row.rate * 100).toFixed(1)}%`}`}
+        aria-label={`${row.label}: ${rateText}`}
         className="group hover:bg-muted focus-visible:ring-ring/50 flex w-full cursor-default items-center gap-3 rounded-lg px-3 py-2 outline-none transition-colors focus-visible:ring-2"
       >
         {row.rate === null ? (
@@ -214,7 +216,7 @@ function QualityRowView({ row }: { row: QualityRow }) {
         )}
         <span className="min-w-0 flex-1 truncate text-sm">{row.label}</span>
         <span className="text-muted-foreground group-hover:text-foreground text-sm tabular-nums transition-colors">
-          {row.rate === null ? row.empty : `${(row.rate * 100).toFixed(1)}%`}
+          {rateText}
         </span>
       </div>
     </Tooltip>
@@ -285,6 +287,7 @@ export function AssistantOverview({
   // same place the Activity and Quality headers lead to their detail. With
   // every step done there is nowhere left to send anyone, so no link.
   const nextStep = checklist.find((step) => !step.done);
+  const setupDone = doneCount === checklist.length;
   const orderedFlows = flowsInRoutingOrder(flows);
   const shownFlows = orderedFlows.slice(0, 6);
   const enabledFlows = flows.filter((flow) => flow.enabled).length;
@@ -384,26 +387,30 @@ export function AssistantOverview({
             To update the live widget, publish again from the Publish section.
           </span>
           <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`${base}/publish`} />}>
-            {publications.length} {publications.length === 1 ? "publication" : "publications"}
+            {countLabel(publications.length, "publication")}
           </Button>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Panel
-          title="Setup checklist"
-          meta={
-            <span className="tabular-nums">
-              <RollingNumber value={doneCount} />/{checklist.length}
-            </span>
-          }
-          href={nextStep?.href}
-          hrefLabel={nextStep?.section}
-        >
-          {checklist.map((step) => (
-            <ChecklistRow key={step.label} label={step.label} href={step.href} done={step.done} />
-          ))}
-        </Panel>
+      {/* A finished checklist has nothing left to say: it goes, and Activity
+          and Quality share the row. */}
+      <div className={`mt-6 grid gap-6 ${setupDone ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+        {setupDone ? null : (
+          <Panel
+            title="Setup checklist"
+            meta={
+              <span className="tabular-nums">
+                <RollingNumber value={doneCount} />/{checklist.length}
+              </span>
+            }
+            href={nextStep?.href}
+            hrefLabel={nextStep?.section}
+          >
+            {checklist.map((step) => (
+              <ChecklistRow key={step.label} label={step.label} href={step.href} done={step.done} />
+            ))}
+          </Panel>
+        )}
 
         <Panel
           title="Activity"
@@ -585,7 +592,7 @@ export function AssistantOverview({
                   {conversation.feedback === 1 && <ThumbsUp className="size-3.5 text-emerald-600" aria-label="Rated up" />}
                   {conversation.feedback === -1 && <ThumbsDown className="size-3.5 text-red-500" aria-label="Rated down" />}
                   <span className="text-muted-foreground w-20 text-xs tabular-nums">
-                    {conversation.messageCount} {conversation.messageCount === 1 ? "message" : "messages"}
+                    {countLabel(conversation.messageCount, "message")}
                   </span>
                   <span className="text-muted-foreground w-24 text-right text-xs" title={formatDay(conversation.updatedAt)}>
                     {relativeTimeLabel(conversation.updatedAt, nowDate)}

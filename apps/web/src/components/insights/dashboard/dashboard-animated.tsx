@@ -21,9 +21,9 @@ import {
   formatDuration,
   formatEur,
   heatCalendarFromDaily,
-  shortDay,
   surfaceCompositionFromDaily,
 } from "@/lib/insights/dashboard-view";
+import { formatShortDay } from "@/lib/format";
 import { RANK_COLORS, SINGLE_SERIES, SURFACE_COLORS, SURFACE_LABELS } from "./palette";
 
 /**
@@ -112,7 +112,7 @@ export function FlowBumpChart({ flows }: { flows: UsageDashboard["flows"] }) {
     ranks: flow.ranks,
     color: RANK_COLORS[i],
   }));
-  const periods = flows.periods.map((p) => (flows.granularity === "week" ? `w/c ${shortDay(p)}` : shortDay(p)));
+  const periods = flows.periods.map((p) => (flows.granularity === "week" ? `w/c ${formatShortDay(p)}` : formatShortDay(p)));
   // The plot is an SVG that scales with its box, text included: capped, its
   // labels stay the size of the rest of the page on a wide card.
   return <BumpChart series={series} periods={periods} label="Most used Flows" className="mx-auto max-w-3xl" />;
@@ -126,7 +126,7 @@ const LATENCY_CONFIG = {
 /** Median and 95th-percentile turn latency per day, on one axis. */
 export function LatencyTrend({ daily }: { daily: DashboardDay[] }) {
   const data = daily.map((d) => ({
-    day: shortDay(d.day),
+    day: formatShortDay(d.day),
     p50: d.latencyP50Ms,
     p95: d.latencyP95Ms,
   }));

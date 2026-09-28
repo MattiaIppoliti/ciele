@@ -29,6 +29,7 @@ import {
 } from "@/components/settings/settings-dirty";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { discardChangesRequest } from "@/components/ui/use-unsaved-changes";
+import { isPlainClick } from "@/lib/plain-click";
 
 /**
  * The Settings modal: a tab rail on the left, the active settings route on the
@@ -117,16 +118,7 @@ export function SettingsDialog({
   const onRailClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
       // A modified click opens a new tab and leaves this one's edits alone.
-      if (
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey ||
-        event.button !== 0 ||
-        dirtyKeys.current.size === 0
-      ) {
-        return;
-      }
+      if (!isPlainClick(event) || dirtyKeys.current.size === 0) return;
       event.preventDefault();
       guard(() => router.replace(href));
     },

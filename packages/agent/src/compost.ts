@@ -179,7 +179,9 @@ async function compostOne(
     const assistant = await db.getAssistant(entry.assistantId);
     const connections = await db.listProviderConnections(entry.organizationId);
     const resolved = assistant
-      ? resolveChatModel(assistant.modelProvider, assistant.modelId, connections)
+      ? resolveChatModel(assistant.modelProvider, assistant.modelId, connections, {
+          source: assistant.modelSource ?? undefined,
+        })
       : null;
     if (resolved) {
       model = resolved.model;

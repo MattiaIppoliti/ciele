@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ModelRef, Provider } from "@agent-hub/core";
+import { MODEL_SOURCES, type ModelRef, type Provider } from "@agent-hub/core";
 
 /**
  * The list of models an Assistant or a Teammate offers its chat window.
@@ -22,6 +22,11 @@ export const allowedModelsSchema = z
     z.object({
       provider: z.custom<Provider>((v) => typeof v === "string"),
       modelId: z.string().min(1).max(200),
+      // Pins the entry to one credential; absent is automatic.
+      source: z.enum(MODEL_SOURCES).optional(),
     })
   )
   .max(24) satisfies z.ZodType<ModelRef[], ModelRef[]>;
+
+/** The configured model's source: null is automatic. */
+export const modelSourceSchema = z.enum(MODEL_SOURCES).nullable();

@@ -5,13 +5,13 @@ description: Carica un file o aggiungi del testo e scegli quali Assistenti rispo
 
 ## Carica un file
 
-1. Apri l'Assistant.
+1. Apri l'Assistente.
 2. Seleziona **Knowledge**.
 3. Aggiungi una Source di tipo file.
 4. Seleziona il file.
 5. Avvia l'ingestione.
 6. Attendi fino a quando lo stato di Source è **Ready**.
-7. Verifica una risposta e la sua citazione.
+7. Prova una risposta e la sua citazione.
 
 Ciele memorizza il file originale ed estrae il testo supportato per
 l'ingestione. Lo stato Source indica se l'estrazione e l'indicizzazione sono
@@ -19,8 +19,8 @@ state completate.
 
 ## File che Ciele rifiuta
 
-Ciele verifica il contenuto del file, non solo il nome del file, prima di
-leggere un documento. Rifiuta:
+Prima di leggere un documento, Ciele verifica il contenuto del file, non solo il
+nome del file. Rifiuta:
 
 - un file il cui contenuto non corrisponde alla sua estensione, ad esempio una
   pagina HTML denominata `.pdf`
@@ -41,7 +41,8 @@ separato.
 3. Incolla il testo.
 4. Avvia l'ingestione.
 
-Usa un nome Source stabile. Il nome può comparire nelle citazioni dei Visitor.
+Usa un nome di Source stabile. Il nome può comparire nelle citazioni dei
+Visitor.
 
 ## Sostituisci i contenuti obsoleti
 
@@ -51,7 +52,7 @@ che la nuova Source sia **Ready** e produca citazioni corrette.
 L'eliminazione di una Source rimuove i relativi Documents dall'indice di ricerca
 attivo.
 
-## Rimuovi rispetto a Elimina
+## Rimuovi rispetto a elimina
 
 Una Source di tipo file può rispondere per più di un Assistant. L'editor
 dell'Assistente offre quindi due operazioni.
@@ -63,6 +64,10 @@ dell'Assistente offre quindi due operazioni.
 
 Quando solo questo Assistente risponde dal file, l'editor lo elimina
 direttamente.
+
+Quando elimini una Source, Ciele elimina anche il file originale dallo storage.
+Se questo passaggio non riesce, il processo notturno di pulizia della retention
+eliminerà il file in un secondo momento.
 
 ## Fornisci al Visitor il file originale
 

@@ -273,7 +273,7 @@ export const syncApplicationImportNowOp = defineOperation({
 });
 
 /** Rows per page of an Import's Documents table. */
-export const APPLICATION_IMPORT_DOCUMENTS_PAGE_SIZE = 25;
+const APPLICATION_IMPORT_DOCUMENTS_PAGE_SIZE = 25;
 
 /**
  * One remote item an Import brought in, as its Documents table shows it.

@@ -42,6 +42,7 @@ import {
 } from "@/lib/knowledge-hub";
 import { ingestionStarted } from "@/lib/ingestion-bus";
 import { toast } from "@/lib/toast";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   addWebsiteSourceAction,
   createFaqAction,
@@ -130,9 +131,7 @@ import { downloadFile } from "@/lib/download";
 import { applyMarkdownCommand, type MarkdownCommand } from "@/lib/markdown-toolbar";
 import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
-type Mode = KnowledgeMode;
-
-const MODES: Array<{ id: Mode; label: string }> = [
+const MODES: Array<{ id: KnowledgeMode; label: string }> = [
   { id: "websites", label: "Websites" },
   { id: "documents", label: "Documents" },
   { id: "applications", label: "Applications" },
@@ -178,19 +177,6 @@ function CharCount({ count, max }: { count: number; max: number }) {
       <RollingNumber value={count} />/{formatCount(max)}
     </span>
   );
-}
-
-/**
- * The clipboard can refuse (no permission, an insecure origin), so the toast
- * waits for the write instead of announcing a copy that never happened.
- */
-async function copyToClipboard(text: string, done: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(done);
-  } catch {
-    toast.error("Could not copy to the clipboard");
-  }
 }
 
 /** `n Documents`, pluralised, the count rolling. */
@@ -1211,24 +1197,11 @@ function WebsitesTab({
                       >
                         <Pencil className="size-3.5" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        data-destructive=""
-                        // A shared Source is unlinked, not deleted, so the
-                        // button says which of the two it will offer.
-                        aria-label={
-                          (sharedWith[source.id] ?? []).length > 0
-                            ? "Remove website from this assistant"
-                            : "Delete website"
-                        }
+                      <DeleteSourceButton
+                        noun="website"
+                        unlinks={(sharedWith[source.id] ?? []).length > 0}
                         onClick={remove}
-                      >
-                        <AnimatedIcon
-                          icon={(sharedWith[source.id] ?? []).length > 0 ? Unlink : Trash2}
-                          size={14}
-                        />
-                      </Button>
+                      />
                     </TableActions>
                   </TableCell>
                 </TableRow>
@@ -1526,6 +1499,7 @@ function DocumentsTab({
                       />
                     )}
                     <DeleteSourceButton
+                      noun="document"
                       unlinks={(sharedWith[source.id] ?? []).length > 0}
                       onClick={remove}
                     />
@@ -1615,11 +1589,16 @@ function ReprocessSourceButton({
 }
 
 function DeleteSourceButton({
+  noun,
   onClick,
   unlinks,
 }: {
+  noun: "website" | "document";
   onClick: () => void;
-  /** A shared Source is unlinked from this assistant, not deleted. */
+  /**
+   * A shared Source is unlinked from this assistant, not deleted, so the
+   * button says which of the two it will offer.
+   */
   unlinks: boolean;
 }) {
   return (
@@ -1627,7 +1606,7 @@ function DeleteSourceButton({
       variant="ghost"
       size="icon-sm"
       data-destructive=""
-      aria-label={unlinks ? "Remove document from this assistant" : "Delete document"}
+      aria-label={unlinks ? `Remove ${noun} from this assistant` : `Delete ${noun}`}
       onClick={onClick}
     >
       <AnimatedIcon icon={unlinks ? Unlink : Trash2} size={14} />
@@ -2602,13 +2581,13 @@ export function KnowledgeClient({
   canManageApplicationConnections: boolean;
   applicationOAuthAvailability: ApplicationOAuthAvailability;
   /** `?mode=` on the route, so a drill-down's breadcrumb returns to its tab. */
-  initialMode?: Mode;
+  initialMode?: KnowledgeMode;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const [mode, setMode] = useState<KnowledgeMode>(initialMode);
   const [isPending, startTransition] = useTransition();
   const tabsId = useId();
-  const tabRefs = useRef<Partial<Record<Mode, HTMLButtonElement | null>>>({});
+  const tabRefs = useRef<Partial<Record<KnowledgeMode, HTMLButtonElement | null>>>({});
 
   // Arrow keys walk the tabs (WAI-ARIA tabs pattern, automatic activation),
   // so only the selected tab sits in the Tab order.

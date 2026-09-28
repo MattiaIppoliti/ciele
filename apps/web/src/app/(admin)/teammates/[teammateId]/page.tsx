@@ -9,6 +9,7 @@ import { TeammateWorkspace } from "@/components/teammates/teammate-workspace";
 import { requirePageMember } from "@/lib/authz";
 import { starterSkills } from "@/lib/composer/skills";
 import { findVisibleTeammate } from "@/lib/teammates/access";
+import { listPlatformEvalModels } from "@/lib/platform";
 
 export const dynamic = "force-dynamic";
 
@@ -85,9 +86,10 @@ export default async function TeammatePage({
   // Capability, resolved server-side: this page is already dynamic and
   // authenticated, so unlike the widget there is nothing to fetch later.
   const models = chatModelOptions(
-    { provider: teammate.modelProvider, modelId: teammate.modelId },
+    { provider: teammate.modelProvider, modelId: teammate.modelId, source: teammate.modelSource ?? undefined },
     teammate.allowedModels,
-    connections
+    connections,
+    await listPlatformEvalModels(),
   );
 
   return (

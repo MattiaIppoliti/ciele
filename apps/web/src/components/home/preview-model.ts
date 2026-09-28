@@ -21,6 +21,7 @@ export type GlobalView =
   | "Teammates"
   | "Improvements"
   | "Insights"
+  | "Eval"
   | "Library";
 
 export type View =
@@ -34,6 +35,7 @@ export const GLOBAL_VIEWS: GlobalView[] = [
   "Teammates",
   "Improvements",
   "Insights",
+  "Eval",
   "Library",
 ];
 

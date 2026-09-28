@@ -51,6 +51,7 @@ const CREDENTIAL_LABELS: Record<UsageDailyRow["credentialKind"], string> = {
   api_key: "Your API key",
   google_vertex_federated: "Federated (Vertex)",
   local_subscription: "Local subscription",
+  ai_gateway: "Your AI Gateway key",
   unknown: "Unrecorded",
 };
 

@@ -1,8 +1,8 @@
-import { formatCount, formatPercent, formatStat } from "@/lib/format";
+import { formatCount, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RollInText } from "./roll-in-text";
 
-const FORMATS = { count: formatCount, stat: formatStat, percent: formatPercent } as const;
+const FORMATS = { count: formatCount, percent: formatPercent } as const;
 
 /**
  * Quicker than a title's roll: a character counter changes on every keystroke,

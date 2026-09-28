@@ -1192,7 +1192,7 @@ async function requireKnowledgeMemory(
 }
 
 /** The longest question `knowledge.search` embeds. */
-export const KNOWLEDGE_SEARCH_QUERY_MAX = 2000;
+const KNOWLEDGE_SEARCH_QUERY_MAX = 2000;
 
 /**
  * Search the Organization's knowledge and return the passages, not an answer

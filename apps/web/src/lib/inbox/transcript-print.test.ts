@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { InboxConversation, StoredMessage } from "@agent-hub/core";
-import { escapeHtml, transcriptDocument } from "./transcript-print";
+import { transcriptDocument } from "./transcript-print";
 
 /**
  * The printable transcript document (#561). The requirement worth a test is that
@@ -118,10 +118,3 @@ describe("transcriptDocument", () => {
   });
 });
 
-describe("escapeHtml", () => {
-  it("escapes every character that could break out of text or an attribute", () => {
-    expect(escapeHtml(`<a href="x" title='y'>&</a>`)).toBe(
-      "&lt;a href=&quot;x&quot; title=&#39;y&#39;&gt;&amp;&lt;/a&gt;"
-    );
-  });
-});

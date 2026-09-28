@@ -10,9 +10,10 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CornerDownLeft, MessagesSquare, Search } from "lucide-react";
+import { CornerDownLeft, MessagesSquare, Search, Telescope } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
+import { TelescopeIcon } from "@/components/ui/icons/telescope";
 import { fuzzyMatch } from "@/lib/fuzzy";
 import {
   GLOBAL_NAV,
@@ -259,7 +260,11 @@ export function CommandMenu({
                       isActive ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
-                    <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
+                    {Icon === Telescope ? (
+                      <AnimatedGlyph icon={TelescopeIcon} size={16} className="shrink-0" />
+                    ) : (
+                      <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
+                    )}
                     <span className="min-w-0 flex-1 truncate font-medium">
                       {item.label}
                     </span>

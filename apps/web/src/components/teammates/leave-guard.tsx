@@ -10,6 +10,7 @@ import {
   type RefObject,
 } from "react";
 import { useRouter } from "next/navigation";
+import { isPlainClick } from "@/lib/plain-click";
 
 /** Leave now, or after the page's own "Discard your changes?" confirm. */
 type Leave = (go: () => void) => void;
@@ -56,16 +57,7 @@ export function useGuardedLinkClick() {
   const router = useRouter();
   return (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     const leave = guardRef?.current;
-    if (
-      !leave ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey ||
-      event.button !== 0
-    ) {
-      return;
-    }
+    if (!leave || !isPlainClick(event)) return;
     event.preventDefault();
     leave(() => router.push(href));
   };

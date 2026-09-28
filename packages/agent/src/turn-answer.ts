@@ -3,10 +3,10 @@ import { streamConversationTurn, type ConversationTurnInput } from "./turn";
 import type { ChatReplyPart } from "./types";
 
 type SourcesPart = Extract<ChatReplyPart, { type: "sources" }>;
-export type TurnAnswerSource = SourcesPart["sources"][number];
+type TurnAnswerSource = SourcesPart["sources"][number];
 
 /** One whole Conversation Turn, read back as a single answer. */
-export interface TurnAnswer {
+interface TurnAnswer {
   conversationId: string | null;
   /** The persisted bot message, null when the turn failed before one. */
   messageId: string | null;
@@ -16,8 +16,6 @@ export interface TurnAnswer {
   answer: string;
   /** The Concept → Source citations, each once, in the order first cited. */
   sources: TurnAnswerSource[];
-  /** The full reply, for a caller that renders buttons, links or components. */
-  parts: ChatReplyPart[];
   /** The runtime's error message when the turn failed; the answer is then its fallback. */
   error: string | null;
 }
@@ -76,7 +74,6 @@ export async function answerConversationTurn(input: ConversationTurnInput): Prom
     flowName: view.flowName,
     answer,
     sources,
-    parts,
     error,
   };
 }

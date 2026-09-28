@@ -14,25 +14,39 @@ modelo.
 | Platform plan | Utiliza modelos proporcionados por el plan gestionado de Ciele. |
 | Subscription | Utiliza una suscripción de miembro para los chats propios de ese miembro. |
 | API key | Utiliza una clave de proveedor gestionada por la organización. |
+| AI Gateway | Utiliza modelos de Anthropic, OpenAI y Google a través de AI Gateway. |
 
 Una suscripción de miembro solo ejecuta los chats propios de ese miembro: la
-Assistant Preview y sus chats con un AI Teammate. No atiende a un widget
-publicado y no ejecuta el chat de otro miembro. Selecciona un plan de Platform o
-una conexión mediante clave API para el tráfico publicado.
+Assistant Preview y sus chats con un AI Teammate. No da servicio a un widget
+publicado y no ejecuta el chat de otro miembro. Selecciona un plan de la
+plataforma o una conexión mediante clave API para el tráfico publicado.
 
 ## Añade una conexión con clave API
 
 1. Abre **Settings**.
 2. Selecciona **AI Provider**.
 3. Añade una conexión de proveedor.
-4. Selecciona Anthropic, OpenAI, Google o ElevenLabs.
+4. Selecciona Anthropic, OpenAI, Google, AI Gateway o ElevenLabs.
 5. Introduce la credencial del proveedor requerida.
 6. Guarda la conexión.
+
+## AI Gateway
+
+Una clave de AI Gateway es una única clave para los modelos de Anthropic, OpenAI
+y Google. Ciele envía estas llamadas a través de tu propia cuenta de Vercel AI
+Gateway, y esa cuenta es la que las paga.
+
+Si la organización no tiene una clave de AI Gateway, Ciele puede usar la clave
+de AI Gateway de la plataforma cuando la implementación disponga de una. El plan
+de la plataforma paga estas llamadas.
+
+AI Gateway no da servicio a todos los modelos. Un modelo al que AI Gateway no da
+servicio no muestra AI Gateway como fuente.
 
 ## Otros tipos de conexión
 
 - **OpenAI-compatible endpoints** conecta un servidor como Ollama, vLLM o LM
-  Studio. Introduce su URL base y sus modelos. La clave API es opcional.
+  Studio. Introduce su URL base y sus modelos. La clave de API es opcional.
 - **Keyless enterprise auth** conecta Google Vertex, Anthropic o Azure OpenAI
   mediante la federación de identidades de cargas de trabajo. Ciele no almacena
   ninguna clave estática para estas conexiones.
@@ -49,15 +63,45 @@ de conocimiento.
 
 ## Selecciona un modelo de asistente
 
-1. Abre el Asistente.
+1. Abre el asistente.
 2. Selecciona **General**.
 3. Selecciona la conexión del proveedor.
 4. Selecciona un modelo disponible.
-5. Prueba el asistente en Preview.
-6. Publica el asistente.
+5. Opcionalmente, selecciona el origen del modelo.
+6. Prueba el asistente en Preview.
+7. Publica el asistente.
 
-El widget publicado utiliza el proveedor y el modelo presentes en su instantánea
-de publicación. Los cambios generales posteriores requieren otra publicación.
+## Orígenes de los modelos
+
+Un modelo puede estar disponible desde más de una fuente. Por ejemplo, Claude
+Sonnet 5 puede usar tu clave de API de Anthropic y también AI Gateway. El
+selector de fuentes se muestra cuando un modelo tiene dos o más fuentes.
+
+- **Automatic** utiliza la primera fuente disponible. El orden es: tu clave API,
+  la autenticación empresarial sin clave, el plan de la plataforma, tu clave de
+  AI Gateway y la clave de AI Gateway de la plataforma.
+- **Platform plan**, **API key**, **Keyless**, **AI Gateway · your key** y **AI
+  Gateway · platform** usan únicamente esa fuente.
+
+**AI Gateway · your key** utiliza la conexión AI Gateway de la organización, y
+tu cuenta de Gateway se hace cargo del pago. **AI Gateway · platform** utiliza
+la clave AI Gateway de la plataforma, y el plan de la plataforma se hace cargo
+del pago.
+
+Si la fuente seleccionada no puede atender al modelo, Ciele responde con otro
+modelo disponible, como hace cuando un proveedor no tiene credenciales.
+
+Los modelos que los visitantes o compañeros pueden elegir también pueden usar
+una fuente cada uno. La lista muestra un modelo una vez por cada fuente, con el
+nombre de la fuente después del nombre del modelo.
+
+La suscripción propia de un miembro no es un origen que tú selecciones. Ejecuta
+los chats propios de ese miembro, independientemente del modelo o de la fuente
+que utilice el asistente.
+
+El widget publicado utiliza el proveedor y el modelo que figuran en su
+instantánea de publicación. Los cambios generales posteriores requieren otra
+publicación.
 
 <Callout title="Provider accounts are separate">
 Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.

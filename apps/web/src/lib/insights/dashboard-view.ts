@@ -1,4 +1,5 @@
 import type { DashboardDay, DashboardLatencyBucket, DashboardSurfaceRow } from "@agent-hub/core";
+import { formatShortDay } from "@/lib/format";
 
 /**
  * Shapes the Dashboard's computed read into what each chart takes. Pure, so the
@@ -6,13 +7,6 @@ import type { DashboardDay, DashboardLatencyBucket, DashboardSurfaceRow } from "
  */
 
 const DAY_MS = 86_400_000;
-
-const SHORT_DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-
-/** "3 Sep" for a UTC YYYY-MM-DD day. */
-export function shortDay(day: string): string {
-  return SHORT_DAY.format(new Date(`${day}T00:00:00Z`));
-}
 
 const EUR_SMALL = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -79,7 +73,7 @@ function mondayOf(day: string): number {
   return at - ((new Date(at).getUTCDay() + 6) % 7) * DAY_MS;
 }
 
-export interface HeatCalendarData {
+interface HeatCalendarData {
   weeks: number;
   /** `values[week][weekday]`, Monday first, intensities 0..1. */
   values: number[][];
@@ -167,7 +161,7 @@ export function surfaceCompositionFromDaily(daily: readonly DashboardDay[]): Sur
   }
   const label = (start: number) => {
     const day = new Date(start).toISOString().slice(0, 10);
-    return granularity === "week" ? `w/c ${shortDay(day)}` : shortDay(day);
+    return granularity === "week" ? `w/c ${formatShortDay(day)}` : formatShortDay(day);
   };
   return { periods: starts.map(label), granularity, series };
 }

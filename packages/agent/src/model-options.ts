@@ -3,9 +3,17 @@ import {
   modelSelector,
   type ModelRef,
   type ProviderConnection,
+  type PlatformEvalModel,
 } from "@agent-hub/core";
-import { MODEL_CATALOG, PROVIDER_NAMES, type ChatModelOption } from "./catalog";
-import { providerAvailability } from "./models";
+import {
+  MODEL_CATALOG,
+  MODEL_SOURCE_NAMES,
+  PROVIDER_NAMES,
+  currentModelId,
+  gatewayModelId,
+  type ChatModelOption,
+} from "./catalog";
+import { availableModelSources, providerAvailability } from "./models";
 
 /**
  * The models a chat window may actually offer, from what an admin allowed.
@@ -25,7 +33,8 @@ import { providerAvailability } from "./models";
 export function chatModelOptions(
   configured: ModelRef,
   allowed: readonly ModelRef[] | undefined,
-  connections: ProviderConnection[]
+  connections: ProviderConnection[],
+  platformModels: readonly PlatformEvalModel[] = [],
 ): ChatModelOption[] {
   const choices = modelChoices(configured, allowed ?? []);
   if (choices.length < 2) return [];
@@ -33,12 +42,23 @@ export function chatModelOptions(
   const availability = providerAvailability(connections);
   const options: ChatModelOption[] = [];
   for (const ref of choices) {
-    const available = availability[ref.provider];
-    if (!available) continue;
-    if (!available.platform && !available.byok && !available.federated) continue;
+    if (ref.source) {
+      // A pinned choice is offered only while its own source can serve it:
+      // anything else would answer on a route the asker did not pick.
+      if (!availableModelSources(ref.provider, ref.modelId, connections).includes(ref.source))
+        continue;
+    } else {
+      const available = availability[ref.provider];
+      if (!available) continue;
+      const gateway =
+        available.gateway &&
+        gatewayModelId(ref.provider, currentModelId(ref.provider, ref.modelId)) !== null;
+      if (!available.platform && !available.byok && !available.federated && !gateway) continue;
+    }
     // A provider with no static catalogue serves whatever its connection names
     // (#436), so there is no label to show and nothing to choose between.
-    const entry = MODEL_CATALOG[ref.provider]?.find((m) => m.id === ref.modelId);
+    const entry = MODEL_CATALOG[ref.provider]?.find((m) => m.id === ref.modelId) ??
+      platformModels.find((model) => model.provider === ref.provider && model.modelId === ref.modelId);
     if (!entry) continue;
     options.push({
       selector: modelSelector(ref),
@@ -46,6 +66,9 @@ export function chatModelOptions(
       modelId: ref.modelId,
       label: entry.label,
       providerName: PROVIDER_NAMES[ref.provider],
+      ...(ref.source
+        ? { source: ref.source, sourceName: MODEL_SOURCE_NAMES[ref.source] }
+        : {}),
     });
   }
   // Losing every alternative to a removed connection leaves the configured

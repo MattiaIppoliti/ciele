@@ -405,19 +405,10 @@ export { computeInsightsOverview, colorizeOverview, isoDay } from "./insights";
 
 // The Insights Dashboard: spend, reliability, latency, verifier and autonomy
 // over one window, derived from the fine-grained `DashboardFacts`.
-export {
-  DASHBOARD_LATENCY_BOUNDS_MS,
-  computeUsageDashboard,
-  dashboardSurfaceOf,
-  dashboardSurfaceOfTurn,
-  daysBetween,
-  latencyBucketOf,
-} from "./usage-dashboard";
+export { computeUsageDashboard, latencyBucketOf } from "./usage-dashboard";
 export type {
   DashboardDay,
-  DashboardFlowSeries,
   DashboardLatencyBucket,
-  DashboardModelRow,
   DashboardStageRow,
   DashboardSurfaceRow,
   UsageDashboard,
@@ -460,6 +451,21 @@ export { parseAgenticTrace, serializeAgenticTrace } from "./agentic-trace";
 
 // Per-model token prices and the cost estimate derived from them.
 export { estimateCostEur } from "./pricing";
+export {
+  EVALUATION_RUN_STALE_MS,
+  EVALUATION_STAGES,
+  gradeEvaluation,
+  settleStaleEvaluationRun,
+} from "./evaluation";
+export type {
+  EvaluationExample,
+  EvaluationStage,
+  EvaluationCandidate,
+  PlatformEvalModel,
+  EvaluationDataset,
+  EvaluationResult,
+  EvaluationRun,
+} from "./evaluation";
 
 // Credits: the cost unit plan allowances are denominated in. Only the
 // conversion is public; the rate tables behind it stay package-private so
@@ -530,13 +536,15 @@ export { isOpenImprovement } from "./improvements";
 // Per-message model choice: the allow-list an Assistant or Teammate offers,
 // and the one rule that turns a client's string into the model a turn runs.
 export {
+  MODEL_SOURCES,
+  isModelSource,
   modelChoices,
   modelSelector,
   parseModelSelector,
   resolveRequestedModel,
   sameModel,
 } from "./model-choice";
-export type { ModelRef } from "./model-choice";
+export type { ModelRef, ModelSource } from "./model-choice";
 
 // Files attached to a chat message (read into text at intake; the bytes are
 // never stored). The prompt fence lives with the type, because "this is their

@@ -112,6 +112,7 @@ export async function POST(
   const configured = {
     provider: config.assistant.modelProvider,
     modelId: config.assistant.modelId,
+    source: config.assistant.modelSource ?? undefined,
   };
   const chosen = resolveRequestedModel(
     parseModelSelector(body.model),
@@ -124,6 +125,7 @@ export async function POST(
     ...config.assistant,
     modelProvider: chosen.provider,
     modelId: chosen.modelId,
+    modelSource: chosen.source ?? null,
     createdAt: publication.createdAt,
     updatedAt: publication.createdAt,
   };

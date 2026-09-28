@@ -12,11 +12,11 @@ nichts gelöscht, bis ein Administrator ein Fenster auswählt.
 | Einstellung | Was der nächtliche Bereinigungslauf nach Ablauf des Zeitfensters unternimmt |
 | --- | --- |
 | **Reasoning trace retention** | Entfernt das Thinking-Panel aus alten Nachrichten. Die Nachrichten bleiben erhalten. |
-| **Conversation retention** | Löscht die gesamte Konversation, einschließlich des Transkripts. |
+| **Conversation retention** | Löscht die gesamte Konversation, einschließlich des Transkripts. Es werden auch die Langzeiterinnerungen an einen Visitor gelöscht, die während des Zeitfensters nicht aktualisiert wurden. |
 
-Die beiden Fenster sind unabhängig voneinander. Eine Organisation kann eine,
-beide oder keine der Optionen festlegen. Behalten Sie beispielsweise Transkripte
-ein Jahr lang, entfernen Sie aber Reasoning-Spuren nach 30 Tagen.
+Die beiden Fenster sind voneinander unabhängig. Eine Organisation kann eines,
+beide oder keines davon festlegen. Behalten Sie beispielsweise Transkripte ein
+Jahr lang, entfernen Sie aber Reasoning-Spuren nach 30 Tagen.
 
 Ein Sweep wird einmal pro Nacht ausgeführt. Es misst das Zeitfenster ab der
 letzten Nachricht der Konversation, nicht ab der ersten. Eine Konversation, die
@@ -37,17 +37,17 @@ After the window, the conversation is gone from the Inbox, from exports, and fro
 4. Wählen Sie **Save changes** aus.
 
 Wenn das neue Fenster kürzer ist als das aktuelle Fenster, bittet Ciele Sie um
-eine Bestätigung. Beim nächsten nächtlichen Bereinigungsdurchlauf werden die
-älteren Daten gelöscht.
+eine Bestätigung. Beim nächsten nächtlichen Sweep werden die älteren Daten
+gelöscht.
 
-Nur ein Mitglied, das Mitglieder verwalten darf, kann diese Einstellungen
+Nur ein Mitglied, das Mitglieder verwalten kann, darf diese Einstellungen
 ändern.
 
 ## Legal Hold
 
 Eine gesetzliche Aufbewahrungspflicht (Legal Hold) schließt eine einzelne
 Konversation von der Bereinigung zur Aufbewahrung von Konversationen aus.
-Verwenden Sie diese Option, wenn für eine einzelne Konversation eine
+Verwenden Sie diese Option, wenn für eine bestimmte Konversation eine
 Aufbewahrungspflicht gilt, ohne die Aufbewahrung für alle anderen Konversationen
 zu deaktivieren.
 
@@ -59,8 +59,13 @@ Die Sperre bleibt bestehen, bis ein Mitglied **Release legal hold** auswählt.
 Jedes Mitglied sieht den Status der Aufbewahrungspflicht. Nur ein Mitglied, das
 Mitglieder verwalten kann, darf eine Sperre setzen oder aufheben.
 
-## Self-Hosted-Installationen
+Eine gesperrte Konversation kann nicht gelöscht werden. Dies gilt für die Inbox,
+die API, den Retention Sweep und die Löschung des Assistants, dem die
+Konversation gehört. Um eine gesperrte Konversation oder ihren zugehörigen
+Assistenten zu löschen, heben Sie zunächst die Sperre auf.
 
-Der nächtliche Sweep wird vom mitgelieferten Scheduler ausgeführt. Es ist keine
-zusätzliche Konfiguration erforderlich. Der Sweep ruft
+## Selbst gehostete Installationen
+
+Der nächtliche Sweep wird über den mitgelieferten Scheduler ausgeführt. Es ist
+keine zusätzliche Konfiguration erforderlich. Der Sweep ruft
 `/api/cron/sweep-retention` mit der Anmeldeinformation `CRON_SECRET` auf.

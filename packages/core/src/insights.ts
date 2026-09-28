@@ -87,7 +87,7 @@ export function engagedConversations(
  * SQL reads the same fact from `window_message_facts`, which is unwindowed for
  * the same reason: a conversation's length is not cut by the date range.
  */
-export function lastMessageTimes(messages: InsightsMessage[]): Map<string, number> {
+function lastMessageTimes(messages: InsightsMessage[]): Map<string, number> {
   const last = new Map<string, number>();
   for (const m of messages) {
     const at = Date.parse(m.createdAt);

@@ -1,4 +1,5 @@
 import type { Provider } from "@agent-hub/core";
+import { MODEL_SOURCE_NAMES } from "@agent-hub/agent/client";
 import {
   parseLocalModelSelector,
   type ConnectorProvider,
@@ -76,6 +77,6 @@ export function buildModelOptionGroups(input: {
     return true;
   });
   return options.length > 0
-    ? [{ source: "local", label: "Local subscriptions", options }]
+    ? [{ source: "local", label: MODEL_SOURCE_NAMES.subscription, options }]
     : [];
 }

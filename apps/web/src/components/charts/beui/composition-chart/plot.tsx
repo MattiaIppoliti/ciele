@@ -1,4 +1,5 @@
 "use client";
+// Vendored from beui, trimmed to what Ciele's callers use.
 
 import { useId, useRef, useState, type PointerEvent } from "react";
 import { Tooltip } from "@/components/charts/beui/motion/tooltip";
@@ -7,10 +8,9 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { SPRING_LAYOUT } from "@/lib/ease";
 import { useCompositionChart } from "./context";
-import { compositionArea } from "./model";
 
 export function CompositionChartPlot({ className }: { className?: string }) {
-  const { columns, rows, column, index, select, view, highlight, reduce, canHover } =
+  const { columns, rows, column, index, select, highlight, reduce, canHover } =
     useCompositionChart();
   const anchorRef = useRef<HTMLDivElement>(null);
   const tooltipId = useId();
@@ -89,39 +89,28 @@ export function CompositionChartPlot({ className }: { className?: string }) {
               className="text-border"
             />
           ))}
-          {view === "area"
-            ? rows.map((row, r) => (
-                <motion.path
-                  key={row.id}
-                  d={compositionArea(columns, r)}
-                  fill={row.color}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: highlight && highlight !== row.id ? 0.18 : 0.9 }}
-                  transition={{ duration: 0.18 }}
+          {columns.map(
+            (col, i) =>
+              col.valid &&
+              col.segments.map((segment) => (
+                <motion.rect
+                  key={`${col.id}/${segment.id}`}
+                  x={(i / columns.length) * 100 + 10 / columns.length}
+                  y="0"
+                  width={80 / columns.length}
+                  height="1"
+                  fill={segment.color}
+                  initial={false}
+                  animate={{
+                    y: 100 - segment.offset - segment.share,
+                    scaleY: segment.share,
+                    opacity: highlight && highlight !== segment.id ? 0.18 : 0.9,
+                  }}
+                  style={{ originY: "0px", originX: "0px" }}
+                  transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
                 />
-              ))
-            : columns.map(
-                (col, i) =>
-                  col.valid &&
-                  col.segments.map((segment) => (
-                    <motion.rect
-                      key={`${col.id}/${segment.id}`}
-                      x={(i / columns.length) * 100 + 10 / columns.length}
-                      y="0"
-                      width={80 / columns.length}
-                      height="1"
-                      fill={segment.color}
-                      initial={false}
-                      animate={{
-                        y: 100 - segment.offset - segment.share,
-                        scaleY: segment.share,
-                        opacity: highlight && highlight !== segment.id ? 0.18 : 0.9,
-                      }}
-                      style={{ originY: "0px", originX: "0px" }}
-                      transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
-                    />
-                  )),
-              )}
+              )),
+          )}
           <motion.line
             initial={false}
             animate={{ x: ((index + 0.5) / columns.length) * 100 }}

@@ -1,0 +1,86 @@
+---
+title: Eval
+description: Vergleichen Sie zwei oder drei Modelle in einer Stufe eines Assistants anhand derselben Fragen.
+---
+
+**Eval** führt die gleichen Fragen durch zwei oder drei Modelle und vergleicht
+die Ergebnisse. Ein Eval-Lauf testet eine einzelne Stufe eines Assistants. Es
+wird keine Conversation erstellt, daher wird sie weder in der Inbox noch in den
+Insights angezeigt.
+
+Jedes Mitglied kann **Eval** öffnen und Runs lesen. Editors, Admins und Owners
+können Datensätze hochladen und Runs starten.
+
+## Phasen
+
+- **Answer** vergleicht die Antwort, die zitierten Sources und die
+  Antwortqualität jedes Modells.
+- **Classifier** vergleicht, welchen Flow jedes Modell auswählt.
+- **Orchestration** führt den gesamten Turn mit jedem Modell als Classifier aus.
+- **Fallback** macht den eigenen Provider des Assistants nicht verfügbar und
+  vergleicht die Reservemodelle.
+- **Pre-flight** vergleicht die Pre-Flight-Entscheidung und deren Konfidenzwert.
+- **Reranker** vergleicht die Sources, die jeder Reranker in die
+  Top-6-Ergebnisse aufnimmt.
+
+Jede Stufe zeigt nur die Modelle an, die mit den Provider-Verbindungen der
+Organisation ausgeführt werden können.
+
+## Einen Datensatz hochladen
+
+1. Öffnen Sie **Eval** und wählen Sie die Registerkarte **Datasets** aus.
+2. Wählen Sie **Download example format** aus, um das JSON-Format zu erhalten.
+3. Geben Sie für jede Frage ein Beispiel an. Jedes Beispiel hat ein `id` und ein
+   `inputs.question`.
+4. Optional können Sie `reference_outputs` hinzufügen. Ciele verwendet diese, um
+   die Genauigkeit zu messen.
+5. Geben Sie einen Namen ein, wählen Sie die Datei aus und wählen Sie
+   **Upload**.
+
+Ein Dataset kann bis zu 50 Beispiele enthalten. Jede Example ID muss eindeutig
+sein.
+
+Die Referenzfelder sind `answer_contains`, `flow_id`, `flow_name` und
+`source_url_contains`. Ciele überprüft sie als wörtlichen Text. Accuracy ist
+keine Beurteilung von Bedeutung oder von Fakten.
+
+## Einen Run starten
+
+1. Wählen Sie die Registerkarte **Runs** aus.
+2. Wählen Sie einen Assistant, einen Dataset und eine Stage aus.
+3. Wählen Sie zwei oder drei Modelle aus.
+4. Wählen Sie **Start run** aus.
+
+Ein Run kann bis zu 24 Ausführungen umfassen. Eine Ausführung ist ein Beispiel
+mit einem Modell. Beispielsweise ergeben 12 Beispiele mit zwei Modellen 24
+Ausführungen.
+
+Der Run endet, bevor die Seite ihre Ergebnisse anzeigt. Ein Run, der vor dem
+Abschluss abgebrochen wird, wird als failed angezeigt. Ciele behält die
+Ergebnisse, die es vor dem Stopp gespeichert hat.
+
+## Die Ergebnisse lesen
+
+Das Reliability Dashboard zeigt für jedes Modell sechs Diagramme an:
+
+- **Accuracy**, nur für Beispiele mit Referenzausgaben.
+- **Cost**, eine Schätzung pro Beispiel, die keine Retrieval-Kosten enthält.
+- **Tokens**, der Model-Input und der Model-Output pro Beispiel.
+- **Latency**, die durchschnittliche Zeit pro Beispiel.
+- **Autonomy**, die Turns, die ohne Fallback oder Ablehnung abgeschlossen
+  wurden.
+- **Error rate**, die Ausführungen, bei denen ein technischer Fehler aufgetreten
+  ist.
+
+Wählen Sie eine Zeile in **Results by question** aus, um die Antworten, die
+Sources und die Errors jedes Modells zu vergleichen.
+
+## Einschränkungen
+
+- Ein Run durchsucht das Live-Knowledge. Eine Änderung an Knowledge während
+  eines Runs kann dessen Ergebnisse verändern.
+- Ein Run führt keine Aktionen mit externen Auswirkungen aus, wie z. B. **Send
+  email** oder **API request**. Ein Flow, der einen enthält, protokolliert einen
+  Fehler.
+- Aufrufe des Eval-Modells nutzen die Provider-Verbindungen der Organisation und
+  werden auf deren Budget angerechnet.

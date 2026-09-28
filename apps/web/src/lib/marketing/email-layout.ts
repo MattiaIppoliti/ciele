@@ -1,3 +1,5 @@
+import { escapeMarkup } from "@/lib/escape";
+
 /**
  * The branded HTML shell for emails a person reads on the public site.
  *
@@ -33,14 +35,6 @@ const SANS =
   "'Host Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const MONO = "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 export interface BrandedEmail {
   /** The line the inbox shows after the subject. Hidden inside the message. */
   preheader: string;
@@ -61,14 +55,14 @@ export function renderBrandedEmail(input: BrandedEmail): string {
   const paragraphs = input.paragraphs
     .map(
       (text) =>
-        `<p style="margin:0 0 16px;font-family:${SANS};font-size:15px;line-height:24px;color:${INK};">${escapeHtml(text)}</p>`
+        `<p style="margin:0 0 16px;font-family:${SANS};font-size:15px;line-height:24px;color:${INK};">${escapeMarkup(text)}</p>`
     )
     .join("");
 
   const cta = input.cta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 0;">
         <tr><td class="cta" style="border-radius:999px;background:${BUTTON};">
-          <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:13px 26px;font-family:${SANS};font-size:15px;font-weight:500;line-height:20px;color:${BUTTON_INK};text-decoration:none;border-radius:999px;">${escapeHtml(input.cta.label)}</a>
+          <a href="${escapeMarkup(input.cta.url)}" style="display:inline-block;padding:13px 26px;font-family:${SANS};font-size:15px;font-weight:500;line-height:20px;color:${BUTTON_INK};text-decoration:none;border-radius:999px;">${escapeMarkup(input.cta.label)}</a>
         </td></tr>
       </table>`
     : "";
@@ -76,7 +70,7 @@ export function renderBrandedEmail(input: BrandedEmail): string {
   const fallback =
     input.cta && input.showUrlFallback
       ? `<p style="margin:24px 0 0;font-family:${SANS};font-size:13px;line-height:20px;color:${MUTED};">Or paste this into your browser:</p>
-         <p style="margin:6px 0 0;font-family:${MONO};font-size:12px;line-height:20px;word-break:break-all;"><a href="${escapeHtml(input.cta.url)}" style="color:${MUTED};">${escapeHtml(input.cta.url)}</a></p>`
+         <p style="margin:6px 0 0;font-family:${MONO};font-size:12px;line-height:20px;word-break:break-all;"><a href="${escapeMarkup(input.cta.url)}" style="color:${MUTED};">${escapeMarkup(input.cta.url)}</a></p>`
       : "";
 
   const footnotes = input.footnotes?.length
@@ -84,7 +78,7 @@ export function renderBrandedEmail(input: BrandedEmail): string {
        ${input.footnotes
          .map(
            (note) =>
-             `<p style="margin:0 0 8px;font-family:${SANS};font-size:12px;line-height:19px;color:${MUTED};">${escapeHtml(note)}</p>`
+             `<p style="margin:0 0 8px;font-family:${SANS};font-size:12px;line-height:19px;color:${MUTED};">${escapeMarkup(note)}</p>`
          )
          .join("")}`
     : "";
@@ -111,7 +105,7 @@ export function renderBrandedEmail(input: BrandedEmail): string {
 </style>
 </head>
 <body class="page" style="margin:0;padding:0;background:${PAGE};">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(input.preheader)}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeMarkup(input.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="page" style="background:${PAGE};">
   <tr>
     <td align="center" style="padding:40px 16px;">
@@ -119,7 +113,7 @@ export function renderBrandedEmail(input: BrandedEmail): string {
         <tr>
           <td class="card ink" style="background:${CARD};border:1px solid ${BORDER};border-radius:20px;padding:36px 34px;">
             <a href="https://ciele.app" class="wordmark" style="font-family:${SERIF};font-size:20px;line-height:24px;color:${INK};text-decoration:none;letter-spacing:0.01em;">Ciele</a>
-            <h1 class="display" style="margin:26px 0 14px;font-family:${SERIF};font-size:28px;line-height:35px;font-weight:400;color:${INK};">${escapeHtml(input.heading)}</h1>
+            <h1 class="display" style="margin:26px 0 14px;font-family:${SERIF};font-size:28px;line-height:35px;font-weight:400;color:${INK};">${escapeMarkup(input.heading)}</h1>
             ${paragraphs}
             ${cta}
             ${fallback}

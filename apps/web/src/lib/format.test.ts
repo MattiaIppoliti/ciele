@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  capitalize,
   formatCount,
   formatDateTime,
   formatDay,
@@ -57,5 +58,12 @@ describe("euro formatting", () => {
     expect(formatEur(15)).toBe("€15.00");
     expect(formatEur(0.025, 3)).toBe("€0.025");
     expect(formatEur(0.03, 3)).toBe("€0.030");
+  });
+});
+
+describe("capitalize", () => {
+  it("uppercases the first letter only", () => {
+    expect(capitalize("viewer")).toBe("Viewer");
+    expect(capitalize("")).toBe("");
   });
 });

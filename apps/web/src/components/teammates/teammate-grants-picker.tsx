@@ -6,7 +6,7 @@ import type {
 } from "@agent-hub/core";
 import { useId } from "react";
 import { Label } from "@agent-hub/ui";
-import { onRadioKeyDown } from "@/components/teammates/radio-keys";
+import { onRadioKeyDown } from "@/lib/radio-keys";
 import { ShieldAlert } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {

@@ -34,7 +34,7 @@ export function DashboardStatCards({
    * Two by default, the block's own default: beside the app sidebar and the
    * Insights rail a four-across card is ~215px wide and truncates its label.
    */
-  columns?: 1 | 2 | 3 | 4;
+  columns?: 1 | 2;
   bare?: boolean;
   deltaLabel?: string;
 }) {
@@ -49,5 +49,5 @@ export function DashboardStatCards({
     deltaLabel,
     caption: spec.caption,
   }));
-  return <StatCards cards={cards} columns={columns} bare={bare} status={loading ? "loading" : "ready"} />;
+  return <StatCards cards={cards} columns={columns} bare={bare} loading={loading} />;
 }

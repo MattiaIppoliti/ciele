@@ -10,7 +10,7 @@ import { MorphingModal } from "@/components/motion/morphing-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { Table, type TableColumn } from "@/components/motion/table";
 import { TablePagination } from "@/components/ui/table-pagination";
-import { formatDay } from "@/lib/format";
+import { capitalize, formatDay } from "@/lib/format";
 import { canAssignApiKeyRole } from "@/lib/rbac";
 import {
   Badge,
@@ -28,12 +28,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const ALL_ROLES: Role[] = ["owner", "admin", "editor", "viewer"];
-
-/** "viewer" to "Viewer": rolled text is drawn glyph by glyph, so it cannot
- * lean on `capitalize`. */
-function roleLabel(role: Role): string {
-  return role.charAt(0).toUpperCase() + role.slice(1);
-}
 
 export function ApiKeysClient({
   keys,
@@ -243,7 +237,7 @@ export function ApiKeysClient({
                 />
               }
             >
-              <RollInText text={roleLabel(role)} />
+              <RollInText text={capitalize(role)} />
               <ChevronDown className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent>

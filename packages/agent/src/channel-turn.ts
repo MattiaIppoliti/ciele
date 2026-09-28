@@ -363,7 +363,9 @@ function channelConnectionKinds(
         .flatMap((teammate) =>
           spendConnectionKinds(
             teammate
-              ? resolveChatModel(teammate.modelProvider, teammate.modelId, input.connections)
+              ? resolveChatModel(teammate.modelProvider, teammate.modelId, input.connections, {
+                  source: teammate.modelSource ?? undefined,
+                })
                   ?.credentialKind
               : undefined,
           ),

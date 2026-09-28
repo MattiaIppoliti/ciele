@@ -4,7 +4,7 @@ import type { TeammateVisibility } from "@agent-hub/core";
 import { Lock, Users } from "lucide-react";
 import { useId } from "react";
 import { Label } from "@agent-hub/ui";
-import { onRadioKeyDown } from "@/components/teammates/radio-keys";
+import { onRadioKeyDown } from "@/lib/radio-keys";
 
 const OPTIONS = [
   { value: "org", label: "The whole organization", icon: Users },

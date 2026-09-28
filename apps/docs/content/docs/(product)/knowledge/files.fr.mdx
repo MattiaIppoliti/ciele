@@ -1,6 +1,6 @@
 ---
 title: Fichiers et texte
-description: Importez un fichier ou ajoutez du texte, puis choisissez les Assistants qui y répondront.
+description: Importez un fichier ou ajoutez du texte, puis choisissez quels Assistants y répondront.
 ---
 
 ## Importer un fichier
@@ -31,7 +31,7 @@ document. Il refuse :
 Enregistrez le document sans macros ni objets incorporés, ou fractionnez un long
 PDF, puis téléchargez-le à nouveau.
 
-## Ajouter du texte collé
+## Ajouter le texte collé
 
 Utilisez une Source de type texte pour les contenus courts qui ne nécessitent
 pas de fichier distinct.
@@ -39,16 +39,16 @@ pas de fichier distinct.
 1. Ajoutez une Source de type texte.
 2. Saisissez un nom de Source facultatif.
 3. Collez le texte.
-4. Démarrer l'ingestion.
+4. Démarrez l'ingestion.
 
-Utilisez un nom de Source stable. Le nom peut apparaître dans les citations des
+Utilisez un nom de source stable. Le nom peut apparaître dans les citations des
 visiteurs.
 
 ## Remplacer le contenu obsolète
 
 Supprimez l'ancienne Source avant de vous fier à une source de remplacement.
-Confirmez ensuite que la nouvelle Source est **Ready** et produit des citations
-correctes.
+Ensuite, confirmez que la nouvelle Source est **Ready** et qu'elle génère des
+citations correctes.
 
 La suppression d'une source retire ses Documents de l'index de recherche actif.
 
@@ -65,7 +65,11 @@ d'Assistant propose donc deux opérations.
 Lorsque seul cet Assistant répond à partir du fichier, l'éditeur le supprime
 directement.
 
-## Donner au Visiteur le fichier original
+Lorsque vous supprimez une Source, Ciele supprime également le fichier original
+du stockage. Si cette étape échoue, le nettoyage nocturne de rétention supprime
+le fichier ultérieurement.
+
+## Donner le fichier original au Visiteur
 
 Activez **Direct access** dans la [Library](/knowledge/library) pour permettre à
 l'Assistant de joindre le fichier original à sa citation. Ce paramètre

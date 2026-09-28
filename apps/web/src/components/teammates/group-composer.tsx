@@ -5,7 +5,11 @@ import type { KeyboardEvent, SyntheticEvent } from "react";
 import { PromptInput } from "@/components/agents/prompt-input";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
-import { triggerInputProps, triggerOptionId } from "@/components/chat/trigger-list";
+import {
+  TriggerList,
+  TriggerRow,
+  triggerInputProps,
+} from "@/components/chat/trigger-list";
 import {
   activeMention,
   insertMention,
@@ -129,57 +133,27 @@ export function GroupComposer({
   return (
     <div ref={containerRef} className="relative">
       {open && (
-        <div className="bg-popover text-popover-foreground absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border shadow-lg">
-          <ul
-            id={listId}
-            role="listbox"
-            aria-label="Mention someone"
-            className="max-h-64 overflow-y-auto p-1.5"
-          >
-            {matches.map((target, index) => (
-              <li key={target.id} role="none">
-                <button
-                  type="button"
-                  id={triggerOptionId(listId, index)}
-                  tabIndex={-1}
-                  role="option"
-                  aria-selected={index === highlighted}
-                  // Mousedown would steal the textarea's focus (and with it the
-                  // caret the insertion needs), so the press is swallowed and
-                  // the click does the picking.
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => pick(target)}
-                  onMouseEnter={() => setHighlighted(index)}
-                  // `cursor-pointer` explicitly: Tailwind v4's preflight gives
-                  // every `button` `cursor: default`, so a picker row that
-                  // steers with the arrow keys looked unclickable to a pointer.
-                  //
-                  // `bg-foreground/10` rather than `bg-muted`: this list sits on
-                  // `bg-popover`, and in dark mode the two are close enough that
-                  // the highlight was invisible, which left no way to see where
-                  // the keyboard was in the list.
-                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors ${
-                    index === highlighted
-                      ? "bg-foreground/10"
-                      : "hover:bg-foreground/5"
-                  }`}
-                >
-                  <GeneratedAvatar seed={target.avatarSeed} size="size-7" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {target.name}
-                    </span>
-                    <span className="text-muted-foreground block truncate text-xs">
-                      {target.kind === "teammate"
-                        ? target.title || "Teammate"
-                        : "Person"}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <TriggerList
+          id={listId}
+          label="Mention someone"
+          items={matches}
+          highlighted={highlighted}
+          onHighlight={setHighlighted}
+          onPick={pick}
+          renderItem={(target) => (
+            <>
+              <GeneratedAvatar seed={target.avatarSeed} size="size-7" />
+              <TriggerRow
+                name={target.name}
+                hint={
+                  target.kind === "teammate"
+                    ? target.title || "Teammate"
+                    : "Person"
+                }
+              />
+            </>
+          )}
+        />
       )}
       <ComposerPulse loading={pending}>
         <PromptInput

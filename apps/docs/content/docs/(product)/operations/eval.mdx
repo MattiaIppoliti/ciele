@@ -1,0 +1,61 @@
+---
+title: Eval
+description: Compare two or three models on one stage of an Assistant, over the same questions.
+---
+
+**Eval** runs the same questions through two or three models and compares the results. An Eval run tests one stage of an Assistant. It creates no Conversation, so the Inbox and Insights do not show it.
+
+Any member can open **Eval** and read runs. Editors, Admins, and Owners can upload datasets and start runs.
+
+## Stages
+
+- **Answer** compares the answer, the cited Sources, and the answer quality of each model.
+- **Classifier** compares which Flow each model selects.
+- **Orchestration** runs the complete turn with each model as the classifier.
+- **Fallback** makes the Assistant's own provider unavailable and compares the reserve models.
+- **Pre-flight** compares the pre-flight decision and its confidence.
+- **Reranker** compares the Sources that each reranker puts in the top six results.
+
+Each stage shows only the models that can run it with the Organization's provider connections.
+
+## Upload a dataset
+
+1. Open **Eval** and select the **Datasets** tab.
+2. Select **Download example format** to get the JSON format.
+3. Write one example for each question. Each example has an `id` and `inputs.question`.
+4. Optionally, add `reference_outputs`. Ciele uses them to measure accuracy.
+5. Enter a name, select the file, and select **Upload**.
+
+A dataset can contain up to 50 examples. Each example ID must be unique.
+
+The reference fields are `answer_contains`, `flow_id`, `flow_name`, and `source_url_contains`. Ciele checks them as literal text. Accuracy is not a judgment of meaning or of facts.
+
+## Start a run
+
+1. Select the **Runs** tab.
+2. Select an Assistant, a dataset, and a stage.
+3. Select two or three models.
+4. Select **Start run**.
+
+One run can do up to 24 executions. An execution is one example with one model. For example, 12 examples with two models is 24 executions.
+
+The run finishes before the page shows its results. A run that stops before it finishes shows as failed. Ciele keeps the results it saved before it stopped.
+
+## Read the results
+
+The reliability dashboard shows six charts for each model:
+
+- **Accuracy**, only for examples with reference outputs.
+- **Cost**, an estimate per example that does not include retrieval costs.
+- **Tokens**, the model input and output per example.
+- **Latency**, the average time per example.
+- **Autonomy**, the turns that completed without a fallback or a refusal.
+- **Error rate**, the executions that had a technical error.
+
+Select a row in **Results by question** to compare the answers, the Sources, and the errors of each model.
+
+## Limits
+
+- A run searches the live Knowledge. A change to Knowledge during a run can change its results.
+- A run does not do actions with external effects, such as **Send email** or **API request**. A Flow that contains one records an error.
+- Eval model calls use the Organization's provider connections and count toward its budget.

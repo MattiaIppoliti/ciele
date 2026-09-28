@@ -28,6 +28,7 @@ const FUNDING_BY_CREDENTIAL_KIND = {
   api_key: "customer",
   google_vertex_federated: "customer",
   local_subscription: "customer",
+  ai_gateway: "customer",
 } satisfies Record<AiCredentialKind, Exclude<FundingBucket, "unknown">>;
 
 /**

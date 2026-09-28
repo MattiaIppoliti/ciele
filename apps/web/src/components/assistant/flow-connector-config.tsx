@@ -100,13 +100,7 @@ export function ConnectorConfig({
   const missingScopes =
     action && connection ? connectorMissingScopes(action, connection.scopes) : [];
   const uid = useId();
-  const ids = {
-    provider: `${uid}-provider`,
-    connection: `${uid}-connection`,
-    action: `${uid}-action`,
-    success: `${uid}-success`,
-    failure: `${uid}-failure`,
-  };
+  const id = (field: string) => `${uid}-${field}`;
 
   function chooseProvider(next: ConnectorProvider) {
     if (next === provider) return;
@@ -164,8 +158,8 @@ export function ConnectorConfig({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label id={ids.provider}>Provider</Label>
-        <div role="group" aria-labelledby={ids.provider} className="grid grid-cols-3 gap-1.5">
+        <Label id={id("provider")}>Provider</Label>
+        <div role="group" aria-labelledby={id("provider")} className="grid grid-cols-3 gap-1.5">
           {CONNECTOR_PROVIDERS.map((candidate) => (
             <button
               key={candidate}
@@ -197,7 +191,7 @@ export function ConnectorConfig({
 
       {provider && (
         <div className="space-y-1.5">
-          <Label htmlFor={candidates.length > 0 ? ids.connection : undefined}>Connection</Label>
+          <Label htmlFor={candidates.length > 0 ? id("connection") : undefined}>Connection</Label>
           {candidates.length === 0 ? (
             <div className="text-muted-foreground flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm">
               <span className="min-w-0 flex-1">
@@ -225,7 +219,7 @@ export function ConnectorConfig({
                 onValueChange={(value) => onChange({ connectionId: (value as string) || undefined })}
               >
                 <SelectTrigger
-                  id={ids.connection}
+                  id={id("connection")}
                   className="bg-background min-w-0 flex-1"
                   aria-label="Connection"
                 >
@@ -259,9 +253,9 @@ export function ConnectorConfig({
 
       {provider && (
         <div className="space-y-1.5">
-          <Label htmlFor={ids.action}>Action</Label>
+          <Label htmlFor={id("action")}>Action</Label>
           <Select value={settings?.action ?? ""} onValueChange={(value) => value && chooseAction(value as string)}>
-            <SelectTrigger id={ids.action} className="bg-background" aria-label="Connector action">
+            <SelectTrigger id={id("action")} className="bg-background" aria-label="Connector action">
               <SelectValue>
                 {(value: string) => connectorAction(value)?.title || "Choose an action…"}
               </SelectValue>
@@ -319,9 +313,9 @@ export function ConnectorConfig({
         <>
           {action.effect === "write" && (
             <div className="space-y-1.5">
-              <Label htmlFor={ids.success}>Success message</Label>
+              <Label htmlFor={id("success")}>Success message</Label>
               <Textarea
-                id={ids.success}
+                id={id("success")}
                 name="successMessage"
                 value={settings?.successMessage ?? ""}
                 onChange={(e) => onChange({ successMessage: e.target.value })}
@@ -332,9 +326,9 @@ export function ConnectorConfig({
             </div>
           )}
           <div className="space-y-1.5">
-            <Label htmlFor={ids.failure}>Failure message</Label>
+            <Label htmlFor={id("failure")}>Failure message</Label>
             <Textarea
-              id={ids.failure}
+              id={id("failure")}
               name="failureMessage"
               value={settings?.failureMessage ?? ""}
               onChange={(e) => onChange({ failureMessage: e.target.value })}

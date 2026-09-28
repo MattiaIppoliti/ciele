@@ -2,7 +2,13 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Provider, Teammate, TeammateRoutine } from "@agent-hub/core";
+import type {
+  ModelSource,
+  PlatformEvalModel,
+  Provider,
+  Teammate,
+  TeammateRoutine,
+} from "@agent-hub/core";
 import { Minimize2 } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
 import { Maximize2Icon } from "@/components/ui/icons/maximize-2";
@@ -41,6 +47,8 @@ export function TeammateSettingsPage({
   learnings,
   routines,
   unavailableProviders,
+  platformModels,
+  modelSources,
 }: {
   teammate: Teammate;
   collections: CollectionOption[];
@@ -51,6 +59,8 @@ export function TeammateSettingsPage({
   learnings: string;
   routines: TeammateRoutine[];
   unavailableProviders: Provider[];
+  platformModels: PlatformEvalModel[];
+  modelSources: Record<string, ModelSource[]>;
   governance: TeammateGovernanceState;
   canGrant: boolean;
 }) {
@@ -101,6 +111,8 @@ export function TeammateSettingsPage({
             learnings={learnings}
             routines={routines}
             unavailableProviders={unavailableProviders}
+            platformModels={platformModels}
+            modelSources={modelSources}
             headerActions={
               <Hint
                 label={fullscreen ? "Exit full screen" : "Open full screen"}

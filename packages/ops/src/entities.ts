@@ -53,6 +53,8 @@ export type MutatedEntity =
   | { kind: "projectList" }
   /** One Project's page: its description and its decisions document. */
   | { kind: "project"; id: string }
+  /** Eval: the dataset library, the run history and every run's dashboard. */
+  | { kind: "evaluations" }
   /**
    * The signed-in Member's own memory document, in their settings. Not keyed
    * by member id: the page only ever renders the caller's own (#767, story 19),

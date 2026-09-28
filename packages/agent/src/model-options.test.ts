@@ -31,6 +31,7 @@ const PLATFORM_KEYS = [
   "OPENAI_API_KEY",
   "GOOGLE_API_KEY",
   "GEMINI_API_KEY",
+  "AI_GATEWAY_API_KEY",
 ] as const;
 
 let saved: Record<string, string | undefined>;
@@ -105,5 +106,70 @@ describe("chatModelOptions", () => {
     process.env.ANTHROPIC_API_KEY = "sk-test";
     const options = chatModelOptions(GEMINI, [SONNET], [byok("google")]);
     expect(options.map((o) => o.provider)).toEqual(["google", "anthropic"]);
+  });
+
+  it("offers a verified platform model in a configured chat picker", () => {
+    const added = {
+      provider: "anthropic" as const,
+      modelId: "claude-new",
+      label: "Claude New",
+      inputEurPerMillion: 1,
+      outputEurPerMillion: 3,
+      addedBy: "admin@example.com",
+      createdAt: "2026-09-28T00:00:00.000Z",
+    };
+    const options = chatModelOptions(
+      GEMINI,
+      [{ provider: added.provider, modelId: added.modelId }],
+      [byok("google"), byok("anthropic")],
+      [added],
+    );
+    expect(options.map((option) => option.label)).toEqual(["Gemini 3.5 Flash", "Claude New"]);
+  });
+});
+
+describe("a choice pinned to a source", () => {
+  const gateway: ProviderConnection = {
+    ...byok("ai_gateway"),
+    id: "pc-gateway",
+    encryptedKey: "plain:gw-org",
+    config: {},
+  } as ProviderConnection;
+  const anthropicKey: ProviderConnection = {
+    ...byok("anthropic"),
+    encryptedKey: "plain:sk-byok",
+  };
+
+  it("offers the same model once per source, each tagged", () => {
+    const options = chatModelOptions(GEMINI, [
+      { ...SONNET, source: "api_key" },
+      { ...SONNET, source: "ai_gateway" },
+    ], [byok("google"), anthropicKey, gateway]);
+    expect(
+      options.map(({ selector, sourceName }) => [selector, sourceName]),
+    ).toEqual([
+      ["google:gemini-3.5-flash", undefined],
+      ["anthropic:claude-sonnet-5#api_key", "API key"],
+      ["anthropic:claude-sonnet-5#ai_gateway", "AI Gateway · your key"],
+    ]);
+  });
+
+  it("drops a pinned source that cannot serve the model", () => {
+    const options = chatModelOptions(GEMINI, [
+      { ...GPT, source: "ai_gateway" },
+      { ...SONNET, source: "ai_gateway" },
+    ], [byok("google"), gateway]);
+    expect(options.map((option) => option.selector)).toEqual([
+      "google:gemini-3.5-flash",
+      "anthropic:claude-sonnet-5#ai_gateway",
+    ]);
+  });
+
+  it("counts the Gateway as availability for an automatic choice", () => {
+    const options = chatModelOptions(GEMINI, [SONNET], [byok("google"), gateway]);
+    expect(options.map((option) => option.selector)).toEqual([
+      "google:gemini-3.5-flash",
+      "anthropic:claude-sonnet-5",
+    ]);
   });
 });

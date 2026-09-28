@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { proactiveDwellSeconds, proactiveTriggers } from "@agent-hub/core";
 import { chatModelOptions } from "@agent-hub/agent";
 import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
+import { listPlatformEvalModels } from "@/lib/platform";
 
 export async function GET(
   request: NextRequest,
@@ -17,13 +18,15 @@ export async function GET(
   // and an empty list is the honest answer for every Assistant that never
   // opened the choice. Connections are read live, not off the snapshot, so
   // revoking a credential closes the picker without a republish.
-  const connections = await ctx.db.listProviderConnections(
-    assistant.organizationId
-  );
+  const [connections, platformModels] = await Promise.all([
+    ctx.db.listProviderConnections(assistant.organizationId),
+    listPlatformEvalModels(),
+  ]);
   const models = chatModelOptions(
-    { provider: assistant.modelProvider, modelId: assistant.modelId },
+    { provider: assistant.modelProvider, modelId: assistant.modelId, source: assistant.modelSource ?? undefined },
     assistant.allowedModels,
-    connections
+    connections,
+    platformModels,
   );
 
   return Response.json(

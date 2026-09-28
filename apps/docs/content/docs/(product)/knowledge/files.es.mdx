@@ -5,7 +5,7 @@ description: Sube un archivo o añade texto y elige qué asistentes responden a 
 
 ## Sube un archivo
 
-1. Abre el asistente.
+1. Abre el Assistant.
 2. Selecciona **Knowledge**.
 3. Añade una fuente de tipo archivo.
 4. Selecciona el archivo.
@@ -13,7 +13,7 @@ description: Sube un archivo o añade texto y elige qué asistentes responden a 
 6. Espera hasta que el estado de la fuente sea **Ready**.
 7. Prueba una respuesta y su cita.
 
-Ciele almacena el archivo original y extrae el texto compatible para su ingesta.
+Ciele almacena el archivo original y extrae el texto admitido para su ingesta.
 El estado Source indica si se han completado la extracción y la indexación.
 
 ## Archivos que Ciele rechaza
@@ -28,14 +28,14 @@ documento. Rechaza:
 - un PDF con más de 2000 páginas
 
 Guarda el documento sin macros ni objetos incrustados, o bien divide un PDF
-extenso, y vuelve a cargarlo.
+largo y súbelo de nuevo.
 
 ## Añade el texto pegado
 
 Utiliza un Source de texto para contenidos breves que no requieran un archivo
 aparte.
 
-1. Añade un origen de tipo texto.
+1. Añade una fuente de texto.
 2. Introduce un nombre de Source opcional.
 3. Pega el texto.
 4. Inicia la ingesta.
@@ -43,10 +43,10 @@ aparte.
 Utiliza un nombre de fuente estable. El nombre puede aparecer en las citas de
 Visitor.
 
-## Sustituir contenido obsoleto
+## Sustituye el contenido obsoleto
 
-Elimina la Fuente antigua antes de basarte en una Fuente de reemplazo. A
-continuación, confirma que la nueva Source es **Ready** y genera citas
+Elimina la Fuente antigua antes de empezar a usar una de reemplazo. A
+continuación, confirma que la nueva fuente es **Ready** y que genera citas
 correctas.
 
 Al eliminar una fuente, sus documentos se eliminan del índice de búsqueda
@@ -57,16 +57,20 @@ activo.
 Una Source de tipo archivo puede responder para más de un Assistant. Por lo
 tanto, el editor del asistente ofrece dos operaciones.
 
-- **Remove from this Assistant** elimina un enlace. Los otros asistentes
+- **Remove from this Assistant** elimina un enlace. Los demás asistentes
   conservan el archivo.
-- **Delete** elimina la Fuente de todos los Asistentes vinculados. La
+- **Delete** elimina la fuente de todos los asistentes vinculados. La
   confirmación indica el nombre de cada uno.
 
 Cuando solo este asistente responde a partir del archivo, el editor lo elimina
 directamente.
 
-## Proporciona al Visitor el archivo original
+Cuando eliminas un Source, Ciele también elimina el archivo original del
+almacenamiento. Si ese paso falla, la limpieza nocturna de retención eliminará
+el archivo más tarde.
 
-Activa **Direct access** en la [Library](/knowledge/library) para que el
-asistente pueda adjuntar el archivo original a su cita. El ajuste se aplica a un
-único enlace de asistente y está desactivado de forma predeterminada.
+## Entrega al Visitor el archivo original
+
+Activa **Direct access** en la [Library](/knowledge/library) para permitir que
+el asistente adjunte el archivo original a su cita. El ajuste se aplica a un
+único enlace de Assistant y está desactivado de forma predeterminada.

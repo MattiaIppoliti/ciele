@@ -12,6 +12,7 @@ Ciele uses one provider abstraction for Anthropic, OpenAI, and Google models. An
 | Platform plan | Uses models supplied by the managed Ciele plan. |
 | Subscription | Uses a member subscription for that member's own chats. |
 | API key | Uses an Organization-managed provider key. |
+| AI Gateway | Uses Anthropic, OpenAI, and Google models through AI Gateway. |
 
 A member subscription runs only that member's own chats: the Assistant Preview, and their chats with
 an AI Teammate. It does not serve a published widget, and it does not run another member's chat.
@@ -22,9 +23,17 @@ Select a Platform plan or API-key connection for published traffic.
 1. Open **Settings**.
 2. Select **AI Provider**.
 3. Add a provider connection.
-4. Select Anthropic, OpenAI, Google, or ElevenLabs.
+4. Select Anthropic, OpenAI, Google, AI Gateway, or ElevenLabs.
 5. Enter the required provider credential.
 6. Save the connection.
+
+## AI Gateway
+
+An AI Gateway key is one key for Anthropic, OpenAI, and Google models. Ciele sends these calls through your own Vercel AI Gateway account, and that account pays for them.
+
+If the Organization has no AI Gateway key, Ciele can use the platform AI Gateway key when the deployment has one. The platform plan pays for these calls.
+
+AI Gateway does not serve every model. A model that AI Gateway does not serve does not show AI Gateway as a source.
 
 ## Other connection types
 
@@ -43,8 +52,24 @@ ElevenLabs does not appear in the text model or knowledge embedding selectors.
 2. Select **General**.
 3. Select the provider connection.
 4. Select an available model.
-5. Test the Assistant in Preview.
-6. Publish the Assistant.
+5. Optionally, select the model source.
+6. Test the Assistant in Preview.
+7. Publish the Assistant.
+
+## Model sources
+
+One model can be available from more than one source. For example, Claude Sonnet 5 can use your Anthropic API key and also AI Gateway. The source selector shows when a model has two or more sources.
+
+- **Automatic** uses the first available source. The order is your API key, keyless enterprise auth, the platform plan, your AI Gateway key, and the platform AI Gateway key.
+- **Platform plan**, **API key**, **Keyless**, **AI Gateway · your key**, and **AI Gateway · platform** use only that source.
+
+**AI Gateway · your key** uses the Organization's AI Gateway connection, and your Gateway account pays. **AI Gateway · platform** uses the platform AI Gateway key, and the platform plan pays.
+
+If the selected source cannot serve the model, Ciele answers with another available model, as it does when a provider has no credential.
+
+The models that visitors or colleagues can choose can also use one source each. The list shows a model once for each source, with the source name after the model name.
+
+A member's own subscription is not a source that you select. It runs that member's own chats, whichever model or source the Assistant uses.
 
 The published widget uses the provider and model in its publication snapshot. Later General changes require another publication.
 

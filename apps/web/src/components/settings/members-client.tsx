@@ -13,7 +13,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { RemoveMemberModal } from "@/components/settings/remove-member-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
-import { formatDay } from "@/lib/format";
+import { capitalize, formatDay } from "@/lib/format";
 import {
   assignableRoles,
   buildMemberRows,
@@ -34,12 +34,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-/** "editor" to "Editor": rolled text is drawn glyph by glyph, so it cannot
- * lean on `capitalize`. */
-function roleLabel(role: Role): string {
-  return role.charAt(0).toUpperCase() + role.slice(1);
-}
 
 function inviteUrl(token: string): string {
   return `${window.location.origin}/join/${token}`;
@@ -219,7 +213,7 @@ export function MembersClient({
                 />
               }
             >
-              <RollInText text={roleLabel(row.role)} />
+              <RollInText text={capitalize(row.role)} />
               <ChevronDown className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
@@ -334,7 +328,7 @@ export function MembersClient({
                   />
                 }
               >
-                <RollInText text={roleLabel(inviteRole)} />
+                <RollInText text={capitalize(inviteRole)} />
                 <ChevronDown className="size-3.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent>

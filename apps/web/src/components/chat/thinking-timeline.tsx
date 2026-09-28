@@ -271,13 +271,10 @@ function ThoughtRow({ step }: { step: TurnStep }) {
       ]}
       status={running ? "working" : "complete"}
       duration={elapsedMs !== null ? elapsedMs / 1000 : 0}
-      activeLabel="Thinking…"
       // A segment that finished inside a second has no clock worth printing:
       // "Thought for 0s" reads like a bug, and rounding up to 1s would be a
       // number nobody measured.
       summary={elapsedMs === null || elapsedMs < 1000 ? "Thought" : undefined}
-      maxHeight={140}
-      className="-mt-1"
     />
   );
 }

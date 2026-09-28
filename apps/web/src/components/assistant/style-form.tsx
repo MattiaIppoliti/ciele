@@ -5,6 +5,7 @@ import { MessageCircle, RotateCcw, X } from "lucide-react";
 import { Pencil, UploadCloud } from "lucide-react";
 import type { Assistant, WidgetCorner, WidgetStyle } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
+import { onRadioKeyDown } from "@/lib/radio-keys";
 import { updateAssistantAction } from "@/app/actions";
 import { Button, Card, Input, Label } from "@agent-hub/ui";
 import {
@@ -87,7 +88,6 @@ export function StyleForm({
   const [draft, setDraft] = React.useState<WidgetStyle>(saved);
   const [isPending, startTransition] = React.useTransition();
   const fieldId = React.useId();
-  const cornerRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const resolved = resolveWidgetStyle(draft);
@@ -297,14 +297,11 @@ export function StyleForm({
           aria-label="Launcher corner"
           className="mt-4 grid gap-3 md:grid-cols-2"
         >
-          {CORNERS.map((corner, index) => {
+          {CORNERS.map((corner) => {
             const selected = resolved.corner === corner.value;
             return (
               <button
                 key={corner.value}
-                ref={(el) => {
-                  cornerRefs.current[index] = el;
-                }}
                 type="button"
                 role="radio"
                 aria-checked={selected}
@@ -313,19 +310,7 @@ export function StyleForm({
                 tabIndex={selected ? 0 : -1}
                 disabled={!canEdit}
                 onClick={() => pickCorner(corner.value)}
-                onKeyDown={(event) => {
-                  const step =
-                    event.key === "ArrowRight" || event.key === "ArrowDown"
-                      ? 1
-                      : event.key === "ArrowLeft" || event.key === "ArrowUp"
-                        ? -1
-                        : 0;
-                  if (!step) return;
-                  event.preventDefault();
-                  const next = (index + step + CORNERS.length) % CORNERS.length;
-                  pickCorner(CORNERS[next]!.value);
-                  cornerRefs.current[next]?.focus();
-                }}
+                onKeyDown={onRadioKeyDown}
                 className={cn(
                   "bg-muted/50 flex items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
                   selected

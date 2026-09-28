@@ -1,19 +1,17 @@
 'use client';
+// Spectrum UI stat cards, trimmed to what Ciele's callers use.
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import {
-  type ChartStatus,
   ChartState,
   DOWN,
   EASE,
   Keyframes,
   RollingNumber,
-  TRACK,
   UP,
   formatCount,
   monotonePath,
-  mulberry32,
   seriesVarsClassName,
   useHoverIndexKeys,
   usePrefersReducedMotion,
@@ -30,7 +28,6 @@ export type StatCardData = {
    * instead of measuring a change from zero.
    */
   previous?: number | null;
-  progress?: number;
   format?: (value: number) => string;
   /** Ciele: `neutral` for volumes (calls, tokens) where more is neither good nor bad. */
   goodWhen?: 'up' | 'down' | 'neutral';
@@ -39,64 +36,6 @@ export type StatCardData = {
   deltaLabel?: string;
   caption?: string;
 };
-
-function walk(seed: number, n: number, start: number, drift: number, vol: number): number[] {
-  const rand = mulberry32(seed);
-  const out: number[] = [];
-  let value = start;
-  for (let i = 0; i < n; i += 1) {
-    value = Math.max(0.0001, value * (1 + drift + (rand() - 0.5) * vol));
-    out.push(value);
-  }
-  return out;
-}
-
-export const STAT_CARDS: StatCardData[] = [
-  {
-    label: 'Revenue',
-    series: walk(11, 30, 48_200, 0.008, 0.05),
-    format: (v) => `$${formatCount(v, 1)}`,
-    deltaLabel: 'vs 30 days ago',
-  },
-  {
-    label: 'Active users',
-    series: walk(23, 30, 12_400, 0.005, 0.04),
-    format: (v) => formatCount(v, 1),
-    deltaLabel: 'vs 30 days ago',
-  },
-  {
-    label: 'Conversion',
-    series: walk(37, 30, 3.42, 0.003, 0.03),
-    format: (v) => `${v.toFixed(2)}%`,
-    deltaLabel: 'vs 30 days ago',
-  },
-  {
-    label: 'Churn',
-    series: walk(41, 30, 2.61, -0.007, 0.04),
-    format: (v) => `${v.toFixed(2)}%`,
-    goodWhen: 'down',
-    deltaLabel: 'vs 30 days ago',
-  },
-];
-
-export const BUDGET_CARDS: StatCardData[] = [
-  {
-    label: 'Spent this week',
-    series: [46.4, 71.8, 58.2, 88.6, 63.4, 94.2, 64.6],
-    value: 487.2,
-    previous: 553.64,
-    format: (v) => `$${v.toFixed(2)}`,
-    goodWhen: 'down',
-    deltaLabel: 'from last week',
-  },
-  {
-    label: 'Remaining weekly budget',
-    value: 118.8,
-    progress: 0.22,
-    format: (v) => `$${v.toFixed(2)}`,
-    caption: '22% of weekly budget',
-  },
-];
 
 function StatCard({
   card,
@@ -109,7 +48,7 @@ function StatCard({
   reduce: boolean;
   bare?: boolean;
 }) {
-  const { label, series, goodWhen = 'up', deltaLabel = 'vs start', caption, progress, labels } = card;
+  const { label, series, goodWhen = 'up', deltaLabel = 'vs start', caption, labels } = card;
   const format = card.format ?? ((v: number) => formatCount(v, 1));
   const [hover, setHover] = React.useState<number | null>(null);
   const sparkRef = React.useRef<HTMLDivElement | null>(null);
@@ -237,27 +176,7 @@ function StatCard({
         </p>
       </div>
 
-      {progress != null ? (
-        <div className="flex w-[38%] max-w-44 shrink-0 items-center">
-          <div
-            aria-hidden
-            className="relative h-1.5 w-full overflow-hidden rounded-full"
-            style={{ background: TRACK }}
-          >
-            <span
-              className="absolute inset-y-0 left-0 rounded-full"
-              style={{
-                width: `${Math.max(0, Math.min(1, progress)) * 100}%`,
-                background: 'var(--spectrum-series-2)',
-                transformOrigin: 'left center',
-                animation: reduce
-                  ? undefined
-                  : `spectrum-mc-grow 700ms ${EASE} ${index * 70 + 150}ms both`,
-              }}
-            />
-          </div>
-        </div>
-      ) : series && n >= 2 ? (
+      {series && n >= 2 ? (
         <div
           ref={sparkRef}
           // Ciele: a bare row has no card height to stretch against, so the
@@ -348,19 +267,16 @@ function StatCard({
   );
 }
 
-const COLUMN_CLASS: Record<number, string> = {
+const COLUMN_CLASS = {
   1: 'grid-cols-1',
   2: 'grid-cols-1 sm:grid-cols-2',
-  3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-  4: 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4',
 };
 
 export interface StatCardsProps {
   className?: string;
-  cards?: StatCardData[];
-  columns?: 1 | 2 | 3 | 4;
-  status?: ChartStatus;
-  onRetry?: () => void;
+  cards: StatCardData[];
+  columns?: 1 | 2;
+  loading?: boolean;
   /**
    * Ciele: rows without the card chrome, for a block that sits inside a panel
    * of its own (the Assistant Overview's Activity card). Same scrubbing, delta
@@ -371,10 +287,9 @@ export interface StatCardsProps {
 
 export function StatCards({
   className,
-  cards = STAT_CARDS,
+  cards,
   columns = 2,
-  status = 'ready',
-  onRetry,
+  loading = false,
   bare = false,
 }: StatCardsProps) {
   const reduce = usePrefersReducedMotion();
@@ -382,17 +297,8 @@ export function StatCards({
   return (
     <div className={cn('w-full', seriesVarsClassName, className)}>
       <Keyframes />
-      <ChartState
-        status={status}
-        height={168}
-        variant="cards"
-        empty={{
-          title: 'No metrics yet',
-          description: 'Connect a data source and these tiles will start tracking themselves.',
-        }}
-        onRetry={onRetry}
-      >
-        <div className={cn('grid', bare ? 'gap-0' : 'gap-3', COLUMN_CLASS[columns] ?? COLUMN_CLASS[2])}>
+      <ChartState loading={loading} height={168}>
+        <div className={cn('grid', bare ? 'gap-0' : 'gap-3', COLUMN_CLASS[columns])}>
           {cards.map((card, index) => (
             <StatCard key={card.label} card={card} index={index} reduce={reduce} bare={bare} />
           ))}
@@ -400,12 +306,4 @@ export function StatCards({
       </ChartState>
     </div>
   );
-}
-
-export function DefaultStatCards(props: StatCardsProps) {
-  return <StatCards {...props} />;
-}
-
-export function BudgetStatCards(props: StatCardsProps) {
-  return <StatCards cards={BUDGET_CARDS} columns={2} {...props} />;
 }

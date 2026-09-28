@@ -1,11 +1,12 @@
 {
-  "title": "Utilisation de vos assistants",
+  "title": "Exploitation de vos assistants",
   "pages": [
     "index",
     "inbox",
     "improvements",
     "insights",
     "exports",
+    "eval",
     "alerts"
   ]
 }

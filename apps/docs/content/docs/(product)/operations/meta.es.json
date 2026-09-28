@@ -1,11 +1,12 @@
 {
-  "title": "Cómo gestionar a tus asistentes",
+  "title": "Gestión de tus asistentes",
   "pages": [
     "index",
     "inbox",
     "improvements",
     "insights",
     "exports",
+    "eval",
     "alerts"
   ]
 }

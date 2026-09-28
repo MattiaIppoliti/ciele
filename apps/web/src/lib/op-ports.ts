@@ -1,4 +1,5 @@
 import {
+  modelSelector,
   openSecret,
   type Concept,
   type ConceptFrontmatter,
@@ -23,7 +24,13 @@ import {
   unsubscribePendingWebhooks,
   getEnterpriseCapabilities,
   enqueueApplicationSyncJob,
+  evaluateCase,
 } from "@agent-hub/agent";
+import {
+  availableEvaluationModels,
+  evaluationModelsForStage,
+} from "@/lib/evaluation-models";
+import { listPlatformEvalModels } from "@/lib/platform";
 import { improvementAssignedEmail, improvementClosedEmail } from "@/lib/notify";
 import { getWidgetDb, invalidatePublication } from "@/lib/widget-db";
 import { getSsoProvider } from "@/lib/sso";
@@ -397,6 +404,40 @@ export function webOperationPorts(
             })
           );
       }
+    },
+    evaluation: {
+      async prepare({ assistant, stage }) {
+        const [flows, connections, platformModels] = await Promise.all([
+          db.listFlows(assistant.id),
+          db.listProviderConnections(opts.organizationId),
+          listPlatformEvalModels(),
+        ]);
+        const allowedCandidates = evaluationModelsForStage(
+          availableEvaluationModels(
+            connections,
+            Boolean(process.env.AI_GATEWAY_API_KEY),
+            platformModels
+          ),
+          stage,
+          assistant.modelProvider
+        );
+        return {
+          allowedCandidates,
+          runCase: (example, candidate) =>
+            evaluateCase({
+              db,
+              assistant,
+              flows,
+              connections,
+              example,
+              candidate,
+              stage,
+              modelPrice: platformModels.find(
+                (model) => modelSelector(model) === modelSelector(candidate)
+              ),
+            }),
+        };
+      },
     },
   };
 }

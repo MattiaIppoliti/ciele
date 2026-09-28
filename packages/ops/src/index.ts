@@ -27,7 +27,6 @@ export {
   duplicateAssistantOp,
   askAssistantInput,
   askAssistantOp,
-  ASK_QUESTION_MAX,
   getAssistantOp,
   listAssistantsOp,
   listAssistantsPageOp,
@@ -84,7 +83,6 @@ export {
   forgetKnowledgeMemoryOp,
   restoreKnowledgeMemoryOp,
   searchKnowledgeOp,
-  KNOWLEDGE_SEARCH_QUERY_MAX,
   listSourceDocumentsOp,
   updateOrgFaqOp,
   listOrgFaqsOp,
@@ -130,7 +128,6 @@ export {
   setApplicationImportEnabledOp,
   syncApplicationImportNowOp,
   updateApplicationImportConfigurationOp,
-  APPLICATION_IMPORT_DOCUMENTS_PAGE_SIZE,
   type ApplicationImportDocumentRow,
 } from "./application-imports";
 
@@ -363,3 +360,14 @@ export {
   readUsageMetersOp,
   readUsageSpendersOp,
 } from "./usage";
+
+// Eval (#992): datasets and synthetic model-comparison runs. The runtime half
+// of a run rides the `evaluation` port.
+export {
+  EVALUATION_RUN_CAP,
+  createEvaluationDatasetOp,
+  evaluationDatasetSchema,
+  evaluationExampleSchema,
+  evaluationRunSchema,
+  startEvaluationRunOp,
+} from "./evaluation";

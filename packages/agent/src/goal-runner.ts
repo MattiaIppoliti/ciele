@@ -101,6 +101,7 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalRun> {
     assistant.modelProvider,
     assistant.modelId,
     connections,
+    { source: assistant.modelSource ?? undefined },
   );
   const admission = resolvedModel
     ? await admitAiSpend({

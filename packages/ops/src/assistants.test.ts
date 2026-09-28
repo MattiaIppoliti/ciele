@@ -207,3 +207,23 @@ describe("askAssistantOp", () => {
     expect(askAssistantOp.input.safeParse({ id: "a", question: "  " }).success).toBe(false);
   });
 });
+
+describe("a model pinned to a source", () => {
+  it("keeps the source through the patch schema, on the model and every allowed ref", () => {
+    const parsed = assistantPatchSchema.parse({
+      modelSource: "ai_gateway",
+      allowedModels: [
+        { provider: "anthropic", modelId: "claude-sonnet-5", source: "api_key" },
+        { provider: "anthropic", modelId: "claude-sonnet-5" },
+      ],
+    });
+    expect(parsed.modelSource).toBe("ai_gateway");
+    expect(parsed.allowedModels?.map((ref) => ref.source)).toEqual(["api_key", undefined]);
+    expect(assistantPatchSchema.parse({ modelSource: null }).modelSource).toBeNull();
+  });
+
+  it("refuses a source nobody defined, and a personal subscription", () => {
+    for (const modelSource of ["carrier_pigeon", "subscription"])
+      expect(assistantPatchSchema.safeParse({ modelSource }).success).toBe(false);
+  });
+});

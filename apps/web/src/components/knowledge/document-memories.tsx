@@ -56,6 +56,7 @@ import {
 import { ExtractMemoriesButton } from "@/components/knowledge/extract-memories-button";
 import { relativeTimeLabel } from "@/lib/source-documents";
 import { toast } from "@/lib/toast";
+import { copyToClipboard } from "@/lib/clipboard";
 import { formatDateTime, formatDay } from "@/lib/format";
 import { RollingNumber } from "@/components/motion/rolling-number";
 
@@ -257,17 +258,12 @@ export function DocumentMemories({
                     {
                       label: "Copy text",
                       icon: Copy,
-                      onSelect: async () => {
-                        // Only claim the copy once the clipboard took it.
-                        try {
-                          await navigator.clipboard.writeText(memory.text);
-                          toast.success("Copied.");
-                        } catch {
-                          toast.error(
-                            "Could not copy. Check the browser allows clipboard access."
-                          );
-                        }
-                      },
+                      onSelect: () =>
+                        copyToClipboard(
+                          memory.text,
+                          "Copied.",
+                          "Could not copy. Check the browser allows clipboard access."
+                        ),
                     },
                     canEdit &&
                       (memory.forgottenAt

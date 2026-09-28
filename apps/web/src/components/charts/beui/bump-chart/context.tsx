@@ -1,6 +1,7 @@
 "use client";
+// Vendored from beui, trimmed to what Ciele's callers use.
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
 import { buildBumpChart, type BumpSeries } from "./model";
@@ -9,25 +10,17 @@ export interface BumpChartProps {
   series: readonly BumpSeries[];
   /** Unique period labels, in chronological order. */
   periods: readonly string[];
-  /** Pinned series ID. Null clears the selection. */
-  active?: string | null;
-  defaultActive?: string | null;
-  onActiveChange?: (id: string | null) => void;
   label?: string;
-  children?: ReactNode;
   className?: string;
 }
 
 export function useBumpChartModel({
   series,
   periods,
-  active,
-  defaultActive = null,
-  onActiveChange,
   label = "Rankings over time",
 }: BumpChartProps) {
   const model = buildBumpChart(series, periods.length);
-  const [internal, setInternal] = useState(defaultActive);
+  const [internal, setInternal] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const valid = (id: string | null) => id != null && model.rows.some((row) => row.id === id);
@@ -35,20 +28,15 @@ export function useBumpChartModel({
   if (internal !== null && !valid(internal)) setInternal(null);
   if (hovered !== null && !valid(hovered)) setHovered(null);
   if (focused !== null && !valid(focused)) setFocused(null);
-  const selected = active === undefined ? internal : active;
-  const pinned = valid(selected) ? selected : null;
+  const pinned = valid(internal) ? internal : null;
   const highlighted = valid(hovered) ? hovered : valid(focused) ? focused : pinned;
-  const select = (id: string | null) => {
-    if (active === undefined) setInternal(id);
-    onActiveChange?.(id);
-  };
   return {
     ...model,
     periods,
     label,
     pinned,
     highlighted,
-    select,
+    select: setInternal,
     setHovered,
     setFocused,
     reduce: useReducedMotion(),

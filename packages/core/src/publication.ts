@@ -46,6 +46,9 @@ export function buildPublicationConfig(
       chatLauncherEnabled: assistant.chatLauncherEnabled,
       modelProvider: assistant.modelProvider,
       modelId: assistant.modelId,
+      // Only when pinned, so a snapshot of an automatic Assistant is the same
+      // object it was before sources existed.
+      ...(assistant.modelSource ? { modelSource: assistant.modelSource } : {}),
       allowedModels: assistant.allowedModels ?? [],
       attachmentsEnabled: assistant.attachmentsEnabled ?? false,
       ...(assistant.voice ? { voice: structuredClone(assistant.voice) } : {}),

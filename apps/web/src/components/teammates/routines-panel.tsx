@@ -21,7 +21,7 @@ import {
   updateRoutineAction,
 } from "@/app/(admin)/teammates/actions";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
-import { onRadioKeyDown } from "@/components/teammates/radio-keys";
+import { onRadioKeyDown } from "@/lib/radio-keys";
 
 const NOOP_SUBSCRIBE = () => () => {};
 /** The current minute: stable between renders, so the store never loops. */

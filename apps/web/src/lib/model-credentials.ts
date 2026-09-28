@@ -1,5 +1,11 @@
-import type { Provider, ProviderConnection } from "@agent-hub/core";
-import { providerAvailability } from "@agent-hub/agent";
+import {
+  modelSelector,
+  type ModelSource,
+  type Provider,
+  type ProviderConnection,
+} from "@agent-hub/core";
+import { availableModelSources, providerAvailability } from "@agent-hub/agent";
+import type { ChatCatalog } from "@/lib/platform-model-catalog";
 
 /**
  * The providers this Organization cannot answer on yet: no platform key, no
@@ -18,6 +24,29 @@ export function providersWithoutCredential(
   const availability = providerAvailability(connections);
   return (Object.keys(availability) as Provider[]).filter((provider) => {
     const available = availability[provider];
-    return !available.platform && !available.byok && !available.federated;
+    return (
+      !available.platform && !available.byok && !available.federated && !available.gateway
+    );
   });
+}
+
+/**
+ * The sources that can serve each catalogue model now, keyed by its automatic
+ * selector: what the Source select and the allow-list's tagged rows offer.
+ */
+export function modelSourcesByModel(
+  connections: ProviderConnection[],
+  catalog: ChatCatalog
+): Record<string, ModelSource[]> {
+  const sources: Record<string, ModelSource[]> = {};
+  for (const provider of Object.keys(catalog) as Provider[]) {
+    for (const model of catalog[provider]) {
+      sources[modelSelector({ provider, modelId: model.id })] = availableModelSources(
+        provider,
+        model.id,
+        connections
+      );
+    }
+  }
+  return sources;
 }

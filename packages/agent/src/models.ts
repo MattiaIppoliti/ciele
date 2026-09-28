@@ -2,9 +2,11 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { wrapLanguageModel, type LanguageModel } from "ai";
+import { createGateway, wrapLanguageModel, type LanguageModel } from "ai";
+import { MODEL_SOURCES } from "@agent-hub/core";
 import type {
   GoogleVertexFederatedConfig,
+  ModelSource,
   Provider,
   ProviderConnection,
 } from "@agent-hub/core";
@@ -17,7 +19,7 @@ import {
 } from "./local-subscription-model";
 import type { LocalSubscriptionProvider } from "./local-subscriptions";
 import { createGoogleVertexProvider } from "./google-vertex";
-import { currentModelId } from "./catalog";
+import { currentModelId, gatewayModelId } from "./catalog";
 import { capacityRetryMiddleware } from "./rate-limit-retry";
 
 export { MODEL_CATALOG } from "./catalog";
@@ -64,6 +66,28 @@ export type KeySurface = "published" | "preview" | "teammate";
  */
 export interface KeyResolution {
   surface?: KeySurface;
+  /**
+   * The source the preferred model is pinned to (an Assistant's or Teammate's
+   * `modelSource`, or a pinned allow-list entry). Absent is automatic. It pins
+   * the **preferred** model only: when that source cannot serve it, the
+   * cross-provider fallback runs automatically, as it does for a missing key.
+   */
+  source?: ModelSource;
+  /**
+   * Whether the automatic chain may end in AI Gateway. Only a chat or
+   * classifier model is built for the Gateway route; every other caller
+   * (embeddings, the decision adapter) hands the key to the provider's own
+   * SDK, which a Gateway key would fail against. Off unless asked for.
+   */
+  gateway?: boolean;
+  /**
+   * Synthetic fallback experiments only (Eval): the providers that may supply
+   * a credential this turn. Leaving the Assistant's own provider out is what
+   * makes it unavailable, so the real fallback path runs.
+   */
+  allowedProviders?: readonly Provider[];
+  /** Synthetic fallback experiments only: compare a specific reserve model. */
+  fallbackModel?: { provider: Provider; modelId: string };
   /**
    * The Member whose turn this is. The personal-subscription branch needs it:
    * a subscription may power its owner's turns and nobody else's, and "who is
@@ -112,7 +136,22 @@ export type ProviderCredential =
       kind: "local_subscription";
       run: LocalCliRunner;
       modelId?: string;
+    }
+  | {
+      provider: CatalogProvider;
+      /** `ai_gateway` is the Organization's key; `platform` is Ciele's. */
+      kind: "ai_gateway" | "platform";
+      apiKey: string;
+      route: "gateway";
     };
+
+const PLATFORM_GATEWAY_ENV = "AI_GATEWAY_API_KEY";
+
+function isGatewayCredential(
+  credential: ProviderCredential
+): credential is Extract<ProviderCredential, { route: "gateway" }> {
+  return "route" in credential && credential.route === "gateway";
+}
 
 /**
  * The model id a resolved credential runs when the caller has no explicit
@@ -226,20 +265,108 @@ export function isOperatorSurface(resolution: KeyResolution): boolean {
   return resolution.surface === "preview" || resolution.surface === "teammate";
 }
 
+function openKey(connection: ProviderConnection | undefined): string | null {
+  if (!connection?.encryptedKey) return null;
+  try {
+    return openSecret(connection.encryptedKey) || null;
+  } catch {
+    // An undecryptable key is no key: the next source gets its turn.
+    return null;
+  }
+}
+
+function byokCredential(
+  provider: CatalogProvider,
+  connections: ProviderConnection[]
+): ProviderCredential | null {
+  const apiKey = openKey(
+    connections.find(
+      (c) => c.provider === provider && c.type === "api_key" && c.encryptedKey
+    )
+  );
+  return apiKey ? { provider, kind: "api_key", apiKey } : null;
+}
+
+function federatedCredential(
+  provider: CatalogProvider,
+  connections: ProviderConnection[]
+): ProviderCredential | null {
+  if (provider !== "google") return null;
+  const federated = connections.find(
+    (c) =>
+      c.provider === "google" &&
+      c.type === "federated" &&
+      c.config.kind === "google_vertex"
+  );
+  return federated?.config.kind === "google_vertex"
+    ? { provider: "google", kind: "google_vertex_federated", config: federated.config }
+    : null;
+}
+
+function platformCredential(provider: CatalogProvider): ProviderCredential | null {
+  const apiKey = process.env[PLATFORM_ENV[provider]];
+  return apiKey ? { provider, kind: "platform", apiKey } : null;
+}
+
+function orgGatewayConnection(
+  connections: ProviderConnection[]
+): ProviderConnection | undefined {
+  return connections.find(
+    (c) => c.provider === "ai_gateway" && c.type === "api_key" && c.encryptedKey
+  );
+}
+
+/** The Organization's own Gateway key: customer-funded, recorded `ai_gateway`. */
+function orgGatewayCredential(
+  provider: CatalogProvider,
+  connections: ProviderConnection[]
+): ProviderCredential | null {
+  const apiKey = openKey(orgGatewayConnection(connections));
+  return apiKey ? { provider, kind: "ai_gateway", apiKey, route: "gateway" } : null;
+}
+
+/** The platform's Gateway key: plan-funded, recorded `platform`. */
+function platformGatewayCredential(provider: CatalogProvider): ProviderCredential | null {
+  const apiKey = process.env[PLATFORM_GATEWAY_ENV];
+  return apiKey ? { provider, kind: "platform", apiKey, route: "gateway" } : null;
+}
+
+const SOURCE_RESOLVERS: Record<
+  ModelSource,
+  (provider: CatalogProvider, connections: ProviderConnection[]) => ProviderCredential | null
+> = {
+  platform: platformCredential,
+  api_key: byokCredential,
+  federated: federatedCredential,
+  ai_gateway: orgGatewayCredential,
+  platform_gateway: platformGatewayCredential,
+};
+
 /**
  * Resolves an authenticated provider capability. A Member's explicitly
- * detected local CLI wins only on their own internal surface; otherwise order is the
- * Organization BYOK connection, provider-specific federated credential, then
- * platform key. Legacy database subscription rows remain ignored everywhere.
+ * detected local CLI wins only on their own internal surface; otherwise order
+ * is the Organization BYOK connection, provider-specific federated credential,
+ * platform key, then AI Gateway (the Organization's key, then the platform's).
+ * A pinned `resolution.source` answers from that source alone. Legacy database
+ * subscription rows remain ignored everywhere.
  */
 export function resolveProviderCredential(
   provider: Provider,
   connections: ProviderConnection[],
   resolution: KeyResolution = {}
 ): ProviderCredential | null {
+  if (resolution.allowedProviders && !resolution.allowedProviders.includes(provider))
+    return null;
   if (provider === "openai_compatible") {
-    return resolveOpenAiCompatibleCredential(connections);
+    // One endpoint, one route: a pinned source other than its own key or the
+    // platform env does not exist for it.
+    return resolution.source && resolution.source !== "api_key" && resolution.source !== "platform"
+      ? null
+      : resolveOpenAiCompatibleCredential(connections);
   }
+  // A Member's own subscription outranks even a pinned source on their own
+  // internal surfaces: it is set once in Settings and "outranks whatever the
+  // composer offers" (ADR-0007 as amended by #769).
   if (
     mayUsePersonalSubscription(resolution) &&
     (provider === "openai" || provider === "anthropic") &&
@@ -255,51 +382,49 @@ export function resolveProviderCredential(
           : undefined,
     };
   }
-  const byok = connections.find(
-    (c) => c.provider === provider && c.type === "api_key" && c.encryptedKey
-  );
-  if (byok?.encryptedKey) {
-    try {
-      const apiKey = openSecret(byok.encryptedKey);
-      if (apiKey) {
-        return {
-          provider,
-          kind: "api_key",
-          apiKey,
-        };
-      }
-    } catch {
-      // Fall through to the next available credential if decryption fails.
-    }
+  if (resolution.source) return SOURCE_RESOLVERS[resolution.source](provider, connections);
+  const direct =
+    byokCredential(provider, connections) ??
+    federatedCredential(provider, connections) ??
+    platformCredential(provider);
+  if (direct || !resolution.gateway) return direct;
+  return orgGatewayCredential(provider, connections) ?? platformGatewayCredential(provider);
+}
+
+/**
+ * Every source that can serve this exact model now, in resolution order: what
+ * a picker offers as tagged entries. The Gateway counts only when it has the
+ * model. A Member's personal subscription is not here: it is never a stored
+ * choice (ADR-0007 as amended by #769).
+ */
+export function availableModelSources(
+  provider: Provider,
+  modelId: string,
+  connections: ProviderConnection[]
+): ModelSource[] {
+  if (provider === "openai_compatible") {
+    const credential = resolveOpenAiCompatibleCredential(connections);
+    return credential ? [credential.kind === "api_key" ? "api_key" : "platform"] : [];
   }
-  if (provider === "google") {
-    const federated = connections.find(
-      (c) =>
-        c.provider === "google" &&
-        c.type === "federated" &&
-        c.config.kind === "google_vertex"
-    );
-    if (federated?.config.kind === "google_vertex") {
-      return {
-        provider: "google",
-        kind: "google_vertex_federated",
-        config: federated.config,
-      };
-    }
-  }
-  const platformKey = process.env[PLATFORM_ENV[provider]];
-  return platformKey
-    ? { provider, kind: "platform", apiKey: platformKey }
-    : null;
+  const current = currentModelId(provider, modelId);
+  return MODEL_SOURCES.filter((source) => {
+    const credential = SOURCE_RESOLVERS[source](provider, connections);
+    return credential !== null && servable(credential, provider, current) !== null;
+  });
 }
 
 export function providerAvailability(
   connections: ProviderConnection[]
-): Record<Provider, { platform: boolean; byok: boolean; federated: boolean }> {
+): Record<
+  Provider,
+  { platform: boolean; byok: boolean; federated: boolean; gateway: boolean }
+> {
   const availability = {} as Record<
     Provider,
-    { platform: boolean; byok: boolean; federated: boolean }
+    { platform: boolean; byok: boolean; federated: boolean; gateway: boolean }
   >;
+  const gateway =
+    Boolean(process.env[PLATFORM_GATEWAY_ENV]) || Boolean(orgGatewayConnection(connections));
   for (const provider of ["anthropic", "openai", "google"] as CatalogProvider[]) {
     availability[provider] = {
       platform: Boolean(process.env[PLATFORM_ENV[provider]]),
@@ -309,6 +434,7 @@ export function providerAvailability(
       federated: connections.some(
         (c) => c.provider === provider && c.type === "federated"
       ),
+      gateway,
     };
   }
   availability.openai_compatible = {
@@ -322,6 +448,7 @@ export function providerAvailability(
         c.config.kind === "openai_compatible"
     ),
     federated: false,
+    gateway: false,
   };
   return availability;
 }
@@ -356,6 +483,11 @@ function buildHostedModel(
   modelId: string,
   credential: Exclude<ProviderCredential, { kind: "local_subscription" }>
 ) {
+  if (isGatewayCredential(credential)) {
+    const gatewayId = gatewayModelId(provider, modelId);
+    if (!gatewayId) throw new Error(`AI Gateway does not serve ${provider}/${modelId}`);
+    return createGateway({ apiKey: credential.apiKey }).languageModel(gatewayId);
+  }
   if (credential.provider === "openai_compatible" && "config" in credential) {
     return createOpenAICompatible({
       name: "openai-compatible",
@@ -407,6 +539,24 @@ export function orderedLocalProviders(
         ...byPreference.filter((provider) => provider !== selected.provider),
       ]
     : byPreference;
+}
+
+/**
+ * How a reserve or classifier model resolves: automatically (a pin names the
+ * preferred model's route only), with the Gateway allowed at the end.
+ */
+function automaticChatResolution(resolution: KeyResolution): KeyResolution {
+  return { ...resolution, source: undefined, gateway: true };
+}
+
+/** A Gateway credential serves only the models the Gateway has. */
+function servable(
+  credential: ProviderCredential | null,
+  provider: Provider,
+  modelId: string
+): ProviderCredential | null {
+  if (!credential || !isGatewayCredential(credential)) return credential;
+  return gatewayModelId(provider, modelId) ? credential : null;
 }
 
 export interface ResolvedChatModel {
@@ -463,10 +613,10 @@ export function resolveChatModel(
       };
     }
   }
-  const preferredCredential = resolveProviderCredential(
+  const preferredCredential = servable(
+    resolveProviderCredential(preferredProvider, connections, { ...resolution, gateway: true }),
     preferredProvider,
-    connections,
-    resolution
+    currentModelId(preferredProvider, preferredModelId)
   );
   if (preferredCredential) {
     // An assistant configured on openai_compatible may leave the model blank
@@ -491,14 +641,17 @@ export function resolveChatModel(
     (provider, index, providers) =>
       provider !== preferredProvider && providers.indexOf(provider) === index
   );
+  // The pin named the preferred model's route; a reserve model resolves
+  // automatically, the way it always has.
+  const automatic = automaticChatResolution(resolution);
   for (const provider of fallbackOrder) {
-    const credential = resolveProviderCredential(
-      provider,
-      connections,
-      resolution
-    );
+    const resolved = resolveProviderCredential(provider, connections, automatic);
+    if (!resolved) continue;
+    const modelId = resolution.fallbackModel?.provider === provider
+      ? resolution.fallbackModel.modelId
+      : configuredModelId(resolved, FALLBACK_MODEL);
+    const credential = servable(resolved, provider, modelId);
     if (!credential) continue;
-    const modelId = configuredModelId(credential, FALLBACK_MODEL);
     return {
       model: buildModel(provider, modelId, credential),
       provider,
@@ -527,14 +680,13 @@ export function getClassifierModel(
     ...orderedLocalProviders(resolution),
     ...(["google", "anthropic", "openai", "openai_compatible"] as Provider[]),
   ].filter((provider, index, providers) => providers.indexOf(provider) === index);
+  // A pinned source names the chat model's route, not the classifier's.
+  const automatic = automaticChatResolution(resolution);
   for (const provider of order) {
-    const credential = resolveProviderCredential(
-      provider,
-      connections,
-      resolution
-    );
+    const resolved = resolveProviderCredential(provider, connections, automatic);
+    const modelId = resolved ? configuredModelId(resolved, CLASSIFIER_MODEL) : "";
+    const credential = resolved && servable(resolved, provider, modelId);
     if (credential) {
-      const modelId = configuredModelId(credential, CLASSIFIER_MODEL);
       return {
         model: buildModel(provider, modelId, credential),
         provider,

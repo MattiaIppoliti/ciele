@@ -36,6 +36,7 @@ import {
   resolveChatModel,
   type KeyResolution,
   type ProviderCredential,
+  type ResolvedClassifierModel,
 } from "./models";
 import { PROVIDER_NAMES } from "./catalog";
 import { ACTION_HANDLERS, contactLabel, faqAnswerParts, recommendedDeskPart } from "./actions";
@@ -115,7 +116,8 @@ export async function classifyIntent(
    * the Thinking panel is not blank while this call runs. Absent, nothing is
    * emitted and the call behaves exactly as it did.
    */
-  emit?: (event: RuntimeEvent) => void
+  emit?: (event: RuntimeEvent) => void,
+  signal?: AbortSignal,
 ): Promise<Flow | null> {
   // Flows fired by page/chat events never compete for user messages, and
   // neither do flows whose URL/Schedule conditions cannot pass.
@@ -144,6 +146,7 @@ export async function classifyIntent(
     const { partialObjectStream, object: objectPromise, usage: usagePromise } =
       streamObject({
       model: classifier,
+      abortSignal: signal,
       onError: ({ error }) => reportStreamFailure(error),
       schema: z.object({
         // First in the schema, so it is generated first and can stream while
@@ -495,6 +498,8 @@ export async function runAssistantChat(options: Pick<ActionContext,
   Partial<Pick<ActionContext, "platformPrompt" | "skills">> & {
   flows: Flow[];
   connections: ProviderConnection[];
+  /** Synthetic experiments can swap only the routing model, leaving the answer model fixed. */
+  classifierOverride?: ResolvedClassifierModel;
   /**
    * Page URL + clock the objective Flow Conditions (URL, Schedule) are gated
    * against (spec #550). Omitted leaves them unevaluatable, which never
@@ -656,9 +661,9 @@ export async function runAssistantChat(options: Pick<ActionContext,
     assistant.modelProvider,
     assistant.modelId,
     connections,
-    keyResolution
+    { ...keyResolution, source: assistant.modelSource ?? undefined }
   );
-  const classifier = getClassifierModel(
+  const classifier = options.classifierOverride ?? getClassifierModel(
     assistant.modelProvider,
     connections,
     keyResolution

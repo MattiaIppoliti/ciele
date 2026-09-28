@@ -222,7 +222,6 @@ export function Tooltip({
                     <TooltipSurface
                       id={id}
                       ready={positioned}
-                      side={side}
                       onPointerEnter={() => {
                         if (timer.current) clearTimeout(timer.current);
                       }}

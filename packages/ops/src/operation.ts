@@ -1,5 +1,6 @@
 import type {
   ApplicationScopeOption,
+  Assistant,
   AssistantAnswer,
   Concept,
   ConceptFrontmatter,
@@ -7,6 +8,10 @@ import type {
   DecisionConfidence,
   DecisionScoreAnswer,
   Entity,
+  EvaluationCandidate,
+  EvaluationExample,
+  EvaluationResult,
+  EvaluationStage,
   Improvement,
   ImprovementPatch,
   KnowledgeSearchResult,
@@ -332,6 +337,21 @@ export interface OperationPorts {
   readUsageLimits?(
     organizationId: string
   ): Promise<UsageLimitsSnapshot | null>;
+  /**
+   * The runtime half of an Eval run (#992). `prepare` loads what every case
+   * shares (Flows, Provider Connections, platform-added model prices) once and
+   * answers which candidates this stage may compare; `runCase` runs one
+   * synthetic case. A port because the cases need model clients.
+   */
+  evaluation?: {
+    prepare(args: { assistant: Assistant; stage: EvaluationStage }): Promise<{
+      allowedCandidates: EvaluationCandidate[];
+      runCase(
+        example: EvaluationExample,
+        candidate: EvaluationCandidate
+      ): Promise<EvaluationResult>;
+    }>;
+  };
 }
 
 /** Same ladder the web app's authz seam speaks. */

@@ -7,8 +7,13 @@ import { MemoryCard } from "@/components/settings/memory-card";
 import { MemorySubjectsCard } from "@/components/settings/memory-subjects-card";
 import { EmbeddingConnectionCard } from "@/components/settings/embedding-connection-card";
 import { PlatformPromptCard } from "@/components/settings/platform-prompt-card";
+import { PlatformModelCatalogCard } from "@/components/settings/platform-model-catalog-card";
 import { requirePageMember } from "@/lib/authz";
-import { getStoredPlatformPrompt, isPlatformOwner } from "@/lib/platform";
+import {
+  getStoredPlatformPrompt,
+  isPlatformOwner,
+  listPlatformEvalModels,
+} from "@/lib/platform";
 import { canManageMembers } from "@/lib/rbac";
 import { canChangeRoles } from "@/lib/rbac";
 import { connectorInstallationScope } from "@/lib/local-connector-installer";
@@ -23,13 +28,38 @@ export const dynamic = "force-dynamic";
 
 export default async function AiSettingsPage() {
   const { session, organizationId, role, db } = await requirePageMember();
-  // Provider connections are org-wide config, admins and owners only.
-  if (!canManageMembers(role)) redirect("/settings/profile");
+  const owner = isPlatformOwner(session.email);
+  const canManage = canManageMembers(role);
+  // Organization provider settings require its admin role. A platform admin
+  // without it reaches this page only for the platform-wide cards: the shared
+  // model catalog and the platform prompt, never this org's connections.
+  if (!canManage && !owner) redirect("/settings/profile");
+
+  const storedPlatformPrompt = owner ? await getStoredPlatformPrompt() : null;
+  const platformModels = owner ? await listPlatformEvalModels() : [];
+  const platformCards = owner && (
+    <>
+      <PlatformModelCatalogCard models={platformModels} />
+      {storedPlatformPrompt !== null && (
+        <PlatformPromptCard
+          storedPrompt={storedPlatformPrompt}
+          defaultPrompt={DEFAULT_PLATFORM_PROMPT}
+        />
+      )}
+    </>
+  );
+  if (!canManage) {
+    return (
+      <SettingsPanel
+        title="AI Provider"
+        description="Platform-wide model settings for every Ciele organization."
+      >
+        {platformCards}
+      </SettingsPanel>
+    );
+  }
 
   const connections = await db.listProviderConnections(organizationId);
-  const owner = isPlatformOwner(session.email);
-  const storedPlatformPrompt = owner ? await getStoredPlatformPrompt() : null;
-  const canManage = canManageMembers(role);
   const requestHeaders = await headers();
   const localSubscriptionTestEnabled =
     isLocalSubscriptionDirectEnabled() &&
@@ -88,12 +118,7 @@ export default async function AiSettingsPage() {
         />
         <MemoryCard memoryEnabled={memoryEnabled} canManage={canManage} />
         <MemorySubjectsCard subjects={memorySubjects} canEdit={canManage} />
-        {storedPlatformPrompt !== null && (
-          <PlatformPromptCard
-            storedPrompt={storedPlatformPrompt}
-            defaultPrompt={DEFAULT_PLATFORM_PROMPT}
-          />
-        )}
+        {platformCards}
     </SettingsPanel>
   );
 }

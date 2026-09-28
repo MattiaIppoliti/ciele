@@ -132,6 +132,7 @@ describe("providerAvailability", () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "sk-platform");
     vi.stubEnv("OPENAI_API_KEY", undefined);
     vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", undefined);
+    vi.stubEnv("AI_GATEWAY_API_KEY", undefined);
     const avail = providerAvailability([
       connection("openai", "api_key", "sk-openai-byok"),
       connection("google", "federated", null),
@@ -141,16 +142,19 @@ describe("providerAvailability", () => {
       platform: true,
       byok: false,
       federated: false,
+      gateway: false,
     });
     expect(avail.openai).toEqual({
       platform: false,
       byok: true,
       federated: false,
+      gateway: false,
     });
     expect(avail.google).toEqual({
       platform: false,
       byok: false,
       federated: true,
+      gateway: false,
     });
   });
 });
@@ -491,13 +495,14 @@ describe("openai_compatible provider (#436)", () => {
   it("reports availability without requiring an encrypted key", () => {
     clearCatalogKeys();
     expect(providerAvailability([compatibleConnection()]).openai_compatible)
-      .toEqual({ platform: false, byok: true, federated: false });
+      .toEqual({ platform: false, byok: true, federated: false, gateway: false });
     vi.stubEnv("OPENAI_COMPATIBLE_BASE_URL", "http://localhost:11434/v1");
     vi.stubEnv("OPENAI_COMPATIBLE_CHAT_MODEL", "llama3.1:8b");
     expect(providerAvailability([]).openai_compatible).toEqual({
       platform: true,
       byok: false,
       federated: false,
+      gateway: false,
     });
   });
 });

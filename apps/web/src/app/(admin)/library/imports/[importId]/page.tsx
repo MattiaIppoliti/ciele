@@ -1,12 +1,11 @@
-import { notFound } from "next/navigation";
-import { OperationError, listApplicationImportDocumentsOp } from "@ciele/ops";
+import { listApplicationImportDocumentsOp } from "@ciele/ops";
 import { ApplicationImportDocumentsView } from "@/components/knowledge/application-import-documents-view";
 import { requirePageMember } from "@/lib/authz";
-import { runOperation } from "@/lib/operations";
+import { runPageOperation } from "@/lib/operations";
+import { parseSourceDocumentsParams } from "@/lib/source-documents";
 import {
   applicationImportHref,
   applicationSourcePrefix,
-  parseApplicationImportPage,
 } from "@/lib/application-import-documents";
 
 export const dynamic = "force-dynamic";
@@ -26,16 +25,10 @@ export default async function LibraryApplicationImportPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { importId } = await params;
-  const page = parseApplicationImportPage(await searchParams);
+  const page = parseSourceDocumentsParams(await searchParams).page;
   await requirePageMember();
 
-  let result;
-  try {
-    result = await runOperation(listApplicationImportDocumentsOp, { importId, page });
-  } catch (error) {
-    if (error instanceof OperationError && error.code === "not_found") notFound();
-    throw error;
-  }
+  const result = await runPageOperation(listApplicationImportDocumentsOp, { importId, page });
 
   return (
     <ApplicationImportDocumentsView

@@ -9,10 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCount, formatPercent } from "@/lib/format";
+import { formatCount, formatPercent, formatShortDay } from "@/lib/format";
 import type { DashboardView } from "@/lib/insights/dashboard-filter";
 import { costStats } from "@/lib/insights/dashboard-stats";
-import { formatCompact, formatEur, shortDay, tokenHighlights } from "@/lib/insights/dashboard-view";
+import { formatCompact, formatEur, tokenHighlights } from "@/lib/insights/dashboard-view";
 import {
   DashboardFrame,
   DashboardStatCards,
@@ -89,7 +89,7 @@ export function CostDashboard({
               <div>
                 <dt className="text-muted-foreground text-xs">Busiest day</dt>
                 <dd className="font-medium tabular-nums">
-                  {highlights.peakDay ? `${shortDay(highlights.peakDay)} · ${formatCompact(highlights.peakTokens)}` : "\u2014"}
+                  {highlights.peakDay ? `${formatShortDay(highlights.peakDay)} · ${formatCompact(highlights.peakTokens)}` : "\u2014"}
                 </dd>
               </div>
               <div>
