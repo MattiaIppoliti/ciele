@@ -67,8 +67,10 @@ describe("SSO connection actions", () => {
     const stored = await db.getSsoConnection(DEMO_ORG.id);
     expect(stored?.config).toEqual({ clientId: "client-1", tenantId: "tenant-1" });
     // Secret is sealed (transformed), never stored as the raw value.
-    expect(stored?.encryptedSecret).toBeTruthy();
-    expect(stored?.encryptedSecret).not.toBe("super-secret");
+    expect(stored?.hasClientSecret).toBe(true);
+    const sealed = await db.getSsoClientSecret(DEMO_ORG.id);
+    expect(sealed).toBeTruthy();
+    expect(sealed).not.toBe("super-secret");
     expect(stored?.validationStatus).toBe("unvalidated");
   });
 

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { str, usage, type CommandContext, confirmed } from "./shared.ts";
 
 /**
  * Projects (#771): the shared workspace a Teammate attaches to, and the owner
@@ -77,7 +77,7 @@ export async function projects(verb: string | undefined, ctx: CommandContext) {
     }
     case "delete": {
       if (!rest[0]) return usage(deps, "projects delete <id> --yes");
-      if (flags.yes !== true) {
+      if (!confirmed(flags)) {
         // Archiving is the move that keeps the record, so say so rather than
         // only asking for confirmation.
         deps.stderr(

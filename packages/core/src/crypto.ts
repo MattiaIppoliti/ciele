@@ -26,9 +26,24 @@ export function isLegacyPlaintextSecret(stored: string): boolean {
   return stored.startsWith(LEGACY_PLAINTEXT_PREFIX);
 }
 
-function decryptWith(ciphertext: string, keyBytes: Buffer): string {
+/**
+ * What a short-lived cookie or token is for. It is bound into the ciphertext as
+ * GCM additional authenticated data, so a value sealed for one purpose fails
+ * its tag check under any other purpose, and under none. Stored credentials
+ * are sealed with no purpose: an org admin who can seal an arbitrary string
+ * through a credential field must not be able to present the result as a
+ * cookie, and this is what stops it.
+ */
+export type SealPurpose = "sso_gate" | "sso_txn" | "app_oauth_txn" | "attachment";
+
+function decryptWith(
+  ciphertext: string,
+  keyBytes: Buffer,
+  purpose?: SealPurpose
+): string {
   const [iv, tag, data] = ciphertext.split(".");
   const decipher = createDecipheriv("aes-256-gcm", keyBytes, Buffer.from(iv, "base64"));
+  if (purpose) decipher.setAAD(Buffer.from(purpose, "utf8"));
   decipher.setAuthTag(Buffer.from(tag, "base64"));
   return Buffer.concat([
     decipher.update(Buffer.from(data, "base64")),
@@ -44,9 +59,10 @@ function decryptWith(ciphertext: string, keyBytes: Buffer): string {
  * help-desk, API-integration and application OAuth secrets, so every one of
  * them could sit unencrypted for the life of the install.
  */
-export function sealSecret(plaintext: string): string {
+export function sealSecret(plaintext: string, purpose?: SealPurpose): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key(), iv);
+  if (purpose) cipher.setAAD(Buffer.from(purpose, "utf8"));
   const data = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return `${iv.toString("base64")}.${tag.toString("base64")}.${data.toString("base64")}`;
@@ -62,15 +78,21 @@ export function sealSecret(plaintext: string): string {
  * Rotate by moving the old value to `_PREVIOUS`, setting the new one, and
  * running `node scripts/rotate-legacy-secrets.mjs --rekey`.
  */
-export function openSecret(stored: string): string {
+export function openSecret(stored: string, purpose?: SealPurpose): string {
   if (isLegacyPlaintextSecret(stored)) {
+    // A purpose-bound value is never plaintext: refuse the passthrough.
+    if (purpose) throw new Error("A purpose-bound value cannot be plaintext.");
     return stored.slice(LEGACY_PLAINTEXT_PREFIX.length);
   }
   try {
-    return decryptWith(stored, key());
+    return decryptWith(stored, key(), purpose);
   } catch (error) {
     const previous = process.env.APP_ENCRYPTION_KEY_PREVIOUS;
     if (!previous) throw error;
-    return decryptWith(stored, createHash("sha256").update(previous).digest());
+    return decryptWith(
+      stored,
+      createHash("sha256").update(previous).digest(),
+      purpose
+    );
   }
 }

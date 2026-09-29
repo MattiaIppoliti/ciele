@@ -255,6 +255,13 @@ export interface OperationPorts {
     provider: CrawlerConnectionProvider,
     token: string
   ): Promise<{ ok: true; accountId: string } | { ok: false; error: string }>;
+  /**
+   * Egress check for a tenant-typed OpenAI-compatible base URL: the refusal
+   * message, or null when the policy allows it. A port because the policy and
+   * its DNS resolution live in the runtime, which this package cannot import.
+   * Absent means refuse: an unwired host must not store an unchecked URL.
+   */
+  checkOpenAiCompatibleBaseUrl?(baseUrl: string): Promise<string | null>;
   /** Validate a stored SSO connection without exposing its sealed secret. */
   validateSsoConnection?(
     connection: SsoConnection

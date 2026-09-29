@@ -18,7 +18,6 @@ import {
 } from 'lucide-react'
 import { Button, cn } from '@agent-hub/ui'
 import {
-  TOAST_DISMISS_EVENT,
   TOAST_EVENT,
   type ToastAction,
   type ToastNote,
@@ -477,17 +476,10 @@ export function Toasts() {
       if (delay === null) clock.current.waits.delete(note.id)
       else clock.current.waits.set(note.id, delay)
     }
-    const onDismiss = (event: Event) => {
-      const id = (event as CustomEvent<string>).detail
-      clock.current.waits.delete(id)
-      setNotes((current) => current.filter((note) => note.id !== id))
-    }
 
     window.addEventListener(TOAST_EVENT, onToast)
-    window.addEventListener(TOAST_DISMISS_EVENT, onDismiss)
     return () => {
       window.removeEventListener(TOAST_EVENT, onToast)
-      window.removeEventListener(TOAST_DISMISS_EVENT, onDismiss)
     }
   }, [])
 

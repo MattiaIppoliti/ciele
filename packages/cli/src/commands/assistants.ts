@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { EXIT } from "../index.ts";
 import { lines, table } from "../output.ts";
-import { csv, str, usage, type CommandContext } from "./shared.ts";
+import { csv, str, usage, type CommandContext, confirmed } from "./shared.ts";
 
 const ASSISTANT_COLUMNS = [
   { key: "id", header: "Id" },
@@ -71,7 +71,7 @@ export async function assistants(
     }
     case "delete": {
       if (!rest[0]) return usage(deps, "assistants delete <id> --yes");
-      if (flags.yes !== true) {
+      if (!confirmed(flags)) {
         deps.stderr(
           "Deleting an assistant is permanent (knowledge cascades). Re-run with --yes."
         );

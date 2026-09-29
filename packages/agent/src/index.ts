@@ -176,6 +176,9 @@ export { validateProviderApiKey, InvalidProviderKeyError } from "./validate-key"
 // "Test connection" for an OpenAI-compatible endpoint: one-token chat call +
 // one embedding call (#436), drives the admin connection form.
 export { testOpenAiCompatibleConnection } from "./test-openai-compatible";
+// The save-time half of the same egress policy, wired into the ops layer
+// through a port (the ops package is framework-free and cannot import this one).
+export { checkOpenAiCompatibleBaseUrl } from "./openai-compatible-guard";
 export type {
   OpenAiCompatibleTestInput,
   OpenAiCompatibleTestResult,

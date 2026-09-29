@@ -1,6 +1,6 @@
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { str, usage, type CommandContext, emitJson } from "./shared.ts";
 
 /**
  * `ciele reviews …` (#841): the Human review gate's requests. Listing is any
@@ -43,7 +43,7 @@ export async function reviews(verb: string | undefined, ctx: CommandContext): Pr
       const id = rest[0];
       if (!id) return usage(deps, "reviews get <reviewId>");
       const review = await client.reviews.get(id);
-      emit(JSON.stringify(review, null, 2), review);
+      emitJson(emit, review);
       return EXIT.ok;
     }
     case "decide": {

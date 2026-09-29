@@ -201,6 +201,8 @@ interface MockStore {
   embeddingConnections: Map<string, string>;
   /** Widget SSO connections, keyed by organizationId (one per org). */
   ssoConnections: Map<string, SsoConnection>;
+  /** Sealed client secrets, kept apart the way the column is in Postgres. */
+  ssoSecrets: Map<string, string | null>;
   /** Keyed `${organizationId}:${provider}`. */
   crawlerConnections: Map<string, CrawlerConnection>;
   /** assistantId → its one API integration (spec #559). */
@@ -553,6 +555,7 @@ function emptyStore(): MockStore {
     connections: new Map(),
     embeddingConnections: new Map(),
     ssoConnections: new Map(),
+    ssoSecrets: new Map(),
     crawlerConnections: new Map(),
     apiIntegrations: new Map(),
     teammates: new Map(),
@@ -3241,6 +3244,10 @@ export const mockDb: Db = {
     return getStore().ssoConnections.get(organizationId) ?? null;
   },
 
+  async getSsoClientSecret(organizationId) {
+    return getStore().ssoSecrets.get(organizationId) ?? null;
+  },
+
   async getSsoConnectionPublic(organizationId) {
     const current = getStore().ssoConnections.get(organizationId);
     return current ? { provider: current.provider } : null;
@@ -3256,7 +3263,10 @@ export const mockDb: Db = {
       organizationId,
       provider: input.provider,
       config: input.config,
-      encryptedSecret: input.encryptedSecret ?? null,
+      hasClientSecret:
+        input.encryptedSecret === undefined
+          ? (existing?.hasClientSecret ?? false)
+          : input.encryptedSecret !== null,
       validationStatus: "unvalidated",
       validatedAt: null,
       // Preserve first-connected time across rotations (matches the SQL upsert).
@@ -3264,6 +3274,9 @@ export const mockDb: Db = {
       updatedAt: now,
     };
     store.ssoConnections.set(organizationId, connection);
+    if (input.encryptedSecret !== undefined) {
+      store.ssoSecrets.set(organizationId, input.encryptedSecret);
+    }
     return connection;
   },
 
@@ -3284,6 +3297,7 @@ export const mockDb: Db = {
 
   async clearSsoConnection(organizationId) {
     getStore().ssoConnections.delete(organizationId);
+    getStore().ssoSecrets.delete(organizationId);
   },
 
   // --- Crawler connections -----------------------------------------------

@@ -264,6 +264,13 @@ check("the app plane can never open a socket to Postgres", () => {
   assert.deepEqual(zones.postgres, ["data"]);
 });
 
+check("the gateway health probe uses nginx's IPv4 listener", () => {
+  assert.match(
+    compose,
+    /test: \["CMD", "wget", "-qO-", "http:\/\/127\.0\.0\.1:8000\/auth\/v1\/health"\]/,
+  );
+});
+
 check("the tls overlay is the one deliberate public listener (#801, CYB-16)", () => {
   // 80/443 on every interface is the terminator's job; anything else joining
   // it here would be a second public door nobody decided on.

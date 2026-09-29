@@ -22,7 +22,7 @@
     "fumadocs-mdx": "^15.2.0",
     "fumadocs-openapi": "^11.0.0",
     "fumadocs-ui": "^16.11.5",
-    "lucide-react": "^1.25.0",
+    "lucide-react": "^1.23.0",
     "mermaid": "^11.16.0",
     "next": "16.2.10",
     "react": "19.2.4",
@@ -39,7 +39,6 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
-    "postcss": "^8",
     "tailwindcss": "^4",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   }

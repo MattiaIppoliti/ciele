@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EXIT, runCli, type CliDeps } from "./index.ts";
-import { memoryConfigStore } from "./config.ts";
+import { memoryConfigStore } from "./testing.ts";
 
 /**
  * The CLI against a stubbed fetch: parsing → request shape, credential

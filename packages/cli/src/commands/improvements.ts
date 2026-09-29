@@ -1,7 +1,7 @@
 import type { ImprovementPatch } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { str, usage, type CommandContext, pageParams, emitJson } from "./shared.ts";
 
 /** `ciele improvements …` (#628): sync the answer-quality kanban. */
 export async function improvements(
@@ -12,8 +12,7 @@ export async function improvements(
   switch (verb) {
     case "list": {
       const page = await client.improvements.list({
-        limit: str(flags.limit) ? Number(str(flags.limit)) : undefined,
-        cursor: str(flags.cursor),
+        ...pageParams(flags),
       });
       emit(
         table(page.data, [
@@ -30,7 +29,7 @@ export async function improvements(
     case "get": {
       if (!rest[0]) return usage(deps, "improvements get <id>");
       const detail = await client.improvements.get(rest[0]);
-      emit(JSON.stringify(detail, null, 2), detail);
+      emitJson(emit, detail);
       return EXIT.ok;
     }
     case "update": {

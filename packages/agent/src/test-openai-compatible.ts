@@ -1,5 +1,9 @@
 import { embed, generateText } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import {
+  checkOpenAiCompatibleBaseUrl,
+  guardedOpenAiCompatibleFetch,
+} from "./openai-compatible-guard";
 
 /**
  * "Test connection" for an OpenAI-compatible endpoint (#436): one-token chat
@@ -28,10 +32,20 @@ function errorDetail(error: unknown): string {
 export async function testOpenAiCompatibleConnection(
   input: OpenAiCompatibleTestInput
 ): Promise<OpenAiCompatibleTestResult> {
+  const refusal = await checkOpenAiCompatibleBaseUrl(input.baseUrl);
+  if (refusal) {
+    return {
+      chat: { ok: false, detail: refusal },
+      embedding: input.embeddingModel
+        ? { ok: false, detail: refusal, dims: null }
+        : null,
+    };
+  }
   const endpoint = createOpenAICompatible({
     name: "openai-compatible",
     baseURL: input.baseUrl,
     apiKey: input.apiKey ?? undefined,
+    fetch: guardedOpenAiCompatibleFetch,
   });
 
   let chat: OpenAiCompatibleTestResult["chat"];

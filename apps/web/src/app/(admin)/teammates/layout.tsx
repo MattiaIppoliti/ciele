@@ -1,6 +1,6 @@
 import { rosterTeammates, visibleTeammates, memberDisplayName } from "@agent-hub/core";
 import { listChannelsOp } from "@ciele/ops";
-import { TeammatesShell } from "@/components/teammates/teammates-client";
+import { TeammatesShell, type TeammatesShellData } from "@/components/teammates/teammates-client";
 import { requirePageMember } from "@/lib/authz";
 import { runOperation } from "@/lib/operations";
 import { canEdit } from "@/lib/rbac";
@@ -27,11 +27,17 @@ export const dynamic = "force-dynamic";
  * Channels ride the same rail rather than a nav entry of their own, because a
  * Member looking for "where I talk to teammates" should find one place (#776).
  */
-export default async function TeammatesLayout({
+export default function TeammatesLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Not awaited: the rail loads inside the shell's own Suspense, so the open
+  // thread's loading.tsx (and the thread itself) never waits for seven reads.
+  return <TeammatesShell data={loadShellData()}>{children}</TeammatesShell>;
+}
+
+async function loadShellData(): Promise<TeammatesShellData> {
   const { organizationId, role, session, db } = await requirePageMember();
 
   const [
@@ -63,13 +69,12 @@ export default async function TeammatesLayout({
   const hiddenIds = hiddenRows.map((row) => row.teammateId);
   const hidden = new Set(hiddenIds);
 
-  return (
-    <TeammatesShell
-      teammates={rosterTeammates(teammates, viewer, hiddenIds)}
-      hidden={visibleTeammates(teammates, viewer).filter((teammate) =>
+  return {
+    teammates: rosterTeammates(teammates, viewer, hiddenIds),
+    hidden: visibleTeammates(teammates, viewer).filter((teammate) =>
         hidden.has(teammate.id)
-      )}
-      channels={channels.map((summary) => ({
+      ),
+    channels: channels.map((summary) => ({
         id: summary.channel.id,
         name: summary.channel.name,
         memberCount: summary.memberIds.length,
@@ -93,24 +98,21 @@ export default async function TeammatesLayout({
         ].slice(0, 2),
         unread: summary.unread,
         lastMessagePreview: summary.lastMessagePreview,
-      }))}
-      members={members
+      })),
+    members: members
         .filter((member) => member.userId !== session.userId)
         .map((member) => ({
           userId: member.userId,
           label: memberDisplayName(member),
-        }))}
-      collections={collections.map((c) => ({ id: c.id, name: c.name }))}
-      sources={libraryItems.sources}
-      sourcesTruncated={libraryItems.truncated}
-      projects={projects
+        })),
+    collections: collections.map((c) => ({ id: c.id, name: c.name })),
+    sources: libraryItems.sources,
+    sourcesTruncated: libraryItems.truncated,
+    projects: projects
         // Archived projects keep their decisions and stop feeding them to a
         // model, so attaching to one would be attaching to nothing.
         .filter((project) => !project.archived)
-        .map((project) => ({ id: project.id, name: project.name }))}
-      canEdit={canEdit(role)}
-    >
-      {children}
-    </TeammatesShell>
-  );
+        .map((project) => ({ id: project.id, name: project.name })),
+    canEdit: canEdit(role),
+  };
 }

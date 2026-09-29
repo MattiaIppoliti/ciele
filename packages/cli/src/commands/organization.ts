@@ -1,7 +1,7 @@
 import type { OrganizationPatch, Role } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { jsonFile, str, usage, type CommandContext } from "./shared.ts";
+import { jsonFile, str, usage, type CommandContext, emitJson, confirmed } from "./shared.ts";
 
 const roles = new Set<Role>(["owner", "admin", "editor", "viewer"]);
 function role(value: string | undefined): Role | undefined {
@@ -13,7 +13,7 @@ export async function organization(verb: string | undefined, ctx: CommandContext
   switch (verb) {
     case "get": {
       const org = await client.organization.get();
-      emit(JSON.stringify(org, null, 2), org);
+      emitJson(emit, org);
       return EXIT.ok;
     }
     case "update": {
@@ -50,7 +50,7 @@ export async function members(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "remove":
-      if (!rest[0] || flags.yes !== true) return usage(deps, "members remove <userId> --yes");
+      if (!rest[0] || !confirmed(flags)) return usage(deps, "members remove <userId> --yes");
       await client.members.remove(rest[0]);
       emit(`Removed ${rest[0]}`, { removed: rest[0] });
       return EXIT.ok;
@@ -85,7 +85,7 @@ export async function invites(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "revoke":
-      if (!rest[0] || flags.yes !== true) return usage(deps, "invites revoke <id> --yes");
+      if (!rest[0] || !confirmed(flags)) return usage(deps, "invites revoke <id> --yes");
       await client.invites.revoke(rest[0]);
       emit(`Revoked ${rest[0]}`, { revoked: rest[0] });
       return EXIT.ok;
@@ -122,7 +122,7 @@ export async function apiKeys(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "revoke":
-      if (!rest[0] || flags.yes !== true) return usage(deps, "api-keys revoke <id> --yes");
+      if (!rest[0] || !confirmed(flags)) return usage(deps, "api-keys revoke <id> --yes");
       await client.apiKeys.revoke(rest[0]);
       emit(`Revoked ${rest[0]}`, { revoked: rest[0] });
       return EXIT.ok;

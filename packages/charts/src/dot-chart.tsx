@@ -33,9 +33,9 @@ const DOT_TRANSITION = {
 };
 
 /** Grid geometry shared with MetricGrowthCard's tooltip positioning. */
-export const DOT_ROWS = 14;
-export const DOT_SIZE = 4;
-export const DOT_GAP = 5;
+const DOT_ROWS = 14;
+const DOT_SIZE = 4;
+const DOT_GAP = 5;
 export const DOT_CELL_SIZE = DOT_SIZE + DOT_GAP;
 const SVG_HEIGHT = Math.max(DOT_ROWS * DOT_CELL_SIZE, DOT_SIZE);
 

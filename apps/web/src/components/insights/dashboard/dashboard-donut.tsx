@@ -1,13 +1,18 @@
 "use client";
 
-import { EvilPieChart } from "@/components/charts/evilcharts/recharts-pie-chart";
-import type { ChartConfig } from "@/components/charts/evilcharts/ui/chart-colors";
+import { Cell, Pie, PieChart } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { formatCount } from "@/lib/format";
 import { OUTCOME_COLORS } from "./palette";
 
 /**
  * A two-part rate (turns that succeeded and failed, answers that passed and
- * failed, conversations resolved and escalated) as the evilcharts donut, with
+ * failed, conversations resolved and escalated) as a donut, with
  * the headline share in the hole. `loading` is the chart's own skeleton,
  * shown while a filter change is being fetched, so the ring never shows the
  * previous filter's split under the new filter's heading.
@@ -28,8 +33,8 @@ export function RateDonut({
   loading: boolean;
 }) {
   const config = {
-    good: { label: goodLabel, colors: { light: [OUTCOME_COLORS.good.light], dark: [OUTCOME_COLORS.good.dark] } },
-    bad: { label: badLabel, colors: { light: [OUTCOME_COLORS.bad.light], dark: [OUTCOME_COLORS.bad.dark] } },
+    good: { label: goodLabel, theme: OUTCOME_COLORS.good },
+    bad: { label: badLabel, theme: OUTCOME_COLORS.bad },
   } satisfies ChartConfig;
   const data = [
     { outcome: "good", count: good },
@@ -40,17 +45,25 @@ export function RateDonut({
   return (
     <div className="flex items-center gap-4">
       <div className="relative size-36 shrink-0">
-        <EvilPieChart
-          className="size-full"
-          data={data}
-          dataKey="count"
-          nameKey="outcome"
-          config={config}
-          isLoading={loading}
-        >
-          <EvilPieChart.Tooltip />
-          <EvilPieChart.Pie isClickable innerRadius={44} paddingAngle={bad > 0 ? 3 : 0} cornerRadius={4} />
-        </EvilPieChart>
+        <ChartContainer config={config} className="aspect-auto size-full" aria-busy={loading}>
+          <PieChart>
+            <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey="outcome" hideLabel />} />
+            <Pie
+              data={loading ? [] : data}
+              dataKey="count"
+              nameKey="outcome"
+              innerRadius={44}
+              outerRadius="100%"
+              paddingAngle={bad > 0 ? 3 : 0}
+              cornerRadius={4}
+              strokeWidth={0}
+            >
+              {data.map((d) => (
+                <Cell key={d.outcome} fill={`var(--color-${d.outcome})`} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ChartContainer>
         {!loading && (
           <span
             aria-label={`${title}: ${share}%`}

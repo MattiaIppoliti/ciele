@@ -1,3 +1,4 @@
+import { guardedOpenAiCompatibleFetch } from "./openai-compatible-guard";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -190,6 +191,10 @@ function compatibleEmbedding(
         name: "openai-compatible",
         baseURL: compatible.config.baseUrl,
         apiKey: compatible.apiKey ?? undefined,
+        // A URL an Organization typed in is guarded; the operator's env is not.
+        ...(compatible.kind === "platform"
+          ? {}
+          : { fetch: guardedOpenAiCompatibleFetch }),
       }).textEmbeddingModel(compatible.config.embeddingModel),
       provider: "openai_compatible",
       modelId: compatible.config.embeddingModel,

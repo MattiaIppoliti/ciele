@@ -385,7 +385,8 @@ interface SsoConnectionRow {
   // `not null default '{}'` in the schema; setSsoConnection always writes a
   // full config, so this is never null in practice.
   config: SsoConnectionConfig;
-  encrypted_secret: string | null;
+  /** Generated from `encrypted_secret is not null`; the secret is not selectable. */
+  has_client_secret: boolean;
   validation_status: SsoValidationStatus;
   validated_at: string | null;
   connected_at: string;
@@ -947,6 +948,10 @@ function toConnection(
     preferredForEmbedding: row.id === embeddingConnectionId,
   };
 }
+
+/** Every column of `sso_connections` except the sealed secret (see the column-privacy migration). */
+const SSO_CONNECTION_COLUMNS =
+  "id, organization_id, provider, config, has_client_secret, validation_status, validated_at, connected_at, updated_at";
 
 function toSsoConnection(row: SsoConnectionRow): SsoConnection {
   return rowToDomain(row as unknown as Record<string, unknown>) as unknown as SsoConnection;
@@ -2178,10 +2183,19 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async getSsoConnection(organizationId) {
       const data = must(await client
         .from("sso_connections")
-        .select("*")
+        .select(SSO_CONNECTION_COLUMNS)
         .eq("organization_id", organizationId)
         .maybeSingle());
-      return data ? toSsoConnection(data as SsoConnectionRow) : null;
+      return data ? toSsoConnection(data as unknown as SsoConnectionRow) : null;
+    },
+
+    async getSsoClientSecret(organizationId) {
+      const data = must(await client
+        .from("sso_connections")
+        .select("encrypted_secret")
+        .eq("organization_id", organizationId)
+        .maybeSingle());
+      return (data as { encrypted_secret: string | null } | null)?.encrypted_secret ?? null;
     },
 
     async getSsoConnectionPublic(organizationId) {
@@ -2205,7 +2219,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
             organization_id: organizationId,
             provider: input.provider,
             config: input.config,
-            encrypted_secret: input.encryptedSecret ?? null,
+            // Omitted keeps the stored secret (an identity-claim edit).
+            ...(input.encryptedSecret === undefined
+              ? {}
+              : { encrypted_secret: input.encryptedSecret }),
             validation_status: "unvalidated",
             validated_at: null,
             // connected_at omitted: the column default stamps it on first
@@ -2214,9 +2231,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           },
           { onConflict: "organization_id" }
         )
-        .select()
+        .select(SSO_CONNECTION_COLUMNS)
         .single());
-      return toSsoConnection(data as SsoConnectionRow);
+      return toSsoConnection(data as unknown as SsoConnectionRow);
     },
 
     async setSsoConnectionValidation(organizationId, status) {
@@ -2229,9 +2246,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           updated_at: new Date().toISOString(),
         })
         .eq("organization_id", organizationId)
-        .select()
+        .select(SSO_CONNECTION_COLUMNS)
         .single());
-      return toSsoConnection(data as SsoConnectionRow);
+      return toSsoConnection(data as unknown as SsoConnectionRow);
     },
 
     async clearSsoConnection(organizationId) {

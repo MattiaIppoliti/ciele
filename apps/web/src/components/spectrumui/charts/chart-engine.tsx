@@ -199,54 +199,6 @@ export function formatCount(value: number, digits = 1) {
   }).format(value);
 }
 
-function ChartSkeleton({ height }: { height: number }) {
-  const reduce = usePrefersReducedMotion();
-  const breathe = (index: number): React.CSSProperties | undefined =>
-    reduce
-      ? undefined
-      : { animation: `spectrum-sk-pulse 1.5s ease-in-out ${index * 120}ms infinite alternate` };
-  const block = 'rounded-md bg-black/[0.06] dark:bg-white/[0.08]';
-  return (
-    <div className="relative w-full overflow-hidden" style={{ height }} aria-hidden>
-      <Keyframes />
-      <div className="grid h-full grid-cols-2 content-center gap-3 py-2 sm:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="flex h-full min-h-16 flex-col justify-between gap-2 rounded-xl border border-black/[0.05] p-3 dark:border-white/[0.06]"
-            style={breathe(i)}
-          >
-            <div className={cn('h-2.5 w-1/2', block)} />
-            <div className={cn('h-5 w-3/4', block)} />
-            <div className={cn('h-6 w-full', block)} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** The card-shaped skeleton while `loading`, the children otherwise. */
-export function ChartState({
-  loading,
-  height,
-  children,
-}: {
-  loading: boolean;
-  height: number;
-  children: React.ReactNode;
-}) {
-  if (loading) {
-    return (
-      <div aria-busy="true" aria-live="polite">
-        <ChartSkeleton height={height} />
-        <span className="sr-only">Loading chart data</span>
-      </div>
-    );
-  }
-  return <>{children}</>;
-}
-
 export function useHoverIndexKeys({
   count,
   setIndex,

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import type { FlowInput, FlowPatch } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { str, usage, type CommandContext, emitJson, confirmed } from "./shared.ts";
 
 /**
  * `ciele flows …` (#628). Scalars come as flags; the full router config
@@ -132,7 +132,7 @@ export async function flows(
         );
       }
       const view = await client.flows.agentConversation(rest[0], conversation);
-      emit(JSON.stringify(view, null, 2), view);
+      emitJson(emit, view);
       return EXIT.ok;
     }
     case "list": {
@@ -145,7 +145,7 @@ export async function flows(
       if (!rest[0]) return usage(deps, "flows get <id>");
       const flow = await client.flows.get(rest[0]);
       // The full router config is only legible as JSON.
-      emit(JSON.stringify(flow, null, 2), flow);
+      emitJson(emit, flow);
       return EXIT.ok;
     }
     case "create": {
@@ -177,7 +177,7 @@ export async function flows(
     }
     case "delete": {
       if (!rest[0]) return usage(deps, "flows delete <id> --yes");
-      if (flags.yes !== true) {
+      if (!confirmed(flags)) {
         deps.stderr("Deleting a flow is permanent. Re-run with --yes.");
         return EXIT.usage;
       }

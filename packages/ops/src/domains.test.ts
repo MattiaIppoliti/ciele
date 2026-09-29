@@ -435,9 +435,24 @@ describe("integration and provider operations", () => {
     expect(sso).not.toHaveProperty("encryptedSecret");
   });
 
+  it("saves nothing when the egress port refuses the base URL or is unwired", async () => {
+    const input = { baseUrl: "http://169.254.169.254/v1", chatModel: "m" };
+    const refused = await createOpenAiCompatibleConnectionOp.run(
+      ctx({
+        role: "admin",
+        ports: { checkOpenAiCompatibleBaseUrl: async () => "This hostname is not allowed" },
+      }),
+      input
+    );
+    expect(refused).toEqual({ error: "This hostname is not allowed" });
+    const unwired = await createOpenAiCompatibleConnectionOp.run(ctx({ role: "admin" }), input);
+    expect(unwired.error).toBeTruthy();
+    expect(await listProviderConnectionsOp.run(ctx({ role: "admin" }), {})).toEqual([]);
+  });
+
   it("creates a safe provider projection and selects it for embeddings", async () => {
     const result = await createOpenAiCompatibleConnectionOp.run(
-      ctx({ role: "admin" }),
+      ctx({ role: "admin", ports: { checkOpenAiCompatibleBaseUrl: async () => null } }),
       {
         displayName: "Local models",
         baseUrl: "http://127.0.0.1:11434/v1",

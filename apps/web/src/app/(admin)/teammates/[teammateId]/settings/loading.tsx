@@ -1,5 +1,5 @@
-import { RouteSkeleton } from "@/components/route-skeleton";
+import { ThreadSkeleton } from "@/components/teammates/thread-skeleton";
 
 export default function TeammateSettingsLoading() {
-  return <RouteSkeleton variant="form" />;
+  return <ThreadSkeleton variant="settings" />;
 }

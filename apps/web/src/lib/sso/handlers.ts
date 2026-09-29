@@ -36,13 +36,12 @@ async function loadCredentials(
   if (!assistant) return null;
   const connection = await db.getSsoConnection(assistant.organizationId);
   if (!connection || connection.provider !== kind) return null;
+  const sealedSecret = await db.getSsoClientSecret(assistant.organizationId);
   return {
     connection,
     credentials: {
       config: connection.config,
-      clientSecret: connection.encryptedSecret
-        ? openSecret(connection.encryptedSecret)
-        : null,
+      clientSecret: sealedSecret ? openSecret(sealedSecret) : null,
     },
   };
 }

@@ -37,7 +37,6 @@ export {
   danglingSourceScopeAlertKey,
   raiseAlertsForAddedScope,
   raiseAlertsForAddedSourceScope,
-  raiseDanglingCollectionAlert,
   raiseDanglingSourceAlerts,
   resolveDanglingCollectionAlerts,
   resolveDanglingSourceAlerts,

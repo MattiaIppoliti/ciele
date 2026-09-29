@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { EXIT } from "../index.ts";
 import { lines, table } from "../output.ts";
-import { str, usage, type CommandContext, type FlagValue } from "./shared.ts";
+import { str, usage, type CommandContext, type FlagValue, confirmed } from "./shared.ts";
 
 /**
  * `ciele collections|sources|faqs …` (#628). File inputs (`sources add-file`,
@@ -161,7 +161,7 @@ export async function sources(
     }
     case "delete": {
       if (!rest[0]) return usage(deps, "sources delete <id> --yes");
-      if (flags.yes !== true) {
+      if (!confirmed(flags)) {
         deps.stderr("Deleting a source removes its Concepts. Re-run with --yes.");
         return EXIT.usage;
       }

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import type { TeammatePatch } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { bool, str, strList, usage, type CommandContext } from "./shared.ts";
+import { bool, str, strList, usage, type CommandContext, emitJson, confirmed } from "./shared.ts";
 
 /**
  * AI Teammates (#768): the Organization's internal agents.
@@ -30,7 +30,7 @@ export async function teammates(verb: string | undefined, ctx: CommandContext) {
     case "get": {
       if (!rest[0]) return usage(deps, "teammates get <id>");
       const teammate = await client.teammates.get(rest[0]);
-      emit(JSON.stringify(teammate, null, 2), teammate);
+      emitJson(emit, teammate);
       return EXIT.ok;
     }
     case "create": {
@@ -87,7 +87,7 @@ export async function teammates(verb: string | undefined, ctx: CommandContext) {
     }
     case "delete": {
       if (!rest[0]) return usage(deps, "teammates delete <id> --yes");
-      if (flags.yes !== true) {
+      if (!confirmed(flags)) {
         deps.stderr("Refusing to delete without --yes");
         return EXIT.usage;
       }
@@ -113,7 +113,7 @@ export async function teammates(verb: string | undefined, ctx: CommandContext) {
         return usage(deps, "teammates conversation <id> <conversationId>");
       }
       const result = await client.teammates.conversation(rest[0], rest[1]);
-      emit(JSON.stringify(result, null, 2), result);
+      emitJson(emit, result);
       return EXIT.ok;
     }
     case "provision": {
@@ -255,7 +255,7 @@ export async function teammates(verb: string | undefined, ctx: CommandContext) {
     }
     case "delete-routine": {
       if (!rest[0]) return usage(deps, "teammates delete-routine <routineId> --yes");
-      if (flags.yes !== true) {
+      if (!confirmed(flags)) {
         deps.stderr("Deleting a routine stops its unattended runs. Re-run with --yes.");
         return EXIT.usage;
       }

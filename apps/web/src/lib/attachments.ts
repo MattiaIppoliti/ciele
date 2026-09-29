@@ -158,7 +158,7 @@ export function sealAttachment(attachment: ChatAttachment): string {
     text: capMemoryDocument(attachment.text, ATTACHMENT_MAX_CHARS),
     exp: Date.now() + TOKEN_TTL_MS,
   };
-  return sealSecret(JSON.stringify(payload));
+  return sealSecret(JSON.stringify(payload), "attachment");
 }
 
 /**
@@ -169,7 +169,7 @@ export function sealAttachment(attachment: ChatAttachment): string {
 export function openAttachment(token: unknown): ChatAttachment | null {
   if (typeof token !== "string" || !token) return null;
   try {
-    const payload = JSON.parse(openSecret(token)) as SealedAttachment;
+    const payload = JSON.parse(openSecret(token, "attachment")) as SealedAttachment;
     if (typeof payload?.text !== "string" || typeof payload?.name !== "string") {
       return null;
     }

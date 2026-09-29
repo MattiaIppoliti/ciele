@@ -1,3 +1,4 @@
+import { sealSecret } from "@agent-hub/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   gateForOrg,
@@ -36,6 +37,17 @@ afterEach(() => {
 describe("SSO cookie sealing", () => {
   beforeEach(() => {
     process.env.APP_ENCRYPTION_KEY = "test-encryption-key";
+  });
+
+  it("rejects a stored credential shaped like a gate payload (sealing oracle)", () => {
+    const forged = sealSecret(JSON.stringify(gate));
+    expect(gateForOrg(forged, "org-1")).toBeNull();
+    expect(openGate(forged)).toBeNull();
+  });
+
+  it("does not accept a txn cookie as a gate cookie or the reverse", () => {
+    expect(openGate(sealTxn(txn as unknown as SsoTxnPayload))).toBeNull();
+    expect(openTxn(sealGate(gate))).toBeNull();
   });
 
   it("round-trips a sealed transient", () => {

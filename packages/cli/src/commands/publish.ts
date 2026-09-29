@@ -1,5 +1,5 @@
 import { EXIT } from "../index.ts";
-import { usage, type CommandContext } from "./shared.ts";
+import { usage, type CommandContext, confirmed } from "./shared.ts";
 
 /** `ciele publish …` (#628): status | create | remove | restore. */
 export async function publish(
@@ -27,7 +27,7 @@ export async function publish(
     }
     case "remove": {
       if (!rest[0]) return usage(deps, "publish remove <assistantId> --yes");
-      if (flags.yes !== true) {
+      if (!confirmed(flags)) {
         deps.stderr("Unpublishing takes the widget offline. Re-run with --yes.");
         return EXIT.usage;
       }

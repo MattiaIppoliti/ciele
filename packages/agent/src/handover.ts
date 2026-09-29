@@ -145,7 +145,12 @@ export async function runHandoverContinuation(
       history: input.history,
       searchKnowledge,
       readKnowledgeDocument: input.readKnowledgeDocumentFor(target.id),
-      apiIntegration: await db.getApiIntegration(target.id).catch(() => null),
+      apiIntegration: await db
+        .getApiIntegration(target.id)
+        .then((found) =>
+          found && found.organizationId === target.organizationId ? found : null
+        )
+        .catch(() => null),
       collectionId: null,
       session: input.session,
       alreadyClarified: input.alreadyClarified,

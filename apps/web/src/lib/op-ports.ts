@@ -25,6 +25,7 @@ import {
   getEnterpriseCapabilities,
   enqueueApplicationSyncJob,
   evaluateCase,
+  checkOpenAiCompatibleBaseUrl,
 } from "@agent-hub/agent";
 import {
   availableEvaluationModels,
@@ -322,16 +323,21 @@ export function webOperationPorts(
         };
       }
     },
+    checkOpenAiCompatibleBaseUrl,
     validateSsoConnection: async (connection) => {
       const provider = getSsoProvider(connection.provider);
       if (!provider?.validate) {
         return { ok: false, error: "This provider can't be validated." };
       }
+      // The connection came from the caller's org-pinned Db, so its
+      // organizationId is theirs. The secret column is not selectable through
+      // that RLS-scoped client, hence the service-role read.
+      const sealed = await getWidgetDb().getSsoClientSecret(
+        connection.organizationId
+      );
       return provider.validate({
         config: connection.config,
-        clientSecret: connection.encryptedSecret
-          ? openSecret(connection.encryptedSecret)
-          : null,
+        clientSecret: sealed ? openSecret(sealed) : null,
       });
     },
     enqueueIngest: (job) =>

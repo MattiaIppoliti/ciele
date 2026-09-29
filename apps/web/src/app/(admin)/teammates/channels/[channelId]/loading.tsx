@@ -1,5 +1,5 @@
-import { RouteSkeleton } from "@/components/route-skeleton";
+import { ThreadSkeleton } from "@/components/teammates/thread-skeleton";
 
 export default function ChannelLoading() {
-  return <RouteSkeleton variant="list" />;
+  return <ThreadSkeleton variant="channel" />;
 }

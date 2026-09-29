@@ -1367,10 +1367,11 @@ export type SsoConnectionConfig = EntraSsoConfig;
 export type SsoValidationStatus = "unvalidated" | "valid" | "invalid";
 
 /**
- * Organization-level SSO connection. `encryptedSecret` is AES-sealed app-side
- * (see `sealSecret`) and returned only to server-side callers, NEVER to the
- * browser or the widget. Use {@link SsoConnectionPublic} on any browser-facing
- * read path.
+ * Organization-level SSO connection. The sealed client secret is AES-sealed
+ * app-side (see `sealSecret`) and is deliberately not a field here: a member's
+ * RLS-scoped client cannot select the column, so it is read only through
+ * `Db.getSsoClientSecret` on a service-role client. Use
+ * {@link SsoConnectionPublic} on any browser-facing read path.
  */
 export interface SsoConnection {
   id: string;
@@ -1378,8 +1379,8 @@ export interface SsoConnection {
   provider: SsoProviderKind;
   /** Non-secret settings (Entra: client id + tenant id). */
   config: SsoConnectionConfig;
-  /** Sealed client secret; server-side only. */
-  encryptedSecret: string | null;
+  /** True once a client secret is stored. The secret itself is never here. */
+  hasClientSecret: boolean;
   validationStatus: SsoValidationStatus;
   validatedAt: string | null;
   connectedAt: string;

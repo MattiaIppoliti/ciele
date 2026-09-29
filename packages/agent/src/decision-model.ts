@@ -146,7 +146,7 @@ export function resolveDecisionModel(
   return null;
 }
 
-function adapterModel(
+export function adapterModel(
   provider: CatalogProvider,
   modelId: string,
   apiKey: string

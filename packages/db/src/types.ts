@@ -294,6 +294,12 @@ export interface Db {
   // server-side `getSsoConnection`; `getSsoConnectionPublic` is the sole
   // browser/widget-safe read.
   getSsoConnection(organizationId: string): Promise<SsoConnection | null>;
+  /**
+   * The sealed client secret. Service-role clients only: the column is not
+   * selectable by `authenticated`, so an RLS-scoped client gets a permission
+   * error here on purpose.
+   */
+  getSsoClientSecret(organizationId: string): Promise<string | null>;
   getSsoConnectionPublic(
     organizationId: string
   ): Promise<SsoConnectionPublic | null>;
@@ -302,6 +308,7 @@ export interface Db {
     input: {
       provider: SsoProviderKind;
       config: SsoConnectionConfig;
+      /** Omitted keeps the stored secret; null clears it; a string replaces it. */
       encryptedSecret?: string | null;
     }
   ): Promise<SsoConnection>;

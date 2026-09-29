@@ -276,6 +276,10 @@ interface RequestOptions {
   idempotencyKey?: string;
 }
 
+/** Tagged template for request paths: every interpolation is URL-encoded. */
+const p = (strings: TemplateStringsArray, ...values: string[]) =>
+  String.raw({ raw: strings }, ...values.map(encodeURIComponent));
+
 /** A multipart upload the route links to Assistants. */
 function linkedForm(file: File, assistantIds: string[]): FormData {
   const form = new FormData();
@@ -366,18 +370,18 @@ export class CieleClient {
       this.request("GET", "/assistants", { query: { ...params } }),
     listAll: (): AsyncGenerator<ApiAssistant> => this.paginate("/assistants"),
     get: (id: string): Promise<ApiAssistant> =>
-      this.request("GET", `/assistants/${id}`),
+      this.request("GET", p`/assistants/${id}`),
     create: (
       input: { title: string; nickname?: string; description?: string },
       opts: { idempotencyKey?: string } = {}
     ): Promise<ApiAssistant> =>
       this.request("POST", "/assistants", { body: input, ...opts }),
     update: (id: string, patch: AssistantPatch): Promise<ApiAssistant> =>
-      this.request("PATCH", `/assistants/${id}`, { body: patch }),
+      this.request("PATCH", p`/assistants/${id}`, { body: patch }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/assistants/${id}`),
+      this.request("DELETE", p`/assistants/${id}`),
     duplicate: (id: string): Promise<ApiAssistant> =>
-      this.request("POST", `/assistants/${id}/duplicate`),
+      this.request("POST", p`/assistants/${id}/duplicate`),
     /**
      * The published Assistant's answer to `question`, with its Sources. A real
      * turn (it can take a while and creates a Conversation the Inbox shows);
@@ -387,11 +391,11 @@ export class CieleClient {
       id: string,
       input: { question: string; conversationId?: string }
     ): Promise<AssistantAnswer> =>
-      this.request("POST", `/assistants/${id}/ask`, { body: input }),
+      this.request("POST", p`/assistants/${id}/ask`, { body: input }),
     skills: (id: string): Promise<{ data: Skill[] }> =>
-      this.request("GET", `/assistants/${encodeURIComponent(id)}/skills`),
+      this.request("GET", p`/assistants/${id}/skills`),
     setSkills: (id: string, skillIds: string[]): Promise<{ data: Skill[] }> =>
-      this.request("PATCH", `/assistants/${encodeURIComponent(id)}/skills`, {
+      this.request("PATCH", p`/assistants/${id}/skills`, {
         body: { skillIds },
       }),
   };
@@ -432,7 +436,7 @@ export class CieleClient {
     ): Promise<{ proposal: FlowInput; rationale: string; assistantId: string }> =>
       this.request(
         "POST",
-        `/assistants/${encodeURIComponent(assistantId)}/flows/validate`,
+        p`/assistants/${assistantId}/flows/validate`,
         { body: input }
       ),
 
@@ -441,7 +445,7 @@ export class CieleClient {
       flowId: string,
       limit?: number
     ): Promise<{ data: HttpFlowRun[] }> =>
-      this.request("GET", `/flows/${encodeURIComponent(flowId)}/runs`, {
+      this.request("GET", p`/flows/${flowId}/runs`, {
         query: { limit },
       }),
 
@@ -452,7 +456,7 @@ export class CieleClient {
     ): Promise<{ data: Conversation[] }> =>
       this.request(
         "GET",
-        `/assistants/${encodeURIComponent(assistantId)}/flows-agent/thread`,
+        p`/assistants/${assistantId}/flows-agent/thread`,
         { query: { flowId } }
       ),
     agentConversation: (
@@ -461,28 +465,28 @@ export class CieleClient {
     ): Promise<{ conversation: Conversation; messages: StoredMessage[] }> =>
       this.request(
         "GET",
-        `/assistants/${encodeURIComponent(assistantId)}/flows-agent/conversations/${encodeURIComponent(conversationId)}`
+        p`/assistants/${assistantId}/flows-agent/conversations/${conversationId}`
       ),
     list: (assistantId: string): Promise<{ data: Flow[] }> =>
-      this.request("GET", `/assistants/${assistantId}/flows`),
-    get: (id: string): Promise<Flow> => this.request("GET", `/flows/${id}`),
+      this.request("GET", p`/assistants/${assistantId}/flows`),
+    get: (id: string): Promise<Flow> => this.request("GET", p`/flows/${id}`),
     create: (assistantId: string, input: FlowInput): Promise<Flow> =>
-      this.request("POST", `/assistants/${assistantId}/flows`, { body: input }),
+      this.request("POST", p`/assistants/${assistantId}/flows`, { body: input }),
     update: (id: string, patch: FlowPatch): Promise<Flow> =>
-      this.request("PATCH", `/flows/${id}`, { body: patch }),
+      this.request("PATCH", p`/flows/${id}`, { body: patch }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/flows/${id}`),
+      this.request("DELETE", p`/flows/${id}`),
     reorder: (assistantId: string, orderedIds: string[]): Promise<{ data: Flow[] }> =>
-      this.request("POST", `/assistants/${assistantId}/flows/reorder`, {
+      this.request("POST", p`/assistants/${assistantId}/flows/reorder`, {
         body: { orderedIds },
       }),
   };
 
   readonly knowledge = {
     collections: (assistantId: string): Promise<{ data: KnowledgeCollection[] }> =>
-      this.request("GET", `/assistants/${assistantId}/collections`),
+      this.request("GET", p`/assistants/${assistantId}/collections`),
     sources: (collectionId: string): Promise<{ data: ApiSource[] }> =>
-      this.request("GET", `/collections/${collectionId}/sources`),
+      this.request("GET", p`/collections/${collectionId}/sources`),
     /**
      * PRD #726: knowledge reaches Assistants only through explicit links, so
      * every add names them and the endpoint refuses an empty set. Required
@@ -493,7 +497,7 @@ export class CieleClient {
       collectionId: string,
       input: { name?: string; text: string; assistantIds: string[] }
     ): Promise<ApiSource> =>
-      this.request("POST", `/collections/${collectionId}/sources`, {
+      this.request("POST", p`/collections/${collectionId}/sources`, {
         body: { kind: "text", ...input },
       }),
     addUrlSource: (
@@ -501,7 +505,7 @@ export class CieleClient {
       url: string,
       assistantIds: string[]
     ): Promise<ApiSource> =>
-      this.request("POST", `/collections/${collectionId}/sources`, {
+      this.request("POST", p`/collections/${collectionId}/sources`, {
         body: { kind: "url", url, assistantIds },
       }),
     /** Multipart file upload; pass a File/Blob (Node 20+ has both). */
@@ -510,26 +514,26 @@ export class CieleClient {
       file: File,
       assistantIds: string[]
     ): Promise<ApiSource> =>
-      this.request("POST", `/collections/${collectionId}/sources`, {
+      this.request("POST", p`/collections/${collectionId}/sources`, {
         form: linkedForm(file, assistantIds),
       }),
     getSource: (id: string): Promise<ApiSource> =>
-      this.request("GET", `/sources/${id}`),
+      this.request("GET", p`/sources/${id}`),
     deleteSource: (id: string): Promise<void> =>
-      this.request("DELETE", `/sources/${id}`),
+      this.request("DELETE", p`/sources/${id}`),
     recrawlSource: (id: string): Promise<{ ok: true }> =>
-      this.request("POST", `/sources/${id}/recrawl`),
+      this.request("POST", p`/sources/${id}/recrawl`),
     addFaq: (
       collectionId: string,
       input: { question: string; answer: string; assistantIds: string[] }
     ): Promise<{ id: string; question: string; answer: string; path: string }> =>
-      this.request("POST", `/collections/${collectionId}/faqs`, { body: input }),
+      this.request("POST", p`/collections/${collectionId}/faqs`, { body: input }),
     importFaqs: (
       collectionId: string,
       csv: File,
       assistantIds: string[]
     ): Promise<{ imported: number; skipped: string[] }> =>
-      this.request("POST", `/collections/${collectionId}/faqs/import`, {
+      this.request("POST", p`/collections/${collectionId}/faqs/import`, {
         form: linkedForm(csv, assistantIds),
       }),
 
@@ -586,7 +590,7 @@ export class CieleClient {
         directAccess: boolean;
       }>;
     }> =>
-      this.request("PUT", `/sources/${sourceId}/links`, {
+      this.request("PUT", p`/sources/${sourceId}/links`, {
         body: { assistantIds },
       }),
     /** Flip Direct access for one assistant on a file Source. */
@@ -601,7 +605,7 @@ export class CieleClient {
         directAccess: boolean;
       }>;
     }> =>
-      this.request("PUT", `/sources/${sourceId}/direct-access`, {
+      this.request("PUT", p`/sources/${sourceId}/direct-access`, {
         body: { assistantId, directAccess },
       }),
     /**
@@ -656,18 +660,18 @@ export class CieleClient {
 
   readonly publish = {
     status: (assistantId: string): Promise<PublicationStatus> =>
-      this.request("GET", `/assistants/${assistantId}/publish`),
+      this.request("GET", p`/assistants/${assistantId}/publish`),
     publish: (
       assistantId: string
     ): Promise<{ version: number; publicationId: string }> =>
-      this.request("POST", `/assistants/${assistantId}/publish`),
+      this.request("POST", p`/assistants/${assistantId}/publish`),
     unpublish: (assistantId: string): Promise<void> =>
-      this.request("DELETE", `/assistants/${assistantId}/publish`),
+      this.request("DELETE", p`/assistants/${assistantId}/publish`),
     republish: (
       assistantId: string,
       publicationId: string
     ): Promise<{ version: number; publicationId: string }> =>
-      this.request("POST", `/assistants/${assistantId}/republish`, {
+      this.request("POST", p`/assistants/${assistantId}/republish`, {
         body: { publicationId },
       }),
   };
@@ -678,24 +682,24 @@ export class CieleClient {
     ): Promise<Page<{ id: string; assistantId: string }>> =>
       this.request("GET", "/conversations", { query: { ...params } }),
     get: (id: string): Promise<{ conversation: unknown; messages: unknown[] }> =>
-      this.request("GET", `/conversations/${id}`),
+      this.request("GET", p`/conversations/${id}`),
     export: (conversationIds: string[]): Promise<{ data: unknown[] }> =>
       this.request("POST", "/conversations/export", { body: { conversationIds } }),
     setPinned: (id: string, pinned: boolean): Promise<unknown> =>
-      this.request("PATCH", `/conversations/${encodeURIComponent(id)}`, {
+      this.request("PATCH", p`/conversations/${id}`, {
         body: { pinned },
       }),
     feedback: (id: string, text: string): Promise<unknown> =>
-      this.request("POST", `/conversations/${encodeURIComponent(id)}/feedback`, {
+      this.request("POST", p`/conversations/${id}/feedback`, {
         body: { text },
       }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/conversations/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/conversations/${id}`),
   };
 
   readonly messages = {
     setFeedback: (id: string, feedback: -1 | 0 | 1): Promise<unknown> =>
-      this.request("PATCH", `/messages/${encodeURIComponent(id)}/feedback`, {
+      this.request("PATCH", p`/messages/${id}/feedback`, {
         body: { feedback },
       }),
   };
@@ -704,9 +708,9 @@ export class CieleClient {
     list: (params: ListParams = {}): Promise<Page<{ id: string }>> =>
       this.request("GET", "/improvements", { query: { ...params } }),
     get: (id: string): Promise<unknown> =>
-      this.request("GET", `/improvements/${id}`),
+      this.request("GET", p`/improvements/${id}`),
     update: (id: string, patch: ImprovementPatch): Promise<unknown> =>
-      this.request("PATCH", `/improvements/${id}`, { body: patch }),
+      this.request("PATCH", p`/improvements/${id}`, { body: patch }),
   };
 
   readonly memories = {
@@ -717,11 +721,11 @@ export class CieleClient {
     subjects: (params: ListParams = {}): Promise<Page<MemorySubjectSummary>> =>
       this.request("GET", "/memories/subjects", { query: { ...params } }),
     list: (subjectId: string): Promise<{ data: Memory[] }> =>
-      this.request("GET", `/memories/subjects/${encodeURIComponent(subjectId)}`),
+      this.request("GET", p`/memories/subjects/${subjectId}`),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/memories/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/memories/${id}`),
     wipe: (subjectId: string): Promise<void> =>
-      this.request("DELETE", `/memories/subjects/${encodeURIComponent(subjectId)}`),
+      this.request("DELETE", p`/memories/subjects/${subjectId}`),
   };
 
   readonly sso = {
@@ -771,7 +775,7 @@ export class CieleClient {
   readonly teammates = {
     list: (): Promise<{ data: Teammate[] }> => this.request("GET", "/teammates"),
     get: (id: string): Promise<Teammate> =>
-      this.request("GET", `/teammates/${encodeURIComponent(id)}`),
+      this.request("GET", p`/teammates/${id}`),
     create: (input: Omit<TeammateInput, "organizationId" | "ownerId">): Promise<Teammate> =>
       this.request("POST", "/teammates", { body: input }),
 
@@ -802,18 +806,18 @@ export class CieleClient {
       reason: string | null;
     }> => this.request("POST", "/teammates/provision", { body: input, ...opts }),
     update: (id: string, patch: TeammatePatch): Promise<Teammate> =>
-      this.request("PATCH", `/teammates/${encodeURIComponent(id)}`, { body: patch }),
+      this.request("PATCH", p`/teammates/${id}`, { body: patch }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/teammates/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/teammates/${id}`),
     conversations: (id: string): Promise<{ data: Conversation[] }> =>
-      this.request("GET", `/teammates/${encodeURIComponent(id)}/conversations`),
+      this.request("GET", p`/teammates/${id}/conversations`),
     conversation: (
       id: string,
       conversationId: string
     ): Promise<ApiTeammateConversation> =>
       this.request(
         "GET",
-        `/teammates/${encodeURIComponent(id)}/conversations/${encodeURIComponent(conversationId)}`
+        p`/teammates/${id}/conversations/${conversationId}`
       ),
 
     /**
@@ -823,7 +827,7 @@ export class CieleClient {
      * a Role. The write replaces the whole set.
      */
     grants: (id: string): Promise<TeammateGovernance> =>
-      this.request("GET", `/teammates/${encodeURIComponent(id)}/grants`),
+      this.request("GET", p`/teammates/${id}/grants`),
     setGrants: (
       id: string,
       input: {
@@ -832,19 +836,19 @@ export class CieleClient {
         approvalBypass?: boolean;
       }
     ): Promise<TeammateGovernance> =>
-      this.request("PUT", `/teammates/${encodeURIComponent(id)}/grants`, {
+      this.request("PUT", p`/teammates/${id}/grants`, {
         body: input,
       }),
 
     /** Routines (#772): unattended recurring runs, max 5 per Teammate. */
     routines: (id: string): Promise<{ data: TeammateRoutine[] }> =>
-      this.request("GET", `/teammates/${encodeURIComponent(id)}/routines`),
+      this.request("GET", p`/teammates/${id}/routines`),
     addRoutine: (
       id: string,
       input: { instruction: string; cadence: string; hour?: number },
       opts: { idempotencyKey?: string } = {}
     ): Promise<TeammateRoutine> =>
-      this.request("POST", `/teammates/${encodeURIComponent(id)}/routines`, {
+      this.request("POST", p`/teammates/${id}/routines`, {
         body: input,
         ...opts,
       }),
@@ -857,11 +861,11 @@ export class CieleClient {
         enabled?: boolean;
       }
     ): Promise<TeammateRoutine> =>
-      this.request("PATCH", `/routines/${encodeURIComponent(routineId)}`, {
+      this.request("PATCH", p`/routines/${routineId}`, {
         body: patch,
       }),
     deleteRoutine: (routineId: string): Promise<void> =>
-      this.request("DELETE", `/routines/${encodeURIComponent(routineId)}`),
+      this.request("DELETE", p`/routines/${routineId}`),
 
     /**
      * The Agent memory layer (#771). Its sibling, the User layer, has no
@@ -869,12 +873,12 @@ export class CieleClient {
      * as the Member who minted it.
      */
     memory: (id: string): Promise<ApiMemoryDocumentView> =>
-      this.request("GET", `/teammates/${encodeURIComponent(id)}/memory`),
+      this.request("GET", p`/teammates/${id}/memory`),
     setMemory: (
       id: string,
       input: { body: string; note?: string }
     ): Promise<MemoryDocument> =>
-      this.request("PUT", `/teammates/${encodeURIComponent(id)}/memory`, {
+      this.request("PUT", p`/teammates/${id}/memory`, {
         body: input,
       }),
   };
@@ -889,23 +893,23 @@ export class CieleClient {
     get: (
       id: string
     ): Promise<{ project: Project } & ApiMemoryDocumentView> =>
-      this.request("GET", `/projects/${encodeURIComponent(id)}`),
+      this.request("GET", p`/projects/${id}`),
     create: (
       input: { name: string; description?: string },
       opts: { idempotencyKey?: string } = {}
     ): Promise<Project> =>
       this.request("POST", "/projects", { body: input, ...opts }),
     update: (id: string, patch: ProjectPatch): Promise<Project> =>
-      this.request("PATCH", `/projects/${encodeURIComponent(id)}`, {
+      this.request("PATCH", p`/projects/${id}`, {
         body: patch,
       }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/projects/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/projects/${id}`),
     setDocument: (
       id: string,
       input: { body: string; note?: string }
     ): Promise<MemoryDocument> =>
-      this.request("PUT", `/projects/${encodeURIComponent(id)}/document`, {
+      this.request("PUT", p`/projects/${id}/document`, {
         body: input,
       }),
   };
@@ -928,12 +932,12 @@ export class CieleClient {
     oversight: (): Promise<{ data: ApiChannelSummary[] }> =>
       this.request("GET", "/channels/oversight"),
     oversightRead: (id: string): Promise<ApiChannelView> =>
-      this.request("GET", `/channels/oversight/${encodeURIComponent(id)}`),
+      this.request("GET", p`/channels/oversight/${id}`),
 
     list: (): Promise<{ data: ApiChannelSummary[] }> =>
       this.request("GET", "/channels"),
     get: (id: string): Promise<ApiChannelView> =>
-      this.request("GET", `/channels/${encodeURIComponent(id)}`),
+      this.request("GET", p`/channels/${id}`),
     create: (input: {
       name: string;
       memberIds?: string[];
@@ -944,26 +948,26 @@ export class CieleClient {
       id: string,
       patch: { name?: string; projectId?: string | null }
     ): Promise<TeammateChannel> =>
-      this.request("PATCH", `/channels/${encodeURIComponent(id)}`, { body: patch }),
+      this.request("PATCH", p`/channels/${id}`, { body: patch }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/channels/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/channels/${id}`),
     addMembers: (id: string, userIds: string[]): Promise<void> =>
-      this.request("POST", `/channels/${encodeURIComponent(id)}/members`, {
+      this.request("POST", p`/channels/${id}/members`, {
         body: { userIds },
       }),
     removeMember: (id: string, userId: string): Promise<void> =>
       this.request(
         "DELETE",
-        `/channels/${encodeURIComponent(id)}/members/${encodeURIComponent(userId)}`
+        p`/channels/${id}/members/${userId}`
       ),
     addTeammates: (id: string, teammateIds: string[]): Promise<void> =>
-      this.request("POST", `/channels/${encodeURIComponent(id)}/teammates`, {
+      this.request("POST", p`/channels/${id}/teammates`, {
         body: { teammateIds },
       }),
     removeTeammate: (id: string, teammateId: string): Promise<void> =>
       this.request(
         "DELETE",
-        `/channels/${encodeURIComponent(id)}/teammates/${encodeURIComponent(teammateId)}`
+        p`/channels/${id}/teammates/${teammateId}`
       ),
   };
 
@@ -971,7 +975,7 @@ export class CieleClient {
     list: (): Promise<{ data: ApiHelpDesk[] }> =>
       this.request("GET", "/help-desks"),
     get: (id: string): Promise<{ desk: ApiHelpDesk; channels: ApiSupportChannel[] }> =>
-      this.request("GET", `/help-desks/${encodeURIComponent(id)}`),
+      this.request("GET", p`/help-desks/${id}`),
     create: (input: { name: string; description?: string }): Promise<ApiHelpDesk> =>
       this.request("POST", "/help-desks", { body: input }),
     update: (
@@ -982,11 +986,11 @@ export class CieleClient {
         autoGenerateImprovements?: boolean;
       }
     ): Promise<ApiHelpDesk> =>
-      this.request("PATCH", `/help-desks/${encodeURIComponent(id)}`, { body: patch }),
+      this.request("PATCH", p`/help-desks/${id}`, { body: patch }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/help-desks/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/help-desks/${id}`),
     addChannel: (helpDeskId: string, input: SupportChannelInput): Promise<ApiSupportChannel> =>
-      this.request("POST", `/help-desks/${encodeURIComponent(helpDeskId)}/channels`, {
+      this.request("POST", p`/help-desks/${helpDeskId}/channels`, {
         body: input,
       }),
     updateChannel: (
@@ -996,13 +1000,13 @@ export class CieleClient {
     ): Promise<ApiSupportChannel> =>
       this.request(
         "PATCH",
-        `/help-desks/${encodeURIComponent(helpDeskId)}/channels/${encodeURIComponent(channelId)}`,
+        p`/help-desks/${helpDeskId}/channels/${channelId}`,
         { body: patch }
       ),
     deleteChannel: (helpDeskId: string, channelId: string): Promise<void> =>
       this.request(
         "DELETE",
-        `/help-desks/${encodeURIComponent(helpDeskId)}/channels/${encodeURIComponent(channelId)}`
+        p`/help-desks/${helpDeskId}/channels/${channelId}`
       ),
     reorderChannels: (
       helpDeskId: string,
@@ -1010,7 +1014,7 @@ export class CieleClient {
     ): Promise<{ data: ApiSupportChannel[] }> =>
       this.request(
         "POST",
-        `/help-desks/${encodeURIComponent(helpDeskId)}/channels/reorder`,
+        p`/help-desks/${helpDeskId}/channels/reorder`,
         { body: { orderedIds } }
       ),
     connectServiceNow: (
@@ -1026,13 +1030,13 @@ export class CieleClient {
     ): Promise<ApiHelpDesk> =>
       this.request(
         "POST",
-        `/help-desks/${encodeURIComponent(helpDeskId)}/ticketing/servicenow`,
+        p`/help-desks/${helpDeskId}/ticketing/servicenow`,
         { body: input }
       ),
     disconnectTicketing: (helpDeskId: string): Promise<ApiHelpDesk> =>
       this.request(
         "DELETE",
-        `/help-desks/${encodeURIComponent(helpDeskId)}/ticketing`
+        p`/help-desks/${helpDeskId}/ticketing`
       ),
   };
 
@@ -1041,19 +1045,19 @@ export class CieleClient {
     create: (input: SkillInput): Promise<Skill> =>
       this.request("POST", "/skills", { body: input }),
     update: (id: string, patch: SkillPatch): Promise<Skill> =>
-      this.request("PATCH", `/skills/${encodeURIComponent(id)}`, { body: patch }),
+      this.request("PATCH", p`/skills/${id}`, { body: patch }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/skills/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/skills/${id}`),
   };
 
   readonly goals = {
     list: (assistantId: string): Promise<{ data: AssistantGoal[] }> =>
-      this.request("GET", `/assistants/${encodeURIComponent(assistantId)}/goals`),
+      this.request("GET", p`/assistants/${assistantId}/goals`),
     create: (
       assistantId: string,
       input: { question: string; expectations: GoalExpectations }
     ): Promise<AssistantGoal> =>
-      this.request("POST", `/assistants/${encodeURIComponent(assistantId)}/goals`, {
+      this.request("POST", p`/assistants/${assistantId}/goals`, {
         body: input,
       }),
     update: (
@@ -1067,20 +1071,20 @@ export class CieleClient {
     ): Promise<AssistantGoal> =>
       this.request(
         "PATCH",
-        `/assistants/${encodeURIComponent(assistantId)}/goals/${encodeURIComponent(goalId)}`,
+        p`/assistants/${assistantId}/goals/${goalId}`,
         { body: patch }
       ),
     delete: (assistantId: string, goalId: string): Promise<void> =>
       this.request(
         "DELETE",
-        `/assistants/${encodeURIComponent(assistantId)}/goals/${encodeURIComponent(goalId)}`
+        p`/assistants/${assistantId}/goals/${goalId}`
       ),
   };
 
   readonly alerts = {
     list: (): Promise<{ data: Alert[] }> => this.request("GET", "/alerts"),
     resolve: (id: string): Promise<Alert> =>
-      this.request("POST", `/alerts/${encodeURIComponent(id)}/resolve`),
+      this.request("POST", p`/alerts/${id}/resolve`),
   };
 
   readonly organization = {
@@ -1092,11 +1096,11 @@ export class CieleClient {
   readonly members = {
     list: (): Promise<{ data: Member[] }> => this.request("GET", "/members"),
     setRole: (userId: string, role: Role): Promise<Member> =>
-      this.request("PATCH", `/members/${encodeURIComponent(userId)}`, {
+      this.request("PATCH", p`/members/${userId}`, {
         body: { role },
       }),
     remove: (userId: string): Promise<void> =>
-      this.request("DELETE", `/members/${encodeURIComponent(userId)}`),
+      this.request("DELETE", p`/members/${userId}`),
   };
 
   readonly invites = {
@@ -1104,7 +1108,7 @@ export class CieleClient {
     create: (input: { role: Role; email?: string }): Promise<Invite> =>
       this.request("POST", "/invites", { body: input }),
     revoke: (id: string): Promise<void> =>
-      this.request("DELETE", `/invites/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/invites/${id}`),
   };
 
   readonly apiKeys = {
@@ -1115,7 +1119,7 @@ export class CieleClient {
     }): Promise<{ apiKey: OrgApiKey; secret: string }> =>
       this.request("POST", "/api-keys", { body: input }),
     revoke: (id: string): Promise<void> =>
-      this.request("DELETE", `/api-keys/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/api-keys/${id}`),
   };
 
   /**
@@ -1134,7 +1138,7 @@ export class CieleClient {
     get: (assistantId: string): Promise<ApiIntegrationView | null> =>
       this.request(
         "GET",
-        `/assistants/${encodeURIComponent(assistantId)}/api-integration`
+        p`/assistants/${assistantId}/api-integration`
       ),
     set: (
       assistantId: string,
@@ -1150,13 +1154,13 @@ export class CieleClient {
     ): Promise<ApiIntegrationView> =>
       this.request(
         "PUT",
-        `/assistants/${encodeURIComponent(assistantId)}/api-integration`,
+        p`/assistants/${assistantId}/api-integration`,
         { body: input }
       ),
     delete: (assistantId: string): Promise<void> =>
       this.request(
         "DELETE",
-        `/assistants/${encodeURIComponent(assistantId)}/api-integration`
+        p`/assistants/${assistantId}/api-integration`
       ),
   };
 
@@ -1174,7 +1178,7 @@ export class CieleClient {
       id: string,
       input: { actions?: string[]; scopes?: string[] } = {}
     ): Promise<ApplicationReconsentView> =>
-      this.request("POST", `/applications/connections/${encodeURIComponent(id)}/reconsent`, {
+      this.request("POST", p`/applications/connections/${id}/reconsent`, {
         body: input,
       }),
   };
@@ -1186,12 +1190,12 @@ export class CieleClient {
     ): Promise<{ data: ReviewRequestView[] }> =>
       this.request("GET", "/reviews", { query: { ...params } }),
     get: (id: string): Promise<ReviewRequestView> =>
-      this.request("GET", `/reviews/${encodeURIComponent(id)}`),
+      this.request("GET", p`/reviews/${id}`),
     decide: (
       id: string,
       input: { decision: "approved" | "rejected"; inputs?: Record<string, string> }
     ): Promise<ReviewRequestView> =>
-      this.request("POST", `/reviews/${encodeURIComponent(id)}/decide`, { body: input }),
+      this.request("POST", p`/reviews/${id}/decide`, { body: input }),
   };
 
   readonly providers = {
@@ -1214,7 +1218,7 @@ export class CieleClient {
     createFederated: (input: Record<string, unknown>): Promise<ProviderConnectionView> =>
       this.request("POST", "/providers/federated", { body: input }),
     delete: (id: string): Promise<void> =>
-      this.request("DELETE", `/providers/${encodeURIComponent(id)}`),
+      this.request("DELETE", p`/providers/${id}`),
     setEmbedding: (connectionId: string | null): Promise<{ connectionId: string | null }> =>
       this.request("PATCH", "/providers/embedding", { body: { connectionId } }),
   };

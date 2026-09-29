@@ -11,6 +11,7 @@ import type {
   ProviderConnection,
 } from "@agent-hub/core";
 import { openSecret } from "@agent-hub/core";
+import { guardedOpenAiCompatibleFetch } from "./openai-compatible-guard";
 
 import {
   createLocalCliRunner,
@@ -493,6 +494,10 @@ function buildHostedModel(
       name: "openai-compatible",
       baseURL: credential.config.baseUrl,
       apiKey: credential.apiKey ?? undefined,
+      // A URL an Organization typed in is guarded; the operator's env is not.
+      ...(credential.kind === "platform"
+        ? {}
+        : { fetch: guardedOpenAiCompatibleFetch }),
     }).chatModel(modelId);
   }
   switch (provider) {

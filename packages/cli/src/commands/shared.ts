@@ -68,3 +68,17 @@ export const csv = (value: string) =>
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+
+/** `--limit` / `--cursor` as the client's list params. */
+export function pageParams(flags: CommandContext["flags"]) {
+  const limit = str(flags.limit);
+  return { limit: limit ? Number(limit) : undefined, cursor: str(flags.cursor) };
+}
+
+/** The destructive-command guard: `--yes` was passed as a bare flag. */
+export const confirmed = (flags: CommandContext["flags"]): boolean => flags.yes === true;
+
+/** Print a value as pretty JSON for humans, raw for `--json`. */
+export function emitJson(emit: CommandContext["emit"], data: unknown): void {
+  emit(JSON.stringify(data, null, 2), data);
+}

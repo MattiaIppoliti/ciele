@@ -67,7 +67,7 @@ export function sealApplicationOAuthTransaction(
   transaction: ApplicationOAuthTransaction
 ): string {
   requireEncryptionKey();
-  return sealSecret(JSON.stringify(transaction));
+  return sealSecret(JSON.stringify(transaction), "app_oauth_txn");
 }
 
 export function openApplicationOAuthTransaction(
@@ -76,7 +76,7 @@ export function openApplicationOAuthTransaction(
   if (!sealed || sealed.startsWith("plain:")) return null;
   try {
     const transaction = JSON.parse(
-      openSecret(sealed)
+      openSecret(sealed, "app_oauth_txn")
     ) as ApplicationOAuthTransaction;
     if (
       !isApplicationOAuthProvider(transaction.provider) ||

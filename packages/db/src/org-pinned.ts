@@ -50,6 +50,7 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "listMemorySubjects",
   "listMemorySubjectsPage",
   "getSsoConnection",
+  "getSsoClientSecret",
   "setSsoConnection",
   "setSsoConnectionValidation",
   "listHelpDesks",

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { EXIT, runCli, type CliDeps } from "./index.ts";
-import { memoryConfigStore } from "./config.ts";
+import { memoryConfigStore } from "./testing.ts";
 
 /** Command groups added in #628, against a stubbed fetch. */
 
@@ -908,5 +908,13 @@ describe("integration and provider commands", () => {
       "PUT /api/v1/sso/connection",
       "POST /api/v1/providers/openai-compatible",
     ]);
+  });
+});
+
+describe("emitJson", () => {
+  it("prints a fetched record as pretty JSON, so a get verb does not recurse", async () => {
+    const { deps, out } = harness(() => ({ json: { id: "h1", name: "Registrar" } }));
+    expect(await runCli(["help-desks", "get", "h1"], deps)).toBe(EXIT.ok);
+    expect(out.join("")).toContain('"name": "Registrar"');
   });
 });

@@ -325,7 +325,7 @@ export function ChannelWorkspace({
         <div className="flex min-w-0 items-center gap-2">
           <Hash className="text-muted-foreground size-4 shrink-0" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{channel.name}</p>
+            <p className="truncate text-sm font-semibold"><RollInText text={channel.name} /></p>
             <p className="text-muted-foreground truncate text-xs">
               {members.length} {members.length === 1 ? "person" : "people"} ·{" "}
               {seatedTeammates.length}{" "}

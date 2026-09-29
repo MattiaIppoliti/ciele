@@ -55,6 +55,7 @@ import {
 } from "@/app/(admin)/teammates/actions";
 import { liveTurnStatus } from "@/components/chat/stored-trace";
 import { patchLastBot, runTurn } from "@/components/chat/turn-session";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 export interface ThreadEntry {
   id: string;
@@ -448,7 +449,7 @@ export function TeammateWorkspace({
         <div className="flex min-w-0 items-center gap-3">
           <TeammateAvatar teammate={teammate} className="size-8 text-xs" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{teammate.name}</p>
+            <p className="truncate text-sm font-semibold"><RollInText text={teammate.name} /></p>
             <p className="text-muted-foreground truncate text-xs">
               {teammate.title || "AI teammate"}
             </p>

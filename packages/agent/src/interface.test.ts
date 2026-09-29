@@ -62,6 +62,8 @@ describe("runtime public interface", () => {
       // with what the Organization's Provider Connections can actually run.
       // Server-side because capability is read from the environment.
       "chatModelOptions",
+      // The save-time egress check for a tenant-typed OpenAI-compatible base URL.
+      "checkOpenAiCompatibleBaseUrl",
       "connectorAlertKey",
       // Image reading for the extraction pipeline: built over the org's
       // connections by the host, because this package resolves no credentials

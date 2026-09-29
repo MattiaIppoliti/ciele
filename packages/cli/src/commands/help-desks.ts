@@ -1,7 +1,7 @@
 import type { SupportChannelInput, SupportChannelPatch } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { jsonFile, str, usage, type CommandContext } from "./shared.ts";
+import { jsonFile, str, usage, type CommandContext, emitJson, confirmed } from "./shared.ts";
 
 export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
   const { client, flags, rest, emit, deps } = ctx;
@@ -21,7 +21,7 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
     case "get": {
       if (!rest[0]) return usage(deps, "help-desks get <id>");
       const result = await client.helpDesks.get(rest[0]);
-      emit(JSON.stringify(result, null, 2), result);
+      emitJson(emit, result);
       return EXIT.ok;
     }
     case "create": {
@@ -55,7 +55,7 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "delete":
-      if (!rest[0] || flags.yes !== true) return usage(deps, "help-desks delete <id> --yes");
+      if (!rest[0] || !confirmed(flags)) return usage(deps, "help-desks delete <id> --yes");
       await client.helpDesks.delete(rest[0]);
       emit(`Deleted ${rest[0]}`, { deleted: rest[0] });
       return EXIT.ok;
@@ -81,7 +81,7 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "delete-channel":
-      if (!rest[0] || !rest[1] || flags.yes !== true) {
+      if (!rest[0] || !rest[1] || !confirmed(flags)) {
         return usage(deps, "help-desks delete-channel <deskId> <channelId> --yes");
       }
       await client.helpDesks.deleteChannel(rest[0], rest[1]);
@@ -108,7 +108,7 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "disconnect-ticketing":
-      if (!rest[0] || flags.yes !== true) {
+      if (!rest[0] || !confirmed(flags)) {
         return usage(deps, "help-desks disconnect-ticketing <deskId> --yes");
       }
       emit(

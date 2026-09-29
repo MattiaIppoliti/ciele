@@ -912,7 +912,16 @@ export async function streamConversationTurn(
     // has none, so the tools stay unregistered rather than querying for an id
     // that belongs to a different table.
     subject.hasApiCatalogue
-      ? db.getApiIntegration(assistant.id).catch(() => null)
+      ? db
+          .getApiIntegration(assistant.id)
+          // Backstop for a row planted across tenants: an integration whose
+          // Organization is not the Assistant's own is never used.
+          .then((found) =>
+            found && found.organizationId === assistant.organizationId
+              ? found
+              : null
+          )
+          .catch(() => null)
       : Promise.resolve(null),
     // The immutable platform (Ciele) prompt layer, same for every org.
     getRuntimeHost().getPlatformSystemPrompt(),

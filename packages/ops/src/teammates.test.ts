@@ -5,7 +5,6 @@ import {
   DEMO_ORG,
   danglingScopeAlertKey,
   getMockDb,
-  raiseDanglingCollectionAlert,
 } from "@agent-hub/db";
 import {
   createTeammateOp,
@@ -245,12 +244,12 @@ describe("teammates operations", () => {
     const db = getMockDb();
     const context = ctx({ db });
     const teammate = await create({ collectionIds: ["col-vanished"] }, context);
-    await raiseDanglingCollectionAlert(
-      db,
-      DEMO_ORG.id,
-      "col-vanished",
-      "Refunds"
-    );
+    await db.raiseAlert(DEMO_ORG.id, {
+      type: "knowledge",
+      title: "Refunds is gone",
+      detail: "A Teammate still searches it.",
+      sourceKey: danglingScopeAlertKey("col-vanished"),
+    });
     const active = async () =>
       (await db.listAlerts(DEMO_ORG.id))
         .filter((alert) => alert.status === "active")
@@ -269,12 +268,12 @@ describe("teammates operations", () => {
     const db = getMockDb();
     const context = ctx({ db });
     const teammate = await create({ collectionIds: ["col-retired-ref"] }, context);
-    await raiseDanglingCollectionAlert(
-      db,
-      DEMO_ORG.id,
-      "col-retired-ref",
-      "Refunds"
-    );
+    await db.raiseAlert(DEMO_ORG.id, {
+      type: "knowledge",
+      title: "Refunds is gone",
+      detail: "A Teammate still searches it.",
+      sourceKey: danglingScopeAlertKey("col-retired-ref"),
+    });
 
     await deleteTeammateOp.run(context, { id: teammate.id });
 

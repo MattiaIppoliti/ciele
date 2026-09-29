@@ -40,7 +40,7 @@ export const setSsoIdentityOp = defineOperation({
     await ctx.db.setSsoConnection(ctx.organizationId, {
       provider: connection.provider,
       config: claim ? { ...baseConfig, identityClaim: claim } : baseConfig,
-      encryptedSecret: connection.encryptedSecret,
+      // encryptedSecret omitted: the stored secret is kept as it is.
     });
     return { identityClaim: claim };
   },

@@ -1,12 +1,12 @@
 import { EXIT } from "../index.ts";
-import { jsonFile, usage, type CommandContext } from "./shared.ts";
+import { jsonFile, usage, type CommandContext, emitJson, confirmed } from "./shared.ts";
 
 export async function sso(verb: string | undefined, ctx: CommandContext) {
   const { client, rest, emit, deps } = ctx;
   switch (verb) {
     case "status": {
       const identity = await client.sso.identity();
-      emit(JSON.stringify(identity, null, 2), identity);
+      emitJson(emit, identity);
       return EXIT.ok;
     }
     case "identity": {
@@ -38,11 +38,11 @@ export async function sso(verb: string | undefined, ctx: CommandContext) {
     }
     case "connection": {
       const result = await client.sso.connection();
-      emit(JSON.stringify(result, null, 2), result);
+      emitJson(emit, result);
       return EXIT.ok;
     }
     case "disconnect":
-      if (ctx.flags.yes !== true) return usage(deps, "sso disconnect --yes");
+      if (!confirmed(ctx.flags)) return usage(deps, "sso disconnect --yes");
       await client.sso.disconnect();
       emit("SSO connection disconnected", { disconnected: true });
       return EXIT.ok;

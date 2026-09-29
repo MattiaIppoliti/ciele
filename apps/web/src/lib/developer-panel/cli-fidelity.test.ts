@@ -70,6 +70,9 @@ function groupSurface(file: string): GroupSurface {
   const flags = new Set([...text.matchAll(/flags\.(\w+)/g)].map(([, flag]) => flag));
   // `jsonFile(ctx, …)` in `commands/shared.ts` is the group's read of `--file`.
   if (/\bjsonFile[<(]/.test(text)) flags.add("file");
+  // `pageParams` and `confirmed` in the same file read `--limit`/`--cursor` and `--yes`.
+  if (/\bpageParams\(/.test(text)) for (const flag of ["limit", "cursor"]) flags.add(flag);
+  if (/\bconfirmed\(/.test(text)) flags.add("yes");
   return {
     verbs: new Set([...text.matchAll(/case "([\w-]+)":/g)].map(([, verb]) => verb)),
     flags,
@@ -190,6 +193,8 @@ function mcpTools(): Map<string, ToolSurface> {
         // the next line (`assistantIds: z` then `.array(...)`), and missing those
         // would fail correct templates.
         ...[...schema.matchAll(/\n {8}(\w+): z\b/g)].map(([, key]) => key),
+        // `...paging` spreads the shared `limit` and `cursor` fields.
+        ...(/\.\.\.paging\b/.test(schema) ? ["limit", "cursor"] : []),
       ]),
     });
   }

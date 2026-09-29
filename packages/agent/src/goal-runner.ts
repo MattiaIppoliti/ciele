@@ -83,6 +83,14 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalRun> {
     createdAt: publication.createdAt,
     updatedAt: publication.createdAt,
   };
+  // A goal row written across tenants (a Member's own JWT can reach the table)
+  // must not spend another Organization's provider connections.
+  if (assistant.organizationId !== goal.organizationId) {
+    return {
+      pass: false,
+      detail: "The goal's assistant belongs to another organization.",
+    };
+  }
   const connections = await db.listProviderConnections(
     assistant.organizationId
   );

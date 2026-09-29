@@ -110,6 +110,20 @@ const READ_ACTIONS = new Set([
 const byAction = (args: Record<string, unknown>) =>
   !READ_ACTIONS.has(String(args.action));
 
+/** A write-guard for a tool with its own read set: mutates unless the action is listed. */
+const mutatesUnless =
+  (...reads: string[]) =>
+  (args: Record<string, unknown>) =>
+    !reads.includes(String(args.action));
+
+const paging = { limit: z.number().optional(), cursor: z.string().optional() };
+
+const optStr = (args: Record<string, unknown>, key: string) => args[key] as string | undefined;
+const optNum = (args: Record<string, unknown>, key: string) => args[key] as number | undefined;
+
+const unknownAction = (args: Record<string, unknown>) =>
+  new ToolInputError(`Unknown action "${args.action}"`);
+
 export function buildTools(client: CieleClient): CieleTool[] {
   return [
     {
@@ -139,24 +153,23 @@ export function buildTools(client: CieleClient): CieleTool[] {
         nickname: z.string().optional(),
         description: z.string().optional(),
         patch: z.record(z.string(), z.unknown()).optional().describe("Fields to change (update)"),
-        limit: z.number().optional(),
-        cursor: z.string().optional(),
+        ...paging,
       },
       mutates: byAction,
       run: async (args) => {
         switch (args.action) {
           case "list":
             return client.assistants.list({
-              limit: args.limit as number | undefined,
-              cursor: args.cursor as string | undefined,
+              limit: optNum(args, "limit"),
+              cursor: optStr(args, "cursor"),
             });
           case "get":
             return client.assistants.get(need(args, "id"));
           case "create":
             return client.assistants.create({
               title: need(args, "title"),
-              nickname: args.nickname as string | undefined,
-              description: args.description as string | undefined,
+              nickname: optStr(args, "nickname"),
+              description: optStr(args, "description"),
             });
           case "update":
             if (!args.patch) throw new ToolInputError('"patch" is required for update');
@@ -169,10 +182,10 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "ask":
             return client.assistants.ask(need(args, "id"), {
               question: need(args, "question"),
-              conversationId: (args.conversationId as string | undefined) || undefined,
+              conversationId: (optStr(args, "conversationId")) || undefined,
             });
           default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
+            throw unknownAction(args);
         }
       },
     },
@@ -222,7 +235,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             if (!args.flow) throw new ToolInputError('"flow" carries the patch for draft');
             return client.flows.draft({
               summary: need(args, "summary"),
-              currentTrigger: args.currentTrigger as string | undefined,
+              currentTrigger: optStr(args, "currentTrigger"),
               patch: args.flow as never,
             });
           case "validate":
@@ -232,11 +245,11 @@ export function buildTools(client: CieleClient): CieleTool[] {
               flow: args.flow as never,
             });
           case "runs":
-            return client.flows.runs(need(args, "id"), args.limit as number | undefined);
+            return client.flows.runs(need(args, "id"), optNum(args, "limit"));
           case "agent_thread":
             return client.flows.agentThread(
               need(args, "assistantId"),
-              args.id as string | undefined
+              optStr(args, "id")
             );
           case "agent_conversation":
             return client.flows.agentConversation(
@@ -268,7 +281,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
               args.orderedIds as string[]
             );
           default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
+            throw unknownAction(args);
         }
       },
     },
@@ -344,7 +357,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "search":
             return client.knowledge.search({
               query: need(args, "query"),
-              assistantId: (args.assistantId as string | undefined) || undefined,
+              assistantId: (optStr(args, "assistantId")) || undefined,
             });
           case "list_collections":
             return client.knowledge.collections(need(args, "assistantId"));
@@ -354,7 +367,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.knowledge.getSource(need(args, "sourceId"));
           case "add_text":
             return client.knowledge.addTextSource(need(args, "collectionId"), {
-              name: args.name as string | undefined,
+              name: optStr(args, "name"),
               text: need(args, "text"),
               assistantIds: needLinkTargets(args),
             });
@@ -374,7 +387,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           }
           case "add_org_text":
             return client.knowledge.addOrgTextSource({
-              name: args.name as string | undefined,
+              name: optStr(args, "name"),
               text: need(args, "text"),
               assistantIds: needLinkTargets(args),
             });
@@ -410,9 +423,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "list_org_sources":
             return client.knowledge.orgSources({
               kinds: args.kinds as string[] | undefined,
-              status: args.status as string | undefined,
-              assistantId: args.assistantId as string | undefined,
-              q: args.q as string | undefined,
+              status: optStr(args, "status"),
+              assistantId: optStr(args, "assistantId"),
+              q: optStr(args, "q"),
             });
           case "set_links":
             return client.knowledge.setSourceLinks(
@@ -439,7 +452,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "export_faqs":
             return { csv: await client.knowledge.exportOrgFaqs() };
           default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
+            throw unknownAction(args);
         }
       },
     },
@@ -451,10 +464,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
         action: z.enum(["settings", "enable", "disable", "subjects", "list", "delete", "wipe"]),
         subjectId: z.string().optional(),
         memoryId: z.string().optional(),
-        limit: z.number().optional(),
-        cursor: z.string().optional(),
+        ...paging,
       },
-      mutates: (args) => !new Set(["settings", "subjects", "list"]).has(String(args.action)),
+      mutates: mutatesUnless("settings", "subjects", "list"),
       run: async (args) => {
         switch (args.action) {
           case "settings":
@@ -464,7 +476,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "disable":
             return client.memories.setEnabled(false);
           case "subjects":
-            return client.memories.subjects({ limit: args.limit as number | undefined, cursor: args.cursor as string | undefined });
+            return client.memories.subjects({ limit: optNum(args, "limit"), cursor: optStr(args, "cursor") });
           case "list":
             return client.memories.list(need(args, "subjectId"));
           case "delete":
@@ -474,7 +486,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             await client.memories.wipe(need(args, "subjectId"));
             return { wiped: args.subjectId };
           default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
+            throw unknownAction(args);
         }
       },
     },
@@ -487,7 +499,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
         identityClaim: z.string().nullable().optional(),
         input: z.record(z.string(), z.unknown()).optional().describe("Full SSO connection input for connect"),
       },
-      mutates: (args) => !new Set(["status", "connection"]).has(String(args.action)),
+      mutates: mutatesUnless("status", "connection"),
       run: async (args) => {
         switch (args.action) {
           case "status":
@@ -507,7 +519,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             await client.sso.disconnect();
             return { disconnected: true };
           default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
+            throw unknownAction(args);
         }
       },
     },
@@ -534,7 +546,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "republish":
             return client.publish.republish(assistantId, need(args, "publicationId"));
           default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
+            throw unknownAction(args);
         }
       },
     },
@@ -554,17 +566,16 @@ export function buildTools(client: CieleClient): CieleTool[] {
         text: z.string().optional(),
         feedback: z.union([z.literal(-1), z.literal(0), z.literal(1)]).optional(),
         assistantId: z.string().optional(),
-        limit: z.number().optional(),
-        cursor: z.string().optional(),
+        ...paging,
       },
       mutates: byAction,
       run: async (args) => {
         switch (args.action) {
           case "list":
             return client.conversations.list({
-              assistantId: args.assistantId as string | undefined,
-              limit: args.limit as number | undefined,
-              cursor: args.cursor as string | undefined,
+              assistantId: optStr(args, "assistantId"),
+              limit: optNum(args, "limit"),
+              cursor: optStr(args, "cursor"),
             });
           case "get":
             return client.conversations.get(need(args, "conversationId"));
@@ -597,9 +608,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return { deleted: args.conversationId };
           case "review_list":
             return client.reviews.list({
-              status: args.status as string | undefined,
-              conversationId: args.conversationId as string | undefined,
-              assistantId: args.assistantId as string | undefined,
+              status: optStr(args, "status"),
+              conversationId: optStr(args, "conversationId"),
+              assistantId: optStr(args, "assistantId"),
             });
           case "review_get":
             return client.reviews.get(need(args, "reviewId"));
@@ -614,7 +625,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             });
           }
           default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
+            throw unknownAction(args);
         }
       },
     },
@@ -626,16 +637,15 @@ export function buildTools(client: CieleClient): CieleTool[] {
         action: z.enum(["list", "get", "update"]),
         id: z.string().optional().describe("Improvement id (get/update)"),
         patch: z.record(z.string(), z.unknown()).optional().describe("ImprovementPatch (update)"),
-        limit: z.number().optional(),
-        cursor: z.string().optional(),
+        ...paging,
       },
       mutates: byAction,
       run: async (args) => {
         switch (args.action) {
           case "list":
             return client.improvements.list({
-              limit: args.limit as number | undefined,
-              cursor: args.cursor as string | undefined,
+              limit: optNum(args, "limit"),
+              cursor: optStr(args, "cursor"),
             });
           case "get":
             return client.improvements.get(need(args, "id"));
@@ -643,7 +653,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             if (!args.patch) throw new ToolInputError('"patch" is required for update');
             return client.improvements.update(need(args, "id"), args.patch as never);
           default:
-            throw new ToolInputError(`Unknown action "${args.action}"`);
+            throw unknownAction(args);
         }
       },
     },
@@ -742,7 +752,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             }
             return client.teammates.setGrants(id(), {
               domains: (args.domains as unknown[]).map(String),
-              ceiling: args.ceiling as string | undefined,
+              ceiling: optStr(args, "ceiling"),
               approvalBypass: args.approvalBypass as boolean | undefined,
             });
           case "routines": return client.teammates.routines(id());
@@ -750,7 +760,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.teammates.addRoutine(id(), {
               instruction: need(args, "instruction"),
               cadence: need(args, "cadence"),
-              hour: args.hour as number | undefined,
+              hour: optNum(args, "hour"),
             });
           case "update_routine":
             if (!args.patch) throw new ToolInputError('"patch" is required for update_routine');
@@ -762,9 +772,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "set_memory":
             return client.teammates.setMemory(id(), {
               body: need(args, "body"),
-              note: args.note as string | undefined,
+              note: optStr(args, "note"),
             });
-          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+          default: throw unknownAction(args);
         }
       },
     },
@@ -790,7 +800,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "create":
             return client.projects.create({
               name: need(args, "name"),
-              description: args.description as string | undefined,
+              description: optStr(args, "description"),
             });
           case "update":
             if (!args.patch) throw new ToolInputError('"patch" is required for update');
@@ -801,9 +811,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "set_document":
             return client.projects.setDocument(id(), {
               body: need(args, "body"),
-              note: args.note as string | undefined,
+              note: optStr(args, "note"),
             });
-          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+          default: throw unknownAction(args);
         }
       },
     },
@@ -858,7 +868,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "remove_teammate":
             await client.channels.removeTeammate(id(), need(args, "teammateId"));
             return { removed: args.teammateId };
-          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+          default: throw unknownAction(args);
         }
       },
     },
@@ -891,7 +901,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.helpDesks.reorderChannels(id(), args.orderedIds as string[]);
           case "connect_servicenow": return client.helpDesks.connectServiceNow(id(), needObject(args, "input") as never);
           case "disconnect_ticketing": return client.helpDesks.disconnectTicketing(id());
-          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+          default: throw unknownAction(args);
         }
       },
     },
@@ -908,7 +918,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
         patch: z.record(z.string(), z.unknown()).optional(),
         skillIds: z.array(z.string()).optional(),
       },
-      mutates: (args) => !new Set(["skill_list", "assistant_skills_get", "goal_list", "alert_list"]).has(String(args.action)),
+      mutates: mutatesUnless("skill_list", "assistant_skills_get", "goal_list", "alert_list"),
       run: async (args) => {
         switch (args.action) {
           case "skill_list": return client.skills.list();
@@ -925,7 +935,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "goal_delete": await client.goals.delete(need(args, "assistantId"), need(args, "goalId")); return { deleted: args.goalId };
           case "alert_list": return client.alerts.list();
           case "alert_resolve": return client.alerts.resolve(need(args, "id"));
-          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+          default: throw unknownAction(args);
         }
       },
     },
@@ -942,7 +952,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
         from: z.string().optional().describe("Usage window start, ISO instant"),
         to: z.string().optional().describe("Usage window end, ISO instant"),
       },
-      mutates: (args) => !new Set(["get", "member_list", "invite_list", "api_key_list", "usage_meters", "usage_spenders"]).has(String(args.action)),
+      mutates: mutatesUnless("get", "member_list", "invite_list", "api_key_list", "usage_meters", "usage_spenders"),
       run: async (args) => {
         switch (args.action) {
           case "get": return client.organization.get();
@@ -961,7 +971,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
             ...(typeof args.from === "string" ? { from: args.from } : {}),
             ...(typeof args.to === "string" ? { to: args.to } : {}),
           });
-          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+          default: throw unknownAction(args);
         }
       },
     },
@@ -978,7 +988,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
       },
       // Re-consent computes a URL and writes nothing; the grant happens in a
       // browser, which is why it stays readable under CIELE_MCP_READ_ONLY.
-      mutates: (args) => !new Set(["api_get", "provider_list", "application_list", "application_connectors", "application_reconsent"]).has(String(args.action)),
+      mutates: mutatesUnless("api_get", "provider_list", "application_list", "application_connectors", "application_reconsent"),
       run: async (args) => {
         switch (args.action) {
           case "application_list": return client.applications.list(typeof args.provider === "string" ? args.provider : undefined);
@@ -995,7 +1005,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "provider_set_embedding":
             if (!("connectionId" in args)) throw new ToolInputError('"connectionId" is required for provider_set_embedding');
             return client.providers.setEmbedding(args.connectionId as string | null);
-          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+          default: throw unknownAction(args);
         }
       },
     },

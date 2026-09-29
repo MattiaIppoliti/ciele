@@ -70,33 +70,6 @@ async function raiseDanglingAlert(
 }
 
 /**
- * Raise the Alert when a deleted Collection was still in someone's scope.
- *
- * One Alert per Collection, not per Teammate: the thing that broke is the
- * Collection, and an admin wants one row that names everyone affected rather
- * than a row each. Silent when nothing referenced it, which is the common case.
- */
-export async function raiseDanglingCollectionAlert(
-  db: Db,
-  organizationId: string,
-  collectionId: string,
-  collectionName: string
-): Promise<void> {
-  const affected = searching(
-    await liveTeammates(db, organizationId),
-    collectionId
-  );
-  if (affected.length === 0) return;
-
-  await raiseDanglingAlert(
-    db,
-    organizationId,
-    { id: collectionId, label: collectionName },
-    affected
-  );
-}
-
-/**
  * Resolve the Alert for any of these Collections that nobody searches any more.
  *
  * Called after a scope edit or a soft delete with the ids that changed hands.

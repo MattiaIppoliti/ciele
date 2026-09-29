@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { Suspense, use, useMemo, useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { ChannelUnread, Teammate, TeammateVisibility } from "@agent-hub/core";
 import { Lock, Search } from "lucide-react";
 import { Eye, EyeOff, Pencil } from "lucide-react";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Skeleton } from "@agent-hub/ui";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -23,7 +23,7 @@ import { ProjectSection } from "@/components/teammates/project-section";
 import { VisibilityPicker } from "@/components/teammates/visibility-picker";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
 import { GroupAvatarCluster } from "@/components/teammates/group-avatar-cluster";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { LeaveGuardProvider, useGuardedLinkClick } from "@/components/teammates/leave-guard";
 
@@ -485,7 +485,7 @@ function RailRow({
   href: string;
   active: boolean;
   avatar: ReactNode;
-  name: ReactNode;
+  name: string;
   subtitle: string;
   badge?: ReactNode;
   /** Row actions, revealed on hover or keyboard focus. Never inside the link. */
@@ -507,11 +507,11 @@ function RailRow({
         {avatar}
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold">{name}</span>
+            <span className="truncate text-sm font-semibold"><RollInText text={name} /></span>
             {badge}
           </span>
           <span className="text-muted-foreground mt-0.5 block truncate text-xs">
-            {subtitle}
+            <RollInText text={subtitle} />
           </span>
         </span>
       </Link>
@@ -544,18 +544,8 @@ function RailRow({
  * chat list by the config's `updatedAt` would put whichever Teammate somebody
  * renamed at the top, which is a worse lie than alphabetical.
  */
-export function TeammatesShell({
-  teammates,
-  hidden,
-  channels,
-  members,
-  collections,
-  sources,
-  sourcesTruncated,
-  projects,
-  canEdit,
-  children,
-}: {
+/** Everything the rail and the create dialogs read, loaded by the layout. */
+export interface TeammatesShellData {
   teammates: Teammate[];
   /** The ones this Member keeps off their rail (#767, story 10). */
   hidden: Teammate[];
@@ -570,17 +560,150 @@ export function TeammatesShell({
   /** Live Projects, offered by the create dialog's project section (#771). */
   projects: { id: string; name: string }[];
   canEdit: boolean;
+}
+
+export function TeammatesShell({
+  data,
+  children,
+}: {
+  /**
+   * A promise, so the layout never awaits it: a layout's own awaits sit above
+   * every Teammates loading.tsx, and seven reads held the open thread's
+   * skeleton back. The rail, the New buttons and the dialogs wait for it; the
+   * frame and the thread do not.
+   */
+  data: Promise<TeammatesShellData>;
   /** The open thread, or the placeholder at `/teammates`. */
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const [createOpen, setCreateOpen] = useState(false);
   const [channelOpen, setChannelOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [isPending, startTransition] = useTransition();
 
   // `/teammates` exactly: nothing is open, so on a phone the rail is the page.
   const onIndex = pathname === "/teammates";
+
+  return (
+    <LeaveGuardProvider>
+    <div className="flex h-full flex-col">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
+        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Teammates" /></h1>
+        <div className="ml-auto flex items-center gap-2">
+          <Suspense
+            fallback={
+              <>
+                <Skeleton className="h-10 w-28 rounded-lg" />
+                <Skeleton className="h-10 w-34 rounded-lg" />
+              </>
+            }
+          >
+            <ShellButtons
+              data={data}
+              onNewGroup={() => setChannelOpen(true)}
+              onNewTeammate={() => setCreateOpen(true)}
+            />
+          </Suspense>
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1 border-t">
+        <aside
+          className={`w-full shrink-0 flex-col overflow-y-auto border-r lg:flex lg:w-72 ${
+            onIndex ? "flex" : "hidden"
+          }`}
+        >
+          <Suspense fallback={<RailSkeleton />}>
+            <TeammatesRail data={data} pathname={pathname} />
+          </Suspense>
+        </aside>
+
+        <section
+          className={`min-w-0 flex-1 overflow-hidden lg:block ${
+            onIndex ? "hidden" : "block"
+          }`}
+        >
+          {children}
+        </section>
+      </div>
+
+      <Suspense fallback={null}>
+        <ShellDialogs
+          data={data}
+          createOpen={createOpen}
+          channelOpen={channelOpen}
+          onCloseCreate={() => setCreateOpen(false)}
+          onCloseChannel={() => setChannelOpen(false)}
+        />
+      </Suspense>
+    </div>
+    </LeaveGuardProvider>
+  );
+}
+
+function ShellButtons({
+  data,
+  onNewGroup,
+  onNewTeammate,
+}: {
+  data: Promise<TeammatesShellData>;
+  onNewGroup: () => void;
+  onNewTeammate: () => void;
+}) {
+  const { canEdit } = use(data);
+  return (
+    <>
+          {/* No capability gate: any Member may open a group (#776). */}
+          <Button
+            variant="outline"
+            className="h-10 rounded-lg px-4 font-semibold"
+            onClick={() => onNewGroup()}
+          >
+            New group
+          </Button>
+          {canEdit && (
+            <Button
+              className="h-10 rounded-lg px-4 font-semibold"
+              onClick={() => onNewTeammate()}
+            >
+              New teammate
+            </Button>
+          )}
+    </>
+  );
+}
+
+/** The search field over rows of avatar, name and subtitle, at RailRow's size. */
+function RailSkeleton() {
+  return (
+    <div role="status" aria-busy="true">
+      <span className="sr-only">Loading teammates…</span>
+      <div className="px-3 py-3">
+        <Skeleton className="h-9 w-full rounded-lg" />
+      </div>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-3 py-2">
+          <Skeleton className="size-9 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-3.5 w-40" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TeammatesRail({
+  data,
+  pathname,
+}: {
+  data: Promise<TeammatesShellData>;
+  pathname: string;
+}) {
+  const { teammates, hidden, channels, canEdit } = use(data);
+  const [search, setSearch] = useState("");
+  const [isPending, startTransition] = useTransition();
+
 
   const query = search.trim().toLowerCase();
   const rows = useMemo(() => {
@@ -623,36 +746,7 @@ export function TeammatesShell({
   }
 
   return (
-    <LeaveGuardProvider>
-    <div className="flex h-full flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Teammates" /></h1>
-        <div className="ml-auto flex items-center gap-2">
-          {/* No capability gate: any Member may open a group (#776). */}
-          <Button
-            variant="outline"
-            className="h-10 rounded-lg px-4 font-semibold"
-            onClick={() => setChannelOpen(true)}
-          >
-            New group
-          </Button>
-          {canEdit && (
-            <Button
-              className="h-10 rounded-lg px-4 font-semibold"
-              onClick={() => setCreateOpen(true)}
-            >
-              New teammate
-            </Button>
-          )}
-        </div>
-      </header>
-
-      <div className="flex min-h-0 flex-1 border-t">
-        <aside
-          className={`w-full shrink-0 flex-col overflow-y-auto border-r lg:flex lg:w-72 ${
-            onIndex ? "flex" : "hidden"
-          }`}
-        >
+    <>
           <div className="relative shrink-0 px-3 py-3">
             <Search className="text-muted-foreground absolute top-1/2 left-6 size-4 -translate-y-1/2" />
             <Input
@@ -676,7 +770,12 @@ export function TeammatesShell({
             />
           )}
 
-          {rows.map((row) =>
+          {rows.map((row, index) => (
+            <RollRow
+              key={row.kind === "channel" ? `channel-${row.channel.id}` : `teammate-${row.teammate.id}`}
+              index={index}
+            >
+            {
             row.kind === "channel" ? (
               <RailRow
                 key={`channel-${row.channel.id}`}
@@ -761,8 +860,9 @@ export function TeammatesShell({
                   </>
                 }
               />
-            )
-          )}
+            )}
+            </RollRow>
+          ))}
 
           {/* Hidden is reversible and has to look it, so the list is here rather
               than in a settings page somebody would have to remember. */}
@@ -776,7 +876,7 @@ export function TeammatesShell({
                   <li key={teammate.id} className="flex items-center gap-2">
                     <TeammateAvatar teammate={teammate} className="size-7" />
                     <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                      {teammate.name}
+                      <RollInText text={teammate.name} />
                     </span>
                     <Button
                       variant="ghost"
@@ -793,32 +893,40 @@ export function TeammatesShell({
               </ul>
             </details>
           )}
-        </aside>
+    </>
+  );
+}
 
-        <section
-          className={`min-w-0 flex-1 overflow-hidden lg:block ${
-            onIndex ? "hidden" : "block"
-          }`}
-        >
-          {children}
-        </section>
-      </div>
-
+function ShellDialogs({
+  data,
+  createOpen,
+  channelOpen,
+  onCloseCreate,
+  onCloseChannel,
+}: {
+  data: Promise<TeammatesShellData>;
+  createOpen: boolean;
+  channelOpen: boolean;
+  onCloseCreate: () => void;
+  onCloseChannel: () => void;
+}) {
+  const { teammates, members, collections, sources, sourcesTruncated, projects } = use(data);
+  return (
+    <>
       <CreateTeammateDialog
         open={createOpen}
         collections={collections}
         sources={sources}
         sourcesTruncated={sourcesTruncated}
         projects={projects}
-        onClose={() => setCreateOpen(false)}
+        onClose={onCloseCreate}
       />
       <CreateChannelDialog
         open={channelOpen}
         teammates={teammates}
         members={members}
-        onClose={() => setChannelOpen(false)}
+        onClose={onCloseChannel}
       />
-    </div>
-    </LeaveGuardProvider>
+    </>
   );
 }

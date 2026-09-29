@@ -1,5 +1,5 @@
-import { RouteSkeleton } from "@/components/route-skeleton";
+import { TeammatesIndexSkeleton } from "@/components/teammates/thread-skeleton";
 
 export default function TeammatesLoading() {
-  return <RouteSkeleton variant="list" />;
+  return <TeammatesIndexSkeleton />;
 }

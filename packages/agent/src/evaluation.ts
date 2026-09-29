@@ -1,6 +1,3 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAI } from "@ai-sdk/openai";
 import { Experimental_EvaluationLanguageModel as EvaluationLanguageModel } from "@ai-sdk/provider-utils/experimental-evaluation";
 import { createGateway, rerank } from "ai";
 import {
@@ -21,6 +18,7 @@ import { classifyIntent, runAssistantChat } from "./engine";
 import { buildKnowledgeSearcher } from "./retrieval";
 import { estimateRerankTokens } from "./rerank";
 import { gatewayModelId } from "./catalog";
+import { adapterModel } from "./decision-model";
 import { createTurnSession } from "./session";
 import { getRuntimeHost } from "./host";
 import { resolveChatModel, resolveProviderCredential } from "./models";
@@ -453,18 +451,7 @@ export function evaluationModel(
       calibrated: false,
     };
   }
-  const model =
-    candidate.provider === "anthropic"
-      ? createAnthropic({ apiKey: credential.apiKey }).evaluationModel(
-          candidate.modelId,
-        )
-      : candidate.provider === "openai"
-        ? createOpenAI({ apiKey: credential.apiKey }).evaluationModel(
-            candidate.modelId,
-          )
-        : createGoogleGenerativeAI({
-            apiKey: credential.apiKey,
-          }).evaluationModel(candidate.modelId);
+  const model = adapterModel(candidate.provider, candidate.modelId, credential.apiKey);
   return {
     model,
     backend: "adapter" as const,

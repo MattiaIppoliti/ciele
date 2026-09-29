@@ -57,6 +57,27 @@ describe("the AES-256-GCM seal", () => {
   });
 });
 
+describe("purpose binding (GCM AAD)", () => {
+  it("round-trips under the same purpose", () => {
+    expect(openSecret(sealSecret("v", "sso_gate"), "sso_gate")).toBe("v");
+  });
+
+  it("does not open under another purpose or under none", () => {
+    const sealed = sealSecret("v", "sso_gate");
+    expect(() => openSecret(sealed, "sso_txn")).toThrow();
+    expect(() => openSecret(sealed)).toThrow();
+  });
+
+  it("does not open a purpose-less ciphertext under a purpose", () => {
+    expect(() => openSecret(sealSecret("v"), "sso_gate")).toThrow();
+  });
+
+  it("refuses the legacy plain: passthrough when a purpose is given", () => {
+    expect(() => openSecret("plain:v", "sso_gate")).toThrow();
+    expect(openSecret("plain:v")).toBe("v");
+  });
+});
+
 describe("sealSecret / openSecret", () => {
   it("round-trips through the encrypted path when a key is configured", () => {
     const sealed = sealSecret("sk-live-1234");

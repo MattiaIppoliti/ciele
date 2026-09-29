@@ -1,7 +1,7 @@
 import type { GoalExpectations, GoalStatus, SkillInput, SkillPatch } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { jsonFile, usage, type CommandContext } from "./shared.ts";
+import { jsonFile, usage, type CommandContext, confirmed } from "./shared.ts";
 
 export async function skills(verb: string | undefined, ctx: CommandContext) {
   const { client, rest, flags, emit, deps } = ctx;
@@ -31,7 +31,7 @@ export async function skills(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "delete":
-      if (!rest[0] || flags.yes !== true) return usage(deps, "skills delete <id> --yes");
+      if (!rest[0] || !confirmed(flags)) return usage(deps, "skills delete <id> --yes");
       await client.skills.delete(rest[0]);
       emit(`Deleted ${rest[0]}`, { deleted: rest[0] });
       return EXIT.ok;
@@ -80,7 +80,7 @@ export async function goals(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "delete":
-      if (!rest[0] || !rest[1] || flags.yes !== true) {
+      if (!rest[0] || !rest[1] || !confirmed(flags)) {
         return usage(deps, "goals delete <assistantId> <goalId> --yes");
       }
       await client.goals.delete(rest[0], rest[1]);

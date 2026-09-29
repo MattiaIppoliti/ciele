@@ -62,10 +62,13 @@ function requireEncryptionKey(): void {
   }
 }
 
-function openSealed<T>(sealed: string | undefined): T | null {
+function openSealed<T>(
+  sealed: string | undefined,
+  purpose: "sso_gate" | "sso_txn"
+): T | null {
   if (!sealed || sealed.startsWith("plain:")) return null;
   try {
-    return JSON.parse(openSecret(sealed)) as T;
+    return JSON.parse(openSecret(sealed, purpose)) as T;
   } catch {
     return null;
   }
@@ -73,20 +76,20 @@ function openSealed<T>(sealed: string | undefined): T | null {
 
 export function sealTxn(payload: SsoTxnPayload): string {
   requireEncryptionKey();
-  return sealSecret(JSON.stringify(payload));
+  return sealSecret(JSON.stringify(payload), "sso_txn");
 }
 
 export function openTxn(sealed: string | undefined): SsoTxnPayload | null {
-  return openSealed<SsoTxnPayload>(sealed);
+  return openSealed<SsoTxnPayload>(sealed, "sso_txn");
 }
 
 export function sealGate(payload: SsoGatePayload): string {
   requireEncryptionKey();
-  return sealSecret(JSON.stringify(payload));
+  return sealSecret(JSON.stringify(payload), "sso_gate");
 }
 
 export function openGate(sealed: string | undefined): SsoGatePayload | null {
-  const payload = openSealed<SsoGatePayload>(sealed);
+  const payload = openSealed<SsoGatePayload>(sealed, "sso_gate");
   if (!payload) return null;
   if (typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()) {
     return null;

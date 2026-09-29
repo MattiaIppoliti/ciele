@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import * as cheerio from "cheerio";
 import { pageBudget } from "@agent-hub/core";
 import type { CrawledPage, CrawlOptions } from "./apify";
@@ -228,7 +229,7 @@ export async function localCrawl(
       }
 
       if (options.throttle) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await sleep(500);
       }
     } catch (error) {
       if (error instanceof EgressPolicyError) throw error;

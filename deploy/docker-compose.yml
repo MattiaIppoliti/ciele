@@ -176,7 +176,8 @@ services:
       # BIND_ADDRESS=0.0.0.0 to go back to that, deliberately.
       - "${BIND_ADDRESS:-127.0.0.1}:${SUPABASE_PORT:-8000}:8000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8000/auth/v1/health"]
+      # BusyBox wget resolves localhost to ::1, but nginx listens on IPv4.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/auth/v1/health"]
       interval: 10s
       timeout: 5s
       retries: 10

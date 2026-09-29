@@ -15,6 +15,7 @@ afterAll(() => {
 const mocks = vi.hoisted(() => ({
   getAssistant: vi.fn(),
   getSsoConnection: vi.fn(),
+  getSsoClientSecret: vi.fn(),
   getSsoProvider: vi.fn(),
 }));
 
@@ -22,6 +23,7 @@ vi.mock("@/lib/widget-db", () => ({
   getWidgetDb: () => ({
     getAssistant: mocks.getAssistant,
     getSsoConnection: mocks.getSsoConnection,
+    getSsoClientSecret: mocks.getSsoClientSecret,
   }),
 }));
 
@@ -43,7 +45,7 @@ const connection = {
   organizationId: ORG,
   provider: "entra" as const,
   config: { clientId: "client-1", tenantId: "tenant-1" },
-  encryptedSecret: "plain:the-secret",
+  hasClientSecret: true,
   validationStatus: "valid" as const,
   validatedAt: null,
   connectedAt: "2026-01-01T00:00:00Z",
@@ -63,6 +65,7 @@ beforeEach(() => {
     organizationId: ORG,
   });
   mocks.getSsoConnection.mockReset().mockResolvedValue(connection);
+  mocks.getSsoClientSecret.mockReset().mockResolvedValue("plain:the-secret");
   mocks.getSsoProvider.mockReset();
 });
 

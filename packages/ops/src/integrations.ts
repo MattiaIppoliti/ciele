@@ -181,7 +181,7 @@ export const getSsoConnectionOp = defineOperation({
           connected: true as const,
           provider: connection.provider,
           config: connection.config,
-          hasClientSecret: connection.encryptedSecret !== null,
+          hasClientSecret: connection.hasClientSecret,
           validationStatus: connection.validationStatus,
           validatedAt: connection.validatedAt,
         }
@@ -315,9 +315,16 @@ export const createOpenAiCompatibleConnectionOp = defineOperation({
     } catch {
       return { error: "Base URL must be a valid http(s) URL" };
     }
-    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
       return { error: "Base URL must be a valid http(s) URL" };
     }
+    // The endpoint is called from our servers, so the host must pass the same
+    // egress policy every other tenant-configured request does.
+    if (!ctx.ports?.checkOpenAiCompatibleBaseUrl) {
+      return { error: "Base URL checks are unavailable, so the connection was not saved." };
+    }
+    const refusal = await ctx.ports.checkOpenAiCompatibleBaseUrl(input.baseUrl);
+    if (refusal) return { error: refusal };
     const config: OpenAiCompatibleConfig = {
       kind: "openai_compatible",
       baseUrl: input.baseUrl,

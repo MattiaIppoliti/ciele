@@ -42,7 +42,7 @@ const routes = [
     budgetKb: 50,
   },
   {
-    // ECharts, Recharts' pie and the animated charts load per card after first
+    // The Recharts bar and pie charts and the animated charts load per card after first
     // paint (next/dynamic), so what these budgets count is the frame, the
     // filters and the stat cards.
     label: "Insights Costs",

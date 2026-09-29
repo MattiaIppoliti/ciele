@@ -3,7 +3,6 @@ import { DEMO_ORG, getMockDb } from "./index";
 import {
   danglingScopeAlertKey,
   danglingSourceScopeAlertKey,
-  raiseDanglingCollectionAlert,
   raiseDanglingSourceAlerts,
   resolveDanglingCollectionAlerts,
   resolveDanglingSourceAlerts,
@@ -52,61 +51,20 @@ let seq = 0;
 const collectionId = () => `col-gone-${++seq}`;
 const sourceId = () => `src-gone-${++seq}`;
 
-describe("raiseDanglingCollectionAlert", () => {
-  it("says nothing when no Teammate was searching the deleted Collection", async () => {
-    const gone = collectionId();
-    await teammate("Nora", ["col-kept"]);
-    await raiseDanglingCollectionAlert(db, DEMO_ORG.id, gone, "Gone");
-    expect(await activeKeys()).not.toContain(danglingScopeAlertKey(gone));
+/** Stand-in for the delete path's raise: an active Alert under the real key. */
+const raiseAlert = (id: string, name: string) =>
+  db.raiseAlert(DEMO_ORG.id, {
+    type: "knowledge",
+    title: `${name} is gone`,
+    detail: "A Teammate still searches it.",
+    sourceKey: danglingScopeAlertKey(id),
   });
-
-  it("raises one Alert naming every Teammate that still searches it", async () => {
-    const gone = collectionId();
-    await teammate("Nora", [gone, "col-kept"]);
-    await teammate("Sam", [gone]);
-    await teammate("Ada", ["col-kept"]);
-
-    await raiseDanglingCollectionAlert(db, DEMO_ORG.id, gone, "Refunds");
-
-    const raised = (await db.listAlerts(DEMO_ORG.id)).filter(
-      (alert) =>
-        alert.status === "active" &&
-        alert.sourceKey === danglingScopeAlertKey(gone)
-    );
-    // One Alert for the Collection, not one per Teammate: the thing that broke
-    // is the Collection, and an admin fixing it wants one row to work from.
-    expect(raised).toHaveLength(1);
-    expect(raised[0].type).toBe("knowledge");
-    expect(raised[0].title).toContain("Refunds");
-    expect(raised[0].detail).toContain("Nora");
-    expect(raised[0].detail).toContain("Sam");
-    expect(raised[0].detail).not.toContain("Ada");
-  });
-
-  it("ignores a retired Teammate: it searches nothing any more", async () => {
-    const gone = collectionId();
-    const retired = await teammate("Retired", [gone]);
-    await db
-      .table("teammates")
-      .update(retired.id, { deletedAt: new Date().toISOString() });
-
-    await raiseDanglingCollectionAlert(db, DEMO_ORG.id, gone, "Gone");
-    expect(await activeKeys()).not.toContain(danglingScopeAlertKey(gone));
-  });
-
-  it("stays inside the Organization that lost the Collection", async () => {
-    const gone = collectionId();
-    await teammate("Nora", [gone]);
-    await raiseDanglingCollectionAlert(db, "another-org", gone, "Gone");
-    expect(await activeKeys()).not.toContain(danglingScopeAlertKey(gone));
-  });
-});
 
 describe("resolveDanglingCollectionAlerts", () => {
   it("resolves the Alert once the last Teammate drops the id", async () => {
     const gone = collectionId();
     const nora = await teammate("Nora", [gone]);
-    await raiseDanglingCollectionAlert(db, DEMO_ORG.id, gone, "Refunds");
+    await raiseAlert(gone, "Refunds");
     expect(await activeKeys()).toContain(danglingScopeAlertKey(gone));
 
     await db.table("teammates").update(nora.id, { collectionIds: [] });
@@ -126,7 +84,7 @@ describe("resolveDanglingCollectionAlerts", () => {
     const gone = collectionId();
     const nora = await teammate("Nora", [gone]);
     await teammate("Sam", [gone]);
-    await raiseDanglingCollectionAlert(db, DEMO_ORG.id, gone, "Refunds");
+    await raiseAlert(gone, "Refunds");
 
     await db.table("teammates").update(nora.id, { collectionIds: [] });
     await resolveDanglingCollectionAlerts(db, DEMO_ORG.id, [gone]);
@@ -138,7 +96,7 @@ describe("resolveDanglingCollectionAlerts", () => {
   it("resolves when the last Teammate holding the id is retired", async () => {
     const gone = collectionId();
     const nora = await teammate("Nora", [gone]);
-    await raiseDanglingCollectionAlert(db, DEMO_ORG.id, gone, "Refunds");
+    await raiseAlert(gone, "Refunds");
 
     await db
       .table("teammates")

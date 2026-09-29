@@ -6059,8 +6059,11 @@ export function describeDbContract(
       it("does not let an old-day settlement release a new-day reservation", async () => {
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
+        // Not "yesterday": the demo data carries a full day of usage for each of
+        // the last 35 days, and the limit below is sized from today's usage
+        // alone, so the test passed only once today had caught up with yesterday.
         const yesterday = new Date(`${today}T00:00:00.000Z`);
-        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        yesterday.setUTCDate(yesterday.getUTCDate() - 60);
         const usedBefore = await db.getOrgTokensUsedToday(ctx.organizationId);
         await db.setOrgBudget(ctx.organizationId, {
           dailyTokenLimit: usedBefore + 20,
@@ -7743,7 +7746,7 @@ export function describeDbContract(
           organizationId: ctx.organizationId,
           provider: "entra",
           config: { clientId: "client-abc", tenantId: "tenant-123" },
-          encryptedSecret: "sealed:entra-secret", // stored verbatim; Db never seals
+          hasClientSecret: true,
           validationStatus: "unvalidated",
           validatedAt: null,
         });
@@ -7751,7 +7754,19 @@ export function describeDbContract(
 
         const read = await db.getSsoConnection(ctx.organizationId);
         expect(read?.config.clientId).toBe("client-abc");
-        expect(read?.encryptedSecret).toBe("sealed:entra-secret");
+        expect(read?.hasClientSecret).toBe(true);
+        expect(await db.getSsoClientSecret(ctx.organizationId)).toBe(
+          "sealed:entra-secret" // stored verbatim; Db never seals
+        );
+
+        // Omitting the secret (an identity-claim edit) keeps the stored one.
+        await db.setSsoConnection(ctx.organizationId, {
+          provider: "entra",
+          config: { clientId: "client-abc", tenantId: "tenant-123" },
+        });
+        expect(await db.getSsoClientSecret(ctx.organizationId)).toBe(
+          "sealed:entra-secret"
+        );
 
         // The public projection never carries config or secrets.
         const pub = await db.getSsoConnectionPublic(ctx.organizationId);
@@ -7778,6 +7793,9 @@ export function describeDbContract(
           encryptedSecret: "sealed:rotated",
         });
         expect(rotated.config.clientId).toBe("client-xyz");
+        expect(await db.getSsoClientSecret(ctx.organizationId)).toBe(
+          "sealed:rotated"
+        );
         expect(rotated.validationStatus).toBe("unvalidated");
         expect(rotated.validatedAt).toBeNull();
         // Rotation preserves the original first-connected timestamp.

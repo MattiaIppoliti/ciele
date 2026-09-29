@@ -1,6 +1,6 @@
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { str, usage, type CommandContext, emitJson, confirmed } from "./shared.ts";
 
 /**
  * Teammate channels (#778): the group threads Members share with Teammates.
@@ -43,7 +43,7 @@ export async function channels(
     case "oversight-read": {
       if (!rest[0]) return usage(deps, "channels oversight-read <channelId>");
       const view = await client.channels.oversightRead(rest[0]);
-      emit(JSON.stringify(view, null, 2), view);
+      emitJson(emit, view);
       return EXIT.ok;
     }
     case "list": {
@@ -72,7 +72,7 @@ export async function channels(
     case "get": {
       if (!rest[0]) return usage(deps, "channels get <id>");
       const view = await client.channels.get(rest[0]);
-      emit(JSON.stringify(view, null, 2), view);
+      emitJson(emit, view);
       return EXIT.ok;
     }
     case "create": {
@@ -114,7 +114,7 @@ export async function channels(
     }
     case "delete": {
       if (!rest[0]) return usage(deps, "channels delete <id> --yes");
-      if (flags.yes !== true) {
+      if (!confirmed(flags)) {
         // Closing a channel takes its transcript with it, unlike retiring a
         // Teammate, which keeps one.
         deps.stderr("Refusing to close a channel without --yes");

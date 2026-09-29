@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { str, usage, type CommandContext, pageParams, emitJson, confirmed } from "./shared.ts";
 
 /** `ciele conversations …` (#628), read-only, any key role. */
 export async function conversations(
@@ -13,8 +13,7 @@ export async function conversations(
     case "list": {
       const page = await client.conversations.list({
         assistantId: str(flags.assistant),
-        limit: str(flags.limit) ? Number(str(flags.limit)) : undefined,
-        cursor: str(flags.cursor),
+        ...pageParams(flags),
       });
       emit(
         table(page.data, [
@@ -28,7 +27,7 @@ export async function conversations(
     case "get": {
       if (!rest[0]) return usage(deps, "conversations get <id>");
       const detail = await client.conversations.get(rest[0]);
-      emit(JSON.stringify(detail, null, 2), detail);
+      emitJson(emit, detail);
       return EXIT.ok;
     }
     case "export": {
@@ -60,7 +59,7 @@ export async function conversations(
       return EXIT.ok;
     }
     case "delete":
-      if (!rest[0] || flags.yes !== true) return usage(deps, "conversations delete <id> --yes");
+      if (!rest[0] || !confirmed(flags)) return usage(deps, "conversations delete <id> --yes");
       await client.conversations.delete(rest[0]);
       emit(`Deleted ${rest[0]}`, { deleted: rest[0] });
       return EXIT.ok;

@@ -1,7 +1,7 @@
 import type { ApiEndpointSpec, ApiIntegrationAuthType } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { jsonFile, usage, type CommandContext } from "./shared.ts";
+import { jsonFile, usage, type CommandContext, confirmed } from "./shared.ts";
 
 export async function apiIntegrations(
   verb: string | undefined,
@@ -41,7 +41,7 @@ export async function apiIntegrations(
       return EXIT.ok;
     }
     case "delete":
-      if (!rest[0] || flags.yes !== true) {
+      if (!rest[0] || !confirmed(flags)) {
         return usage(deps, "api-integrations delete <assistantId> --yes");
       }
       await client.apiIntegrations.delete(rest[0]);
@@ -105,7 +105,7 @@ export async function providers(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     }
     case "delete":
-      if (!rest[0] || flags.yes !== true) return usage(deps, "providers delete <id> --yes");
+      if (!rest[0] || !confirmed(flags)) return usage(deps, "providers delete <id> --yes");
       await client.providers.delete(rest[0]);
       emit(`Deleted ${rest[0]}`, { deleted: rest[0] });
       return EXIT.ok;

@@ -20,6 +20,7 @@
  * hand `streamConversationTurn` config, never searchers.
  */
 
+import { setTimeout as sleep } from "node:timers/promises";
 import type {
   Assistant,
   ProviderConnection,
@@ -101,7 +102,7 @@ export function buildKnowledgeSearcher(opts: {
         if (pending.length === 0) return false;
         const deadline = Date.now() + 10_000;
         while (pending.length && Date.now() < deadline) {
-          await new Promise((resolve) => setTimeout(resolve, 1_000));
+          await sleep(1_000);
           pending = (await Promise.all(pending.map((source) => db.getSource(source!.id))))
             .filter((source) => source?.status === "processing");
         }

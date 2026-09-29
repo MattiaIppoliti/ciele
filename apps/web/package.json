@@ -47,8 +47,6 @@
     "ai": "^7.0.107",
     "blobatar": "^2.5.0",
     "ciele-animated-icons": "^0.1.0",
-    "class-variance-authority": "^0.7.1",
-    "echarts": "^6.1.0",
     "jose": "^6.2.3",
     "jszip": "^3.10.1",
     "lucide": "^1.28.0",

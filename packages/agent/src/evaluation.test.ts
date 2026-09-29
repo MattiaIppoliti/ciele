@@ -122,7 +122,7 @@ describe("pre-flight evaluation model", () => {
       credentialKind: "platform",
       calibrated: false,
     });
-    expect(resolved.model.provider).toBe("gateway.evaluation");
+    expect((resolved.model as { provider: string }).provider).toBe("gateway.evaluation");
   });
 
   it("refuses a provider with neither a key nor a Gateway", () => {

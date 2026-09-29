@@ -39,7 +39,7 @@ export function ChartSkeleton({ className }: { className: string }) {
   return <div aria-label="Loading chart" className={`bg-muted/40 animate-pulse rounded-lg ${className}`} />;
 }
 
-// ECharts, Recharts' pie and the motion charts stay off the route's first
+// The Recharts bar and pie charts and the motion charts stay off the route's first
 // load: each card paints its frame, then its chart module arrives.
 export const SpendBars = dynamic(() => import("./dashboard-bars").then((m) => m.SpendBars), {
   ssr: false,
