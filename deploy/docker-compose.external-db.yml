@@ -121,9 +121,9 @@ services:
       provision:
         condition: service_completed_successfully
       auth:
-        condition: service_started
+        condition: service_healthy
       storage:
-        condition: service_started
+        condition: service_healthy
     environment:
       # The applier connects as the provider admin: `provision` made it a
       # member of both service owners, which `create policy` on

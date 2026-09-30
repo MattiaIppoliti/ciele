@@ -102,6 +102,13 @@ restart alone keeps the previous value.
 
 ## Inspect the stack
 
+The gateway refreshes service addresses through Docker DNS. After a service
+is recreated, requests can fail briefly while its new address resolves. The
+gateway recovers without a restart. PostgreSQL readiness uses TCP so services
+wait until database initialization finishes on a fresh installation.
+The migration runner also waits for authentication and storage to finish
+their own migrations before it applies the Ciele schema.
+
 ```bash
 docker compose -f deploy/docker-compose.yml ps
 docker compose -f deploy/docker-compose.yml logs -f app

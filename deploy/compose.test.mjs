@@ -271,6 +271,19 @@ check("the gateway health probe uses nginx's IPv4 listener", () => {
   );
 });
 
+check("postgres readiness waits for the final TCP server", () => {
+  assert.match(compose, /pg_isready -h 127\.0\.0\.1 -U postgres -d postgres/);
+});
+
+check("the migration runner waits for service migrations, not just tables", () => {
+  const migrate = compose.split(/^  migrate:\s*$/m)[1].split(/^  app:\s*$/m)[0];
+  for (const service of ["auth", "storage"]) {
+    assert.match(migrate, new RegExp(`^ {6}${service}:\\n {8}condition: service_healthy`, "m"));
+  }
+  assert.match(compose, /http:\/\/127\.0\.0\.1:9999\/health/);
+  assert.match(compose, /http:\/\/127\.0\.0\.1:5000\/status/);
+});
+
 check("the tls overlay is the one deliberate public listener (#801, CYB-16)", () => {
   // 80/443 on every interface is the terminator's job; anything else joining
   // it here would be a second public door nobody decided on.
@@ -917,8 +930,8 @@ check("provisioning runs before anything connects to the external database", () 
   }
   // The applier still waits for the two services that own auth.users and
   // storage.buckets; the base file's WAIT_FOR_TABLES does the rest.
-  assert.match(externalDbSection("migrate"), /^ {6}auth:\n {8}condition: service_started/m);
-  assert.match(externalDbSection("migrate"), /^ {6}storage:\n {8}condition: service_started/m);
+  assert.match(externalDbSection("migrate"), /^ {6}auth:\n {8}condition: service_healthy/m);
+  assert.match(externalDbSection("migrate"), /^ {6}storage:\n {8}condition: service_healthy/m);
   assert.match(externalDbSection("studio"), /^ {4}depends_on: !reset \[\]$/m);
 });
 

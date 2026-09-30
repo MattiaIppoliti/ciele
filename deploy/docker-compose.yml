@@ -58,7 +58,10 @@ services:
       # a .sh is silently skipped and the service roles never get passwords.
       - ./db-init/99-roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-ciele-roles.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      # The entrypoint's temporary init server accepts Unix sockets before
+      # role/password initialization finishes. Dependents use TCP, so probe
+      # TCP too: the final server starts only after init scripts complete.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -100,6 +103,12 @@ services:
       GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
       GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
       GOTRUE_LOG_LEVEL: info
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   rest:
     profiles: [db]
@@ -153,6 +162,14 @@ services:
       ENABLE_IMAGE_TRANSFORMATION: "false"
     volumes:
       - storage-data:/var/lib/storage
+    healthcheck:
+      # This image has Node, but no curl. The HTTP server starts only after
+      # Storage finishes its migrations, including concurrent indexes.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/status').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   # One origin for auth + rest + storage, the single job Ciele needs from a
   # gateway. Replaces Kong (which additionally does key-auth and rate
@@ -160,7 +177,8 @@ services:
   # themselves against JWT_SECRET).
   gateway:
     profiles: [db]
-    image: nginx:1.27-alpine
+    # Dynamic upstream DNS (`resolve`) requires open-source nginx >= 1.27.3.
+    image: nginx:1.27.5-alpine
     restart: unless-stopped
     networks: [backend]
     depends_on:
@@ -196,12 +214,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      # Not required to be *healthy*, only running: the entrypoint waits for
-      # the schemas these two install.
+      # Tables alone appear before service migrations finish. In particular,
+      # Storage's concurrent indexes can deadlock with Ciele policy DDL.
+      # Wait for both HTTP servers, which start after their migrations.
       auth:
-        condition: service_started
+        condition: service_healthy
       storage:
-        condition: service_started
+        condition: service_healthy
     environment:
       SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
       # Migrations create the three storage buckets and reference auth.users,

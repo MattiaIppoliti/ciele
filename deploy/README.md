@@ -43,6 +43,13 @@ assistants) so you can see a populated product before adding your own.
 Realtime, Edge Functions, Analytics and Kong are not started; Ciele does not
 use them.
 
+The gateway refreshes Docker DNS every five seconds, so recreating auth,
+REST or storage does not require restarting nginx. During first boot, the
+Postgres healthcheck waits for its final TCP server; the temporary Unix-socket
+server used by initialization does not release dependent services early.
+The migration runner waits for Auth and Storage HTTP readiness too: their
+tables can exist while their own migrations and concurrent indexes still run.
+
 Three things are not profiles but **overlay files**, listed in `COMPOSE_FILE`:
 prebuilt images, the heavy workers, and an external database. All three are
 covered below.
