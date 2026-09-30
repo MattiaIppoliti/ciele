@@ -2470,6 +2470,17 @@ export function describeDbContract(
         ).toBeNull();
       });
 
+      it("retains gate turn identity through transcript and recent-history reads", async () => {
+        const assistant = await newAssistant();
+        const conversation = await newConversation(assistant.id);
+        const requestId = `webhook-${crypto.randomUUID()}`;
+        const saved = await systemDb.appendMessage({ conversationId: conversation.id, requestId, role: "assistant", content: [{ type: "text", text: "Callback received" }] });
+        expect(saved.requestId).toBe(requestId);
+        expect((await db.getMessage(saved.id))?.requestId).toBe(requestId);
+        expect((await db.listMessages(conversation.id)).find((message) => message.id === saved.id)?.requestId).toBe(requestId);
+        expect((await db.listRecentMessages(conversation.id, 10)).find((message) => message.id === saved.id)?.requestId).toBe(requestId);
+      });
+
       it("toggles pinned", async () => {
         const assistant = await newAssistant();
         const conversation = await newConversation(assistant.id);

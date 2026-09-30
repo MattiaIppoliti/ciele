@@ -3449,6 +3449,8 @@ export const PROGRESS_MAX_CHARS = 200;
 
 export interface StoredMessage {
   id: string;
+  /** Durable turn identity; gate resumptions use review-/webhook- IDs. Null on legacy rows. */
+  requestId?: string | null;
   conversationId: string;
   role: "user" | "assistant";
   /** Reply parts for assistant messages, [{type:'text', text}] for user ones. */

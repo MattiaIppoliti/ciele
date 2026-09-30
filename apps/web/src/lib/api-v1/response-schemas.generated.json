@@ -1599,6 +1599,16 @@
             "id": {
               "type": "string"
             },
+            "requestId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "conversationId": {
               "type": "string"
             },
@@ -15644,6 +15654,16 @@
                 "id": {
                   "type": "string"
                 },
+                "requestId": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
                 "conversationId": {
                   "type": "string"
                 },
@@ -15765,6 +15785,12 @@
                 "properties": {
                   "id": {
                     "type": "string"
+                  },
+                  "requestId": {
+                    "oneOf": [
+                      {},
+                      {}
+                    ]
                   },
                   "conversationId": {
                     "type": "string"
@@ -20808,6 +20834,16 @@
           "properties": {
             "id": {
               "type": "string"
+            },
+            "requestId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             },
             "conversationId": {
               "type": "string"

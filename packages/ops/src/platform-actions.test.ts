@@ -14,7 +14,7 @@ import {
   platformOperations,
   runPlatformOperation,
 } from "./platform-actions";
-import { deleteTeammateOp, hideTeammateOp, updateTeammateOp } from "./teammates";
+import { deleteTeammateOp, hideTeammateOp, getTeammateOp, teammatePatchSchema, updateTeammateOp } from "./teammates";
 
 /**
  * Ciele AI's catalogue (the platform layer). The derivation is the point, so
@@ -333,6 +333,31 @@ describe("Ciele AI's lifecycle", () => {
     expect(first.name).toBe("Ciele AI");
     expect(first.systemKind).toBe("ciele_ai");
     expect(first.roleDescription).toBe("");
+  });
+
+  it("saves and reads its default model without changing the allowlist or grants", async () => {
+    const context = ctx("owner");
+    const before = await ensureCieleAiOp.run(context, {});
+    const patch = teammatePatchSchema.parse({ modelProvider: "google", modelId: "gemini-3.5-flash-lite" });
+    const updated = await updateTeammateOp.run(context, { id: before.id, patch });
+    const reread = await getTeammateOp.run(context, { id: before.id });
+    expect(reread).toEqual(updated);
+    expect(reread.modelProvider).toBe("google");
+    expect(reread.modelId).toBe("gemini-3.5-flash-lite");
+    expect(reread.allowedModels).toEqual(before.allowedModels);
+    expect(reread.modelSource).toEqual(before.modelSource);
+    expect(reread.collectionIds).toEqual(before.collectionIds);
+    expect(reread.editorIds).toEqual(before.editorIds);
+    expect(reread.systemKind).toBe("ciele_ai");
+    await expect(updateTeammateOp.run({ ...context, organizationId: "another-org" }, { id: before.id, patch: { modelProvider: "openai", modelId: "gpt-5.4-mini" } })).rejects.toThrow(/not found/i);
+    expect((await getTeammateOp.run(context, { id: before.id })).modelProvider).toBe("google");
+  });
+
+  it("validates provider and bounded model IDs at the supported settings boundary", () => {
+    for (const patch of [{ modelProvider: "unknown" }, { modelId: "" }, { modelId: "bad model" }, { modelId: "a".repeat(201) }]) {
+      expect(teammatePatchSchema.safeParse(patch).success).toBe(false);
+    }
+    expect(teammatePatchSchema.parse({ modelProvider: "google", modelId: "gemini-3.5-flash-lite" })).toEqual({ modelProvider: "google", modelId: "gemini-3.5-flash-lite" });
   });
 
   it("can be renamed, and not deleted or hidden", async () => {

@@ -794,23 +794,19 @@ function ownsConversation(
 }
 
 /**
- * The assistant parts that trail the Visitor's last message and that they have
- * not already seen (#841).
- *
- * "Trailing" is how a gate outcome is recognised: it was persisted after the
- * Visitor's last message, by a resumption they were not present for, so this
- * turn's stream is the first chance to show it. Two kinds are excluded. A
- * `tool_calls` part is an audit trail with no surface. A part whose action is
- * `notification` is a proactive nudge, which the widget rendered live as it
- * fired: replaying it puts the nudge a second time inside the answer to the
- * message the Visitor typed *because* of it, and the client reducer de-dupes
- * only `component` parts, so nothing downstream catches it.
+ * Replay only durable background gate outcomes, never the previous live answer.
+ * A trailing assistant role alone says nothing about whether the Visitor saw it.
+ * Gate jobs reserve review-/webhook- request IDs and persist no user message.
+ * An ordinary turn is paired with a user message of the same request ID.
+ * Audit calls and proactive notifications remain persistence-only/already seen.
  */
 export function replayableTrailingParts(stored: readonly StoredMessage[]): ChatReplyPart[] {
   const parts: ChatReplyPart[] = [];
+  const userRequests = new Set(stored.filter((message) => message.role === "user").map((message) => message.requestId));
   for (let i = stored.length - 1; i >= 0; i -= 1) {
     const message = stored[i]!;
     if (message.role !== "assistant") break;
+    if (!message.requestId || !/^(review|webhook)-/.test(message.requestId) || userRequests.has(message.requestId)) continue;
     parts.unshift(
       ...(message.content as ChatReplyPart[]).filter(
         (part) =>

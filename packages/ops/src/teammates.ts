@@ -66,6 +66,8 @@ export const teammatePatchSchema = z
     // The models this Teammate's chat window offers. Editor-writable like the
     // rest of the persona: choosing between models the Organization already
     // pays for is not the same decision as granting an action.
+    modelProvider: z.enum(["anthropic", "openai", "google", "openai_compatible"]),
+    modelId: z.string().min(1).max(200).regex(/^\S+$/),
     allowedModels: allowedModelsSchema,
     modelSource: modelSourceSchema,
     // The attached Project (#771). Editor-writable like the rest of the

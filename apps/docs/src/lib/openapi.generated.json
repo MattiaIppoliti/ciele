@@ -13669,6 +13669,16 @@
                           "id": {
                             "type": "string"
                           },
+                          "requestId": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
+                          },
                           "conversationId": {
                             "type": "string"
                           },
@@ -29621,6 +29631,16 @@
                               "id": {
                                 "type": "string"
                               },
+                              "requestId": {
+                                "oneOf": [
+                                  {
+                                    "type": "null"
+                                  },
+                                  {
+                                    "type": "string"
+                                  }
+                                ]
+                              },
                               "conversationId": {
                                 "type": "string"
                               },
@@ -29742,6 +29762,12 @@
                               "properties": {
                                 "id": {
                                   "type": "string"
+                                },
+                                "requestId": {
+                                  "oneOf": [
+                                    {},
+                                    {}
+                                  ]
                                 },
                                 "conversationId": {
                                   "type": "string"
@@ -35624,6 +35650,21 @@
                       "minLength": 1
                     }
                   },
+                  "modelProvider": {
+                    "type": "string",
+                    "enum": [
+                      "anthropic",
+                      "openai",
+                      "google",
+                      "openai_compatible"
+                    ]
+                  },
+                  "modelId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^\\S+$"
+                  },
                   "allowedModels": {
                     "maxItems": 24,
                     "type": "array",
@@ -36781,6 +36822,16 @@
                         "properties": {
                           "id": {
                             "type": "string"
+                          },
+                          "requestId": {
+                            "oneOf": [
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ]
                           },
                           "conversationId": {
                             "type": "string"

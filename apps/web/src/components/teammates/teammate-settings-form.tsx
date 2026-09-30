@@ -12,7 +12,9 @@ import type {
   TeammateRoutine,
 } from "@agent-hub/core";
 import { isCieleAi, modelSelector } from "@agent-hub/core";
-import { currentModelId } from "@agent-hub/agent/client";
+import { PROVIDER_NAMES, currentModelId } from "@agent-hub/agent/client";
+import { teammateModelPatch } from "@/lib/teammates/model-settings";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ModelSourceSelect } from "@/components/chat/model-source-select";
 import { modelCatalogWith } from "@/lib/platform-model-catalog";
 import { MEMORY_DOCUMENT_MAX_CHARS } from "@agent-hub/core";
@@ -136,6 +138,12 @@ export function TeammateSettingsForm({
   const [allowedModels, setAllowedModels] = useState<ModelRef[]>(
     teammate.allowedModels ?? []
   );
+  const modelCatalog = modelCatalogWith(platformModels);
+  const [modelProvider, setModelProvider] = useState(teammate.modelProvider);
+  const [modelId, setModelId] = useState(teammate.modelId);
+  const modelPatch = teammateModelPatch(teammate, { modelProvider, modelId });
+  const modelDirty = Object.keys(modelPatch).length > 0;
+  const allowedModelsDirty = JSON.stringify(allowedModels) !== JSON.stringify(teammate.allowedModels ?? []);
   const [modelSource, setModelSource] = useState<ModelSource | null>(
     teammate.modelSource ?? null
   );
@@ -199,7 +207,8 @@ export function TeammateSettingsForm({
           visibility,
           avatarSeed,
           projectId,
-          allowedModels,
+          ...modelPatch,
+          ...(allowedModelsDirty ? { allowedModels } : {}),
           // Only when it moved: see the Assistant's General form.
           ...(modelSourceDirty ? { modelSource } : {}),
         });
@@ -245,7 +254,8 @@ export function TeammateSettingsForm({
     visibility !== teammate.visibility ||
     avatarSeed !== teammate.avatarSeed ||
     projectId !== teammate.projectId ||
-    JSON.stringify(allowedModels) !== JSON.stringify(teammate.allowedModels ?? []) ||
+    allowedModelsDirty ||
+    modelDirty ||
     modelSourceDirty ||
     (loadedMemory !== null && agentMemory !== loadedMemory) ||
     changedGrants;
@@ -417,24 +427,49 @@ export function TeammateSettingsForm({
 
       <TimelineSection title="Models" boxed>
       <div className="space-y-2">
-        <Label>Models it can answer with</Label>
+        <Label>Default model</Label>
+        <div className="flex flex-col gap-2 @lg:flex-row">
+          <Select value={modelProvider} onValueChange={(value) => {
+            const provider = value as Provider;
+            setModelProvider(provider);
+            setModelId(modelCatalog[provider][0]!.id);
+            setModelSource(null);
+          }} className="w-full @lg:w-40">
+            <SelectTrigger aria-label="Default model provider"><SelectValue>{PROVIDER_NAMES[modelProvider]}</SelectValue></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(PROVIDER_NAMES) as Provider[]).filter((provider) => modelCatalog[provider].length > 0).map((provider) => (
+                <SelectItem key={provider} value={provider}>{PROVIDER_NAMES[provider]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={modelId} onValueChange={(value) => {
+            setModelId(value);
+            setModelSource(null);
+          }} className="min-w-0 flex-1">
+            <SelectTrigger aria-label="Default model"><SelectValue>{modelCatalog[modelProvider].find((model) => model.id === modelId)?.label ?? modelId}</SelectValue></SelectTrigger>
+            <SelectContent>
+              {modelCatalog[modelProvider].map((model) => <SelectItem key={model.id} value={model.id}>{model.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         <ModelSourceSelect
           sources={
             modelSources[
               modelSelector({
-                provider: teammate.modelProvider,
-                modelId: currentModelId(teammate.modelProvider, teammate.modelId),
+                provider: modelProvider,
+                modelId: currentModelId(modelProvider, modelId),
               })
             ] ?? []
           }
           value={modelSource}
           onChange={setModelSource}
         />
+        <Label>Models it can answer with</Label>
         <ModelAllowList
-          catalog={modelCatalogWith(platformModels)}
+          catalog={modelCatalog}
           configured={{
-            provider: teammate.modelProvider,
-            modelId: teammate.modelId,
+            provider: modelProvider,
+            modelId,
             ...(modelSource ? { source: modelSource } : {}),
           }}
           value={allowedModels}

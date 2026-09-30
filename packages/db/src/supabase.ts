@@ -412,6 +412,7 @@ interface ConversationRow {
 
 interface MessageRow {
   id: string;
+  request_id?: string | null;
   conversation_id: string;
   role: "user" | "assistant";
   content: unknown[];
@@ -687,6 +688,7 @@ function toMemory(row: MemoryRow): Memory {
 function toStoredMessage(row: MessageRow): StoredMessage {
   return {
     id: row.id,
+    requestId: row.request_id ?? null,
     conversationId: row.conversation_id,
     role: row.role,
     content: row.content ?? [],

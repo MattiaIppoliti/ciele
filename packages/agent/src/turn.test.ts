@@ -127,6 +127,51 @@ describe("streamConversationTurn", () => {
     );
   });
 
+  it("streams three ordinary turns without repeating earlier answers or saved history", async () => {
+    const spy = vi.spyOn(engine, "runAssistantChat").mockImplementation(async (options) => {
+      const part: ChatReplyPart = { type: "text", action: "custom_message", text: `Answer to ${options.message}` };
+      options.emit?.({ type: "part", part });
+      return { parts: [part], effects: [], flowId: null, flowName: "Default behavior", usage: [] };
+    });
+    try {
+      const { assistant, flows } = await fixture();
+      let conversationId: string | null = null;
+      for (const message of ["first", "second", "third"]) {
+        const events = await runTurn({ assistant, flows, conversationId, message });
+        conversationId = doneEvent(events).conversationId;
+        expect(events.filter((event) => event.type === "part").map((event) => event.part)).toEqual([
+          { type: "text", action: "custom_message", text: `Answer to ${message}` },
+        ]);
+      }
+      const saved = await db.listMessages(conversationId!);
+      expect(saved).toHaveLength(6);
+      expect(saved.filter((message) => message.role === "assistant").map((message) => message.content)).toEqual(
+        ["first", "second", "third"].map((message) => [{ type: "text", action: "custom_message", text: `Answer to ${message}` }])
+      );
+    } finally { spy.mockRestore(); }
+  });
+
+  it("replays a background gate outcome once, without copying it into the next saved answer", async () => {
+    const { assistant } = await fixture();
+    const flow = await db.createFlow(assistant.id, {
+      name: "Live answer", description: "check the outcome", actions: ["custom_message"],
+      customMessage: "Current live answer",
+    });
+    const flows = [flow];
+    const first = await runTurn({ assistant, flows, message: "check the outcome" });
+    const conversationId = doneEvent(first).conversationId;
+    const outcome: ChatReplyPart = { type: "text", action: "custom_message", text: "Background review approved" };
+    await db.appendMessage({ conversationId, requestId: "review-test-background", role: "assistant", content: [outcome] });
+    const next = await runTurn({ assistant, flows, conversationId, message: "check the outcome" });
+    expect(next.filter((event) => event.type === "part").map((event) => event.part)).toEqual([
+      outcome, ...first.filter((event) => event.type === "part").map((event) => event.part),
+    ]);
+    const following = await runTurn({ assistant, flows, conversationId, message: "check the outcome" });
+    expect(JSON.stringify(following)).not.toContain(outcome.text);
+    const reloaded = await db.listMessages(conversationId);
+    expect(reloaded.filter((message) => JSON.stringify(message.content).includes(outcome.text))).toHaveLength(1);
+  });
+
   it("does not persist an assistant reply for an aborted turn", async () => {
     const { assistant, flows } = await fixture();
     const controller = new AbortController();
@@ -431,17 +476,13 @@ describe("streamConversationTurn", () => {
   it("starts a fresh conversation for a different subject (ownership guard)", async () => {
     const { assistant, flows } = await fixture();
     const first = doneEvent(await runTurn({ assistant, flows }));
-    const hijack = doneEvent(
-      await runTurn({
-        assistant,
-        flows,
-        subjectId: "visitor-2",
-        conversationId: first.conversationId,
-      })
-    );
+    await db.appendMessage({ conversationId: first.conversationId, requestId: "review-private-outcome", role: "assistant", content: [{ type: "text", action: "human_review", text: "Private review outcome" }] });
+    const hijackEvents = await runTurn({ assistant, flows, subjectId: "visitor-2", conversationId: first.conversationId });
+    expect(JSON.stringify(hijackEvents)).not.toContain("Private review outcome");
+    const hijack = doneEvent(hijackEvents);
     expect(hijack.conversationId).not.toBe(first.conversationId);
     // The original conversation gained no messages from the other subject.
-    expect(await db.listMessages(first.conversationId)).toHaveLength(2);
+    expect(await db.listMessages(first.conversationId)).toHaveLength(3);
   });
 
   it("starts a fresh conversation when the subject type differs", async () => {
@@ -1804,7 +1845,8 @@ describe("plan-cap gate (#442)", () => {
  * so nothing downstream catches this.
  */
 describe("replayableTrailingParts", () => {
-  const assistant = (parts: ChatReplyPart[]) => ({
+  const assistant = (parts: ChatReplyPart[], requestId: string | null = "review-background") => ({
+    requestId,
     id: crypto.randomUUID(),
     conversationId: "c1",
     role: "assistant" as const,
@@ -1840,6 +1882,21 @@ describe("replayableTrailingParts", () => {
     buttonType: "send_text",
     text: "Tell me about fees",
   };
+
+  it.each([null, "ordinary-turn"])("does not replay an ordinary completed answer (%s)", (requestId) => {
+    expect(replayableTrailingParts([user(), assistant([gateOutcome], requestId)] as never)).toEqual([]);
+  });
+
+  it("does not trust a gate-like ID paired with a user turn", () => {
+    expect(replayableTrailingParts([{ ...user(), requestId: "review-user" }, assistant([gateOutcome], "review-user")] as never)).toEqual([]);
+  });
+
+  it("keeps asynchronous review and webhook outcomes in order, excluding audit calls", () => {
+    const audit = { type: "tool_calls", calls: [] } as unknown as ChatReplyPart;
+    const callback = { ...gateOutcome, text: "Callback received" };
+    const stored = [user(), assistant([nudge], "ordinary-turn"), assistant([gateOutcome, audit]), assistant([callback], "webhook-background")];
+    expect(replayableTrailingParts(stored as never)).toEqual([gateOutcome, callback]);
+  });
 
   it("replays an outcome the Visitor never saw", () => {
     const stored = [user(), assistant([gateOutcome])];
