@@ -890,10 +890,6 @@ function WebsitesTab({
               <RollingNumber value={websiteSources.length} />
             </Badge>
           </h2>
-          <p className="text-muted-foreground text-sm">
-            Add your organization&apos;s main website or links to additional
-            knowledge bases the assistant should answer questions about.
-          </p>
         </div>
         <Button onClick={() => setShowAdd(!showAdd)} className="px-5 font-semibold">
           <Plus className="size-4" /> Add
@@ -1313,9 +1309,6 @@ function DocumentsTab({
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">
-        Upload files for the assistant to answer from.
-      </p>
       <FileUpload
         value={uploads}
         onValueChange={setUploads}
@@ -2148,7 +2141,6 @@ function FaqsTab({
               <RollingNumber value={faqs.length} />
             </Badge>
           </h2>
-          <p className="text-muted-foreground text-sm">Add sets of questions and answers to fine tune AI responses.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button

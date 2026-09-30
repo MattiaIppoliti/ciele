@@ -53,6 +53,7 @@ export default async function ChannelPage({
     <>
       <PageCrumb label={view.channel.name} />
     <ChannelWorkspace
+      key={view.channel.id}
       channel={view.channel}
       roster={view.roster}
       teammates={view.teammates}

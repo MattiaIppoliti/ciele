@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  fitColumnWidths,
   MAX_COLUMN_WIDTH,
   MIN_COLUMN_WIDTH,
   columnWidthFor,
@@ -69,5 +70,28 @@ describe("parseColumnWidths", () => {
     expect(columnWidthsKey("library-websites")).toBe(
       "ciele.table-widths.library-websites"
     );
+  });
+});
+
+describe("fitColumnWidths", () => {
+  const columns = [
+    { key: "name", width: 380, min: 180 },
+    { key: "date", width: 180, min: 140 },
+    { key: "actions", width: 88, min: 88, fixed: true },
+  ];
+  it("fits the available space without expanding actions", () => {
+    const widths = fitColumnWidths(columns, 500);
+    expect(Object.values(widths).reduce((sum, width) => sum + width, 0)).toBeCloseTo(500);
+    expect(widths.actions).toBe(88);
+    expect(widths.name).toBeGreaterThanOrEqual(180);
+    expect(widths.date).toBeGreaterThanOrEqual(140);
+  });
+  it("preserves readable floors when horizontal scrolling is necessary", () => {
+    expect(fitColumnWidths(columns, 200)).toEqual({ name: 180, date: 140, actions: 88 });
+  });
+  it("gives spare space to data columns only", () => {
+    const widths = fitColumnWidths(columns, 900);
+    expect(widths.actions).toBe(88);
+    expect(Object.values(widths).reduce((sum, width) => sum + width, 0)).toBeCloseTo(900);
   });
 });

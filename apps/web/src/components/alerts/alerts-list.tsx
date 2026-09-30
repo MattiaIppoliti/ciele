@@ -15,6 +15,8 @@ import {
   DialogTitle,
 } from "@agent-hub/ui";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
+import { useColumnWidths } from "@/components/ui/table-columns";
+import { Table, TableCard, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
 import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
@@ -35,8 +37,6 @@ const TYPE_LABELS: Record<AlertType, string> = {
 
 type Tab = AlertsUrlState["status"];
 
-/** Shared by the table and its column header, so the two cannot drift apart. */
-const COLUMNS = "lg:grid-cols-[1fr_130px_130px_110px_auto]";
 
 export function AlertsList({
   alerts,
@@ -48,6 +48,14 @@ export function AlertsList({
   /** Parsed on the server, so the first render is already on the right tab. */
   initialUrlState?: AlertsUrlState;
 }) {
+  const columns = useColumnWidths("alerts", [
+    { key: "category", width: 120, min: 105 },
+    { key: "issue", width: 380, min: 220 },
+    { key: "detected", width: 160, min: 145 },
+    { key: "resolved", width: 160, min: 145 },
+    { key: "status", width: 110, min: 100 },
+    { key: "actions", width: 250, fixed: true },
+  ]);
   const [tab, setTab] = useState<Tab>(initialUrlState.status);
   const [details, setDetails] = useState<Alert | null>(null);
   const [pending, startTransition] = useTransition();
@@ -91,10 +99,6 @@ export function AlertsList({
   return (
     <div className="flex h-full flex-col">
       <h1 className="sr-only">Alerts</h1>
-      <p className="text-muted-foreground px-4 pt-4 text-sm sm:px-6">
-        Failing integrations, crawls and providers. Alerts clear when resolved or recovered.
-      </p>
-
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as Tab)}
@@ -118,96 +122,55 @@ export function AlertsList({
               : "All clear, no alerts need attention."}
           </div>
         ) : (
-          // Five columns need ~800px. Below `lg` each alert becomes a stacked
-          // card instead, the column header disappears with the columns, and
-          // the two timestamps carry their own labels once they no longer sit
-          // under one. `lg:contents` lets the mobile grouping wrapper vanish so
-          // the same cells drop straight into the grid. That is also why this
-          // is ARIA table roles and not a <table>: a real table cannot stack.
-          <div
-            role="table"
-            aria-label="Alerts"
-            className="border-border overflow-hidden rounded-xl border"
-          >
-            <div role="rowgroup">
-              <div
-                role="row"
-                className={`text-muted-foreground bg-muted/50 hidden items-center gap-3 px-4 py-2 text-xs font-medium lg:grid ${COLUMNS}`}
-              >
-                <span role="columnheader">Issue</span>
-                <span role="columnheader">Detected</span>
-                <span role="columnheader">Resolved</span>
-                <span role="columnheader">Status</span>
-                <span role="columnheader">
-                  <span className="sr-only">Actions</span>
-                </span>
-              </div>
-            </div>
-            <div role="rowgroup">
-              {visible.map((alert, index) => (
-                <RollRow key={alert.id} index={index}>
-                <div
-                  role="row"
-                  className={`border-border flex flex-col gap-2 border-t px-4 py-3 text-sm lg:grid lg:items-center lg:gap-3 ${COLUMNS}`}
-                >
-                  <div role="cell" className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline"><RollInText text={TYPE_LABELS[alert.type]} /></Badge>
-                      <span className="truncate font-medium"><RollInText text={alert.title} /></span>
-                    </div>
-                    <p className="text-muted-foreground mt-0.5 text-xs [overflow-wrap:anywhere] lg:truncate">
-                      {alert.detail}
-                    </p>
-                  </div>
-                  <div
-                    role="none"
-                    className="flex flex-wrap items-center gap-x-4 gap-y-1 lg:contents"
-                  >
-                    <span role="cell" className="text-muted-foreground text-xs">
-                      <span className="lg:hidden">Detected: </span>
-                      <RollInText text={formatDateTime(alert.detectedAt)} />
-                    </span>
-                    <span role="cell" className="text-muted-foreground text-xs">
-                      <span className="lg:hidden">Resolved: </span>
-                      <RollInText text={alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "N/A"} />
-                    </span>
-                  </div>
-                  <span role="cell">
-                    <StatusBadge status={alert.status} />
-                  </span>
-                  {/* No fixed width: two buttons never fitted 10rem, so the
-                      resolve action used to overlap the status badge. The
-                      column is `auto`, so it sizes to whatever the row needs. */}
-                  <div
-                    role="cell"
-                    className="flex flex-wrap gap-2 lg:flex-nowrap lg:justify-end"
-                  >
-                    {canEdit && alert.status === "active" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => resolve(alert.id)}
-                      >
-                        <RollInText
-                          text={pending && resolvingId === alert.id ? "Resolving…" : "Mark resolved"}
-                        />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Details: ${alert.title}`}
-                      onClick={() => setDetails(alert)}
-                    >
-                      More details
-                    </Button>
-                  </div>
-                </div>
-                </RollRow>
-              ))}
-            </div>
-          </div>
+          <TableCard>
+            <Table fixed aria-label="Alerts">
+              {columns.colGroup}
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Category</TableHead>
+                  <TableHead>Issue</TableHead>
+                  <TableHead>Detected</TableHead>
+                  <TableHead>Resolved</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead><span className="sr-only">Actions</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((alert, index) => (
+                  <RollRow key={alert.id} index={index}>
+                    <TableRow>
+                      <TableCell><Badge variant="outline"><RollInText text={TYPE_LABELS[alert.type]} /></Badge></TableCell>
+                      <TableCell className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-medium"><RollInText text={alert.title} /></span>
+                        </div>
+                        <p className="text-muted-foreground mt-0.5 truncate text-xs">{alert.detail}</p>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap text-xs">
+                        <RollInText text={formatDateTime(alert.detectedAt)} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap text-xs">
+                        <RollInText text={alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "N/A"} />
+                      </TableCell>
+                      <TableCell><StatusBadge status={alert.status} /></TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          {canEdit && alert.status === "active" && (
+                            <Button variant="outline" size="sm" disabled={pending} onClick={() => resolve(alert.id)}>
+                              <RollInText text={pending && resolvingId === alert.id ? "Resolving…" : "Mark resolved"} />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm" aria-label={`Details: ${alert.title}`} onClick={() => setDetails(alert)}>
+                            More details
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </RollRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableCard>
         )}
       </div>
 

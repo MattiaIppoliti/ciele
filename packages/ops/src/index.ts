@@ -142,6 +142,7 @@ export {
   listTeammateThreadOp,
   listTeammatesOp,
   readTeammateConversationOp,
+  setTeammateMessageFeedbackOp,
   startReferralOp,
   unhideTeammateOp,
   teammateInputSchema,

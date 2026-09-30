@@ -84,18 +84,13 @@ export function channelChatMessages(
     if (message.authorType === "system") {
       // Nobody was speaking: a cap marker or a failed turn is a fact about the
       // thread, not somebody's bubble.
-      return { role: "notice", text: channelMessageText(message.content) };
+      return { role: "notice", sentAt: message.createdAt, text: channelMessageText(message.content) };
     }
     if (message.authorType === "member") {
       return {
         role: "user",
         text: channelMessageText(message.content),
-        // Null for anything read back from storage, as in the 1:1 transcript:
-        // the hover timestamp is formatted with the *reader's* locale and
-        // timezone, so rendering a stored one server-side mismatches on
-        // hydration. It shows for messages sent in this session, which are
-        // client-only.
-        sentAt: null,
+        sentAt: message.createdAt,
         author: {
           name: names.get(message.authorUserId ?? "") ?? FORMER_MEMBER,
           avatarSeed: message.authorUserId ?? UNSEEDED,
@@ -110,6 +105,7 @@ export function channelChatMessages(
     });
     return {
       role: "bot",
+      sentAt: message.createdAt,
       id: message.id,
       ...EMPTY_TURN_TRACE,
       steps: trace?.steps ?? [],

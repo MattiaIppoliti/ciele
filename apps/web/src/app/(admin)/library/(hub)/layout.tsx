@@ -71,11 +71,6 @@ function LibraryHeaderSkeleton() {
       <div className="px-4 sm:px-6">
         <Skeleton className="h-10 w-96 max-w-full rounded-lg" />
       </div>
-      {/* The tab intro keeps a two-line floor (min-h-10), so this does too. */}
-      <div className="mt-3 min-h-10 max-w-3xl space-y-1.5 px-4 sm:px-6">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
     </div>
   );
 }

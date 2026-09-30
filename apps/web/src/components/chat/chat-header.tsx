@@ -45,10 +45,10 @@ export function ChatHeader({
 }: {
   nickname: string;
   avatarUrl?: string | null;
-  historyOpen: boolean;
-  onToggleHistory: () => void;
+  historyOpen?: boolean;
+  onToggleHistory?: () => void;
   historyMenu?: ReactNode;
-  onNewChat: () => void;
+  onNewChat?: () => void;
   onClose?: () => void;
   fullscreen?: boolean;
   onToggleFullscreen?: () => void;
@@ -66,10 +66,10 @@ export function ChatHeader({
     : undefined;
   return (
     <div
-      className="flex items-center gap-1 border-b px-3 py-3"
+      className="flex shrink-0 items-center gap-1 border-b px-3 py-3"
       style={headerColor ? { backgroundColor: headerColor } : undefined}
     >
-      {historyMenu ? (
+      {onToggleHistory && (historyMenu ? (
         <Popover
           open={historyOpen}
           onOpenChange={(open) => {
@@ -109,7 +109,7 @@ export function ChatHeader({
             <History className="text-primary size-4" />
           </Button>
         </Hint>
-      )}
+      ))}
 
       <span className="flex min-w-0 flex-1 items-center justify-center gap-2 text-lg font-medium">
         {avatarUrl && (
@@ -123,7 +123,7 @@ export function ChatHeader({
         <span className="truncate">{nickname}</span>
       </span>
 
-      <Hint label="New chat">
+      {onNewChat && <Hint label="New chat">
         <Button
           variant="ghost"
           size="icon"
@@ -133,7 +133,7 @@ export function ChatHeader({
         >
           <SquarePen className="text-primary size-4" />
         </Button>
-      </Hint>
+      </Hint>}
       {fullscreen && (
         <Hint label="Exit full screen">
           <Button

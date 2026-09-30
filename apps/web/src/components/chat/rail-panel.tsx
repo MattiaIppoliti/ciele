@@ -7,7 +7,7 @@ import { ChevronLeft } from "lucide-react";
 import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
 import { Hint } from "@agent-hub/ui";
 import { cn } from "@/lib/utils";
-import { SPRING_REFOLD, SPRING_UNFOLD } from "@/lib/ease";
+import { SPRING_UNFOLD } from "@/lib/ease";
 import { RAIL_CARD_INSET, ResizeHandle } from "@/components/ui/resizable-panel";
 import { useDockedRail } from "@/components/shell/right-rail";
 
@@ -183,8 +183,8 @@ export function RailPanel({
     );
 
   // Opening and closing move the width on the left sidebar's own springs:
-  // `SPRING_UNFOLD` grows out of the strip with its overshoot, `SPRING_REFOLD`
-  // folds back into it with a smaller one. A drag, and the snap after one,
+  // `SPRING_UNFOLD` grows out of the strip with its overshoot; closing uses
+  // a gentler spring and a late fade. A drag, and the snap after one,
   // follow the pointer with no animation, or the edge would lag behind it.
   const panel = (
     <motion.aside
@@ -193,14 +193,19 @@ export function RailPanel({
       {...(asPage
         ? {}
         : {
-            // Width only, exactly as the left sidebar moves: no fade, so the
-            // toggle in the title row stays in view the whole way, and the
-            // content keeps its width and slides out from behind the edge.
-            initial: { width: RAIL_PANEL_RAIL_WIDTH },
-            animate: { width },
+            // Keep the readable content width while the edge folds. Fade only
+            // near the end, hiding the handover to the collapsed strip.
+            initial: { width: RAIL_PANEL_RAIL_WIDTH, opacity: 1 },
+            animate: { width, opacity: 1 },
             exit: {
               width: whenCollapsed === "hidden" ? 0 : RAIL_PANEL_RAIL_WIDTH,
-              transition: reduceMotion ? { duration: 0 } : SPRING_REFOLD,
+              opacity: 0,
+              transition: reduceMotion
+                ? { duration: 0 }
+                : {
+                    width: { type: "spring", duration: 0.6, bounce: 0.12 },
+                    opacity: { duration: 0.5, delay: 0.04, ease: [0.22, 1, 0.36, 1] },
+                  },
             },
             transition: reduceMotion || resizing ? { duration: 0 } : SPRING_UNFOLD,
           })}

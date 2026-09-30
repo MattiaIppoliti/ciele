@@ -34,9 +34,6 @@ export default async function InboxChannelsPage() {
           Conversations
         </Link>
       </header>
-      <p className="text-muted-foreground px-6 pb-4 text-sm">
-        Every teammate group, newest first. Groups are internal and never reach visitors or Insights.
-      </p>
 
       {channels.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 border-t px-6 py-16 text-center">

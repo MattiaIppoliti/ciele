@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import type {
   ChannelMessage,
   ChannelRosterEntry,
@@ -14,7 +14,7 @@ import { EMPTY_TURN_TRACE, consumeChannelStream } from "@agent-hub/agent/client"
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
 import { Trash2 } from "lucide-react";
-import { ArrowLeft, Hash, Settings2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -30,6 +30,10 @@ import {
   type ChatBotMsg,
   type ChatMsg,
 } from "@/components/chat/chat-thread";
+import { ChatHeader } from "@/components/chat/chat-header";
+import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
+import { FULLSCREEN_GUTTER, WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
+import { ChatSurface } from "@/components/chat/rail-panel";
 import { MessageScroller } from "@/components/agents/message";
 import { GroupComposer } from "@/components/teammates/group-composer";
 import { MentionText } from "@/components/teammates/mention-text";
@@ -118,7 +122,19 @@ export function ChannelWorkspace({
   projects: { id: string; name: string }[];
 }) {
   const router = useRouter();
+  const { fullscreen, setFullscreen, surfaceRef, animating, spacerRef } = useFullscreenGrow();
+  const [entryVersion, setEntryVersion] = useState(0);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen, setFullscreen]);
   const [pending, setPending] = useState(false);
+  const [freshEntry, setFreshEntry] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -156,6 +172,7 @@ export function ChannelWorkspace({
   async function send(text: string): Promise<boolean> {
     const message = text.trim();
     if (!message || pending) return false;
+    setFreshEntry(false);
     setPending(true);
     playFeedback("send");
     const optimistic: ChatMsg = {
@@ -194,6 +211,7 @@ export function ChannelWorkspace({
             {
               role: "bot",
               id: null,
+              sentAt: new Date().toISOString(),
               ...EMPTY_TURN_TRACE,
               parts: [],
               streamingText: null,
@@ -211,12 +229,12 @@ export function ChannelWorkspace({
             // is a notice rather than somebody's bubble.
             setMessages((prev) => [
               ...prev,
-              { role: "notice", text: channelMessageText(message.content) },
+              { role: "notice", sentAt: message.createdAt, text: channelMessageText(message.content) },
             ]);
             return;
           }
           if (message.authorType === "teammate") {
-            updateLastBot((bot) => ({ ...bot, id: message.id }));
+            updateLastBot((bot) => ({ ...bot, id: message.id, sentAt: message.createdAt }));
           }
         },
         // One `reply` per finished Teammate turn in the chain, never per
@@ -242,7 +260,6 @@ export function ChannelWorkspace({
     return delivered;
   }
 
-  const members = roster.filter((entry) => entry.kind === "member");
   const seatedTeammates = roster.filter((entry) => entry.kind === "teammate");
 
   // Who the @ picker offers: everybody here but the writer, wearing the same
@@ -310,32 +327,8 @@ export function ChannelWorkspace({
   ];
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-3 border-b px-6 py-3">
-        <Link
-          href="/teammates"
-          /* The way back, for the widths where the rail is not on screen.
-             Above `lg` it is, and a back link to a list you can already see is
-             just noise in the header. */
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm lg:hidden"
-        >
-          <ArrowLeft className="size-4" />
-          Teammates
-        </Link>
-        <div className="flex min-w-0 items-center gap-2">
-          <Hash className="text-muted-foreground size-4 shrink-0" />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold"><RollInText text={channel.name} /></p>
-            <p className="text-muted-foreground truncate text-xs">
-              {members.length} {members.length === 1 ? "person" : "people"} ·{" "}
-              {seatedTeammates.length}{" "}
-              {seatedTeammates.length === 1 ? "teammate" : "teammates"}
-              {channel.projectId
-                ? ` · ${projects.find((p) => p.id === channel.projectId)?.name ?? "a project"}`
-                : ""}
-            </p>
-          </div>
-        </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <SlotPortal id={TOP_BAR_SLOT}>
         <div className="ml-auto flex items-center gap-2">
           {/* Who is in the room, and the only way to change it: the faces and
               the Add button are one block (`components/ui/assignees.tsx`), and
@@ -362,29 +355,38 @@ export function ChannelWorkspace({
             </Hint>
           )}
         </div>
-      </div>
+      </SlotPortal>
 
-      <div className="bg-card mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden">
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 py-4 sm:px-5">
+        <ChatSurface fullscreen={fullscreen} animating={animating} surfaceRef={surfaceRef} spacerRef={spacerRef}>
+        <ChatHeader
+          nickname={channel.name}
+          historyOpen={!freshEntry}
+          onToggleHistory={() => {
+            setFreshEntry(!freshEntry);
+            setEntryVersion((version) => version + 1);
+          }}
+          onNewChat={() => {
+            // A group is one shared history: start at a blank live edge without deleting it.
+            setFreshEntry(true);
+            setEntryVersion((version) => version + 1);
+          }}
+          busy={pending}
+          fullscreen={fullscreen}
+          onToggleFullscreen={() => setFullscreen(!fullscreen)}
+        />
         <MessageScroller
+          key={entryVersion}
           className="min-h-0 flex-1"
           busy={pending}
           status={liveTurnStatus(messages, pending)}
           navigation="rail"
-          viewportClassName="px-4 py-5"
+          viewportClassName={`py-5 [container-type:size] ${WIDEN_TRANSITION} ${fullscreen ? FULLSCREEN_GUTTER : "px-4"}`}
           contentClassName="space-y-4"
         >
-          {messages.length === 0 && (
-            <div className="pt-10 text-center">
-              <p className="text-lg font-semibold">#{channel.name}</p>
-              <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm leading-relaxed">
-                {seatedTeammates.length === 0
-                  ? "Add a teammate, then write @ and its name to bring it in."
-                  : `Write @${seatedTeammates[0].name} to ask a teammate. Whoever you name answers here, and they can bring each other in.`}
-              </p>
-            </div>
-          )}
           <ChatThread
             messages={messages}
+            showTimestamps
             pending={pending}
             onSend={send}
             // The whole roster, not `mentionTargets`: a colleague naming *you*
@@ -394,9 +396,13 @@ export function ChannelWorkspace({
               <MentionText text={text} targets={withFaces} />
             )}
           />
+          {/* Keep history above the initial viewport. Sending rejoins the live edge. */}
+          {freshEntry && (
+            <div aria-hidden="true" data-slot="group-entry-space" className="h-[calc(100cqh+3rem)]" />
+          )}
         </MessageScroller>
 
-        <div className="space-y-1.5 px-4 pb-4">
+        <div className={`shrink-0 space-y-1.5 ${WIDEN_TRANSITION} ${fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))] pb-6" : "px-4 pb-4"}`}>
           <GroupComposer
             targets={mentionTargets}
             onSubmit={send}
@@ -418,6 +424,7 @@ export function ChannelWorkspace({
             {CHANNEL_CHAIN_TURN_CAP} teammate replies.
           </p>
         </div>
+        </ChatSurface>
       </div>
 
       {canManage && (

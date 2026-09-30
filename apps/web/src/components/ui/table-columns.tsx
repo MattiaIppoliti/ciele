@@ -4,6 +4,7 @@ import * as React from "react";
 import { grabOffsetFor } from "@agent-hub/ui/resize-geometry";
 
 import {
+  fitColumnWidths,
   MAX_COLUMN_WIDTH,
   MIN_COLUMN_WIDTH,
   columnWidthFor,
@@ -109,6 +110,25 @@ export function useColumnWidths(
   layout: readonly TableColumnLayout[]
 ): ColumnWidths {
   const key = columnWidthsKey(tableId);
+  const [measurements, setMeasurements] = React.useState({ available: 0, actions: 0 });
+  const measureColumns = React.useCallback((group: HTMLTableColElement | null) => {
+    const table = group?.closest("table");
+    const container = table?.parentElement;
+    if (!table || !container) return;
+    const measure = () => {
+      const actionCells = table.querySelectorAll("tbody tr > :last-child > div");
+      for (const cell of actionCells) observer.observe(cell);
+      const actions = Math.max(64, ...Array.from(actionCells, (cell) => cell.scrollWidth + 24));
+      const available = container.clientWidth;
+      setMeasurements((previous) => previous.available === available && previous.actions === actions ? previous : { available, actions });
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    const changes = new MutationObserver(measure);
+    changes.observe(table, { childList: true, subtree: true });
+    measure();
+    return () => { observer.disconnect(); changes.disconnect(); };
+  }, []);
   // Which column's grip is under the pointer. It lights the whole column,
   // not the header cell the grip lives in: the boundary being dragged is the
   // column's, and a lit header over eleven unlit rows points at the wrong
@@ -134,13 +154,23 @@ export function useColumnWidths(
     raw,
     layout.map((column) => column.key)
   );
-  const widths: Record<string, number> = {};
+  const preferred: Record<string, number> = {};
   for (const column of layout) {
-    widths[column.key] =
-      draft?.key === column.key
-        ? draft.width
-        : (stored[column.key] ?? column.width);
+    preferred[column.key] =
+      column.fixed || column.key === "actions" ? column.width : (stored[column.key] ?? column.width);
   }
+
+  const responsiveLayout = layout.map((column) => ({
+    ...column,
+    fixed: column.fixed || column.key === "actions",
+    width: column.key === "actions" && measurements.actions ? measurements.actions : preferred[column.key],
+    min: column.min ?? Math.max(MIN_COLUMN_WIDTH, Math.min(column.width, column.width * 0.7)),
+  }));
+  const widths = measurements.available
+    ? fitColumnWidths(responsiveLayout, measurements.available)
+    : Object.fromEntries(responsiveLayout.map((column) => [column.key, column.width]));
+
+  if (draft) widths[draft.key] = draft.width;
 
   const commit = (columnKey: string, width: number) => {
     setDraft(null);
@@ -151,7 +181,7 @@ export function useColumnWidths(
     columnKey: string
   ): ColumnResizeHandleProps | undefined => {
     const column = layout.find((c) => c.key === columnKey);
-    if (!column || column.fixed) return undefined;
+    if (!column || column.fixed || column.key === "actions") return undefined;
     return {
       label: columnKey,
       value: widths[columnKey],
@@ -165,10 +195,11 @@ export function useColumnWidths(
   };
 
   const colGroup = (
-    <colgroup>
+    <colgroup ref={measureColumns}>
       {layout.map((column) => (
         <col
           key={column.key}
+          data-column={column.key}
           style={{ width: `${widths[column.key]}px` }}
           // Deliberately fainter than the 10%-white row divider it sits
           // under. At 10% the tint matched the dividers and the column came

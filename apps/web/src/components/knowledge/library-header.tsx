@@ -5,7 +5,6 @@ import { useRouter, useSelectedLayoutSegment } from "next/navigation";
 import type { OrgKnowledgeStatusCounts, SourceStatus } from "@agent-hub/core";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import {
-  KNOWLEDGE_TAB_INTROS,
   KNOWLEDGE_TAB_LABELS,
   KNOWLEDGE_TAB_SLUGS,
   KNOWLEDGE_TAB_TITLES,
@@ -127,11 +126,6 @@ export function LibraryHeader({
         </TabsList>
       </Tabs>
 
-      {/* Two lines reserved: the shortest intro is one line and the longest is
-          two, and without the floor the table under them jumps between tabs. */}
-      <p className="text-muted-foreground mt-3 min-h-10 max-w-3xl px-4 text-sm sm:px-6">
-        {KNOWLEDGE_TAB_INTROS[tab]}
-      </p>
     </div>
   );
 }

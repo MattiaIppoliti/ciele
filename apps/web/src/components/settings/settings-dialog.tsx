@@ -334,7 +334,7 @@ function RailRow({
       onClick={(event) => onNavigate(event, tab.href)}
       aria-current={active ? "page" : undefined}
       data-highlight-row
-      className={`relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
+      className={`group/settings-link relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
         active
           ? "bg-muted text-foreground"
           : "text-muted-foreground hover:text-foreground"
@@ -350,7 +350,7 @@ function RailRow({
           </span>
         )}
       </span>
-      {crossScope && <ArrowUpRight className="size-3.5 shrink-0" />}
+      {crossScope && <ArrowUpRight className="size-3.5 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover/settings-link:translate-x-0.5 group-hover/settings-link:-translate-y-0.5 group-focus-visible/settings-link:translate-x-0.5 group-focus-visible/settings-link:-translate-y-0.5 motion-reduce:transition-none motion-reduce:transform-none" />}
     </IntentLink>
   );
 }

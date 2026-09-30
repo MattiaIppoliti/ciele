@@ -85,3 +85,15 @@ export function parseColumnWidths(
   }
   return widths;
 }
+
+/** Fit flexible columns to the viewport, retaining their readable floors. */
+export function fitColumnWidths(columns: readonly { key: string; width: number; min: number; fixed?: boolean }[], available: number): Record<string, number> {
+  const fixed = columns.filter((column) => column.fixed).reduce((sum, column) => sum + column.width, 0);
+  const flexible = columns.filter((column) => !column.fixed);
+  const floor = flexible.reduce((sum, column) => sum + column.min, 0);
+  const preferred = flexible.reduce((sum, column) => sum + Math.max(column.min, column.width), 0);
+  const room = Math.max(floor, available - fixed);
+  const ratio = preferred > floor ? Math.min(1, (room - floor) / (preferred - floor)) : 0;
+  const extra = Math.max(0, room - preferred) / Math.max(1, flexible.length);
+  return Object.fromEntries(columns.map((column) => [column.key, column.fixed ? column.width : column.min + (Math.max(column.min, column.width) - column.min) * ratio + extra]));
+}

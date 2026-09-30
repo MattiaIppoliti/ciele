@@ -89,6 +89,7 @@ function Table({
         data-empty={empty ? "true" : undefined}
         className={cn(
           "w-full caption-bottom text-sm",
+          "[&:has(col[data-column=actions])_td:last-child>div]:w-max [&:has(col[data-column=actions])_td:last-child>div]:ml-auto",
           // The last cell has no neighbour to divide it from, and the border
           // would sit on the card's own edge.
           "[&_td:not(:last-child)]:border-r [&_th:not(:last-child)]:border-r",
@@ -229,7 +230,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
       // `overflow-hidden` because a fixed-layout column that its content can
       // push wider is not a column the reader resized.
       className={cn(
-        "relative overflow-hidden px-4 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "relative overflow-hidden px-3 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}

@@ -540,7 +540,7 @@ export function TeammatesShell({
     {/* The whole page is the open thread: the roster, the history and both
         New buttons live in the sidebar's Chat panel, on every screen size
         (the phone drawer mounts the same panel). */}
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* The top bar's breadcrumb is the visible title. */}
       <h1 className="sr-only">Teammates</h1>
       <section className="min-h-0 min-w-0 flex-1 overflow-hidden">

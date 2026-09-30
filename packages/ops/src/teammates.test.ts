@@ -15,6 +15,7 @@ import {
   listTeammateThreadOp,
   listTeammatesOp,
   readTeammateConversationOp,
+  setTeammateMessageFeedbackOp,
   updateTeammateOp,
 } from "./teammates";
 import { OperationError, type OperationContext } from "./operation";
@@ -413,5 +414,35 @@ describe("hiding a Teammate from your own roster (#767, story 10)", () => {
     expect(hideTeammateOp.entities({ id: "tm1" }, undefined as never)).toEqual([
       { kind: "teammateList" },
     ]);
+  });
+});
+
+describe("Teammate message reactions", () => {
+  it("persists and clears reactions, while refusing other members and wrong threads", async () => {
+    const db = getMockDb();
+    const context = ctx({ db });
+    const teammate = await create({ name: "Reactions" }, context);
+    const other = await create({ name: "Other" }, context);
+    const conversation = await db.createConversation({
+      teammateId: teammate.id, subjectType: "member", subjectId: context.userId,
+    });
+    const message = await db.appendMessage({
+      conversationId: conversation.id, role: "assistant",
+      content: [{ type: "text", text: "Hello" }],
+    });
+    const input = { id: teammate.id, messageId: message.id, reaction: "positive" as const };
+    await setTeammateMessageFeedbackOp.run(context, input);
+    expect(await db.getMessage(message.id)).toMatchObject({ feedback: 1, feedbackReaction: "positive" });
+    await expect(setTeammateMessageFeedbackOp.run(ctx({ db, userId: "other-member" }), input))
+      .rejects.toMatchObject({ code: "not_found" });
+    await expect(setTeammateMessageFeedbackOp.run(context, { ...input, id: other.id }))
+      .rejects.toMatchObject({ code: "not_found" });
+    await setTeammateMessageFeedbackOp.run(context, { ...input, reaction: "neutral" });
+    expect(await db.getMessage(message.id)).toMatchObject({ feedback: 0, feedbackReaction: "neutral" });
+    await setTeammateMessageFeedbackOp.run(context, { ...input, reaction: null });
+    expect(await db.getMessage(message.id)).toMatchObject({ feedback: 0, feedbackReaction: null });
+    const userMessage = await db.appendMessage({ conversationId: conversation.id, role: "user", content: [] });
+    await expect(setTeammateMessageFeedbackOp.run(context, { ...input, messageId: userMessage.id }))
+      .rejects.toMatchObject({ code: "not_found" });
   });
 });

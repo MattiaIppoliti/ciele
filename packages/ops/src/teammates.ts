@@ -6,7 +6,7 @@ import type {
   Teammate,
   TeammatePatch,
 } from "@agent-hub/core";
-import { isCieleAi, visibleTeammates } from "@agent-hub/core";
+import { feedbackReactionScore, isCieleAi, visibleTeammates } from "@agent-hub/core";
 import {
   raiseAlertsForAddedScope,
   raiseAlertsForAddedSourceScope,
@@ -366,6 +366,32 @@ export const readTeammateConversationOp = defineOperation({
       conversation,
       messages: await ctx.db.listMessages(conversationId),
     };
+  },
+});
+
+
+/** Reactions belong to a Member's own Teammate conversation, outside Inbox. */
+export const setTeammateMessageFeedbackOp = defineOperation({
+  name: "teammates.messages.feedback",
+  capability: "member",
+  effect: "write",
+  input: z.object({
+    id: z.string().min(1),
+    messageId: z.string().min(1),
+    reaction: z.enum(["positive", "neutral", "negative"]).nullable(),
+  }),
+  entities: () => [],
+  run: async (ctx, { id, messageId, reaction }) => {
+    await requireReadableTeammate(ctx, id);
+    const conversation = await ctx.db.getConversationForMessage(messageId);
+    const message = await ctx.db.getMessage(messageId);
+    if (!ctx.userId || !conversation || conversation.teammateId !== id ||
+        conversation.subjectId !== ctx.userId || !message || message.role !== "assistant") {
+      throw new OperationError("not_found", "Message not found");
+    }
+    const feedback = feedbackReactionScore(reaction);
+    await ctx.db.setMessageFeedback(messageId, feedback, reaction);
+    return { messageId, feedback, reaction };
   },
 });
 

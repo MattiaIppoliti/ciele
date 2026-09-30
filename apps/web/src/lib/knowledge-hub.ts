@@ -83,16 +83,6 @@ export const KNOWLEDGE_TAB_TITLES: Record<KnowledgeTabSlug, string> = {
   faqs: "Questions and Answers",
 };
 
-export const KNOWLEDGE_TAB_INTROS: Record<KnowledgeTabSlug, string> = {
-  websites:
-    "Add your organization's main website, or links to additional knowledge bases linked assistants should reference when answering questions.",
-  files:
-    "Upload files to add to your organization's knowledge base. Linked assistants will use these to answer questions.",
-  applications:
-    "Connect external applications and synchronize selected content into your organization's knowledge base.",
-  faqs: "Add sets of questions and answers to fine tune AI responses.",
-};
-
 /** A Source table's status-column filter rows, in menu order. */
 export const SOURCE_STATUS_OPTIONS = [
   { value: "ready", label: "Ready" },

@@ -21,6 +21,7 @@ import { chatFeedbackForEvent } from "@/lib/chat-feedback";
 import { DraftingCompass, UserRoundPlus } from "lucide-react";
 import { Paperclip, X } from "lucide-react";
 import Link from "next/link";
+import { ChatSurface } from "@/components/chat/rail-panel";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { FULLSCREEN_GUTTER, WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
@@ -55,10 +56,10 @@ import { readChatAttachmentAction } from "@/app/actions";
 import { createChannelAction } from "@/app/(admin)/teammates/channels/actions";
 import { ThreadHistoryMenu } from "@/components/teammates/thread-history-menu";
 import { toast } from "@/lib/toast";
-import { setMessageFeedbackAction } from "@/app/actions";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
 import {
   readTeammateConversationAction,
+  setTeammateMessageFeedbackAction,
   decideActionApprovalAction,
   startReferredConversationAction,
 } from "@/app/(admin)/teammates/actions";
@@ -458,7 +459,7 @@ export function TeammateWorkspace({
       );
     patch({ feedback, feedbackReaction: nextReaction });
     try {
-      await setMessageFeedbackAction(bot.id, feedback, nextReaction);
+      await setTeammateMessageFeedbackAction(teammate.id, bot.id, nextReaction);
     } catch {
       // Put the reaction back: a highlight that was never stored is a lie.
       patch({ feedback: bot.feedback, feedbackReaction: bot.feedbackReaction ?? null });
@@ -555,16 +556,12 @@ export function TeammateWorkspace({
           so the spacer holds its slot and is what the collapse measures back
           down to. */}
       <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 py-4 sm:px-5">
-        {animating && <div ref={spacerRef} className="min-h-0 flex-1" />}
-        <div
-          ref={surfaceRef}
-          className={
-            fullscreen
-              ? "bg-card fixed inset-0 z-50 flex flex-col overflow-hidden"
-              : heroEmpty
-                ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
-                : "bg-card relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border"
-          }
+        <ChatSurface
+          fullscreen={fullscreen}
+          animating={animating}
+          spacerRef={spacerRef}
+          surfaceRef={surfaceRef}
+          framed={!heroEmpty}
         >
         {/* The widget's own header component, so a Teammate chat and a Visitor
             chat get the same controls in the same places, full screen
@@ -810,7 +807,7 @@ export function TeammateWorkspace({
             {/* Below the composer, the other half of the centring. */}
             {heroEmpty && <div className="flex-1" />}
         </>
-        </div>
+        </ChatSurface>
       </div>
     </div>
   );

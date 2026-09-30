@@ -114,7 +114,8 @@ export function Table<T>({
           {columns.map((column) => (
             <col
               key={column.key}
-              style={column.width ? { width: column.width } : undefined}
+              data-column={column.key}
+              style={column.key === "actions" ? { width: "1%" } : column.width ? { width: column.width } : undefined}
             />
           ))}
         </colgroup>

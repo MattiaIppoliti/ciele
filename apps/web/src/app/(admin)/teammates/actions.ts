@@ -1,6 +1,7 @@
 "use server";
 
 import type {
+  FeedbackReactionId,
   MemoryDocument,
   RoutineCadence,
   Teammate,
@@ -18,6 +19,7 @@ import {
   getTeammateMemoryOp,
   hideTeammateOp,
   readTeammateConversationOp,
+  setTeammateMessageFeedbackOp,
   setTeammateGrantsOp,
   decideActionApprovalOp,
   startReferralOp,
@@ -190,4 +192,12 @@ export async function startReferredConversationAction(input: {
   summary: string;
 }): Promise<{ conversationId: string }> {
   return runOperation(startReferralOp, input);
+}
+
+export async function setTeammateMessageFeedbackAction(
+  id: string,
+  messageId: string,
+  reaction: FeedbackReactionId | null,
+) {
+  return runOperation(setTeammateMessageFeedbackOp, { id, messageId, reaction });
 }

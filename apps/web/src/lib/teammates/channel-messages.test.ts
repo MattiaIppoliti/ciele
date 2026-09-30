@@ -49,7 +49,7 @@ const TRACE: StoredTurnTrace = {
 };
 
 describe("channelChatMessages", () => {
-  it("attributes a member message to the roster name, with no timestamp", () => {
+  it("attributes a member message to the roster name, with its stored timestamp", () => {
     const [msg] = channelChatMessages(
       [message({ authorType: "member", authorUserId: "user-1" })],
       CAST
@@ -57,7 +57,7 @@ describe("channelChatMessages", () => {
     expect(msg).toEqual({
       role: "user",
       text: "Where are we on the refund flow?",
-      sentAt: null,
+      sentAt: "2026-08-24T09:00:00.000Z",
       author: { name: "Dana Ruiz", avatarSeed: "user-1" },
     });
   });
@@ -126,7 +126,7 @@ describe("channelChatMessages", () => {
       ],
       CAST
     );
-    expect(msg).toEqual({ role: "notice", text: "The chain stopped here." });
+    expect(msg).toEqual({ role: "notice", sentAt: "2026-08-24T09:00:00.000Z", text: "The chain stopped here." });
   });
 
   it("gates the model's reasoning out of the stored trace for a Member", () => {

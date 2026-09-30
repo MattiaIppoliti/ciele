@@ -35,6 +35,7 @@ import { toCitationItems } from "@/components/chat/citation-items";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import { SpeechPlayback } from "@/components/chat/speech-playback";
 import type { VoiceEndpoint } from "@/components/chat/voice-input-button";
+import { showMessageTimeSeparator } from "./message-time-separator";
 import { formatTime, sentAtLabel } from "@/lib/format";
 import { CHAT_CARD } from "@/components/chat/chat-card";
 
@@ -393,13 +394,14 @@ export interface ChatAuthor {
 export interface ChatUserMsg {
   role: "user";
   text: string;
-  /** Hover timestamp; null when the message was read back from storage. */
+  /** Sent timestamp; older 1:1 transcripts may omit it. */
   sentAt: string | null;
   /** Set in a channel: which colleague sent it. */
   author?: ChatAuthor;
 }
 export interface ChatBotMsg extends TurnView {
   role: "bot";
+  sentAt?: string;
   /** Persisted message id, null while the turn is still streaming. */
   id: string | null;
   feedback: -1 | 0 | 1;
@@ -414,6 +416,7 @@ export interface ChatBotMsg extends TurnView {
  */
 export interface ChatNoticeMsg {
   role: "notice";
+  sentAt?: string;
   text: string;
 }
 export type ChatMsg = ChatUserMsg | ChatBotMsg | ChatNoticeMsg;
@@ -474,7 +477,9 @@ export function ChatThread({
   renderUserText,
   speechPlayback,
   renderCitation,
+  showTimestamps = false,
 }: {
+  showTimestamps?: boolean;
   messages: ChatMsg[];
   pending: boolean;
   onSend: (text: string) => void;
@@ -492,7 +497,14 @@ export function ChatThread({
 }) {
   return (
     <>
-          {messages.map((msg, i) =>
+          {messages.flatMap((msg, i) => [
+            showTimestamps && msg.sentAt && showMessageTimeSeparator(msg.sentAt, messages.slice(0, i).findLast((previous) => previous.sentAt)?.sentAt) ? (
+              <div key={`date-${i}`} className="text-muted-foreground py-4 text-center text-xs">
+                <time dateTime={msg.sentAt} suppressHydrationWarning>
+                  {new Date(msg.sentAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                </time>
+              </div>
+            ) : null,
             msg.role === "notice" ? (
               <div key={i} className="flex items-center gap-2 py-1">
                 <span className="bg-border h-px flex-1" />
@@ -516,11 +528,12 @@ export function ChatThread({
                           carries it for a reader, who sees neither. */}
                       <span
                         aria-hidden="true"
+                        suppressHydrationWarning
                         className="text-muted-foreground/80 pointer-events-none absolute right-1 -bottom-4 text-2xs whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
                       >
                         {sentAtLabel(msg.sentAt)}
                       </span>
-                      <span className="sr-only">Sent {sentAtLabel(msg.sentAt)}</span>
+                      <span className="sr-only" suppressHydrationWarning>Sent {sentAtLabel(msg.sentAt)}</span>
                     </>
                   )}
                 </MessageContent>
@@ -629,7 +642,7 @@ export function ChatThread({
                 );
               })()
             )
-          )}
+          ])}
     </>
   );
 }

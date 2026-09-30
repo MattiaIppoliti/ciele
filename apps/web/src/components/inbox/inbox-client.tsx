@@ -207,7 +207,9 @@ function DateField({
   onChange,
   className,
   label,
+  compact = false,
 }: {
+  compact?: boolean;
   value: string;
   onChange: (iso: string) => void;
   className?: string;
@@ -229,7 +231,9 @@ function DateField({
         }
       >
         <CalendarIcon className="size-4" />
-        {selected ? filterDayLabel(value) : <span>Pick a date</span>}
+        <span className={compact ? "hidden lg:inline" : undefined}>
+          {selected ? filterDayLabel(value) : "Pick a date"}
+        </span>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
         <Calendar
@@ -991,7 +995,24 @@ export function InboxClient({
               aria-label="Search conversations"
               type="search"
               autoComplete="off"
-              className="h-8 w-28 rounded-lg pl-8 sm:w-56"
+              className="h-8 w-28 rounded-lg pl-8 sm:w-40 xl:w-56"
+            />
+          </div>
+          <div role="group" aria-label="Date range" className="flex shrink-0 items-center gap-2">
+            <DateField
+              value={filters.from}
+              onChange={(from) => setFilters((current) => ({ ...current, from }))}
+              label="From date"
+              compact
+              className="h-8"
+            />
+            <span aria-hidden="true" className="text-muted-foreground">–</span>
+            <DateField
+              value={filters.to}
+              onChange={(to) => setFilters((current) => ({ ...current, to }))}
+              label="To date"
+              compact
+              className="h-8"
             />
           </div>
           <Button
@@ -1139,26 +1160,6 @@ export function InboxClient({
               <p className="text-muted-foreground pt-2 text-xs font-semibold tracking-wider uppercase">
                 Conversation
               </p>
-              <div>
-                <span className="mb-1.5 block text-sm font-medium">Date Range</span>
-                <div className="flex items-center gap-2">
-                  <DateField
-                    value={filters.from}
-                    onChange={(from) => setFilters({ ...filters, from })}
-                    label="From date"
-                    className="h-10 flex-1"
-                  />
-                  <span aria-hidden="true" className="text-muted-foreground">
-                    –
-                  </span>
-                  <DateField
-                    value={filters.to}
-                    onChange={(to) => setFilters({ ...filters, to })}
-                    label="To date"
-                    className="h-10 flex-1"
-                  />
-                </div>
-              </div>
               <FilterSelect
                 label="Assistants"
                 value={filters.assistantId}
@@ -1265,16 +1266,6 @@ export function InboxClient({
           </div>
         )}
       </SlotPortal>
-
-      {/* Date range chip */}
-      <div className="shrink-0 px-4 pb-3 sm:px-6">
-        <span className="text-primary inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 px-3 py-1.5 text-sm font-medium">
-          Date Range:{" "}
-          {filters.from ? filterDayLabel(filters.from) : "…"} –{" "}
-          {filters.to ? filterDayLabel(filters.to) : "…"}
-          <Info aria-hidden="true" className="size-3.5" />
-        </span>
-      </div>
 
       <div className="flex min-h-0 flex-1 border-t">
         {/* Conversation log. Three panes need ~1100px to all be usable; below
