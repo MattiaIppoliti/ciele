@@ -9,7 +9,7 @@ import { Skeleton } from "@agent-hub/ui";
 export default function AssistantOverviewLoading() {
   return (
     <div
-      className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8"
+      className="mx-auto max-w-6xl px-5 py-6 @xl:px-8 @xl:py-8"
       role="status"
       aria-busy="true"
     >
@@ -19,12 +19,12 @@ export default function AssistantOverviewLoading() {
           card, Setup / Activity / Quality, Flows beside Knowledge, Recent
           conversations. They follow data, so these are typical, not exact. */}
       <Skeleton className="h-124 rounded-xl" />
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid gap-6 @3xl:grid-cols-2 @5xl:grid-cols-3">
         <Skeleton className="h-44.5 rounded-xl" />
         <Skeleton className="h-94.5 rounded-xl" />
         <Skeleton className="h-57 rounded-xl" />
       </div>
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid gap-6 @3xl:grid-cols-2">
         <Skeleton className="h-64.5 rounded-xl" />
         <Skeleton className="h-42 rounded-xl" />
       </div>

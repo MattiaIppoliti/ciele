@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/sortable-list";
 import { Textarea } from "@/components/ui/textarea";
 import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
+import { useTopBarFormActions } from "@/components/settings/form-actions";
 
 import { VoiceSettings, EMPTY_VOICE_SETTINGS } from "./voice-settings";
 
@@ -146,12 +147,27 @@ function FieldHeader({
   );
 }
 
-export function GeneralForm({
+/**
+ * The General section. Cancel discards the draft by remounting the form on
+ * the saved Assistant, which resets every field at once instead of each one
+ * by hand, and is exactly what reopening the page would show.
+ */
+export function GeneralForm(props: Omit<Parameters<typeof GeneralFormBody>[0], "onDiscard">) {
+  const [version, setVersion] = useState(0);
+  return (
+    <GeneralFormBody key={version} {...props} onDiscard={() => setVersion((v) => v + 1)} />
+  );
+}
+
+function GeneralFormBody({
   assistant,
   unavailableProviders,
   platformModels,
   modelSources,
+  onDiscard,
 }: {
+  /** Throws the draft away (see `GeneralForm`). */
+  onDiscard: () => void;
   assistant: Assistant;
   /** Providers this Organization has no credential for; the picker skips them. */
   unavailableProviders: Provider[];
@@ -253,6 +269,15 @@ export function GeneralForm({
   // editor's navigation is links this form does not own.
   useUnsavedChanges({ dirty });
 
+  // The same Cancel and Save in the top bar.
+  const formActions = useTopBarFormActions({
+    dirty,
+    saving: isPending,
+    saveDisabled: isUploading,
+    onSave: handleSave,
+    onCancel: onDiscard,
+  });
+
   function handleSave() {
     if (!title.trim()) {
       setTitleError("Enter a title for this assistant.");
@@ -340,7 +365,7 @@ export function GeneralForm({
         {/* The switch group never shrinks, so on a narrow screen the copy is
             what gives, stack them instead of squeezing the paragraph into a
             one-word column. */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-3 @lg:flex-row @lg:items-start @lg:justify-between @lg:gap-4">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">Enable chat launcher</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm">
@@ -369,13 +394,15 @@ export function GeneralForm({
           title="Model"
           hint="Answers published chats. Needs an organization credential in Settings → AI. The Preview uses your own default model."
         />
-        <div className="flex gap-2">
+        {/* Stacked until the page column has room for the three side by side;
+            its width, not the window's, since both sidebars can take from it. */}
+        <div className="flex flex-col gap-2 @lg:flex-row">
           <Select value={modelProvider} onValueChange={(provider) => {
             const next = provider as Provider;
             setModelProvider(next);
             setModelId(modelCatalog[next][0].id);
             setModelSource(null);
-          }} className="w-40">
+          }} className="w-full @lg:w-40">
             <SelectTrigger className="h-11" aria-label="Model provider">
               <SelectValue>{PROVIDER_NAMES[modelProvider]}</SelectValue>
             </SelectTrigger>
@@ -651,7 +678,7 @@ export function GeneralForm({
 
       {/* Simplified thinking */}
       <Card size="sm" className="gap-0 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-3 @lg:flex-row @lg:items-start @lg:justify-between @lg:gap-4">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">Simplified thinking</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm">
@@ -885,19 +912,15 @@ export function GeneralForm({
       </SectionTimeline>
 
       {/* Save bar */}
-      <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
+      {/* `z-10`: above the fields scrolling under it, or a select trigger (its
+          focus ring stacks it) paints over the bar. */}
+      <div className="bg-content sticky bottom-0 z-10 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4">
         {/* The live region stays mounted: one that appears together with its
             text is not reliably announced. */}
         <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
           {dirty ? "Unsaved changes" : ""}
         </span>
-        <Button
-          onClick={handleSave}
-          disabled={isPending || isUploading || !dirty}
-          className="px-6 font-semibold"
-        >
-          <RollInText text={isPending ? "Saving…" : "Save changes"} />
-        </Button>
+        {formActions}
       </div>
     </div>
   );

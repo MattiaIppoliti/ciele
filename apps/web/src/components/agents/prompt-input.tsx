@@ -6,6 +6,7 @@ import { MorphIcon } from "morphicons/react";
 import { motion, useReducedMotion } from "motion/react";
 import { VoiceBeam } from "voice-glow";
 import {
+  Fragment,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -28,6 +29,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
 } from "@/components/motion/select";
 import { SPRING_SWAP } from "@/lib/ease";
@@ -48,6 +50,10 @@ export interface PromptModel {
   label: ReactNode;
   icon?: ReactNode;
   disabled?: boolean;
+  /** A second line under the label, in the list only ("Balances speed…"). */
+  description?: ReactNode;
+  /** Draws a divider under this row: "Auto" above the named models. */
+  separatorAfter?: boolean;
 }
 
 export interface PromptAction {
@@ -371,25 +377,34 @@ export function PromptInput({
                 </span>
               </span>
             </SelectTrigger>
-            <SelectContent className="right-auto w-52 shadow-none">
+            <SelectContent className="right-auto w-64 shadow-none">
               {models.map((option) => (
+                <Fragment key={option.value}>
                 <SelectItem
-                  key={option.value}
                   value={option.value}
                   disabled={option.disabled}
                   className="py-2"
                 >
-                  <span className="flex min-w-0 items-center gap-2">
+                  <span className={cn("flex min-w-0 gap-2", option.description ? "items-start" : "items-center")}>
                     {option.icon ? (
                       <span className="grid size-5 shrink-0 place-items-center text-muted-foreground [&_svg]:size-4">
                         {option.icon}
                       </span>
                     ) : null}
-                    <span className="min-w-0 truncate text-sm text-foreground">
-                      {option.label}
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-foreground">
+                        {option.label}
+                      </span>
+                      {option.description ? (
+                        <span className="mt-0.5 block text-xs leading-4 whitespace-normal text-muted-foreground">
+                          {option.description}
+                        </span>
+                      ) : null}
                     </span>
                   </span>
                 </SelectItem>
+                {option.separatorAfter ? <SelectSeparator /> : null}
+                </Fragment>
               ))}
             </SelectContent>
           </Select>

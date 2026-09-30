@@ -55,6 +55,7 @@ import {
 } from "@/lib/improvements";
 import { ImprovementContextMenu } from "./improvement-context-menu";
 import { useImprovementLanes } from "./use-improvement-lanes";
+import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 
@@ -423,20 +424,18 @@ export function ImprovementsBoard({
   let boardRow = 0;
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1
-          className="text-2xl font-bold tracking-tight"
-          data-testid="improvements-heading"
-        >
-          <RollInText text="Improvements" />
-        </h1>
-        {/* Four controls do not fit a phone row beside the title: the search
-            field claims its own full-width row and the icon buttons drop their
-            labels until `sm`. */}
-        <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-          <div className="relative min-w-0 flex-1 sm:flex-none">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+    // `relative isolate`: the detail drawer covers this box, not the whole viewport,
+    // and its z-index stays inside it so the nav drawer still opens above.
+    <div className="relative isolate flex h-full flex-col overflow-hidden">
+      {/* The breadcrumb is the visible title; the heading stays for screen
+          readers, and the controls live in the top bar beside it. */}
+      <h1 className="sr-only" data-testid="improvements-heading">
+        Improvements
+      </h1>
+      <SlotPortal id={TOP_BAR_SLOT}>
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0">
+            <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -444,7 +443,7 @@ export function ImprovementsBoard({
               aria-label="Search improvements"
               type="search"
               autoComplete="off"
-              className="h-10 w-full rounded-lg pl-9 sm:w-64"
+              className="h-8 w-28 rounded-lg pl-8 sm:w-56"
             />
           </div>
           <DropdownMenu>
@@ -453,12 +452,12 @@ export function ImprovementsBoard({
                 <Button
                   variant="outline"
                   aria-label="Filters"
-                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                  className="h-8 shrink-0 rounded-lg px-2.5 lg:px-3"
                 />
               }
             >
               <ListFilter className="size-4" />{" "}
-              <span className="hidden sm:inline">Filters</span>
+              <span className="hidden lg:inline">Filters</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 p-3">
               <p className="mb-1.5 block text-sm font-medium" aria-hidden>
@@ -519,12 +518,12 @@ export function ImprovementsBoard({
                   variant="outline"
                   aria-label={exporting ? "Exporting…" : "Export"}
                   disabled={exporting}
-                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                  className="h-8 shrink-0 rounded-lg px-2.5 lg:px-3"
                 />
               }
             >
               <Download className="size-4" />{" "}
-              <span className="hidden sm:inline">
+              <span className="hidden lg:inline">
                 <RollInText text={exporting ? "Exporting…" : "Export"} />
               </span>
             </DropdownMenuTrigger>
@@ -537,7 +536,7 @@ export function ImprovementsBoard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="border-input flex h-10 shrink-0 items-center rounded-lg border p-0.5">
+          <div className="border-input flex h-8 shrink-0 items-center rounded-lg border p-0.5">
             {(
               [
                 { mode: "list", icon: GalleryVerticalEnd, label: "List view" },
@@ -551,7 +550,7 @@ export function ImprovementsBoard({
                 title={label}
                 aria-pressed={view === mode}
                 onClick={() => setView(mode)}
-                className={`flex h-full w-9 items-center justify-center rounded-md transition-colors ${
+                className={`flex h-full w-8 items-center justify-center rounded-md transition-colors ${
                   view === mode
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -562,9 +561,9 @@ export function ImprovementsBoard({
             ))}
           </div>
         </div>
-      </header>
+      </SlotPortal>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t px-4 py-4 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
         <div className={view === "kanban" ? "" : "mx-auto max-w-5xl space-y-3"}>
           {view === "kanban" && totalCount > 0 && (
             <ImprovementsKanban

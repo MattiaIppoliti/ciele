@@ -1,26 +1,20 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import type { Assistant } from "@agent-hub/core";
-import { ChevronsLeft } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Button } from "@agent-hub/ui";
-import { Hint } from "@agent-hub/ui";
-import { ResizeHandle } from "@/components/ui/resizable-panel";
+import { createElement, useEffect, useReducer, useState } from "react";
+import { RailCollapsed } from "@/components/chat/rail-panel";
+import { PreviewPeek } from "./preview-peek";
 import { useShell } from "@/components/shell/shell-provider";
-
-const PreviewPanel = dynamic(
-  () => import("./preview-panel").then((module) => module.PreviewPanel),
-  { ssr: false }
-);
+import { previewPanelCode } from "./preview-panel-loader";
+import { useIdle } from "@/lib/hooks/use-idle";
 
 const COLLAPSED_KEY = "preview-panel-collapsed";
 
 /**
  * A small workspace affordance that loads the interactive preview on demand.
- * Looks exactly like the PreviewPanel's own collapsed rail (« to show, plus
- * the drag handle), so the lazy-load seam is invisible to the user. Dragging
+ * Looks exactly like the PreviewPanel's own collapsed rail (the same
+ * `RailCollapsed` toggle, strip, hover glimpse and drag handle), so the lazy-load seam is invisible to the user. Dragging
  * the handle mounts the panel already mid-resize.
  *
  * This is the single source of truth for whether the panel starts open on a
@@ -47,11 +41,18 @@ export function PreviewPanelLauncher({
   const { rightRail, openRightRail, claimRightRail, closeRightRail } = useShell();
   const [mounted, setMounted] = useState(false);
   const [viaDrag, setViaDrag] = useState(false);
+  // Opened by the Member, here or from elsewhere on the page (the Overview's
+  // vignette), rather than restored on arrival: only the first unfolds, the
+  // restored panel is simply there.
+  const [animateEntry, setAnimateEntry] = useState(false);
   // The "Preview" section *is* the preview; docking a second copy of
   // it alongside would show the same chat twice, with two separate
   // conversations.
   const onPreviewRoute = pathname.endsWith("/preview");
   const open = rightRail === "preview";
+  // Whether the arrival restore below has run: an open before it is carried
+  // over from the page before, one after it was asked for on this page.
+  const [arrived, setArrived] = useState(false);
 
   // Restore the user's choice; with none stored, start collapsed on narrow
   // viewports so the panel doesn't crush the settings form (client-only to
@@ -68,9 +69,24 @@ export function PreviewPanelLauncher({
         // before.
         claimRightRail("preview");
       }
+      setArrived(true);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [claimRightRail]);
+
+  // Re-render when the panel's code lands, so a mount waiting on it proceeds.
+  const [, codeLanded] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (mounted && !previewPanelCode.loaded()) {
+      previewPanelCode.load().then(codeLanded, () => {
+        // Stays on the collapsed rail; the next open retries the fetch.
+      });
+    }
+  }, [mounted]);
+
+  // Fetch the panel's code once the page has settled, so the first open does
+  // not wait on the network.
+  useIdle(previewPanelCode.prefetch, 1500);
 
   function remember(collapsed: boolean) {
     try {
@@ -80,51 +96,60 @@ export function PreviewPanelLauncher({
     }
   }
 
+  // Mounting follows from the open: the rail now holds the Preview.
   function openExplicitly() {
+    setAnimateEntry(true);
     remember(false);
-    setMounted(true);
     openRightRail("preview");
+  }
+
+  // Once the rail has held the Preview, it stays mounted while collapsed, like
+  // one opened here, so closing it does not throw the conversation away.
+  // Set during render (React's "adjust state on a prop change"), not in an
+  // effect, so there is no frame where the panel is open but unmounted.
+  if (open && !mounted) {
+    setMounted(true);
+    // The rail was handed over from elsewhere (the Overview's vignette). After
+    // arrival that open was asked for, so it unfolds like one made here; before
+    // it, a rail still holding the Preview from the page before is a restore,
+    // and should simply be there.
+    setAnimateEntry(arrived);
   }
 
   if (onPreviewRoute) return null;
 
-  if (mounted) {
-    return (
-      <PreviewPanel
-        assistant={assistant}
-        connectorScope={connectorScope}
-        startResizing={viaDrag}
-        collapsed={!open}
-        onCollapsedChange={(collapsed) => {
-          remember(collapsed);
-          if (collapsed) closeRightRail("preview");
-          else openRightRail("preview");
-        }}
-      />
-    );
+  // Mounted but its code not landed yet (an open faster than the prefetch):
+  // the collapsed rail holds the edge until it does, rather than a blank.
+  // `createElement`, not JSX: the component is the one module export, the same
+  // reference on every render, which the compiler's lint cannot see through a
+  // function call and would otherwise flag as a component made in render.
+  const previewPanel = previewPanelCode.loaded()?.PreviewPanel ?? null;
+  if (mounted && previewPanel) {
+    return createElement(previewPanel, {
+      assistant,
+      connectorScope,
+      startResizing: viaDrag,
+      animateEntry,
+      collapsed: !open,
+      onCollapsedChange: (collapsed: boolean) => {
+        remember(collapsed);
+        if (collapsed) closeRightRail("preview");
+        else openRightRail("preview");
+      },
+    });
   }
 
   return (
-    <aside className="bg-background relative hidden w-12 shrink-0 flex-col items-center border-l pt-4 md:flex">
-      <ResizeHandle
-        resizing={false}
-        onPointerDown={() => {
-          setViaDrag(true);
-          openExplicitly();
-        }}
-        label="Resize preview panel"
-      />
-      <Hint label="Show preview" side="left">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Show preview"
-          onClick={openExplicitly}
-        >
-          <ChevronsLeft className="size-4" />
-        </Button>
-      </Hint>
-    </aside>
+    <RailCollapsed
+      onIntent={previewPanelCode.prefetch}
+      peek={<PreviewPeek assistant={assistant} />}
+      label="Show preview"
+      resizeLabel="Resize preview panel"
+      onOpen={openExplicitly}
+      onResizeStart={() => {
+        setViaDrag(true);
+        openExplicitly();
+      }}
+    />
   );
 }

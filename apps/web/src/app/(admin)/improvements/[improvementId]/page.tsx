@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { PageCrumb } from "@/components/shell/top-bar-slots";
 import { ImprovementDetail } from "@/components/improvements/improvement-detail";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit } from "@/lib/rbac";
@@ -26,6 +27,8 @@ export default async function ImprovementDetailPage({
   ]);
 
   return (
+    <>
+      <PageCrumb label={improvement.title} />
     <ImprovementDetail
       improvement={improvement}
       associationPage={associationPage}
@@ -38,5 +41,6 @@ export default async function ImprovementDetailPage({
         .map((project) => ({ id: project.id, name: project.name }))}
       canEdit={canEdit(role)}
     />
+    </>
   );
 }

@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -151,7 +152,7 @@ function CreateHelpDeskDialog({
                 onClick={() => pick(t)}
                 className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
                   template === t.name
-                    ? "border-primary ring-primary/30 shadow-sm ring-1"
+                    ? "border-primary ring-primary/30 shadow-light ring-1"
                     : "hover:bg-muted/50"
                 }`}
               >
@@ -167,7 +168,7 @@ function CreateHelpDeskDialog({
               onClick={() => pick(null)}
               className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
                 template === "blank"
-                  ? "border-primary ring-primary/30 shadow-sm ring-1"
+                  ? "border-primary ring-primary/30 shadow-light ring-1"
                   : "hover:bg-muted/50"
               }`}
             >
@@ -264,17 +265,17 @@ export function HelpDesksClient({
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <header className="flex shrink-0 items-center gap-3 px-6 pt-5 pb-4">
-        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Help Desks" /></h1>
-        {canEdit && (
+      <h1 className="sr-only">Help Desks</h1>
+      {canEdit && (
+        <SlotPortal id={TOP_BAR_SLOT}>
           <Button
-            className="ml-auto h-10 rounded-lg px-4 font-semibold"
+            className="h-8 rounded-lg px-3 font-semibold"
             onClick={() => setCreateOpen(true)}
           >
             Add Help Desk
           </Button>
-        )}
-      </header>
+        </SlotPortal>
+      )}
 
       {/* Nothing here at all is a screen, not a cell in the grid: the
           create-a-desk tile is a good affordance beside desks that exist and a
@@ -282,7 +283,7 @@ export function HelpDesksClient({
           rather than sitting inside it. */}
       {desks.length === 0 ? (
         <EmptyState
-          className="flex-1 border-t"
+          className="flex-1"
           title="No help desks yet"
           description={
             canEdit
@@ -309,7 +310,7 @@ export function HelpDesksClient({
           >
             <Link
               href={`/help-desks/${desk.id}`}
-              className="text-primary max-w-full text-lg font-bold break-words underline underline-offset-4 hover:opacity-70"
+              className="text-primary max-w-full text-lg font-semibold break-words underline underline-offset-4 hover:opacity-70"
             >
               <RollInText text={desk.name} />
             </Link>

@@ -21,7 +21,7 @@ export default async function FlowsPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-6 sm:px-8 sm:py-10">
+    <div className="mx-auto max-w-4xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
         icon={Workflow}
         title="Flows"

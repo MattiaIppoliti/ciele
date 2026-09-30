@@ -1,21 +1,28 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { feedbackReactionScore, type ConversationMetadata, type FeedbackReactionId, type Teammate } from "@agent-hub/core";
-import { teammateSearchesKnowledge } from "@agent-hub/core";
+import { isCieleAi } from "@agent-hub/core";
 import { threadEntryLabel } from "@/lib/teammates/thread-label";
 import { EMPTY_TURN_TRACE } from "@agent-hub/agent/client";
 import type { ChatModelOption } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatMessagesFromStored } from "@/components/chat/stored-messages";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
-import { Sparkles, UserRoundPlus } from "lucide-react";
-import { ArrowLeft, Paperclip, Settings2 } from "lucide-react";
-import { Button, Hint } from "@agent-hub/ui";
+import { DraftingCompass, UserRoundPlus } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
 import Link from "next/link";
 import { ChatHeader } from "@/components/chat/chat-header";
-import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
+import { FULLSCREEN_GUTTER, WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import {
   ChatThread,
@@ -25,7 +32,9 @@ import {
   type ChatMsg,
 } from "@/components/chat/chat-thread";
 import { MessageScroller } from "@/components/agents/message";
-import { PromptInput } from "@/components/agents/prompt-input";
+import { PromptInput, type PromptModel } from "@/components/agents/prompt-input";
+import { CieleAiLogo } from "@/components/teammates/ciele-ai-logo";
+import { AUTO_MODEL, AUTO_MODEL_DESCRIPTION } from "@/lib/teammates/auto-model";
 import { toPromptModels } from "@/components/chat/use-chat-models";
 import {
   useComposerTrigger,
@@ -44,7 +53,7 @@ import {
 } from "@/components/chat/attachment-chips";
 import { readChatAttachmentAction } from "@/app/actions";
 import { createChannelAction } from "@/app/(admin)/teammates/channels/actions";
-import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
+import { ThreadHistoryMenu } from "@/components/teammates/thread-history-menu";
 import { toast } from "@/lib/toast";
 import { setMessageFeedbackAction } from "@/app/actions";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
@@ -55,7 +64,7 @@ import {
 } from "@/app/(admin)/teammates/actions";
 import { liveTurnStatus } from "@/components/chat/stored-trace";
 import { patchLastBot, runTurn } from "@/components/chat/turn-session";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { chatSession } from "@/lib/chat-session";
 
 export interface ThreadEntry {
   id: string;
@@ -78,22 +87,24 @@ export interface ThreadEntry {
 export function TeammateWorkspace({
   teammate,
   thread,
-  canEdit,
   retired,
-  initialConversationId,
   models,
+  autoModel = false,
   personalSubscriptionsAllowed,
   channelCandidates,
   skills,
 }: {
   teammate: Teammate;
   thread: ThreadEntry[];
-  /** Whether Configure is offered; the route itself enforces the same rule. */
-  canEdit: boolean;
   /** Soft-deleted: the transcripts are here, the composer is not (#767). */
   retired: boolean;
   /** The picker's rows; empty when this Teammate offers no choice. */
   models: ChatModelOption[];
+  /**
+   * "Auto", the picker's first row and its default: the latest Eval's best
+   * model, resolved by the chat route on every send. False draws no Auto row.
+   */
+  autoModel?: boolean;
   /**
    * Whether the Organization allows Members' own subscriptions at all. When it
    * does, one that is connected outranks this picker (ADR-0007 as amended by
@@ -115,20 +126,37 @@ export function TeammateWorkspace({
     description: string;
     starter: string;
   }>;
-  /**
-   * A Conversation to open on arrival, from `?c=`. This is how a referral
-   * lands: the target's chat has to open the conversation carrying the summary,
-   * not a blank one beside it (#773).
-   */
-  initialConversationId: string | null;
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [pending, setPending] = useState(false);
   // The picker's standing choice for this session; see `models` above.
   const [model, setModel] = useState<string | undefined>();
+  const promptModels: PromptModel[] = autoModel
+    ? [
+        {
+          value: AUTO_MODEL,
+          label: "Auto",
+          description: AUTO_MODEL_DESCRIPTION,
+          icon: <CieleAiLogo className="size-4" />,
+          separatorAfter: models.length > 0,
+        },
+        ...toPromptModels(models),
+      ]
+    : toPromptModels(models);
   // Controlled only because `@` edits it from outside the input.
   const [draft, setDraft] = useState("");
+  /**
+   * The Teammate a Ciele AI message is addressed to, from `@`: a tag in the
+   * composer, not a navigation. The Member keeps typing, and sending is what
+   * moves the question, and the page, to that Teammate.
+   */
+  const [addressee, setAddressee] = useState<{ id: string; name: string } | null>(null);
+  // A question Ciele AI handed over, read once on mount and sent below.
+  const [handedQuestion] = useState(() => readHandedQuestion(teammate.id));
+  const sentHandedQuestion = useRef(false);
+  // Ciele AI, the Organization's AI layer, rather than a Teammate.
+  const platformLayer = isCieleAi(teammate);
   const [openingChannel, setOpeningChannel] = useState(false);
   const composerRef = useRef<HTMLDivElement>(null);
   const composerTextarea = () =>
@@ -169,7 +197,7 @@ export function TeammateWorkspace({
             value: "skill",
             label: "Use a skill",
             description: "Start from a prepared request.",
-            icon: <Sparkles />,
+            icon: <DraftingCompass />,
           },
         ]
       : []),
@@ -177,8 +205,10 @@ export function TeammateWorkspace({
       ? [
           {
             value: "teammate",
-            label: "Bring in a teammate",
-            description: "Opens a group with both of them.",
+            label: platformLayer ? "Ask a teammate" : "Bring in a teammate",
+            description: platformLayer
+              ? "Tags them: your message goes to them."
+              : "Opens a group with both of them.",
             icon: <UserRoundPlus />,
           },
         ]
@@ -196,9 +226,42 @@ export function TeammateWorkspace({
       const next = replaceToken(draft, token, caret, "");
       setDraft(next.text);
       channelTrigger.settle(next.caret);
-      void openChannelWith(candidate);
+      if (platformLayer) setAddressee({ id: candidate.id, name: candidate.name });
+      else void openChannelWith(candidate);
     },
   });
+
+  /**
+   * From Ciele AI, a message tagged `@Sam` is a question for Sam: sending it
+   * opens Sam's chat and asks it there. Not a group, as between two Teammates:
+   * Ciele AI acts as the Member rather than with grants, and a channel has no
+   * single Member for it to act as, so it is never seated in one. The question
+   * travels in sessionStorage, never in the URL, so it stays out of the
+   * browser's history.
+   */
+  function askTeammate(target: { id: string }, text: string) {
+    try {
+      window.sessionStorage.setItem(questionHandoffKey(target.id), text);
+    } catch {
+      // Private mode: the chat still opens, and the question has to be asked again.
+    }
+    router.push(`/teammates/${target.id}`);
+  }
+
+  // Ask the question Ciele AI handed over, once. The key is cleared here, not
+  // while rendering, and the ref keeps a second effect pass from asking twice.
+  useEffect(() => {
+    try {
+      window.sessionStorage.removeItem(questionHandoffKey(teammate.id));
+    } catch {
+      // Nothing to clear.
+    }
+    if (handedQuestion && !sentHandedQuestion.current) {
+      sentHandedQuestion.current = true;
+      void send(handedQuestion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teammate.id]);
 
   /**
    * Promotes this 1:1 to a group: one channel, this Teammate and the named one,
@@ -234,7 +297,13 @@ export function TeammateWorkspace({
    */
   const { fullscreen, setFullscreen, surfaceRef, animating, spacerRef } =
     useFullscreenGrow();
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  // Which thread is open lives in the tab's chat session, because the shell's
+  // New chat and ⌘O change it from above this tree.
+  const { conversationId, resets } = useSyncExternalStore(
+    chatSession.subscribe,
+    chatSession.getSnapshot,
+    chatSession.getSnapshot
+  );
   /**
    * The open conversation's metadata, kept for the referrals it records (#773).
    * Without it the origin transcript is the one place that cannot say where the
@@ -246,7 +315,6 @@ export function TeammateWorkspace({
   // Its own transition, so the card can stay disabled until the navigation
   // to the colleague's chat lands.
   const [acceptingReferral, startReferral] = useTransition();
-  const conversationRef = useRef<string | null>(null);
 
   // A newly-started conversation only reaches the history list on a refresh.
   useEffect(() => {
@@ -266,19 +334,56 @@ export function TeammateWorkspace({
   }, [fullscreen, setFullscreen]);
 
   /**
-   * Open the Conversation named by `?c=`, once.
+   * Follow `?c=` as the address bar has it, not as the server rendered it.
    *
-   * The ref guard, rather than a dependency list, because opening sets state
-   * this effect would otherwise react to, and because re-opening would throw
-   * away whatever the Member has typed since.
+   * The URL is the one shared handle on "which thread is open": the sidebar's
+   * history links set it, the sidebar's New chat clears it, and the effect
+   * below writes it whenever this chat opens or starts a thread on its own.
+   * Reading the server's prop instead missed every change `replaceState` made,
+   * so New chat right after a first message found a URL the page had never
+   * seen, and nothing reset. Comparing against the open thread is what keeps
+   * the chat's own writes from echoing back into a reopen.
    */
-  const openedFromUrl = useRef(false);
+  const urlConversationId = useSearchParams().get("c");
+
+  // The session holds a New chat asked mid-answer until the answer ends, so
+  // it needs to know when one is running; and nothing is open once this chat
+  // unmounts, or the next Teammate's chat would continue this thread.
+  useEffect(() => chatSession.setBusy(pending), [pending]);
+  useEffect(() => () => chatSession.close(), []);
+
+  // A reset from anywhere (New chat here, in the sidebar, ⌘O, or the thread
+  // leaving the URL) clears the transcript.
+  const seenResets = useRef(resets);
   useEffect(() => {
-    if (!initialConversationId || openedFromUrl.current) return;
-    openedFromUrl.current = true;
-    void openConversation(initialConversationId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialConversationId]);
+    if (resets === seenResets.current) return;
+    seenResets.current = resets;
+    setConversationMeta(null);
+    setMessages([]);
+    setHistoryOpen(false);
+  }, [resets]);
+
+  const openFromUrl = useEffectEvent((id: string) => void openConversation(id));
+  useEffect(() => {
+    const id = chatSession.followUrl(urlConversationId);
+    if (id) openFromUrl(id);
+  }, [urlConversationId]);
+
+  /**
+   * Mirror the open thread into `?c=` without a navigation, so the sidebar
+   * can highlight it and a reload lands on it. `replaceState` is picked up by
+   * the App Router's `useSearchParams` and never reaches the server, so the
+   * `?c=` prop above only moves on a real navigation.
+   */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if ((url.searchParams.get("c") ?? null) === conversationId) return;
+    if (conversationId) url.searchParams.set("c", conversationId);
+    else url.searchParams.delete("c");
+    // `null`, never the current state: Next only syncs `useSearchParams` for a
+    // state it did not write itself.
+    window.history.replaceState(null, "", url.toString());
+  }, [conversationId]);
 
   const updateLastBot = (fn: (bot: ChatBotMsg) => ChatBotMsg) =>
     setMessages((prev) => patchLastBot(prev, fn));
@@ -308,23 +413,29 @@ export function TeammateWorkspace({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              conversationId: conversationRef.current,
+              conversationId: chatSession.getSnapshot().conversationId,
               message,
               turnId,
-              model: model ?? null,
+              // Nothing picked means Auto when the picker offers it.
+              model: model ?? (autoModel ? AUTO_MODEL : null),
               attachments: attachments.tokens,
             }),
             signal,
           }),
         update: updateLastBot,
         onStart: ({ conversationId: started }) => {
-          conversationRef.current = started;
-          setConversationId(started);
+          // A new thread is titled by its first message, the rule the runtime
+          // applies when it creates one; an existing one keeps its title.
+          const existing = thread.find((entry) => entry.id === started);
+          chatSession.started({
+            id: started,
+            teammateId: teammate.id,
+            title: existing?.title ?? message.slice(0, 80),
+            updatedAt: new Date().toISOString(),
+            metadata: existing?.metadata ?? null,
+          });
         },
-        onDone: ({ conversationId: done }) => {
-          conversationRef.current = done;
-          setConversationId(done);
-        },
+        onDone: ({ conversationId: done }) => chatSession.opened(done),
         onEvent: (event) => {
           const cue = chatFeedbackForEvent(event);
           if (cue) playFeedback(cue);
@@ -359,11 +470,7 @@ export function TeammateWorkspace({
   // write the old id back, and the "new" chat would continue the old one.
   function newChat() {
     if (pending) return;
-    conversationRef.current = null;
-    setConversationId(null);
-    setConversationMeta(null);
-    setMessages([]);
-    setHistoryOpen(false);
+    chatSession.requestNewChat();
   }
 
   async function openConversation(id: string) {
@@ -371,8 +478,7 @@ export function TeammateWorkspace({
     try {
       const { messages: stored, conversation } =
         await readTeammateConversationAction(teammate.id, id);
-      conversationRef.current = id;
-      setConversationId(id);
+      chatSession.opened(id);
       setConversationMeta(conversation.metadata ?? null);
       setMessages(chatMessagesFromStored(stored));
       setHistoryOpen(false);
@@ -433,47 +539,15 @@ export function TeammateWorkspace({
     });
   }
 
+  // Every chat opens the same way until its first message: the face, the
+  // question and the composer in the middle of the page (Notion's). Only the
+  // face changes between Ciele AI and a Teammate.
+  const heroEmpty = messages.length === 0 && !fullscreen;
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-3 border-b px-6 py-3">
-        <Link
-          href="/teammates"
-          /* The way back, for the widths where the rail is not on screen.
-             Above `lg` it is, and a back link to a list you can already see is
-             just noise in the header. */
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm lg:hidden"
-        >
-          <ArrowLeft className="size-4" />
-          Teammates
-        </Link>
-        <div className="flex min-w-0 items-center gap-3">
-          <TeammateAvatar teammate={teammate} className="size-8 text-xs" />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold"><RollInText text={teammate.name} /></p>
-            <p className="text-muted-foreground truncate text-xs">
-              {teammate.title || "AI teammate"}
-            </p>
-          </div>
-        </div>
-        {canEdit && (
-          <Hint label="Persona, knowledge and visibility">
-            {/* One configuration surface, not two. This used to open a drawer
-                over the chat holding the same form `/teammates/{id}/settings`
-                renders, which meant two ways to reach one thing that had to be
-                kept looking alike, and the drawer made this route load the
-                whole settings payload on every chat open to fill a panel
-                almost nobody opened. */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              render={<Link href={`/teammates/${teammate.id}/settings`} />}
-            >
-              <Settings2 className="size-4" /> Configure
-            </Button>
-          </Hint>
-        )}
-      </div>
+      {/* No header bar above the chat: the Teammate's name is in the chat's
+          own header, and Configure is its right-click menu in the sidebar. */}
 
       {/* The chat is a card on a page, the shape the Assistant Preview already
           has: a bordered surface with room around it, not a column bleeding
@@ -487,88 +561,55 @@ export function TeammateWorkspace({
           className={
             fullscreen
               ? "bg-card fixed inset-0 z-50 flex flex-col overflow-hidden"
-              : "bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border"
+              : heroEmpty
+                ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
+                : "bg-card relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border"
           }
         >
         {/* The widget's own header component, so a Teammate chat and a Visitor
             chat get the same controls in the same places, full screen
             included. */}
+        {!heroEmpty && (
         <ChatHeader
           nickname={teammate.name}
           historyOpen={historyOpen}
           onToggleHistory={() => setHistoryOpen(!historyOpen)}
+          historyMenu={
+            <ThreadHistoryMenu
+              entries={thread.map((entry) => ({
+                id: entry.id,
+                label: threadEntryLabel(entry),
+                updatedAt: entry.updatedAt,
+              }))}
+              activeId={conversationId}
+              disabled={pending}
+              onPick={(id) => void openConversation(id)}
+            />
+          }
           onNewChat={newChat}
           busy={pending}
           fullscreen={fullscreen}
           onToggleFullscreen={() => setFullscreen(!fullscreen)}
         />
+        )}
 
-        {historyOpen ? (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="border-b px-4">
-              <span className="text-primary border-primary inline-block border-b-2 px-1 pt-3 pb-2 text-sm font-semibold">
-                My conversations
-              </span>
-            </div>
-            <div className="no-scrollbar flex-1 overflow-y-auto px-2 py-2">
-              {thread.length === 0 ? (
-                <p className="text-muted-foreground px-4 py-8 text-center text-sm">
-                  No conversations with {teammate.name} yet
-                </p>
-              ) : (
-                <AISidebar
-                  items={thread.map(
-                    (entry): SidebarResource => ({
-                      id: entry.id,
-                      label: threadEntryLabel(entry),
-                      kind: "file",
-                      disabled: pending,
-                    })
-                  )}
-                  activeId={conversationId}
-                  onActiveChange={(id) => void openConversation(id)}
-                  // No rename or reorder behind this list: an edit would show
-                  // and then revert on the next refresh.
-                  editable={false}
-                  ariaLabel={`Conversations with ${teammate.name}`}
-                />
-              )}
-            </div>
-          </div>
-        ) : (
-          <>
+        <>
+            {heroEmpty ? (
+              <div className="flex flex-1 flex-col items-center justify-end gap-4 px-4 pb-6 text-center">
+                <TeammateAvatar teammate={teammate} className="size-16" />
+                <h1 className="text-3xl font-bold tracking-tight">What can I do for you?</h1>
+              </div>
+            ) : (
             <MessageScroller
               className="min-h-0 flex-1"
               busy={pending}
               status={liveTurnStatus(messages, pending)}
               navigation="rail"
               viewportClassName={`py-5 ${WIDEN_TRANSITION} ${
-                fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
+                fullscreen ? FULLSCREEN_GUTTER : "px-4"
               }`}
               contentClassName="space-y-4"
             >
-              {messages.length === 0 && (
-                <div className="pt-10 text-center">
-                  <TeammateAvatar
-                    teammate={teammate}
-                    className="size-12"
-                  />
-                  <p className="mt-4 text-lg font-semibold">{teammate.name}</p>
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                    {teammate.roleDescription ||
-                      "No standing role yet. Configure one so this teammate knows what it is for."}
-                  </p>
-                  {/* Both halves of the scope, through the one predicate the
-                      runtime uses to decide whether to register a search tool
-                      at all: a Teammate scoped to two files searches. */}
-                  {!teammateSearchesKnowledge(teammate) && (
-                    <p className="text-muted-foreground mt-3 text-xs">
-                      No knowledge in scope: it answers from its role and says
-                      so when a question needs a source.
-                    </p>
-                  )}
-                </div>
-              )}
               <ChatThread
                 messages={messages}
                 pending={pending}
@@ -601,6 +642,7 @@ export function TeammateWorkspace({
                 </div>
               ) : null}
             </MessageScroller>
+            )}
 
             <div
               className={`${WIDEN_TRANSITION} ${
@@ -625,6 +667,21 @@ export function TeammateWorkspace({
                   entries={attachments.entries}
                   onRemove={attachments.remove}
                 />
+                {addressee && (
+                  <div className="mb-2 flex">
+                    <span className="bg-foreground/[0.12] text-foreground inline-flex items-center gap-1.5 rounded-full py-1 pr-1 pl-2.5 text-sm font-medium">
+                      @{addressee.name}
+                      <button
+                        type="button"
+                        aria-label={`Stop asking ${addressee.name}`}
+                        onClick={() => setAddressee(null)}
+                        className="press-control text-muted-foreground hover:bg-foreground/10 hover:text-foreground flex size-5 items-center justify-center rounded-full"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  </div>
+                )}
                 <div
                   className="relative"
                   ref={composerRef}
@@ -645,7 +702,7 @@ export function TeammateWorkspace({
                         <TriggerRow
                           name={skill.name}
                           hint={skill.description || skill.starter}
-                          icon={<Sparkles />}
+                          icon={<DraftingCompass />}
                         />
                       )}
                     />
@@ -661,7 +718,10 @@ export function TeammateWorkspace({
                       renderItem={(candidate) => (
                         <TriggerRow
                           name={candidate.name}
-                          hint={candidate.title || "Opens a group with both"}
+                          hint={
+                            candidate.title ||
+                            (platformLayer ? "Your message goes to them" : "Opens a group with both")
+                          }
                           icon={<UserRoundPlus />}
                         />
                       )}
@@ -687,6 +747,12 @@ export function TeammateWorkspace({
                       setDraft("");
                       channelTrigger.reset();
                       skillTrigger.reset();
+                      if (addressee) {
+                        if (!value.trim()) return;
+                        setAddressee(null);
+                        askTeammate(addressee, value.trim());
+                        return;
+                      }
                       void send(value);
                     }}
                     onSelect={(event) => {
@@ -694,6 +760,10 @@ export function TeammateWorkspace({
                       skillTrigger.sync(event.currentTarget.value);
                     }}
                     onKeyDown={(event) => {
+                      // Backspace at the start of an empty box takes the tag off.
+                      if (event.key === "Backspace" && addressee && !event.currentTarget.value) {
+                        setAddressee(null);
+                      }
                       channelTrigger.handleKeyDown(event);
                       skillTrigger.handleKeyDown(event);
                     }}
@@ -712,13 +782,20 @@ export function TeammateWorkspace({
                         channelTrigger.openFromButton(draft, setDraft);
                       }
                     }}
-                    models={toPromptModels(models)}
-                    model={model ?? models[0]?.selector}
+                    models={promptModels}
+                    // What answers when nothing is picked: the first model a
+                    // connection serves, else the configured one's row.
+                    model={
+                      model ??
+                      (autoModel ? AUTO_MODEL : undefined) ??
+                      models.find((option) => !option.unavailable)?.selector ??
+                      models[0]?.selector
+                    }
                     onModelChange={setModel}
                     minRows={1}
                     maxRows={6}
-                    placeholder={`Ask ${teammate.name}…`}
-                    aria-label={`Ask ${teammate.name}`}
+                    placeholder={`Ask ${addressee?.name ?? teammate.name}…`}
+                    aria-label={`Ask ${addressee?.name ?? teammate.name}`}
                   />
                 </div>
                 </>
@@ -730,10 +807,25 @@ export function TeammateWorkspace({
                 </p>
               )}
             </div>
-          </>
-        )}
+            {/* Below the composer, the other half of the centring. */}
+            {heroEmpty && <div className="flex-1" />}
+        </>
         </div>
       </div>
     </div>
   );
+}
+
+/** Where Ciele AI leaves the question it hands to a Teammate. */
+function questionHandoffKey(teammateId: string): string {
+  return `teammate-question:${teammateId}`;
+}
+
+function readHandedQuestion(teammateId: string): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.sessionStorage.getItem(questionHandoffKey(teammateId)) ?? "";
+  } catch {
+    return "";
+  }
 }

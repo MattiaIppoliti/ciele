@@ -155,7 +155,7 @@ export function ImproveAnswerDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Improve Answer</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">Improve Answer</DialogTitle>
           <DialogDescription>
             Add this message to the improvements list by creating a new item or
             linking it to a similar existing improvement.

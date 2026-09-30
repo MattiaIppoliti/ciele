@@ -76,6 +76,7 @@ import { reviewDecisionLabel } from "@/lib/review-status";
 import { EmptyState } from "@/components/ui/empty-state";
 import { conversationSummaryCsv } from "@/lib/inbox/conversation-export";
 import { downloadFile } from "@/lib/download";
+import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
@@ -966,28 +967,23 @@ export function InboxClient({
   return (
     <StudyProvider replies={studyReplies}>
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1
-          className="text-2xl font-bold tracking-tight"
-          data-testid="inbox-heading"
-        >
-          <RollInText text="Inbox" />
-        </h1>
+      {/* The breadcrumb is the visible title; the heading stays for screen
+          readers, and the controls live in the top bar beside it. */}
+      <h1 className="sr-only" data-testid="inbox-heading">
+        Inbox
+      </h1>
+      <SlotPortal id={TOP_BAR_SLOT}>
         {canOverseeChannels && (
           <Link
             href="/inbox/channels"
-            className="text-muted-foreground hover:text-foreground text-sm"
+            className="text-muted-foreground hover:text-foreground hidden text-sm sm:inline"
           >
             Groups
           </Link>
         )}
-        {/* On a phone the search field takes the whole second row and the two
-            menus sit beside it; from `sm` up the group returns to one row
-            pinned right. */}
-        <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-          <div className="relative min-w-0 flex-1 sm:flex-none">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0">
+            <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -995,7 +991,7 @@ export function InboxClient({
               aria-label="Search conversations"
               type="search"
               autoComplete="off"
-              className="h-10 w-full rounded-lg pl-9 sm:w-64"
+              className="h-8 w-28 rounded-lg pl-8 sm:w-56"
             />
           </div>
           <Button
@@ -1004,11 +1000,11 @@ export function InboxClient({
             aria-label="Filters"
             aria-expanded={filtersOpen}
             aria-controls={filtersOpen ? filtersPanelId : undefined}
-            className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+            className="h-8 shrink-0 rounded-lg px-2.5 lg:px-3"
             onClick={toggleFilters}
           >
             <ListFilter className="size-4" />{" "}
-            <span className="hidden sm:inline">Filters</span>
+            <span className="hidden lg:inline">Filters</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -1016,13 +1012,13 @@ export function InboxClient({
                 <Button
                   variant="outline"
                   aria-label={exporting ? "Exporting…" : "Exports"}
-                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                  className="h-8 shrink-0 rounded-lg px-2.5 lg:px-3"
                 />
               }
               disabled={exporting}
             >
               <Download className="size-4" />{" "}
-              <span className="hidden sm:inline">
+              <span className="hidden lg:inline">
                 <RollInText text={exporting ? "Exporting…" : "Exports"} />
               </span>
             </DropdownMenuTrigger>
@@ -1070,7 +1066,7 @@ export function InboxClient({
                 closeFilters();
               }
             }}
-            className="absolute top-full right-4 left-4 z-30 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border bg-popover p-5 shadow-xl sm:right-6 sm:left-auto sm:w-96"
+            className="absolute top-full right-4 left-4 z-30 max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border bg-popover p-5 shadow-strong sm:right-6 sm:left-auto sm:w-96"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2
@@ -1212,7 +1208,7 @@ export function InboxClient({
                 value={filters.feedback}
                 placeholder="All Feedbacks"
                 options={[
-                  { value: "up", label: "Positive 🥰" },
+                  { value: "up", label: "Positive 🎉" },
                   { value: "neutral", label: "Neutral 😶‍🌫️" },
                   { value: "down", label: "Negative 🤬" },
                 ]}
@@ -1268,7 +1264,7 @@ export function InboxClient({
             </div>
           </div>
         )}
-      </header>
+      </SlotPortal>
 
       {/* Date range chip */}
       <div className="shrink-0 px-4 pb-3 sm:px-6">
@@ -1332,7 +1328,7 @@ export function InboxClient({
                 selectedId === c.id ? "bg-primary/5 dark:bg-primary/25" : "hover:bg-muted/50"
               }`}
             >
-              <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+              <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
                 {subjectInitials(c)}
               </span>
               <span className="min-w-0 flex-1">
@@ -1385,7 +1381,7 @@ export function InboxClient({
               <span className="text-primary/40 flex size-24 items-center justify-center rounded-full border-2 border-dashed">
                 <MessageSquareDashed className="size-10" />
               </span>
-              <h3 className="text-xl font-bold">Select a conversation</h3>
+              <h3 className="text-xl font-semibold">Select a conversation</h3>
               <p className="text-muted-foreground max-w-sm text-sm">
                 Pick one from the list to view its details, or use search and
                 filters to find specific conversations.
@@ -1424,7 +1420,7 @@ export function InboxClient({
               </div>
 
               <div className="flex items-center gap-3 rounded-xl border px-4 py-3">
-                <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+                <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
                   {subjectInitials(selected)}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -1498,7 +1494,7 @@ export function InboxClient({
                       key={m.id}
                       className="flex flex-row-reverse items-start gap-2.5 [contain-intrinsic-size:auto_64px] [content-visibility:auto]"
                     >
-                      <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-2xs font-bold">
+                      <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-2xs font-semibold">
                         {subjectInitials(selected)}
                       </span>
                       <div className="flex min-w-0 flex-1 flex-col items-end">
@@ -1662,7 +1658,7 @@ export function InboxClient({
             }
             className={
               detailsOpen
-                ? `bg-background fixed inset-y-0 right-0 z-50 w-[22rem] max-w-[88vw] space-y-4 overflow-y-auto overscroll-contain border-l p-4 shadow-2xl duration-200 xl:static xl:z-auto xl:w-80 xl:max-w-none xl:shrink-0 xl:animate-none xl:bg-muted/40 xl:shadow-none ${
+                ? `bg-background fixed inset-y-0 right-0 z-50 w-[22rem] max-w-[88vw] space-y-4 overflow-y-auto overscroll-contain border-l p-4 shadow-strong duration-200 xl:static xl:z-auto xl:w-80 xl:max-w-none xl:shrink-0 xl:animate-none xl:bg-muted/40 xl:shadow-none ${
                     // Leaves toward the edge it arrived from. It used to slide
                     // in from the right and then switch to `hidden`, so the
                     // sheet's exit contradicted its entrance.

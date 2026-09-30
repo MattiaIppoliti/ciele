@@ -15,6 +15,7 @@ export {
   OperationError,
   type Operation,
   type OperationCapability,
+  type OperationEffect,
   type OperationContext,
   type TeammateActor,
 } from "./operation";
@@ -294,6 +295,7 @@ export {
   removeMemberOp,
   revokeInviteOp,
   revokeOrgApiKeyOp,
+  deleteOrgApiKeyOp,
   setOrgBudgetOp,
   updateMemberRoleOp,
   updateOrganizationOp,
@@ -356,3 +358,21 @@ export {
   evaluationRunSchema,
   startEvaluationRunOp,
 } from "./evaluation";
+
+// Ciele AI: the Organization's default AI layer, and the platform catalogue it
+// acts through, as the chatting Member.
+export { ensureCieleAiOp } from "./ciele-ai";
+export {
+  PLATFORM_RUN_OPERATION,
+  teammateToolset,
+  type TeammateTool,
+  type TeammateToolRun,
+  type TeammateToolsetMember,
+} from "./teammate-toolset";
+export {
+  describePlatformOperation,
+  listPlatformOperations,
+  platformOperationDomains,
+  platformOperationPolicy,
+  runPlatformOperation,
+} from "./platform-actions";

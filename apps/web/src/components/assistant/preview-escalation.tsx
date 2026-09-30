@@ -162,7 +162,7 @@ export function PreviewEscalation({
             <h2
               data-screen-focus
               tabIndex={-1}
-              className="text-2xl leading-snug font-bold break-words outline-none"
+              className="text-2xl leading-snug font-semibold break-words outline-none"
             >
               {activeChannel.form.title}
             </h2>
@@ -217,7 +217,7 @@ export function PreviewEscalation({
             <h2
               data-screen-focus
               tabIndex={-1}
-              className="text-2xl leading-snug font-bold outline-none"
+              className="text-2xl leading-snug font-semibold outline-none"
             >
               How would you like to contact us?
             </h2>
@@ -229,7 +229,7 @@ export function PreviewEscalation({
                   onClick={() => setNav((current) => escalationOpenDesk(current, desk))}
                   className="bg-muted/50 hover:bg-muted flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition-colors"
                 >
-                  <span className="min-w-0 text-base font-bold break-words">
+                  <span className="min-w-0 text-base font-semibold break-words">
                     {desk.name}
                   </span>
                   <span className="bg-card flex size-10 shrink-0 items-center justify-center rounded-xl border">
@@ -247,7 +247,7 @@ export function PreviewEscalation({
             <h2
               data-screen-focus
               tabIndex={-1}
-              className="text-2xl leading-snug font-bold break-words outline-none"
+              className="text-2xl leading-snug font-semibold break-words outline-none"
             >
               How would you like to contact {activeDesk.name}?
             </h2>
@@ -274,7 +274,7 @@ export function PreviewEscalation({
                   <>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                        <span className="min-w-0 text-lg font-bold break-words">
+                        <span className="min-w-0 text-lg font-semibold break-words">
                           {channel.name}
                         </span>
                         <span className="bg-card ring-border inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">

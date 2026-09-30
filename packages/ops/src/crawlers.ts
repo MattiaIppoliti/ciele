@@ -30,6 +30,7 @@ function crawlerView(connection: CrawlerConnection): CrawlerConnectionView {
 export const setCrawlerConnectionOp = defineOperation({
   name: "crawlers.set",
   capability: "manageMembers",
+  effect: "write",
   input: z.object({
     provider: z.enum(["apify"]),
     token: z.string().trim().min(1, "Paste the API token"),
@@ -70,6 +71,7 @@ export const setCrawlerConnectionOp = defineOperation({
 export const deleteCrawlerConnectionOp = defineOperation({
   name: "crawlers.delete",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({ provider: z.enum(["apify"]) }),
   entities: () => [{ kind: "crawlerSettings" as const }],
   run: async (ctx, { provider }): Promise<void> => {

@@ -17,7 +17,11 @@ import {
 
 /**
  * The console's right-side detail panel: an overlay, a resizable drawer, and a
- * header button that grows the same drawer instance to the full viewport.
+ * header button that grows the same drawer instance to the full content area.
+ *
+ * It is positioned against the nearest `relative` ancestor, not the viewport,
+ * so the caller's page box (below the top bar, beside the sidebar) is what it
+ * covers and the navigation stays usable, full screen included.
  *
  * `Escape` closes, the overlay closes, and the scroll lives on the inner
  * container rather than the aside, so the handle poking out at -left-1.5 isn't
@@ -66,7 +70,7 @@ export function DetailDrawer({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/20"
+        className="absolute inset-0 z-40 bg-black/20"
         onClick={onClose}
         aria-hidden
       />
@@ -75,8 +79,8 @@ export function DetailDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        style={{ width: fullScreen ? "100vw" : width }}
-        className={`bg-background fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l shadow-strong ${widthTransition}`}
+        style={{ width: fullScreen ? "100%" : width }}
+        className={`bg-background absolute inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l shadow-strong ${widthTransition}`}
       >
         {!fullScreen && (
           <ResizeHandle

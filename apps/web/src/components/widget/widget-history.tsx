@@ -3,6 +3,7 @@
 import { MessageSquareText, SquarePen, Trash2 } from "lucide-react";
 import { ScanTextIcon } from "@/components/ui/icons/scan-text";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
+import { DAY_GROUP_PREFIX, groupByDay } from "@/lib/history-groups";
 
 export interface WidgetConversationSummary {
   id: string;
@@ -15,24 +16,6 @@ export interface WidgetMemory {
   id: string;
   text: string;
   createdAt: string;
-}
-
-/** "Today" / "Yesterday" / "07 Jul 2025", matches the editor preview. */
-function historyDayLabel(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "Earlier";
-  const startOfDay = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const days = Math.round(
-    (startOfDay(new Date()) - startOfDay(date)) / 86400000
-  );
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 /**
@@ -64,27 +47,16 @@ export function WidgetHistory({
     onDelete: (id: string) => void;
   } | null;
 }) {
-  const sorted = [...conversations].sort((a, b) =>
-    a.updatedAt > b.updatedAt ? -1 : 1
-  );
-  const groups: SidebarResource[] = [];
-  for (const c of sorted) {
-    const label = historyDayLabel(c.updatedAt);
-    const row: SidebarResource = {
+  const groups: SidebarResource[] = groupByDay(conversations).map((group) => ({
+    id: group.id,
+    label: group.label,
+    kind: "folder",
+    children: group.entries.map((c) => ({
       id: c.id,
       label: c.title || "Untitled conversation",
       kind: "file",
-    };
-    const last = groups[groups.length - 1];
-    if (last && last.label === label) last.children?.push(row);
-    else
-      groups.push({
-        id: `day:${label}`,
-        label,
-        kind: "folder",
-        children: [row],
-      });
-  }
+    })),
+  }));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -108,7 +80,7 @@ export function WidgetHistory({
             defaultExpandedIds={groups.map((group) => group.id)}
             onActiveChange={(id) => {
               // Day-group folders toggle; only conversation rows navigate.
-              if (!id.startsWith("day:")) onSelect(id);
+              if (!id.startsWith(DAY_GROUP_PREFIX)) onSelect(id);
             }}
             renderIcon={(item) =>
               item.kind === "file" ? (

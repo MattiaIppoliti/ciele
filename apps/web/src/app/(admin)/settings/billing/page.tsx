@@ -1,3 +1,4 @@
+import { CreditCard } from "lucide-react";
 import { redirect } from "next/navigation";
 import {
   Card,
@@ -14,6 +15,7 @@ import { usageLimitsView } from "@/lib/usage-meters";
 import { ActivationStatusCard } from "@/components/settings/activation-status-card";
 import { BillingAccountCard } from "@/components/settings/billing-account-card";
 import { CreditPacksCard } from "@/components/settings/credit-packs-card";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import {
   CheckoutNotice,
@@ -105,10 +107,13 @@ export default async function BillingPage({
 
   return (
     <SettingsPanel
+      icon={CreditCard}
       title="Billing"
       description={`${session.organization.name}'s plan, payment method, and invoices.`}
     >
         {outcome ? <CheckoutNotice outcome={outcome} /> : null}
+      <SectionTimeline>
+      <TimelineSection title="Plan">
 
         <ActivationStatusCard
           activation={activation}
@@ -144,6 +149,8 @@ export default async function BillingPage({
           </>
         ) : null}
 
+      </TimelineSection>
+      <TimelineSection title="Credits and payment">
         {/* A buffer is only worth offering where there is an allowance to
             buffer: a pending or unsubscribed organization is sent to the
             ladder above instead. */}
@@ -159,7 +166,9 @@ export default async function BillingPage({
         {/* What Stripe knows, for an organization that actually pays. */}
         {account ? <BillingAccountCard account={account} /> : null}
 
-        <Card className="mt-6">
+      </TimelineSection>
+      <TimelineSection title="Your data">
+        <Card>
           <CardHeader>
             <CardTitle>Your data is yours</CardTitle>
             <CardDescription>
@@ -184,6 +193,8 @@ export default async function BillingPage({
             </p>
           </CardContent>
         </Card>
+      </TimelineSection>
+      </SectionTimeline>
     </SettingsPanel>
   );
 }

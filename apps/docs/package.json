@@ -30,6 +30,7 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
+    "@agent-hub/eslint-config": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@translated/lara": "^1.13.0",
     "@types/mdx": "^2.0.14",

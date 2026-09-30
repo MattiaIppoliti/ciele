@@ -1,9 +1,8 @@
 import {
-  Archive,
+  Mailbox,
   Bell,
   BookText,
   ChartLine,
-  CircleHelp,
   Compass,
   FlaskConical,
   LayoutGrid,
@@ -17,6 +16,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Telescope,
+  UsersRound,
   Workflow,
   Wrench,
   type LucideIcon,
@@ -40,7 +40,21 @@ export interface AssistantSummary {
   avatarUrl?: string | null;
 }
 
+/** A nav entry's stable name. Code picks entries by this, never by label. */
+export type NavId =
+  | "assistants"
+  | "help-desks"
+  | "inbox"
+  | "teammates"
+  | "improvements"
+  | "insights"
+  | "eval"
+  | "library"
+  | "alerts"
+  | "settings";
+
 export interface GlobalNavItem {
+  id: NavId;
   label: string;
   icon: LucideIcon;
   href: string;
@@ -48,6 +62,11 @@ export interface GlobalNavItem {
   match?: string;
   /** Only highlight on an exact pathname match. */
   exact?: boolean;
+  /**
+   * Other routes that belong to this entry without being under its prefix,
+   * matched the same way (exactly when `exact`, else as a segment prefix).
+   */
+  also?: string[];
   /** Rendered after the SETUP group, at the bottom of the sidebar nav. */
   bottom?: boolean;
   /** Hidden from anyone who cannot administer the Organization. */
@@ -63,23 +82,35 @@ export interface GlobalNavItem {
 
 export const GLOBAL_NAV: GlobalNavItem[] = [
   {
+    id: "assistants",
     label: "Assistants",
     icon: LayoutGrid,
     href: "/",
     exact: true,
+    also: ["/assistants"],
     apiDomains: ["assistants"],
   },
   {
+    id: "help-desks",
     label: "Help Desks",
-    icon: CircleHelp,
+    icon: UsersRound,
     href: "/help-desks",
     apiDomains: ["help-desks"],
   },
   // Reviews rides along (#841): a Human review request is part of a
   // Conversation's transcript, and the panel shows how to list or decide one.
-  { label: "Inbox", icon: Archive, href: "/inbox", apiDomains: ["inbox", "reviews"] },
+  // Its decision page, `/reviews/<id>`, belongs here for the same reason.
+  {
+    id: "inbox",
+    label: "Inbox",
+    icon: Mailbox,
+    href: "/inbox",
+    also: ["/reviews"],
+    apiDomains: ["inbox", "reviews"],
+  },
   // The org's internal AI colleagues (#768).
   {
+    id: "teammates",
     label: "Teammates",
     // The cursor-click glyph, which the animated-icon registry maps from
     // `MousePointerClick`: a Teammate is a colleague you talk to, not a robot.
@@ -98,22 +129,25 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   // Developer Panel still has to reach the domain from somewhere, which is why
   // the Teammates entry above claims it.
   {
+    id: "improvements",
     label: "Improvements",
     icon: FlaskConical,
     href: "/improvements",
     apiDomains: ["improvements"],
   },
-  { label: "Insights", icon: ChartLine, href: "/insights" },
-  { label: "Eval", icon: Telescope, href: "/eval" },
+  { id: "insights", label: "Insights", icon: ChartLine, href: "/insights" },
+  { id: "eval", label: "Eval", icon: Telescope, href: "/eval" },
   // The org-level knowledge hub, shown as "Library" so it never reads as the
   // per-Assistant SETUP → Knowledge section (PRD #726).
   {
+    id: "library",
     label: "Library",
     icon: BookText,
     href: "/library",
     apiDomains: ["knowledge"],
   },
   {
+    id: "alerts",
     label: "Alerts",
     icon: Bell,
     href: "/alerts",
@@ -121,6 +155,7 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     apiDomains: ["alerts"],
   },
   {
+    id: "settings",
     label: "Settings",
     icon: Settings,
     // Opens the Settings dialog on its first tab. Organization-wide config is
@@ -133,6 +168,47 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   },
 ];
 
+/** The entry with this id. Every id has one, which `nav.test.ts` pins. */
+export function navItem(id: NavId): GlobalNavItem {
+  const item = GLOBAL_NAV.find((candidate) => candidate.id === id);
+  if (!item) throw new Error(`No nav entry "${id}"`);
+  return item;
+}
+
+/** `/inbox` and `/inbox/x`, never `/inbox-x`. `/` is under nothing but itself. */
+function isUnder(pathname: string, prefix: string): boolean {
+  if (prefix === "/") return pathname === "/";
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/** Whether this entry is the one the route belongs to, highlighted in the sidebar. */
+export function navItemActive(item: GlobalNavItem, pathname: string): boolean {
+  const prefixes = [item.match ?? item.href, ...(item.also ?? [])];
+  return prefixes.some((prefix) =>
+    item.exact ? pathname === prefix : isUnder(pathname, prefix)
+  );
+}
+
+/**
+ * The nav entry a route belongs to: the one question the sidebar's highlight,
+ * the breadcrumb's first crumb, the Developer Panel's claims and Find's page
+ * descriptions all ask, answered once. Null for an Assistant's own pages (their
+ * SETUP section answers) and for a route no entry owns.
+ *
+ * When two prefixes nest, the longer one answers. No two entries nest today,
+ * so the sort states the rule rather than breaking a live tie.
+ */
+export function navItemForPath(pathname: string): GlobalNavItem | null {
+  if (assistantIdFromPath(pathname)) return null;
+  const longest = (item: GlobalNavItem) =>
+    Math.max(...[item.match ?? item.href, ...(item.also ?? [])].map((p) => p.length));
+  return (
+    GLOBAL_NAV.filter((item) => navItemActive(item, pathname)).sort(
+      (a, b) => longest(b) - longest(a)
+    )[0] ?? null
+  );
+}
+
 export interface SetupSection {
   label: string;
   slug: string;
@@ -141,8 +217,15 @@ export interface SetupSection {
   apiDomains?: ApiV1Domain[];
 }
 
+/** Types the list as sections while keeping each slug a literal, for `SetupSlug`. */
+function setupSections<const Slug extends string>(
+  sections: readonly (SetupSection & { slug: Slug })[]
+): readonly (SetupSection & { slug: Slug })[] {
+  return sections;
+}
+
 /** Assistant SETUP sections (mirrors the reference platform's editor rail). */
-export const SETUP_SECTIONS: SetupSection[] = [
+export const SETUP_SECTIONS = setupSections([
   // First, and deliberately: the editor's docked preview panel is pointer-only
   // chrome hidden below `md`, so this route is the only way to reach the live
   // preview on a phone or a portrait tablet.
@@ -210,7 +293,10 @@ export const SETUP_SECTIONS: SetupSection[] = [
     icon: Plane,
     apiDomains: ["publish"],
   },
-];
+]);
+
+/** A SETUP section's route segment. */
+export type SetupSlug = (typeof SETUP_SECTIONS)[number]["slug"];
 
 /** Extract the assistant id when the current URL is scoped to one. */
 export function assistantIdFromPath(pathname: string): string | null {
@@ -235,7 +321,10 @@ export function setupHref(assistantId: string | null, slug: string): string {
     : `/setup/${slug}`;
 }
 
-const ASSISTANT_SECTIONS = new Set(SETUP_SECTIONS.map((section) => section.slug));
+/** Every SETUP section slug, for a lookup by the URL segment. */
+export const ASSISTANT_SECTIONS: ReadonlySet<string> = new Set(
+  SETUP_SECTIONS.map((section) => section.slug)
+);
 
 /**
  * Which /api/v1 domains the current route can be driven through, the one rule
@@ -259,14 +348,7 @@ export function apiDomainsForPath(pathname: string): ApiV1Domain[] {
     if (!slug) return ["assistants"];
     return SETUP_SECTIONS.find((section) => section.slug === slug)?.apiDomains ?? [];
   }
-  // When two nav prefixes nest, the more specific one answers. No two nav
-  // entries with apiDomains nest today (settings routes returned above), so
-  // the sort states the rule rather than breaking a live tie.
-  const matches = GLOBAL_NAV.filter((item) => {
-    const prefix = item.match ?? item.href;
-    return item.exact ? pathname === prefix : pathname.startsWith(prefix);
-  }).sort((a, b) => (b.match ?? b.href).length - (a.match ?? a.href).length);
-  return matches.find((item) => item.apiDomains)?.apiDomains ?? [];
+  return navItemForPath(pathname)?.apiDomains ?? [];
 }
 
 /** Translate a former query-param editor URL into its canonical route.

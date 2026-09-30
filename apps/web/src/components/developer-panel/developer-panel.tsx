@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronsRight } from "lucide-react";
 import { ArrowUpRight, Loader2 } from "lucide-react";
-import { Badge, Button, Hint } from "@agent-hub/ui";
-import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
+import { Badge, Hint } from "@agent-hub/ui";
+import { motion, useReducedMotion } from "motion/react";
+import { ResizeHandle, SHELL_GAP } from "@/components/ui/resizable-panel";
+import { useDockedRail } from "@/components/shell/right-rail";
+import { SPRING_REFOLD, SPRING_UNFOLD } from "@/lib/ease";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { useShell } from "@/components/shell/shell-provider";
+import { RailToggleButton } from "@/components/chat/rail-panel";
 import {
   buildSnippet,
   capabilityRole,
@@ -254,12 +257,17 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
   const data = current?.data ?? null;
   const failed = current?.failed ?? false;
 
-  const { width, fade, resizing, beginResize, resizeTo, widthTransition, containerRef } =
-    useResizableWidth({
-      defaultWidth: PANEL_DEFAULT_WIDTH,
-      minWidth: PANEL_MIN_WIDTH,
-      maxWidth: PANEL_MAX_WIDTH,
-    });
+  const reduceMotion = useReducedMotion();
+  // Mounted only while it holds the rail, so it is always occupied.
+  const { width, fade, resizing, beginResize, resizeTo, containerRef } =
+    useDockedRail(
+      {
+        defaultWidth: PANEL_DEFAULT_WIDTH,
+        minWidth: PANEL_MIN_WIDTH,
+        maxWidth: PANEL_MAX_WIDTH,
+      },
+      true
+    );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -279,10 +287,19 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
   }, [key]);
 
   return (
-    <aside
+    // The left sidebar, mirrored: it sits on the shell's frame beside the
+    // workspace panel rather than inside it, opens and closes on the same
+    // springs, and its resize line is the workspace panel's right border.
+    <motion.aside
       ref={containerRef}
-      style={{ width }}
-      className={`bg-background relative hidden shrink-0 flex-col border-l md:flex ${widthTransition}`}
+      initial={{ width: 0 }}
+      animate={{ width }}
+      exit={{
+        width: 0,
+        transition: reduceMotion ? { duration: 0 } : SPRING_REFOLD,
+      }}
+      transition={reduceMotion || resizing ? { duration: 0 } : SPRING_UNFOLD}
+      className="relative hidden h-full shrink-0 flex-col md:flex"
     >
       <ResizeHandle
         resizing={resizing}
@@ -292,73 +309,77 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
         minValue={PANEL_MIN_WIDTH}
         maxValue={PANEL_MAX_WIDTH}
         onValueChange={resizeTo}
+        gap={SHELL_GAP}
+        span="inset-y-2"
+        cornered="left"
       />
-      <div
-        className="flex min-h-0 flex-1 flex-col"
-        style={{ width: Math.max(width, PANEL_MIN_WIDTH), opacity: fade }}
-      >
-        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3">
-          <span className="truncate text-sm font-medium">
-            {data && data.domains.length === 1 ? data.domains[0].title : "Developer"}
-          </span>
-          <Hint label="Hide developer panel" side="left">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Hide developer panel"
-              onClick={() => closeRightRail("developer")}
-            >
-              <ChevronsRight className="size-4" />
-            </Button>
-          </Hint>
-        </header>
-        <Tabs
-          value={snippetTab}
-          onValueChange={(value) => {
-            const next = SNIPPET_TABS.find((tab) => tab === value);
-            if (next) setSnippetTab(next);
-          }}
-          className="shrink-0 border-b px-3 py-2"
+      {/* Clips the content, not the panel: the handle overhangs its edge.
+          The column keeps its width and hugs the window's edge, so opening
+          slides it out from behind the workspace panel instead of reflowing. */}
+      <div className="flex min-h-0 flex-1 flex-col items-end overflow-hidden">
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          style={{ width: Math.max(width, PANEL_MIN_WIDTH), opacity: fade }}
         >
-          <TabsList aria-label="Snippet format">
-            {SNIPPET_TABS.map((tab) => (
-              <TabsTrigger key={tab} value={tab} className="px-3 py-1 text-xs">
-                {SNIPPET_TAB_LABELS[tab]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-          {failed ? (
-            <p className="text-muted-foreground text-xs">
-              The developer catalogue could not be loaded. The API reference at{" "}
-              <code className="font-mono">/api/v1/openapi.json</code> is the same
-              contract.
-            </p>
-          ) : !data ? (
-            <div className="text-muted-foreground flex items-center gap-2 text-xs">
-              <Loader2 className="size-3.5 animate-spin" />
-              Loading the catalogue…
-            </div>
-          ) : (
-            <div className="space-y-8">
-              <AuthBlock auth={data.auth} docsOrigin={data.docsOrigin} />
-              {data.domains.map((domain) => (
-                <DomainSection
-                  key={domain.domain}
-                  domain={domain}
-                  origin={data.auth.origin}
-                  docsOrigin={data.docsOrigin}
-                  variables={snippetVariables}
-                  tab={snippetTab}
-                  showHeading={data.domains.length > 1}
-                />
+          {/* The left sidebar's header height (`h-16 pt-2`), so it lines up
+              with the top bar across the workspace panel. Hide left of the
+              title, on the side the panel folds toward. */}
+          <header className="flex h-16 shrink-0 items-center gap-2.5 px-3 pt-2">
+            <RailToggleButton
+              label="Hide developer panel"
+              onClick={() => closeRightRail("developer")}
+            />
+            <span className="truncate text-sm font-medium">
+              {data && data.domains.length === 1 ? data.domains[0].title : "Developer"}
+            </span>
+          </header>
+          <Tabs
+            value={snippetTab}
+            onValueChange={(value) => {
+              const next = SNIPPET_TABS.find((tab) => tab === value);
+              if (next) setSnippetTab(next);
+            }}
+            className="shrink-0 px-3 py-2"
+          >
+            <TabsList aria-label="Snippet format">
+              {SNIPPET_TABS.map((tab) => (
+                <TabsTrigger key={tab} value={tab} className="px-3 py-1 text-xs">
+                  {SNIPPET_TAB_LABELS[tab]}
+                </TabsTrigger>
               ))}
-            </div>
-          )}
+            </TabsList>
+          </Tabs>
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+            {failed ? (
+              <p className="text-muted-foreground text-xs">
+                The developer catalogue could not be loaded. The API reference at{" "}
+                <code className="font-mono">/api/v1/openapi.json</code> is the same
+                contract.
+              </p>
+            ) : !data ? (
+              <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                <Loader2 className="size-3.5 animate-spin" />
+                Loading the catalogue…
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <AuthBlock auth={data.auth} docsOrigin={data.docsOrigin} />
+                {data.domains.map((domain) => (
+                  <DomainSection
+                    key={domain.domain}
+                    domain={domain}
+                    origin={data.auth.origin}
+                    docsOrigin={data.docsOrigin}
+                    variables={snippetVariables}
+                    tab={snippetTab}
+                    showHeading={data.domains.length > 1}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </aside>
+    </motion.aside>
   );
 }

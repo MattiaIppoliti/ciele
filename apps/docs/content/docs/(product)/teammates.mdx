@@ -24,9 +24,52 @@ flowchart TB
 `}
 />
 
+## Chat
+
+Select **Chat** at the top of the sidebar, or open **Teammates**. The sidebar then shows your
+Teammates, your groups and your conversations. The chat opens in the middle of the page.
+
+- **AI Teammates.** The face of each Teammate. Select a face to open its chat. Right-click a face to
+  configure it, copy its ID, hide it or delete it.
+- **Groups.** Your channels. Select **+** to open a new group.
+- **Conversations.** Your conversations with every Teammate, newest first, one folder for each day.
+
+Select **New chat** at the bottom of the sidebar to start a new conversation with Ciele AI. The
+button is there on every page. You can also press `⌘O` on a Mac, or `Ctrl+O` on Windows and Linux.
+
+## Ciele AI
+
+Every organization has one **Ciele AI**. It is the AI layer of the whole console, and Chat opens on
+it. Ciele creates it the first time a member opens Chat.
+
+Ciele AI acts for the member who chats with it, with the permissions of that member. It cannot do
+more than that member can do in the console. For example, a Viewer cannot create an Assistant with it.
+
+- **Knowledge.** It searches every Knowledge Collection that you can read.
+- **Actions.** It can use the operations that the CLI, the MCP server and the API use. It cannot
+  approve a stopped action, it cannot delete an API key, and it cannot set a credential. If a request
+  contains a password, a token or a key, Ciele AI stops the request. Enter the credential in the
+  console.
+- **Suggested Fixes.** When Ciele AI accepts a Suggested Fix, the FAQ gets the machine-confirmed
+  trust level, not human-reviewed.
+- **Confirmation.** Some actions wait for you. Ciele AI shows a card, and the action runs only when
+  you approve it. These actions wait:
+  - An action that deletes, removes, revokes or publishes.
+  - An action that changes access: a role change, an invitation, the SSO identity claim, or the
+    permissions of a Teammate.
+  - An Eval run.
+  - A change to how long the organization keeps transcripts or traces.
+
+Ciele AI has no Standing role. You can rename it and write a Standing role in **Configure**, the
+same as for a Teammate. You cannot delete it or hide it, and it is always visible to all members.
+
+To ask a Teammate from Ciele AI, write **@** and select the Teammate. A tag with its name shows
+above the message box. Write your question and send it. The question goes to that Teammate, and
+its chat opens.
+
 ## Create a Teammate
 
-Open **Teammates** and select **New teammate**. You need the Editor role or higher.
+Open **Chat** and select **New** under **AI Teammates**. You need the Editor role or higher.
 
 Each Teammate has three parts.
 
@@ -95,12 +138,12 @@ role can chat with a Teammate, but cannot create or change one.
 
 ### Hide one from your own roster
 
-A long roster is somebody else's problem to solve, so each member can shorten their own. Point at a
-Teammate in the list and select the eye icon to take it off your list.
+A long roster is somebody else's problem to solve, so each member can shorten their own.
+Right-click a Teammate in the sidebar and select **Hide from my roster**.
 
 This changes nothing for anybody else. The Teammate keeps answering your colleagues, it can still be
 suggested to you as a referral, and you can still open it from a link. Only your roster gets
-shorter. Open **Hidden from your roster** at the bottom of the list to put one back.
+shorter. Open **Hidden from your roster** at the bottom of the sidebar to put one back.
 
 <Callout title="Hiding is not deleting">
 Deleting a Teammate retires it for the whole organization. Hiding shortens one list, and only yours.
@@ -240,12 +283,12 @@ other Teammate to suggest.
 A **channel** is one thread for several members and several Teammates. Use a channel when a piece
 of work needs more than one specialist.
 
-Open **Teammates** and select **New group**. Give the channel a name, then add the Teammates and
+Open **Chat** and select **+** next to **Groups**. Give the channel a name, then add the Teammates and
 the people you want. Every member can open a channel. You do not need the Editor role.
 
 You can also start a channel from a 1:1 chat. Write **@** in the message box and select a Teammate.
 Ciele opens a new channel with both Teammates and with you. The 1:1 conversation does not move. It
-stays where it is and you can read it again.
+stays where it is and you can read it again. Ciele AI does not join channels.
 
 A channel is invite-based. Only the people in the channel can see it. A colleague who is not in the
 channel cannot open it, and does not see it in the roster.
@@ -394,8 +437,8 @@ always gets the new evidence.
 
 ## Conversations
 
-Each member has a private thread with each Teammate. Select **View history** in the chat header to
-open an earlier conversation.
+Each member has a private thread with each Teammate. Select a conversation under **Conversations**
+in the sidebar to open it again. You can also select **View history** in the chat header.
 
 For a long answer, open the **More options** menu in the chat header and select **Open full
 screen**. The chat then fills the window. Select **Exit full screen**, or press `Escape`, to go
@@ -457,13 +500,21 @@ always available. Each additional model that you select becomes an option in the
 
 If you select no additional model, the chat window shows no model control.
 
+**Auto** is the first option and the default. Auto uses the most accurate model of your latest
+[Eval](/operations/eval) on the answer stage, if a connection of your organization can use that model.
+Before an Eval ranks your models, Auto uses the Teammate model.
+
+Ciele AI always shows the model control. It lists every model, and it marks the models that no
+connection serves as **not connected**.
+
 Your own AI subscription has priority. If you paired your own device, your chats use your
 subscription. The chat window model does not apply. Change your subscription in **Settings**, then
 **AI**.
 
 ## Delete a Teammate
 
-Select **Configure**, then **Delete teammate**. The Teammate leaves every roster and nobody can
-chat with it again.
+Right-click the Teammate in the sidebar and select **Delete**. You can also select **Configure**,
+then **Delete teammate**. The Teammate leaves every roster and nobody can chat with it again. You
+cannot delete Ciele AI.
 
 Your past conversations with it stay readable. The record of the work remains.

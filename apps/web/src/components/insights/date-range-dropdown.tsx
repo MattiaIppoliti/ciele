@@ -63,7 +63,7 @@ export function DateRangeDropdown({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button variant="outline" className="h-10 max-w-full rounded-lg px-4" />
+          <Button variant="outline" className="h-8 max-w-full rounded-lg px-3" />
         }
       >
         <CalendarIcon className="size-4 shrink-0" aria-hidden />

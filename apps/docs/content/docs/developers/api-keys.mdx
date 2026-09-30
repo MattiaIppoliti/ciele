@@ -1,6 +1,6 @@
 ---
 title: API keys
-description: Create and revoke Organization credentials for programmatic access.
+description: Create, revoke, and delete Organization credentials for programmatic access.
 ---
 
 An API key gives a program access to one Organization. Ciele stores only the hash of the secret.
@@ -26,6 +26,17 @@ The selected Role cannot be higher than your own Role. Ciele checks the Role for
 4. Confirm the action.
 
 Revocation stops new requests that use the key. Ciele keeps the key record for audit information.
+
+## Delete a key
+
+You can delete only a key that is already revoked. An Admin or Owner can do this.
+
+1. Open **Settings > API Keys**.
+2. Find the revoked key.
+3. Select the red bin icon.
+4. Confirm the action.
+
+Ciele removes the key record from the list. You cannot undo this action.
 
 <Callout type="warn" title="Protect the secret">
 Do not put an API key in source control, public logs, prompts, or screenshots. Use an environment variable or a secret store.

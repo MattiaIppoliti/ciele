@@ -21,7 +21,6 @@ import {
   FileText,
   Globe,
   HelpCircle,
-  MessageCircle,
   MessagesSquare,
   Plug,
   Rocket,
@@ -35,6 +34,7 @@ import { RadialGauge } from "@agent-hub/charts";
 import { Tooltip } from "@/components/charts/beui/motion/tooltip";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
+import { PreviewVignette } from "@/components/assistant/preview-vignette";
 import { DashboardStatCards } from "@/components/insights/dashboard/dashboard-stat-cards";
 import { Badge, Button, Hint } from "@agent-hub/ui";
 import { flowsInRoutingOrder, pointsDelta, qualityRows, type QualityRow } from "@/lib/assistant-overview";
@@ -261,7 +261,6 @@ export function AssistantOverview({
     null
   );
   const base = `/assistants/${assistant.id}`;
-  const brandColor = assistant.style.brandColor ?? "#0a0a0a";
   const checklist = [
     {
       label: "Add knowledge sources",
@@ -301,7 +300,7 @@ export function AssistantOverview({
   const totals = activity.totals;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8">
+    <div className="mx-auto max-w-6xl px-5 py-6 @xl:px-8 @xl:py-8">
       <div className="bg-card rounded-xl border shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
           <h1 className="text-sm font-medium">Assistant</h1>
@@ -321,29 +320,12 @@ export function AssistantOverview({
             </Button>
           </div>
         </div>
-        <div className="grid gap-8 px-6 py-6 lg:grid-cols-[1fr_1.2fr]">
-          {/* Widget vignette in place of Vercel's deployment screenshot. */}
-          <div
-            aria-hidden
-            className="bg-muted/50 relative flex min-h-44 items-end justify-end rounded-lg border p-4"
-          >
-            <div className="bg-card absolute top-4 left-4 max-w-[70%] rounded-lg border px-3 py-2 shadow-xs">
-              <p className="truncate text-xs font-medium">
-                {assistant.nickname || assistant.title}
-              </p>
-              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
-                {assistant.welcomeMessage || "Hi! How can I help?"}
-              </p>
-            </div>
-            <span
-              className="flex size-11 items-center justify-center rounded-full text-white shadow-md"
-              style={{ backgroundColor: brandColor }}
-            >
-              <AnimatedIcon icon={MessageCircle} size={20} />
-            </span>
-          </div>
+        <div className="grid gap-8 px-6 py-6 @3xl:grid-cols-[1fr_1.2fr]">
+          {/* The Preview's own chat card in miniature, and the way to it:
+              selecting it opens the live Preview in the right rail. */}
+          <PreviewVignette assistant={assistant} base={base} />
 
-          <div className="grid content-start gap-5 sm:grid-cols-2">
+          <div className="grid content-start gap-5 @md:grid-cols-2">
             <DetailRow label="Status">
               <span
                 className={`size-2 rounded-full ${latest ? "bg-emerald-500" : "bg-amber-500"}`}
@@ -372,7 +354,7 @@ export function AssistantOverview({
               </Badge>
             </DetailRow>
             {assistant.description && (
-              <div className="sm:col-span-2">
+              <div className="@md:col-span-2">
                 <p className="text-muted-foreground text-sm">Description</p>
                 <p className="mt-0.5 line-clamp-3 text-sm">
                   {assistant.description}
@@ -394,7 +376,7 @@ export function AssistantOverview({
 
       {/* A finished checklist has nothing left to say: it goes, and Activity
           and Quality share the row. */}
-      <div className={`mt-6 grid gap-6 ${setupDone ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+      <div className={`mt-6 grid gap-6 ${setupDone ? "@3xl:grid-cols-2" : "@3xl:grid-cols-2 @5xl:grid-cols-3"}`}>
         {setupDone ? null : (
           <Panel
             title="Setup checklist"
@@ -447,7 +429,7 @@ export function AssistantOverview({
         </Panel>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid gap-6 @3xl:grid-cols-2">
         <Panel
           title={
             <>

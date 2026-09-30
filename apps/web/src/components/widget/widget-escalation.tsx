@@ -1,5 +1,6 @@
 "use client";
 
+import { CHAT_CARD, CHAT_CARD_HOVER } from "@/components/chat/chat-card";
 import { useEffect, useRef, useState } from "react";
 import type {
   EscalationChannel,
@@ -278,7 +279,7 @@ export function WidgetEscalation({
         {/* Channel form ("Helpdesk form") */}
         {screen === "form" && activeChannel?.form && (
           <>
-            <h2 className="text-2xl leading-snug font-bold">
+            <h2 className="text-2xl leading-snug font-semibold">
               {activeChannel.form.title}
             </h2>
             <form
@@ -321,16 +322,16 @@ export function WidgetEscalation({
         {/* Desk list */}
         {screen === "desks" && (
           <>
-            <h2 className="text-2xl leading-snug font-bold">How would you like to contact us?</h2>
+            <h2 className="text-2xl leading-snug font-semibold">How would you like to contact us?</h2>
             <div className="mt-5 space-y-3">
               {desks!.map((desk) => (
                 <button
                   key={desk.id}
                   type="button"
                   onClick={() => setNav((current) => escalationOpenDesk(current, desk))}
-                  className="bg-muted hover:bg-muted/80 flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition-colors"
+                  className={`${CHAT_CARD} ${CHAT_CARD_HOVER} flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition-colors`}
                 >
-                  <span className="text-base font-bold">{desk.name}</span>
+                  <span className="text-base font-semibold">{desk.name}</span>
                   <span className="bg-background flex size-10 shrink-0 items-center justify-center rounded-xl border">
                     <ArrowRight className="size-4" />
                   </span>
@@ -343,7 +344,7 @@ export function WidgetEscalation({
         {/* Channel list for the chosen desk */}
         {screen === "channels" && activeDesk && (
           <>
-            <h2 className="text-2xl leading-snug font-bold">
+            <h2 className="text-2xl leading-snug font-semibold">
               How would you like to contact {activeDesk.name}?
             </h2>
             <div className="mt-5 space-y-3">
@@ -363,7 +364,7 @@ export function WidgetEscalation({
                   <>
                     <div>
                       <div className="flex items-center gap-2.5">
-                        <span className="text-lg font-bold">{channel.name}</span>
+                        <span className="text-lg font-semibold">{channel.name}</span>
                         <span className="bg-background text-muted-foreground ring-border inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">
                           <span className={`size-1.5 rounded-full ${availability.available ? "bg-emerald-500" : "bg-neutral-400"}`} />
                           {availability.available ? "Available" : "Unavailable"}
@@ -385,7 +386,7 @@ export function WidgetEscalation({
                   </>
                 );
                 const rowClass =
-                  "flex w-full items-center justify-between gap-3 rounded-2xl bg-muted px-5 py-4 text-left transition-colors";
+                  `${CHAT_CARD} flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition-colors`;
                 if (channel.form) {
                   return (
                     <button
@@ -393,7 +394,7 @@ export function WidgetEscalation({
                       type="button"
                       aria-label={`Contact via ${channel.name}`}
                       onClick={() => openForm(channel)}
-                      className={`${rowClass} hover:bg-muted/80`}
+                      className={`${rowClass} ${CHAT_CARD_HOVER}`}
                     >
                       {body}
                     </button>
@@ -410,7 +411,7 @@ export function WidgetEscalation({
                         : {})}
                       aria-label={`Contact via ${channel.name}`}
                       onClick={() => recordEscalation(activeDesk.id)}
-                      className={`${rowClass} hover:bg-muted/80`}
+                      className={`${rowClass} ${CHAT_CARD_HOVER}`}
                     >
                       {body}
                     </a>

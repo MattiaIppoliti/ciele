@@ -80,9 +80,8 @@ export function GroupAvatarCluster({
           // The triangle's lower vertex. Centred rather than offset, so a group
           // with one face and a `+N` still reads as a cluster.
           className={cn(
-            "bg-muted text-muted-foreground ring-background absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full font-semibold ring-2",
-            faceSize,
-            small ? "text-[10px]" : "text-[11px]"
+            "bg-muted text-muted-foreground ring-background absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full font-semibold ring-2 text-2xs",
+            faceSize
           )}
         >
           +<RollingNumber value={rest} />

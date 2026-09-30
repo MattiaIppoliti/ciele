@@ -14,7 +14,7 @@ export default async function GoalsPage({ params }: { params: Promise<{ id: stri
   const goals = await db.table("assistantGoals").list({ assistantId: id });
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
+    <div className="mx-auto max-w-3xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
         icon={Compass}
         title="Goals"

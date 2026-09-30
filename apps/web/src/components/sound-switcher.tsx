@@ -2,6 +2,8 @@
 
 import { useFeedback } from "@agent-hub/ui/feedback";
 import { Switch } from "@/components/ui/motion-switch";
+import { AnimatedGlyph } from "@/components/ui/animated-icon";
+import { Volume2Icon } from "@/components/ui/icons/volume-2";
 
 /**
  * The one control interface sounds have (#817): on or off, per device, beside
@@ -13,8 +15,10 @@ import { Switch } from "@/components/ui/motion-switch";
 export function SoundSwitcher() {
   const { muted, setMuted } = useFeedback();
   return (
-    <div className="flex items-center justify-between gap-3 px-2 py-1.5">
-      <label htmlFor="sound-switch" className="text-sm">
+    // Matches the menu's items, as the theme row beside it does.
+    <div data-animate-group className="flex items-center justify-between gap-3 px-3 py-2.5">
+      <label htmlFor="sound-switch" className="flex items-center gap-3 text-base">
+        <AnimatedGlyph icon={Volume2Icon} size={18} />
         Sounds
       </label>
       <Switch

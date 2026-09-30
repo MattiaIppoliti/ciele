@@ -216,6 +216,12 @@ export interface Db {
   /** Marks the key revoked (row kept for audit). Idempotent. */
   revokeApiKey(keyId: string): Promise<void>;
   /**
+   * Removes a key that is already revoked; an active key is left alone.
+   * Resolves to whether a row was removed, so a refusal (an active key, a
+   * row-level rule, a key already gone) is never mistaken for success.
+   */
+  deleteRevokedApiKey(keyId: string): Promise<boolean>;
+  /**
    * Auth-time lookup for /api/v1: the presented secret is hashed and looked
    * up verbatim. Returns revoked keys too, the auth seam is what turns
    * `revokedAt` into a 401, so the decision stays in one place.
@@ -1123,6 +1129,16 @@ export interface Db {
     subjectId: string
   ): Promise<Conversation[]>;
   /**
+   * One Member's threads across several Teammates, newest first, capped at 50:
+   * the console sidebar's chat history. The caller names the Teammates (the
+   * roster it already filtered by visibility) because a Conversation carries no
+   * Organization of its own, and one query beats one per roster row.
+   */
+  listMemberTeammateConversations(
+    teammateIds: string[],
+    subjectId: string
+  ): Promise<Conversation[]>;
+  /**
    * Append one message to a Teammate channel's transcript (#778).
    *
    * A behavioural method rather than a `table()` entry for one reason: the
@@ -1205,13 +1221,37 @@ export interface Db {
   /**
    * Closes a pending action approval (#958) exactly once: the same
    * compare-and-set, so a Member approving and the expiry sweep cannot both
-   * land. `executedAt` is set by a second call after the action has actually
-   * run, which is what keeps a retried claim from running it twice.
+   * land. Running it is `claimActionApprovalRun`, then `settleActionApprovalRun`
+   * once the action has returned.
    */
   decideActionApproval(
     id: string,
     patch: ActionApprovalPatch
   ): Promise<ActionApproval | null>;
+  /**
+   * Claims the run of an approved action: the row comes back when this caller
+   * may run it, null when it is not approved, has already run, or is claimed
+   * by a run that started after `staleBefore` and may still be going. A
+   * compare-and-set, so of two clicks on an approved card exactly one runs.
+   * A claim older than `staleBefore` is taken over: its run died without
+   * settling, and the action has not been stamped as run.
+   */
+  claimActionApprovalRun(
+    id: string,
+    claim: { now: string; staleBefore: string }
+  ): Promise<ActionApproval | null>;
+  /**
+   * Ends a claimed run. `ran` stamps `executedAt`, after which nothing claims
+   * it again; `failed` releases the claim, so the Member can try once more
+   * instead of being told the request was already decided. `claimedAt` is the
+   * `now` the claim was taken with, and a release only lands while the claim is
+   * still that one: a run that outlived its lease cannot free its successor's.
+   */
+  settleActionApprovalRun(
+    id: string,
+    outcome: "ran" | "failed",
+    claimedAt: string
+  ): Promise<void>;
   /**
    * Closes a pending webhook subscription (#842) exactly once: the row is
    * written only while still `pending`, so of two racing callbacks, or a

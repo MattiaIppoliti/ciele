@@ -33063,6 +33063,10 @@
                               {
                                 "type": "string",
                                 "const": "flows_agent"
+                              },
+                              {
+                                "type": "string",
+                                "const": "ciele_ai"
                               }
                             ]
                           },
@@ -33492,6 +33496,10 @@
                         {
                           "type": "string",
                           "const": "flows_agent"
+                        },
+                        {
+                          "type": "string",
+                          "const": "ciele_ai"
                         }
                       ]
                     },
@@ -34016,6 +34024,10 @@
                             {
                               "type": "string",
                               "const": "flows_agent"
+                            },
+                            {
+                              "type": "string",
+                              "const": "ciele_ai"
                             }
                           ]
                         },
@@ -34853,6 +34865,10 @@
                         {
                           "type": "string",
                           "const": "flows_agent"
+                        },
+                        {
+                          "type": "string",
+                          "const": "ciele_ai"
                         }
                       ]
                     },
@@ -35285,6 +35301,10 @@
                         {
                           "type": "string",
                           "const": "flows_agent"
+                        },
+                        {
+                          "type": "string",
+                          "const": "ciele_ai"
                         }
                       ]
                     },
@@ -40881,6 +40901,10 @@
                               {
                                 "type": "string",
                                 "const": "flows_agent"
+                              },
+                              {
+                                "type": "string",
+                                "const": "ciele_ai"
                               }
                             ]
                           },
@@ -41650,6 +41674,10 @@
                               {
                                 "type": "string",
                                 "const": "flows_agent"
+                              },
+                              {
+                                "type": "string",
+                                "const": "ciele_ai"
                               }
                             ]
                           },
@@ -58931,11 +58959,11 @@
                             "oneOf": [
                               {
                                 "type": "string",
-                                "const": "read"
+                                "const": "write"
                               },
                               {
                                 "type": "string",
-                                "const": "write"
+                                "const": "read"
                               }
                             ]
                           },

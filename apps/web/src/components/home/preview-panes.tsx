@@ -6,7 +6,7 @@ import {
   useContext,
   useState,
 } from "react";
-import { Archive, ArrowUp, BookText, ChartLine, CircleHelp, Copy, ExternalLink, FlaskConical, LayoutGrid, MessageCircle, Plus, Search, Trash2, type LucideIcon } from "lucide-react";
+import { Archive, ArrowUp, BookText, ChartLine, UsersRound, Copy, ExternalLink, FlaskConical, LayoutGrid, MessageCircle, Plus, Search, Trash2, type LucideIcon } from "lucide-react";
 import { ArrowLeft, ChevronDown, ChevronRight, Ellipsis, Globe, Hash, Link2, UserPlus } from "lucide-react";
 import type { AnimatedIcon } from "@/components/ui/animated-icon";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
@@ -126,7 +126,7 @@ export function NavRow({
       <PreviewIcon icon={icon} size={16} className="shrink-0" />
       <span className="truncate">{label}</span>
       {badge ? (
-        <span className="bg-destructive ml-auto flex size-4 items-center justify-center rounded-full text-[10px] font-semibold text-white">
+        <span className="bg-destructive ml-auto flex size-4 items-center justify-center rounded-full text-2xs font-semibold text-white">
           {badge}
         </span>
       ) : null}
@@ -177,11 +177,11 @@ function AssistantCard({
         </p>
       </div>
       <div className="mt-auto flex items-center gap-2">
-        <span className="bg-muted text-muted-foreground flex items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-[11px]">
+        <span className="bg-muted text-muted-foreground flex items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-2xs">
           <span className="size-1.5 rounded-full bg-emerald-500" />
           {id}
         </span>
-        <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-[11px]">
+        <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-2xs">
           Updated Jul 17
         </span>
       </div>
@@ -243,7 +243,7 @@ function HelpDesksPane() {
   return (
     <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
       <PaneHeading
-        icon={CircleHelp}
+        icon={UsersRound}
         title="Help Desks"
         description="Configure how visitors reach the right person."
       />
@@ -286,7 +286,7 @@ function HelpDesksPane() {
                 {desk.description}
               </p>
             </div>
-            <span className="bg-muted text-muted-foreground mt-auto w-fit rounded-md px-2 py-0.5 text-[11px]">
+            <span className="bg-muted text-muted-foreground mt-auto w-fit rounded-md px-2 py-0.5 text-2xs">
               {desk.meta}
             </span>
           </div>
@@ -349,11 +349,11 @@ function InboxPane() {
                 {conversation.snippet}
               </p>
               <div className="flex items-center gap-2">
-                <span className="bg-muted text-muted-foreground rounded-full border px-2 py-px text-[10px]">
+                <span className="bg-muted text-muted-foreground rounded-full border px-2 py-px text-2xs">
                   {conversation.assistant}
                 </span>
                 {conversation.up ? (
-                  <span aria-label="Positive response" title="Positive response">🥰</span>
+                  <span aria-label="Positive response" title="Positive response">🎉</span>
                 ) : (
                   <span aria-label="Negative response" title="Negative response">🤬</span>
                 )}
@@ -385,7 +385,7 @@ function InboxPane() {
                 <span className="bg-muted rounded-md border px-1.5 py-0.5">
                   IT KB · VPN access
                 </span>
-                <span aria-label="Positive response" title="Positive response">🥰</span>
+                <span aria-label="Positive response" title="Positive response">🎉</span>
                 <span aria-label="Neutral response" title="Neutral response">😶‍🌫️</span>
                 <span aria-label="Negative response" title="Negative response">🤬</span>
               </div>
@@ -672,7 +672,7 @@ function LibraryPane() {
             {!compact && (
               <>
                 <span className="flex items-center gap-2">
-                  <span className="bg-muted text-muted-foreground truncate rounded-full border px-2 py-px text-[11px]">
+                  <span className="bg-muted text-muted-foreground truncate rounded-full border px-2 py-px text-2xs">
                     {site.assistant}
                   </span>
                   <Link2 className="text-muted-foreground size-3.5 shrink-0" />
@@ -795,7 +795,7 @@ function ImprovementsPane() {
                 >
                   <p className="text-sm font-medium">{item.title}</p>
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="bg-muted text-muted-foreground rounded-full border px-2 py-px text-[10px]">
+                    <span className="bg-muted text-muted-foreground rounded-full border px-2 py-px text-2xs">
                       {item.assistant}
                     </span>
                     <span className="text-muted-foreground ml-auto text-xs">
@@ -883,7 +883,7 @@ function InsightsPane() {
             />
           ))}
         </div>
-        <div className="text-muted-foreground mt-2 flex justify-between text-[10px]">
+        <div className="text-muted-foreground mt-2 flex justify-between text-2xs">
           <span>Jun 18</span>
           <span>Jun 27</span>
           <span>Jul 7</span>
@@ -900,14 +900,14 @@ function InsightsPane() {
         <div className="bg-card rounded-xl border p-4 shadow-xs">
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold">Resolved vs escalated</span>
-            <span className="text-muted-foreground ml-auto flex items-center gap-1.5 text-[11px]">
+            <span className="text-muted-foreground ml-auto flex items-center gap-1.5 text-2xs">
               <span
                 className="size-2 rounded-full"
                 style={{ background: INK_STRONG }}
               />
               Resolved
             </span>
-            <span className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1.5 text-2xs">
               <span
                 className="size-2 rounded-full"
                 style={{ background: INK_SOFT }}
@@ -966,7 +966,7 @@ function InsightsPane() {
               />
             ))}
           </div>
-          <div className="text-muted-foreground mt-1 flex justify-between text-[10px]">
+          <div className="text-muted-foreground mt-1 flex justify-between text-2xs">
             <span>W1</span>
             <span>W4</span>
             <span>W8</span>
@@ -985,7 +985,7 @@ function InsightsPane() {
             >
               <div className="bg-card absolute inset-4 flex flex-col items-center justify-center rounded-full">
                 <span className="text-lg font-semibold">1,284</span>
-                <span className="text-muted-foreground text-[10px]">total</span>
+                <span className="text-muted-foreground text-2xs">total</span>
               </div>
             </div>
             <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-2">
@@ -995,10 +995,10 @@ function InsightsPane() {
                     className="size-2 shrink-0 rounded-full"
                     style={{ background: segment.color }}
                   />
-                  <span className="text-muted-foreground truncate text-[11px]">
+                  <span className="text-muted-foreground truncate text-2xs">
                     {segment.label}
                   </span>
-                  <span className="ml-auto text-[11px] font-medium">
+                  <span className="ml-auto text-2xs font-medium">
                     {segment.value}%
                   </span>
                 </div>

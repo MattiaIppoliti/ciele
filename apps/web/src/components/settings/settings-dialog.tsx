@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowUpRight, Check, ChevronDown, X } from "lucide-react";
-import Link from "next/link";
+import { IntentLink } from "@/components/ui/intent-link";
 import { Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
 import { AnimateIcons, AnimatedIcon } from "@/components/ui/animated-icon";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
@@ -27,6 +27,10 @@ import {
   SettingsDirtyContext,
   type SettingsDirtyRegistry,
 } from "@/components/settings/settings-dirty";
+import {
+  SettingsSessionContext,
+  type SettingsSessionData,
+} from "@/components/settings/settings-session";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { discardChangesRequest } from "@/components/ui/use-unsaved-changes";
 import { isPlainClick } from "@/lib/plain-click";
@@ -47,14 +51,15 @@ import { isPlainClick } from "@/lib/plain-click";
  * configuration into a person's own.
  */
 export function SettingsDialog({
-  canManageOrg,
+  session,
   children,
 }: {
-  /** Owners and admins may open the Organization scope; everyone else only sees
-   * the personal scope, and the org routes redirect them back to it. A promise
-   * so the layout never awaits the session: an await there sits above every
-   * settings tab's loading.tsx and would hold the dialog shut until it lands. */
-  canManageOrg: Promise<boolean>;
+  /** The signed-in person, for the tabs that need only that, and for whether
+   * they may open the Organization scope (owners and admins; the org routes
+   * redirect everyone else back). A promise so the layout never awaits it: an
+   * await there sits above every settings tab's loading.tsx and would hold the
+   * dialog shut until it lands. */
+  session: Promise<SettingsSessionData | null>;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -72,14 +77,12 @@ export function SettingsDialog({
   const [mayManageOrg, setMayManageOrg] = useState(false);
   useEffect(() => {
     let live = true;
-    canManageOrg.then(
-      (value) => live && setMayManageOrg(value),
-      () => {},
-    );
+    // The layout resolves a failed read to null, so this never rejects.
+    session.then((data) => live && setMayManageOrg(data?.canManageOrg ?? false));
     return () => {
       live = false;
     };
-  }, [canManageOrg]);
+  }, [session]);
   const showCross = scope === "personal" ? mayManageOrg : true;
 
   const navigateAway = useCallback(() => {
@@ -142,6 +145,7 @@ export function SettingsDialog({
 
   return (
     <SettingsDirtyContext.Provider value={registry}>
+    <SettingsSessionContext.Provider value={session}>
       <Dialog
         open={!exiting}
         onOpenChange={(open) => {
@@ -151,7 +155,7 @@ export function SettingsDialog({
         <DialogContent
           showCloseButton={false}
           overlayClassName="bg-black/50 backdrop-blur-[1px]"
-          className={`flex h-dvh w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden border bg-background p-0 shadow-2xl outline-none duration-150 sm:h-[calc(100dvh-4rem)] sm:w-[calc(100vw-4rem)] sm:max-h-[46rem] sm:max-w-5xl sm:flex-row sm:rounded-xl ${
+          className={`flex h-dvh w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden border bg-background p-0 shadow-strong outline-none duration-150 sm:h-[calc(100dvh-4rem)] sm:w-[calc(100vw-4rem)] sm:max-h-[46rem] sm:max-w-5xl sm:flex-row sm:rounded-xl ${
             exiting
               ? "animate-out fade-out zoom-out-95"
               : "animate-in fade-in zoom-in-95"
@@ -223,6 +227,7 @@ export function SettingsDialog({
         </DialogContent>
       </Dialog>
       {confirmDeleteModal}
+    </SettingsSessionContext.Provider>
     </SettingsDirtyContext.Provider>
   );
 }
@@ -270,7 +275,7 @@ function RailMenu({
           <DropdownMenuItem
             key={tab.slug}
             render={
-              <Link
+              <IntentLink
                 href={tab.href}
                 replace
                 onClick={(event) => onNavigate(event, tab.href)}
@@ -288,7 +293,7 @@ function RailMenu({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               render={
-                <Link
+                <IntentLink
                   href={cross.href}
                   replace
                   onClick={(event) => onNavigate(event, cross.href)}
@@ -320,7 +325,7 @@ function RailRow({
   crossScope?: boolean;
 }) {
   return (
-    <Link
+    <IntentLink
       href={tab.href}
       // Tabs replace rather than push: a modal is one place, so browsing it must
       // not stack history entries that the close button then has to unwind one
@@ -329,7 +334,7 @@ function RailRow({
       onClick={(event) => onNavigate(event, tab.href)}
       aria-current={active ? "page" : undefined}
       data-highlight-row
-      className={`relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+      className={`relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
         active
           ? "bg-muted text-foreground"
           : "text-muted-foreground hover:text-foreground"
@@ -346,6 +351,6 @@ function RailRow({
         )}
       </span>
       {crossScope && <ArrowUpRight className="size-3.5 shrink-0" />}
-    </Link>
+    </IntentLink>
   );
 }

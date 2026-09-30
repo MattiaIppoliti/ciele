@@ -8,6 +8,15 @@ import config from "@agent-hub/eslint-config";
 export default config;
 ```
 
+## The second entry point: `./design-tokens`
+
+`designTokenRules({ files, shadowExempt, typeExempt })` returns the class-string rules from the
+root `DESIGN.md` (no raw `shadow-*` ramp, no `text-[Npx]`). It is a separate export, not part of
+`base.mjs`, because the desktop app extends `base.mjs` and has its own token set. The web apps and
+`packages/ui` / `packages/charts` spread it in explicitly. It sets `no-restricted-syntax`, and
+flat config lets the last matching object win, so a consumer that sets that rule itself must
+merge the selectors or it silently drops them.
+
 ## Why the apps are not in here
 
 The three apps keep their own `eslint.config.mjs`. They need `eslint-config-next`, and each carries

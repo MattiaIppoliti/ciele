@@ -914,7 +914,7 @@ export function ContextMenuShortcut({
     <span
       aria-hidden="true"
       className={cn(
-        "text-muted-foreground ml-auto pl-4 text-[10px] font-medium tracking-wide",
+        "text-muted-foreground ml-auto pl-4 text-2xs font-medium tracking-wide",
         className
       )}
     >

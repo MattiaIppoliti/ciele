@@ -54,7 +54,7 @@ export function TriggerList<T extends { id: string }>({
   renderItem: (item: T) => ReactNode;
 }) {
   return (
-    <div className="bg-popover text-popover-foreground absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border shadow-lg">
+    <div className="bg-popover text-popover-foreground absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border shadow-strong">
       <ul
         id={id}
         role="listbox"
@@ -85,8 +85,8 @@ export function TriggerList<T extends { id: string }>({
               // keyboard was in the list.
               className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors ${
                 index === highlighted
-                  ? "bg-foreground/10"
-                  : "hover:bg-foreground/5"
+                  ? "bg-foreground/[0.14]"
+                  : "hover:bg-foreground/[0.07]"
               }`}
             >
               {renderItem(item)}

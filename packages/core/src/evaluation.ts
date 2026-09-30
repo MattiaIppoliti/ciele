@@ -269,3 +269,28 @@ export function evaluationLeaderboard(run: EvaluationRun): {
   );
   return { flows: flowList, rows };
 }
+
+/**
+ * What "Auto" asks: the best model of the newest completed Eval on the
+ * `answer` stage, which is the stage a chat turn is, taken from the
+ * leaderboard's own order (most accurate first, cheapest among equals). A
+ * candidate the caller cannot ask right now (no connection serves it, or it is
+ * outside the chat's allow-list) is skipped for the next one down, and a run
+ * with no graded answer ranks nothing. Null when no Eval has ranked an askable
+ * model, which the caller reads as "use the configured model".
+ */
+export function autoModelFromEvaluations(
+  runs: readonly EvaluationRun[],
+  askable: (candidate: EvaluationCandidate) => boolean
+): EvaluationCandidate | null {
+  const newestFirst = runs
+    .filter((run) => run.status === "completed" && run.stage === "answer")
+    .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
+  for (const run of newestFirst) {
+    const best = evaluationLeaderboard(run).rows.find(
+      (row) => row.accuracy !== null && askable(row.candidate)
+    );
+    if (best) return best.candidate;
+  }
+  return null;
+}

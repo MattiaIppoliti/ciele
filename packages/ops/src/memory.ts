@@ -81,6 +81,7 @@ async function readWithHistory(
 export const listProjectsOp = defineOperation({
   name: "projects.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx): Promise<Project[]> =>
@@ -90,6 +91,7 @@ export const listProjectsOp = defineOperation({
 export const getProjectOp = defineOperation({
   name: "projects.get",
   capability: "member",
+  effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
   run: async (
@@ -108,6 +110,7 @@ export const getProjectOp = defineOperation({
 export const createProjectOp = defineOperation({
   name: "projects.create",
   capability: "edit",
+  effect: "write",
   input: z.object({
     name: z.string().min(1).max(120),
     description: z.string().max(2000).default(""),
@@ -125,6 +128,7 @@ export const createProjectOp = defineOperation({
 export const updateProjectOp = defineOperation({
   name: "projects.update",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: z.string().min(1), patch: projectPatchSchema }),
   entities: ({ id }) => [
     { kind: "project" as const, id },
@@ -139,6 +143,7 @@ export const updateProjectOp = defineOperation({
 export const deleteProjectOp = defineOperation({
   name: "projects.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: ({ id }) => [
     { kind: "project" as const, id },
@@ -183,6 +188,7 @@ const expectedUpdatedAtSchema = z.string().min(1).nullable().optional();
 export const writeProjectDocumentOp = defineOperation({
   name: "projects.document.write",
   capability: "edit",
+  effect: "write",
   input: z.object({
     id: z.string().min(1),
     body: bodySchema,
@@ -209,6 +215,7 @@ export const writeProjectDocumentOp = defineOperation({
 export const writeMyMemoryOp = defineOperation({
   name: "memory.me.write",
   capability: "member",
+  effect: "write",
   input: z.object({
     body: bodySchema,
     note: noteSchema,
@@ -229,6 +236,7 @@ export const writeMyMemoryOp = defineOperation({
 export const revertMyMemoryOp = defineOperation({
   name: "memory.me.revert",
   capability: "member",
+  effect: "write",
   input: z.object({ entryId: z.string().min(1) }),
   entities: () => [{ kind: "myMemory" as const }],
   run: async (ctx, { entryId }): Promise<MemoryDocument> => {
@@ -255,6 +263,7 @@ export const revertMyMemoryOp = defineOperation({
 export const getTeammateMemoryOp = defineOperation({
   name: "teammates.memory.get",
   capability: "member",
+  effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { id }): Promise<MemoryDocumentView> => {
@@ -270,6 +279,7 @@ export const getTeammateMemoryOp = defineOperation({
 export const writeTeammateMemoryOp = defineOperation({
   name: "teammates.memory.write",
   capability: "edit",
+  effect: "write",
   input: z.object({
     id: z.string().min(1),
     body: bodySchema,
@@ -314,6 +324,7 @@ function requireActingTeammate(ctx: OperationContext) {
 export const rememberAboutMemberOp = defineOperation({
   name: "memory.remember",
   capability: "member",
+  effect: "write",
   input: z.object({
     /** The whole document as it should now read, not a fragment to append. */
     body: bodySchema,
@@ -339,6 +350,7 @@ export const rememberAboutMemberOp = defineOperation({
 export const recordProjectDecisionOp = defineOperation({
   name: "memory.project.record",
   capability: "member",
+  effect: "write",
   input: z.object({ body: bodySchema, note: z.string().max(300) }),
   entities: () => [{ kind: "projectList" as const }],
   run: async (ctx, input): Promise<MemoryDocument> => {

@@ -6,7 +6,7 @@ import type {
   Teammate,
   TeammatePatch,
 } from "@agent-hub/core";
-import { visibleTeammates } from "@agent-hub/core";
+import { isCieleAi, visibleTeammates } from "@agent-hub/core";
 import {
   raiseAlertsForAddedScope,
   raiseAlertsForAddedSourceScope,
@@ -88,6 +88,7 @@ export const teammatePatchSchema = z
 export const listTeammatesOp = defineOperation({
   name: "teammates.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: async (ctx): Promise<Teammate[]> =>
@@ -130,11 +131,17 @@ function requireRosterOwner(ctx: OperationContext): string {
 export const hideTeammateOp = defineOperation({
   name: "teammates.hide",
   capability: "member",
+  effect: "write",
   input: idSchema,
   entities: () => [{ kind: "teammateList" as const }],
   run: async (ctx, { id }): Promise<void> => {
     const userId = requireRosterOwner(ctx);
-    await requireReadableTeammate(ctx, id);
+    const teammate = await requireReadableTeammate(ctx, id);
+    // The Organization's AI layer is where Chat opens, so a roster without it
+    // would open on nothing.
+    if (isCieleAi(teammate)) {
+      throw new OperationError("conflict", `${teammate.name} cannot be hidden`);
+    }
     const held = await ctx.db
       .table("teammateRosterHidden")
       .list({ teammateId: id, userId });
@@ -153,6 +160,7 @@ export const hideTeammateOp = defineOperation({
 export const unhideTeammateOp = defineOperation({
   name: "teammates.unhide",
   capability: "member",
+  effect: "write",
   input: idSchema,
   entities: () => [{ kind: "teammateList" as const }],
   run: async (ctx, { id }): Promise<void> => {
@@ -169,6 +177,7 @@ export const unhideTeammateOp = defineOperation({
 export const getTeammateOp = defineOperation({
   name: "teammates.get",
   capability: "member",
+  effect: "read",
   input: idSchema,
   entities: () => [],
   run: (ctx, { id }) => requireReadableTeammate(ctx, id),
@@ -188,6 +197,7 @@ export const teammateInputSchema = z.object({
 export const createTeammateOp = defineOperation({
   name: "teammates.create",
   capability: "edit",
+  effect: "write",
   input: teammateInputSchema,
   entities: () => [{ kind: "teammateList" as const }],
   run: async (ctx, input) => {
@@ -217,6 +227,7 @@ export const createTeammateOp = defineOperation({
 export const updateTeammateOp = defineOperation({
   name: "teammates.update",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: z.string().min(1), patch: teammatePatchSchema }),
   entities: ({ id }) => [
     { kind: "teammate" as const, id },
@@ -225,6 +236,14 @@ export const updateTeammateOp = defineOperation({
   ],
   run: async (ctx, { id, patch }) => {
     const before = await requireEditableTeammate(ctx, id);
+    // Every Member's Chat opens on Ciele AI, so a private one would open on a
+    // Teammate most of them are refused.
+    if (isCieleAi(before) && patch.visibility && patch.visibility !== "org") {
+      throw new OperationError(
+        "conflict",
+        `${before.name} stays visible to the whole Organization`
+      );
+    }
     const updated = await ctx.db.table("teammates").update(id, patch);
     // Cleaning a scope is how a dangling-Collection Alert clears (#769). Every
     // id that left the scope is re-asked, because another Teammate may still
@@ -266,6 +285,7 @@ export const updateTeammateOp = defineOperation({
 export const deleteTeammateOp = defineOperation({
   name: "teammates.delete",
   capability: "edit",
+  effect: "consequential",
   input: idSchema,
   entities: ({ id }) => [
     { kind: "teammate" as const, id },
@@ -273,6 +293,11 @@ export const deleteTeammateOp = defineOperation({
   ],
   run: async (ctx, { id }): Promise<void> => {
     const teammate = await requireEditableTeammate(ctx, id);
+    // Ciele AI always exists: it can be renamed and reconfigured like any
+    // Teammate, and it is the one thing this operation refuses.
+    if (isCieleAi(teammate)) {
+      throw new OperationError("conflict", `${teammate.name} cannot be deleted. Rename it instead.`);
+    }
     // A tombstone, not a delete: the Conversations this Teammate had are the
     // record of work that happened, and they stay readable (#767).
     await ctx.db
@@ -300,6 +325,7 @@ export const deleteTeammateOp = defineOperation({
 export const listTeammateThreadOp = defineOperation({
   name: "teammates.thread",
   capability: "member",
+  effect: "read",
   input: idSchema,
   entities: () => [],
   run: async (ctx, { id }): Promise<Conversation[]> => {
@@ -314,6 +340,7 @@ export const listTeammateThreadOp = defineOperation({
 export const readTeammateConversationOp = defineOperation({
   name: "teammates.conversation",
   capability: "member",
+  effect: "read",
   input: z.object({
     id: z.string().min(1),
     conversationId: z.string().min(1),
@@ -365,6 +392,7 @@ export const readTeammateConversationOp = defineOperation({
 export const startReferralOp = defineOperation({
   name: "teammates.referral.start",
   capability: "member",
+  effect: "write",
   input: z.object({
     originConversationId: z.string().min(1),
     teammateId: z.string().min(1),

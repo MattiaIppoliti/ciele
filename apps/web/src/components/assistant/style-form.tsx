@@ -33,8 +33,8 @@ import {
   resolveWidgetStyle,
 } from "@/lib/widget-style";
 import { cn } from "@/lib/utils";
-import { RollInText } from "@/components/motion/roll-in-text";
 import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
+import { useTopBarFormActions } from "@/components/settings/form-actions";
 
 /**
  * The SETUP Style section (§4.7 of the reference map): Colors, launcher
@@ -90,6 +90,17 @@ export function StyleForm({
   const fieldId = React.useId();
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  // Cancel is "back to what is saved"; the same pair sits in the top bar.
+  const formActions = useTopBarFormActions({
+    // Aligned with the sections, which the rail indents past its dots.
+    className: "justify-end pl-7 lg:pl-10",
+    dirty,
+    saving: isPending,
+    saveLabel: "Save",
+    saveDisabled: !canEdit,
+    onSave: save,
+    onCancel: () => setDraft(saved),
+  });
   const resolved = resolveWidgetStyle(draft);
 
   // A reload or closed tab would drop the unsaved style; the browser's own
@@ -140,7 +151,7 @@ export function StyleForm({
         <p className="text-muted-foreground -mt-3 text-sm">
           Customize the colors of your chat widget&apos;s key elements.
         </p>
-        <div className="mt-3 grid gap-4 md:grid-cols-2">
+        <div className="mt-3 grid gap-4 @lg:grid-cols-2">
           <ColorCard
             label="Header"
             description="Background color of the chat window's top bar."
@@ -191,7 +202,7 @@ export function StyleForm({
             </LauncherPreview>
           }
         />
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="mt-4 grid gap-4 @lg:grid-cols-2">
           <ColorCard
             label="Launch button focus ring"
             description="Outline color shown around the launcher button when focused via keyboard."
@@ -249,7 +260,7 @@ export function StyleForm({
         <p className="text-muted-foreground -mt-3 text-sm">
           Customize button sizes.
         </p>
-        <div className="mt-3 grid gap-4 md:grid-cols-2">
+        <div className="mt-3 grid gap-4 @lg:grid-cols-2">
           <PxField
             label="Button size"
             value={draft.buttonSize}
@@ -274,7 +285,7 @@ export function StyleForm({
         <p className="text-muted-foreground -mt-3 text-sm">
           Customize button position.
         </p>
-        <div className="mt-3 grid gap-4 md:grid-cols-2">
+        <div className="mt-3 grid gap-4 @lg:grid-cols-2">
           <PxField
             label="Bottom Padding"
             value={draft.paddingBottom}
@@ -295,7 +306,7 @@ export function StyleForm({
         <div
           role="radiogroup"
           aria-label="Launcher corner"
-          className="mt-4 grid gap-3 md:grid-cols-2"
+          className="mt-4 grid gap-3 @lg:grid-cols-2"
         >
           {CORNERS.map((corner) => {
             const selected = resolved.corner === corner.value;
@@ -421,7 +432,7 @@ export function StyleForm({
         <p className="text-muted-foreground -mt-3 text-sm">
           Adjust the default window size.
         </p>
-        <div className="mt-3 grid gap-4 md:grid-cols-2">
+        <div className="mt-3 grid gap-4 @lg:grid-cols-2">
           <PxField
             label="Window width"
             value={draft.windowWidth}
@@ -443,12 +454,7 @@ export function StyleForm({
 
       </SectionTimeline>
 
-      {/* Aligned with the sections, which the rail indents past its dots. */}
-      <div className="flex justify-end pl-10">
-        <Button onClick={save} disabled={isPending || !dirty || !canEdit}>
-          <RollInText text={isPending ? "Saving…" : "Save"} />
-        </Button>
-      </div>
+      {formActions}
     </div>
   );
 }
@@ -770,7 +776,7 @@ function LauncherPreview({
 }) {
   return (
     <span
-      className="flex items-center justify-center text-white shadow-md"
+      className="flex items-center justify-center text-white shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
       style={{
         backgroundColor: color,
         width: size,

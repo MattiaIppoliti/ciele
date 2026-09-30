@@ -255,7 +255,7 @@ const Layer4: React.FC<LayerProps> = ({ color, secondaryColor, hovered }) => {
             className="h-1.5 w-1.5 rounded-full"
             style={{ backgroundColor: index < 3 ? color : secondaryColor }}
           />
-          <span className="ml-1 text-[10px] text-black dark:text-white">
+          <span className="ml-1 text-2xs text-black dark:text-white">
             {item.text}
           </span>
         </div>

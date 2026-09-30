@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { feedbackReactionScore, type Assistant, type Conversation, type FeedbackReactionId } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
-import { Sparkles, SquarePen, Trash2 } from "lucide-react";
+import { DraftingCompass, SquarePen, Trash2 } from "lucide-react";
 import { ChevronDown, Headphones, Paperclip, Pin } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
-import { formatDay } from "@/lib/format";
+import { DAY_GROUP_PREFIX, groupByDay } from "@/lib/history-groups";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { decideReviewAction } from "@/app/(admin)/reviews/actions";
 import {
@@ -41,7 +41,8 @@ import {
 } from "@/lib/local-connector-protocol";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ChatSurface, RailPanel } from "@/components/chat/rail-panel";
-import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
+import { PreviewPeek } from "./preview-peek";
+import { FULLSCREEN_GUTTER, WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { IdentityGate } from "@/components/chat/identity-gate";
@@ -88,23 +89,11 @@ import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 /** History shows this many recent conversations; pinned ones always stay. */
 const HISTORY_RECENT_LIMIT = 10;
 
-function historyDayLabel(iso: string): string {
-  const date = new Date(iso);
-  const startOfDay = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  // "Today" is the reader's own calendar day, so the older labels are too:
-  // formatDay prints in UTC, and handing it the local date as a UTC midnight
-  // keeps a late-evening conversation under the day it happened.
-  return formatDay(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-}
-
 export function PreviewPanel({
   assistant,
   connectorScope,
   startResizing = false,
+  animateEntry = false,
   variant = "docked",
   collapsed: collapsedProp,
   onCollapsedChange,
@@ -113,6 +102,8 @@ export function PreviewPanel({
   connectorScope: string | null;
   /** Mount already mid-drag, the panel was opened by dragging the collapsed rail. */
   startResizing?: boolean;
+  /** Grow in from the collapsed strip on mount: the Member just opened it. */
+  animateEntry?: boolean;
   /**
    * Collapsed state, when the mount point owns it. The docked panel shares the
    * workspace's single right rail with the Developer Panel (#754), so "collapsed"
@@ -377,7 +368,7 @@ export function PreviewPanel({
             value: "skill",
             label: "Use a skill",
             description: "Start from a prepared request.",
-            icon: <Sparkles />,
+            icon: <DraftingCompass />,
           },
         ]
       : []),
@@ -647,19 +638,10 @@ export function PreviewPanel({
     const sorted = [...conversations].sort((a, b) =>
       a.updatedAt > b.updatedAt ? -1 : 1
     );
-    const visible = [
+    return groupByDay([
       ...sorted.filter((c) => c.pinned),
       ...sorted.filter((c) => !c.pinned).slice(0, HISTORY_RECENT_LIMIT),
-    ].sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
-
-    const groups: Array<{ label: string; items: Conversation[] }> = [];
-    for (const conversation of visible) {
-      const label = historyDayLabel(conversation.updatedAt);
-      const last = groups[groups.length - 1];
-      if (last && last.label === label) last.items.push(conversation);
-      else groups.push({ label, items: [conversation] });
-    }
-    return groups;
+    ]);
   }, [conversations]);
 
   // Escape leaves full screen (matches the standard overlay convention).
@@ -771,6 +753,7 @@ export function PreviewPanel({
     {confirmDeleteModal}
     <RailPanel
       title="Preview"
+      peek={<PreviewPeek assistant={assistant} />}
       labels={{
         show: "Show preview",
         hide: "Hide preview",
@@ -780,6 +763,7 @@ export function PreviewPanel({
       collapsed={collapsedProp}
       onCollapsedChange={onCollapsedChange}
       startResizing={startResizing}
+      animateEntry={animateEntry}
       actions={
         <Hint label="Refresh preview">
           {/* Refresh re-reads the assistant's config *and* restarts the
@@ -894,10 +878,10 @@ export function PreviewPanel({
                   editable={false}
                   items={historyGroups.map(
                     (group): SidebarResource => ({
-                      id: `day:${group.label}`,
+                      id: group.id,
                       label: group.label,
                       kind: "folder",
-                      children: group.items.map((c) => ({
+                      children: group.entries.map((c) => ({
                         id: c.id,
                         label: c.title || "Untitled conversation",
                         kind: "file",
@@ -905,11 +889,9 @@ export function PreviewPanel({
                     })
                   )}
                   activeId={conversationId}
-                  defaultExpandedIds={historyGroups.map(
-                    (group) => `day:${group.label}`
-                  )}
+                  defaultExpandedIds={historyGroups.map((group) => group.id)}
                   onActiveChange={(id) => {
-                    if (id.startsWith("day:")) return;
+                    if (id.startsWith(DAY_GROUP_PREFIX)) return;
                     const conversation = conversations.find((c) => c.id === id);
                     if (!conversation) return;
                     void loadConversation(conversation);
@@ -997,7 +979,7 @@ export function PreviewPanel({
           busy={pending}
           navigation="rail"
           viewportClassName={`py-5 ${WIDEN_TRANSITION} ${
-            fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
+            fullscreen ? FULLSCREEN_GUTTER : "px-4"
           }`}
           contentClassName="space-y-4"
         >
@@ -1089,7 +1071,7 @@ export function PreviewPanel({
                 <TriggerRow
                   name={skill.name}
                   hint={skill.description || skill.starter}
-                  icon={<Sparkles />}
+                  icon={<DraftingCompass />}
                 />
               )}
             />

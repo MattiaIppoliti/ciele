@@ -61,6 +61,7 @@ async function requireConversation(
 export const listInboxConversationsOp = defineOperation({
   name: "inbox.conversations.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: async (ctx) =>
@@ -71,6 +72,7 @@ export const listInboxConversationsOp = defineOperation({
 export const listInboxPageOp = defineOperation({
   name: "inbox.conversations.page",
   capability: "member",
+  effect: "read",
   input: inboxQuerySchema,
   entities: () => [],
   run: (ctx, query) => ctx.db.getInboxPage(ctx.organizationId, query),
@@ -79,6 +81,7 @@ export const listInboxPageOp = defineOperation({
 export const getInboxFacetsOp = defineOperation({
   name: "inbox.facets.get",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.getInboxFacets(ctx.organizationId),
@@ -102,6 +105,7 @@ export type InboxConversationDetail = InboxConversationReview & {
 export const getInboxConversationReviewOp = defineOperation({
   name: "inbox.conversations.review",
   capability: "member",
+  effect: "read",
   input: z.object({ conversationId: z.string().min(1) }),
   entities: () => [],
   run: async (
@@ -152,6 +156,7 @@ async function readInboxWindow(options: {
 export const readInboxSummaryWindowOp = defineOperation({
   name: "inbox.conversations.summary-window",
   capability: "member",
+  effect: "read",
   input: z.object({
     query: inboxQuerySchema.omit({ cursor: true, limit: true }),
     limit: z.number().int().min(1).max(INBOX_SUMMARY_WINDOW_LIMIT),
@@ -163,6 +168,7 @@ export const readInboxSummaryWindowOp = defineOperation({
 export const getConversationOp = defineOperation({
   name: "inbox.conversations.get",
   capability: "member",
+  effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { id }) => {
@@ -180,6 +186,7 @@ export const getConversationOp = defineOperation({
 export const readConversationsForExportOp = defineOperation({
   name: "inbox.conversations.export-read",
   capability: "member",
+  effect: "read",
   input: z.object({
     query: inboxQuerySchema.omit({ cursor: true, limit: true }),
     limit: z.number().int().min(1).max(500),
@@ -216,6 +223,7 @@ export const readConversationsForExportOp = defineOperation({
 export const setConversationPinnedOp = defineOperation({
   name: "inbox.conversations.pin",
   capability: "member",
+  effect: "write",
   input: z.object({ id: z.string().min(1), pinned: z.boolean() }),
   entities: () => [{ kind: "inbox" as const }],
   run: async (ctx, { id, pinned }) => {
@@ -233,6 +241,7 @@ export const setConversationPinnedOp = defineOperation({
 export const setConversationLegalHoldOp = defineOperation({
   name: "inbox.conversations.legalHold",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({ id: z.string().min(1), legalHold: z.boolean() }),
   entities: () => [{ kind: "inbox" as const }],
   run: async (ctx, { id, legalHold }) => {
@@ -245,6 +254,7 @@ export const setConversationLegalHoldOp = defineOperation({
 export const sendConversationFeedbackOp = defineOperation({
   name: "inbox.conversations.feedback",
   capability: "member",
+  effect: "write",
   input: z.object({ id: z.string().min(1), text: z.string().trim().min(1).max(2_000) }),
   entities: () => [{ kind: "inbox" as const }],
   run: async (ctx, { id, text }) => {
@@ -260,6 +270,7 @@ export const sendConversationFeedbackOp = defineOperation({
 export const deleteConversationOp = defineOperation({
   name: "inbox.conversations.delete",
   capability: "member",
+  effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [{ kind: "inbox" as const }],
   run: async (ctx, { id }) => {
@@ -274,6 +285,7 @@ export const deleteConversationOp = defineOperation({
 export const setMessageFeedbackOp = defineOperation({
   name: "inbox.messages.feedback",
   capability: "member",
+  effect: "write",
   input: z.object({
     messageId: z.string().min(1),
     feedback: z.union([z.literal(-1), z.literal(0), z.literal(1)]),

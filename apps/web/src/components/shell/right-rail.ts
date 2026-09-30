@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useId } from "react";
+import { useResizableWidth } from "@/components/ui/resizable-panel";
 
 /**
  * The workspace's right rail, published as CSS custom properties.
  *
- * The rail's occupant (today the assistant editor's live preview) is decided
- * three layout levels below `(admin)/layout.tsx`, where the viewport-fixed
+ * The rail's occupant (the live Preview, the Flows Agent, the Developer
+ * Panel) is decided below `(admin)/layout.tsx`, where the viewport-fixed
  * furniture, the bottom-right notification stack, is mounted. The two need
  * to agree on how wide the rail currently is, and the width is a
  * drag-resizable number that changes every pointer frame.
@@ -101,16 +102,34 @@ function applyRightRail(): void {
 }
 
 /**
- * Publish this component's occupancy of the right rail. Pass `null` when it
- * occupies nothing the rest of the shell should move out of the way for, a
- * collapsed 48px rail holds one button at its top, and a full-route or
- * fullscreen preview is not a rail at all.
+ * The width of a panel docked in the right rail, resizable, and published to
+ * the shell in the same call.
+ *
+ * Every occupant sizes itself through this hook, so none can hold the rail
+ * without the viewport-fixed furniture knowing how wide it is. That was the
+ * Developer Panel's bug: it sized itself with `useResizableWidth` alone, never
+ * published, and the notification stack sat on top of it.
+ *
+ * `occupied` false (a collapsed 48px strip, a full-route page) sizes without
+ * publishing: there is nothing for the shell to move out of the way for.
+ */
+export function useDockedRail(
+  options: Parameters<typeof useResizableWidth>[0],
+  occupied: boolean,
+): ReturnType<typeof useResizableWidth> {
+  const sized = useResizableWidth(options);
+  useRightRail(occupied ? { width: sized.width, animated: !sized.resizing } : null);
+  return sized;
+}
+
+/**
+ * Publish this component's occupancy of the right rail, `null` for none.
  *
  * Deregisters on unmount, so navigating away from a rail page returns the fixed
- * furniture to the viewport edge — and so that a panel leaving while another
+ * furniture to the viewport edge, and so that a panel leaving while another
  * still holds the rail leaves that one's width standing.
  */
-export function useRightRail(rail: RightRail | null): void {
+function useRightRail(rail: RightRail | null): void {
   const id = useId();
   const width = rail?.width ?? 0;
   const animated = rail?.animated ?? false;

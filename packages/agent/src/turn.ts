@@ -53,6 +53,7 @@ import type {
 import {
   APPROVAL_EXPIRY_MS,
   approvalCardPart,
+  confirmationGateResult,
   runApprovalGate,
 } from "./approval-gate";
 import { resolveDecisionModel } from "./decision-model";
@@ -1502,9 +1503,15 @@ export async function streamConversationTurn(
           // gate to protect, and asking a colleague to authorise somebody
           // writing to their own profile would be absurd.
           guard: action.domain === "memory" ? undefined : async (actionInput: Record<string, unknown>) => {
-            const gate = await runApprovalGate({
+            // A call the host marks as always confirmed skips the judgement
+            // and goes straight in front of the Member, gate or no gate.
+            const confirmed = action.alwaysConfirm?.(actionInput) ?? false;
+            const callLabel = action.labelFor?.(actionInput) ?? action.label;
+            const gate = confirmed
+              ? confirmationGateResult()
+              : await runApprovalGate({
               subject: {
-                label: action.label,
+                label: callLabel,
                 description: action.description,
                 arguments: JSON.stringify(actionInput),
                 ...(teammate?.roleDescription
@@ -1523,9 +1530,16 @@ export async function streamConversationTurn(
             // that never had a key has not opted into this and runs exactly as
             // it did before (user story 24). A backend that *failed* is a
             // different thing and does stop the action, because an outage must
-            // not become an approval.
-            if (gate.backend === null) return null;
-            if (gate.verdict.kind === "allow") return null;
+            // not become an approval. A confirmation always stops: it has a
+            // null backend too, but it is a promise the product made rather
+            // than a judgement the deployment opted into.
+            //
+            // The `allow` clause never changes the answer (a stopped call is
+            // never `allow`: a confirmation carries `review`). It is there to
+            // narrow `gate.verdict` for the approval row below.
+            if (gate.verdict.kind === "allow" || (!confirmed && gate.backend === null)) {
+              return null;
+            }
 
             const approval = await systemDb.table("actionApprovals").insert({
               organizationId: input.organizationId,
@@ -1534,7 +1548,7 @@ export async function streamConversationTurn(
               requestedBy: input.keyResolution?.memberId ?? null,
               operation: action.operation,
               input: actionInput,
-              label: action.label,
+              label: callLabel,
               reversibility: gate.verdict.reversibility,
               reason: gate.verdict.reason,
               backend: gate.backend,
@@ -1545,7 +1559,7 @@ export async function streamConversationTurn(
             });
             return approvalCardPart({
               approvalId: approval.id,
-              label: action.label,
+              label: callLabel,
               verdict: gate.verdict,
             });
           },

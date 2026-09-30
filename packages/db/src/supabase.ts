@@ -1813,6 +1813,20 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .is("revoked_at", null));
     },
 
+    async deleteRevokedApiKey(keyId) {
+      const deleted = must(await client
+        .from("organization_api_keys")
+        .delete()
+        .eq("id", keyId)
+        // "revoked_at is not null", spelled as a comparison: null never
+        // compares, and the test shim has no `not`.
+        .lt("revoked_at", "infinity")
+        // RLS filters a refused delete to zero rows without an error, so the
+        // rows that actually went are the only evidence it happened.
+        .select("id"));
+      return (deleted ?? []).length > 0;
+    },
+
     async getApiKeyByHash(secretHash) {
       const data = must(await client
         .from("organization_api_keys")
@@ -4014,6 +4028,18 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as ConversationRow[]).map(toConversation);
     },
 
+    async listMemberTeammateConversations(teammateIds, subjectId) {
+      if (teammateIds.length === 0) return [];
+      const data = must(await client
+        .from("conversations")
+        .select("*")
+        .in("teammate_id", teammateIds)
+        .eq("subject_id", subjectId)
+        .order("updated_at", { ascending: false })
+        .limit(50));
+      return (data as ConversationRow[]).map(toConversation);
+    },
+
     async getInboxPage(organizationId, query): Promise<InboxPage> {
       const limit = inboxPageSize(query.limit);
       const cursor = decodeInboxCursor(query.cursor);
@@ -4257,6 +4283,57 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .select("*")
         .maybeSingle());
       return data ? (rowToDomain(data) as unknown as ActionApproval) : null;
+    },
+
+    async claimActionApprovalRun(id, { now, staleBefore }) {
+      // One statement, so the filter is the lock: an approved row nobody has
+      // run, whose claim is absent or older than the lease.
+      const result = await client
+        .from("action_approvals")
+        .update({ run_claimed_at: now, updated_at: now })
+        .eq("id", id)
+        .eq("status", "approved")
+        .is("executed_at", null)
+        .or(`run_claimed_at.is.null,run_claimed_at.lt.${staleBefore}`)
+        .select("*")
+        .maybeSingle();
+      if (result.error && isSchemaLagError(result.error)) {
+        // One migration behind (20260930120000) there is no lease to take:
+        // answer the approved, unrun row, as the gate did before the claim
+        // existed. The decision's compare-and-set still picks who runs it.
+        const row = must(await client
+          .from("action_approvals")
+          .select("*")
+          .eq("id", id)
+          .eq("status", "approved")
+          .is("executed_at", null)
+          .maybeSingle());
+        return row ? (rowToDomain(row) as unknown as ActionApproval) : null;
+      }
+      const data = must(result);
+      return data ? (rowToDomain(data) as unknown as ActionApproval) : null;
+    },
+
+    async settleActionApprovalRun(id, outcome, claimedAt) {
+      const now = new Date().toISOString();
+      if (outcome === "ran") {
+        must(await client
+          .from("action_approvals")
+          .update({ executed_at: now, updated_at: now })
+          .eq("id", id));
+        return;
+      }
+      // Released only while the claim is still this run's: a run that outlived
+      // its lease was taken over, and must not free the claim of the run that
+      // replaced it.
+      const { error } = await client
+        .from("action_approvals")
+        .update({ run_claimed_at: null, updated_at: now })
+        .eq("id", id)
+        .eq("run_claimed_at", claimedAt)
+        .is("executed_at", null);
+      // One migration behind there was no claim to release.
+      if (error && !isSchemaLagError(error)) throw error;
     },
 
     async settleWebhookSubscription(id, patch) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ExportJobKind, ExportJobStatus, InsightsFilter } from "@agent-hub/core";
@@ -98,11 +99,10 @@ export function ExportsClient({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Exports" /></h1>
+      <SlotPortal id={TOP_BAR_SLOT}>
         <CreateExportDialog assistants={assistants} defaultFilter={defaultFilter} />
-      </header>
-      <p className="text-muted-foreground px-4 text-sm sm:px-6">
+      </SlotPortal>
+      <p className="text-muted-foreground shrink-0 px-4 pt-4 text-sm sm:px-6">
         Exports build in the background and appear here when ready.
       </p>
       <p role="status" aria-live="polite" className="sr-only">

@@ -67,7 +67,7 @@ export function ObservabilityDashboard({
           <Section
             title="Latency"
             description="How long a finished turn took, end to end"
-            className="col-span-12 xl:col-span-6"
+            className="col-span-12 @5xl:col-span-6"
           >
             <dl className="mb-4 grid grid-cols-3 gap-4">
               {[
@@ -90,7 +90,7 @@ export function ObservabilityDashboard({
           <Section
             title="Latency over time"
             description="Daily median and 95th percentile, estimated from the histogram"
-            className="col-span-12 xl:col-span-6"
+            className="col-span-12 @5xl:col-span-6"
           >
             {totals.turns === 0 ? (
               <p className="text-muted-foreground py-6 text-sm">No finished turns in this range.</p>
@@ -113,7 +113,7 @@ export function ObservabilityDashboard({
               totals.toolCallsPerTurn === null ? undefined : `${totals.toolCallsPerTurn.toFixed(1)} tool calls per turn`
             }
             empty="No finished turns in this range."
-            className="col-span-12 lg:col-span-6 xl:col-span-4"
+            className="col-span-12 @3xl:col-span-6 @5xl:col-span-4"
           >
             <OutcomeBars daily={dashboard.daily} />
             {dashboard.errors.length > 0 && (
@@ -140,7 +140,7 @@ export function ObservabilityDashboard({
                 ? "The verifier graded no answers in this range."
                 : "The verifier grades Assistant answers only, so there is nothing to show for this surface."
             }
-            className="col-span-12 lg:col-span-6 xl:col-span-4"
+            className="col-span-12 @3xl:col-span-6 @5xl:col-span-4"
           >
             <VerdictBars daily={dashboard.daily} />
           </RateCard>
@@ -157,7 +157,7 @@ export function ObservabilityDashboard({
                 ? "No Visitor conversations started in this range."
                 : "Only Assistant conversations can be escalated, so there is nothing to show for this surface."
             }
-            className="col-span-12 lg:col-span-6 xl:col-span-4"
+            className="col-span-12 @3xl:col-span-6 @5xl:col-span-4"
           />
         </div>
 

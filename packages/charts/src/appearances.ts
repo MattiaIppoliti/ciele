@@ -17,7 +17,7 @@ export const APPEARANCE = {
   tooltipBg: "bg-[#121212]",
   tooltipText: "text-white",
   tooltipSub: "text-zinc-400",
-  tooltipShadow: "shadow-lg shadow-[#121212]/15",
+  tooltipShadow: "shadow-strong",
   idleDot: "rgba(18,18,18,0.08)",
   hoverDot: "rgba(18,18,18,0.04)",
   primaryLineStroke: "rgba(18,18,18,0.85)",

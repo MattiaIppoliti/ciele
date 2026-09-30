@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { PageCrumb } from "@/components/shell/top-bar-slots";
 import { HelpDeskManage } from "@/components/help-desks/help-desk-manage";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit } from "@/lib/rbac";
@@ -33,10 +34,13 @@ export default async function ManageHelpDeskPage({
   };
 
   return (
+    <>
+      <PageCrumb label={desk.name} />
     <HelpDeskManage
       desk={safeDesk}
       channels={channels}
       canEdit={canEdit(role)}
     />
+    </>
   );
 }

@@ -3,7 +3,7 @@ import {
   Bell,
   BookText,
   ChartLine,
-  CircleHelp,
+  UsersRound,
   Compass,
   FlaskConical,
   LayoutGrid,
@@ -49,7 +49,7 @@ export interface PreviewNavItem {
 
 export const PREVIEW_GLOBAL_NAV: PreviewNavItem[] = [
   { label: "Assistants", icon: LayoutGrid },
-  { label: "Help Desks", icon: CircleHelp },
+  { label: "Help Desks", icon: UsersRound },
   { label: "Inbox", icon: Archive },
   { label: "Teammates", icon: MousePointerClick },
   { label: "Improvements", icon: FlaskConical },

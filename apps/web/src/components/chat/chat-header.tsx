@@ -2,7 +2,8 @@
 
 import { History, SquarePen, X } from "lucide-react";
 import { Ellipsis, MessageSquareText, Minimize2 } from "lucide-react";
-import { Button, Hint } from "@agent-hub/ui";
+import type { ReactNode } from "react";
+import { Button, Hint, Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { Maximize2Icon } from "@/components/ui/icons/maximize-2";
 import {
@@ -23,12 +24,17 @@ import {
  * callback the host omits takes its control with it: the Teammate chat fills a
  * route of its own, so there is nothing to close and nothing to expand into,
  * and rendering dead buttons would be worse than rendering none (#768).
+ *
+ * `historyMenu` makes the history button a popover trigger with that content
+ * under it (the Teammate chat); without it the button only toggles, and the
+ * host draws its own history surface.
  */
 export function ChatHeader({
   nickname,
   avatarUrl,
   historyOpen,
   onToggleHistory,
+  historyMenu,
   onNewChat,
   onClose,
   fullscreen,
@@ -41,6 +47,7 @@ export function ChatHeader({
   avatarUrl?: string | null;
   historyOpen: boolean;
   onToggleHistory: () => void;
+  historyMenu?: ReactNode;
   onNewChat: () => void;
   onClose?: () => void;
   fullscreen?: boolean;
@@ -54,24 +61,55 @@ export function ChatHeader({
   // Icons use the theme foreground token (via `text-primary`) rather than the
   // brand color: a dark brand color is invisible on the dark-mode surface, so
   // the header must flip white in dark, same as the rest of the chrome.
+  const historyButtonClass = historyOpen
+    ? "border-primary/40 bg-primary/10 border"
+    : undefined;
   return (
     <div
       className="flex items-center gap-1 border-b px-3 py-3"
       style={headerColor ? { backgroundColor: headerColor } : undefined}
     >
-      <Hint label="View history">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="View history"
-          className={
-            historyOpen ? "border-primary/40 bg-primary/10 border" : undefined
-          }
-          onClick={onToggleHistory}
+      {historyMenu ? (
+        <Popover
+          open={historyOpen}
+          onOpenChange={(open) => {
+            if (open !== historyOpen) onToggleHistory();
+          }}
         >
-          <History className="text-primary size-4" />
-        </Button>
-      </Hint>
+          <Hint label="View history">
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="View history"
+                  className={historyButtonClass}
+                />
+              }
+            >
+              <History className="text-primary size-4" />
+            </PopoverTrigger>
+          </Hint>
+          <PopoverContent
+            aria-label="Past conversations"
+            className="flex max-h-[min(24rem,var(--available-height))] w-80 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden p-0"
+          >
+            {historyMenu}
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <Hint label="View history">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="View history"
+            className={historyButtonClass}
+            onClick={onToggleHistory}
+          >
+            <History className="text-primary size-4" />
+          </Button>
+        </Hint>
+      )}
 
       <span className="flex min-w-0 flex-1 items-center justify-center gap-2 text-lg font-medium">
         {avatarUrl && (

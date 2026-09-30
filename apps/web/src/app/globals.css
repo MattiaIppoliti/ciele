@@ -45,6 +45,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-content: var(--content);
+  --color-shell: var(--shell);
+  --color-rail: var(--rail);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-host-grotesk);
   --font-mono: var(--font-geist-mono);
@@ -81,11 +83,14 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-table-frame: var(--table-frame);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  /* 4 / 6 / 8 / 12 / 16 at the base 8px: Linear's chip, tag, control, card
+     and panel radii. They used to be 0.6/0.8/1.4/1.8 multiples, which put the
+     card at 11.2px and the panel at 14.4px, close to a scale but on none. */
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
@@ -100,6 +105,16 @@
   --color-alpha-light: var(--alpha-light);
   --color-alpha-medium: var(--alpha-medium);
   --color-alpha-strong: var(--alpha-strong);
+
+  /* The one chromatic accent, after Linear's lavender: the committing button,
+     the focus ring and link emphasis, and nothing else. Monochrome (equal to
+     `primary`) everywhere by default; the admin surface's Midnight palette
+     turns it lavender below. `brand-ink` is the text form, because #5e6ad2 as
+     text is 4.3:1 on #f5f5f5, under the 4.5:1 floor. */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-ink: var(--brand-ink);
 
   /* Tag/chip tints: a surface at the pale end of a hue and ink at the dark
      end of the same hue, so a status reads as coloured without becoming a
@@ -161,9 +176,15 @@
   /* Match the neutral surface scale used by docs.ciele.app. The widget
      renders under this same root, so its chat chrome stays in sync. */
   --background: #f5f5f5;
-  /* Center surface of the admin shell (main content); top bar and sidebars
-     keep --background. Light theme keeps both identical. */
+  /* Center surface of the admin shell: one rounded panel holding the top bar,
+     the page and the right rail. Light theme keeps it at --background. */
   --content: var(--background);
+  /* The frame around that panel, which the left sidebar sits on: a step
+     darker than the panel so the panel reads as lifted off it. */
+  --shell: #ebebeb;
+  /* A right-rail card (the live Preview, the Developer Panel): an inner module
+     inside the workspace panel, a step off it the way the frame is. */
+  --rail: #ededed;
   --foreground: oklch(0.145 0 0);
   --card: #f1f1f1;
   /* The frame a table card draws its heading band and its footer on, a step
@@ -216,6 +237,10 @@
   --alpha-light: rgba(0, 0, 0, 0.04);
   --alpha-medium: rgba(0, 0, 0, 0.08);
   --alpha-strong: rgba(0, 0, 0, 0.16);
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+  --brand-hover: color-mix(in oklab, var(--primary), transparent 20%);
+  --brand-ink: var(--foreground);
   --elevation-light:
     0 0 4px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   --elevation-strong:
@@ -275,6 +300,8 @@
 .dark {
   --background: #121212;
   --content: #171717;
+  --shell: var(--background);
+  --rail: #1c1c1c;
   --foreground: oklch(0.985 0 0);
   --card: #191919;
   /* Darker than the sheet, and not so dark it merges with --background. */
@@ -345,6 +372,8 @@
 .light {
   --background: #f5f5f5;
   --content: var(--background);
+  --shell: #ebebeb;
+  --rail: #ededed;
   --foreground: oklch(0.145 0 0);
   --card: #f1f1f1;
   /* The frame a table card draws its heading band and its footer on, a step
@@ -387,6 +416,10 @@
   --alpha-light: rgba(0, 0, 0, 0.04);
   --alpha-medium: rgba(0, 0, 0, 0.08);
   --alpha-strong: rgba(0, 0, 0, 0.16);
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+  --brand-hover: color-mix(in oklab, var(--primary), transparent 20%);
+  --brand-ink: var(--foreground);
   --elevation-light:
     0 0 4px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   --elevation-strong:
@@ -412,6 +445,8 @@
 .light[data-color-palette="mist-blue"] {
   --background: #fff;
   --content: #fff;
+  --shell: #f3f4f6;
+  --rail: #f4f5f7;
   --foreground: #17191d;
   --card: #f7f8fa;
   --table-frame: #e8ebef;
@@ -421,7 +456,7 @@
   --card-sheen-shade: rgba(21, 27, 35, 0.025);
   --popover: #fff;
   --popover-foreground: #17191d;
-  --primary: #151b23;
+  --primary: #1c2b47;
   --primary-foreground: #fff;
   --secondary: #f4f5f7;
   --secondary-foreground: #17191d;
@@ -429,22 +464,24 @@
   --muted-foreground: #4b535d;
   --accent: #f4f5f7;
   --accent-foreground: #17191d;
-  --border: #737d89;
-  --input: #65707d;
-  --ring: #27313e;
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
   --sidebar: #f7f8fa;
   --sidebar-foreground: #17191d;
-  --sidebar-primary: #151b23;
+  --sidebar-primary: #1c2b47;
   --sidebar-primary-foreground: #fff;
   --sidebar-accent: #f0f2f5;
   --sidebar-accent-foreground: #17191d;
-  --sidebar-border: #737d89;
-  --sidebar-ring: #27313e;
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark[data-color-palette="mist-blue"] {
   --background: #151b23;
   --content: #151b23;
+  --shell: #0f141a;
+  --rail: #1a212a;
   --foreground: oklch(0.985 0 0);
   --card: #202830;
   --table-frame: #18212b;
@@ -487,9 +524,74 @@ html[data-app-surface="admin"] {
   font-size: 92%;
 }
 
+/* The console's accent: Linear's lavender on the committing button, the focus
+   ring and link emphasis. White on #5e6ad2 is 4.7:1; hover darkens rather than
+   lightening, because Linear's lighter #828fff under white text is 2.9:1. Link
+   ink is a darker lavender on the light ground and #828fff on the dark one.
+   Mist Blue keeps the monochrome defaults and its own navy below. */
+html[data-app-surface="admin"]:not([data-color-palette="mist-blue"]) {
+  --brand: #5e6ad2;
+  --brand-foreground: #fff;
+  --brand-hover: color-mix(in oklab, #5e6ad2, black 12%);
+  --brand-ink: #4c57c0;
+  --ring: #5e6ad2;
+}
+
+html.dark[data-app-surface="admin"]:not([data-color-palette="mist-blue"]) {
+  --brand-ink: #828fff;
+}
+
+/* Midnight dark in the console takes Linear's ground and surface ladder
+   (docs/design/linear-reference.md): the frame is the near-black canvas with
+   its faint blue tint, the workspace panel one step up, cards two, controls and
+   the rail card three, with Linear's own hairlines and ink. Scoped to the admin
+   surface and to Midnight, so the marketing site, the docs, the widget and
+   Mist Blue keep their own grounds. Every pair keeps AA: muted ink #8a8f98 is
+   5.4:1 on the controls' surface, 5.6:1 on a card and 5.9:1 on the panel;
+   the link ink #828fff is 6.1:1 or better on all four. */
+html.dark[data-app-surface="admin"]:not([data-color-palette="mist-blue"]) {
+  --background: #010102;
+  --shell: var(--background);
+  --content: #0f1011;
+  --card: #141516;
+  --popover: #141516;
+  --secondary: #18191a;
+  --muted: #18191a;
+  --accent: #18191a;
+  --rail: #18191a;
+  /* A table card's band stays a step below the rows it frames. */
+  --table-frame: #0b0c0d;
+  --foreground: #f7f8f8;
+  --card-foreground: #f7f8f8;
+  --popover-foreground: #f7f8f8;
+  --secondary-foreground: #f7f8f8;
+  --accent-foreground: #f7f8f8;
+  --muted-foreground: #8a8f98;
+  --primary: #f7f8f8;
+  --primary-foreground: #0f1011;
+  --border: #23252a;
+  --input: #34343a;
+  --sidebar: var(--background);
+  --sidebar-foreground: #f7f8f8;
+  --sidebar-accent: #18191a;
+  --sidebar-accent-foreground: #f7f8f8;
+  --sidebar-border: #23252a;
+}
+
+/* Mist Blue's dark committing button is navy like its light one, not the
+   light pill its dark `--primary` would draw. Hover lifts it toward white,
+   which keeps the label's contrast where inverting to the pill would not. */
+html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] {
+  --brand: #1c2b47;
+  --brand-foreground: oklch(0.985 0 0);
+  --brand-hover: color-mix(in oklab, #1c2b47, white 10%);
+}
+
 /* Keep the smallest admin labels readable on touch-sized viewports. The
    console's 92% desktop density would otherwise take the 11px text-2xs step
-   just below 11px; public pages never opt into this override. */
+   just below 11px; public pages never opt into this override. The pixel
+   selectors only catch the vendored charts now (charts/beui, spectrumui),
+   which the design-token lint exempts; product code is on text-2xs. */
 @media (max-width: 1023px) {
   html[data-app-surface="admin"] {
     --text-2xs: 11px;
@@ -502,17 +604,18 @@ html[data-app-surface="admin"] {
 }
 
 /* The compact desktop rail is pointer-first, but the mobile drawer is used
-   with touch. Keep its navigation rows and fold controls at Apple's 44px
-   minimum target size without inflating the desktop console. */
+   with touch. Rows and fold controls are 38px: taller than the desktop 32,
+   and tight enough that the list still reads as one menu on a phone. The 44px
+   they used to be spread eleven rows over two screens. */
 @media (max-width: 1023px) {
   html[data-app-surface="admin"] [data-nav-drawer] [data-highlight-row] {
-    min-height: 44px;
-    height: 44px !important;
+    min-height: 38px;
+    height: 38px !important;
   }
 
   html[data-app-surface="admin"] [data-nav-drawer] button[aria-controls] {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 38px;
+    min-height: 38px;
   }
 }
 
@@ -556,7 +659,10 @@ html[data-app-surface="admin"] {
    picker, while Base UI retains its portal positioning and keyboard model.
    The scope excludes the commercial form and the published chat widget. */
 html[data-app-surface="admin"] [data-slot="select-trigger"] {
-  border-radius: 0.75rem;
+  /* A trigger is a control, so it takes the control radius (8px) like the
+     inputs and buttons beside it. It was 12px, the card radius, which made a
+     select the one rounder field in every form row. */
+  border-radius: 0.5rem;
 }
 
 html[data-app-surface="admin"] [data-slot="select-content"] {
@@ -565,9 +671,18 @@ html[data-app-surface="admin"] [data-slot="select-content"] {
 
 html[data-app-surface="admin"] [data-slot="select-item"] {
   min-height: 2rem;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   padding-block: 0.375rem;
   padding-inline-start: 0.625rem;
+}
+
+/* Icon strokes at 1.75 instead of lucide's 2, for Linear's lighter line. Only
+   the icon signature (24-unit viewBox, no fill, the default width) is matched,
+   so an icon that asks for its own stroke, and every chart, keeps it. Not 1.5:
+   a 16px icon at the console's 92% density would draw under one device pixel
+   on a 1x screen and blur. Covers lucide and the animated icons alike. */
+html[data-app-surface="admin"] svg[viewBox="0 0 24 24"][fill="none"][stroke-width="2"] {
+  stroke-width: 1.75;
 }
 
 /* Checked switches keep Midnight's white track in every admin dark palette,
@@ -580,6 +695,33 @@ html.dark[data-app-surface="admin"] [data-slot="switch"][data-state="checked"] {
 html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="switch"][data-checked] > *,
 html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="switch"][data-state="checked"] > * {
   background-color: #151b23;
+}
+
+/* The Find preview's open arrow: on hover it exits through the top-right corner
+   and re-enters from the bottom-left, then settles. The button clips, so it
+   really does leave the box. */
+@keyframes find-open-arrow {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  42% {
+    transform: translate(9px, -9px);
+    opacity: 0;
+  }
+  43% {
+    transform: translate(-9px, 9px);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .group\/open:hover .find-open-arrow {
+    animation: find-open-arrow 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }
 
 @layer base {
@@ -830,6 +972,18 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
 /* Increased contrast: darken the two tokens that carry the app's secondary
    information, and give every border a real edge rather than a suggestion. */
 @media (prefers-contrast: more) {
+  html[data-app-surface="admin"]:not([data-color-palette="mist-blue"]) {
+    --ring: #3f49b3;
+    --brand-ink: #3f49b3;
+  }
+  html.dark[data-app-surface="admin"]:not([data-color-palette="mist-blue"]) {
+    --ring: #aab2ff;
+    --brand-ink: #aab2ff;
+    /* Linear's stronger steps, since the Midnight block above outranks `.dark`. */
+    --muted-foreground: #d0d6e0;
+    --border: #3e3e44;
+    --input: #3e3e44;
+  }
   :root,
   .light {
     --muted-foreground: oklch(0.4 0 0);
@@ -864,6 +1018,39 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
     outline: 2px solid Highlight !important;
     outline-offset: 2px;
     box-shadow: none !important;
+  }
+}
+
+/* Every scrollbar on the platform: a thin thumb on no track, Linear's way. The
+   track the OS draws (a grey rail with its own border) read as a second panel
+   beside every scrolling list. The thumb is `alpha-strong`, so it inverts with
+   the theme and needs no dark twin. Chromium and Firefox take
+   `scrollbar-color`; Safari does not support it and gets the pseudo-elements,
+   which Chromium 121+ ignores once `scrollbar-color` is set. */
+@supports (scrollbar-color: auto) {
+  :root {
+    scrollbar-color: var(--alpha-strong) transparent;
+  }
+  * {
+    scrollbar-width: thin;
+  }
+}
+
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+    background: transparent;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--alpha-strong);
+    background-clip: content-box;
+    border: 3px solid transparent;
+    border-radius: 9999px;
   }
 }
 
@@ -1386,4 +1573,17 @@ scritto-text:not(:defined) {
    selection shadow, which is the one the rounded corner already follows. */
 .react-flow__node:focus-visible .flow-surface-card {
   --flow-selection: 0 0 0 2px var(--ring);
+}
+
+/* The console's workspace: the inset on the frame and the rounded panel lifted
+   off it (DESIGN.md §4, "Shell"). Named here rather than spelled in
+   `(admin)/layout.tsx` because that layout is a server component, and every
+   class string in it is serialised into the RSC payload of every prerendered
+   admin document, which `measure-document.mjs` budgets. */
+@utility admin-workspace {
+  @apply flex min-w-0 flex-1 flex-col p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:p-2;
+}
+
+@utility admin-panel {
+  @apply bg-content flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border shadow-[0_1px_3px_rgb(0_0_0/0.06)];
 }

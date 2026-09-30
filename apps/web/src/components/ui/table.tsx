@@ -80,7 +80,9 @@ function Table({
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      // The bar itself is hidden: a scrollbar under every table reads as chrome.
+      // The wide ones still pan with a trackpad or shift-wheel.
+      className="relative w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       <table
         data-slot="table"

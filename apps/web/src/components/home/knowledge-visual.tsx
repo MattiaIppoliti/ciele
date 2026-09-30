@@ -25,10 +25,10 @@ function UploadingFileRow() {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-1.5">
             <div className="min-w-0">
-              <p className="text-foreground truncate text-[10px] font-medium leading-tight">
+              <p className="text-foreground truncate text-2xs font-medium leading-tight">
                 Acme Customer Info.pdf
               </p>
-              <p className="text-muted-foreground text-[9px] leading-tight">
+              <p className="text-muted-foreground text-2xs leading-tight">
                 PDF · 274 KB
               </p>
             </div>

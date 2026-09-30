@@ -1,3 +1,4 @@
+import { Gauge } from "lucide-react";
 import { redirect } from "next/navigation";
 import type {
   UsageDailyRow,
@@ -34,6 +35,7 @@ import {
   UnmeteredNotice,
   UsageLimitsBlock,
 } from "@/components/settings/usage-limits";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { UsagePies } from "@/components/settings/usage-pies";
 import { UsageSpendersBlock } from "@/components/settings/usage-spenders";
@@ -201,6 +203,7 @@ export default async function UsageSettingsPage() {
 
   return (
     <SettingsPanel
+      icon={Gauge}
       title="Usage"
       description={
         <>
@@ -211,6 +214,8 @@ export default async function UsageSettingsPage() {
         </>
       }
     >
+      <SectionTimeline>
+      <TimelineSection title="Overview">
         <UsagePies
           byResource={METERS.map((meter) => ({
             key: meter.resource,
@@ -242,7 +247,11 @@ export default async function UsageSettingsPage() {
           </>
         )}
 
+      </TimelineSection>
+      <TimelineSection title="Top spenders">
         <UsageSpendersBlock sections={spenderSections} />
+      </TimelineSection>
+      <TimelineSection title="Breakdown">
 
         {operationRows.length > 0 ? (
           <Card className="mt-6">
@@ -429,6 +438,8 @@ export default async function UsageSettingsPage() {
             )}
           </CardContent>
         </Card>
+      </TimelineSection>
+      </SectionTimeline>
     </SettingsPanel>
   );
 }

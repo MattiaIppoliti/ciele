@@ -61,7 +61,7 @@ function Pill({ tone = "muted", children }: { tone?: "muted" | "ok" | "warn"; ch
     warn: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   } as const;
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${tones[tone]}`}>
+    <span className={`rounded-full px-2 py-0.5 text-2xs font-medium ${tones[tone]}`}>
       {children}
     </span>
   );
@@ -140,7 +140,7 @@ function KnowledgeWebsites() {
       </div>
       <MockSearch placeholder="Search websites" />
       <div className="bg-card overflow-hidden rounded-xl border">
-        <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-3.5 py-2 text-[11px] font-semibold">
+        <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-3.5 py-2 text-2xs font-semibold">
           <span>Name</span>
           <span>Status</span>
           <span>Content</span>
@@ -206,12 +206,12 @@ function KnowledgeApplications() {
                   {brand.label}
                 </span>
               </div>
-              <span className="text-muted-foreground truncate text-[11px]">
+              <span className="text-muted-foreground truncate text-2xs">
                 {app.scope}
               </span>
               <div className="flex items-center justify-between gap-2">
                 <Pill tone={app.tone}>{app.state}</Pill>
-                <span className="text-muted-foreground truncate text-[11px]">
+                <span className="text-muted-foreground truncate text-2xs">
                   {app.items}
                 </span>
               </div>
@@ -268,7 +268,7 @@ function KnowledgeFaqs() {
       </div>
       <MockSearch placeholder="Search FAQs" />
       <div className="bg-card overflow-hidden rounded-xl border">
-        <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_1.2fr_auto_auto] items-center gap-4 px-3.5 py-2 text-[11px] font-semibold">
+        <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_1.2fr_auto_auto] items-center gap-4 px-3.5 py-2 text-2xs font-semibold">
           <span>Question</span>
           <span>Answer</span>
           <span>Status</span>
@@ -399,7 +399,7 @@ export function FlowsMock() {
                 {flow.actions.map((action) => (
                   <span
                     key={action}
-                    className="text-foreground/75 rounded-md border px-1.5 py-0.5 text-[11px] font-medium"
+                    className="text-foreground/75 rounded-md border px-1.5 py-0.5 text-2xs font-medium"
                   >
                     {action}
                   </span>
@@ -437,7 +437,7 @@ export function FlowsMock() {
             <span className="text-muted-foreground mt-0.5 block text-xs">
               No other flow matches the user query
             </span>
-            <span className="mt-2 inline-flex rounded-md border px-1.5 py-0.5 text-[11px] font-medium">
+            <span className="mt-2 inline-flex rounded-md border px-1.5 py-0.5 text-2xs font-medium">
               Search knowledge
             </span>
           </span>
@@ -477,7 +477,7 @@ export function PublishingMock() {
           </Row>
         ))}
       </div>
-      <pre className="bg-muted/60 text-muted-foreground mt-auto overflow-hidden rounded-xl border p-3 font-mono text-[11px] leading-relaxed">
+      <pre className="bg-muted/60 text-muted-foreground mt-auto overflow-hidden rounded-xl border p-3 font-mono text-2xs leading-relaxed">
         {`<script src="https://cdn.ciele.app/launcher.js"
   data-assistant="aK3mPqR7xT2w" defer></script>`}
       </pre>
@@ -600,12 +600,12 @@ export function KanbanMock() {
             zIndex: 3 - index,
           }}
         >
-          <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wide">
+          <span className="text-muted-foreground text-2xs font-medium uppercase tracking-wide">
             {card.lane}
           </span>
           <p className="mt-1.5 text-sm font-medium leading-snug">{card.title}</p>
 
-          <span className="text-muted-foreground mt-4 block text-[11px] font-medium uppercase tracking-wide">
+          <span className="text-muted-foreground mt-4 block text-2xs font-medium uppercase tracking-wide">
             Properties
           </span>
           <div className="mt-2 flex flex-col gap-2 text-sm">
@@ -667,7 +667,7 @@ export function AlertsMock() {
           title="Alerts"
           description="Failures and recoveries that need your attention."
         />
-        <span className="bg-destructive flex size-4 items-center justify-center rounded-full text-[10px] font-semibold text-white">
+        <span className="bg-destructive flex size-4 items-center justify-center rounded-full text-2xs font-semibold text-white">
           2
         </span>
         <span className="text-muted-foreground ml-auto mt-1 flex gap-3 text-xs">
@@ -743,7 +743,7 @@ export function DevelopersMock() {
         <div className="flex items-center gap-2">
           <Terminal className="text-muted-foreground size-4" />
           <span className="text-sm font-medium">Flows API</span>
-          <span className="text-muted-foreground ml-auto font-mono text-[11px]">D</span>
+          <span className="text-muted-foreground ml-auto font-mono text-2xs">D</span>
         </div>
         <div className="text-muted-foreground bg-muted flex w-fit items-center gap-1 rounded-full p-1 text-xs">
           <span className="bg-primary text-primary-foreground rounded-full px-3 py-1 font-medium">
@@ -752,7 +752,7 @@ export function DevelopersMock() {
           <span className="px-3 py-1">cURL</span>
           <span className="px-3 py-1">MCP</span>
         </div>
-        <pre className="bg-muted/60 text-muted-foreground overflow-hidden rounded-lg border p-3 font-mono text-[11px] leading-relaxed">
+        <pre className="bg-muted/60 text-muted-foreground overflow-hidden rounded-lg border p-3 font-mono text-2xs leading-relaxed">
           {`ciele flows list \\
   aK3mPqR7xT2w`}
         </pre>

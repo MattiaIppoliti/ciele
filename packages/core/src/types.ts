@@ -1969,7 +1969,7 @@ export const TEAMMATE_GRANT_DOMAINS: readonly TeammateGrantDomain[] = [
  * one a Member created. Kept off the roster and out of referral candidates;
  * chatted with from the surface that owns it.
  */
-export type TeammateSystemKind = "flows_agent";
+export type TeammateSystemKind = "flows_agent" | "ciele_ai";
 
 /** How far inside a granted domain a Teammate may go. */
 export type TeammateCapabilityCeiling = "member" | "edit";

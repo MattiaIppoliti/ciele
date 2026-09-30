@@ -526,7 +526,7 @@ export function GuardrailsClient({
         })}
       </SectionTimeline>
       {canEdit && (
-        <p className="text-muted-foreground mt-2 pl-10 text-xs">
+        <p className="text-muted-foreground mt-2 pl-7 text-xs lg:pl-10">
           <span className="tabular-nums">
             <RollingNumber value={guardrails.length} />/{formatCount(GUARDRAIL_CAP)}
           </span>{" "}

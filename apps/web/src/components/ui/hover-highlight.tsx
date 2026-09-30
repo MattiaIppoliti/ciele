@@ -87,7 +87,7 @@ export function useSlidingPill(pillClassName?: string) {
         <div
           aria-hidden
           className={cn(
-            "bg-muted pointer-events-none absolute top-0 left-0 rounded-lg transition-opacity duration-150 ease-out motion-reduce:transition-none",
+            "bg-muted pointer-events-none absolute top-0 left-0 rounded-md transition-opacity duration-150 ease-out motion-reduce:transition-none",
             pill.slide && "transition-[transform,width,height,opacity]",
             visible ? "opacity-100" : "opacity-0",
             pillClassName,
@@ -122,7 +122,13 @@ export function HoverHighlight({
     const row = (target as HTMLElement).closest<HTMLElement>(
       "[data-highlight-row]",
     );
-    if (!row || !scroller.contains(row)) return;
+    if (!row || !scroller.contains(row)) {
+      // A caption between rows (the sidebar's "Workspace", "Options") is not a
+      // row, but the pointer over it has left the row above: without this the
+      // pill stayed on that row and read as a second hover beside the caption.
+      if ((target as HTMLElement).closest("[data-highlight-clear]")) hide();
+      return;
+    }
     // Measured against this container, not the row's offsetParent. A row
     // inside a positioned wrapper (the sidebar's fold groups are `relative`,
     // so the fold chevron has something to sit against) reported an offset of

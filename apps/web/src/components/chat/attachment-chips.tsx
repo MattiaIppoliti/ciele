@@ -30,10 +30,12 @@ export function AttachmentChips({
         return (
           <li
             key={entry.id}
+            // The same grey as the composer's tag: marked enough to read as
+            // something attached, on the light theme and the dark one.
             className={`flex max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-xs ${
               failed
                 ? "border-destructive/40 text-destructive"
-                : "bg-muted/60 text-muted-foreground"
+                : "bg-foreground/[0.12] text-foreground/80 border-transparent"
             }`}
           >
             <span aria-hidden="true" className="shrink-0 [&_svg]:size-3.5">

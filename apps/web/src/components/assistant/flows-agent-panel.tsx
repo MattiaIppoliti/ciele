@@ -16,7 +16,7 @@ import { toast } from "@/lib/toast";
 import { ChatThread, type ChatBotMsg, type ChatMsg } from "@/components/chat/chat-thread";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ChatSurface, RailPanel } from "@/components/chat/rail-panel";
-import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
+import { FULLSCREEN_GUTTER, WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { MessageScroller } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
@@ -370,7 +370,7 @@ export function FlowsAgentPanel({
               busy={pending}
               navigation="rail"
               viewportClassName={`py-5 ${WIDEN_TRANSITION} ${
-                fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
+                fullscreen ? FULLSCREEN_GUTTER : "px-4"
               }`}
               contentClassName="space-y-4"
             >
@@ -454,7 +454,7 @@ function ProposalCard({
   const { flow } = proposal;
   const trigger = flow.trigger ?? "message";
   return (
-    <div className="bg-card mt-3 rounded-lg border p-3 text-sm shadow-sm">
+    <div className="bg-card mt-3 rounded-lg border p-3 text-sm shadow-light">
       <p className="text-muted-foreground text-xs font-medium uppercase">Proposed flow</p>
       <p className="mt-1 font-semibold break-words">{flow.name}</p>
       <p className="text-muted-foreground mt-1 text-xs">

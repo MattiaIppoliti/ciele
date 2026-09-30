@@ -7,7 +7,7 @@ Ciele utiliza una única abstracción de proveedor para los modelos de Anthropic
 OpenAI y Google. Un asistente selecciona su conexión con el proveedor y su
 modelo.
 
-## Tipos de conexión con el proveedor
+## Tipos de conexión de proveedor
 
 | Tipo | Uso |
 | --- | --- |
@@ -17,9 +17,9 @@ modelo.
 | AI Gateway | Utiliza modelos de Anthropic, OpenAI y Google a través de AI Gateway. |
 
 Una suscripción de miembro solo ejecuta los chats propios de ese miembro: la
-Assistant Preview y sus chats con un AI Teammate. No da servicio a un widget
-publicado y no ejecuta el chat de otro miembro. Selecciona un plan de la
-plataforma o una conexión mediante clave API para el tráfico publicado.
+Assistant Preview y sus chats con un AI Teammate. No atiende un widget publicado
+y no ejecuta el chat de otro miembro. Selecciona un plan de Platform o una
+conexión mediante clave API para el tráfico publicado.
 
 ## Añade una conexión con clave API
 
@@ -46,7 +46,11 @@ servicio no muestra AI Gateway como fuente.
 ## Otros tipos de conexión
 
 - **OpenAI-compatible endpoints** conecta un servidor como Ollama, vLLM o LM
-  Studio. Introduce su URL base y sus modelos. La clave de API es opcional.
+  Studio. Introduce su URL base y sus modelos. La clave de API es opcional. La
+  URL base debe usar HTTPS y apuntar a un host público. Ciele rechaza
+  direcciones en una red privada, como `localhost`, `10.x.x.x` o `192.168.x.x`.
+  Para usar un endpoint en una red privada, configúralo en el entorno de
+  implementación. Consulta [Configuration](/self-hosting/configuration).
 - **Keyless enterprise auth** conecta Google Vertex, Anthropic o Azure OpenAI
   mediante la federación de identidades de cargas de trabajo. Ciele no almacena
   ninguna clave estática para estas conexiones.
@@ -55,15 +59,15 @@ Ciele cifra la credencial antes de almacenarla. No reutilices una clave personal
 que tenga permisos no relacionados.
 
 Las conexiones de ElevenLabs proporcionan modelos de voz. Selecciona estos
-modelos en los ajustes de **General** del Asistente, en **Voice mode**. Las
-conexiones con Google y OpenAI también pueden proporcionar modelos de voz. Los
-modelos disponibles dependen de la cuenta conectada y de sus permisos de API.
-ElevenLabs no aparece en los selectores de modelos de texto ni de incrustación
-de conocimiento.
+modelos en los ajustes de **General** del Asistente, en la sección **Voice
+mode**. Las conexiones con Google y OpenAI también pueden proporcionar modelos
+de voz. Los modelos disponibles dependen de la cuenta conectada y de sus
+permisos de API. ElevenLabs no aparece en los selectores del modelo de texto ni
+de incrustación de conocimiento.
 
 ## Selecciona un modelo de asistente
 
-1. Abre el asistente.
+1. Abre el Asistente.
 2. Selecciona **General**.
 3. Selecciona la conexión del proveedor.
 4. Selecciona un modelo disponible.
@@ -71,22 +75,22 @@ de conocimiento.
 6. Prueba el asistente en Preview.
 7. Publica el asistente.
 
-## Orígenes de los modelos
+## Orígenes del modelo
 
-Un modelo puede estar disponible desde más de una fuente. Por ejemplo, Claude
-Sonnet 5 puede usar tu clave de API de Anthropic y también AI Gateway. El
+Un modelo puede estar disponible a través de más de una fuente. Por ejemplo,
+Claude Sonnet 5 puede usar tu clave de API de Anthropic y también AI Gateway. El
 selector de fuentes se muestra cuando un modelo tiene dos o más fuentes.
 
 - **Automatic** utiliza la primera fuente disponible. El orden es: tu clave API,
   la autenticación empresarial sin clave, el plan de la plataforma, tu clave de
   AI Gateway y la clave de AI Gateway de la plataforma.
 - **Platform plan**, **API key**, **Keyless**, **AI Gateway · your key** y **AI
-  Gateway · platform** usan únicamente esa fuente.
+  Gateway · platform** utilizan únicamente esa fuente.
 
 **AI Gateway · your key** utiliza la conexión AI Gateway de la organización, y
-tu cuenta de Gateway se hace cargo del pago. **AI Gateway · platform** utiliza
-la clave AI Gateway de la plataforma, y el plan de la plataforma se hace cargo
-del pago.
+los costes corren a cargo de tu cuenta de Gateway. **AI Gateway · platform**
+utiliza la clave AI Gateway de la plataforma, y los costes corren a cargo del
+plan de la plataforma.
 
 Si la fuente seleccionada no puede atender al modelo, Ciele responde con otro
 modelo disponible, como hace cuando un proveedor no tiene credenciales.
@@ -99,9 +103,8 @@ La suscripción propia de un miembro no es un origen que tú selecciones. Ejecut
 los chats propios de ese miembro, independientemente del modelo o de la fuente
 que utilice el asistente.
 
-El widget publicado utiliza el proveedor y el modelo que figuran en su
-instantánea de publicación. Los cambios generales posteriores requieren otra
-publicación.
+El widget publicado utiliza el proveedor y el modelo presentes en su instantánea
+de publicación. Los cambios generales posteriores requieren otra publicación.
 
 <Callout title="Provider accounts are separate">
 Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.

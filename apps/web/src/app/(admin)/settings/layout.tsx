@@ -15,13 +15,30 @@ export default function SettingsLayout({
   // Not awaited: the dialog and each tab's loading.tsx open at once, and only
   // the rail's cross-scope link waits for the role. A redirecting read (no
   // session) surfaces through the page itself, so the rail just hides it.
-  const canManageOrg = requirePageMember().then(
-    ({ role }) => canManageMembers(role),
-    () => false,
+  // The personal tabs read the session from here instead of asking again.
+  const session = requirePageMember().then(
+    ({ session, role }) => {
+      const canManageOrg = canManageMembers(role);
+      return {
+        email: session.email,
+        profile: session.profile,
+        // Retention is admin configuration; everyone else gets the public half.
+        organization: canManageOrg
+          ? session.organization
+          : {
+              ...session.organization,
+              traceRetentionDays: null,
+              transcriptRetentionDays: null,
+            },
+        canManageOrg,
+        demo: session.demo,
+      };
+    },
+    () => null,
   );
 
   return (
-    <SettingsDialog canManageOrg={canManageOrg}>
+    <SettingsDialog session={session}>
       {children}
     </SettingsDialog>
   );

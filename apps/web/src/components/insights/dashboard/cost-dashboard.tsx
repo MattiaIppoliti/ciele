@@ -80,7 +80,7 @@ export function CostDashboard({
           <Section
             title="Token usage"
             description="Input and output tokens per day. Click a day, then another, to total a span."
-            className="col-span-12 xl:col-span-5"
+            className="col-span-12 @5xl:col-span-5"
           >
             <div className="overflow-x-auto">
               <TokenHeatCalendar daily={dashboard.daily} />
@@ -106,11 +106,11 @@ export function CostDashboard({
           <Section
             title="Spend by surface"
             description="Each surface's share, whichever one is selected above"
-            className="col-span-12 xl:col-span-7"
+            className="col-span-12 @5xl:col-span-7"
           >
             <SurfaceComposition daily={dashboard.daily} />
             {/* The legend reads one period; these are the window's totals. */}
-            <dl className="mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-sm sm:grid-cols-4">
+            <dl className="mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-sm @md:grid-cols-4">
               {dashboard.surfaces.map((row) => (
                 <div key={row.surface} className="min-w-0">
                   <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">

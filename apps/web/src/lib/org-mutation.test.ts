@@ -8,7 +8,8 @@ vi.mock("@/lib/authz", () => ({
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireMember } from "@/lib/authz";
-import { orgMutation } from "./org-mutation";
+import { cachedFindRecords } from "./find-cache";
+import { orgMutation, revalidateEntities } from "./org-mutation";
 
 describe("orgMutation", () => {
   const requireMemberMock = vi.mocked(requireMember);
@@ -65,6 +66,31 @@ describe("orgMutation", () => {
         { expire: 0 },
       );
     }
+  });
+
+  it("expires the caches even when the route purge throws", async () => {
+    // A Teammate or Ciele AI tool runs inside a streamed turn, where the
+    // request store `revalidatePath` needs may be gone. The purge is
+    // best-effort there; the cache expiries are what keep the Find palette and
+    // Insights from serving the state before the mutation.
+    const scope = { organizationId: DEMO_ORG.id, userId: "u-1", role: "owner" };
+    const stale = { records: [], partial: false } as never;
+    await cachedFindRecords(scope, async () => stale);
+    revalidatePathMock.mockImplementation(() => {
+      throw new Error("Invariant: static generation store missing");
+    });
+
+    expect(() =>
+      revalidateEntities([{ kind: "assistant", id: "as_1" }], DEMO_ORG.id)
+    ).toThrow(/store missing/);
+
+    expect(revalidateTagMock).toHaveBeenCalledExactlyOnceWith(
+      `insights:${DEMO_ORG.id}`,
+      { expire: 0 },
+    );
+    const load = vi.fn(async () => stale);
+    await cachedFindRecords(scope, load);
+    expect(load).toHaveBeenCalledOnce();
   });
 
   it("leaves the Insights cache alone for mutations the aggregate never reads", async () => {

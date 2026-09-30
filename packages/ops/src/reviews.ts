@@ -26,6 +26,7 @@ const REVIEW_STATUSES = ["pending", "approved", "rejected", "expired"] as const;
 export const listReviewsOp = defineOperation({
   name: "reviews.list",
   capability: "member",
+  effect: "read",
   input: z.object({
     status: z.enum(REVIEW_STATUSES).optional(),
     conversationId: z.string().min(1).optional(),
@@ -58,6 +59,7 @@ async function requireReview(ctx: OperationContext, id: string): Promise<ReviewR
 export const getReviewOp = defineOperation({
   name: "reviews.get",
   capability: "member",
+  effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { id }) => requireReview(ctx, id),
@@ -72,6 +74,7 @@ export const getReviewOp = defineOperation({
 export const decideReviewOp = defineOperation({
   name: "reviews.decide",
   capability: "member",
+  effect: "consequential",
   input: z.object({
     id: z.string().min(1),
     decision: z.enum(["approved", "rejected"]),

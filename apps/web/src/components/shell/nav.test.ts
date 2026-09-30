@@ -10,6 +10,8 @@ import {
   assistantSectionFromPath,
   GLOBAL_NAV,
   legacyAssistantSectionHref,
+  navItem,
+  navItemForPath,
   setupHref,
   SETUP_SECTIONS,
 } from "./nav";
@@ -75,6 +77,37 @@ describe("Assistant navigation", () => {
     expect(
       legacyAssistantSectionHref("asst-1", { page: "unknown" })
     ).toBe("/assistants/asst-1");
+  });
+});
+
+describe("which nav entry a route belongs to", () => {
+  const id = (pathname: string) => navItemForPath(pathname)?.id ?? null;
+
+  it("finds the entry for a page and everything under it", () => {
+    expect(id("/")).toBe("assistants");
+    expect(id("/assistants")).toBe("assistants");
+    expect(id("/help-desks/desk-1")).toBe("help-desks");
+    expect(id("/teammates/channels/ch-1")).toBe("teammates");
+    expect(id("/settings/ai")).toBe("settings");
+  });
+
+  it("puts a Human review under the Inbox, where its Conversation is", () => {
+    expect(id("/reviews/rv-1")).toBe("inbox");
+  });
+
+  it("matches whole segments, not a route that merely starts the same", () => {
+    expect(id("/inbox-x")).toBeNull();
+    expect(id("/settingsx")).toBeNull();
+    expect(id("/somewhere/new")).toBeNull();
+  });
+
+  it("leaves an Assistant's own pages to its SETUP sections", () => {
+    expect(id("/assistants/asst-1/flows")).toBeNull();
+  });
+
+  it("looks an entry up by id, never by its label", () => {
+    expect(navItem("alerts").href).toBe("/alerts");
+    expect(new Set(GLOBAL_NAV.map((item) => item.id)).size).toBe(GLOBAL_NAV.length);
   });
 });
 

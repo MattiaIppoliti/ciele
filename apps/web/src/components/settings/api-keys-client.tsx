@@ -1,11 +1,12 @@
 "use client";
 
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useState, useTransition } from "react";
 import type { OrgApiKey, Role } from "@agent-hub/core";
-import { Ban, BookOpen, ChevronDown, KeyRound, Plus, TriangleAlert } from "lucide-react";
+import { Ban, BookOpen, ChevronDown, KeyRound, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
-import { createApiKeyAction, revokeApiKeyAction } from "@/app/actions";
+import { createApiKeyAction, deleteApiKeyAction, revokeApiKeyAction } from "@/app/actions";
 import { MorphingModal } from "@/components/motion/morphing-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { Table, type TableColumn } from "@/components/motion/table";
@@ -29,6 +30,26 @@ import {
 
 const ALL_ROLES: Role[] = ["owner", "admin", "editor", "viewer"];
 
+/** The two confirmations a key row can ask for: revoke an active key, delete a revoked one. */
+const CONFIRM = {
+  revoke: {
+    verb: "Revoke",
+    icon: TriangleAlert,
+    buttonIcon: Ban,
+    body: "Anything using this key stops working immediately. This cannot be undone; you can always create a new key.",
+    run: revokeApiKeyAction,
+    done: "API key revoked",
+  },
+  delete: {
+    verb: "Delete",
+    icon: Trash2,
+    buttonIcon: Trash2,
+    body: "The key is already revoked. Deleting it removes it from this list for good.",
+    run: deleteApiKeyAction,
+    done: "API key deleted",
+  },
+} as const;
+
 export function ApiKeysClient({
   keys,
   currentRole,
@@ -48,7 +69,10 @@ export function ApiKeysClient({
   // not throw it away before it was copied.
   const [secretCopied, setSecretCopied] = useState(false);
   const [confirmingClose, setConfirmingClose] = useState(false);
-  const [pendingRevoke, setPendingRevoke] = useState<OrgApiKey | null>(null);
+  const [pending, setPending] = useState<{
+    key: OrgApiKey;
+    action: keyof typeof CONFIRM;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
   const { copyText, isCopied } = useCopyFeedback<string>();
 
@@ -73,16 +97,19 @@ export function ApiKeysClient({
     });
   }
 
-  function handleRevoke() {
-    if (!pendingRevoke || isPending) return;
+  function handleConfirm() {
+    if (!pending || isPending) return;
+    const { verb, run, done } = CONFIRM[pending.action];
     startTransition(async () => {
       try {
-        await revokeApiKeyAction(pendingRevoke.id);
-        toast.success("API key revoked");
-        setPendingRevoke(null);
+        await run(pending.key.id);
+        toast.success(done);
+        setPending(null);
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Could not revoke the key",
+          error instanceof Error
+            ? error.message
+            : `Could not ${verb.toLowerCase()} the key`,
         );
       }
     });
@@ -173,13 +200,25 @@ export function ApiKeysClient({
       align: "right",
       width: "12%",
       cell: (key) =>
-        key.revokedAt ? null : (
+        key.revokedAt ? (
+          <Hint label="Delete key">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete ${key.name}`}
+              className="text-destructive hover:text-destructive"
+              onClick={() => setPending({ key, action: "delete" })}
+            >
+              <AnimatedIcon icon={Trash2} size={16} />
+            </Button>
+          </Hint>
+        ) : (
           <Hint label="Revoke key">
             <Button
               variant="ghost"
               size="icon"
               aria-label={`Revoke ${key.name}`}
-              onClick={() => setPendingRevoke(key)}
+              onClick={() => setPending({ key, action: "revoke" })}
             >
               <AnimatedIcon icon={Ban} size={16} />
             </Button>
@@ -188,8 +227,13 @@ export function ApiKeysClient({
     },
   ];
 
+  const dialog = pending ? { ...CONFIRM[pending.action], name: pending.key.name } : null;
+
   return (
-    <div className={`mt-8 space-y-8 ${isPending ? "opacity-70" : ""}`}>
+    <div className={`mt-8 ${isPending ? "opacity-70" : ""}`}>
+      <SectionTimeline>
+      <TimelineSection title="API keys">
+<div className="space-y-4">
       <Button
         variant="outline"
         render={
@@ -211,10 +255,11 @@ export function ApiKeysClient({
         emptyState="No API keys yet, you'll need one to call the API, CLI or MCP server."
         footer={<TablePagination total={keys.length} noun="API key" />}
       />
+</div>
+      </TimelineSection>
 
-      <div>
-        <h2 className="text-lg font-semibold">Create key</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
+      <TimelineSection title="Create key" boxed>
+        <p className="text-muted-foreground text-sm">
           The secret is shown only once. Store it somewhere safe.
         </p>
         <form onSubmit={handleCreate} className="mt-3 flex flex-wrap gap-2">
@@ -257,7 +302,9 @@ export function ApiKeysClient({
             <RollInText text={isPending ? "Creating…" : "Create key"} />
           </Button>
         </form>
-      </div>
+      </TimelineSection>
+
+      </SectionTimeline>
 
       {/* The one and only time the plaintext secret exists client-side. */}
       <MorphingModal
@@ -324,43 +371,44 @@ export function ApiKeysClient({
       </MorphingModal>
 
       <MorphingModal
-        viewId={pendingRevoke ? "revoke" : null}
-        title={pendingRevoke ? `Revoke “${pendingRevoke.name}”?` : "Revoke API key"}
-        onClose={() => !isPending && setPendingRevoke(null)}
+        viewId={pending?.action ?? null}
+        title={dialog ? `${dialog.verb} “${dialog.name}”?` : "API key"}
+        onClose={() => !isPending && setPending(null)}
         placement="bottom"
       >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="bg-destructive/10 text-destructive rounded-full p-2">
-              <AnimatedIcon icon={TriangleAlert} size={20} />
+        {dialog && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-destructive/10 text-destructive rounded-full p-2">
+                <AnimatedIcon icon={dialog.icon} size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold">
+                  {dialog.verb} &ldquo;{dialog.name}&rdquo;?
+                </h3>
+                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                  {dialog.body}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-base font-semibold">
-                Revoke &ldquo;{pendingRevoke?.name}&rdquo;?
-              </h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                Anything using this key stops working immediately. This cannot
-                be undone; you can always create a new key.
-              </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setPending(null)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirm}
+                disabled={isPending}
+              >
+                <dialog.buttonIcon className="size-4" /> {dialog.verb} key
+              </Button>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setPendingRevoke(null)}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleRevoke}
-              disabled={isPending}
-            >
-              <Ban className="size-4" /> Revoke key
-            </Button>
-          </div>
-        </div>
+        )}
       </MorphingModal>
     </div>
   );

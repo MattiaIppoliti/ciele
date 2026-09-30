@@ -62,7 +62,6 @@ export async function POST(
     targets: posted.targets,
     teammateActions: (teammate) =>
       resolveTeammateActions({
-        db,
         teammate,
         organizationId: session.organization!.id,
         userId: session.userId,

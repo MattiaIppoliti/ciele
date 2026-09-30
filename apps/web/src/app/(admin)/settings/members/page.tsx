@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 import { redirect } from "next/navigation";
 import { MembersClient } from "@/components/settings/members-client";
 import { SettingsPanel } from "@/components/settings/settings-panel";
@@ -19,6 +20,7 @@ export default async function MembersPage() {
 
   return (
     <SettingsPanel
+      icon={Users}
       title="Members"
       description={`People in ${session.organization.name} and their roles.`}
     >

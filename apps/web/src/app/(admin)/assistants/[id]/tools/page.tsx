@@ -18,7 +18,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ id: stri
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
+    <div className="mx-auto max-w-3xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
         icon={Wrench}
         title="Tools & Skills"

@@ -1,11 +1,11 @@
 "use client";
 
+import { prefetchFind } from "@/lib/find-client";
 import Link, { useLinkStatus } from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
-import { ChevronsUpDown, Fingerprint, LifeBuoy, MessageCircle, Search, Settings, Telescope, type LucideIcon } from "lucide-react";
-import { BookOpen, Check, Ellipsis, Loader2, LogOut, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
+import { ChevronsUpDown, LifeBuoy, MessageCircle, Search, Settings, type LucideIcon } from "lucide-react";
+import { BookOpen, Check, Loader2, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
 // Icon data, not components: the collapse arrow reshapes between the two.
 import {
   PanelLeftClose as PanelLeftCloseData,
@@ -13,24 +13,20 @@ import {
 } from "lucide";
 import { MorphIcon } from "morphicons/react";
 import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
-import { TelescopeIcon } from "@/components/ui/icons/telescope";
-import { signOutAction, switchOrganizationAction } from "@/app/actions";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import { SoundSwitcher } from "@/components/sound-switcher";
+import { localGlyphFor } from "@/components/ui/icons/local-glyphs";
+import { switchOrganizationAction } from "@/app/actions";
 import { Badge } from "@agent-hub/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Hint } from "@agent-hub/ui";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ResizeHandle } from "@/components/ui/resizable-panel";
+import { ResizeHandle, SHELL_GAP } from "@/components/ui/resizable-panel";
 import { useModalFocus } from "@/components/motion/use-modal-focus";
 import {
   DEFAULT_WIDTH,
@@ -44,16 +40,21 @@ import {
 import { SPRING_PANEL, SPRING_REFOLD, SPRING_UNFOLD } from "@/lib/ease";
 import { grabOffsetFor } from "@agent-hub/ui/resize-geometry";
 import { haptic, playFeedback } from "@agent-hub/ui/feedback";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   GLOBAL_NAV,
   SETUP_SECTIONS,
   assistantIdFromPath,
   assistantSectionFromPath,
+  navItem,
+  navItemActive,
+  type NavId,
   setupHref,
 } from "@/components/shell/nav";
-import { NavFoldGroup } from "@/components/shell/nav-tree";
+import { NavFoldGroup, NavSection } from "@/components/shell/nav-tree";
+import { useUnderlyingPathname } from "@/components/shell/use-underlying-pathname";
 import {
+  PERSONAL_SETTINGS_HOME,
+  SETTINGS_HOME,
   SIDEBAR_SETTINGS_ITEMS,
   sidebarSettingsActiveIndex,
 } from "@/components/settings/settings-nav";
@@ -65,12 +66,14 @@ import { canManageMembers } from "@/lib/rbac";
 import { canAutoFocus } from "@/lib/auto-focus";
 import { formatCount } from "@/lib/format";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import {
+  ChatSidebarSlotHost,
+  NewChatButton,
+  isChatPath,
+  QuickLinks,
+} from "@/components/shell/sidebar-chat-controls";
+import { ROW_IDLE } from "@/components/shell/sidebar-row";
 
-/** Full name if set, else username, else the email local-part. */
-function profileDisplayName(profile: Profile | null, email: string): string {
-  const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ");
-  return fullName || profile?.username || email.split("@")[0] || email;
-}
 
 
 interface AppSidebarProps {
@@ -96,13 +99,10 @@ interface AppSidebarProps {
   mentionCount: number;
 }
 
-// Hover feedback comes from the shared HoverHighlight pill that slides
-// between rows, so idle rows only shift text color on hover.
-const ROW_IDLE = "text-muted-foreground hover:text-foreground";
 const ROW_ACTIVE = "bg-muted text-foreground";
 
 function rowClass(collapsed: boolean) {
-  return `press relative flex h-8 items-center rounded-lg text-sm font-medium transition-[color,background-color,opacity] has-[[data-pending]]:opacity-60 ${
+  return `press relative flex h-8 items-center rounded-md text-sm font-medium transition-[color,background-color,opacity] has-[[data-pending]]:opacity-60 ${
     collapsed ? "w-9 justify-center self-center" : "w-full gap-2.5 px-2.5"
   }`;
 }
@@ -148,6 +148,7 @@ function NavRow({
   badge?: number;
   collapsed: boolean;
 }) {
+  const localGlyph = localGlyphFor(Icon);
   const row = (
     <Link
       href={href}
@@ -157,7 +158,11 @@ function NavRow({
       data-highlight-row
       className={`${rowClass(collapsed)} ${active ? ROW_ACTIVE : ROW_IDLE}`}
     >
-      <span className="relative block shrink-0">
+      {/* `data-nav-target`: inside a fold group, a click here opens the
+          row's page and a click on the rest of the row folds the group. */}
+      {/* `flex items-center`, not `block`: a block span takes the row's line
+          height, not the icon's, and left every glyph ~2px above its label. */}
+      <span data-nav-target className="relative flex shrink-0 items-center justify-center">
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -165,8 +170,8 @@ function NavRow({
             alt=""
             className="size-4 shrink-0 rounded-full object-cover"
           />
-        ) : Icon === Telescope ? (
-          <AnimatedGlyph icon={TelescopeIcon} size={16} className="shrink-0" />
+        ) : localGlyph ? (
+          <AnimatedGlyph icon={localGlyph} size={16} className="shrink-0" />
         ) : Icon ? (
           <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
         ) : null}
@@ -174,7 +179,11 @@ function NavRow({
           <span aria-hidden className="absolute -top-1 -right-1 size-2 rounded-full bg-red-500" />
         )}
       </span>
-      {!collapsed && <span className="truncate">{label}</span>}
+      {!collapsed && (
+        <span data-nav-target className="truncate">
+          {label}
+        </span>
+      )}
       {badge > 0 && !collapsed && (
         <span
           aria-hidden
@@ -193,6 +202,7 @@ function NavRow({
     </Hint>
   );
 }
+
 
 function OrgAvatar({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
   if (logoUrl) {
@@ -270,7 +280,11 @@ function OrgAvatarSwitcher({
           className={
             collapsed
               ? "flex items-center justify-center rounded-full transition-shadow hover:ring-2 hover:ring-black/10"
-              : "press hover:bg-muted -mx-1 flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors"
+              : // A container, so what it holds can give way in order as the
+                // sidebar is dragged narrower: the name truncates first, then
+                // the role badge goes, then the chevron. Nothing may spill
+                // into Find and the toggle beside it.
+                "press hover:bg-muted @container -mx-1 flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg px-1 py-1 text-left transition-colors"
           }
         />
       }
@@ -281,14 +295,14 @@ function OrgAvatarSwitcher({
           <span className="min-w-0 flex-1 truncate text-sm font-semibold">
             {orgName}
           </span>
-          <Badge variant="secondary" className="shrink-0 capitalize">
+          <Badge variant="secondary" className="shrink-0 capitalize @max-[8.5rem]:hidden">
             {roleLabel}
           </Badge>
           <AnimatedIcon
             icon={ChevronsUpDown}
             size={14}
             iconClassName="text-muted-foreground"
-            className="shrink-0"
+            className="shrink-0 @max-[4.5rem]:hidden"
           />
         </>
       )}
@@ -331,7 +345,7 @@ function OrgAvatarSwitcher({
               <div
                 key={org.id}
                 data-highlight-row
-                className="relative flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm"
+                className="relative flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm"
               >
                 <button
                   type="button"
@@ -418,16 +432,26 @@ function SidebarContent({
    * so it shows the "open" glyph; false when it shrinks (full → rail). */
   expandsOnToggle: boolean;
 }) {
-  const pathname = usePathname();
+  // The page under an open Settings dialog, not the dialog's URL: Settings
+  // opened from the Chat keeps the Chat lit and the chat sidebar in place.
+  const pathname = useUnderlyingPathname();
   const { openFind } = useShell();
   const assistants = useShellAssistants();
 
-  const assistantsNav = GLOBAL_NAV.find((item) => item.label === "Assistants");
+  const assistantsNav = navItem("assistants");
+  // What watches the Assistants rather than configures them, under its own
+  // caption below the daily destinations.
+  const OBSERVABILITY: NavId[] = ["improvements", "insights", "eval"];
   const primaryNav = GLOBAL_NAV.filter(
-    (item) => !item.bottom && item.label !== "Assistants"
+    (item) => !item.bottom && item.id !== "assistants" && !OBSERVABILITY.includes(item.id)
   );
-  const alertsNav = GLOBAL_NAV.find((item) => item.label === "Alerts");
-  const settingsNav = GLOBAL_NAV.find((item) => item.label === "Settings");
+  const observabilityNav = GLOBAL_NAV.filter((item) => OBSERVABILITY.includes(item.id));
+  const alertsNav = navItem("alerts");
+  const settingsNav = navItem("settings");
+
+  // Chat swaps the console's navigation for the Teammates roster and history
+  // (see `ChatSidebarSlotHost`); Home, Find and the account row stay put.
+  const chatMode = isChatPath(pathname);
 
   const scopedId = assistantIdFromPath(pathname);
   const scopedAssistant = scopedId
@@ -458,6 +482,25 @@ function SidebarContent({
     </Hint>
   );
 
+  // Expanded: the icon-only Find sits beside the toggle, in the org row. The
+  // rail keeps its own bordered one below the avatar; a 60px column has no row
+  // to share.
+  const findIconButton = (
+    <Hint label="Find… (F)" side="bottom">
+      <button
+        type="button"
+        aria-label="Find"
+        aria-keyshortcuts="F Meta+K"
+        onClick={openFind}
+            onPointerEnter={prefetchFind}
+            onFocus={prefetchFind}
+        className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors"
+      >
+        <AnimatedIcon icon={Search} size={16} />
+      </button>
+    </Hint>
+  );
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       {/* Org identity (Vercel's organization row). Collapsed rail leads
@@ -468,13 +511,24 @@ function SidebarContent({
         // every row below is a 36px box centred in it, so a header whose
         // children merely start after `px-2` sat 4px to the left of the whole
         // nav. Every control in the rail now shares one vertical axis.
-        className={`flex items-center pt-4 pb-3 ${
-          collapsed ? "flex-col gap-2 px-2" : "gap-2.5 px-4"
+        // Expanded, the row sits on the frame beside the workspace panel and
+        // lines up with the top bar inside it: the panel is inset by `p-2`,
+        // so the row is that inset taller than the bar's `h-14`.
+        className={`flex items-center ${
+          collapsed
+            ? // The rail's header is the expanded one's height (`h-16 pt-2`,
+              // the workspace panel's inset plus the top bar's `h-14`), so
+              // the rule under it continues the top bar's bottom border.
+              "h-16 shrink-0 flex-col justify-center px-2 pt-2"
+            : "h-16 shrink-0 gap-2.5 px-4 pt-2"
         }`}
       >
+        {/* On the icon rail the Organization's avatar is the whole header:
+            Find and the widen control move into the top bar, beside the
+            page they act on, exactly where they sit when the sidebar is
+            hidden. */}
         {collapsed ? (
           <>
-            {toggleButton}
             <OrgAvatarSwitcher
               orgId={orgId}
               orgName={orgName}
@@ -496,49 +550,32 @@ function SidebarContent({
               demo={demo}
               collapsed={collapsed}
             />
+            {findIconButton}
             {toggleButton}
           </>
         )}
       </div>
 
-      {/* Find... opens the command palette (F / Cmd+K). */}
-      <div className={`pb-2 ${collapsed ? "flex justify-center px-2" : "px-3"}`}>
-        {collapsed ? (
-          <Hint label="Find… (F)" side="right">
-            <button
-              type="button"
-              aria-label="Find"
-              aria-keyshortcuts="F Meta+K"
-              onClick={openFind}
-              className="press-control border-input text-muted-foreground hover:bg-muted flex size-9 items-center justify-center rounded-lg border transition-colors"
-            >
-              <AnimatedIcon icon={Search} size={16} />
-            </button>
-          </Hint>
-        ) : (
-          <button
-            type="button"
-            aria-keyshortcuts="F Meta+K"
-            onClick={openFind}
-            className="press border-input text-muted-foreground hover:bg-muted flex h-8 w-full items-center gap-2 rounded-lg border px-2.5 text-sm transition-colors"
-          >
-            <AnimatedIcon icon={Search} size={16} className="shrink-0" />
-            <span className="flex-1 truncate text-left">Find…</span>
-            <kbd className="rounded-md border px-1.5 font-sans text-xs">F</kbd>
-          </button>
-        )}
-      </div>
+      <QuickLinks
+        pathname={pathname}
+        collapsed={collapsed}
+        settingsHref={canManageMembers(role) ? SETTINGS_HOME : PERSONAL_SETTINGS_HOME}
+      />
 
+      {/* On the icon rail Find lives in the top bar with the expand control;
+          expanded, it is the icon beside the toggle above. */}
+      {chatMode ? (
+        <ChatSidebarSlotHost collapsed={collapsed} />
+      ) : (
       <nav
         aria-label="Main navigation"
         className={`no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3 ${
-          collapsed ? "px-2" : "px-3"
+          collapsed ? "px-2" : "px-3 pt-3"
         }`}
       >
         <HoverHighlight>
-        <div className="bg-border mb-3 h-px" />
 
-        <div className="flex flex-col items-center gap-0.5">
+        <NavSection label="Workspace" collapsed={collapsed} first>
           {/* The SETUP sections belong to an Assistant, so they hang off the
               row that *is* the Assistant: Overview when one is in scope, the
               dashboard entry when none is. They used to be a group of their
@@ -561,9 +598,13 @@ function SidebarContent({
                   label="Overview"
                   href={`/assistants/${scopedId}`}
                   collapsed={collapsed}
+                  // On the rail the sections are not drawn, so the row they
+                  // hang off is the one that says you are inside them.
                   active={
-                    pathname === `/assistants/${scopedId}` &&
-                    (!currentSetup || currentSetup === "overview")
+                    collapsed
+                      ? pathname.startsWith(`/assistants/${scopedId}`)
+                      : pathname === `/assistants/${scopedId}` &&
+                        (!currentSetup || currentSetup === "overview")
                   }
                 />
               ) : (
@@ -574,7 +615,7 @@ function SidebarContent({
                     label={assistantsNav.label}
                     href={assistantsNav.href}
                     collapsed={collapsed}
-                    active={pathname === assistantsNav.href}
+                    active={navItemActive(assistantsNav, pathname)}
                   />
                 )
               )
@@ -595,29 +636,38 @@ function SidebarContent({
               label={item.label}
               href={item.href}
               collapsed={collapsed}
-              active={
-                item.exact
-                  ? pathname === item.href
-                  : pathname.startsWith(item.match ?? item.href)
-              }
+              active={navItemActive(item, pathname)}
               // Groups where somebody named you (#778). One per group, so the
               // number is how many rooms are waiting, not how many times you
               // were named in them.
-              badge={item.label === "Teammates" ? mentionCount : 0}
+              badge={item.id === "teammates" ? mentionCount : 0}
             />
           ))}
-        </div>
+        </NavSection>
 
-        <div className="bg-border my-3 h-px" />
+        {/* Improvements, Insights and Eval: how the Assistants are doing. */}
+        <NavSection label="Observability" collapsed={collapsed}>
+          {observabilityNav.map((item) => (
+            <NavRow
+              key={item.label}
+              icon={item.icon}
+              label={item.label}
+              href={item.href}
+              collapsed={collapsed}
+              active={navItemActive(item, pathname)}
+            />
+          ))}
+        </NavSection>
 
-        <div className="flex flex-col items-center gap-0.5">
+        {/* What is not a daily destination sits under its own caption. */}
+        <NavSection label="Options" collapsed={collapsed}>
           {alertsNav && (
             <NavRow
               icon={alertsNav.icon}
               label={alertsNav.label}
               href={alertsNav.href}
               collapsed={collapsed}
-              active={pathname.startsWith(alertsNav.match ?? alertsNav.href)}
+              active={navItemActive(alertsNav, pathname)}
               badge={alertCount}
             />
           )}
@@ -678,9 +728,7 @@ function SidebarContent({
                   label={settingsNav.label}
                   href={settingsNav.href}
                   collapsed={collapsed}
-                  active={pathname.startsWith(
-                    settingsNav.match ?? settingsNav.href
-                  )}
+                  active={navItemActive(settingsNav, pathname)}
                 />
               }
               items={SIDEBAR_SETTINGS_ITEMS.map((tab) => ({
@@ -691,99 +739,13 @@ function SidebarContent({
               activeIndex={sidebarSettingsActiveIndex(pathname)}
             />
           )}
-        </div>
+        </NavSection>
         </HoverHighlight>
       </nav>
+      )}
 
-      {/* Account row (Vercel's bottom-left user block), the caller's own
-          identity, not the org's (the org already has its own switcher
-          above). */}
-      <div
-        className={`flex items-center border-t py-3 ${
-          collapsed ? "justify-center px-2" : "gap-2.5 px-4"
-        }`}
-      >
-        {!collapsed && (
-          <>
-            <UserAvatar
-              avatarUrl={profile?.avatarUrl}
-              userId={profile?.userId}
-              email={email}
-              size="size-8"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">
-                {profileDisplayName(profile, email)}
-              </span>
-              <span className="text-muted-foreground block truncate text-xs">
-                {demo ? "Demo mode" : email}
-              </span>
-            </span>
-          </>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              collapsed ? (
-                <button
-                  type="button"
-                  aria-label="Account menu"
-                  className="rounded-full transition-shadow hover:ring-2 hover:ring-black/10"
-                />
-              ) : (
-                <button
-                  type="button"
-                  aria-label="Account menu"
-                  className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors"
-                />
-              )
-            }
-          >
-            {collapsed ? (
-              <UserAvatar
-                avatarUrl={profile?.avatarUrl}
-                userId={profile?.userId}
-                email={email}
-                size="size-9"
-              />
-            ) : (
-              <Ellipsis className="size-4" />
-            )}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side={collapsed ? "right" : "top"}
-            align="end"
-            className="w-60"
-          >
-            <DropdownMenuLabel>
-              <p className="truncate font-semibold">{profileDisplayName(profile, email)}</p>
-              <p className="text-muted-foreground truncate text-xs font-normal">
-                {demo ? "Demo mode, no login" : email}
-                {role ? ` · ${role}` : ""}
-              </p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {/* Org-level settings live in the sidebar's Settings dialog, the
-                account menu only carries personal items, which is also how a
-                non-admin reaches their own profile at all. */}
-            <DropdownMenuItem render={<Link href="/settings/profile" />}>
-              <AnimatedIcon icon={Fingerprint} size={16} /> Profile
-            </DropdownMenuItem>
-            {/* No cookie-preferences entry: the console sets no non-essential
-                cookies and shows no banner (components/cookie-consent/
-                cookie-consent.tsx), so there is nothing here to withdraw.
-                Consent belongs to the public site, where the trackers are. */}
-            <DropdownMenuSeparator />
-            <ThemeSwitcher />
-            <SoundSwitcher />
-            {!demo && (
-              <DropdownMenuItem onClick={() => signOutAction()}>
-                <LogOut className="size-4" /> Sign out
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <NewChatButton collapsed={collapsed} account={{ profile, email, role: role ?? null, demo }} />
+
     </div>
   );
 }
@@ -822,7 +784,7 @@ function NavDrawer(props: AppSidebarProps) {
     // the mobile nav contradicted its own spatial story on every close.
     <AnimatePresence>
       {navDrawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <motion.button
             type="button"
             aria-label="Close navigation"
@@ -840,13 +802,16 @@ function NavDrawer(props: AppSidebarProps) {
             aria-modal="true"
             aria-label="Navigation"
             tabIndex={-1}
-            initial={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
+            // Past its own width plus the inset, or the last 8px and the
+            // shadow would still show at the edge.
+            initial={reduceMotion ? { opacity: 0 } : { x: "calc(-100% - 1rem)" }}
             animate={reduceMotion ? { opacity: 1 } : { x: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
+            exit={reduceMotion ? { opacity: 0 } : { x: "calc(-100% - 1rem)" }}
             transition={SPRING_PANEL}
-            // viewport-fit=cover: keep the account row off the home indicator
-            // and the rows out from under a landscape notch.
-            className="bg-background absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col border-r pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] shadow-2xl"
+            // A floating rounded panel, inset like the workspace panel it
+            // covers. viewport-fit=cover: the insets grow to keep the account
+            // row off the home indicator and the rows out from under a notch.
+            className="bg-background absolute top-[max(0.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-[max(0.5rem,env(safe-area-inset-left))] flex w-[17rem] max-w-[85vw] flex-col overflow-hidden rounded-xl border shadow-strong"
           >
             <SidebarContent
               {...props}
@@ -874,8 +839,12 @@ function NavDrawer(props: AppSidebarProps) {
  * and the space simply isn't there.
  */
 export function AppSidebar(props: AppSidebarProps) {
-  const { sidebarDocked, setSidebarDocked } = useShell();
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const {
+    sidebarDocked,
+    setSidebarDocked,
+    sidebarWidth: width,
+    setSidebarWidth: setWidth,
+  } = useShell();
   const [peek, setPeek] = useState(false);
   const [dragging, setDragging] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -964,7 +933,7 @@ export function AppSidebar(props: AppSidebarProps) {
       target.removeEventListener("pointerup", endDrag as EventListener);
       target.removeEventListener("pointercancel", endDrag as EventListener);
     };
-  }, [dragging, setSidebarDocked]);
+  }, [dragging, setSidebarDocked, setWidth]);
 
   // Toggle = fully hide the sidebar (it leaves the layout entirely, not an
   // icon rail). The width is preserved on purpose: reopening restores the
@@ -1006,7 +975,7 @@ export function AppSidebar(props: AppSidebarProps) {
             // sitting there: the in-between frames should point at what
             // release will do, so "let go now and it closes" is legible
             // before it does.
-            className={`bg-background relative hidden h-full shrink-0 flex-col border-r lg:flex ${
+            className={`relative hidden h-full shrink-0 flex-col md:flex ${
               armedToHide ? "opacity-45" : "opacity-100"
             }`}
           >
@@ -1037,6 +1006,11 @@ export function AppSidebar(props: AppSidebarProps) {
             </div>
             <ResizeHandle
               side="right"
+              gap={SHELL_GAP}
+              // The workspace panel's own extent (the layout's `md:p-2`), so
+              // the lit line bends round its rounded corners.
+              span="inset-y-2"
+              cornered="right"
               label="Resize sidebar"
               resizing={dragging}
               onPointerDown={startDrag}
@@ -1097,7 +1071,7 @@ function UndockedSidebar({
     <>
       {/* Hover zone along the screen edge that reveals the floating panel. */}
       <div
-        className="fixed inset-y-0 left-0 z-40 hidden w-1.5 lg:block"
+        className="fixed inset-y-0 left-0 z-40 hidden w-1.5 md:block"
         onMouseEnter={() => setPeek(true)}
       />
       {/* Enter and exit along the same path. This used to slide in from the
@@ -1113,7 +1087,11 @@ function UndockedSidebar({
             animate={reduceMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
             transition={SPRING_PANEL}
-            className="bg-background fixed top-3 bottom-3 left-3 z-50 hidden w-64 flex-col overflow-hidden rounded-xl border shadow-2xl lg:flex"
+            // Exactly on the workspace panel's own inset and radius (the
+            // layout's `md:p-2`, `rounded-xl`), so its top, left and bottom
+            // edges and its corners land on the panel's: one box, not a
+            // second one offset a few pixels inside the first.
+            className="bg-background fixed top-2 bottom-2 left-2 z-50 hidden w-64 flex-col overflow-hidden rounded-xl border shadow-strong md:flex"
           >
             <SidebarContent
               {...props}

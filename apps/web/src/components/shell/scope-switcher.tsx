@@ -115,7 +115,7 @@ export function ScopeSwitcher() {
             onClick={close}
             aria-current={!scoped ? "page" : undefined}
             data-highlight-row
-            className="relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm"
+            className="relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm"
           >
             <AnimatedIcon
               icon={LayoutGrid}
@@ -137,7 +137,7 @@ export function ScopeSwitcher() {
               onClick={close}
               aria-current={assistant.id === scopedId ? "page" : undefined}
               data-highlight-row
-              className="relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm"
+              className="relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm"
             >
               {assistant.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

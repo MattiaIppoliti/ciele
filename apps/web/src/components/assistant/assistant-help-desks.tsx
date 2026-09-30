@@ -293,7 +293,7 @@ export function AssistantHelpDesks({
                 aria-pressed={view === v.key}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   view === v.key
-                    ? "bg-background shadow-sm"
+                    ? "bg-background shadow-light"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >

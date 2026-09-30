@@ -12,7 +12,8 @@ export type TeammateReferralPart = Extract<
 /** The Human review gate's card (#841). */
 export type HumanReviewPart = Extract<ChatReplyPart, { type: "human_review" }>;
 export type ActionApprovalPart = Extract<ChatReplyPart, { type: "action_approval" }>;
-import { ShieldQuestion, UserRoundPlus } from "lucide-react";
+import { UserRoundPlus } from "lucide-react";
+import { ToolApproval } from "@/components/agents/tool-approval";
 import { HelpCircle, Radio, UserCheck } from "lucide-react";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
@@ -35,6 +36,7 @@ import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import { SpeechPlayback } from "@/components/chat/speech-playback";
 import type { VoiceEndpoint } from "@/components/chat/voice-input-button";
 import { formatTime, sentAtLabel } from "@/lib/format";
+import { CHAT_CARD } from "@/components/chat/chat-card";
 
 /**
  * The chat transcript, shared by the console's two chat surfaces (#768): the
@@ -92,7 +94,7 @@ function PartView({
   }
   if (part.type === "help_desk") {
     return (
-      <div className="flex max-w-[90%] items-center gap-3 rounded-2xl border px-3.5 py-3">
+      <div className={`flex max-w-[90%] items-center gap-3 rounded-2xl px-3.5 py-3 ${CHAT_CARD}`}>
         {part.showIcon !== false && (
           <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
             <FlowButtonIcon icon={part.icon} className="size-4" />
@@ -113,7 +115,7 @@ function PartView({
   }
   if (part.type === "teammate_referral") {
     return (
-      <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
+      <div className={`max-w-[90%] space-y-2 rounded-2xl px-3.5 py-3 ${CHAT_CARD}`}>
         <div className="flex items-center gap-2">
           <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
             <UserRoundPlus className="size-4" />
@@ -157,7 +159,7 @@ function PartView({
       /* a template that has not resolved; the raw string is still informative */
     }
     return (
-      <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
+      <div className={`max-w-[90%] space-y-2 rounded-2xl px-3.5 py-3 ${CHAT_CARD}`}>
         <div className="flex items-center gap-2">
           <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
             <Radio className="size-4" />
@@ -179,7 +181,7 @@ function PartView({
   if (part.type === "human_review") {
     const closed = part.status !== "pending";
     return (
-      <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
+      <div className={`max-w-[90%] space-y-2 rounded-2xl px-3.5 py-3 ${CHAT_CARD}`}>
         <div className="flex items-center gap-2">
           <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
             <UserCheck className="size-4" />
@@ -343,44 +345,33 @@ function ApprovalCard({
     setState("deciding");
     setState((await onDecide(part, decision)) ? decision : "open");
   }
+  // The beui approval card. It never lists the call's arguments: the card
+  // carries the catalogue's words and the reason, which is what the Member
+  // agrees to (#958).
   return (
-    <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
-      <div className="flex items-center gap-2">
-        <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
-          <ShieldQuestion className="size-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm font-medium">{part.title}</p>
-          <p className="text-muted-foreground text-xs">{part.label}</p>
-        </div>
-      </div>
-      {state === "approved" || state === "rejected" ? (
-        <p role="status" className="text-muted-foreground text-xs">
-          {state === "approved" ? "You approved this action." : "You declined this action."}
-        </p>
-      ) : (
-        onDecide && (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={state === "deciding"}
-              className="text-primary text-sm font-semibold hover:underline disabled:opacity-50 disabled:hover:no-underline"
-              onClick={() => void decide("approved")}
-            >
-              Run it
-            </button>
-            <button
-              type="button"
-              disabled={state === "deciding"}
-              className="text-muted-foreground text-sm font-semibold hover:underline disabled:opacity-50 disabled:hover:no-underline"
-              onClick={() => void decide("rejected")}
-            >
-              Don&apos;t
-            </button>
-          </div>
-        )
-      )}
-    </div>
+    <ToolApproval
+      className="max-w-[90%]"
+      title={part.title}
+      tool={part.label}
+      status={
+        state === "deciding"
+          ? "approving"
+          : state === "approved"
+            ? "approved"
+            : state === "rejected"
+              ? "denied"
+              : "pending"
+      }
+      description={
+        state === "approved"
+          ? "You approved this action."
+          : state === "rejected"
+            ? "You declined this action."
+            : undefined
+      }
+      onApprove={onDecide ? () => void decide("approved") : undefined}
+      onDeny={onDecide ? () => void decide("rejected") : undefined}
+    />
   );
 }
 

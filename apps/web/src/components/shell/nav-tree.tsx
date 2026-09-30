@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useLayoutEffect, useRef, useState } from "react";
+import { IntentLink } from "@/components/ui/intent-link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ChevronRight, type LucideIcon } from "lucide-react";
-import { Hint } from "@agent-hub/ui";
+import type { LucideIcon } from "lucide-react";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { NAV_TREE_PITCH, navTreeGeometry } from "@/lib/nav-tree";
 import { cn } from "@/lib/utils";
 
@@ -102,7 +102,7 @@ export function NavTree({
         </svg>
 
         {items.map((item, index) => (
-          <Link
+          <IntentLink
             key={item.href}
             href={item.href}
             data-highlight-row
@@ -111,16 +111,16 @@ export function NavTree({
             // instead of two that have to keep agreeing.
             style={{ height: NAV_TREE_PITCH }}
             className={cn(
-              "press relative flex items-center gap-2 rounded-lg pr-2 pl-5 text-[13px] transition-colors",
+              "press relative flex items-center gap-2 rounded-md pr-2 pl-5 text-sm transition-colors",
               index === activeIndex
                 ? "text-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground"
             )}
             aria-current={index === activeIndex ? "page" : undefined}
           >
-            <item.icon className="size-3.5 shrink-0" />
+            <AnimatedIcon icon={item.icon} size={14} className="shrink-0" />
             <span className="truncate">{item.label}</span>
-          </Link>
+          </IntentLink>
         ))}
       </div>
     </div>
@@ -129,7 +129,7 @@ export function NavTree({
 
 /**
  * The rows' real pitch, px. The rows are drawn at `NAV_TREE_PITCH`, but the
- * mobile drawer raises every nav row to a 44px touch target from `globals.css`
+ * mobile drawer raises every nav row to a 38px touch target from `globals.css`
  * (`[data-nav-drawer] [data-highlight-row]`), and a connector drawn at 34 then
  * slid 10px further off its row with each one: by the eighth row the elbow
  * pointed at the gap between two items. So the tree reads the pitch from the
@@ -172,7 +172,7 @@ export function NavFoldGroup({
   activeIndex,
   collapsed,
 }: {
-  /** Short slug: keys the remembered fold and the `aria-controls` id. */
+  /** Short slug: keys the `aria-controls` id. */
   name: string;
   /** The parent row, rendered as-is. */
   row: React.ReactNode;
@@ -184,39 +184,10 @@ export function NavFoldGroup({
 }) {
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
-  const storageKey = `ciele:sidebar:${name}-open`;
   const regionId = `sidebar-group-${name}`;
 
-  /**
-   * A fold that springs back on the next reload is not a fold, so it is
-   * remembered per browser. Read in an effect rather than in the initial
-   * state, because the server renders this markup too and a value only the
-   * browser has would not match it; deferred by a tick because setting state
-   * in an effect body cascades renders and the compiler's lint refuses it.
-   * Somebody who unfolded it therefore sees one frame of it folded, which is
-   * the cheaper of the two wrong first paints: a group that opens is a group
-   * appearing, where one that shuts is the nav jumping under the pointer.
-   */
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        if (window.localStorage.getItem(storageKey) === "1") setOpen(true);
-      } catch {
-        // Private window, blocked site data: the default stands.
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [storageKey]);
-
   function toggle() {
-    setOpen((wasOpen) => {
-      try {
-        window.localStorage.setItem(storageKey, wasOpen ? "0" : "1");
-      } catch {
-        // Not remembering it is no reason to refuse to fold it.
-      }
-      return !wasOpen;
-    });
+    setOpen((wasOpen) => !wasOpen);
   }
 
   return (
@@ -231,7 +202,21 @@ export function NavFoldGroup({
           fold group is on. Two of the sidebar's icons were the only ones
           drawn off-axis, and this was why. Inert when expanded, where the row
           is `w-full` anyway. */}
-      <div className="relative flex w-full justify-center">
+      {/* Expanded, the row splits in two: its icon and label open the page,
+          the empty rest of it folds the group, the way the chevron does.
+          Pointer clicks only: a keyboard Enter on the link is a click with
+          `detail` 0 and still navigates, and the chevron stays the keyboard's
+          fold control. */}
+      <div
+        className="relative flex w-full justify-center"
+        onClickCapture={(event) => {
+          if (collapsed || event.detail === 0) return;
+          const target = event.target as HTMLElement;
+          if (!target.closest("a") || target.closest("[data-nav-target]")) return;
+          event.preventDefault();
+          toggle();
+        }}
+      >
         {row}
         {!collapsed && (
           <button
@@ -242,51 +227,28 @@ export function NavFoldGroup({
             aria-label={`${open ? "Hide" : "Show"} ${label}`}
             className="press-control text-muted-foreground hover:bg-muted hover:text-foreground absolute top-1/2 right-1 flex size-6 -translate-y-1/2 items-center justify-center rounded-md transition-colors"
           >
-            <ChevronRight
+            {/* The sidebar's one fold marker: a small solid triangle, down
+                when open and right when shut. */}
+            <svg
+              aria-hidden
+              viewBox="0 0 8 8"
               className={cn(
-                "size-3.5 transition-transform duration-200",
-                open && "rotate-90",
-                reduceMotion && "duration-0"
+                "shrink-0 transition-transform duration-200",
+                !open && "-rotate-90",
+                reduceMotion && "duration-0",
+                "size-2.5"
               )}
-            />
+            >
+              <path d="M1 2.5h6L4 6.5z" fill="currentColor" />
+            </svg>
           </button>
         )}
       </div>
 
-      {/* On the rail the children are always out, as a flat run of icons.
-          The fold control is the only way to open a group, and the rail has
-          no room for one, so folding there meant nine destinations that could
-          not be reached at all without widening the sidebar first. No
-          connector: a 36px column has nowhere to draw one, and with the group
-          always open there is no fold state for it to describe. */}
-      {collapsed && (
-        <div
-          id={regionId}
-          role="group"
-          aria-label={label}
-          className="flex w-full flex-col items-center gap-0.5"
-        >
-          {items.map((item, index) => (
-            <Hint key={item.href} label={item.label} side="right">
-              <Link
-                href={item.href}
-                aria-label={item.label}
-                aria-current={index === activeIndex ? "page" : undefined}
-                data-highlight-row
-                className={cn(
-                  "press relative flex h-8 w-9 items-center justify-center rounded-lg transition-colors",
-                  index === activeIndex
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <item.icon className="size-3.5 shrink-0" />
-              </Link>
-            </Hint>
-          ))}
-        </div>
-      )}
-
+      {/* The rail shows the parent row alone. Its children are one click
+          away on the page the row opens (an Assistant's Overview lists its
+          sections, Settings its tabs), and a flat run of every section's icon
+          under it made the rail twice as tall as the nav it stands in for. */}
       <AnimatePresence initial={false}>
         {!collapsed && open && (
           <motion.div
@@ -313,5 +275,61 @@ export function NavFoldGroup({
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+/**
+ * A titled run of sidebar rows under a caption: "Workspace", "Observability",
+ * "Options". The caption is plain text, a step quieter than the rows, and
+ * neither navigates nor folds: it names the group, and a control there would
+ * be one more thing to hover that goes nowhere. Every row is therefore always
+ * out, which is also what the sidebar looks like on every load.
+ *
+ * On the icon rail there is no room for a caption, so it becomes a rule, and
+ * the first section (`first`) draws none, since nothing sits above it to
+ * separate from.
+ */
+export function NavSection({
+  label,
+  collapsed,
+  first = false,
+  children,
+}: {
+  /** The caption, e.g. "Options". */
+  label: string;
+  collapsed: boolean;
+  /** The topmost section: no top margin, no rule on the rail. */
+  first?: boolean;
+  children: React.ReactNode;
+}) {
+  const rows = (
+    <div
+      role="group"
+      aria-label={label}
+      className="flex w-full flex-col items-center gap-0.5"
+    >
+      {children}
+    </div>
+  );
+
+  if (collapsed) {
+    return (
+      <>
+        {!first && <div className="bg-border my-3 h-px w-full" />}
+        {rows}
+      </>
+    );
+  }
+
+  return (
+    <div className={cn("w-full", !first && "mt-4")}>
+      <p
+        data-highlight-clear
+        className="text-muted-foreground/70 mb-0.5 flex h-7 items-center px-3 text-xs font-medium select-none"
+      >
+        {label}
+      </p>
+      {rows}
+    </div>
   );
 }

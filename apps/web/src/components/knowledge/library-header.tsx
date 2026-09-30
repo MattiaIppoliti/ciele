@@ -3,7 +3,6 @@
 import { useOptimistic, useTransition } from "react";
 import { useRouter, useSelectedLayoutSegment } from "next/navigation";
 import type { OrgKnowledgeStatusCounts, SourceStatus } from "@agent-hub/core";
-import { Badge } from "@agent-hub/ui";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import {
   KNOWLEDGE_TAB_INTROS,
@@ -14,7 +13,6 @@ import {
   tabHealth,
   type KnowledgeTabSlug,
 } from "@/lib/knowledge-hub";
-import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 
 const HEALTH_DOT: Record<SourceStatus, string> = {
@@ -76,14 +74,9 @@ export function LibraryHeader({
 
   return (
     <div className="shrink-0">
-      <header className="flex flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <RollInText text={KNOWLEDGE_TAB_TITLES[tab]} />
-          <Badge variant="secondary">
-            <RollingNumber value={tabSummaries[tab]?.total ?? 0} />
-          </Badge>
-        </h1>
-      </header>
+      {/* The breadcrumb is the visible title; the tab rail below carries the
+          counts. */}
+      <h1 className="sr-only">{KNOWLEDGE_TAB_TITLES[tab]}</h1>
 
       {/* One pill rail rather than an underline: the tab is also the route, so
           the selected bucket has to read as a place you are, not a border. */}
@@ -95,7 +88,7 @@ export function LibraryHeader({
             router.push(`/library/${slug}`);
           })
         }
-        className="px-4 sm:px-6"
+        className="px-4 pt-4 sm:px-6"
       >
         <TabsList aria-label="Library tabs">
           {KNOWLEDGE_TAB_SLUGS.map((slug) => {

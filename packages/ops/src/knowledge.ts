@@ -108,6 +108,7 @@ async function requireLinkedSource(
 export const listCollectionsOp = defineOperation({
   name: "knowledge.collections.list",
   capability: "member",
+  effect: "read",
   input: z.object({ assistantId: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { assistantId }) => {
@@ -119,6 +120,7 @@ export const listCollectionsOp = defineOperation({
 export const listSourcesOp = defineOperation({
   name: "knowledge.sources.list",
   capability: "member",
+  effect: "read",
   input: z.object({ collectionId: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { collectionId }) => {
@@ -130,6 +132,7 @@ export const listSourcesOp = defineOperation({
 export const getSourceOp = defineOperation({
   name: "knowledge.sources.get",
   capability: "member",
+  effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { id }) => (await requireSource(ctx, id)).source,
@@ -154,6 +157,7 @@ const triageSchema = z.object({
 export const addSourceOp = defineOperation({
   name: "knowledge.sources.add",
   capability: "edit",
+  effect: "write",
   input: z.object({
     /** Optional cross-check; the Collection is the authority on ownership. */
     assistantId: z.string().min(1).optional(),
@@ -208,6 +212,7 @@ export const addSourceOp = defineOperation({
 export const listOrgKnowledgeSourcesOp = defineOperation({
   name: "knowledge.org.list",
   capability: "member",
+  effect: "read",
   input: z.object({
     kinds: z
       .array(z.enum(["website", "url", "file", "text", "application", "faq"]))
@@ -230,6 +235,7 @@ export const listOrgKnowledgeSourcesOp = defineOperation({
 export const listOrgFaqsOp = defineOperation({
   name: "knowledge.org.faqs.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.listOrgFaqs(ctx.organizationId),
@@ -243,6 +249,7 @@ export const listOrgFaqsOp = defineOperation({
 export const setSourceLinksOp = defineOperation({
   name: "knowledge.sources.links.set",
   capability: "edit",
+  effect: "write",
   input: z.object({
     sourceId: z.string().min(1),
     assistantIds: z.array(z.string().min(1)).max(50),
@@ -267,6 +274,7 @@ export const setSourceLinksOp = defineOperation({
 export const setDirectAccessOp = defineOperation({
   name: "knowledge.sources.direct_access.set",
   capability: "edit",
+  effect: "consequential",
   input: z.object({
     sourceId: z.string().min(1),
     assistantId: z.string().min(1),
@@ -300,6 +308,7 @@ export const setDirectAccessOp = defineOperation({
 export const deleteSourceOp = defineOperation({
   name: "knowledge.sources.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: { assistantIds: string[] }) => [
     ...assistantEditors(result.assistantIds),
@@ -320,6 +329,7 @@ export const deleteSourceOp = defineOperation({
 export const deleteSourcesOp = defineOperation({
   name: "knowledge.sources.deleteMany",
   capability: "edit",
+  effect: "consequential",
   input: z.object({
     ids: z.array(z.string().min(1)).min(1).max(100),
   }),
@@ -383,6 +393,7 @@ async function removeSource(
 export const unlinkSourceOp = defineOperation({
   name: "knowledge.sources.unlink",
   capability: "edit",
+  effect: "consequential",
   input: z.object({
     assistantId: z.string().min(1),
     sourceId: z.string().min(1),
@@ -411,6 +422,7 @@ export const unlinkSourceOp = defineOperation({
 export const unlinkSourcesOp = defineOperation({
   name: "knowledge.sources.unlinkMany",
   capability: "edit",
+  effect: "consequential",
   input: z.object({
     assistantId: z.string().min(1),
     sourceIds: z.array(z.string().min(1)).min(1).max(100),
@@ -455,6 +467,7 @@ async function removeSourceLink(
 export const createFaqOp = defineOperation({
   name: "knowledge.faqs.create",
   capability: "edit",
+  effect: "write",
   input: z.object({
     assistantId: z.string().min(1).optional(),
     collectionId: z.string().min(1),
@@ -510,6 +523,7 @@ const faqRowsSchema = z
 export const importFaqsOp = defineOperation({
   name: "knowledge.faqs.import",
   capability: "edit",
+  effect: "write",
   input: z.object({
     assistantId: z.string().min(1).optional(),
     collectionId: z.string().min(1),
@@ -576,6 +590,7 @@ export const importFaqsOp = defineOperation({
 export const createOrgFaqOp = defineOperation({
   name: "knowledge.org.faqs.create",
   capability: "edit",
+  effect: "write",
   input: z.object({
     question: z.string().min(1).max(1000),
     answer: z.string().min(1).max(20000),
@@ -613,6 +628,7 @@ export const createOrgFaqOp = defineOperation({
 export const addOrgSourceOp = defineOperation({
   name: "knowledge.org.sources.add",
   capability: "edit",
+  effect: "write",
   input: z.object({
     name: z.string().min(1).max(500),
     kind: z.enum(["text", "url", "file"]),
@@ -644,6 +660,7 @@ export const addOrgSourceOp = defineOperation({
 export const importOrgFaqsOp = defineOperation({
   name: "knowledge.org.faqs.import",
   capability: "edit",
+  effect: "write",
   input: z.object({
     fileName: z.string().max(300).optional(),
     rows: faqRowsSchema,
@@ -676,6 +693,7 @@ export const importOrgFaqsOp = defineOperation({
 export const listSourceDocumentsOp = defineOperation({
   name: "knowledge.sources.documents.list",
   capability: "member",
+  effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
     /** Scopes the read to one Assistant's Knowledge section. */
@@ -716,6 +734,7 @@ export const listSourceDocumentsOp = defineOperation({
 export const getOrgFaqOp = defineOperation({
   name: "knowledge.org.faqs.get",
   capability: "member",
+  effect: "read",
   input: z.object({ sourceId: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { sourceId }) => {
@@ -735,6 +754,7 @@ export const getOrgFaqOp = defineOperation({
 export const updateOrgFaqOp = defineOperation({
   name: "knowledge.org.faqs.update",
   capability: "edit",
+  effect: "write",
   input: z.object({
     sourceId: z.string().min(1),
     question: z.string().min(1).max(1000),
@@ -788,6 +808,7 @@ export const updateOrgFaqOp = defineOperation({
 export const recrawlSourceOp = defineOperation({
   name: "knowledge.sources.recrawl",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: { assistantIds: string[] }) => [
     ...assistantEditors(result.assistantIds),
@@ -824,6 +845,7 @@ export const recrawlSourceOp = defineOperation({
 export const getSourceDocumentOp = defineOperation({
   name: "knowledge.documents.get",
   capability: "member",
+  effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
     documentId: z.string().min(1),
@@ -886,6 +908,7 @@ export const getSourceDocumentOp = defineOperation({
 export const listDocumentChunksOp = defineOperation({
   name: "knowledge.documents.chunks.list",
   capability: "member",
+  effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
     documentId: z.string().min(1),
@@ -928,6 +951,7 @@ export const listDocumentChunksOp = defineOperation({
 export const getDocumentSummaryOp = defineOperation({
   name: "knowledge.documents.summary.get",
   capability: "member",
+  effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
     documentId: z.string().min(1),
@@ -970,6 +994,7 @@ export const getDocumentSummaryOp = defineOperation({
 export const setDocumentExcludedOp = defineOperation({
   name: "knowledge.documents.excluded.set",
   capability: "edit",
+  effect: "write",
   input: z.object({
     sourceId: z.string().min(1),
     documentId: z.string().min(1),
@@ -1007,6 +1032,7 @@ export const setDocumentExcludedOp = defineOperation({
 export const setDocumentsExcludedOp = defineOperation({
   name: "knowledge.documents.excluded.setMany",
   capability: "edit",
+  effect: "write",
   input: z.object({
     sourceId: z.string().min(1),
     documentIds: z.array(z.string().min(1)).min(1).max(200),
@@ -1080,6 +1106,7 @@ async function applyDocumentExclusion(
 export const extractSourceMemoriesOp = defineOperation({
   name: "knowledge.sources.memories.extract",
   capability: "edit",
+  effect: "write",
   input: z.object({ sourceId: z.string().min(1) }),
   entities: () => [{ kind: "knowledgeHub" as const }],
   run: async (ctx, input): Promise<{ queued: number }> => {
@@ -1111,6 +1138,7 @@ export const extractSourceMemoriesOp = defineOperation({
 export const listDocumentMemoriesOp = defineOperation({
   name: "knowledge.documents.memories.list",
   capability: "member",
+  effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
     documentPath: z.string().min(1),
@@ -1141,6 +1169,7 @@ export const listDocumentMemoriesOp = defineOperation({
 export const forgetKnowledgeMemoryOp = defineOperation({
   name: "knowledge.memories.forget",
   capability: "edit",
+  effect: "consequential",
   input: z.object({
     id: z.string().min(1),
     reason: z.string().max(500).optional(),
@@ -1161,6 +1190,7 @@ export const forgetKnowledgeMemoryOp = defineOperation({
 export const restoreKnowledgeMemoryOp = defineOperation({
   name: "knowledge.memories.restore",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [{ kind: "knowledgeHub" as const }],
   run: async (ctx, input): Promise<KnowledgeMemory> => {
@@ -1208,6 +1238,7 @@ const KNOWLEDGE_SEARCH_QUERY_MAX = 2000;
 export const searchKnowledgeOp = defineOperation({
   name: "knowledge.search",
   capability: "member",
+  effect: "read",
   input: z.object({
     query: z
       .string()

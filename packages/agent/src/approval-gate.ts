@@ -136,6 +136,21 @@ export function approvalCardPart(input: {
 }
 
 /**
+ * The gate's answer for a call the host marks as always confirmed (Ciele AI's
+ * destructive platform operations): straight to a human, no model asked, and
+ * `backend: null` because nothing judged it.
+ */
+export function confirmationGateResult(): ApprovalGateResult {
+  return {
+    verdict: { kind: "review", reversibility: "irreversible", reason: "irreversible" },
+    backend: null,
+    calibrated: null,
+    confidence: {},
+    mapVersion: APPROVAL_GATE_MAP_VERSION,
+  };
+}
+
+/**
  * What the model is told when its action was stopped. Deliberately not an
  * error: the action has not failed, it is waiting, and a model told "failed"
  * retries, which is how one approval request becomes four.

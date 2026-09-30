@@ -120,7 +120,7 @@ export function Switch({
             layout
             animate={{ scale: squish ? 0.9 : 1 }}
             className={cn(
-              "pointer-events-none block rounded-full bg-background shadow-md",
+              "pointer-events-none block rounded-full bg-background shadow-light",
               thumbSize,
             )}
           >

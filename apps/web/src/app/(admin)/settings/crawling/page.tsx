@@ -1,5 +1,7 @@
+import { Globe } from "lucide-react";
 import { redirect } from "next/navigation";
 import { CrawlerConnectionCard } from "@/components/settings/crawler-connection-card";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { requirePageMember } from "@/lib/authz";
 import { canManageMembers } from "@/lib/rbac";
@@ -18,9 +20,12 @@ export default async function CrawlingSettingsPage() {
 
   return (
     <SettingsPanel
+      icon={Globe}
       title="Crawling"
       description={`Connect ${session.organization.name}'s own crawler account. Website Sources that run on Apify then use your token and bill your Apify account.`}
     >
+      <SectionTimeline>
+      <TimelineSection title="Apify connection">
       <CrawlerConnectionCard
         connection={
           connection
@@ -33,6 +38,8 @@ export default async function CrawlingSettingsPage() {
         }
         platformFallback={websiteCrawlerCapabilities().apifyConfigured}
       />
+      </TimelineSection>
+      </SectionTimeline>
     </SettingsPanel>
   );
 }

@@ -66,6 +66,7 @@ import {
   removeMemberOp,
   revokeInviteOp,
   revokeOrgApiKeyOp,
+  deleteOrgApiKeyOp,
   organizationPatchSchema,
   updateMemberRoleOp,
 } from "./organization";
@@ -298,7 +299,28 @@ describe("organization administration operations", () => {
     expect(minted.apiKey.createdBy).toBe(DEMO_MEMBER.userId);
     expect((await listOrgApiKeysOp.run(adminCtx, {})).map((item) => item.id))
       .toContain(minted.apiKey.id);
+    // An active key cannot be deleted; a revoked one can.
+    await expect(
+      deleteOrgApiKeyOp.run(adminCtx, { id: minted.apiKey.id })
+    ).rejects.toMatchObject({ code: "conflict" });
     await revokeOrgApiKeyOp.run(adminCtx, { id: minted.apiKey.id });
+    // The database refusing the delete (a row-level rule, a missing policy)
+    // is reported, never announced as done.
+    const refusing = {
+      ...adminCtx,
+      db: new Proxy(adminCtx.db, {
+        get: (target, prop, receiver) =>
+          prop === "deleteRevokedApiKey"
+            ? async () => false
+            : Reflect.get(target, prop, receiver),
+      }),
+    };
+    await expect(
+      deleteOrgApiKeyOp.run(refusing, { id: minted.apiKey.id })
+    ).rejects.toMatchObject({ code: "conflict", message: "The API key was not deleted" });
+    await deleteOrgApiKeyOp.run(adminCtx, { id: minted.apiKey.id });
+    expect((await listOrgApiKeysOp.run(adminCtx, {})).map((item) => item.id))
+      .not.toContain(minted.apiKey.id);
 
     await expect(
       createOrgApiKeyOp.run(adminCtx, { name: "Too powerful", role: "owner" })

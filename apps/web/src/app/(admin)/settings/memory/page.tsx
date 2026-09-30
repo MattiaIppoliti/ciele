@@ -1,3 +1,4 @@
+import { ScanText } from "lucide-react";
 import { MemoryClient } from "@/components/settings/memory-client";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { requirePageMember } from "@/lib/authz";
@@ -30,6 +31,7 @@ export default async function MemorySettingsPage() {
 
   return (
     <SettingsPanel
+      icon={ScanText}
       title="What your teammates remember"
       description={`Shared with every AI teammate in ${session.organization.name}. They add to it as they learn how you work, and you can change or undo anything here.`}
     >

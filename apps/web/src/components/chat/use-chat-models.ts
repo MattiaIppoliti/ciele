@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createElement, useEffect, useState } from "react";
+import type { PromptModel } from "@/components/agents/prompt-input";
+import { ModelProviderLogo } from "@/components/chat/model-provider-logo";
 import type { ChatModelOption } from "@agent-hub/agent/client";
 
 /**
@@ -58,11 +60,17 @@ export function useChatModels(
  * choice pinned to one source carries its tag, which is what tells "Claude
  * Sonnet 5 · API key" from "Claude Sonnet 5 · AI Gateway".
  */
-export function toPromptModels(
-  options: ChatModelOption[]
-): Array<{ value: string; label: string }> {
+export function toPromptModels(options: ChatModelOption[]): PromptModel[] {
   return options.map((option) => ({
     value: option.selector,
-    label: option.sourceName ? `${option.label} · ${option.sourceName}` : option.label,
+    label: option.unavailable
+      ? `${option.label} · not connected`
+      : option.sourceName
+        ? `${option.label} · ${option.sourceName}`
+        : option.label,
+    disabled: option.unavailable,
+    // The provider's own mark, so the picker reads at a glance which company
+    // answers, not only which model name.
+    icon: createElement(ModelProviderLogo, { provider: option.provider }),
   }));
 }

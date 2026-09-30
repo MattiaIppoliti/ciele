@@ -178,8 +178,10 @@ export type {
 // may see or edit one. Pure derivations over the row plus the asking Member, so
 // the ops layer, the runtime and a server component all decide the same way.
 export {
+  CIELE_AI_DEFAULT_NAME,
   canEditTeammate,
   canViewTeammate,
+  isCieleAi,
   danglingScopeAlertCopy,
   danglingSourceScopeAlertCopy,
   isTeammateRetired,
@@ -457,6 +459,7 @@ export { estimateCostEur } from "./pricing";
 export {
   EVALUATION_RUN_STALE_MS,
   EVALUATION_STAGES,
+  autoModelFromEvaluations,
   evaluationLeaderboard,
   gradeEvaluation,
   settleStaleEvaluationRun,

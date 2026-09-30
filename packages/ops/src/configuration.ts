@@ -63,6 +63,7 @@ export const goalExpectationsSchema = z.object({
 export const listSkillsOp = defineOperation({
   name: "skills.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.table("skills").list({ organizationId: ctx.organizationId }),
@@ -71,6 +72,7 @@ export const listSkillsOp = defineOperation({
 export const createSkillOp = defineOperation({
   name: "skills.create",
   capability: "edit",
+  effect: "write",
   input: skillInputSchema.extend({ attachToAssistantId: idSchema.optional() }),
   entities: ({ attachToAssistantId }) =>
     attachToAssistantId
@@ -95,6 +97,7 @@ export const createSkillOp = defineOperation({
 export const updateSkillOp = defineOperation({
   name: "skills.update",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: idSchema, patch: skillPatchSchema }),
   entities: () => [{ kind: "assistantList" as const }],
   run: async (ctx, { id, patch }) => {
@@ -106,6 +109,7 @@ export const updateSkillOp = defineOperation({
 export const deleteSkillOp = defineOperation({
   name: "skills.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "assistantList" as const }],
   run: async (ctx, { id }) => {
@@ -117,6 +121,7 @@ export const deleteSkillOp = defineOperation({
 export const getAssistantSkillsOp = defineOperation({
   name: "assistants.skills.get",
   capability: "member",
+  effect: "read",
   input: z.object({ assistantId: idSchema }),
   entities: () => [],
   run: async (ctx, { assistantId }) => {
@@ -128,6 +133,7 @@ export const getAssistantSkillsOp = defineOperation({
 export const setAssistantSkillsOp = defineOperation({
   name: "assistants.skills.set",
   capability: "edit",
+  effect: "write",
   input: z.object({
     assistantId: idSchema,
     skillIds: z.array(idSchema).max(100).refine(
@@ -156,6 +162,7 @@ export const setAssistantSkillsOp = defineOperation({
 export const listAssistantGoalsOp = defineOperation({
   name: "goals.list",
   capability: "member",
+  effect: "read",
   input: z.object({ assistantId: idSchema }),
   entities: () => [],
   run: async (ctx, { assistantId }) => {
@@ -167,6 +174,7 @@ export const listAssistantGoalsOp = defineOperation({
 export const createAssistantGoalOp = defineOperation({
   name: "goals.create",
   capability: "edit",
+  effect: "write",
   input: z.object({
     assistantId: idSchema,
     question: z.string().trim().min(1).max(10_000),
@@ -185,6 +193,7 @@ export const createAssistantGoalOp = defineOperation({
 export const updateAssistantGoalOp = defineOperation({
   name: "goals.update",
   capability: "edit",
+  effect: "write",
   input: z.object({
     assistantId: idSchema,
     goalId: idSchema,
@@ -209,6 +218,7 @@ export const updateAssistantGoalOp = defineOperation({
 export const deleteAssistantGoalOp = defineOperation({
   name: "goals.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ assistantId: idSchema, goalId: idSchema }),
   entities: ({ assistantId }) => [{ kind: "assistantEditor" as const, assistantId }],
   run: async (ctx, { assistantId, goalId }) => {
@@ -220,6 +230,7 @@ export const deleteAssistantGoalOp = defineOperation({
 export const listAlertsOp = defineOperation({
   name: "alerts.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.listAlerts(ctx.organizationId),
@@ -228,6 +239,7 @@ export const listAlertsOp = defineOperation({
 export const resolveAlertOp = defineOperation({
   name: "alerts.resolve",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "alerts" as const }],
   run: async (ctx, { id }): Promise<Alert> => {

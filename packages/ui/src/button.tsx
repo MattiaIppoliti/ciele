@@ -38,13 +38,14 @@ type ButtonVariant =
 //     them needs no `dark:` twin. `outline` and `ghost` each carried one, and
 //     a pair like that drifts every time only one side is touched.
 //
-// `default` stays a solid pill: it is the page's one committing action and
-// should not read as a surface at all.
+// `default` stays solid: it is the page's one committing action and should not
+// read as a surface at all. It is painted with the brand tokens, which are
+// monochrome (the old `primary` pill) on the marketing site and the docs and
+// Linear's lavender in the console, so the variant carries no `dark:` twin. It
+// used to: seven of them, a radial glow and a hover halo, which is the kind of
+// atmospheric flourish a single accent colour is meant to replace.
 const buttonVariantClasses: Record<ButtonVariant, string> = {
-  default:
-    // Dark mode: a dark pill lit from inside by a radial top glow;
-    // hover inverts to the light pill with a faint halo around it.
-    "bg-primary text-primary-foreground hover:bg-primary/80 dark:border-white/10 dark:bg-neutral-900 dark:bg-[radial-gradient(100%_80%_at_50%_0%,rgba(255,255,255,0.14),transparent_65%)] dark:text-foreground dark:hover:bg-none dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:shadow-[0_0_14px_rgba(255,255,255,0.28)]",
+  default: "bg-brand text-brand-foreground hover:bg-brand-hover",
   outline:
     "border-alpha-medium hover:bg-alpha-light hover:text-foreground aria-expanded:bg-alpha-light aria-expanded:text-foreground",
   secondary:
@@ -65,11 +66,13 @@ type ButtonSize =
   | "icon-lg"
 
 const buttonSizeClasses: Record<ButtonSize, string> = {
+  // Linear's horizontal rhythm: 12px of side padding on a 32px control, and
+  // 10px on the side an icon sits (it had 8 and 6, which read cramped).
   default:
-    "h-8 gap-1 px-2 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
+    "h-8 gap-1.5 px-3 has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5",
   xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3 max-lg:min-h-[28px]",
   sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5 max-lg:min-h-[28px]",
-  lg: "h-9 gap-1 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+  lg: "h-9 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
   icon: "size-8",
   "icon-sm":
     "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg max-lg:min-h-[28px] max-lg:min-w-[28px]",

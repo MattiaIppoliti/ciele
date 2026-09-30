@@ -152,17 +152,19 @@ export function TimelineSection({
   const active = ctx?.activeId === id;
 
   return (
-    <section ref={ref} className="relative pt-2 pb-12 pl-10 last:pb-4">
+    // Tighter below `lg` (phones and portrait tablets), where the page is one
+    // narrow column and desktop's breathing room reads as dead scroll.
+    <section ref={ref} className="relative pt-1 pb-7 pl-7 last:pb-4 lg:pt-2 lg:pb-12 lg:pl-10">
       <span
         aria-hidden
-        className={`absolute top-[13px] left-0 size-3 rounded-full border-2 transition-[transform,border-color] duration-300 motion-reduce:transition-none ${
+        className={`absolute top-[7px] left-0 size-3 lg:top-[13px] rounded-full border-2 transition-[transform,border-color] duration-300 motion-reduce:transition-none ${
           active
             ? "border-foreground bg-background scale-110"
             : "border-muted-foreground/35 bg-background"
         }`}
       />
       <h2
-        className={`text-lg font-semibold transition-colors duration-300 ${
+        className={`text-base font-semibold transition-colors duration-300 lg:text-lg ${
           active ? "text-foreground" : "text-muted-foreground/60"
         }`}
       >
@@ -172,7 +174,7 @@ export function TimelineSection({
           stay at full strength: dimmed text and controls read as disabled,
           and fell under contrast minimums. */}
       <div
-        className={`mt-5 ${boxed ? "min-w-0 rounded-2xl border border-border bg-background p-4 sm:p-5" : ""}`}
+        className={`mt-3 lg:mt-5 ${boxed ? "min-w-0 rounded-2xl border border-border bg-background p-4 sm:p-5" : ""}`}
       >
         {children}
       </div>

@@ -38,22 +38,20 @@ export function DeveloperPanelButton() {
 
   return (
     <Hint
-      label={`${open ? "Hide" : "Show"} developer panel (D)`}
+      label={`${open ? "Hide" : "Show"} ${label} (D)`}
     >
       <button
         type="button"
         aria-pressed={open}
+        aria-label={`${label} developer panel`}
         onClick={() => toggleRightRail("developer")}
-        className={`z-10 flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+        className={`z-10 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
           open
             ? "bg-muted text-foreground"
             : "text-muted-foreground hover:bg-muted hover:text-foreground"
         }`}
       >
         <Code2 className="size-4 shrink-0" />
-        {/* The label is the point on a wide screen; on a phone the icon carries
-            it, since the header has no room for a second piece of prose. */}
-        <span className="hidden sm:inline">{label}</span>
       </button>
     </Hint>
   );

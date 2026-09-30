@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Experimental_EvaluationMockModelV4 } from "ai/test";
 import { APPROVAL_GATE_THRESHOLDS } from "@agent-hub/core";
-import { approvalCardPart, runApprovalGate } from "./approval-gate";
+import {
+  approvalCardPart,
+  confirmationGateResult,
+  runApprovalGate,
+} from "./approval-gate";
 import { registerRuntimeHost, resetRuntimeHost } from "./host";
 import type { ResolvedDecisionModel } from "./decision-model";
 import type { UsageEvent } from "./types";
@@ -132,6 +136,18 @@ describe("runApprovalGate", () => {
       timeoutMs: 20,
     });
     expect(result.verdict.kind === "review" && result.verdict.reason).toBe("no_decision");
+  });
+});
+
+describe("an action the host always confirms", () => {
+  it("goes in front of a human without asking any model", () => {
+    const gate = confirmationGateResult();
+    expect(gate.verdict).toEqual({
+      kind: "review",
+      reversibility: "irreversible",
+      reason: "irreversible",
+    });
+    expect(gate.backend).toBeNull();
   });
 });
 

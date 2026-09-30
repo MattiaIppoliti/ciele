@@ -170,6 +170,15 @@ export function describeDbContract(
         const revoked = after.find((k) => k.id === created.id);
         expect(revoked?.revokedAt).toBeTruthy();
         expect(after.find((k) => k.id === second.id)?.revokedAt).toBeNull();
+
+        // Delete removes a revoked key and refuses an active one, and says
+        // which happened: a refusal must not read as success.
+        expect(await db.deleteRevokedApiKey(second.id)).toBe(false);
+        expect(await db.deleteRevokedApiKey(created.id)).toBe(true);
+        expect(await db.deleteRevokedApiKey(created.id)).toBe(false);
+        const remaining = (await db.listApiKeys(ctx.organizationId)).map((k) => k.id);
+        expect(remaining).toContain(second.id);
+        expect(remaining).not.toContain(created.id);
       });
       it("looks a key up by hash for auth and stamps last-used (#619)", async () => {
         const input = newKeyInput("Lookup key", "viewer");
@@ -8397,6 +8406,28 @@ export function describeDbContract(
           await db.listTeammateConversations(teammate.id, "someone-else")
         ).toEqual([]);
 
+        // Across Teammates: only the named ones, and never the Assistant's.
+        const other = await newTeammate();
+        const elsewhere = await db.createConversation({
+          teammateId: other.id,
+          subjectType: "member",
+          subjectId: ctx.userId,
+          title: "elsewhere",
+        });
+        const across = await db.listMemberTeammateConversations(
+          [teammate.id, other.id],
+          ctx.userId
+        );
+        expect(across.map((c) => c.id).sort()).toEqual(
+          [internal.id, elsewhere.id].sort()
+        );
+        expect(
+          (await db.listMemberTeammateConversations([other.id], ctx.userId)).map(
+            (c) => c.id
+          )
+        ).toEqual([elsewhere.id]);
+        expect(await db.listMemberTeammateConversations([], ctx.userId)).toEqual([]);
+
         // The Inbox is the customer queue: internal chat never joins it.
         const inbox = (
           await db.getInboxPage(ctx.organizationId, { limit: 100 })
@@ -9642,6 +9673,135 @@ export function describeDbContract(
         const runs = await db.table("httpFlowRuns").list({ flowId: "flow-http" }, { limit: 10 });
         expect(runs.map((run) => run.id)).toEqual([second.id, first.id]);
         expect(runs[0]).toMatchObject({ status: 500, failedAction: "api_request", ran: ["api_request"] });
+      });
+    });
+
+    describe("action approval runs (#958)", () => {
+      async function approvedApproval() {
+        const assistant = await db.createAssistant(ctx.organizationId, { title: "Gate" });
+        const conversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: `visitor-${crypto.randomUUID()}`,
+          title: "Delete it",
+        });
+        const approval = await db.table("actionApprovals").insert({
+          organizationId: ctx.organizationId,
+          conversationId: conversation.id,
+          teammateId: null,
+          requestedBy: null,
+          operation: "assistants.delete",
+          input: { id: assistant.id },
+          label: "Delete assistant",
+          reversibility: "irreversible",
+          reason: "irreversible",
+          backend: null,
+          calibrated: null,
+          confidence: {},
+          mapVersion: 1,
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        });
+        await db.decideActionApproval(approval.id, {
+          status: "approved",
+          decidedBy: null,
+          decidedByName: "Ann",
+          decidedAt: new Date().toISOString(),
+        });
+        return approval;
+      }
+
+      it("lets one caller claim an approved run, and a failed run be claimed again", async () => {
+        const approval = await approvedApproval();
+        const claim = {
+          now: "2026-09-30T10:00:00.000Z",
+          staleBefore: "2026-09-30T09:45:00.000Z",
+        };
+        expect(await db.claimActionApprovalRun(approval.id, claim)).toMatchObject({
+          id: approval.id,
+          status: "approved",
+          executedAt: null,
+        });
+        // A second click while the first run is still going is refused.
+        expect(await db.claimActionApprovalRun(approval.id, claim)).toBeNull();
+
+        // The run threw: the claim is released, so the Member can try again.
+        await db.settleActionApprovalRun(approval.id, "failed", claim.now);
+        expect(await db.claimActionApprovalRun(approval.id, claim)).not.toBeNull();
+
+        // It ran: stamped, and never claimable again.
+        await db.settleActionApprovalRun(approval.id, "ran", claim.now);
+        expect((await db.table("actionApprovals").get(approval.id))?.executedAt).toEqual(
+          expect.any(String)
+        );
+        expect(
+          await db.claimActionApprovalRun(approval.id, {
+            now: "2026-09-30T12:00:00.000Z",
+            staleBefore: "2026-09-30T11:45:00.000Z",
+          })
+        ).toBeNull();
+      });
+
+      it("takes over a claim whose run died without settling, once it is stale", async () => {
+        const approval = await approvedApproval();
+        await db.claimActionApprovalRun(approval.id, {
+          now: "2026-09-30T10:00:00.000Z",
+          staleBefore: "2026-09-30T09:45:00.000Z",
+        });
+        // Still inside the lease: whoever holds it may be running it now.
+        expect(
+          await db.claimActionApprovalRun(approval.id, {
+            now: "2026-09-30T10:05:00.000Z",
+            staleBefore: "2026-09-30T09:50:00.000Z",
+          })
+        ).toBeNull();
+        expect(
+          await db.claimActionApprovalRun(approval.id, {
+            now: "2026-09-30T10:20:00.000Z",
+            staleBefore: "2026-09-30T10:05:00.000Z",
+          })
+        ).not.toBeNull();
+
+        // The run that outlived its lease finally throws. Its release must not
+        // free the claim the takeover holds, or a third click would run it again.
+        await db.settleActionApprovalRun(approval.id, "failed", "2026-09-30T10:00:00.000Z");
+        expect(
+          await db.claimActionApprovalRun(approval.id, {
+            now: "2026-09-30T10:21:00.000Z",
+            staleBefore: "2026-09-30T10:06:00.000Z",
+          })
+        ).toBeNull();
+      });
+
+      it("never claims a run that nobody approved", async () => {
+        const assistant = await db.createAssistant(ctx.organizationId, { title: "Gate" });
+        const conversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-pending",
+          title: "Pending",
+        });
+        const pending = await db.table("actionApprovals").insert({
+          organizationId: ctx.organizationId,
+          conversationId: conversation.id,
+          teammateId: null,
+          requestedBy: null,
+          operation: "assistants.delete",
+          input: {},
+          label: "Delete assistant",
+          reversibility: "irreversible",
+          reason: "irreversible",
+          backend: null,
+          calibrated: null,
+          confidence: {},
+          mapVersion: 1,
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        });
+        expect(
+          await db.claimActionApprovalRun(pending.id, {
+            now: "2026-09-30T10:00:00.000Z",
+            staleBefore: "2026-09-30T09:45:00.000Z",
+          })
+        ).toBeNull();
       });
     });
 

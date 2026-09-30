@@ -2,6 +2,7 @@
 import {
   canEditTeammate,
   canViewTeammate,
+  isCieleAi,
   isTeammateRetired,
   teammatePersonaPrompt,
   teammateSearchesKnowledge,
@@ -46,6 +47,45 @@ function makeTeammate(overrides: Partial<Teammate> = {}): Teammate {
 }
 
 const viewer = (userId: string, role: Role) => ({ userId, role });
+
+describe("Ciele AI", () => {
+  const cieleAi = makeTeammate({
+    name: "Ciele AI",
+    title: "",
+    roleDescription: "",
+    systemKind: "ciele_ai",
+  });
+
+  it("is told it acts with the colleague's own permissions, and nothing more", () => {
+    const prompt = teammatePersonaPrompt(cieleAi);
+    expect(prompt).toContain("Ciele AI");
+    expect(prompt).toContain("exactly their permissions");
+    // No Teammate persona and no "nothing to search" line: it reaches the
+    // Library through its platform tools, not through a Knowledge Scope.
+    expect(prompt).not.toContain("AI teammate on this organization");
+    expect(prompt).not.toContain("no knowledge to search");
+  });
+
+  it("keeps a Standing Role somebody wrote later, under the new name", () => {
+    const prompt = teammatePersonaPrompt({
+      ...cieleAi,
+      name: "Atlas",
+      roleDescription: "Answer in Italian.",
+    });
+    expect(prompt).toContain("You are Atlas");
+    expect(prompt).toContain("Answer in Italian.");
+  });
+
+  it("is recognised by its kind, and the Flows Agent is not it", () => {
+    expect(isCieleAi(cieleAi)).toBe(true);
+    expect(isCieleAi(makeTeammate({ systemKind: "flows_agent" }))).toBe(false);
+    expect(isCieleAi(makeTeammate())).toBe(false);
+  });
+
+  it("stays off the roster, like every system Teammate", () => {
+    expect(visibleTeammates([cieleAi], viewer("member-owner", "owner"))).toEqual([]);
+  });
+});
 
 describe("teammatePersonaPrompt", () => {
   it("names the Teammate and states its standing role", () => {

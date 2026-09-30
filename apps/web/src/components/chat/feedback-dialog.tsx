@@ -103,7 +103,7 @@ export function FeedbackDialog({
                       opacity: { duration: 0.2, ease: CLOSE_EASE },
                     }
               }
-              className="rounded-[20px] border border-border bg-background p-5 text-foreground shadow-2xl"
+              className="rounded-[20px] border border-border bg-background p-5 text-foreground shadow-strong"
             >
               <div className="mb-4 flex items-start gap-3">
                 <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">

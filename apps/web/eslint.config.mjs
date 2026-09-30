@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import { designTokenRules } from "@agent-hub/eslint-config/design-tokens";
 
 // Open-core boundary: `src/ee/**` is stripped from the public mirror, which
 // overlays an inert `register.ts` stub in its place. Open-source code must
@@ -115,6 +116,17 @@ const eslintConfig = defineConfig([
       "react-hooks/immutability": "off",
     },
   },
+  // Product UI stays on the design tokens (DESIGN.md). Marketing and auth keep
+  // their art-directed shadows; the vendored charts keep upstream's type sizes.
+  ...designTokenRules({
+    files: ["src/**/*.{ts,tsx}"],
+    shadowExempt: [
+      "src/components/home/**",
+      "src/components/marketing/**",
+      "src/components/auth/**",
+    ],
+    typeExempt: ["src/components/charts/beui/**", "src/components/spectrumui/**"],
+  }),
 ]);
 
 export default eslintConfig;

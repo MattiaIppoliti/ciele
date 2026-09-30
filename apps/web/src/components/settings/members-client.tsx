@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useMemo, useState, useTransition } from "react";
 import type { Invite, Member, Role } from "@agent-hub/core";
 import { Plus, Trash2 } from "lucide-react";
@@ -281,13 +282,15 @@ export function MembersClient({
   ];
 
   return (
-    <div className={`mt-8 space-y-8 ${isPending ? "opacity-70" : ""}`}>
+    <div className={`mt-8 ${isPending ? "opacity-70" : ""}`}>
       {demo && (
         <Badge variant="secondary" className="text-muted-foreground">
           Demo mode, members are not persisted
         </Badge>
       )}
 
+      <SectionTimeline>
+      <TimelineSection title="Members">
       <Table
         data={rows}
         columns={columns}
@@ -295,6 +298,7 @@ export function MembersClient({
         emptyState="No members yet"
         footer={<TablePagination total={rows.length} noun="member" />}
       />
+      </TimelineSection>
 
       <RemoveMemberModal
         row={pendingRemoval}
@@ -304,9 +308,8 @@ export function MembersClient({
 
       {/* Invite, admins only; editors get a read-only roster. */}
       {canInvite && (
-        <div>
-          <h2 className="text-lg font-semibold">Invite people</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
+        <TimelineSection title="Invite people" boxed>
+          <p className="text-muted-foreground text-sm">
             Creates a join link you can share. Email is optional (just a note).
           </p>
           <form onSubmit={handleInvite} className="mt-3 flex flex-wrap gap-2">
@@ -350,8 +353,9 @@ export function MembersClient({
               <RollInText text={inviting ? "Creating…" : "Create invite"} />
             </Button>
           </form>
-        </div>
+        </TimelineSection>
       )}
+      </SectionTimeline>
       {confirmDeleteModal}
     </div>
   );

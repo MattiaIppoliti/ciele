@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,7 @@ export function SectionHeading({
 }: {
   icon: LucideIcon;
   title: string;
-  description: string;
+  description: ReactNode;
   eyebrow?: string;
   variant?: "console" | "marketing" | "mock";
   headingLevel?: 1 | 2 | 3;
@@ -79,7 +80,7 @@ export function SectionHeading({
           <p
             className={cn(
               "text-muted-foreground font-mono font-medium uppercase tracking-wider",
-              marketing ? "mb-2 text-xs" : "mb-1 text-[10px]"
+              marketing ? "mb-2 text-xs" : "mb-1 text-2xs"
             )}
           >
             {eyebrow}

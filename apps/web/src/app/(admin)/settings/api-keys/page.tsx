@@ -1,3 +1,4 @@
+import { KeyRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { ApiKeysClient } from "@/components/settings/api-keys-client";
 import { SettingsPanel } from "@/components/settings/settings-panel";
@@ -15,6 +16,7 @@ export default async function ApiKeysPage() {
 
   return (
     <SettingsPanel
+      icon={KeyRound}
       title="API Keys"
       description="Organization-scoped keys for the CLI, the MCP server and the API. A key acts with the role you give it, capped at your own."
     >

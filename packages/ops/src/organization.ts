@@ -84,6 +84,7 @@ export const organizationPatchSchema = z.object({
 export const getOrganizationOp = defineOperation({
   name: "organization.get",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: async (ctx): Promise<Organization> => {
@@ -98,6 +99,7 @@ export const getOrganizationOp = defineOperation({
 export const updateOrganizationOp = defineOperation({
   name: "organization.update",
   capability: "manageMembers",
+  effect: "consequential",
   input: organizationPatchSchema,
   entities: () => [{ kind: "organization" as const }],
   run: (ctx, patch) => ctx.db.updateOrganization(ctx.organizationId, patch),
@@ -114,6 +116,7 @@ const positiveLimit = (message: string) =>
 export const setOrgBudgetOp = defineOperation({
   name: "organization.budget.set",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({
     dailyTokenLimit: positiveLimit("The daily token limit must be a positive number."),
     dailyEuroLimit: positiveLimit("The daily euro limit must be a positive number."),
@@ -133,6 +136,7 @@ export const setOrgBudgetOp = defineOperation({
 export const listMembersOp = defineOperation({
   name: "members.list",
   capability: "edit",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.listMembers(ctx.organizationId),
@@ -141,6 +145,7 @@ export const listMembersOp = defineOperation({
 export const updateMemberRoleOp = defineOperation({
   name: "members.updateRole",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({ userId: idSchema, role: roleSchema }),
   entities: () => [{ kind: "members" as const }],
   run: async (ctx, { userId, role }) => {
@@ -155,6 +160,7 @@ export const updateMemberRoleOp = defineOperation({
 export const removeMemberOp = defineOperation({
   name: "members.remove",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({ userId: idSchema }),
   entities: () => [{ kind: "members" as const }, { kind: "apiKeys" as const }],
   run: async (ctx, { userId }) => {
@@ -173,6 +179,7 @@ export const removeMemberOp = defineOperation({
 export const leaveOrganizationOp = defineOperation({
   name: "members.leave",
   capability: "member",
+  effect: "consequential",
   input: z.object({}),
   entities: () => [{ kind: "members" as const }, { kind: "apiKeys" as const }],
   run: async (ctx) => {
@@ -189,6 +196,7 @@ export const leaveOrganizationOp = defineOperation({
 export const listInvitesOp = defineOperation({
   name: "invites.list",
   capability: "manageMembers",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.listInvites(ctx.organizationId),
@@ -197,6 +205,7 @@ export const listInvitesOp = defineOperation({
 export const createInviteOp = defineOperation({
   name: "invites.create",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({ role: roleSchema, email: z.string().email().optional() }),
   entities: () => [{ kind: "members" as const }],
   run: (ctx, { role, email }) => {
@@ -210,6 +219,7 @@ export const createInviteOp = defineOperation({
 export const revokeInviteOp = defineOperation({
   name: "invites.revoke",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "members" as const }],
   run: async (ctx, { id }) => {
@@ -224,6 +234,7 @@ export const revokeInviteOp = defineOperation({
 export const listOrgApiKeysOp = defineOperation({
   name: "apiKeys.list",
   capability: "manageApiKeys",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.listApiKeys(ctx.organizationId),
@@ -232,6 +243,7 @@ export const listOrgApiKeysOp = defineOperation({
 export const createOrgApiKeyOp = defineOperation({
   name: "apiKeys.create",
   capability: "manageApiKeys",
+  effect: "consequential",
   input: z.object({
     name: z.string().trim().min(1).max(200),
     role: roleSchema,
@@ -259,9 +271,31 @@ export const createOrgApiKeyOp = defineOperation({
   },
 });
 
+export const deleteOrgApiKeyOp = defineOperation({
+  name: "apiKeys.delete",
+  capability: "manageApiKeys",
+  effect: "consequential",
+  input: z.object({ id: idSchema }),
+  entities: () => [{ kind: "apiKeys" as const }],
+  run: async (ctx, { id }) => {
+    const key = (await ctx.db.listApiKeys(ctx.organizationId)).find((item) => item.id === id);
+    if (!key) throw new OperationError("not_found", "API key not found");
+    // Revoke first: a key must stop authenticating before its row goes.
+    if (!key.revokedAt) {
+      throw new OperationError("conflict", "Revoke the key before deleting it");
+    }
+    // The database has the last word (its delete policy is on revoked rows
+    // for admins only); a delete it refused is not reported as done.
+    if (!(await ctx.db.deleteRevokedApiKey(id))) {
+      throw new OperationError("conflict", "The API key was not deleted");
+    }
+  },
+});
+
 export const revokeOrgApiKeyOp = defineOperation({
   name: "apiKeys.revoke",
   capability: "manageApiKeys",
+  effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "apiKeys" as const }],
   run: async (ctx, { id }) => {

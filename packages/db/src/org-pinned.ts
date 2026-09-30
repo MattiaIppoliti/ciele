@@ -306,6 +306,7 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   // rows found by membership in an org-scoped list
   revokeInvite: inviteOwner,
   revokeApiKey: apiKeyOwner,
+  deleteRevokedApiKey: apiKeyOwner,
   deleteProviderConnection: providerConnectionOwner,
   resolveAlert: alertOwner,
   deleteMemory: memoryOwner,

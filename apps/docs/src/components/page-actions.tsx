@@ -137,7 +137,7 @@ export function PageActions({
         {open && (
           <div
             role="menu"
-            className="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-fd-border bg-fd-popover p-1 shadow-lg"
+            className="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-xl border border-fd-border bg-fd-popover p-1 shadow-strong"
           >
             {githubUrl && (
               <a

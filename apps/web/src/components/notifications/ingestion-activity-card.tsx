@@ -165,7 +165,7 @@ export function IngestionActivityCard({
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       aria-label="Knowledge ingestion activity"
-      className="bg-background/95 border-border/70 pointer-events-auto w-[22rem] max-w-full overflow-hidden rounded-3xl border shadow-lg backdrop-blur"
+      className="bg-background/95 border-border/70 pointer-events-auto w-[22rem] max-w-full overflow-hidden rounded-3xl border shadow-strong backdrop-blur"
     >
       <div className="flex items-center gap-2 px-4 py-3">
         {/* The title is what is announced ("Crawling" to "Crawled"), not the

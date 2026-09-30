@@ -1,32 +1,32 @@
 ---
 title: Mitglieder und Rollen
-description: Bestimmen Sie, wer eine Organisation lesen, bearbeiten, veröffentlichen und verwalten kann.
+description: Legen Sie fest, wer eine Organisation lesen, bearbeiten, veröffentlichen und verwalten darf.
 ---
 
 ## Rollen
 
-| Rolle | Aktuelle Berechtigungsstufe |
+| Role | Aktuelle Berechtigungsstufe |
 | --- | --- |
-| Viewer | Liest Organisations- und Produktdaten. |
-| Editor | Ändert den Inhalt und die Konfiguration des Assistenten. |
-| Admin | Veröffentlicht Assistenten und verwaltet Mitglieder und API-Schlüssel. |
-| Owner | Ändert Rollen und verwaltet Owner. |
+| Viewer | Liest Daten der Organisation und der Produkte. |
+| Editor | Ändert den Inhalt und die Konfiguration des Assistants. |
+| Admin | Veröffentlicht Assistants und verwaltet Mitglieder sowie API-Schlüssel. |
+| Owner | Ändert Roles und verwaltet Owner. |
 
-Die Anwendung wendet spezifischere Berechtigungsprüfungen auf einzelne Vorgänge
-an.
+Die Anwendung führt bei einzelnen Operationen spezifischere
+Berechtigungsprüfungen durch.
 
 ## Ein Mitglied einladen
 
 1. Öffnen Sie **Settings > Members**.
-2. Wählen Sie **Invite member**.
+2. Wählen Sie **Invite member** aus.
 3. Geben Sie die E-Mail-Adresse ein.
-4. Wählen Sie die mindestens erforderliche Rolle aus.
+4. Wählen Sie die minimal erforderliche Role aus.
 5. Senden Sie die Einladung.
 
 ## Ein Mitglied ändern
 
-Ein Administrator kann Mitglieder unterhalb der Owner-Stufe verwalten. Ein Owner
-kann alle Ebenen verwalten.
+Ein Admin kann Mitglieder unterhalb der Stufe Owner verwalten. Ein Owner kann
+alle Tiers verwalten.
 
 Ein Mitglied kann seine eigene Zeile in der Mitgliederliste weder bearbeiten
 noch entfernen. Verwenden Sie für diesen Vorgang ein anderes autorisiertes
@@ -34,8 +34,10 @@ Mitglied.
 
 ## API-Schlüssel-Rollen
 
-Ein Administrator oder Owner kann einen Organisations-API-Schlüssel erstellen.
-Die ausgewählte Rolle darf nicht höher sein als die Rolle des Erstellers.
+Ein Admin oder ein Owner kann einen Organization API key erstellen. Die
+ausgewählte Role darf nicht höher sein als die Role des Erstellers.
 
-Widerrufen Sie einen Schlüssel, wenn sein Client keinen Zugriff mehr benötigt.
-Ciele bewahrt den widerrufenen Datensatz zu Audit-Zwecken auf.
+Widerrufen Sie einen Schlüssel, wenn der zugehörige Client keinen Zugriff mehr
+benötigt. Ciele bewahrt den Datensatz eines widerrufenen Schlüssels zu
+Prüfzwecken auf. Ein Admin oder Owner kann einen widerrufenen Schlüssel löschen,
+um dessen Datensatz zu entfernen.

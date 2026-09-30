@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
 import { Check, Monitor, Moon, Sun } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@agent-hub/ui";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useTheme } from "@/components/theme-provider";
 
 const NOOP_SUBSCRIBE = () => () => {};
@@ -73,15 +73,12 @@ export function ThemeSettingsClient() {
   const selectedPalette = hydrated ? colorPalette : "midnight";
 
   return (
-    <div className="mt-6 space-y-6">
-      <Card className="gap-4 p-4">
-        <CardHeader className="px-0">
-          <CardTitle>Theme mode</CardTitle>
-          <p className="text-muted-foreground text-sm">
+    <div className="mt-6">
+      <SectionTimeline>
+      <TimelineSection title="Theme mode" boxed>
+          <p className="text-muted-foreground mb-4 text-sm">
           Choose light, dark, or follow your device&apos;s appearance setting.
           </p>
-        </CardHeader>
-        <CardContent className="px-0">
           <div
             className="grid gap-2 sm:grid-cols-3"
             role="radiogroup"
@@ -125,17 +122,12 @@ export function ThemeSettingsClient() {
               );
             })}
           </div>
-        </CardContent>
-      </Card>
+        </TimelineSection>
 
-      <Card className="gap-4 p-4">
-        <CardHeader className="px-0">
-          <CardTitle>Color palette</CardTitle>
-          <p className="text-muted-foreground text-sm">
+      <TimelineSection title="Color palette" boxed>
+          <p className="text-muted-foreground mb-4 text-sm">
             Mist Blue keeps Midnight text and action contrast over blue-grey dark surfaces.
           </p>
-        </CardHeader>
-        <CardContent className="px-0">
           <div
             className="grid gap-2 sm:grid-cols-2"
             role="radiogroup"
@@ -188,8 +180,8 @@ export function ThemeSettingsClient() {
           <p className="text-muted-foreground mt-3 text-xs">
             Appearance settings are saved in this browser.
           </p>
-        </CardContent>
-      </Card>
+        </TimelineSection>
+      </SectionTimeline>
     </div>
   );
 }

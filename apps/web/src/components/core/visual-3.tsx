@@ -142,13 +142,13 @@ const Layer1: React.FC<LayerProps> = ({ color, secondaryColor }) => {
     >
       <div className="flex shrink-0 items-center rounded-full border border-zinc-200 bg-white/25 px-1.5 py-0.5 backdrop-blur-sm transition-opacity duration-300 ease-in-out group-hover/animated-card:opacity-0 dark:border-zinc-800 dark:bg-black/25">
         <div className="h-1.5 w-1.5 rounded-full bg-[var(--color)]" />
-        <span className="ml-1 text-[10px] text-black dark:text-white">
+        <span className="ml-1 text-2xs text-black dark:text-white">
           +15,2%
         </span>
       </div>
       <div className="flex shrink-0 items-center rounded-full border border-zinc-200 bg-white/25 px-1.5 py-0.5 backdrop-blur-sm transition-opacity duration-300 ease-in-out group-hover/animated-card:opacity-0 dark:border-zinc-800 dark:bg-black/25">
         <div className="h-1.5 w-1.5 rounded-full bg-[var(--secondary-color)]" />
-        <span className="ml-1 text-[10px] text-black dark:text-white">
+        <span className="ml-1 text-2xs text-black dark:text-white">
           +18,7%
         </span>
       </div>

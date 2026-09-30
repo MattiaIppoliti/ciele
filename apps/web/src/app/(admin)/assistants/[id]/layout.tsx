@@ -9,7 +9,7 @@ import { getAssistantCached } from "./get-assistant";
 /**
  * Assistant-scoped area. Navigation lives in the global shell (sidebar SETUP
  * group + top-bar scope switcher); the identity strip (id + copy +
- * Duplicate/Delete) is registered into the top bar via
+ * Duplicate/Delete) is portalled into the top bar by
  * `AssistantTopBarActions`. The interactive live preview is code-split and
  * only loaded after the user opens it from the workspace edge.
  */
@@ -40,7 +40,7 @@ export default async function AssistantLayout({
         canDelete={canPublish(role)}
       />
       <div className="flex min-h-0 flex-1">
-        <section className="min-w-0 flex-1 overflow-y-auto">{children}</section>
+        <section className="@container min-w-0 flex-1 overflow-y-auto">{children}</section>
         <PreviewPanelLauncher
           assistant={assistant}
           connectorScope={connectorScope}

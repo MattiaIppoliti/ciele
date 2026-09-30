@@ -147,7 +147,7 @@ export function NotificationCenter({
         // the Alerts page in a new tab. The keyboard keeps `onViewAll`.
         viewAllHref={shownAlerts > 0 ? "/alerts" : undefined}
         onClose={closeAll}
-        className="pointer-events-auto shadow-lg"
+        className="pointer-events-auto shadow-strong"
       />
     </div>
   );

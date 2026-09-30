@@ -73,6 +73,19 @@ export function webOperationPorts(
   }
 ): OperationPorts {
   const apiKey = opts.apiKey;
+  /**
+   * The system Db, but only for a row of this Organization: the gate tables
+   * have no member write policy, so their writes run here, and the operation's
+   * own Organization check is re-asked on the Db that bypasses RLS.
+   */
+  const systemDbForOwnRow = async (
+    table: "reviewRequests" | "actionApprovals",
+    id: string
+  ): Promise<Db | null> => {
+    const system = getWidgetDb();
+    const current = await system.table(table).get(id);
+    return current?.organizationId === opts.organizationId ? system : null;
+  };
   return {
     /**
      * The Application Import lifecycle's host work, on the system Db: the
@@ -113,7 +126,6 @@ export function webOperationPorts(
       const teammate = await serviceDb.table("teammates").get(teammateId);
       if (!teammate) throw new Error("That colleague no longer exists");
       const tools = await resolveTeammateActions({
-        db: serviceDb,
         teammate,
         organizationId: teammate.organizationId,
         userId: requestedBy ?? "",
@@ -125,7 +137,9 @@ export function webOperationPorts(
       if (!tool) {
         throw new Error("That action is no longer granted to this colleague");
       }
-      await tool.run(input);
+      // The Member's yes on the card is the confirmation a tool that promises
+      // to wait (Ciele AI's consequential platform calls) requires.
+      await tool.run(input, { confirmed: true });
     },
 
     /**
@@ -279,11 +293,24 @@ export function webOperationPorts(
     // The decision write (#841): a compare-and-set on the system Db, because
     // the table has no member write policy; the operation already checked the
     // row's Organization, and the pinned read below checks it again.
-    decideReviewRequest: async (id, patch) => {
-      const system = getWidgetDb();
-      const current = await system.table("reviewRequests").get(id);
-      if (!current || current.organizationId !== opts.organizationId) return null;
-      return system.decideReviewRequest(id, patch);
+    decideReviewRequest: async (id, patch) =>
+      (await systemDbForOwnRow("reviewRequests", id))?.decideReviewRequest(id, patch) ?? null,
+    // The approval gate's writes (#958), for the same reason: `action_approvals`
+    // has no member write policy, so on the Member's RLS session the decision,
+    // the run claim and the stamp would each match no row. Every call re-checks
+    // that the row is this Organization's before it writes.
+    actionApprovalWrites: {
+      decideActionApproval: async (id, patch) =>
+        (await systemDbForOwnRow("actionApprovals", id))?.decideActionApproval(id, patch) ?? null,
+      claimActionApprovalRun: async (id, claim) =>
+        (await systemDbForOwnRow("actionApprovals", id))?.claimActionApprovalRun(id, claim) ?? null,
+      settleActionApprovalRun: async (id, outcome, claimedAt) => {
+        await (await systemDbForOwnRow("actionApprovals", id))?.settleActionApprovalRun(
+          id,
+          outcome,
+          claimedAt
+        );
+      },
     },
     // Human review continuation (#841). A simulated (Preview) request resumes
     // inline so the transcript shows the next message; a real one rides the

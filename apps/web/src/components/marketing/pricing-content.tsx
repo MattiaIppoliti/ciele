@@ -440,7 +440,7 @@ export function PricingContent() {
               {COMPARISON_COLUMNS.map((column) => (
                 <div
                   key={column}
-                  className="text-muted-foreground px-4 py-3.5 font-mono text-[10.5px] font-medium tracking-widest uppercase"
+                  className="text-muted-foreground px-4 py-3.5 font-mono text-2xs font-medium tracking-widest uppercase"
                 >
                   {column}
                 </div>

@@ -1049,7 +1049,7 @@ export function ChannelPanel({
         aria-busy={isPending || undefined}
         tabIndex={-1}
         style={{ width }}
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l bg-background shadow-xl ${widthTransition} ${
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l bg-background shadow-strong ${widthTransition} ${
           isPending ? "opacity-70" : ""
         }`}
       >
@@ -1075,7 +1075,7 @@ export function ChannelPanel({
           {state.mode === "select" && (
             <div className="p-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">
+                <h2 className="text-2xl font-semibold">
                   Select channel type
                 </h2>
                 <Hint label="Close">
@@ -1124,7 +1124,7 @@ export function ChannelPanel({
                 >
                   <ChevronLeft className="size-4" /> Back
                 </button>
-                <h2 className="min-w-0 text-2xl font-bold tracking-tight break-words">
+                <h2 className="min-w-0 text-2xl font-semibold break-words">
                   New {CHANNEL_KINDS[state.kind].label} channel
                 </h2>
                 <Hint label="Close">
@@ -1221,10 +1221,10 @@ export function ChannelPanel({
             <div className="p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                  <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
                     {canEdit ? "Edit escalation channel" : "Escalation channel"}
                   </p>
-                  <h2 className="mt-1 text-2xl font-bold tracking-tight break-words">
+                  <h2 className="mt-1 text-2xl font-semibold break-words">
                     {channel.name}
                   </h2>
                 </div>
@@ -1310,7 +1310,7 @@ export function ChannelPanel({
                       onChange={(e) => patchChannel({ formTitle: e.target.value })}
                       aria-label="Form title"
                       autoComplete="off"
-                      className="focus:ring-ring/50 -mx-2 w-full rounded-lg px-2 py-1 text-2xl font-bold tracking-tight outline-none focus:ring-2"
+                      className="focus:ring-ring/50 -mx-2 w-full rounded-lg px-2 py-1 text-2xl font-semibold outline-none focus:ring-2"
                     />
 
                     <div className="mt-5 space-y-5">

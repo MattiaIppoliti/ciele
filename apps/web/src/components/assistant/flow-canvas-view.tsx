@@ -183,12 +183,12 @@ function CanvasNodeCard({ data }: NodeProps<CanvasNode>) {
         </span>
         <span className="text-muted-foreground block truncate text-xs">{data.subtitle}</span>
         {data.status === "needs_setup" && (
-          <span className="text-destructive mt-1.5 inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/5 px-1.5 py-0.5 text-[11px] font-medium">
+          <span className="text-destructive mt-1.5 inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/5 px-1.5 py-0.5 text-2xs font-medium">
             <AlertCircle className="size-3" /> Needs setup
           </span>
         )}
         {data.status === "preview_only" && (
-          <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600">
+          <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-2xs font-medium text-amber-600">
             <AlertCircle className="size-3" /> Preview only
           </span>
         )}
@@ -853,7 +853,7 @@ function FlowCanvasInner({
         {/* Zoom and fit, in the same pill the tools wear. React Flow's own
             `Controls` is a square stack with its own colours, and it was the
             one control on this screen that did not look like the product. */}
-        <div className="bg-card absolute bottom-3 left-3 flex flex-col items-center rounded-full border p-1 shadow-sm">
+        <div className="bg-card absolute bottom-3 left-3 flex flex-col items-center rounded-full border p-1 shadow-light">
           {(
             [
               { label: "Zoom in", icon: Plus, run: () => void zoomIn() },
@@ -930,7 +930,7 @@ function FlowCanvasInner({
                take the pointer with it: it sat over the bottom bar and ate
                every hover and click meant for the tools. */
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
-              <div className="bg-card pointer-events-auto w-full max-w-lg rounded-xl border p-3 shadow-lg">
+              <div className="bg-card pointer-events-auto w-full max-w-lg rounded-xl border p-3 shadow-strong">
                 <p className="mb-2 px-1 text-sm font-medium">What should this flow do?</p>
                 <PromptInput
                   onSubmit={(value) => {
@@ -956,7 +956,7 @@ function FlowCanvasInner({
             </div>
           ) : (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
-              <div className="bg-card pointer-events-auto flex max-w-sm flex-col items-center gap-3 rounded-xl border px-5 py-4 text-center shadow-lg">
+              <div className="bg-card pointer-events-auto flex max-w-sm flex-col items-center gap-3 rounded-xl border px-5 py-4 text-center shadow-strong">
                 <p className="text-sm font-medium">This flow is empty</p>
                 <p className="text-muted-foreground text-xs">
                   {agentOpen
@@ -1024,7 +1024,7 @@ function FlowCanvasInner({
               setFullscreen(false);
             }}
             className={cn(
-              "bg-card z-30 flex flex-col overflow-hidden border shadow-xl outline-none",
+              "bg-card z-30 flex flex-col overflow-hidden border shadow-strong outline-none",
               fullscreen
                 ? "fixed inset-0 z-50 rounded-none"
                 : "absolute inset-y-3 right-3 w-[360px] max-w-[calc(100%-1.5rem)] rounded-xl"
@@ -1376,7 +1376,7 @@ function CanvasToolbar({
         if (!event.currentTarget.contains(event.relatedTarget as globalThis.Node | null))
           setFocused(false);
       }}
-      className="bg-card pointer-events-auto flex flex-col overflow-hidden rounded-[20px] border shadow-sm"
+      className="bg-card pointer-events-auto flex flex-col overflow-hidden rounded-[20px] border shadow-light"
     >
       {/* The panel region takes whatever height the shell has beyond the bar,
           and the panel is docked to its bottom edge, so the list grows up out
@@ -1527,7 +1527,7 @@ function AgentPromptBar({ onAsk }: { onAsk: (message: string) => void }) {
         onAsk(trimmed);
         setValue("");
       }}
-      className="bg-card focus-within:border-ring focus-within:ring-ring/50 pointer-events-auto flex h-10 w-[min(26rem,42%)] items-center gap-2 rounded-full border py-1 pr-1 pl-3 shadow-sm transition-shadow focus-within:ring-3"
+      className="bg-card focus-within:border-ring focus-within:ring-ring/50 pointer-events-auto flex h-10 w-[min(26rem,42%)] items-center gap-2 rounded-full border py-1 pr-1 pl-3 shadow-light transition-shadow focus-within:ring-3"
     >
       <Zap className="text-muted-foreground size-4" />
       <input
@@ -1610,7 +1610,7 @@ function AddStepControl({
               <button
                 type="button"
                 aria-label="Add a step"
-                className="press-control flex items-center justify-center rounded-full transition-[filter] hover:brightness-110 bg-primary text-primary-foreground ring-background size-6 shadow-sm ring-2"
+                className="press-control flex items-center justify-center rounded-full transition-[filter] hover:brightness-110 bg-primary text-primary-foreground ring-background size-6 shadow-light ring-2"
               />
             }
           >

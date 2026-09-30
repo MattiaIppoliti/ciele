@@ -135,7 +135,7 @@ export function CreateExportDialog({
         if (!next) reset();
       }}
     >
-      <DialogTrigger render={<Button className="ml-auto h-10 rounded-lg px-4" />}>
+      <DialogTrigger render={<Button className="h-8 rounded-lg px-3" />}>
         <Download className="size-4" /> New export
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">

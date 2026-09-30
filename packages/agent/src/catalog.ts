@@ -101,6 +101,12 @@ export interface ChatModelOption {
   source?: ModelSource;
   /** The tag a picker shows beside a pinned choice ("AI Gateway"). */
   sourceName?: string;
+  /**
+   * Listed but not askable: no connection of the Organization serves it. Only
+   * a surface that shows the whole catalogue sets it (Ciele AI), so a Member
+   * sees what exists and what is missing; `chatModelOptions` never does.
+   */
+  unavailable?: boolean;
 }
 
 /**

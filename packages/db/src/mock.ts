@@ -289,6 +289,8 @@ interface MockStore {
   evaluationDatasets: Map<string, import("@agent-hub/core").EvaluationDataset>;
   evaluationRuns: Map<string, import("@agent-hub/core").EvaluationRun>;
   actionApprovals: Map<string, ActionApproval>;
+  /** When each approval's run was claimed; the mock's `run_claimed_at`. */
+  actionApprovalRunClaims: Map<string, string>;
   reviewRequests: Map<string, ReviewRequest>;
   knowledgeMemories: Map<string, KnowledgeMemory>;
   /** Keyed `<sourceId>::<documentPath>`, the pair that survives a re-crawl. */
@@ -629,6 +631,7 @@ function emptyStore(): MockStore {
     evaluationDatasets: new Map(),
     evaluationRuns: new Map(),
     actionApprovals: new Map(),
+    actionApprovalRunClaims: new Map(),
     reviewRequests: new Map(),
     knowledgeMemories: new Map(),
     memoryExtractions: new Map(),
@@ -2917,6 +2920,11 @@ export const mockDb: Db = {
   async revokeApiKey(keyId) {
     const key = getStore().apiKeys.get(keyId);
     if (key && !key.revokedAt) key.revokedAt = new Date().toISOString();
+  },
+
+  async deleteRevokedApiKey(keyId) {
+    const key = getStore().apiKeys.get(keyId);
+    return Boolean(key?.revokedAt) && getStore().apiKeys.delete(keyId);
   },
 
   async getApiKeyByHash(secretHash) {
@@ -5298,6 +5306,16 @@ export const mockDb: Db = {
       .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
   },
 
+  async listMemberTeammateConversations(teammateIds, subjectId) {
+    const owners = new Set(teammateIds);
+    return [...getStore().conversations.values()]
+      .filter(
+        (c) => c.teammateId !== null && owners.has(c.teammateId) && c.subjectId === subjectId
+      )
+      .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))
+      .slice(0, 50);
+  },
+
   async getInboxPage(organizationId, query) {
     const limit = inboxPageSize(query.limit);
     const cursor = decodeInboxCursor(query.cursor);
@@ -5400,6 +5418,30 @@ export const mockDb: Db = {
     const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
     store.actionApprovals.set(id, next);
     return next;
+  },
+
+  async claimActionApprovalRun(id, { now, staleBefore }) {
+    const store = getStore();
+    const current = store.actionApprovals.get(id);
+    if (!current || current.status !== "approved" || current.executedAt) return null;
+    const claimedAt = store.actionApprovalRunClaims.get(id);
+    if (claimedAt && claimedAt >= staleBefore) return null;
+    store.actionApprovalRunClaims.set(id, now);
+    return current;
+  },
+
+  async settleActionApprovalRun(id, outcome, claimedAt) {
+    const store = getStore();
+    const current = store.actionApprovals.get(id);
+    if (!current) return;
+    if (outcome === "failed") {
+      if (!current.executedAt && store.actionApprovalRunClaims.get(id) === claimedAt) {
+        store.actionApprovalRunClaims.delete(id);
+      }
+      return;
+    }
+    const now = new Date().toISOString();
+    store.actionApprovals.set(id, { ...current, executedAt: now, updatedAt: now });
   },
 
   async settleWebhookSubscription(id, patch) {

@@ -61,18 +61,21 @@ export function ThreadSkeleton({ variant }: { variant: "teammate" | "channel" | 
   );
 }
 
-/** `/teammates` itself: the "pick one" placeholder, which has no data to wait on. */
+/**
+ * `/teammates` itself: Ciele AI's landing, the face, the question and the
+ * composer centred on an empty page, at the sizes the hero workspace draws.
+ */
 export function TeammatesIndexSkeleton() {
   return (
     <div
-      className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center"
+      className="flex h-full flex-col items-center justify-center gap-4 px-6"
       role="status"
       aria-busy="true"
     >
       <span className="sr-only">Loading…</span>
-      <Skeleton className="size-24 rounded-full" />
-      <Skeleton className="h-7 w-64" />
-      <Skeleton className="h-4 w-80 max-w-full" />
+      <Skeleton className="size-16 rounded-full" />
+      <Skeleton className="h-8 w-72 max-w-full" />
+      <Skeleton className="mt-2 h-24 w-full max-w-2xl rounded-2xl" />
     </div>
   );
 }

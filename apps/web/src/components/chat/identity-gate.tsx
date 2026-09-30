@@ -27,7 +27,7 @@ export function IdentityGate({
   const label = provider ? (PROVIDER_LABELS[provider] ?? "your account") : null;
   return (
     <div className="bg-background/70 absolute inset-0 z-20 flex items-center justify-center px-6 backdrop-blur-sm">
-      <div className="bg-card ring-border w-full max-w-sm rounded-2xl p-7 text-center shadow-xl ring-1">
+      <div className="bg-card ring-border w-full max-w-sm rounded-2xl p-7 text-center shadow-strong ring-1">
         <h2 className="text-foreground text-xl font-semibold">
           Verify your identity to continue
         </h2>

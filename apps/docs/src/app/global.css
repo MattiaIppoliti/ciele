@@ -22,6 +22,10 @@
   --color-alpha-light: var(--alpha-light);
   --color-alpha-medium: var(--alpha-medium);
   --color-alpha-strong: var(--alpha-strong);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-ink: var(--brand-ink);
   --color-tone-gray: var(--tone-gray);
   --color-tone-gray-ink: var(--tone-gray-ink);
   --color-tone-blue: var(--tone-blue);
@@ -43,6 +47,11 @@
   --alpha-light: rgba(0, 0, 0, 0.04);
   --alpha-medium: rgba(0, 0, 0, 0.08);
   --alpha-strong: rgba(0, 0, 0, 0.16);
+  /* Monochrome here, like the marketing site: the lavender is the console's. */
+  --brand: var(--color-fd-primary);
+  --brand-foreground: var(--color-fd-primary-foreground);
+  --brand-hover: color-mix(in oklab, var(--color-fd-primary), transparent 20%);
+  --brand-ink: var(--color-fd-foreground);
   --elevation-light:
     0 0 4px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   --elevation-strong:

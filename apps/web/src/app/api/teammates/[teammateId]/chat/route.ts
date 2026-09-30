@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import {
+  isCieleAi,
   isTeammateRetired,
   parseModelSelector,
   referralCandidates,
@@ -7,6 +8,7 @@ import {
 } from "@agent-hub/core";
 import {
   NDJSON_HEADERS,
+  chatModelOptions,
   sessionMetadata,
   streamConversationTurn,
 } from "@agent-hub/agent";
@@ -15,6 +17,9 @@ import { getDb } from "@/lib/data";
 import { getRuntimeDb } from "@/lib/runtime-db";
 import { findVisibleTeammate } from "@/lib/teammates/access";
 import { resolveTeammateActions } from "@/lib/teammates/actions";
+import { chatAllowedModels, cieleAiKnowledgeScope } from "@/lib/teammates/ciele-ai";
+import { AUTO_MODEL, resolveAutoModel } from "@/lib/teammates/auto-model";
+import { listPlatformEvalModels } from "@/lib/platform";
 import { resolvePersonalSubscription } from "@/lib/personal-subscription";
 import { openAttachments } from "@/lib/attachments";
 
@@ -67,7 +72,7 @@ export async function POST(
     return new Response("This teammate was deleted", { status: 410 });
   }
 
-  const [connections, personal, teammateActions, roster] = await Promise.all([
+  const [connections, personal, teammateActions, roster, cieleAiScope] = await Promise.all([
     db.listProviderConnections(session.organization.id),
     // A Member's own subscription may power their own Teammate turns
     // (ADR-0007 as amended by #769). Keyed on the invoking Member, so a
@@ -84,7 +89,6 @@ export async function POST(
     // its config, so revoking a grant lands on the next message with no
     // republish, exactly like editing the Standing Role.
     resolveTeammateActions({
-      db,
       teammate,
       organizationId: session.organization.id,
       userId: session.userId,
@@ -95,6 +99,11 @@ export async function POST(
     // the Member rather than the Teammate: a card naming something they cannot
     // open is a dead end, and one naming a private Teammate discloses it.
     db.table("teammates").list({ organizationId: session.organization.id }),
+    // Ciele AI searches everything this Member can read, resolved on their own
+    // session; a Teammate searches its stored Knowledge Scope.
+    isCieleAi(teammate)
+      ? cieleAiKnowledgeScope(db, session.organization.id)
+      : Promise.resolve(null),
   ]);
   // Which model answers this message.
   //
@@ -105,14 +114,31 @@ export async function POST(
   // provider. So this only decides which Organization model runs when no
   // personal subscription is in play, and the composer draws no picker when one
   // is (`personalSubscriptionInCharge`, read by the workspace).
+  const configured = {
+    provider: teammate.modelProvider,
+    modelId: teammate.modelId,
+    source: teammate.modelSource ?? undefined,
+  };
+  // "Auto" is resolved here, never by the browser: the latest Eval's best model
+  // among the ones this chat can ask with the Organization's connections now,
+  // else the configured model.
+  const auto =
+    body.model === AUTO_MODEL
+      ? await resolveAutoModel(
+          db,
+          session.organization.id,
+          chatModelOptions(
+            configured,
+            chatAllowedModels(teammate),
+            connections,
+            await listPlatformEvalModels()
+          )
+        )
+      : null;
   const chosen = resolveRequestedModel(
-    parseModelSelector(body.model),
-    {
-      provider: teammate.modelProvider,
-      modelId: teammate.modelId,
-      source: teammate.modelSource ?? undefined,
-    },
-    teammate.allowedModels ?? []
+    auto ? parseModelSelector(auto.selector) : parseModelSelector(body.model),
+    configured,
+    chatAllowedModels(teammate)
   );
 
   const stream = await streamConversationTurn({
@@ -120,6 +146,7 @@ export async function POST(
     systemDb: getRuntimeDb(db),
     teammate: {
       ...teammate,
+      ...(cieleAiScope ?? {}),
       modelProvider: chosen.provider,
       modelId: chosen.modelId,
       modelSource: chosen.source ?? null,

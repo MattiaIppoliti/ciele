@@ -71,6 +71,7 @@ export const provisionTeammateOp = defineOperation({
    * refuse an Editor the create-plus-routines call they are entitled to make.
    */
   capability: "edit",
+  effect: "write",
   input: teammateInputSchema.extend({
     grants: z
       .array(domainSchema)

@@ -7,7 +7,7 @@ export const FEEDBACK_REACTIONS: ReadonlyArray<{
   label: string;
   score: -1 | 0 | 1;
 }> = [
-  { id: "positive", emoji: "🥰", label: "Positive response", score: 1 },
+  { id: "positive", emoji: "🎉", label: "Positive response", score: 1 },
   { id: "neutral", emoji: "😶‍🌫️", label: "Neutral response", score: 0 },
   { id: "negative", emoji: "🤬", label: "Negative response", score: -1 },
 ];

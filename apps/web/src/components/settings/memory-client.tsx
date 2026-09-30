@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useState, useTransition } from "react";
 import type { MemoryDocumentEntry } from "@agent-hub/core";
 import {
@@ -95,9 +96,11 @@ export function MemoryClient({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mt-6">
+      <SectionTimeline>
+      <TimelineSection title="Your profile" boxed>
       <div className="space-y-2">
-        <Label htmlFor="memory-body">Your profile</Label>
+        <Label htmlFor="memory-body" className="sr-only">Your profile</Label>
         <Textarea
           id="memory-body"
           value={body}
@@ -129,10 +132,9 @@ export function MemoryClient({
           </Button>
         </div>
       </div>
+      </TimelineSection>
 
-      <div className="space-y-2">
-        {/* A heading, not a Label: there is no control for it to name. */}
-        <h2 className="text-sm leading-none font-medium">History</h2>
+      <TimelineSection title="History">
         <MemoryHistory
           changes={changes}
           teammateNames={teammateNames}
@@ -149,7 +151,8 @@ export function MemoryClient({
             </Button>
           )}
         />
-      </div>
+      </TimelineSection>
+      </SectionTimeline>
       {confirmDeleteModal}
     </div>
   );

@@ -42,28 +42,14 @@ test in the same change.
 
 ## The token set these primitives are written against
 
-Three groups, declared in **`apps/web/src/app/globals.css`** (the source of truth) and repeated in
-`apps/docs/src/app/global.css` and the staff console's own stylesheet, because Tailwind resolves
-`@theme` per app and a primitive rendered in one of those apps would otherwise lose its surface.
-**Add a token to all three or to none.**
-
-- **Surface alphas** `alpha-lighter | alpha-light | alpha-medium | alpha-strong`
-  (`bg-`/`border-`/`ring-`). Translucent black, inverted to white in `.dark`. Reach for these for
-  any control surface or hairline: a variant written against them keeps its weight over the shell,
-  over a card and over a coloured banner, and needs **no `dark:` twin**. A control that paints a
-  literal grey (`bg-background`, `border-input`) shows that grey as a patch the moment it lands on
-  anything but the one ground it was picked for.
-- **Elevations** `shadow-light` (resting lift) and `shadow-strong` (detached layer: popover,
-  dropdown, drawer, dialog, drag ghost). Two, not a ramp. `shadow-md`/`-lg`/`-xl` were three
-  different answers to the same question and no two floating layers agreed.
-- **Tag tints** `tone-<hue>` + `tone-<hue>-ink` for gray/blue/green/amber/red/purple, reached
-  through `<Badge tone="…">` rather than by class. A **solid** palette colour is still right for a
-  status *dot*: a 6px dot has to carry the state alone and a tint vanishes at that size.
-
-Geometry follows from `--radius` (8px): `rounded-lg` is the control radius, and the xl/2xl steps
-scale off the same base. Buttons carry 14px icons, menu rows 16px.
+Surface alphas, two elevations, the tag tones and the `brand` accent, declared in `apps/web/src/app/globals.css` and
+repeated in `apps/docs/src/app/global.css` and the staff console's stylesheet. **Add a token to
+all three or to none.** The console shell's own `shell` / `content` / `rail` are the one
+exception (`DESIGN.md` §2): no primitive here reads them, so they live in `apps/web` alone. What each token is for, the primitive catalogue and the drift still to
+migrate are in the root [`DESIGN.md`](../../DESIGN.md); write a variant here against those
+tokens, never against a literal grey or a `dark:` twin.
 
 ## Before adding a component
 
-Check whether it already exists here or in `apps/web/src/components/ui/`. A primitive used by
+Check whether it already exists here, in `apps/web/src/components/ui/` or `components/motion/` (the table in `DESIGN.md` §3 lists them by role). A primitive used by
 more than one app belongs here; one used by a single app stays in that app.

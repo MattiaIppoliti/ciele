@@ -18,6 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatCount, formatDateTime } from "@/lib/format";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { Plus } from "lucide-react";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 /**
@@ -194,17 +197,19 @@ export function GoalsClient({
                   used.
                 </p>
               </div>
+              {/* Add lives in the top bar, beside the breadcrumb, as the
+                  page's committing action. */}
               {canEdit && !adding && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0"
-                  disabled={full}
-                  title={full ? `An Assistant can have ${formatCount(cap)} goals.` : undefined}
-                  onClick={() => setAdding(true)}
-                >
-                  Add
-                </Button>
+                <SlotPortal id={TOP_BAR_SLOT}>
+                  <Button
+                    className="h-8 rounded-lg px-3 font-semibold"
+                    disabled={full}
+                    title={full ? `An Assistant can have ${formatCount(cap)} goals.` : undefined}
+                    onClick={() => setAdding(true)}
+                  >
+                    <AnimatedIcon icon={Plus} size={16} /> Add goal
+                  </Button>
+                </SlotPortal>
               )}
             </div>
 

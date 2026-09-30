@@ -255,10 +255,6 @@ export function AssistantSectionLoading({
 }) {
   const SectionBody = SECTION_BODY[variant];
   const wide = variant === "knowledge" || variant === "flows";
-  // No section header carries an action today; Flows' "New flow" lives in
-  // the list, not beside the title.
-  const showHeaderAction = false;
-
   // The preview fills its route rather than sitting in a scrolling document,
   // so it gets a height-filling column and a one-line header instead of the
   // title-and-blurb every settings section opens with.
@@ -298,7 +294,6 @@ export function AssistantSectionLoading({
             <Skeleton className="mt-1 h-5 w-3/4 max-w-xl" />
           </div>
         </div>
-        {showHeaderAction && <Skeleton className="h-10 w-28 shrink-0" />}
       </div>
       <SectionBody />
     </div>

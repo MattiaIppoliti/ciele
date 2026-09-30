@@ -57,10 +57,10 @@ export function ChatMarkdown({
           ),
           em: ({ children }) => <em className="italic">{children}</em>,
           h1: ({ children }) => (
-            <h1 className="text-lg leading-snug font-bold">{children}</h1>
+            <h1 className="text-lg leading-snug font-semibold">{children}</h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-base leading-snug font-bold">{children}</h2>
+            <h2 className="text-base leading-snug font-semibold">{children}</h2>
           ),
           h3: ({ children }) => (
             <h3 className="text-[0.9375rem] leading-snug font-semibold">{children}</h3>

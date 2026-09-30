@@ -124,7 +124,6 @@ export async function POST(
         origin: request.nextUrl.origin,
       }),
       resolveTeammateActions({
-        db,
         teammate,
         organizationId: session.organization.id,
         userId: session.userId,

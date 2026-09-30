@@ -187,6 +187,7 @@ import {
   removeMemberOp,
   revokeInviteOp,
   revokeOrgApiKeyOp,
+  deleteOrgApiKeyOp,
   updateMemberRoleOp,
   setOrgBudgetOp,
   updateOrganizationOp,
@@ -433,6 +434,10 @@ export async function createApiKeyAction(name: string, role: Role) {
     name: name.trim() || "Untitled key",
     role,
   });
+}
+
+export async function deleteApiKeyAction(keyId: string) {
+  await runOperation(deleteOrgApiKeyOp, { id: keyId });
 }
 
 export async function revokeApiKeyAction(keyId: string) {

@@ -148,7 +148,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
           <div className="text-muted-foreground mb-2 flex h-8 items-center gap-2 rounded-lg border px-2.5 text-sm">
             <PreviewIcon icon={Search} size={14} />
             <span>Find…</span>
-            <kbd className="bg-muted ml-auto rounded-full border px-1.5 text-[10px]">
+            <kbd className="bg-muted ml-auto rounded-full border px-1.5 text-2xs">
               F
             </kbd>
           </div>

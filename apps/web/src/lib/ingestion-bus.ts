@@ -13,16 +13,12 @@
  * never pulls the card into its bundle.
  */
 
-type Listener = () => void;
+import { createSignal } from "@/lib/signal";
 
-let listener: Listener | null = null;
+const signal = createSignal();
 
 /** The card claims the slot on mount and releases it on unmount. */
-export function setIngestionListener(next: Listener | null): void {
-  listener = next;
-}
+export const setIngestionListener = signal.listen;
 
 /** Tells the activity card that knowledge work just started. */
-export function ingestionStarted(): void {
-  listener?.();
-}
+export const ingestionStarted = signal.fire;

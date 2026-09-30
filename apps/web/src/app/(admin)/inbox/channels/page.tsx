@@ -26,7 +26,7 @@ export default async function InboxChannelsPage() {
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-5 pb-3">
-        <h1 className="text-2xl font-bold tracking-tight"><RollInText text="Groups" /></h1>
+        <h1 className="text-2xl font-semibold"><RollInText text="Groups" /></h1>
         <Link
           href="/inbox"
           className="text-muted-foreground hover:text-foreground ml-auto text-sm"

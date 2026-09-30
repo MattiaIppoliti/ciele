@@ -11,12 +11,15 @@ import type {
   Teammate,
   TeammateRoutine,
 } from "@agent-hub/core";
-import { modelSelector } from "@agent-hub/core";
+import { isCieleAi, modelSelector } from "@agent-hub/core";
 import { currentModelId } from "@agent-hub/agent/client";
 import { ModelSourceSelect } from "@/components/chat/model-source-select";
 import { modelCatalogWith } from "@/lib/platform-model-catalog";
 import { MEMORY_DOCUMENT_MAX_CHARS } from "@agent-hub/core";
-import { ChevronRight, Shuffle } from "lucide-react";
+import { ChevronRight, Settings2, Shuffle } from "lucide-react";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
+import { useSetTopBarSlot } from "@/components/shell/top-bar-slots";
 import { Button, Input, Label } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/toast";
@@ -47,8 +50,9 @@ import {
 import type { CollectionOption } from "@/components/teammates/teammates-client";
 import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
-import { useLeaveGuard } from "@/components/teammates/leave-guard";
+import { useGuardedLinkClick, useLeaveGuard } from "@/components/teammates/leave-guard";
 import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
+import { useTopBarFormActions } from "@/components/settings/form-actions";
 
 /**
  * The Teammate's configuration. Everything here takes effect on the next
@@ -154,6 +158,8 @@ export function TeammateSettingsForm({
   const [memoryUnreadable, setMemoryUnreadable] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  // The Organization's AI layer: same form, minus what has no effect on it.
+  const platformLayer = isCieleAi(teammate);
 
   useEffect(() => {
     // Guards the slow case: a response that arrives after this was closed, or
@@ -255,16 +261,40 @@ export function TeammateSettingsForm({
   // The Teammates rail sits in the layout, outside this form; it asks here too.
   useLeaveGuard(dirty, leave);
 
-  /** A breadcrumb link that asks first, keeping Cmd/Ctrl-click as a new tab. */
-  function guardLink(href: string) {
-    return (event: React.MouseEvent<HTMLAnchorElement>) => {
-      if (!dirty || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
-        return;
-      }
-      event.preventDefault();
-      leave(() => router.push(href));
-    };
-  }
+  // The breadcrumb, in the top bar rather than above the form: Teammates ›
+  // this Teammate › Configure. Its links ask through the same guard as the
+  // rail, which reads the current `dirty` at click time.
+  const setSlot = useSetTopBarSlot();
+  const guardedClick = useGuardedLinkClick();
+  const chatHref = platformLayer ? "/teammates" : `/teammates/${teammate.id}`;
+  useEffect(() => {
+    setSlot(
+      "title",
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5">
+        <Link href="/teammates" onClick={(event) => guardedClick(event, "/teammates")} className="text-muted-foreground hover:text-foreground">
+          Teammates
+        </Link>
+        <ChevronRight aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
+        <Link href={chatHref} onClick={(event) => guardedClick(event, chatHref)} className="text-muted-foreground hover:text-foreground truncate">
+          {teammate.name}
+        </Link>
+        <ChevronRight aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
+        <span aria-current="page">Configure</span>
+      </nav>
+    );
+    return () => setSlot("title", null);
+  }, [chatHref, guardedClick, setSlot, teammate.name]);
+
+  // The same Cancel and Save in the top bar, for a form this long.
+  const formActions = useTopBarFormActions({
+    className: "ml-auto",
+    dirty,
+    saving: isPending,
+    saveLabel: "Save",
+    cancelAlwaysEnabled: true,
+    onSave: save,
+    onCancel: () => leave(onDone),
+  });
 
   function remove() {
     confirmDelete({
@@ -288,35 +318,30 @@ export function TeammateSettingsForm({
   }
 
   return (
-    <div className="space-y-6 px-6 py-5">
+    <div className="px-5 py-6 sm:px-8 sm:py-10">
       {confirmDeleteModal}
-      <div className="flex items-center gap-3">
-        <nav className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
-          <Link
-            href="/teammates"
-            className="hover:text-foreground"
-            onClick={guardLink("/teammates")}
-          >
-            Teammates
-          </Link>
-          <ChevronRight className="size-3.5 shrink-0" />
-          <Link
-            href={`/teammates/${teammate.id}`}
-            className="truncate hover:text-foreground"
-            onClick={guardLink(`/teammates/${teammate.id}`)}
-          >
-            {teammate.name}
-          </Link>
-          <ChevronRight className="size-3.5 shrink-0" />
-          <span className="text-foreground">Configure</span>
-        </nav>
+      {/* The way back lives in the top bar, as a breadcrumb the page hands it
+          (see the effect above); the page itself opens on its heading. */}
+      <div className="flex items-start gap-4">
+        <SectionHeading
+          icon={Settings2}
+          title={platformLayer ? `${teammate.name} settings` : "Teammate settings"}
+          description={
+            platformLayer
+              ? "Name your organization's AI layer, give it a standing role and pick its models."
+              : "Manage this teammate's persona, knowledge, models and access."
+          }
+          className="min-w-0 flex-1"
+        />
         {headerActions && (
-          <div className="ml-auto flex shrink-0 items-center gap-1">
-            {headerActions}
-          </div>
+          <div className="flex shrink-0 items-center gap-1">{headerActions}</div>
         )}
       </div>
 
+      <div className="pt-10 pb-24">
+      <SectionTimeline>
+      <TimelineSection title="Identity" boxed>
+      <div className="space-y-5">
       <div className="flex items-center gap-4">
         <TeammateAvatar
           teammate={{ ...teammate, name, avatarSeed }}
@@ -353,9 +378,12 @@ export function TeammateSettingsForm({
           />
         </div>
       </div>
+      </div>
+      </TimelineSection>
 
+      <TimelineSection title="Standing role" boxed>
       <div className="space-y-2">
-        <Label htmlFor="edit-role">Standing role</Label>
+        <Label htmlFor="edit-role" className="sr-only">Standing role</Label>
         <Textarea
           id="edit-role"
           value={roleDescription}
@@ -363,7 +391,18 @@ export function TeammateSettingsForm({
           rows={8}
         />
       </div>
+      </TimelineSection>
 
+      <TimelineSection title={platformLayer ? "Knowledge and actions" : "Knowledge"} boxed>
+      {platformLayer ? (
+        <div>
+          <p className="text-muted-foreground text-sm">
+            {teammate.name} searches the whole Library and works across the platform
+            with the permissions of whoever is chatting with it, never more. Deleting
+            or publishing always waits for them to confirm.
+          </p>
+        </div>
+      ) : (
       <KnowledgeScopePicker
         collections={collections}
         sources={sources}
@@ -373,7 +412,10 @@ export function TeammateSettingsForm({
         onCollectionsChange={setCollectionIds}
         onSourcesChange={setSourceIds}
       />
+      )}
+      </TimelineSection>
 
+      <TimelineSection title="Models" boxed>
       <div className="space-y-2">
         <Label>Models it can answer with</Label>
         <ModelSourceSelect
@@ -408,6 +450,9 @@ export function TeammateSettingsForm({
         </p>
       </div>
 
+      </TimelineSection>
+
+      <TimelineSection title="Project" boxed>
       <ProjectSection
         projects={projects}
         value={projectId}
@@ -415,7 +460,9 @@ export function TeammateSettingsForm({
         canEdit
         teammateNames={{ [teammate.id]: teammate.name }}
       />
+      </TimelineSection>
 
+      <TimelineSection title="Memory" boxed>
       <div className="space-y-2">
         <Label htmlFor="edit-learnings">What it has learned</Label>
         <Textarea
@@ -437,41 +484,51 @@ export function TeammateSettingsForm({
         </p>
       </div>
 
-      <TeammateGrantsPicker
-        value={grants}
-        onChange={setGrants}
-        canGrant={canGrant}
-      />
+      </TimelineSection>
 
-      <RoutinesPanel routines={routines} teammateId={teammate.id} canEdit />
+      {/* Ciele AI has no grants of its own, is visible to everyone, and an
+          unattended Routine would run it as nobody, with no permissions. */}
+      {!platformLayer && (
+        <>
+          <TimelineSection title="Actions" boxed>
+            <TeammateGrantsPicker
+              value={grants}
+              onChange={setGrants}
+              canGrant={canGrant}
+            />
+          </TimelineSection>
 
-      <VisibilityPicker value={visibility} onChange={setVisibility} />
+          <TimelineSection title="Routines" boxed>
+            <RoutinesPanel routines={routines} teammateId={teammate.id} canEdit />
+          </TimelineSection>
+        </>
+      )}
 
-      <TeammateEditorsPicker
-        members={members}
-        selected={editorIds}
-        onChange={setEditorIds}
-      />
+      <TimelineSection title="Access" boxed>
+      <div className="space-y-6">
+        {!platformLayer && <VisibilityPicker value={visibility} onChange={setVisibility} />}
+        <TeammateEditorsPicker
+          members={members}
+          selected={editorIds}
+          onChange={setEditorIds}
+        />
+      </div>
+      </TimelineSection>
+      </SectionTimeline>
+      </div>
 
       <div className="flex items-center gap-2 border-t pt-4">
-        <Button
-          variant="ghost"
-          className="text-destructive h-10"
-          onClick={remove}
-          disabled={isPending}
-        >
-          Delete teammate
-        </Button>
-        <Button
-          variant="outline"
-          className="ml-auto h-10 px-5"
-          onClick={() => leave(onDone)}
-        >
-          Cancel
-        </Button>
-        <Button className="h-10 px-5" onClick={save} disabled={isPending}>
-          {isPending ? "Saving…" : "Save"}
-        </Button>
+        {!platformLayer && (
+          <Button
+            variant="ghost"
+            className="text-destructive h-10"
+            onClick={remove}
+            disabled={isPending}
+          >
+            Delete teammate
+          </Button>
+        )}
+        {formActions}
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ export default async function GeneralPage({
   if (!assistant) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
+    <div className="mx-auto max-w-3xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
         icon={SlidersHorizontal}
         title="General Settings"

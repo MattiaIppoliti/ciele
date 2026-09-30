@@ -6,6 +6,7 @@ import {
   settleStaleEvaluationRun,
   type EvaluationResult,
   type EvaluationRun,
+  autoModelFromEvaluations,
 } from "./evaluation";
 
 const output = {
@@ -153,5 +154,59 @@ describe("the run leaderboard", () => {
       "cheap",
       "dear",
     ]);
+  });
+});
+
+describe("the model Auto asks", () => {
+  const opus = { provider: "anthropic" as const, modelId: "claude-opus-4-8" };
+  const gpt = { provider: "openai" as const, modelId: "gpt-5.1" };
+  const result = (candidate: typeof opus | typeof gpt, accuracy: boolean | null) => ({
+    exampleId: "e1",
+    candidate,
+    answer: "",
+    flowId: null,
+    flowName: null,
+    sourceUrls: [],
+    latencyMs: 100,
+    inputTokens: 1,
+    outputTokens: 1,
+    costEur: 0.001,
+    accuracy,
+    autonomous: null,
+    error: null,
+  });
+  const run = (over: Partial<EvaluationRun>): EvaluationRun =>
+    ({
+      id: "r",
+      status: "completed",
+      stage: "answer",
+      candidates: [opus, gpt],
+      examples: [{ id: "e1", inputs: { question: "q" }, reference_outputs: {} }],
+      results: [result(opus, false), result(gpt, true)],
+      updatedAt: "2026-09-28T10:00:00.000Z",
+      ...over,
+    }) as EvaluationRun;
+  const anything = () => true;
+
+  it("takes the newest answer-stage Eval's most accurate model", () => {
+    expect(autoModelFromEvaluations([run({})], anything)).toEqual(gpt);
+    const newer = run({
+      updatedAt: "2026-09-29T10:00:00.000Z",
+      results: [result(opus, true), result(gpt, false)],
+    });
+    expect(autoModelFromEvaluations([run({}), newer], anything)).toEqual(opus);
+  });
+
+  it("skips a winner nobody can ask, for the next one down", () => {
+    expect(autoModelFromEvaluations([run({})], (c) => c.provider !== "openai")).toEqual(opus);
+  });
+
+  it("ignores other stages, unfinished runs and runs with nothing graded", () => {
+    expect(autoModelFromEvaluations([run({ stage: "classifier" })], anything)).toBeNull();
+    expect(autoModelFromEvaluations([run({ status: "running" })], anything)).toBeNull();
+    expect(
+      autoModelFromEvaluations([run({ results: [result(opus, null), result(gpt, null)] })], anything)
+    ).toBeNull();
+    expect(autoModelFromEvaluations([], anything)).toBeNull();
   });
 });

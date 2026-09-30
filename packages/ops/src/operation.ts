@@ -83,6 +83,14 @@ export interface OperationContext {
    */
   teammate?: TeammateActor;
   /**
+   * Set when a model produces this call's content without acting under a
+   * Teammate's grants: Ciele AI, which runs with the Member's own Role. It
+   * changes who a knowledge write is **signed** by (`writingActor`) and
+   * nothing else, so capability still comes from `role`. Without it, a fix
+   * the model accepted would be recorded as reviewed by the Member.
+   */
+  agentAuthor?: string;
+  /**
    * The surface's Db: RLS-scoped (web session) or org-pinned (API key).
    * Operations never construct a Db and never widen what it can reach.
    */
@@ -150,6 +158,18 @@ export interface OperationPorts {
     enqueueSync(input: { importId: string; organizationId: string }): Promise<void>;
     cancelSync(importId: string, reason: string): Promise<void>;
   };
+  /**
+   * The approval gate's writes (#958): the decision's compare-and-set and the
+   * claim and settle around running the approved action. The host runs them
+   * on its system Db because the table has no member write policy, the same
+   * reason `decideReviewRequest` is a port: on the Member's RLS session each
+   * would match no row, and an approval would read as already decided.
+   * Absent, the operation writes through its own Db, which the mock allows.
+   */
+  actionApprovalWrites?: Pick<
+    Db,
+    "decideActionApproval" | "claimActionApprovalRun" | "settleActionApprovalRun"
+  >;
   /**
    * Runs an action the approval gate stopped, once a Member has approved it
    * (#958). A port because the action must run on the **org-pinned**
@@ -382,10 +402,25 @@ export class OperationError extends Error {
   }
 }
 
+/**
+ * What a run does to the Organization, declared by the operation itself so no
+ * caller has to guess it from the name.
+ *
+ * - `read`: changes nothing. Its `entities` is always `[]`.
+ * - `write`: changes the Organization's own work in a way a Member can see and
+ *   put back (an edit, a new row, a reorder, a toggle).
+ * - `consequential`: removes or withdraws something, lifts a protection,
+ *   changes who may see or do what, reaches Visitors, or spends real money.
+ *   An agent acting for a Member (Ciele AI) stops on the approval card before
+ *   every one, and a Teammate's curated catalogue offers none.
+ */
+export type OperationEffect = "read" | "write" | "consequential";
+
 export interface Operation<In, Out> {
   /** Stable catalogue name, e.g. "assistants.create". */
   name: string;
   capability: OperationCapability;
+  effect: OperationEffect;
   /** Parsed by the calling surface before `run`, run() may assume validity. */
   input: ZodType<In>;
   /** What a successful run mutated; [] for reads. */

@@ -44,6 +44,7 @@ import type {
   InsightsFilter,
   InsightsOverview,
 } from "@/lib/insights/report";
+import { INSIGHTS_RANGE_SLOT, SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { downloadRows } from "@/lib/download";
 import { formatCount, formatPercent, formatStat } from "@/lib/format";
@@ -258,37 +259,8 @@ export function InsightsClient({
 
   return (
     <div className="flex min-h-full flex-col">
-      {/* Header */}
-      <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1
-          className="text-2xl font-bold tracking-tight"
-          data-testid="insights-heading"
-        >
-          <RollInText text="Insights" />
-        </h1>
-        {/* Always mounted, so the live region exists before it has anything
-            to say; a fixed width from sm up keeps its text from moving the
-            controls as it rolls between states. */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 text-sm sm:w-52 sm:flex-none">
-          <span role="status" aria-live="polite" className="text-muted-foreground whitespace-nowrap">
-            <span aria-hidden>
-              <RollInText text={status} />
-            </span>
-            <span className="sr-only">{status}</span>
-          </span>
-          {failed && !refreshing && (
-            <button
-              type="button"
-              onClick={() => setAttempt((n) => n + 1)}
-              className="press-text text-primary focus-visible:outline-ring rounded-sm font-semibold underline-offset-4 hover:underline focus-visible:outline-2"
-            >
-              Retry
-            </button>
-          )}
-        </div>
-        {/* Four controls, two of them wide date/assistant pickers: they wrap
-            onto their own rows on a phone rather than clipping off-screen. */}
-        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:flex-nowrap">
+      <SlotPortal id={TOP_BAR_SLOT}>
+        <div className="flex items-center gap-2">
           <DateRangeDropdown
             from={filters.from}
             to={filters.to}
@@ -309,12 +281,12 @@ export function InsightsClient({
                 <Button
                   variant="outline"
                   aria-label="Filters"
-                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                  className="h-8 shrink-0 rounded-lg px-2.5 lg:px-3"
                 />
               }
             >
               <ListFilter className="size-4" aria-hidden />{" "}
-              <span className="hidden sm:inline">Filters</span>
+              <span className="hidden lg:inline">Filters</span>
             </PopoverTrigger>
             <PopoverContent
               align="end"
@@ -408,7 +380,7 @@ export function InsightsClient({
                   value={filters.feedback}
                   placeholder="All Feedbacks"
                   options={[
-                    { value: "up", label: "Positive 🥰" },
+                    { value: "up", label: "Positive 🎉" },
                     { value: "down", label: "Negative 🤬" },
                   ]}
                   onChange={(feedback) =>
@@ -465,12 +437,12 @@ export function InsightsClient({
                 <Button
                   variant="outline"
                   aria-label="Export"
-                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                  className="h-8 shrink-0 rounded-lg px-2.5 lg:px-3"
                 />
               }
             >
               <Download className="size-4" />{" "}
-              <span className="hidden sm:inline">Export</span>
+              <span className="hidden lg:inline">Export</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => exportRows("csv")}>
@@ -482,11 +454,28 @@ export function InsightsClient({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-      </header>
+      </SlotPortal>
 
       {/* Date range chip */}
-      <div className="shrink-0 px-4 pb-4 sm:px-6">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-3 pb-1 sm:px-6">
+          <div className="order-last ml-auto flex min-w-0 items-center gap-2 text-sm">
+            <span role="status" aria-live="polite" className="text-muted-foreground whitespace-nowrap">
+              <span aria-hidden>
+                <RollInText text={status} />
+              </span>
+              <span className="sr-only">{status}</span>
+            </span>
+            {failed && !refreshing && (
+              <button
+                type="button"
+                onClick={() => setAttempt((n) => n + 1)}
+                className="press-text text-primary focus-visible:outline-ring rounded-sm font-semibold underline-offset-4 hover:underline focus-visible:outline-2"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+      <SlotPortal id={INSIGHTS_RANGE_SLOT}>
         <span className="text-primary inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 px-3 py-1.5 text-sm font-medium">
           Date Range:{" "}
           <RollInText text={formatRange(filters.from, filters.to)} className="whitespace-nowrap" />
@@ -494,12 +483,13 @@ export function InsightsClient({
             <button
               type="button"
               aria-label="About this range"
-              className="focus-visible:outline-ring inline-flex rounded-sm hover:opacity-70 focus-visible:outline-2"
+              className="press-control focus-visible:outline-ring inline-flex rounded-sm hover:opacity-70 focus-visible:outline-2"
             >
               <Info className="size-3.5" aria-hidden />
             </button>
           </Hint>
         </span>
+      </SlotPortal>
       </div>
 
       {/* Metric cards */}
@@ -515,25 +505,25 @@ export function InsightsClient({
           title="AI Resolution Rate"
           value={stats.resolutionRate === null ? "N/A" : formatPercent(stats.resolutionRate)}
           valueClass="text-green-600"
-          className="col-span-6 xl:col-span-3"
+          className="col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Answer Rating"
           subtitle={`${formatStat(stats.positive)} positive and ${formatStat(stats.negative)} negative`}
           value={formatPercent(stats.answerRating)}
           valueClass="text-green-600"
-          className="col-span-6 xl:col-span-3"
+          className="col-span-6 @5xl:col-span-3"
         />
         <StatCard
           icon={Activity}
           title="Number of Conversations"
           value={formatStat(stats.total)}
-          className="col-span-6 xl:col-span-3"
+          className="col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Escalated to Human"
           value={formatStat(stats.escalated)}
-          className="col-span-6 xl:col-span-3"
+          className="col-span-6 @5xl:col-span-3"
         />
         {/* The two cards the pre-flight makes possible (#956). Both render a
             dash rather than 0% when nothing in the window carried the signal:
@@ -547,7 +537,7 @@ export function InsightsClient({
               : formatPercent(stats.escalationIntentRate)
           }
           subtitle="Asked for a person at least once"
-          className="col-span-6 xl:col-span-3"
+          className="col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Implicit Satisfaction"
@@ -557,13 +547,13 @@ export function InsightsClient({
               : formatPercent(stats.implicitSatisfaction)
           }
           subtitle="Ended calm, among those nobody rated"
-          className="col-span-6 xl:col-span-3"
+          className="col-span-6 @5xl:col-span-3"
         />
 
         <StatCard
           title="Languages Spoken"
           value={formatStat(stats.languages.length)}
-          className="col-span-12 sm:col-span-6 xl:col-span-4"
+          className="col-span-12 @md:col-span-6 @5xl:col-span-4"
           action={
             <Dialog>
               <DialogTrigger
@@ -607,7 +597,7 @@ export function InsightsClient({
           title="Number of AI Answers"
           subtitle={`AI sent ${formatStat(stats.aiAnswers)} answers to ${formatStat(stats.userMessages)} user messages`}
           value={formatStat(stats.aiAnswers)}
-          className="col-span-12 sm:col-span-6 xl:col-span-4"
+          className="col-span-12 @md:col-span-6 @5xl:col-span-4"
         />
         {/* Proactive nudges are counted on their own, never as answers (#546):
             switching proactive flows on must not move the answer KPIs. */}
@@ -620,14 +610,14 @@ export function InsightsClient({
               : `${formatCount(stats.notifications)} proactive message${stats.notifications === 1 ? "" : "s"} nobody had to ask for`
           }
           value={formatStat(stats.notifications)}
-          className="col-span-12 sm:col-span-6 xl:col-span-4"
+          className="col-span-12 @md:col-span-6 @5xl:col-span-4"
         />
         <StatCard
           icon={UserRound}
           title="Unique Users"
           subtitle={`${formatStat(stats.uniqueUsers)} user${stats.uniqueUsers === 1 ? "" : "s"} engaged with assistant`}
           value={formatStat(stats.uniqueUsers)}
-          className="col-span-12 sm:col-span-6 xl:col-span-4"
+          className="col-span-12 @md:col-span-6 @5xl:col-span-4"
         />
 
         <StatCard
@@ -635,24 +625,24 @@ export function InsightsClient({
           title="Conversations / User"
           subtitle={`On average, each user started ${formatStat(stats.conversationsPerUser)} conversation${stats.conversationsPerUser === 1 ? "" : "s"}`}
           value={formatStat(stats.conversationsPerUser)}
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-12 @md:col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Answers / Conversation"
           value={formatStat(stats.answersPerConversation)}
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-12 @md:col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Questions / Conversation"
           subtitle="Messages the Visitor sent in each conversation"
           value={formatStat(questionsPerConversation)}
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-12 @md:col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Avg. Conversation Time"
           subtitle="From the start to the last message"
           value={formatDuration(avgConversationSeconds === null ? null : avgConversationSeconds * 1000)}
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-12 @md:col-span-6 @5xl:col-span-3"
         />
 
         <div className="col-span-12">

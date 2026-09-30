@@ -12,10 +12,10 @@ const ITEMS = [
 ];
 
 /**
- * The Insights section's pill rail, the same component and treatment as the
- * Library's. It lives in the layout, so the pill glides between tabs instead
- * of remounting at each destination, and it moves on click rather than when
- * the server answers.
+ * The Insights section's title and pill rail, the same shape as the Library's:
+ * the heading sits above the tabs and names the tab you are on. Both live in
+ * the layout and read the same optimistic tab, so the pill glides and the title
+ * rolls on click rather than when the server answers, and neither remounts.
  */
 export function InsightsNav() {
   const router = useRouter();
@@ -24,23 +24,33 @@ export function InsightsNav() {
   const [, startTransition] = useTransition();
   const [tab, setTab] = useOptimistic(current);
 
+  const title = ITEMS.find((item) => item.href === tab)?.label ?? "Insights";
+
   return (
-    <Tabs
-      value={tab}
-      onValueChange={(href) =>
-        startTransition(() => {
-          setTab(href);
-          router.push(href);
-        })
-      }
-    >
-      <TabsList aria-label="Insights tabs">
-        {ITEMS.map((item) => (
-          <TabsTrigger key={item.href} value={item.href} href={item.href}>
-            {item.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <div className="flex flex-col gap-3">
+      {/* The breadcrumb is the visible title. */}
+      <h1 className="sr-only" data-testid="insights-heading">
+        {title}
+      </h1>
+      <nav aria-label="Insights sections">
+        <Tabs
+          value={tab}
+          onValueChange={(href) =>
+            startTransition(() => {
+              setTab(href);
+              router.push(href);
+            })
+          }
+        >
+          <TabsList aria-label="Insights tabs">
+            {ITEMS.map((item) => (
+              <TabsTrigger key={item.href} value={item.href} href={item.href}>
+                {item.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </nav>
+    </div>
   );
 }

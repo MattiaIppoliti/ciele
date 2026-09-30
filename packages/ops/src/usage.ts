@@ -67,6 +67,7 @@ export function resolveUsageWindow(input: {
 export const readUsageMetersOp = defineOperation({
   name: "usage.meters.read",
   capability: "manageMembers",
+  effect: "read",
   input: z.object({}).default({}),
   entities: () => [],
   run: async (ctx) => {
@@ -101,6 +102,7 @@ export interface UsageSpendersResult {
 export const readUsageSpendersOp = defineOperation({
   name: "usage.spenders.read",
   capability: "manageMembers",
+  effect: "read",
   input: windowSchema,
   entities: () => [],
   run: async (ctx, input): Promise<UsageSpendersResult> => {

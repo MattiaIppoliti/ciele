@@ -5,7 +5,8 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
-    ".": "./base.mjs"
+    ".": "./base.mjs",
+    "./design-tokens": "./design-tokens.mjs"
   },
   "peerDependencies": {
     "eslint": "^9"

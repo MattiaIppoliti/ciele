@@ -217,7 +217,7 @@ export function AssistantCard({
     <Card
       className={cn(
         "press group relative h-full gap-2 py-4 transition-colors duration-150 hover:bg-muted/40",
-        hasPersistentHover && "-translate-y-0.5 shadow-md",
+        hasPersistentHover && "-translate-y-0.5 shadow-light",
         isPending && "opacity-50"
       )}
     >

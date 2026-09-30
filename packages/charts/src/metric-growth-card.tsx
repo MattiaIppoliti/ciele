@@ -135,7 +135,7 @@ function Legend({
   return (
     <div
       className={cn(
-        "flex items-start justify-between gap-x-4 pt-3 text-[12px] font-medium",
+        "flex items-start justify-between gap-x-4 pt-3 text-xs font-medium",
         APPEARANCE.subtext,
       )}
     >
@@ -514,7 +514,7 @@ export function MetricGrowthCard({
                         exit={{ opacity: 0 }}
                         transition={enterTransition}
                         className={cn(
-                          "text-[11px] font-medium tracking-tight uppercase",
+                          "text-2xs font-medium tracking-tight uppercase",
                           APPEARANCE.tooltipSub,
                         )}
                       >
@@ -533,7 +533,7 @@ export function MetricGrowthCard({
                     {compareDataPoint && (
                       <NumberFlow
                         className={cn(
-                          "text-[12px] font-medium",
+                          "text-xs font-medium",
                           APPEARANCE.tooltipSub,
                         )}
                         format={TOOLTIP_FORMAT}

@@ -16,7 +16,7 @@ modèle.
 | API key | Utilise une clé de fournisseur gérée par l'organisation. |
 | AI Gateway | Utilise les modèles Anthropic, OpenAI et Google via AI Gateway. |
 
-Un abonnement de membre ne fait fonctionner que les chats propres à ce membre :
+Un abonnement de membre ne prend en charge que les chats propres à ce membre :
 l'Assistant Preview et ses chats avec un AI Teammate. Il ne dessert pas un
 widget publié et n'exécute pas le chat d'un autre membre. Sélectionnez un
 forfait Platform ou une connexion par clé API pour le trafic publié.
@@ -27,7 +27,7 @@ forfait Platform ou une connexion par clé API pour le trafic publié.
 2. Sélectionnez **AI Provider**.
 3. Ajoutez une connexion de fournisseur.
 4. Sélectionnez Anthropic, OpenAI, Google, AI Gateway ou ElevenLabs.
-5. Saisissez l'identifiant de fournisseur requis.
+5. Saisissez l'identifiant du fournisseur requis.
 6. Enregistrez la connexion.
 
 ## AI Gateway
@@ -47,6 +47,11 @@ ne prend pas en charge n'affiche pas l'AI Gateway comme source.
 
 - **OpenAI-compatible endpoints** connectez un serveur tel qu'Ollama, vLLM ou LM
   Studio. Saisissez son URL de base et ses modèles. La clé API est facultative.
+  L'URL de base doit utiliser HTTPS et pointer vers un hôte public. Ciele refuse
+  les adresses sur un réseau privé, telles que `localhost`, `10.x.x.x` ou
+  `192.168.x.x`. Pour utiliser un endpoint sur un réseau privé, définissez-le
+  dans l'environnement de déploiement. Voir
+  [Configuration](/self-hosting/configuration).
 - **Keyless enterprise auth** connecte Google Vertex, Anthropic ou Azure OpenAI
   via la fédération d'identité des workloads. Ciele ne stocke aucune clé
   statique pour ces connexions.
@@ -67,7 +72,7 @@ de connaissances.
 2. Sélectionnez **General**.
 3. Sélectionnez la connexion au fournisseur.
 4. Sélectionnez un modèle disponible.
-5. Vous pouvez, si vous le souhaitez, sélectionner la source du modèle.
+5. En option, sélectionnez la source du modèle.
 6. Testez l'Assistant dans Preview.
 7. Publiez l'Assistant.
 
@@ -78,15 +83,15 @@ Sonnet 5 peut utiliser votre clé API Anthropic ainsi qu'AI Gateway. Le sélecte
 de source s'affiche lorsqu'un modèle dispose de deux sources ou plus.
 
 - **Automatic** utilise la première source disponible. L'ordre est le suivant :
-  votre clé API, l'authentification d'entreprise sans clé, le plan de la
+  votre clé API, l'authentification d'entreprise sans clé, l'abonnement à la
   plateforme, votre clé AI Gateway et la clé AI Gateway de la plateforme.
 - **Platform plan**, **API key**, **Keyless**, **AI Gateway · your key** et **AI
   Gateway · platform** n'utilisent que cette source.
 
 **AI Gateway · your key** utilise la connexion AI Gateway de l'organisation, et
 votre compte Gateway prend en charge les coûts. **AI Gateway · platform**
-utilise la clé AI Gateway de la plateforme, et la formule de la plateforme prend
-en charge les coûts.
+utilise la clé AI Gateway de la plateforme, et l'abonnement de la plateforme
+prend en charge les coûts.
 
 Si la source sélectionnée ne peut pas desservir le modèle, Ciele répond avec un
 autre modèle disponible, comme c'est le cas lorsqu'un fournisseur n'a pas
@@ -97,7 +102,7 @@ utiliser une source chacun. La liste affiche un modèle une fois pour chaque
 source, le nom de la source figurant après le nom du modèle.
 
 L'abonnement propre d'un membre n'est pas une source que vous sélectionnez. Il
-exécute les propres chats de ce membre, quel que soit le modèle ou la source
+gère les conversations propres à ce membre, quel que soit le modèle ou la source
 utilisé(e) par l'Assistant.
 
 Le widget publié utilise le fournisseur et le modèle figurant dans son

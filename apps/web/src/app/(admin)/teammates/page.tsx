@@ -1,23 +1,21 @@
-import { MessageSquareDashed } from "lucide-react";
+import { TeammateChat } from "@/components/teammates/teammate-chat";
+import { requirePageMember } from "@/lib/authz";
+import { ensureCieleAi } from "@/lib/teammates/ciele-ai";
+
+export const dynamic = "force-dynamic";
 
 /**
- * `/teammates` with nothing open: the right pane's placeholder.
+ * `/teammates`: the Chat surface's landing page, which is the Organization's
+ * Ciele AI (the default AI layer over the whole platform).
  *
- * Everything that used to be here, the roster, the groups and the create
- * dialogs, moved into the layout beside it, because the rail has to outlive
- * navigation between threads. Below `lg` this pane is hidden and the rail is
- * the page, so this sentence is a desktop one.
+ * It used to be a "pick a teammate" placeholder. Chat now opens ready to ask,
+ * the same shape Notion AI opens in: the face, the question, the composer. A
+ * Teammate is one click away in the sidebar; Ciele AI is the thing you do not
+ * have to pick. `?c=` reopens one of its past Conversations, like on any
+ * Teammate's page; the chat reads it from the URL.
  */
-export default function TeammatesPage() {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-      <span className="text-primary/40 flex size-24 items-center justify-center rounded-full border-2 border-dashed">
-        <MessageSquareDashed className="size-10" />
-      </span>
-      <h2 className="text-xl font-bold">Pick a teammate or a group</h2>
-      <p className="text-muted-foreground max-w-sm text-sm">
-        An AI colleague your team chats with inside Ciele. It answers from your Library and never talks to visitors.
-      </p>
-    </div>
-  );
+export default async function TeammatesPage() {
+  const { organizationId, session } = await requirePageMember();
+  const cieleAi = await ensureCieleAi(organizationId, session.userId);
+  return <TeammateChat teammateId={cieleAi.id} resolved={cieleAi} />;
 }

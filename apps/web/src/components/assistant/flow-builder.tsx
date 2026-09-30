@@ -755,7 +755,7 @@ export function FlowBuilder({
   );
 
   const footer = (
-    <div className="sticky bottom-2 z-20 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card/95 px-3 py-2 shadow-md backdrop-blur">
+    <div className="sticky bottom-2 z-20 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card/95 px-3 py-2 shadow-light backdrop-blur">
       <StatusItem ok={triggerOk} required label="Trigger set" />
       <StatusItem
         rolling

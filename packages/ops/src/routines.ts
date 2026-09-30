@@ -51,6 +51,7 @@ async function requireRoutine(
 export const listRoutinesOp = defineOperation({
   name: "teammates.routines.list",
   capability: "member",
+  effect: "read",
   input: z.object({ teammateId: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { teammateId }): Promise<TeammateRoutine[]> => {
@@ -64,6 +65,7 @@ export const listRoutinesOp = defineOperation({
 export const createRoutineOp = defineOperation({
   name: "teammates.routines.create",
   capability: "edit",
+  effect: "write",
   input: z.object({
     teammateId: z.string().min(1),
     instruction: instructionSchema,
@@ -103,6 +105,7 @@ export const createRoutineOp = defineOperation({
 export const updateRoutineOp = defineOperation({
   name: "teammates.routines.update",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: z.string().min(1), patch: routinePatchSchema }),
   entities: (_input, result: TeammateRoutine) => [
     { kind: "teammate" as const, id: result.teammateId },
@@ -116,6 +119,7 @@ export const updateRoutineOp = defineOperation({
 export const deleteRoutineOp = defineOperation({
   name: "teammates.routines.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: TeammateRoutine) => [
     { kind: "teammate" as const, id: result.teammateId },

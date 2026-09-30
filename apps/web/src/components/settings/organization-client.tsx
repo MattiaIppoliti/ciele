@@ -9,9 +9,11 @@ import {
 } from "@/app/actions";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { FieldHeader } from "@/components/settings/field-header";
+import { SettingsSaveBar } from "@/components/settings/form-actions";
 import { useSettingsDirty } from "@/components/settings/settings-dirty";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
@@ -175,13 +177,16 @@ export function OrganizationClient({
   }
 
   return (
-    <div className="space-y-10 pt-8 pb-24">
+    <div className="space-y-6 pt-8 pb-24">
       {demo && (
         <Badge variant="secondary" className="text-muted-foreground">
           Demo mode, changes only last for this session
         </Badge>
       )}
 
+      <SectionTimeline>
+        <TimelineSection title="Profile" boxed>
+          <div className="space-y-8">
       <div className="space-y-3">
         <FieldHeader
           title="Logo"
@@ -211,6 +216,10 @@ export function OrganizationClient({
         />
       </div>
 
+          </div>
+        </TimelineSection>
+        <TimelineSection title="Data retention" boxed>
+          <div className="space-y-8">
       <div className="space-y-3">
         <FieldHeader
           title="Reasoning trace retention"
@@ -255,14 +264,18 @@ export function OrganizationClient({
         </Select>
       </div>
 
-      <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
+          </div>
+        </TimelineSection>
+      </SectionTimeline>
+
+      <SettingsSaveBar>
         <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
           {dirty && <RollInText text="Unsaved changes" />}
         </span>
         <Button onClick={handleSave} disabled={isPending || !dirty} className="px-6 font-semibold">
           <RollInText text={isPending ? "Saving…" : "Save changes"} />
         </Button>
-      </div>
+      </SettingsSaveBar>
       {confirmDeleteModal}
     </div>
   );

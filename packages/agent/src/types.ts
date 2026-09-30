@@ -566,7 +566,28 @@ export interface TeammateActionTool {
    * above this: the gate judges what was offered, it does not widen the offer.
    */
   guard?(input: Record<string, unknown>): Promise<ChatReplyPart | null>;
-  run(input: Record<string, unknown>): Promise<TeammateActionOutcome>;
+  /**
+   * True when this call must wait for the Member whatever the gate would say:
+   * Ciele AI's destructive platform operations. Deterministic on purpose, and
+   * independent of whether a decision backend is configured, because "delete
+   * only after I confirm" is a promise the product makes, not a judgement.
+   */
+  alwaysConfirm?(input: Record<string, unknown>): boolean;
+  /**
+   * The label for one call, when the tool stands for many actions (Ciele AI's
+   * `platform.run`): what the approval card and row name instead of `label`.
+   * Still the catalogue's words about the action, never its arguments.
+   */
+  labelFor?(input: Record<string, unknown>): string;
+  /**
+   * The turn never passes `confirmed`: a call `alwaysConfirm` marks is stopped
+   * by the gate before it gets here. The approval replay passes it once the
+   * Member said yes, and a tool that promises to wait refuses without it.
+   */
+  run(
+    input: Record<string, unknown>,
+    options?: { confirmed?: boolean }
+  ): Promise<TeammateActionOutcome>;
 }
 
 /** What running one returned, plus what it says it touched. */

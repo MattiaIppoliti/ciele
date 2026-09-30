@@ -59,6 +59,7 @@ async function findFlowsAgent(
 export const ensureFlowsAgentOp = defineOperation({
   name: "flows.agent.ensure",
   capability: "edit",
+  effect: "write",
   input: z.object({ assistantId: z.string().min(1) }),
   // The row it may create is a Teammate; a repeat call revalidates a roster
   // that did not change, which is cheap and never wrong.
@@ -120,6 +121,7 @@ export const ensureFlowsAgentOp = defineOperation({
 export const adoptFlowsAgentThreadOp = defineOperation({
   name: "flows.agent.adopt",
   capability: "edit",
+  effect: "read",
   input: z.object({
     assistantId: z.string().min(1),
     flowId: z.string().min(1),
@@ -156,6 +158,7 @@ export const adoptFlowsAgentThreadOp = defineOperation({
 export const listFlowsAgentThreadOp = defineOperation({
   name: "flows.agent.thread",
   capability: "member",
+  effect: "read",
   input: z.object({
     assistantId: z.string().min(1),
     flowId: z.string().min(1).nullable(),
@@ -176,6 +179,7 @@ export const listFlowsAgentThreadOp = defineOperation({
 export const readFlowsAgentConversationOp = defineOperation({
   name: "flows.agent.conversation",
   capability: "member",
+  effect: "read",
   input: z.object({
     assistantId: z.string().min(1),
     conversationId: z.string().min(1),

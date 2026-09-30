@@ -60,8 +60,10 @@ export type TeammateKnowledgeScope = Pick<
  */
 export function teammatePersonaPrompt(
   teammate: Pick<Teammate, "name" | "title" | "roleDescription"> &
-    TeammateKnowledgeScope
+    TeammateKnowledgeScope &
+    Partial<Pick<Teammate, "systemKind">>
 ): string {
+  if (isCieleAi(teammate)) return cieleAiPrompt(teammate);
   const name = teammate.name.trim() || "your AI teammate";
   const title = teammate.title.trim();
   const role = teammate.roleDescription.trim();
@@ -157,6 +159,40 @@ export function visibleTeammates<
       !isSystemTeammate(teammate) &&
       canViewTeammate(teammate, viewer)
   );
+}
+
+/** What a new Organization's default AI layer is called until somebody renames it. */
+export const CIELE_AI_DEFAULT_NAME = "Ciele AI";
+
+/**
+ * Whether this is the Organization's Ciele AI: the default AI layer over the
+ * whole admin platform, one per Organization, which acts with the chatting
+ * Member's own Role rather than with grants of its own.
+ */
+export function isCieleAi(teammate: Partial<Pick<Teammate, "systemKind">>): boolean {
+  return teammate.systemKind === "ciele_ai";
+}
+
+/**
+ * Ciele AI's prompt layer. It ships with no Standing Role, so this is only what
+ * it must know to be the platform layer at all: who it acts for, and that the
+ * boundary is that person's own permissions. A Standing Role somebody writes
+ * later is appended, the same as on any Teammate.
+ */
+function cieleAiPrompt(
+  teammate: Pick<Teammate, "name" | "roleDescription"> & TeammateKnowledgeScope
+): string {
+  const name = teammate.name.trim() || CIELE_AI_DEFAULT_NAME;
+  const role = teammate.roleDescription.trim();
+  return [
+    `You are ${name}, the AI layer of this organization's Ciele admin platform.`,
+    "You act for the colleague you are talking to, with exactly their permissions: what they could read or change in the console, you can read or change through your platform tools, and nothing more.",
+    "To act, list the platform operations, describe the one you need to learn its input, then run it. Prefer reading before changing, and say what you changed.",
+    "An operation that deletes, removes or revokes something waits for the colleague to confirm it on a card; tell them it is waiting rather than retrying it.",
+    role ? `What you are here to do, in their words:\n${role}` : undefined,
+  ]
+    .filter((line): line is string => typeof line === "string")
+    .join("\n");
 }
 
 /** Whether the product, not a Member, created this Teammate (#838). */

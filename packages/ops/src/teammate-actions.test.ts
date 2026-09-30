@@ -102,6 +102,15 @@ describe("the action catalogue", () => {
     expect(everything).not.toContain("knowledge.sources.unlink");
   });
 
+  it("offers no operation that declares itself consequential", () => {
+    // The names above are the cases we know about; this is the rule they are
+    // instances of, read from each operation's own declaration.
+    const consequential = Object.values(TEAMMATE_ACTION_CATALOG)
+      .flat()
+      .filter((spec) => spec.operation.effect === "consequential");
+    expect(names(consequential)).toEqual([]);
+  });
+
   it("gives the knowledge grant the assistant read its writes need", () => {
     // `knowledge.collections.list` and `knowledge.org.faqs.create` both take an
     // Assistant id. Without `assistants.list` the grant buys a domain the

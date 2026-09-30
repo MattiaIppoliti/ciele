@@ -46,7 +46,7 @@ export function MorphingModal({
         showCloseButton={false}
         overlayClassName="bg-black/50 backdrop-blur-[1px] supports-backdrop-filter:bg-black/35"
         className={cn(
-          "z-[80] flex max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-sm flex-col overflow-y-auto rounded-3xl border border-border bg-background p-5 text-foreground shadow-2xl outline-none",
+          "z-[80] flex max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-sm flex-col overflow-y-auto rounded-3xl border border-border bg-background p-5 text-foreground shadow-strong outline-none",
           placement === "bottom"
             ? "top-auto bottom-8 translate-y-0"
             : "top-1/2 -translate-y-1/2",

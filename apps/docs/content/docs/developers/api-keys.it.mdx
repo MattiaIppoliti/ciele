@@ -1,9 +1,9 @@
 ---
 title: Chiavi API
-description: Crea e revoca le credenziali dell'organizzazione per l'accesso programmatico.
+description: Crea, revoca ed elimina le credenziali dell'organizzazione per l'accesso programmatico.
 ---
 
-Una chiave API consente a un programma di accedere a un'Organizzazione. Ciele
+Una chiave API consente a un programma di accedere a una Organization. Ciele
 memorizza solo l'hash del segreto.
 
 ## Crea una chiave
@@ -12,14 +12,14 @@ memorizza solo l'hash del segreto.
 2. Seleziona **API Keys**.
 3. Seleziona **Create API key**.
 4. Inserisci un nome per la chiave.
-5. Seleziona il ruolo minimo richiesto.
-6. Copia il segreto in un archivio sicuro per le credenziali.
+5. Seleziona il Role minimo richiesto.
+6. Copia il secret in un archivio credenziali sicuro.
 
 Ciele mostra il segreto `ciele_sk_...` una sola volta. Non potrai recuperare lo
-stesso segreto in seguito.
+stesso secret in un secondo momento.
 
-Il ruolo selezionato non può essere superiore al tuo. Ciele verifica il ruolo
-per ogni operazione API.
+Il Role selezionato non può essere di livello superiore al tuo Role. Ciele
+verifica il Role per ogni operazione API.
 
 ## Revoca una chiave
 
@@ -28,8 +28,20 @@ per ogni operazione API.
 3. Seleziona **Revoke**.
 4. Conferma l'azione.
 
-La revoca blocca le nuove richieste che utilizzano la chiave. Ciele conserva il
-record della chiave per le informazioni di audit.
+La revoca interrompe le nuove richieste che utilizzano la chiave. Ciele conserva
+il record della chiave per le informazioni di audit.
+
+## Elimina una chiave
+
+Puoi eliminare solo una chiave che è già stata revocata. Un Admin o un Owner può
+farlo.
+
+1. Apri **Settings > API Keys**.
+2. Trova la chiave revocata.
+3. Seleziona l'icona del cestino rosso.
+4. Conferma l'azione.
+
+Ciele rimuove il record chiave dall'elenco. Non puoi annullare questa azione.
 
 <Callout type="warn" title="Protect the secret">
 Do not put an API key in source control, public logs, prompts, or screenshots. Use an environment variable or a secret store.

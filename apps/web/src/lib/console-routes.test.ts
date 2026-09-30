@@ -26,7 +26,9 @@ const MARKETING_GROUP = fileURLToPath(
 describe("console routes", () => {
   it("lists every top-level (admin) route segment", () => {
     const onDisk = readdirSync(ADMIN_GROUP, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
+      // A parallel slot (`@modal`) is a folder but not a URL segment: it
+      // renders beside the route it intercepts, under that route's own path.
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith("@"))
       .map((entry) => `/${entry.name}`)
       .sort();
 

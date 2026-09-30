@@ -1,16 +1,15 @@
 ﻿"use client";
 
 import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import type { AssistantTools, BuiltInToolName, Skill } from "@agent-hub/core";
 import { Plus, Trash2 } from "lucide-react";
 import { Globe, Pencil } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
-  createSkillAction,
   deleteSkillAction,
   setAssistantSkillsAction,
   updateAssistantAction,
-  updateSkillAction,
   type ApiIntegrationView,
 } from "@/app/actions";
 import { DEFAULT_STUDY_SETTINGS, StudySettings } from "./study-settings";
@@ -22,22 +21,9 @@ import {
 import { Button } from "@agent-hub/ui";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
-import { Input } from "@agent-hub/ui";
-import { Label } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
-import { Textarea } from "@/components/ui/textarea";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
-import { RollInText } from "@/components/motion/roll-in-text";
-import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 /**
  * Tools & Skills SETUP section: which built-in agent tools the assistant runs
@@ -86,21 +72,6 @@ const BUILT_INS: Array<{
   },
 ];
 
-interface SkillDraft {
-  id: string | null;
-  name: string;
-  description: string;
-  prompt: string;
-  starter: string;
-}
-
-const EMPTY_SKILL: SkillDraft = {
-  id: null,
-  name: "",
-  description: "",
-  prompt: "",
-  starter: "",
-};
 
 export function ToolsClient({
   assistantId,
@@ -121,11 +92,7 @@ export function ToolsClient({
   const [tools, setTools] = useState<AssistantTools>(initialTools);
   const [skills, setSkills] = useState<Skill[]>(initialSkills);
   const [attached, setAttached] = useState<string[]>(attachedSkillIds);
-  const [skillDraft, setSkillDraft] = useState<SkillDraft | null>(null);
-  /** The draft as the dialog opened, so closing can tell whether anything changed. */
-  const [skillOpened, setSkillOpened] = useState<SkillDraft | null>(null);
   const [, startTransition] = useTransition();
-  const [skillPending, startSkillTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   // Rapid consecutive saves must not clobber each other, patch on the latest.
@@ -188,75 +155,6 @@ export function ToolsClient({
     );
   }
 
-  function commitSkill(draft: SkillDraft) {
-    const name = draft.name.trim();
-    if (!name || !draft.prompt.trim()) {
-      toast.error("Skill name and prompt are required");
-      return;
-    }
-    startSkillTransition(async () => {
-      try {
-        await persistSkill(draft, name);
-        // Closed only once saved, so a failure leaves the draft to retry.
-        closeSkill();
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Could not save the skill"
-        );
-      }
-    });
-  }
-
-  async function persistSkill(draft: SkillDraft, name: string) {
-    const fields = {
-      name,
-      description: draft.description.trim(),
-      prompt: draft.prompt,
-      starter: draft.starter.trim(),
-    };
-    if (draft.id) {
-      await updateSkillAction(draft.id, fields);
-      setSkills((prev) => prev.map((s) => (s.id === draft.id ? { ...s, ...fields } : s)));
-      toast.success("Skill updated");
-    } else {
-      const skill = await createSkillAction(fields, assistantId);
-      setSkills((prev) => [...prev, skill]);
-      latestAttached.current = [...latestAttached.current, skill.id];
-      setAttached(latestAttached.current);
-      toast.success("Skill created and attached");
-    }
-  }
-
-  function openSkill(draft: SkillDraft) {
-    setSkillDraft(draft);
-    setSkillOpened(draft);
-  }
-
-  function closeSkill() {
-    setSkillDraft(null);
-    setSkillOpened(null);
-  }
-
-  const skillDirty =
-    skillDraft !== null &&
-    skillOpened !== null &&
-    (skillDraft.name !== skillOpened.name ||
-      skillDraft.description !== skillOpened.description ||
-      skillDraft.prompt !== skillOpened.prompt ||
-      skillDraft.starter !== skillOpened.starter);
-
-  const { leave: leaveSkill } = useUnsavedChanges({
-    dirty: skillDirty,
-    confirmDelete,
-    description: skillDraft?.id
-      ? "The edits to this skill are not saved yet."
-      : "This skill has not been created yet.",
-  });
-
-  function requestCloseSkill() {
-    if (skillPending) return;
-    leaveSkill(closeSkill);
-  }
 
   // A Skill belongs to the Organization, so deleting it detaches it from every
   // assistant it is attached to, not only this one.
@@ -334,7 +232,14 @@ export function ToolsClient({
             Reusable prompts. Attached skills are added to this assistant&apos;s instructions.
           </p>
           {canEdit && (
-            <Button variant="outline" size="sm" onClick={() => openSkill(EMPTY_SKILL)}>
+            // A page under Tools & Skills, not a dialog: a prompt needs room,
+            // and the breadcrumb says where you are.
+            <Button
+              variant="outline"
+              size="sm"
+              render={<Link href={`/assistants/${assistantId}/tools/skills/new`} />}
+              nativeButton={false}
+            >
               <AnimatedIcon icon={Plus} size={16} /> New skill
             </Button>
           )}
@@ -372,15 +277,8 @@ export function ToolsClient({
                       variant="ghost"
                       size="icon"
                       aria-label="Edit skill"
-                      onClick={() =>
-                        openSkill({
-                          id: skill.id,
-                          name: skill.name,
-                          description: skill.description,
-                          prompt: skill.prompt,
-                          starter: skill.starter ?? "",
-                        })
-                      }
+                      render={<Link href={`/assistants/${assistantId}/tools/skills/${skill.id}`} />}
+                      nativeButton={false}
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -404,87 +302,6 @@ export function ToolsClient({
       </TimelineSection>
       </SectionTimeline>
 
-      {/* Skill dialog */}
-      <Dialog open={skillDraft !== null} onOpenChange={(open) => !open && requestCloseSkill()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{skillDraft?.id ? "Edit skill" : "New skill"}</DialogTitle>
-            <DialogDescription>
-              A reusable prompt template. Attach it to any assistant in your
-              organization.
-            </DialogDescription>
-          </DialogHeader>
-          {skillDraft && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="skill-name">Name</Label>
-                <Input
-                  id="skill-name"
-                  placeholder="Citation etiquette"
-                  value={skillDraft.name}
-                  onChange={(e) => setSkillDraft({ ...skillDraft, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="skill-description">Description</Label>
-                <Input
-                  id="skill-description"
-                  placeholder="How to reference official sources"
-                  value={skillDraft.description}
-                  onChange={(e) =>
-                    setSkillDraft({ ...skillDraft, description: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="skill-prompt">Prompt</Label>
-                <Textarea
-                  id="skill-prompt"
-                  rows={6}
-                  placeholder="When citing internal policies, always name the official document and advise the user to verify with the relevant team…"
-                  value={skillDraft.prompt}
-                  onChange={(e) => setSkillDraft({ ...skillDraft, prompt: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="skill-starter">Opening line (optional)</Label>
-                <Textarea
-                  id="skill-starter"
-                  rows={2}
-                  placeholder="Draft release notes for the change I paste below."
-                  value={skillDraft.starter}
-                  onChange={(e) =>
-                    setSkillDraft({ ...skillDraft, starter: e.target.value })
-                  }
-                />
-                <p className="text-muted-foreground text-xs">
-                  What the chat window writes into the message box when someone
-                  picks this skill from the <code>/</code> menu. Write it as the asker. Leave empty to keep the skill out of the menu.
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={requestCloseSkill} disabled={skillPending}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => skillDraft && commitSkill(skillDraft)}
-              disabled={skillPending}
-            >
-              <RollInText
-                text={
-                  skillPending
-                    ? "Saving…"
-                    : skillDraft?.id
-                      ? "Save skill"
-                      : "Create skill"
-                }
-              />
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <p className="text-muted-foreground mt-4 flex items-center gap-1.5 text-xs">
         <Globe className="size-3.5" />

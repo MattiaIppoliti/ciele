@@ -1,11 +1,13 @@
 ﻿"use client";
 
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useState, useTransition } from "react";
 import type { Profile } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
 import { updateProfileAction, uploadProfileAvatarAction } from "@/app/actions";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { FieldHeader } from "@/components/settings/field-header";
+import { SettingsSaveBar } from "@/components/settings/form-actions";
 import { useSettingsDirty } from "@/components/settings/settings-dirty";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
@@ -133,13 +135,15 @@ export function ProfileClient({
   }
 
   return (
-    <div className="space-y-10 pt-8 pb-24">
+    <div className="space-y-6 pt-8 pb-24">
       {demo && (
         <Badge variant="secondary" className="text-muted-foreground">
           Demo mode, changes only last for this session
         </Badge>
       )}
 
+      <SectionTimeline>
+        <TimelineSection title="Photo" boxed>
       <div className="space-y-3">
         <FieldHeader
           title="Photo"
@@ -161,6 +165,9 @@ export function ProfileClient({
         />
       </div>
 
+        </TimelineSection>
+        <TimelineSection title="Details" boxed>
+          <div className="space-y-8">
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-3">
           <FieldHeader title="First name" hint="Optional." />
@@ -207,7 +214,11 @@ export function ProfileClient({
         <p className="text-muted-foreground text-sm break-all">{email}</p>
       </div>
 
-      <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
+          </div>
+        </TimelineSection>
+      </SectionTimeline>
+
+      <SettingsSaveBar>
         <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
           {dirty ? (
             <RollInText text="Unsaved changes" />
@@ -227,7 +238,7 @@ export function ProfileClient({
         >
           <RollInText text={isPending ? "Saving…" : "Save changes"} />
         </Button>
-      </div>
+      </SettingsSaveBar>
       {confirmDeleteModal}
     </div>
   );

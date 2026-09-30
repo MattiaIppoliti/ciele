@@ -85,6 +85,7 @@ export const apiIntegrationInputSchema = z.object({
 export const getApiIntegrationOp = defineOperation({
   name: "apiIntegrations.get",
   capability: "member",
+  effect: "read",
   input: z.object({ assistantId: idSchema }),
   entities: () => [],
   run: async (ctx, { assistantId }): Promise<ApiIntegrationView | null> => {
@@ -109,6 +110,7 @@ const IDEMPOTENCY_REFUSALS: Record<IdempotencyRejection, (where: string) => stri
 export const setApiIntegrationOp = defineOperation({
   name: "apiIntegrations.set",
   capability: "edit",
+  effect: "write",
   input: z.object({ assistantId: idSchema, input: apiIntegrationInputSchema }),
   entities: ({ assistantId }) => [{ kind: "assistantEditor" as const, assistantId }],
   run: async (ctx, { assistantId, input }): Promise<ApiIntegrationView> => {
@@ -161,6 +163,7 @@ export const setApiIntegrationOp = defineOperation({
 export const deleteApiIntegrationOp = defineOperation({
   name: "apiIntegrations.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ assistantId: idSchema }),
   entities: ({ assistantId }) => [{ kind: "assistantEditor" as const, assistantId }],
   run: async (ctx, { assistantId }) => {
@@ -172,6 +175,7 @@ export const deleteApiIntegrationOp = defineOperation({
 export const getSsoConnectionOp = defineOperation({
   name: "sso.connection.get",
   capability: "manageMembers",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: async (ctx) => {
@@ -200,6 +204,7 @@ export const ssoConnectionInputSchema = z.object({
 export const setSsoConnectionOp = defineOperation({
   name: "sso.connection.set",
   capability: "manageMembers",
+  effect: "consequential",
   input: ssoConnectionInputSchema,
   entities: () => [{ kind: "assistantList" as const }],
   run: async (ctx, input) => {
@@ -222,6 +227,7 @@ export const setSsoConnectionOp = defineOperation({
 export const disconnectSsoConnectionOp = defineOperation({
   name: "sso.connection.disconnect",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({}),
   entities: () => [{ kind: "assistantList" as const }],
   run: (ctx) => ctx.db.clearSsoConnection(ctx.organizationId),
@@ -240,6 +246,7 @@ function providerView(connection: ProviderConnection): ProviderConnectionView {
 export const listProviderConnectionsOp = defineOperation({
   name: "providers.list",
   capability: "manageMembers",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: async (ctx) =>
@@ -253,6 +260,7 @@ export function keyHintOf(secret: string): string {
 export const createProviderApiKeyOp = defineOperation({
   name: "providers.createApiKey",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({
     // `ai_gateway` is one key for every catalog provider's models through AI
     // Gateway, the Organization's own account.
@@ -306,6 +314,7 @@ export const openAiCompatibleInputSchema = z.object({
 export const createOpenAiCompatibleConnectionOp = defineOperation({
   name: "providers.createOpenAiCompatible",
   capability: "manageMembers",
+  effect: "consequential",
   input: openAiCompatibleInputSchema,
   entities: () => [{ kind: "aiSettings" as const }],
   run: async (ctx, input): Promise<{ connection?: ProviderConnectionView; error?: string }> => {
@@ -374,6 +383,7 @@ export const federatedProviderInputSchema = z.discriminatedUnion("kind", [
 export const createFederatedProviderConnectionOp = defineOperation({
   name: "providers.createFederated",
   capability: "manageMembers",
+  effect: "consequential",
   input: federatedProviderInputSchema,
   entities: () => [{ kind: "aiSettings" as const }],
   run: async (ctx, input): Promise<ProviderConnectionView> => {
@@ -431,6 +441,7 @@ export const createFederatedProviderConnectionOp = defineOperation({
 export const deleteProviderConnectionOp = defineOperation({
   name: "providers.delete",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "aiSettings" as const }],
   run: async (ctx, { id }) => {
@@ -445,6 +456,7 @@ export const deleteProviderConnectionOp = defineOperation({
 export const setEmbeddingConnectionOp = defineOperation({
   name: "providers.setEmbedding",
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({ connectionId: idSchema.nullable() }),
   entities: () => [{ kind: "aiSettings" as const }],
   run: async (ctx, { connectionId }) => {

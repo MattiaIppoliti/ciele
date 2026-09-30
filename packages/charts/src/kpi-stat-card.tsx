@@ -78,7 +78,7 @@ export function KpiStatCard({
     <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-[0_4px_16px_rgba(18,18,18,0.04)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+          <p className="font-mono text-2xs font-medium tracking-widest text-muted-foreground uppercase">
             {label}
           </p>
           <p className="mt-2 truncate font-mono text-2xl font-bold tracking-tight tabular-nums">

@@ -39,7 +39,7 @@ export function ModelSourceSelect({
       onValueChange={(next) =>
         onChange(next === AUTOMATIC ? null : (next as ModelSource))
       }
-      className="w-48"
+      className="w-full @lg:w-48"
     >
       <SelectTrigger className="h-11" aria-label="Model source">
         <SelectValue>{value ? MODEL_SOURCE_NAMES[value] : "Automatic"}</SelectValue>

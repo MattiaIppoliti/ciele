@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { AssistantOptionsMenu } from "@/components/assistant/assistant-options-menu";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
-import { useShell } from "@/components/shell/shell-provider";
+import { useSetTopBarSlot } from "@/components/shell/top-bar-slots";
 
 /**
  * Registers the assistant identity strip (id + copy + Duplicate/Delete) into
@@ -21,10 +21,11 @@ export function AssistantTopBarActions({
   canEdit: boolean;
   canDelete: boolean;
 }) {
-  const { setTopBarActions } = useShell();
+  const setSlot = useSetTopBarSlot();
 
   useEffect(() => {
-    setTopBarActions(
+    setSlot(
+      "actions",
       <>
         {/* The raw id is reference material, not a control, on a phone header
             it would crowd out the page title. The copy button next to it still
@@ -45,8 +46,8 @@ export function AssistantTopBarActions({
         />
       </>
     );
-    return () => setTopBarActions(null);
-  }, [assistantId, assistantTitle, canEdit, canDelete, setTopBarActions]);
+    return () => setSlot("actions", null);
+  }, [assistantId, assistantTitle, canEdit, canDelete, setSlot]);
 
   return null;
 }

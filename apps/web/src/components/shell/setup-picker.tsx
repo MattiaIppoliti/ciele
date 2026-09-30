@@ -106,7 +106,7 @@ function AssistantItem({
         <div className="relative mr-4 shrink-0">
           <AssistantAvatar assistant={assistant} className="size-12" />
           {assistant.active && (
-            <span className="bg-background absolute right-0 bottom-0 flex size-3.5 items-center justify-center rounded-full shadow-sm">
+            <span className="bg-background absolute right-0 bottom-0 flex size-3.5 items-center justify-center rounded-full shadow-light">
               <span className="size-2 rounded-full bg-emerald-500" />
             </span>
           )}

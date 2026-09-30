@@ -1,12 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ChannelKind, HelpDesk, SupportChannel } from "@agent-hub/core";
-import { CircleCheck, Move, Plus, Trash2 } from "lucide-react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
+import { CircleHelp, Move, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import {
@@ -28,8 +27,9 @@ import {
 } from "@/components/ui/confirm-delete-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
-import { discardChangesRequest, useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
-import { isPlainClick } from "@/lib/plain-click";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 
 // Opened only after a click on a channel or "Add channel", so it never renders
 // on the server anyway. Its editor, form builder, availability scheduler and
@@ -42,7 +42,7 @@ const ChannelPanel = dynamic(
   {
     loading: () => (
       <aside
-        className="bg-background fixed inset-y-0 right-0 z-50 flex w-[480px] max-w-full flex-col border-l shadow-xl"
+        className="bg-background fixed inset-y-0 right-0 z-50 flex w-[480px] max-w-full flex-col border-l shadow-strong"
         role="status"
         aria-busy="true"
       >
@@ -255,18 +255,6 @@ export function HelpDeskManage({
     });
   }
 
-  function onBackClick(e: React.MouseEvent<HTMLAnchorElement>) {
-    // A modified click opens a new tab and leaves this page and its edits alone.
-    if (!dirty || !isPlainClick(e)) return;
-    e.preventDefault();
-    confirmDelete(
-      discardChangesRequest(
-        "The edits to this help desk's name and description are not saved yet.",
-        () => router.push("/help-desks"),
-      ),
-    );
-  }
-
   function handleDelete() {
     confirmDelete({
       title: <>Delete &ldquo;{desk.name}&rdquo;?</>,
@@ -295,42 +283,39 @@ export function HelpDeskManage({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <header className="flex shrink-0 items-center gap-3 px-6 pt-5 pb-4">
-        <Link
-          href="/help-desks"
-          onClick={onBackClick}
-          className="text-muted-foreground flex items-center gap-1 text-sm font-medium hover:opacity-70"
-        >
-          <ChevronLeft className="size-4" strokeWidth={3} />
-          All help desks
-        </Link>
-      </header>
-
-      <div className="mx-auto w-full max-w-4xl flex-1 border-t px-8 py-8">
-        <div className="flex items-start justify-between gap-4">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={!canEdit}
-            aria-label="Help desk name"
-            autoComplete="off"
-            className="focus:ring-ring/50 -mx-2 min-w-0 flex-1 rounded-lg px-2 py-1 text-3xl font-bold tracking-tight outline-none focus:ring-2"
-          />
-          {canEdit && (
-            <Hint label="Delete help desk">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Delete help desk"
-                className="text-destructive hover:text-destructive"
-                onClick={handleDelete}
-              >
-                <AnimatedIcon icon={Trash2} size={20} />
-              </Button>
-            </Hint>
-          )}
-        </div>
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
+        <SectionHeading
+          icon={CircleHelp}
+          title={desk.name}
+          description="Where a conversation goes when the assistant cannot answer it."
+        />
+        <div className="pt-6 pb-24">
+          <SectionTimeline>
+            <TimelineSection title="Details">
+              <div className="flex items-start justify-between gap-4">
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={!canEdit}
+                  aria-label="Help desk name"
+                  autoComplete="off"
+                  className="focus:ring-ring/50 -mx-2 min-w-0 flex-1 rounded-lg px-2 py-1 text-xl font-semibold outline-none focus:ring-2"
+                />
+                {canEdit && (
+                  <Hint label="Delete help desk">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Delete help desk"
+                      className="text-destructive hover:text-destructive"
+                      onClick={handleDelete}
+                    >
+                      <AnimatedIcon icon={Trash2} size={20} />
+                    </Button>
+                  </Hint>
+                )}
+              </div>
 
         <p id="help-desk-description-hint" className="text-muted-foreground mt-4 text-sm">
           Add at least {AI_RECOGNITION_TARGET} characters for best AI
@@ -358,21 +343,14 @@ export function HelpDeskManage({
           </div>
         )}
 
-        <div className="my-8 border-t" />
+            </TimelineSection>
 
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold tracking-tight">Support Channels</h2>
-          {order.length > 0 && (
-            <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1 text-sm font-medium">
-              <CircleCheck className="size-4" /> Complete
-            </span>
-          )}
-        </div>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Methods available for users to escalate their support requests.
-        </p>
-
-        <section className="mt-5 rounded-xl border bg-card">
+            <TimelineSection title="Support Channels">
+              <p className="text-muted-foreground -mt-3 mb-4 text-sm">
+                Methods available for users to escalate their support requests.
+                {order.length > 0 && " Complete."}
+              </p>
+              <section className="rounded-xl border bg-card">
           <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
             <div>
               <p className="font-semibold">
@@ -434,7 +412,7 @@ export function HelpDeskManage({
                       else rowRefs.current.delete(channel.id);
                     }}
                     className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2.5 transition-colors ${
-                      draggingIndex === index ? "bg-muted shadow-sm" : "bg-muted/40 hover:bg-muted/70"
+                      draggingIndex === index ? "bg-muted shadow-strong" : "bg-muted/40 hover:bg-muted/70"
                     }`}
                   >
                     <div className="min-w-0 flex-1">
@@ -517,11 +495,13 @@ export function HelpDeskManage({
           </div>
         </section>
 
-        <section className="mt-4 rounded-xl border bg-card px-4 py-3.5">
+            </TimelineSection>
+
+            <TimelineSection title="Answer Improvements">
+              <section className="rounded-xl border bg-card px-4 py-3.5">
           <div className="flex items-start justify-between gap-6">
             <div>
-              <h2 className="font-semibold">Answer Improvements</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
+              <p className="text-sm">
                 Auto-generate improvements: flag the last AI answer for review when a chat escalates here.
               </p>
             </div>
@@ -550,11 +530,17 @@ export function HelpDeskManage({
           </div>
         </section>
 
-        <TicketingIntegrationSection
-          helpDeskId={desk.id}
-          integration={desk.ticketingIntegration}
-          canEdit={canEdit}
-        />
+            </TimelineSection>
+
+            <TimelineSection title="Ticketing Integration">
+              <TicketingIntegrationSection
+                helpDeskId={desk.id}
+                integration={desk.ticketingIntegration}
+                canEdit={canEdit}
+              />
+            </TimelineSection>
+          </SectionTimeline>
+        </div>
       </div>
 
       {panel && (

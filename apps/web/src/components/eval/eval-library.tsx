@@ -15,8 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AnimatedGlyph } from "@/components/ui/animated-icon";
-import { TelescopeIcon } from "@/components/ui/icons/telescope";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { toast } from "@/lib/toast";
@@ -187,17 +185,7 @@ export function EvalLibrary({
   );
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-      <header>
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <AnimatedGlyph icon={TelescopeIcon} size={22} /> <RollInText text="Eval" />
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Compare models on the same dataset and inspect cost, speed,
-            accuracy, and failure modes for every example.
-          </p>
-        </div>
-      </header>
+      <h1 className="sr-only">Eval</h1>
       <Tabs value={tab} onValueChange={(value) => setTab(value as "runs" | "datasets" | "models")}>
         <TabsList aria-label="Eval tabs">
           <TabsTrigger value="runs">Runs</TabsTrigger>
@@ -206,7 +194,7 @@ export function EvalLibrary({
         </TabsList>
         <TabsContent value="runs" className="space-y-6">
           {canEdit && (
-            <section className="rounded-xl border bg-card p-5 shadow-sm">
+            <section className="rounded-xl border bg-card p-5 shadow-light">
               <h2 className="text-lg font-medium">New experiment</h2>
               <p className="mb-5 mt-1 text-sm text-muted-foreground">
                 Each model receives the same examples. Up to 24 evaluations
@@ -336,9 +324,9 @@ export function EvalLibrary({
                     : selectedModels.length < 2
                       ? "Choose at least two models to start the comparison."
                       : <><RollingNumber value={selectedModels.length} /> models ready to compare.</>}
-                  {" "}<button type="button" onClick={() => setTab("models")} className="text-primary underline-offset-4 hover:underline">View all models</button>
+                  {" "}<button type="button" onClick={() => setTab("models")} className="text-brand-ink press-text underline-offset-4 hover:underline">View all models</button>
                   {(canManageProviders || canManageCatalog) && (
-                    <> · <Link href="/settings/ai" className="text-primary underline-offset-4 hover:underline">AI Provider settings</Link></>
+                    <> · <Link href="/settings/ai" className="text-brand-ink press-text underline-offset-4 hover:underline">AI Provider settings</Link></>
                   )}
                 </p>
               </div>

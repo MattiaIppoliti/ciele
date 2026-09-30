@@ -6,12 +6,9 @@ export default function ExportsLoading() {
       {/* A skeleton is silent to a screen reader; this is what it hears. */}
       <span className="sr-only">Loading exports…</span>
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="ml-auto h-10 w-32" />
+        <Skeleton className="h-5 w-full max-w-xl flex-1" />
+        <Skeleton className="h-10 w-32" />
       </header>
-      <div className="px-4 sm:px-6">
-        <Skeleton className="h-5 w-full max-w-xl" />
-      </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         <div className="divide-border overflow-hidden rounded-xl border divide-y">
           {/* A row is the name over the kind/format and request-time lines. */}

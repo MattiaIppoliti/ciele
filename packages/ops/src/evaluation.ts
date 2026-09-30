@@ -96,6 +96,7 @@ export const evaluationRunSchema = z.object({
 export const createEvaluationDatasetOp = defineOperation({
   name: "eval.datasets.create",
   capability: "edit",
+  effect: "write",
   input: evaluationDatasetSchema,
   entities: () => [{ kind: "evaluations" }],
   async run(ctx, input) {
@@ -110,6 +111,7 @@ export const createEvaluationDatasetOp = defineOperation({
 export const startEvaluationRunOp = defineOperation({
   name: "eval.runs.start",
   capability: "edit",
+  effect: "consequential",
   input: evaluationRunSchema,
   entities: () => [{ kind: "evaluations" }],
   async run(ctx, { assistantId, datasetId, stage, candidates }) {

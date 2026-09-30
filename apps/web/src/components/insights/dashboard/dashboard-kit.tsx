@@ -17,8 +17,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AssistantFilterDropdown } from "@/components/insights/assistant-filter-dropdown";
 import { DateRangeDropdown } from "@/components/insights/date-range-dropdown";
-import { RollInText } from "@/components/motion/roll-in-text";
 import { defaultDashboardFilter, type DashboardView } from "@/lib/insights/dashboard-filter";
+import { INSIGHTS_RANGE_SLOT, SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { formatShortDay } from "@/lib/format";
 import { replaceFilterParams } from "@/lib/url-state";
 
@@ -175,12 +175,9 @@ export function DashboardFrame({
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">
-          <RollInText text={title} />
-        </h1>
-        {refreshing && <span className="text-muted-foreground text-sm">Updating…</span>}
-        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+      <SlotPortal id={TOP_BAR_SLOT}>
+        {refreshing && <span className="text-muted-foreground hidden text-sm xl:inline">Updating…</span>}
+        <div className="flex items-center gap-2">
           <DateRangeDropdown
             from={filter.from}
             to={filter.to}
@@ -198,7 +195,7 @@ export function DashboardFrame({
               });
             }}
           >
-            <TabsList className="h-10">
+            <TabsList className="h-8">
               {SURFACE_TABS.map((tab) => (
                 <TabsTrigger key={tab.label} value={tab.value} className="px-3">
                   {tab.label}
@@ -213,20 +210,20 @@ export function DashboardFrame({
               onChange={(assistantId) => setFilter({ ...filter, assistantId })}
             />
           )}
-          <Button variant="outline" className="h-10 shrink-0 rounded-lg px-3 sm:px-4" onClick={exportCsv}>
-            <Download className="size-4" /> <span className="hidden sm:inline">Export CSV</span>
+          <Button variant="outline" className="h-8 shrink-0 rounded-lg px-2.5 lg:px-3" onClick={exportCsv}>
+            <Download className="size-4" /> <span className="hidden lg:inline">Export CSV</span>
           </Button>
         </div>
-      </header>
+      </SlotPortal>
 
-      <div className="shrink-0 px-4 pb-4 sm:px-6">
+      <SlotPortal id={INSIGHTS_RANGE_SLOT}>
         <span className="text-primary border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium">
           {formatShortDay(filter.from)} – {formatShortDay(filter.to)} (UTC days)
           <Hint label={hint}>
             <Info className="size-3.5" />
           </Hint>
         </span>
-      </div>
+      </SlotPortal>
 
       {unavailable && (
         <div className="mx-4 mb-4 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm sm:mx-6">

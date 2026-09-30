@@ -6,6 +6,7 @@ import { runOperation } from "@/lib/operations";
 import { canEdit } from "@/lib/rbac";
 import { loadScopeSources } from "@/lib/teammates/settings-props";
 import { teammateAvatarSeed } from "@/lib/avatar";
+import { ensureCieleAi } from "@/lib/teammates/ciele-ai";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ async function loadShellData(): Promise<TeammatesShellData> {
     channels,
     members,
     projects,
+    cieleAi,
   ] = await Promise.all([
     db.table("teammates").list({ organizationId, deletedAt: null }),
     db.listOrgCollections(organizationId),
@@ -63,14 +65,40 @@ async function loadShellData(): Promise<TeammatesShellData> {
     db.listMembers(organizationId),
     // The create dialog's project section offers the live ones (#771).
     db.table("projects").list({ organizationId }),
+    // The Organization's default AI layer, created on the first visit. A
+    // system Teammate, so the roster rule leaves it out and it is handed over
+    // on its own, pinned first in the sidebar.
+    ensureCieleAi(organizationId, session.userId),
   ]);
 
   const viewer = { userId: session.userId, role: role ?? "viewer" };
   const hiddenIds = hiddenRows.map((row) => row.teammateId);
   const hidden = new Set(hiddenIds);
+  const roster = rosterTeammates(teammates, viewer, hiddenIds);
+
+  // The sidebar's history: this Member's own threads, only with Teammates
+  // still on their roster, so hiding one tidies its chats away with it.
+  const conversations = await db.listMemberTeammateConversations(
+    [cieleAi.id, ...roster.map((teammate) => teammate.id)],
+    session.userId
+  );
 
   return {
-    teammates: rosterTeammates(teammates, viewer, hiddenIds),
+    cieleAi,
+    teammates: roster,
+    conversations: conversations.flatMap((conversation) =>
+      conversation.teammateId
+        ? [
+            {
+              id: conversation.id,
+              teammateId: conversation.teammateId,
+              title: conversation.title,
+              updatedAt: conversation.updatedAt,
+              metadata: conversation.metadata,
+            },
+          ]
+        : []
+    ),
     hidden: visibleTeammates(teammates, viewer).filter((teammate) =>
         hidden.has(teammate.id)
       ),

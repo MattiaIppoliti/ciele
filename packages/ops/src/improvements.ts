@@ -60,6 +60,7 @@ export const improvementPatchSchema = z
 export const listImprovementsOp = defineOperation({
   name: "improvements.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.listImprovements(ctx.organizationId),
@@ -68,6 +69,7 @@ export const listImprovementsOp = defineOperation({
 export const listImprovementsPageOp = defineOperation({
   name: "improvements.listPage",
   capability: "member",
+  effect: "read",
   input: z.object({
     limit: z.number().int().min(1).max(100),
     cursor: z.string().min(1).nullable().optional(),
@@ -81,6 +83,7 @@ export const listImprovementsPageOp = defineOperation({
 export const getImprovementOp = defineOperation({
   name: "improvements.get",
   capability: "member",
+  effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { id }) => {
@@ -96,6 +99,7 @@ export const getImprovementOp = defineOperation({
 export const updateImprovementOp = defineOperation({
   name: "improvements.update",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: z.string().min(1), patch: improvementPatchSchema }),
   entities: ({ id }) => [
     { kind: "improvementList" as const },
@@ -145,6 +149,7 @@ async function requireDraftProposal(
 export const proposeSuggestedFixOp = defineOperation({
   name: "improvements.fix.propose",
   capability: "edit",
+  effect: "write",
   input: z.object({
     improvementId: z.string().min(1),
     question: z.string().min(1).max(500),
@@ -191,7 +196,11 @@ export const proposeSuggestedFixOp = defineOperation({
         // Drafted from the conversation in front of it rather than from a
         // retrieval pass, so it claims no knowledge provenance it does not have.
         sources: [],
-        model: ctx.teammate ? `teammate/${ctx.teammate.name}` : "member",
+        model: ctx.teammate
+          ? `teammate/${ctx.teammate.name}`
+          : ctx.agentAuthor
+            ? `teammate/${ctx.agentAuthor}`
+            : "member",
         targetAssistantId,
         targetCollectionId: flagged.conversation.collectionId ?? null,
       },
@@ -213,6 +222,7 @@ export const acceptSuggestedFixOp = defineOperation<
 >({
   name: "improvements.fix.accept",
   capability: "edit",
+  effect: "write",
   input: z.object({ improvementId: z.string().min(1) }),
   entities: ({ improvementId }, result) => [
     { kind: "improvement" as const, id: improvementId },
@@ -307,6 +317,7 @@ export const acceptSuggestedFixOp = defineOperation<
 export const dismissSuggestedFixOp = defineOperation({
   name: "improvements.fix.dismiss",
   capability: "edit",
+  effect: "write",
   input: z.object({
     improvementId: z.string().min(1),
     reason: z.string().max(1000).default(""),
@@ -402,6 +413,7 @@ async function triageDecision(
 export const triageFeedbackOp = defineOperation({
   name: "improvements.triage_feedback",
   capability: "edit",
+  effect: "write",
   input: z.object({}),
   entities: () => [{ kind: "improvementList" as const }, { kind: "inbox" as const }],
   run: async (ctx): Promise<FeedbackTriageResult> => {

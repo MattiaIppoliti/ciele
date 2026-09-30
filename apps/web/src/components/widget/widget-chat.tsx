@@ -12,7 +12,7 @@ import { feedbackReactionScore, type FeedbackReactionId } from "@agent-hub/core"
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { toast } from "@/lib/toast";
 import { ChatHeader } from "@/components/chat/chat-header";
-import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
+import { FULLSCREEN_GUTTER, WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { StudyProvider } from "@/components/chat/study-context";
 import { StudyMenu } from "@/components/chat/study-menu";
@@ -22,6 +22,7 @@ import { IdentityGate } from "@/components/chat/identity-gate";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
 import { hasMarkdownSyntax } from "@/components/chat/markdown-detect";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
+import { CHAT_CARD, CHAT_CARD_HOVER } from "@/components/chat/chat-card";
 import { ThinkingPanel } from "@/components/chat/thinking-panel";
 import {
   Message,
@@ -59,7 +60,7 @@ import {
   type TriggerReport,
 } from "@/lib/widget-triggers";
 import type { WidgetConversationSummary, WidgetMemory } from "./widget-history";
-import { ArrowRight, ExternalLink, Sparkles, X } from "lucide-react";
+import { ArrowRight, ExternalLink, DraftingCompass, X } from "lucide-react";
 import { Headphones, HelpCircle, Maximize2, Paperclip } from "lucide-react";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 import { sentAtLabel } from "@/lib/format";
@@ -274,7 +275,7 @@ function BotMessageView({
                 key={j}
                 type="button"
                 onClick={() => onOpenSupport(part.helpDeskId)}
-                className="press flex max-w-[90%] items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors hover:bg-muted"
+                className={`press flex max-w-[90%] items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors ${CHAT_CARD_HOVER} ${CHAT_CARD}`}
               >
                 {part.showIcon !== false && (
                   <FlowButtonIcon
@@ -678,7 +679,7 @@ export function WidgetChat({
             value: "skill",
             label: "Use a skill",
             description: "Start from a prepared request.",
-            icon: <Sparkles />,
+            icon: <DraftingCompass />,
           },
         ]
       : []),
@@ -1165,7 +1166,7 @@ export function WidgetChat({
         busy={pending}
         navigation="rail"
         viewportClassName={`py-5 ${WIDEN_TRANSITION} ${
-          fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
+          fullscreen ? FULLSCREEN_GUTTER : "px-4"
         }`}
         contentClassName="space-y-4"
       >
@@ -1291,7 +1292,7 @@ export function WidgetChat({
               <TriggerRow
                 name={skill.name}
                 hint={skill.description || skill.starter}
-                icon={<Sparkles />}
+                icon={<DraftingCompass />}
               />
             )}
           />

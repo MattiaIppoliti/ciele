@@ -13,3 +13,12 @@
  */
 export const WIDEN_TRANSITION =
   "transition-[padding] duration-[420ms] ease-[cubic-bezier(.34,1.42,.64,1)] motion-reduce:transition-none";
+
+/**
+ * Side padding that centers the 56rem reading column. The message rail's own
+ * `pr-10` would win over a plain `px-*` (tailwind-merge drops the right half),
+ * pushing the transcript left of the composer, so the right side is `!important`
+ * and both sides keep 2.5rem for the rail.
+ */
+export const FULLSCREEN_GUTTER =
+  "pl-[max(2.5rem,calc((100%-56rem)/2))] !pr-[max(2.5rem,calc((100%-56rem)/2))]";

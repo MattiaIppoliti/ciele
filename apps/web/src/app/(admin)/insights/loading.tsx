@@ -18,7 +18,6 @@ export default function InsightsLoading() {
       <span className="sr-only">Loading insights…</span>
       {/* Header toolbar */}
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <Skeleton className="h-8 w-32" />
         <Skeleton className="h-5 w-full sm:w-52" />
         <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:flex-nowrap">
           <Skeleton className="h-10 w-56" />

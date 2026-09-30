@@ -14,6 +14,7 @@ import {
 import { toast } from "@/lib/toast";
 import { reorderFlowsAction, updateFlowAction } from "@/app/actions";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { isRedirectError } from "@/components/ui/confirm-delete-modal";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
@@ -151,17 +152,19 @@ export function FlowsList({
       <p id={handleHintId} className="sr-only">
         Use the up and down arrow keys to move.
       </p>
-      <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+      {/* The page's one committing action, in the top bar beside the
+          breadcrumb it belongs to (as Help Desks' "Add Help Desk" is). */}
+      <SlotPortal id={TOP_BAR_SLOT}>
         <Button
           render={<Link href={`/assistants/${assistantId}/flows/new`} />}
           nativeButton={false}
-          className="px-5 font-semibold"
+          className="h-8 rounded-lg px-3 font-semibold"
         >
           <AnimatedIcon icon={Plus} size={16} /> New flow
         </Button>
-      </div>
+      </SlotPortal>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-8 space-y-4">
         {studyFlow && (
           <Card size="sm" className="flex-row items-center gap-3 p-4">
             <GraduationCap className="size-5 shrink-0 text-muted-foreground" />

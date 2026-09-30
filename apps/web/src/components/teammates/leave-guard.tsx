@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -51,14 +52,32 @@ export function useLeaveGuard(dirty: boolean, leave: Leave) {
   }, [guardRef, dirty]);
 }
 
-/** A link click handler that routes through the guard, keeping Cmd/Ctrl-click. */
+/**
+ * A link click handler that routes through the guard, keeping Cmd/Ctrl-click.
+ * Stable across renders, since it reads the guard at click time, so an effect
+ * can depend on it.
+ */
 export function useGuardedLinkClick() {
   const guardRef = useContext(LeaveGuardContext);
   const router = useRouter();
-  return (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+  return useCallback(
+    (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+      const leave = guardRef?.current;
+      if (!leave || !isPlainClick(event)) return;
+      event.preventDefault();
+      leave(() => router.push(href));
+    },
+    [guardRef, router]
+  );
+}
+
+/** Navigation from code (a list row with no `<Link>`), through the same guard. */
+export function useGuardedNavigate() {
+  const guardRef = useContext(LeaveGuardContext);
+  const router = useRouter();
+  return (href: string) => {
     const leave = guardRef?.current;
-    if (!leave || !isPlainClick(event)) return;
-    event.preventDefault();
-    leave(() => router.push(href));
+    if (leave) leave(() => router.push(href));
+    else router.push(href);
   };
 }

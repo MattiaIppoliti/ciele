@@ -1,36 +1,37 @@
 ---
-title: Panneau du développeur
-description: Lisez les extraits de code CLI, cURL et MCP correspondant à la page de la console que vous avez ouverte.
+title: Panneau Développeur
+description: Consultez les extraits de code CLI, cURL et MCP correspondant à la page de la console que vous avez ouverte.
 ---
 
-Le panneau développeur affiche l'équivalent programmatique de la page de la
-console que vous consultez. Il répertorie les opérations de cette page sous
-forme d'extraits de code prêts à l'emploi, qui contiennent déjà les identifiants
-de la page.
+Le Developer Panel affiche l'équivalent programmatique de la page de la console
+que vous consultez. Il répertorie les opérations de cette page sous forme de
+snippets prêts à l'emploi, dans lesquels les identifiants de la page sont déjà
+inclus.
 
-Utilisez-le pour transformer une tâche manuelle en script ou pour découvrir
-quelle opération API se cache derrière un contrôle de la console.
+Utilisez-le pour transformer une tâche manuelle en script, ou pour savoir quelle
+opération d'API se cache derrière un contrôle de la console.
 
 ## Ouvrez le panneau
 
-Sélectionnez le bouton dans la barre supérieure. Son libellé indique le domaine
-de la page, par exemple **Flows API**. Vous pouvez également appuyer sur `D`.
+Sélectionnez le bouton `</>` situé à droite de la barre supérieure. Maintenez le
+pointeur au-dessus pour afficher le domaine de la page, par exemple **Flows
+API**. Vous pouvez également appuyer sur `D`.
 
-Le panneau s'ouvre dans le volet de droite et reste ouvert lorsque vous accédez
-à une autre page.
+Le panneau s'ouvre dans la barre latérale droite et reste ouvert lorsque vous
+passez à une autre page.
 
-Un éditeur d'assistant utilise le même volet pour l'aperçu en direct. Un seul
-des deux est visible à la fois.
+Un éditeur d'assistant utilise le même rail pour l'aperçu en direct (Live
+Preview). Un seul des deux est visible à la fois.
 
 <Callout title="No button means no API">
 The button is absent when the page has no API operations. Insights and the Style setup section show none. The absence is correct information, not a defect.
 </Callout>
 
-## Lire un extrait
+## Lire un extrait de code
 
 Chaque opération comporte trois onglets.
 
-| Onglet | Contenu |
+| Tab | Contenu |
 | --- | --- |
 | CLI | La commande `ciele` pour l'opération. |
 | cURL | La requête HTTP, avec l'origine de votre propre déploiement. |
@@ -38,25 +39,25 @@ Chaque opération comporte trois onglets.
 
 Deux badges peuvent apparaître à côté d'une opération :
 
-- Le badge **Role** indique le rôle le plus bas requis pour une clé API. Il est
-  dérivé de la protection appliquée par l'API.
-- Le badge **Idempotent** indique qu'une requête peut être relancée en toute
+- Le badge **Role** indique le Role le moins élevé dont une clé API a besoin. Il
+  découle du guard appliqué par l'API.
+- Le badge **Idempotent** indique qu'une requête peut être réessayée en toute
   sécurité avec un en-tête `Idempotency-Key`.
 
 ## Les corps de requête sont des formes
 
 Un corps cURL affiche des espaces réservés typés, et non des valeurs d'exemple,
-et il s'arrête à deux niveaux d'imbrication.
+et s'arrête à deux niveaux d'imbrication.
 
-Ceci est délibéré. Une valeur inventée plausible est dangereuse, car quelqu'un
-la colle dans une véritable organisation. Consultez la
+C'est délibéré. Une valeur inventée mais plausible est dangereuse, car quelqu'un
+pourrait la coller dans une véritable Organisation. Consultez la
 [référence de l'API](/developers/api) pour connaître le contrat complet d'un
 champ.
 
-## Avant l'exécution d'un extrait de code
+## Avant l'exécution d'un snippet
 
 Chaque snippet nécessite une [clé API d'organisation](/developers/api-keys). Le
-panneau l'indique lorsque l'Organisation n'en a pas.
+panneau l'indique lorsque l'organisation n'en a pas.
 
-Seul un propriétaire ou un administrateur peut créer une clé. Le panneau indique
-le rôle requis lorsque votre propre rôle ne le peut pas.
+Seul un Owner ou un Admin peut créer une clé. Le panneau indique le Role requis
+lorsque votre propre Role ne le permet pas.

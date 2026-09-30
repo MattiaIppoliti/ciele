@@ -81,6 +81,7 @@ async function requireFlow(ctx: OperationContext, id: string): Promise<Flow> {
 export const flowCatalogOp = defineOperation({
   name: "flows.catalog",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: async () => ({
@@ -108,6 +109,7 @@ export const flowCatalogOp = defineOperation({
 export const listFlowsOp = defineOperation({
   name: "flows.list",
   capability: "member",
+  effect: "read",
   input: z.object({ assistantId: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { assistantId }) => {
@@ -119,6 +121,7 @@ export const listFlowsOp = defineOperation({
 export const getFlowOp = defineOperation({
   name: "flows.get",
   capability: "member",
+  effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { id }) => redactFlowSecrets(await requireFlow(ctx, id)),
@@ -127,6 +130,7 @@ export const getFlowOp = defineOperation({
 export const createFlowOp = defineOperation({
   name: "flows.create",
   capability: "edit",
+  effect: "write",
   input: z.object({ assistantId: z.string().min(1), input: flowInputSchema }),
   entities: ({ assistantId }) => [{ kind: "flows" as const, assistantId }],
   run: async (ctx, { assistantId, input }) => {
@@ -139,6 +143,7 @@ export const createFlowOp = defineOperation({
 export const updateFlowOp = defineOperation({
   name: "flows.update",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: z.string().min(1), patch: flowPatchSchema }),
   entities: (_input, result: Flow) => [
     { kind: "flows" as const, assistantId: result.assistantId },
@@ -174,6 +179,7 @@ export const updateFlowOp = defineOperation({
 export const deleteFlowOp = defineOperation({
   name: "flows.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: Flow) => [
     { kind: "flows" as const, assistantId: result.assistantId },
@@ -204,6 +210,7 @@ export const deleteFlowOp = defineOperation({
 export const draftFlowOp = defineOperation({
   name: "flows.draft",
   capability: "edit",
+  effect: "read",
   input: z.object({
     /** One sentence for the transcript: what changed and why. */
     summary: z.string().min(1).max(500),
@@ -238,6 +245,7 @@ export const draftFlowOp = defineOperation({
 export const proposeFlowOp = defineOperation({
   name: "flows.propose",
   capability: "edit",
+  effect: "read",
   input: z.object({
     assistantId: z.string().min(1),
     /** Why this belongs in its own Flow rather than the open one. */
@@ -265,6 +273,7 @@ export const proposeFlowOp = defineOperation({
 export const listHttpFlowRunsOp = defineOperation({
   name: "flows.http.runs",
   capability: "member",
+  effect: "read",
   input: z.object({
     flowId: z.string().min(1),
     limit: z.number().int().min(1).max(100).default(20),
@@ -279,6 +288,7 @@ export const listHttpFlowRunsOp = defineOperation({
 export const reorderFlowsOp = defineOperation({
   name: "flows.reorder",
   capability: "edit",
+  effect: "write",
   input: z.object({
     assistantId: z.string().min(1),
     orderedIds: z.array(z.string().min(1)).max(500),

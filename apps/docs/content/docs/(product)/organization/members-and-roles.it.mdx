@@ -5,37 +5,37 @@ description: Controlla chi può leggere, modificare, pubblicare e amministrare u
 
 ## Ruoli
 
-| Ruolo | Livello di autorizzazione attuale |
+| Role | Livello di autorizzazione corrente |
 | --- | --- |
-| Visualizzatore | Legge i dati dell'organizzazione e del prodotto. |
-| Editor | Modifica il contenuto e la configurazione dell'Assistente. |
-| Amministratore | Pubblica gli Assistenti e gestisce i membri e le chiavi API. |
-| Proprietario | Modifica i ruoli e gestisce i proprietari. |
+| Viewer | Legge i dati dell'organizzazione e del prodotto. |
+| Editor | Modifica i contenuti e la configurazione dell'Assistente. |
+| Admin | Pubblica gli Assistenti e gestisce i membri e le chiavi API. |
+| Owner | Modifica i ruoli e gestisce gli owner. |
 
-L'applicazione applica controlli delle capacità più specifici alle singole
+L'applicazione applica controlli delle funzionalità più specifici alle singole
 operazioni.
 
 ## Invita un membro
 
 1. Apri **Settings > Members**.
 2. Seleziona **Invite member**.
-3. Inserisci l'indirizzo e-mail.
-4. Seleziona il ruolo minimo richiesto.
+3. Inserisci l'indirizzo email.
+4. Seleziona il Role minimo richiesto.
 5. Invia l'invito.
 
 ## Modifica un membro
 
-Un amministratore può gestire i membri al di sotto del livello Proprietario. Un
-Owner può gestire tutti i livelli.
+Un Admin può gestire i membri al di sotto del livello Owner. Un Owner può
+gestire tutti i livelli.
 
-Un membro non può modificare o rimuovere la propria riga dall'elenco dei membri.
-Utilizza un altro membro autorizzato per quell'operazione.
+Un membro non può modificare né rimuovere la propria riga dall'elenco dei
+membri. Per quell'operazione, utilizza un altro membro autorizzato.
 
-## Ruoli chiave API
+## Ruoli delle chiavi API
 
-Un amministratore o un proprietario può creare una chiave API
-dell'organizzazione. Il ruolo selezionato non può essere superiore a quello del
-creatore.
+Un Admin o un Owner può creare una chiave API dell'organizzazione. Il Role
+selezionato non può essere di livello superiore rispetto al Role del creatore.
 
 Revoca una chiave quando il suo client non ha più bisogno dell'accesso. Ciele
-conserva il record revocato per le informazioni di audit.
+conserva il record revocato per le informazioni di audit. Un Admin o un Owner
+può eliminare una chiave revocata per rimuoverne la registrazione.

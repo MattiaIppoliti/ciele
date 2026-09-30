@@ -21,6 +21,7 @@ import type { OperationContext } from "./operation";
  * false authorship record is still a false record.
  */
 export function writingActor(ctx: OperationContext): string {
-  if (ctx.teammate) return okfActor.agent("teammate", ctx.teammate.name);
+  const agent = ctx.teammate?.name ?? ctx.agentAuthor;
+  if (agent) return okfActor.agent("teammate", agent);
   return okfActor.human(ctx.userId || "api-key");
 }

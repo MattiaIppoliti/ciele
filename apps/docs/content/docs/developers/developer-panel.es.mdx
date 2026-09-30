@@ -1,25 +1,26 @@
 ---
-title: Panel de desarrollador
-description: Lee los fragmentos de CLI, cURL y MCP de la página de la consola que tienes abierta.
+title: Panel del desarrollador
+description: Consulta el fragmento de CLI, cURL y MCP correspondiente a la página de la consola que tienes abierta.
 ---
 
-El Panel de desarrollador muestra el equivalente programático de la página de la
+El Developer Panel muestra el equivalente programático de la página de la
 consola que estás viendo. Enumera las operaciones de esa página como fragmentos
-listos para usar, con los identificadores de la página ya incluidos en ellos.
+de código listos para usar, con los ID de la página ya incluidos en ellos.
 
-Úsalo para convertir una tarea manual en un script o para saber qué operación de
-la API hay detrás de un control de la consola.
+Úsalo para convertir una tarea manual en un script o para averiguar qué
+operación de la API se encuentra detrás de un control de la consola.
 
 ## Abre el panel
 
-Selecciona el botón de la barra superior. Su etiqueta indica el dominio de la
-página, por ejemplo **Flows API**. También puedes pulsar `D`.
+Selecciona el botón `</>` situado a la derecha de la barra superior. Mantén el
+puntero sobre él para ver el dominio de la página, por ejemplo, **Flows API**.
+También puedes pulsar `D`.
 
-El panel se abre en el panel derecho y permanece abierto cuando pasas a otra
-página.
+El panel se abre en la barra lateral derecha y permanece abierto cuando pasas a
+otra página.
 
-Un editor de asistentes utiliza el mismo panel para la vista previa en tiempo
-real. Solo se ve uno de los dos a la vez.
+Un editor de asistentes utiliza la misma barra lateral para la vista previa en
+tiempo real (Live Preview). Solo uno de los dos es visible a la vez.
 
 <Callout title="No button means no API">
 The button is absent when the page has no API operations. Insights and the Style setup section show none. The absence is correct information, not a defect.
@@ -29,7 +30,7 @@ The button is absent when the page has no API operations. Insights and the Style
 
 Cada operación tiene tres pestañas.
 
-| Pestaña | Contenido |
+| Tab | Contents |
 | --- | --- |
 | CLI | El comando `ciele` para la operación. |
 | cURL | La solicitud HTTP, con el origen de tu propia implementación. |
@@ -37,26 +38,24 @@ Cada operación tiene tres pestañas.
 
 Pueden aparecer dos insignias junto a una operación:
 
-- La insignia **Role** indica el rol más bajo que necesita una clave de API. Se
-  deriva de la protección que impone la API.
-- La insignia **Idempotent** marca una solicitud que se puede reintentar de
+- La insignia **Role** indica el Role de nivel más bajo que necesita una clave
+  de API. Se deriva del control que aplica la API.
+- La insignia **Idempotent** indica una solicitud que se puede reintentar de
   forma segura con un encabezado `Idempotency-Key`.
 
-## Los cuerpos de las solicitudes son formas
+## Los cuerpos de las solicitudes son «shapes»
 
-Un cuerpo cURL muestra marcadores de posición tipificados, no valores de
-ejemplo, y se detiene en dos niveles de anidamiento.
+Un cuerpo cURL muestra marcadores de posición tipados, no valores de ejemplo, y
+se detiene en dos niveles de anidamiento.
 
-Esto es intencionado. Un valor inventado que parezca plausible es peligroso,
-porque alguien podría pegarlo en una organización real. Lee la
-[referencia de la API](/developers/api) para conocer el contrato completo de un
-campo.
+Esto es intencionado. Un valor inventado que parezca verosímil es peligroso,
+porque alguien podría pegarlo en una organización real. Consulta la
+[API reference](/developers/api) para conocer el contrato completo de un campo.
 
-## Antes de que se ejecute un fragmento
+## Antes de que se ejecute un snippet
 
-Cada fragmento necesita una
-[clave de API de la organización](/developers/api-keys). El panel lo indica
-cuando la Organización no tiene ninguna.
+Cada snippet necesita una [clave API de la organización](/developers/api-keys).
+El panel lo indica cuando la organización no tiene ninguna.
 
-Solo un Propietario o un Administrador pueden crear una clave. El panel indica
-el rol requerido cuando tu propio rol no puede hacerlo.
+Solo un Owner o un Admin puede crear una clave. El panel indica el Role
+necesario cuando tu propio Role no puede hacerlo.

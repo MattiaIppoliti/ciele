@@ -43,6 +43,7 @@ export interface TeammateGovernance {
 export const listTeammateGrantsOp = defineOperation({
   name: "teammates.grants.list",
   capability: "member",
+  effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { id }): Promise<TeammateGovernance> => {
@@ -63,6 +64,7 @@ export const setTeammateGrantsOp = defineOperation({
   // Admin, deliberately not the Editor capability the rest of the Teammate
   // takes. Renaming a colleague's agent and arming it are different acts.
   capability: "manageMembers",
+  effect: "consequential",
   input: z.object({
     id: z.string().min(1),
     domains: z.array(domainSchema).max(TEAMMATE_GRANT_DOMAINS.length),

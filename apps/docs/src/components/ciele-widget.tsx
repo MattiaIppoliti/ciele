@@ -120,7 +120,7 @@ export function CieleWidget() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="ciele-ask-ai fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-2xl bg-fd-secondary px-4 py-2 text-sm font-medium text-fd-secondary-foreground shadow-lg ring-1 ring-fd-border transition-colors hover:bg-fd-accent"
+          className="ciele-ask-ai fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-2xl bg-fd-secondary px-4 py-2 text-sm font-medium text-fd-secondary-foreground shadow-strong ring-1 ring-fd-border transition-colors hover:bg-fd-accent"
         >
           <ChatBubbleIcon />
           Ask AI
@@ -137,7 +137,7 @@ export function CieleWidget() {
           // motion; easeOutBack gives it the small overshoot. Dropped while
           // dragging the edge (the width must track the pointer) and under
           // prefers-reduced-motion.
-          className={`fixed inset-y-0 right-0 z-50 flex h-dvh max-sm:!w-full flex-col border-l border-fd-border bg-fd-popover text-fd-popover-foreground shadow-2xl${
+          className={`fixed inset-y-0 right-0 z-50 flex h-dvh max-sm:!w-full flex-col border-l border-fd-border bg-fd-popover text-fd-popover-foreground shadow-strong${
             resizing
               ? ''
               : ' transition-[width] duration-[420ms] ease-[cubic-bezier(.34,1.42,.64,1)] motion-reduce:transition-none'
@@ -161,7 +161,7 @@ export function CieleWidget() {
               className={`absolute inset-y-0 left-1/2 w-[2.5px] -translate-x-1/2 bg-neutral-400 transition-opacity ${resizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
             />
             <div
-              className={`absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-neutral-400 bg-white py-1.5 shadow-sm transition-opacity dark:bg-neutral-950 ${resizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+              className={`absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-neutral-400 bg-white py-1.5 shadow-light transition-opacity dark:bg-neutral-950 ${resizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
             >
               <GripVertical className="size-4 text-neutral-400" />
             </div>

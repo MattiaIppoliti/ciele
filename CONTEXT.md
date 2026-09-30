@@ -92,6 +92,13 @@ _Avoid_: reply (that is the Assistant's), HTTP response (in UI), return
 The system Teammate the console creates once per Assistant to build and edit that Assistant's Flows from the Flow Canvas. An ordinary Teammate to the runtime (persona layer, Conversations, grants, provider routing), marked `system_kind = flows_agent` and bound to its Assistant so the roster and the referral picker leave it out. Its one grant is the **flows** domain, whose two hand-back tools (`flows.draft`, `flows.propose`) validate a change and return it to the canvas; the Editor's unsaved draft takes it as one Undo step and Save stays the Editor's act. It never writes a Flow row.
 _Avoid_: copilot, assistant builder, a second chat runtime
 
+**Ciele AI**:
+The Organization's default AI layer: one system Teammate per Organization (`system_kind = ciele_ai`), created the first time anybody opens Chat, and the thing `/teammates` opens on. It can be renamed and configured, never deleted, hidden or made private. It has no grants of its own: its three platform tools (list, describe, run) reach the admin platform's operations with the **chatting Member's own Role**, the same boundary an API key of theirs would have, and every **consequential** operation waits on the approval card. Its Knowledge Scope is every Collection the Member can read, resolved per turn.
+_Avoid_: copilot, assistant (an Assistant is the widget), a second chat runtime
+
+**Consequential operation**:
+An operation that declares `effect: "consequential"` on itself: it removes or withdraws something, lifts a protection (a legal hold, a retention window), changes who may see or do what, reaches Visitors, or spends real money. Every operation declares one of `read`, `write` or `consequential`, and the `Operation` type requires it. Ciele AI waits for the Member's confirmation before each consequential call, and the tool itself refuses one nobody confirmed; a Teammate's curated catalogue offers none.
+
 **Assistant Knowledge Link**:
 The M:N row tying one Assistant to one Source, what makes the Source answer for that Assistant. Replacing the set takes effect immediately in retrieval (knowledge is live, never snapshotted into Publications). Carries the per-assistant Direct access flag.
 _Avoid_: share, subscription

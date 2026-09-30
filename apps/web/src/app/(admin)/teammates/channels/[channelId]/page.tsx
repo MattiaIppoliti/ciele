@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { PageCrumb } from "@/components/shell/top-bar-slots";
 import { OperationError, getChannelOp } from "@ciele/ops";
 import { canAddTeammateToChannel, memberDisplayName } from "@agent-hub/core";
 import { canViewReasoning } from "@/lib/rbac";
@@ -49,6 +50,8 @@ export default async function ChannelPage({
   );
 
   return (
+    <>
+      <PageCrumb label={view.channel.name} />
     <ChannelWorkspace
       channel={view.channel}
       roster={view.roster}
@@ -87,5 +90,6 @@ export default async function ChannelPage({
         .filter((project) => !project.archived)
         .map((project) => ({ id: project.id, name: project.name }))}
     />
+    </>
   );
 }

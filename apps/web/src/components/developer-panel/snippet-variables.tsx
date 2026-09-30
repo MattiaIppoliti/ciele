@@ -5,8 +5,7 @@ import { useShell } from "@/components/shell/shell-provider";
 
 /**
  * Registers ids the Developer Panel should substitute into its snippets, for a
- * page whose ids the route does not already carry (#754). Renders nothing,
- * the same shape as `AssistantTopBarActions`, which registers into the top bar.
+ * page whose ids the route does not already carry (#754). Renders nothing.
  *
  * The Assistant id needs no registration: it is a route segment, and the shell
  * reads it from the pathname. This is for the rest, a Knowledge Collection in a

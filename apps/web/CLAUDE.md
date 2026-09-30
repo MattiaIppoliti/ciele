@@ -233,6 +233,11 @@ These are ESLint errors, not style preferences (`eslint.config.mjs`):
 - **No browser Supabase client.** `createBrowserClient` from `@supabase/ssr` is banned in
   `src/components/**` and `src/app/**`; session mutation goes through a Server Action or the
   cookie-scoped server client.
+- **Design tokens in class strings.** `shadow-sm|md|lg|xl|2xl` and `text-[Npx]` are refused in any
+  string literal, through `designTokenRules()` from `@agent-hub/eslint-config/design-tokens`. Use
+  `shadow-light`/`shadow-strong` and `text-2xs`. `components/{home,marketing,auth}` may keep raw
+  shadows, `components/{charts/beui,spectrumui}` pixel sizes. Why, and the rest of the system:
+  the root [`DESIGN.md`](../../DESIGN.md).
 
 ## Data access
 

@@ -3,6 +3,7 @@ import { devKey } from "@/lib/dev-key";
 import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationDock } from "@/components/notifications/notification-dock";
 import { ShellProvider } from "@/components/shell/shell-provider";
+import { findScopeKey } from "@/lib/find-index";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PendingActivationBanner } from "@/components/shell/pending-activation-banner";
 import { TopBar } from "@/components/shell/top-bar";
@@ -30,6 +31,29 @@ import type { AssistantSummary } from "@/components/shell/nav";
 const channelMentions = cache(() => runOperation(listChannelMentionsOp, {}));
 
 /**
+ * A shell read kicked off by the layout (not awaited) and resolved lazily by
+ * the client via use(). A redirecting render (no session/org) rejects it, and
+ * the redirect itself surfaces through the loaders below, so the client just
+ * gets `fallback`. A genuine read failure degrades the same way, but logged:
+ * the shell should not take the whole route down over one of these.
+ */
+function shellRead<T>(
+  what: string,
+  read: (ctx: Awaited<ReturnType<typeof requirePageMember>>) => T | PromiseLike<T>,
+  fallback: T
+): Promise<T> {
+  return requirePageMember()
+    .then(read)
+    .catch((error: unknown) => {
+      const digest = (error as { digest?: string } | null)?.digest;
+      if (typeof digest !== "string" || !digest.startsWith("NEXT_")) {
+        console.error(`Admin shell: ${what} read failed`, error);
+      }
+      return fallback;
+    });
+}
+
+/**
  * The admin shell. Deliberately not async: awaiting session + shell reads
  * here would hold the entire response (page included) hostage to the slowest
  * bootstrap query, since a layout's own awaits sit above every Suspense
@@ -40,24 +64,28 @@ const channelMentions = cache(() => runOperation(listChannelMentionsOp, {}));
  */
 export default function AdminLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  /** Settings opened from a page, over that page (`@modal/(.)settings`). */
+  modal: React.ReactNode;
 }) {
-  // The Find palette and scope switcher need the org's assistants. Kicked off
-  // here (not awaited) and resolved lazily by the client via use() — a
-  // redirecting render (no session/org) rejects it, and the redirect itself
-  // surfaces through the loaders below, so the palette just gets an empty
-  // list. A genuine read failure degrades the same way, but logged: the
-  // shell should not take the whole route down over its assistant list.
-  const assistants: Promise<AssistantSummary[]> = requirePageMember()
-    .then((ctx) => ctx.reads.assistantShellSummaries())
-    .catch((error: unknown) => {
-      const digest = (error as { digest?: string } | null)?.digest;
-      if (typeof digest !== "string" || !digest.startsWith("NEXT_")) {
-        console.error("Admin shell: assistants read failed", error);
-      }
-      return [];
-    });
+  // The Find palette and scope switcher need the org's assistants.
+  const assistants: Promise<AssistantSummary[]> = shellRead(
+    "assistants",
+    (ctx) => ctx.reads.assistantShellSummaries(),
+    []
+  );
+
+  // Who the Find palette is answering for. Its browser store is kept for the
+  // life of the tab, so when this changes (another Organization, another
+  // Member, a new Role) what it holds belongs to someone else and is dropped.
+  const findScope: Promise<string> = shellRead(
+    "Find scope",
+    ({ organizationId, session }) =>
+      findScopeKey({ organizationId, userId: session.userId, role: session.role ?? null }),
+    ""
+  );
 
   return (
     <ThemeProvider scope="admin">
@@ -66,49 +94,62 @@ export default function AdminLayout({
           root, and that placement is what keeps it silent. */}
       <FeedbackProvider>
       <TooltipProvider delay={300}>
-        <ShellProvider assistants={assistants}>
+        <ShellProvider assistants={assistants} findScope={findScope}>
           {/* The siblings below are keyed in development only, for the root
               layout's reason (lib/dev-key.ts). */}
-          <div className="bg-background text-foreground flex h-full">
+          <div className="bg-shell text-foreground flex h-full">
             <a
               key={devKey("skip-link")}
               href="#main-content"
-              className="bg-foreground text-background focus-visible:ring-ring sr-only rounded-md px-3 py-2 text-sm font-medium shadow-lg focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus-visible:ring-2 focus-visible:ring-offset-2"
+              className="bg-foreground text-background focus-visible:ring-ring sr-only rounded-md px-3 py-2 text-sm font-medium shadow-strong focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus-visible:ring-2 focus-visible:ring-offset-2"
             >
               Skip to main content
             </a>
             <Suspense
               key={devKey("sidebar")}
               fallback={
-                <div className="hidden w-60 shrink-0 border-r lg:block" />
+                <div className="hidden w-60 shrink-0 md:block" />
               }
             >
               <SidebarLoader />
             </Suspense>
-            <div key={devKey("workspace")} className="flex min-w-0 flex-1 flex-col">
-              <Suspense key={devKey("top-bar")} fallback={<div className="h-14 shrink-0 border-b" />}>
-                <TopBarLoader />
-              </Suspense>
-              {/* Managed edition only: inert on a self-host (#444). */}
-              <Suspense key={devKey("activation-banner")} fallback={null}>
-                <ActivationBannerLoader />
-              </Suspense>
-              {/* The workspace and its right rail. The rail has one occupant
-                  at a time (#754): the Developer Panel here, or the Assistant
-                  editor's live Preview, which docks inside `main` from the
-                  assistant layout. */}
-              <div key={devKey("content")} className="flex min-h-0 flex-1">
-                <main
-                  key={devKey("main")}
-                  id="main-content"
-                  tabIndex={-1}
-                  className="bg-content min-h-0 flex-1 overflow-hidden focus:outline-none"
-                >
-                  <StaticIcons>{children}</StaticIcons>
-                </main>
-                <DeveloperPanelLauncher key={devKey("developer-panel")} />
+            {/* The workspace is one rounded panel lifted off the frame the
+                sidebar sits on: the top bar, the page and the right rail all
+                live inside it. On every screen: from `md` (a tablet and up)
+                the sidebar docks beside it, below that it is a drawer over it
+                and the panel keeps a slimmer inset of its own. */}
+            <div
+              key={devKey("workspace")}
+              className="admin-workspace"
+            >
+              <div className="admin-panel">
+                <Suspense key={devKey("top-bar")} fallback={<div className="h-14 shrink-0 border-b" />}>
+                  <TopBarLoader />
+                </Suspense>
+                {/* Managed edition only: inert on a self-host (#444). */}
+                <Suspense key={devKey("activation-banner")} fallback={null}>
+                  <ActivationBannerLoader />
+                </Suspense>
+                {/* The workspace. The right rail has one occupant at a time
+                    (#754): the Developer Panel, docked outside this panel on
+                    the frame, or the Assistant editor's live Preview, which
+                    docks inside `main` from the assistant layout. */}
+                <div key={devKey("content")} className="flex min-h-0 flex-1">
+                  <main
+                    key={devKey("main")}
+                    id="main-content"
+                    tabIndex={-1}
+                    className="bg-content @container min-h-0 flex-1 overflow-hidden focus:outline-none"
+                  >
+                    <StaticIcons>{children}</StaticIcons>
+                    {modal}
+                  </main>
+                </div>
               </div>
             </div>
+            {/* The left sidebar's mirror, on the frame beside the workspace
+                panel rather than inside it (#754). */}
+            <DeveloperPanelLauncher key={devKey("developer-panel")} />
             <Suspense key={devKey("notification-dock")} fallback={null}>
               <NotificationDockLoader />
             </Suspense>

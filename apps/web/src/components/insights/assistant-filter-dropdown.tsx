@@ -56,7 +56,7 @@ export function AssistantFilterDropdown({
           <Button
             variant="outline"
             aria-label={`Assistant: ${selected?.title ?? "All"}`}
-            className="h-10 max-w-56 rounded-lg px-4"
+            className="h-8 max-w-56 rounded-lg px-3"
           />
         }
       >

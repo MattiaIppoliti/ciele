@@ -56,6 +56,7 @@ const assistantIdSchema = z.object({ assistantId: z.string().min(1) });
 export const publishAssistantOp = defineOperation({
   name: "publish.publish",
   capability: "publish",
+  effect: "consequential",
   input: assistantIdSchema,
   entities: ({ assistantId }) => [
     { kind: "assistantEditor" as const, assistantId },
@@ -81,6 +82,7 @@ export const publishAssistantOp = defineOperation({
 export const unpublishAssistantOp = defineOperation({
   name: "publish.unpublish",
   capability: "publish",
+  effect: "consequential",
   input: assistantIdSchema,
   entities: ({ assistantId }) => [
     { kind: "assistantEditor" as const, assistantId },
@@ -95,6 +97,7 @@ export const unpublishAssistantOp = defineOperation({
 export const republishOp = defineOperation({
   name: "publish.republish",
   capability: "publish",
+  effect: "consequential",
   input: z.object({
     assistantId: z.string().min(1),
     publicationId: z.string().min(1),
@@ -118,6 +121,7 @@ export const republishOp = defineOperation({
 export const publicationStatusOp = defineOperation({
   name: "publish.status",
   capability: "member",
+  effect: "read",
   input: assistantIdSchema,
   entities: () => [],
   run: async (ctx, { assistantId }) => {

@@ -67,7 +67,7 @@ function PlatformLogo({ platform }: { platform: TicketingPlatform }) {
   const meta = TICKETING_PLATFORMS[platform];
   return (
     <span
-      className={`flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${meta.color}`}
+      className={`flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold text-white ${meta.color}`}
     >
       {meta.initials}
     </span>
@@ -165,17 +165,11 @@ export function TicketingIntegrationSection({
 
   return (
     <>
-      <div className="mt-10 flex items-center gap-3">
-        <h2 className="text-2xl font-bold tracking-tight">Ticketing Integration</h2>
-        <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm font-semibold text-muted-foreground">
-          Optional
-        </span>
-      </div>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Create tickets from escalations. Set it up before your support channels.
+      <p className="text-muted-foreground -mt-3 mb-4 text-sm">
+        Optional. Create tickets from escalations. Set it up before your support channels.
       </p>
 
-      <Card size="sm" className="mt-5 gap-0 p-4">
+      <Card size="sm" className="gap-0 p-4">
         {integration ? (
           <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3">
             <PlatformLogo platform={integration.platform} />

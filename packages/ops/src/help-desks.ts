@@ -136,6 +136,7 @@ async function requireSupportChannel(
 export const listHelpDesksOp = defineOperation({
   name: "helpDesks.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: async (ctx) =>
@@ -145,6 +146,7 @@ export const listHelpDesksOp = defineOperation({
 export const getHelpDeskOp = defineOperation({
   name: "helpDesks.get",
   capability: "member",
+  effect: "read",
   input: z.object({ id: idSchema }),
   entities: () => [],
   run: async (ctx, { id }) => {
@@ -160,6 +162,7 @@ export const getHelpDeskOp = defineOperation({
 export const createHelpDeskOp = defineOperation({
   name: "helpDesks.create",
   capability: "edit",
+  effect: "write",
   input: helpDeskInputSchema,
   entities: () => [{ kind: "helpDeskList" as const }],
   run: async (ctx, input) =>
@@ -169,6 +172,7 @@ export const createHelpDeskOp = defineOperation({
 export const updateHelpDeskOp = defineOperation({
   name: "helpDesks.update",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: idSchema, patch: helpDeskPatchSchema }),
   entities: ({ id }) => [
     { kind: "helpDeskList" as const },
@@ -183,6 +187,7 @@ export const updateHelpDeskOp = defineOperation({
 export const deleteHelpDeskOp = defineOperation({
   name: "helpDesks.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "helpDeskList" as const }],
   run: async (ctx, { id }) => {
@@ -194,6 +199,7 @@ export const deleteHelpDeskOp = defineOperation({
 export const createSupportChannelOp = defineOperation({
   name: "helpDesks.channels.create",
   capability: "edit",
+  effect: "write",
   input: z.object({ helpDeskId: idSchema, input: supportChannelInputSchema }),
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
   run: async (ctx, { helpDeskId, input }) => {
@@ -205,6 +211,7 @@ export const createSupportChannelOp = defineOperation({
 export const updateSupportChannelOp = defineOperation({
   name: "helpDesks.channels.update",
   capability: "edit",
+  effect: "write",
   input: z.object({
     helpDeskId: idSchema,
     channelId: idSchema,
@@ -220,6 +227,7 @@ export const updateSupportChannelOp = defineOperation({
 export const deleteSupportChannelOp = defineOperation({
   name: "helpDesks.channels.delete",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ helpDeskId: idSchema, channelId: idSchema }),
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
   run: async (ctx, { helpDeskId, channelId }) => {
@@ -231,6 +239,7 @@ export const deleteSupportChannelOp = defineOperation({
 export const reorderSupportChannelsOp = defineOperation({
   name: "helpDesks.channels.reorder",
   capability: "edit",
+  effect: "write",
   input: z.object({
     helpDeskId: idSchema,
     orderedIds: z.array(idSchema).min(1).refine(
@@ -273,6 +282,7 @@ const serviceNowSchema = z.object({
 export const connectServiceNowOp = defineOperation({
   name: "helpDesks.ticketing.connectServiceNow",
   capability: "edit",
+  effect: "write",
   input: serviceNowSchema,
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
   run: async (ctx, input) => {
@@ -295,6 +305,7 @@ export const connectServiceNowOp = defineOperation({
 export const disconnectTicketingIntegrationOp = defineOperation({
   name: "helpDesks.ticketing.disconnect",
   capability: "edit",
+  effect: "consequential",
   input: z.object({ helpDeskId: idSchema }),
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
   run: async (ctx, { helpDeskId }) => {

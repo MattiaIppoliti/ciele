@@ -1,6 +1,8 @@
+import { Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AiSettingsClient } from "@/components/settings/ai-settings-client";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { BudgetCard } from "@/components/settings/budget-card";
 import { MemoryCard } from "@/components/settings/memory-card";
@@ -35,8 +37,12 @@ export default async function AiSettingsPage() {
   // model catalog and the platform prompt, never this org's connections.
   if (!canManage && !owner) redirect("/settings/profile");
 
-  const storedPlatformPrompt = owner ? await getStoredPlatformPrompt() : null;
-  const platformModels = owner ? await listPlatformEvalModels() : [];
+  // Independent reads go out together: this page used to chain four to six
+  // round trips where two were needed, and each one is a full database hop.
+  const [storedPlatformPrompt, platformModels] = await Promise.all([
+    owner ? getStoredPlatformPrompt() : null,
+    owner ? listPlatformEvalModels() : [],
+  ]);
   const platformCards = owner && (
     <>
       <PlatformModelCatalogCard models={platformModels} />
@@ -51,46 +57,55 @@ export default async function AiSettingsPage() {
   if (!canManage) {
     return (
       <SettingsPanel
+        icon={Sparkles}
         title="AI Provider"
         description="Platform-wide model settings for every Ciele organization."
       >
-        {platformCards}
+        <SectionTimeline>
+          <TimelineSection title="Platform">{platformCards}</TimelineSection>
+        </SectionTimeline>
       </SettingsPanel>
     );
   }
 
-  const connections = await db.listProviderConnections(organizationId);
   const requestHeaders = await headers();
   const localSubscriptionTestEnabled =
     isLocalSubscriptionDirectEnabled() &&
     isLoopbackHost(requestHeaders.get("host"));
-  const personalSubscriptionsAllowed =
-    await db.getPersonalAiSubscriptionsAllowed(organizationId);
   const [
+    connections,
+    personalSubscriptionsAllowed,
     budget,
     usedToday,
     usedTodayEur,
     compostOptOut,
     memoryEnabled,
     memorySubjects,
-    localSubscriptionStatuses,
   ] = await Promise.all([
+    db.listProviderConnections(organizationId),
+    db.getPersonalAiSubscriptionsAllowed(organizationId),
     db.getOrgBudget(organizationId),
     db.getOrgTokensUsedToday(organizationId),
     db.getOrgCostUsedToday(organizationId),
     db.getCompostOptOut(organizationId),
     db.getMemoryEnabled(organizationId),
     db.listMemorySubjects(organizationId),
-    personalSubscriptionsAllowed && localSubscriptionTestEnabled
-      ? listLocalSubscriptionStatuses()
-      : [],
   ]);
+  // Only a local development host with the toggle on probes the CLIs, so this
+  // stays out of the parallel batch that every request pays for.
+  const localSubscriptionStatuses =
+    personalSubscriptionsAllowed && localSubscriptionTestEnabled
+      ? await listLocalSubscriptionStatuses()
+      : [];
 
   return (
     <SettingsPanel
+      icon={Sparkles}
       title="AI Provider"
       description={`Choose how ${session.organization.name}'s assistants reach their models: platform plan, your own API keys, or keyless enterprise auth.`}
     >
+      <SectionTimeline>
+      <TimelineSection title="Provider connections">
       <AiSettingsClient
           connections={connections.map((c) => ({ ...c, encryptedKey: null }))}
           canManage={canManage}
@@ -107,6 +122,8 @@ export default async function AiSettingsPage() {
           connections={connections.map((c) => ({ ...c, encryptedKey: null }))}
           canManage={canManage}
         />
+      </TimelineSection>
+      <TimelineSection title="Budget">
         <BudgetCard
           dailyTokenLimit={budget?.dailyTokenLimit ?? null}
           dailyEuroLimit={budget?.dailyEuroLimit ?? null}
@@ -116,9 +133,13 @@ export default async function AiSettingsPage() {
           compostOptOut={compostOptOut}
           canManage={canManage}
         />
+      </TimelineSection>
+      <TimelineSection title="Memory">
         <MemoryCard memoryEnabled={memoryEnabled} canManage={canManage} />
         <MemorySubjectsCard subjects={memorySubjects} canEdit={canManage} />
-        {platformCards}
+      </TimelineSection>
+        {owner ? <TimelineSection title="Platform">{platformCards}</TimelineSection> : null}
+      </SectionTimeline>
     </SettingsPanel>
   );
 }

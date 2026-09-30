@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import type { MutatedEntity } from "@ciele/ops";
 import { expireOrganizationInsights } from "@/lib/insights/cache";
+import { expireFindCaches } from "@/lib/find-cache";
 import {
   requireMember,
   type MemberCapability,
@@ -171,7 +172,8 @@ function ruleFor<K extends EntityKind>(entity: EntityOf<K>): EntityRule<K> {
 
 /**
  * Turns declared entities into deduped `revalidatePath` calls, then expires
- * the Organization's Insights cache when any entity feeds the aggregate.
+ * the Organization's Find palette answers (any entity: they count nearly
+ * everything) and its Insights cache when an entity feeds the aggregate.
  * Shared by `orgMutation` (server actions), the /api/v1 mutation runner and
  * the Teammate action loop, so an API write refreshes the admin UI exactly
  * like the equivalent web write. `organizationId` is required, not optional:
@@ -182,6 +184,14 @@ export function revalidateEntities(
   entities: MutatedEntity[],
   organizationId: string,
 ) {
+  // The cache expiries go first. Inside a streamed turn (a Teammate or Ciele AI
+  // tool) `revalidatePath` can throw once the request store is gone, and its
+  // caller swallows that; had the loop run first, the Find palette and Insights
+  // would go on serving the state from before the mutation.
+  if (entities.length > 0) expireFindCaches(organizationId);
+  if (entities.some((entity) => ruleFor(entity).insights)) {
+    expireOrganizationInsights(organizationId);
+  }
   const seen = new Set<string>();
   for (const entity of entities) {
     // One entity may fan out to many routes.
@@ -194,9 +204,6 @@ export function revalidateEntities(
       seen.add(key);
       revalidatePath(path, scope);
     }
-  }
-  if (entities.some((entity) => ruleFor(entity).insights)) {
-    expireOrganizationInsights(organizationId);
   }
 }
 

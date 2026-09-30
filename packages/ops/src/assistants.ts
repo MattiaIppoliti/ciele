@@ -140,6 +140,7 @@ export async function requireAssistant(
 export const listAssistantsOp = defineOperation({
   name: "assistants.list",
   capability: "member",
+  effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.listAssistants(ctx.organizationId),
@@ -148,6 +149,7 @@ export const listAssistantsOp = defineOperation({
 export const listAssistantsPageOp = defineOperation({
   name: "assistants.listPage",
   capability: "member",
+  effect: "read",
   input: z.object({
     limit: z.number().int().min(1).max(100),
     cursor: z.string().min(1).nullable().optional(),
@@ -159,6 +161,7 @@ export const listAssistantsPageOp = defineOperation({
 export const getAssistantOp = defineOperation({
   name: "assistants.get",
   capability: "member",
+  effect: "read",
   input: idSchema,
   entities: () => [],
   run: (ctx, { id }) => requireAssistant(ctx, id),
@@ -167,6 +170,7 @@ export const getAssistantOp = defineOperation({
 export const createAssistantOp = defineOperation({
   name: "assistants.create",
   capability: "edit",
+  effect: "write",
   input: z.object({
     title: z.string().min(1).max(200),
     nickname: z.string().max(200).optional(),
@@ -179,6 +183,7 @@ export const createAssistantOp = defineOperation({
 export const updateAssistantOp = defineOperation({
   name: "assistants.update",
   capability: "edit",
+  effect: "write",
   input: z.object({ id: z.string().min(1), patch: assistantPatchSchema }),
   entities: ({ id }) => [{ kind: "assistant" as const, id }],
   run: async (ctx, { id, patch }) => {
@@ -198,6 +203,7 @@ export const updateAssistantOp = defineOperation({
 export const deleteAssistantOp = defineOperation({
   name: "assistants.delete",
   capability: "publish",
+  effect: "consequential",
   input: idSchema,
   entities: () => [{ kind: "assistantList" as const }],
   run: async (ctx, { id }) => {
@@ -218,6 +224,7 @@ export const deleteAssistantOp = defineOperation({
 export const duplicateAssistantOp = defineOperation({
   name: "assistants.duplicate",
   capability: "edit",
+  effect: "write",
   input: idSchema,
   entities: () => [{ kind: "assistantList" as const }],
   run: async (ctx, { id }): Promise<Assistant> => {
@@ -336,6 +343,7 @@ export const askAssistantInput = z.object({
 export const askAssistantOp = defineOperation({
   name: "assistants.ask",
   capability: "member",
+  effect: "write",
   input: askAssistantInput,
   entities: () => [{ kind: "inbox" as const }],
   run: async (ctx, input) => {
