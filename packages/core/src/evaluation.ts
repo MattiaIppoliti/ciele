@@ -294,3 +294,16 @@ export function autoModelFromEvaluations(
   }
   return null;
 }
+
+/** Quality first; fewer errors, lower cost and latency break ties. Never invent a grade. */
+export function recommendedEvaluationModel(
+  run: EvaluationRun | null,
+  assistantId: string,
+  stage: EvaluationStage,
+  available: EvaluationCandidate[],
+): EvaluationLeaderboardRow | null {
+  if (!run || run.status !== "completed" || run.assistantId !== assistantId || run.stage !== stage) return null;
+  return evaluationLeaderboard(run).rows
+    .filter(row => row.accuracy !== null && row.errorRate < 1 && run.results.filter(result => result.candidate.provider === row.candidate.provider && result.candidate.modelId === row.candidate.modelId).length === run.examples.length && available.some(model => model.provider === row.candidate.provider && model.modelId === row.candidate.modelId))
+    .sort((a, b) => (b.accuracy ?? -1) - (a.accuracy ?? -1) || a.errorRate - b.errorRate || a.eurPer1000 - b.eurPer1000 || (a.medianMs ?? Infinity) - (b.medianMs ?? Infinity))[0] ?? null;
+}

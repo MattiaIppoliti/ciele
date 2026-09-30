@@ -640,6 +640,7 @@ export function resolveChatModel(
     };
   }
   const fallbackOrder = [
+    ...(resolution.fallbackModel ? [resolution.fallbackModel.provider] : []),
     ...orderedLocalProviders(resolution),
     ...(["google", "anthropic", "openai", "openai_compatible"] as Provider[]),
   ].filter(

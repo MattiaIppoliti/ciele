@@ -1,3 +1,9 @@
+import { parseModelSelector, resolveRequestedModel } from "@agent-hub/core";
+import { chatModelOptions } from "@agent-hub/agent";
+import { chatAllowedModels } from "@/lib/teammates/ciele-ai";
+import { AUTO_MODEL, resolveAutoModel } from "@/lib/teammates/auto-model";
+import { listPlatformEvalModels } from "@/lib/platform";
+import { openAttachments } from "@/lib/attachments";
 import { NextRequest } from "next/server";
 import { CHANNEL_NDJSON_HEADERS, streamChannelChain } from "@agent-hub/agent";
 import { postChannelMessageOp } from "@ciele/ops";
@@ -31,7 +37,7 @@ export async function POST(
   }
 
   const { channelId } = await params;
-  const body = (await request.json()) as { message?: string };
+  const body = (await request.json()) as { message?: string; model?: unknown; attachments?: unknown };
   const message = (body.message ?? "").trim();
   if (!message) return new Response("Empty message", { status: 400 });
 
@@ -45,12 +51,23 @@ export async function POST(
   const db = await getDb();
   const connections = await db.listProviderConnections(session.organization.id);
 
+  const allowed = chatAllowedModels({ systemKind: "ciele_ai", allowedModels: [] });
+  const auto = body.model === AUTO_MODEL
+    ? await resolveAutoModel(db, session.organization.id, chatModelOptions(allowed[0], allowed, connections, await listPlatformEvalModels()))
+    : null;
+  const teammates = posted.teammates.map((teammate) => {
+    const chosen = resolveRequestedModel(parseModelSelector(auto?.selector ?? (typeof body.model === "string" ? body.model : null)), {
+      provider: teammate.modelProvider, modelId: teammate.modelId, source: teammate.modelSource ?? undefined,
+    }, allowed);
+    return { ...teammate, modelProvider: chosen.provider, modelId: chosen.modelId, modelSource: chosen.source ?? null };
+  });
   const stream = await streamChannelChain({
     db,
     organizationId: session.organization.id,
     channel: posted.channel,
     roster: posted.roster,
-    teammates: posted.teammates,
+    teammates,
+    attachments: openAttachments(body.attachments),
     connections,
     startMessage: posted.message,
     // Every turn in the chain, and every mutation a granted Teammate makes

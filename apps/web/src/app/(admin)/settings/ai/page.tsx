@@ -1,3 +1,7 @@
+import { canEditTeammate, EVALUATION_STAGES, type EvaluationStage } from "@agent-hub/core";
+import { TeammateDefaultModelSettings } from "@/components/settings/teammate-default-model-settings";
+import { DefaultModelSettings } from "@/components/settings/default-model-settings";
+import { availableEvaluationModels, evaluationModelsForStage } from "@/lib/evaluation-models";
 import { Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -41,7 +45,7 @@ export default async function AiSettingsPage() {
   // round trips where two were needed, and each one is a full database hop.
   const [storedPlatformPrompt, platformModels] = await Promise.all([
     owner ? getStoredPlatformPrompt() : null,
-    owner ? listPlatformEvalModels() : [],
+    listPlatformEvalModels(),
   ]);
   const platformCards = owner && (
     <>
@@ -74,6 +78,8 @@ export default async function AiSettingsPage() {
     isLoopbackHost(requestHeaders.get("host"));
   const [
     connections,
+    assistants,
+    teammates,
     personalSubscriptionsAllowed,
     budget,
     usedToday,
@@ -83,6 +89,8 @@ export default async function AiSettingsPage() {
     memorySubjects,
   ] = await Promise.all([
     db.listProviderConnections(organizationId),
+    db.listAssistants(organizationId),
+    db.table("teammates").list({ organizationId, deletedAt: null }),
     db.getPersonalAiSubscriptionsAllowed(organizationId),
     db.getOrgBudget(organizationId),
     db.getOrgTokensUsedToday(organizationId),
@@ -91,6 +99,14 @@ export default async function AiSettingsPage() {
     db.getMemoryEnabled(organizationId),
     db.listMemorySubjects(organizationId),
   ]);
+  const availableModels = availableEvaluationModels(connections, Boolean(process.env.AI_GATEWAY_API_KEY), platformModels);
+  const assistantOptions = assistants.map(assistant => ({
+    id: assistant.id,
+    title: assistant.title,
+    modelsByStage: Object.fromEntries(EVALUATION_STAGES.map(stage => [
+      stage, evaluationModelsForStage(availableModels, stage, assistant.modelProvider),
+    ])) as Record<EvaluationStage, typeof availableModels>,
+  }));
   // Only a local development host with the toggle on probes the CLIs, so this
   // stays out of the parallel batch that every request pays for.
   const localSubscriptionStatuses =
@@ -105,6 +121,10 @@ export default async function AiSettingsPage() {
       description={`Choose how ${session.organization.name}'s assistants reach their models: platform plan, your own API keys, or keyless enterprise auth.`}
     >
       <SectionTimeline>
+      <TimelineSection title="Default models">
+        <DefaultModelSettings assistants={assistantOptions} canEdit={canManage} />
+        <TeammateDefaultModelSettings teammates={teammates.filter(teammate => role !== null && canEditTeammate(teammate, { userId: session.userId, role })).map(teammate => ({ id: teammate.id, name: teammate.name, modelProvider: teammate.modelProvider, modelId: teammate.modelId }))} models={evaluationModelsForStage(availableModels, "answer", "anthropic")} />
+      </TimelineSection>
       <TimelineSection title="Provider connections">
       <AiSettingsClient
           connections={connections.map((c) => ({ ...c, encryptedKey: null }))}

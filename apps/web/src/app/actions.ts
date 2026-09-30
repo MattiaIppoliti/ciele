@@ -104,7 +104,7 @@ import {
 } from "@/lib/attachments";
 import { orgMutation, revalidateEntities } from "@/lib/org-mutation";
 import { runOperation } from "@/lib/operations";
-import { allEvaluationModels } from "@/lib/evaluation-models";
+import { availableEvaluationModels, evaluationModelsForStage, allEvaluationModels } from "@/lib/evaluation-models";
 import {
   discoverPlatformModel,
   listDiscoverableModels,
@@ -965,6 +965,7 @@ export async function chatComposerOptionsAction(assistantId: string): Promise<{
       assistant.allowedModels,
       connections,
       platformModels,
+      { includeUnavailable: true },
     ),
     skills: starterSkills(attached),
   };
@@ -2670,4 +2671,82 @@ export async function requestConnectorReconsentAction(
     actions,
   });
   return { startPath: result.startPath, scopes: result.scopes };
+}
+
+
+/** Eval defaults use the same editor permission and tenant boundary as Assistant configuration. */
+export async function evaluationDefaultContextAction(assistantId: string, stage: import("@agent-hub/core").EvaluationStage) {
+  const { db, organizationId } = await requireMember();
+  const { EVALUATION_STAGES } = await import("@agent-hub/core");
+  if (!EVALUATION_STAGES.includes(stage)) throw new Error("Choose a valid stage.");
+  const assistant = await db.getAssistant(assistantId);
+  if (!assistant || assistant.organizationId !== organizationId) throw new Error("Assistant not found.");
+  const [runs, recentRuns] = await Promise.all([
+    db.table("evaluationRuns").list({ organizationId, assistantId, stage, status: "completed" }, { limit: 1, orderBy: "updatedAt" }),
+    db.table("evaluationRuns").list({ organizationId, assistantId, stage }, { limit: 5, orderBy: "createdAt" }),
+  ]);
+  return {
+    current: stage === "answer" ? { provider: assistant.modelProvider, modelId: assistant.modelId } : (stage === "classifier" || stage === "orchestration"
+      ? assistant.tools.evaluationModels?.orchestration ?? assistant.tools.evaluationModels?.classifier
+      : assistant.tools.evaluationModels?.[stage]) ?? null,
+    run: runs[0] ?? null,
+    recentRuns,
+  };
+}
+
+export async function saveEvaluationDefaultAction(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { EVALUATION_STAGES } = await import("@agent-hub/core");
+  const parsed = z.object({ assistantId: z.string().min(1), stage: z.enum(EVALUATION_STAGES), model: z.object({
+    provider: z.enum(["google", "anthropic", "openai", "openai_compatible", "typesafe", "voyage"]), modelId: z.string().min(1).max(200),
+  }) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Choose an Assistant, stage and model." };
+  try {
+    const { db, organizationId } = await requireMember("edit");
+    const { assistantId, stage, model } = parsed.data;
+    const assistant = await db.getAssistant(assistantId);
+    if (!assistant || assistant.organizationId !== organizationId) throw new Error("Assistant not found.");
+    const [connections, extraModels] = await Promise.all([db.listProviderConnections(organizationId), listPlatformEvalModels()]);
+    const options = evaluationModelsForStage(availableEvaluationModels(connections, Boolean(process.env.AI_GATEWAY_API_KEY), extraModels), stage, assistant.modelProvider);
+    if (!options.some(option => option.provider === model.provider && option.modelId === model.modelId)) throw new Error("This model is not available for this stage. Check AI Provider settings.");
+    const defaults = { ...assistant.tools.evaluationModels, [stage]: model };
+    // Both experiments measure the router; changing either replaces its previous choice.
+    if (stage === "classifier") delete defaults.orchestration;
+    if (stage === "orchestration") delete defaults.classifier;
+    const patch: AssistantPatch = { tools: { ...assistant.tools, evaluationModels: defaults } };
+    if (stage === "answer" && model.provider !== "typesafe" && model.provider !== "voyage") {
+      patch.modelProvider = model.provider;
+      patch.modelId = model.modelId;
+      patch.modelSource = null;
+    }
+    await runOperation(updateAssistantOp, { id: assistantId, patch });
+    revalidatePath("/eval");
+    revalidatePath("/settings/ai");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: thrownMessage(error, "Could not save the default model.") };
+  }
+}
+
+/** Persist the default used by Auto, with the same ownership guard as Teammate settings. */
+export async function saveTeammateDefaultModelAction(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+  const parsed = z.object({ teammateId: z.string().min(1), model: z.object({
+    provider: z.enum(["google", "anthropic", "openai", "openai_compatible"]),
+    modelId: z.string().min(1).max(200).regex(/^\S+$/),
+  }) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Choose a Teammate and model." };
+  try {
+    const { db, organizationId, session } = await requireMember("edit");
+    const { canEditTeammate } = await import("@agent-hub/core");
+    const teammate = await db.table("teammates").get(parsed.data.teammateId);
+    if (!session.role || !teammate || teammate.organizationId !== organizationId || !canEditTeammate(teammate, { userId: session.userId, role: session.role })) throw new Error("Teammate not found.");
+    const [connections, extraModels] = await Promise.all([db.listProviderConnections(organizationId), listPlatformEvalModels()]);
+    const options = evaluationModelsForStage(availableEvaluationModels(connections, Boolean(process.env.AI_GATEWAY_API_KEY), extraModels), "answer", teammate.modelProvider);
+    if (!options.some(option => modelSelector(option) === modelSelector(parsed.data.model))) throw new Error("This model is not available. Check AI Provider settings.");
+    const { updateTeammateOp } = await import("@ciele/ops");
+    await runOperation(updateTeammateOp, { id: teammate.id, patch: { modelProvider: parsed.data.model.provider, modelId: parsed.data.model.modelId, modelSource: null } });
+    revalidatePath("/settings/ai");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: thrownMessage(error, "Could not save the default model.") };
+  }
 }

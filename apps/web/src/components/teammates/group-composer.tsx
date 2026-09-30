@@ -2,6 +2,12 @@
 
 import { useId, useRef, useState } from "react";
 import type { KeyboardEvent, SyntheticEvent } from "react";
+import { Paperclip } from "lucide-react";
+import type { ChatModelOption } from "@agent-hub/agent/client";
+import { AUTO_CHAT_MODEL, toPromptModels } from "@/components/chat/use-chat-models";
+import { useAttachments } from "@/components/chat/use-attachments";
+import { AttachmentInput, AttachmentChips, AttachmentDropHint } from "@/components/chat/attachment-chips";
+import { readChatAttachmentAction } from "@/app/actions";
 import { PromptInput } from "@/components/agents/prompt-input";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
@@ -32,14 +38,18 @@ import {
  */
 export function GroupComposer({
   targets,
+  models,
+  teammateId,
   onSubmit,
   pending,
   placeholder,
   "aria-label": ariaLabel,
 }: {
   targets: MentionTarget[];
+  models: ChatModelOption[];
+  teammateId?: string;
   /** Resolves false when the message did not go out; its text comes back. */
-  onSubmit: (value: string) => Promise<boolean> | void;
+  onSubmit: (value: string, model: string, attachments: string[]) => Promise<boolean> | void;
   /** While a chain is streaming: the composer wears the loading pulse. */
   pending: boolean;
   placeholder: string;
@@ -47,6 +57,14 @@ export function GroupComposer({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const listId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [model, setModel] = useState(AUTO_CHAT_MODEL);
+  const attachments = useAttachments(async (file) => {
+    const body = new FormData();
+    body.set("file", file);
+    if (teammateId) body.set("teammateId", teammateId);
+    return readChatAttachmentAction(body);
+  });
   const [draft, setDraft] = useState("");
   const [mention, setMention] = useState<ActiveMention | null>(null);
   const [highlighted, setHighlighted] = useState(0);
@@ -131,7 +149,10 @@ export function GroupComposer({
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" {...attachments.dropProps}>
+      <AttachmentInput inputRef={fileInputRef} accept={attachments.accept} onPick={(file) => void attachments.attach(file)} />
+      <AttachmentChips entries={attachments.entries} onRemove={attachments.remove} />
+      {attachments.dragging && <AttachmentDropHint label="Drop to attach" />}
       {open && (
         <TriggerList
           id={listId}
@@ -195,6 +216,7 @@ export function GroupComposer({
             sync(value);
           }}
           onSubmit={(value) => {
+            if (attachments.busy) return;
             setDraft("");
             setMention(null);
             // The sent message took its `@` with it, so the dismissal keyed to
@@ -204,13 +226,19 @@ export function GroupComposer({
             // dismissed: the picker never opened again for the rest of the
             // session.
             dismissed.current = null;
-            void Promise.resolve(onSubmit(value)).then((sent) => {
+            void Promise.resolve(onSubmit(value, model, attachments.tokens)).then((sent) => {
               // Unless something new was typed meanwhile, the words come back.
               if (sent === false) setDraft((current) => current || value);
             });
           }}
           // While a chain streams the composer refuses to submit, so Enter
           // keeps the draft rather than clearing it for a send that bails.
+          models={toPromptModels(models, true)}
+          model={model}
+          onModelChange={setModel}
+          actions={[{ value: "attach", label: "Attach file", icon: <Paperclip />, disabled: attachments.full }]}
+          onAction={() => fileInputRef.current?.click()}
+          onPaste={attachments.onPaste}
           loading={pending}
           {...triggerInputProps(listId, open, Math.min(highlighted, matches.length - 1))}
           minRows={1}

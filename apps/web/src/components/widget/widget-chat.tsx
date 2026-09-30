@@ -34,7 +34,7 @@ import {
 import { PromptInput } from "@/components/agents/prompt-input";
 import { SpeechPlayback } from "@/components/chat/speech-playback";
 import { patchLastBot, runTurn } from "@/components/chat/turn-session";
-import { toPromptModels, useChatModels } from "@/components/chat/use-chat-models";
+import { AUTO_CHAT_MODEL, toPromptModels, useChatModels } from "@/components/chat/use-chat-models";
 import { useComposerTrigger, replaceToken } from "@/components/chat/use-composer-trigger";
 import { useHelpDesks } from "@/components/chat/use-help-desks";
 import { TriggerList, TriggerRow } from "@/components/chat/trigger-list";
@@ -1328,8 +1328,8 @@ export function WidgetChat({
               deskTrigger.sync(value);
               skillTrigger.sync(value);
             }}
-            models={toPromptModels(models)}
-            model={model ?? models[0]?.selector}
+            models={toPromptModels(models, true)}
+            model={model ?? AUTO_CHAT_MODEL}
             onModelChange={setModel}
             onSubmit={(value) => {
               // A file still being read would be dropped from this message

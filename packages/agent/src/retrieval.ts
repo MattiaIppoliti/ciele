@@ -39,7 +39,7 @@ export function buildKnowledgeSearcher(opts: {
   db: Db;
   connections: ProviderConnection[];
   /** Identity of the Assistant being searched. */
-  assistant: Pick<Assistant, "id" | "organizationId">;
+  assistant: Pick<Assistant, "id" | "organizationId"> & Partial<Pick<Assistant, "tools">>;
   /** The anchored Knowledge Collection, or null for assistant-wide. */
   collectionId: string | null;
   /**
@@ -69,7 +69,7 @@ export function buildKnowledgeSearcher(opts: {
     surface: opts.usage?.surface,
   };
   const embed = createEmbedder(opts.connections, attribution);
-  const reranked = opts.reranker ?? createReranker({ attribution });
+  const reranked = opts.reranker ?? createReranker({ attribution, modelId: assistant.tools?.evaluationModels?.reranker?.modelId });
   const search: KnowledgeSearcher = async (query, options) => {
     const scoped = options?.scope === "assistant" ? null : collectionId;
     const embedding = await embed(query);

@@ -9,7 +9,9 @@ import type {
   Teammate,
   TeammateChannel,
 } from "@agent-hub/core";
+import { AUTO_CHAT_MODEL } from "@/components/chat/use-chat-models";
 import { CHANNEL_CHAIN_TURN_CAP } from "@agent-hub/core";
+import type { ChatModelOption } from "@agent-hub/agent/client";
 import { EMPTY_TURN_TRACE, consumeChannelStream } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
@@ -108,7 +110,9 @@ export function ChannelWorkspace({
   invitableMembers,
   addableTeammates,
   projects,
+  models,
 }: {
+  models: ChatModelOption[];
   channel: TeammateChannel;
   roster: ChannelRosterEntry[];
   teammates: Teammate[];
@@ -169,7 +173,7 @@ export function ChannelWorkspace({
    * words back, because a bubble that looks delivered over an empty box is a
    * message silently lost. A chain that fails later was still delivered.
    */
-  async function send(text: string): Promise<boolean> {
+  async function send(text: string, model = AUTO_CHAT_MODEL, attachments: string[] = []): Promise<boolean> {
     const message = text.trim();
     if (!message || pending) return false;
     setFreshEntry(false);
@@ -194,7 +198,7 @@ export function ChannelWorkspace({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({ message, model, attachments }),
         }
       );
       if (!response.ok || !response.body) {
@@ -405,6 +409,8 @@ export function ChannelWorkspace({
         <div className={`shrink-0 space-y-1.5 ${WIDEN_TRANSITION} ${fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))] pb-6" : "px-4 pb-4"}`}>
           <GroupComposer
             targets={mentionTargets}
+            models={models}
+            teammateId={teammates[0]?.id}
             onSubmit={send}
             pending={pending}
             // No `#` here. The channel name with a hash in front of it reads as

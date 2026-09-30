@@ -63,7 +63,7 @@ import { RefreshButton } from "./refresh-button";
 import type { ReportableTrigger } from "@/lib/widget-triggers";
 import { MessageScroller } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
-import { toPromptModels } from "@/components/chat/use-chat-models";
+import { AUTO_CHAT_MODEL, toPromptModels } from "@/components/chat/use-chat-models";
 import {
   useComposerTrigger,
   replaceToken,
@@ -1142,8 +1142,8 @@ export function PreviewPanel({
                 skillTrigger.close();
                 deskTrigger.close();
               }}
-              models={toPromptModels(models)}
-              model={model ?? models[0]?.selector}
+              models={toPromptModels(models, true)}
+              model={model ?? AUTO_CHAT_MODEL}
               onModelChange={setModel}
               actions={composerActions}
               onAction={(action) => {

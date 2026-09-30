@@ -25,6 +25,9 @@ import { availableModelSources, providerAvailability } from "./models";
  * would quietly answer on a different provider than the one the asker chose,
  * which is worse than never offering it.
  *
+ * Preview can retain missing capabilities as disabled `unavailable` rows.
+ * Published chats keep the capability filter.
+ *
  * Returns **one entry, or none at all**, when there is no real choice: a
  * single-entry picker is a control that does nothing, and the composer draws no
  * picker for a list of one. That is the default state of every Assistant, and
@@ -35,6 +38,7 @@ export function chatModelOptions(
   allowed: readonly ModelRef[] | undefined,
   connections: ProviderConnection[],
   platformModels: readonly PlatformEvalModel[] = [],
+  optionsPolicy: { includeUnavailable?: boolean } = {},
 ): ChatModelOption[] {
   const choices = modelChoices(configured, allowed ?? []);
   if (choices.length < 2) return [];
@@ -42,19 +46,24 @@ export function chatModelOptions(
   const availability = providerAvailability(connections);
   const options: ChatModelOption[] = [];
   for (const ref of choices) {
+    let unavailable = false;
     if (ref.source) {
       // A pinned choice is offered only while its own source can serve it:
       // anything else would answer on a route the asker did not pick.
       if (!availableModelSources(ref.provider, ref.modelId, connections).includes(ref.source))
-        continue;
+        unavailable = true;
     } else {
       const available = availability[ref.provider];
-      if (!available) continue;
-      const gateway =
-        available.gateway &&
-        gatewayModelId(ref.provider, currentModelId(ref.provider, ref.modelId)) !== null;
-      if (!available.platform && !available.byok && !available.federated && !gateway) continue;
+      if (!available) {
+        unavailable = true;
+      } else {
+        const gateway =
+          available.gateway &&
+          gatewayModelId(ref.provider, currentModelId(ref.provider, ref.modelId)) !== null;
+        unavailable = !available.platform && !available.byok && !available.federated && !gateway;
+      }
     }
+    if (unavailable && !optionsPolicy.includeUnavailable) continue;
     // A provider with no static catalogue serves whatever its connection names
     // (#436), so there is no label to show and nothing to choose between.
     const entry = MODEL_CATALOG[ref.provider]?.find((m) => m.id === ref.modelId) ??
@@ -65,6 +74,7 @@ export function chatModelOptions(
       provider: ref.provider,
       modelId: ref.modelId,
       label: entry.label,
+      ...(unavailable ? { unavailable: true } : {}),
       providerName: PROVIDER_NAMES[ref.provider],
       ...(ref.source
         ? { source: ref.source, sourceName: MODEL_SOURCE_NAMES[ref.source] }

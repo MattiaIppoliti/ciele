@@ -26,7 +26,7 @@ import {
 import { z } from "zod";
 import { getRuntimeHost } from "./host";
 import { runApprovalGate } from "./approval-gate";
-import { decide, resolveDecisionModel } from "./decision-model";
+import { decide, evaluationModel, resolveDecisionModel } from "./decision-model";
 import { decidedRoute, runPreflight, type PreflightFaqAnswer, type PreflightOutcome } from "./preflight-shadow";
 import type { ChatReplyPart } from "./types";
 import type { TurnSession } from "./session";
@@ -653,13 +653,17 @@ export async function runAssistantChat(options: Pick<ActionContext,
   // configured provider answers with another credentialed provider instead of
   // dropping to the keyword engine (which would silently skip every
   // system-prompt layer).
+  const defaults = assistant.tools.evaluationModels;
   const resolved = resolveChatModel(
     assistant.modelProvider,
     assistant.modelId,
     connections,
-    { ...keyResolution, source: assistant.modelSource ?? undefined }
+    { ...keyResolution, fallbackModel: defaults?.fallback && defaults.fallback.provider !== "typesafe" && defaults.fallback.provider !== "voyage" ? { provider: defaults.fallback.provider, modelId: defaults.fallback.modelId } : keyResolution.fallbackModel, source: assistant.modelSource ?? undefined }
   );
-  const classifier = options.classifierOverride ?? getClassifierModel(
+  const routingDefault = defaults?.orchestration ?? defaults?.classifier;
+  const configuredClassifier = routingDefault && routingDefault.provider !== "typesafe" && routingDefault.provider !== "voyage"
+    ? resolveChatModel(routingDefault.provider, routingDefault.modelId, connections, { ...keyResolution, source: undefined }) : null;
+  const classifier = options.classifierOverride ?? configuredClassifier ?? getClassifierModel(
     assistant.modelProvider,
     connections,
     keyResolution
@@ -764,7 +768,9 @@ export async function runAssistantChat(options: Pick<ActionContext,
         // The same gated, priority-ordered candidates Intent Classification
         // itself asks about, so the two decisions see one list.
         catalogue: { ...sources, flows: flowCandidates },
-        resolved: resolveDecisionModel(assistant.modelProvider, connections, keyResolution),
+        resolved: defaults?.preflight
+          ? evaluationModel(defaults.preflight, connections, keyResolution)
+          : resolveDecisionModel(assistant.modelProvider, connections, keyResolution),
         // An FAQ catalogue over the option cap is shortlisted by similarity to
         // the message (#954): the same search the Default behavior runs, read
         // for its Concept ids only.

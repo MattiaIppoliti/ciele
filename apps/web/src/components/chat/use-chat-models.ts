@@ -1,6 +1,8 @@
 "use client";
 
 import { createElement, useEffect, useState } from "react";
+import { CieleAiLogo } from "@/components/teammates/ciele-ai-logo";
+import { AUTO_MODEL, AUTO_MODEL_DESCRIPTION } from "@/lib/teammates/auto-model";
 import type { PromptModel } from "@/components/agents/prompt-input";
 import { ModelProviderLogo } from "@/components/chat/model-provider-logo";
 import type { ChatModelOption } from "@agent-hub/agent/client";
@@ -60,8 +62,13 @@ export function useChatModels(
  * choice pinned to one source carries its tag, which is what tells "Claude
  * Sonnet 5 · API key" from "Claude Sonnet 5 · AI Gateway".
  */
-export function toPromptModels(options: ChatModelOption[]): PromptModel[] {
-  return options.map((option) => ({
+export const AUTO_CHAT_MODEL = AUTO_MODEL;
+
+export function toPromptModels(
+  options: ChatModelOption[],
+  includeAuto = false,
+): PromptModel[] {
+  const rows = options.map((option) => ({
     value: option.selector,
     label: option.unavailable
       ? `${option.label} · not connected`
@@ -73,4 +80,11 @@ export function toPromptModels(options: ChatModelOption[]): PromptModel[] {
     // answers, not only which model name.
     icon: createElement(ModelProviderLogo, { provider: option.provider }),
   }));
+  return includeAuto ? [{
+    value: AUTO_CHAT_MODEL,
+    label: "Auto",
+    description: AUTO_MODEL_DESCRIPTION,
+    icon: createElement(CieleAiLogo, { className: "size-4" }),
+    separatorAfter: rows.length > 0,
+  }, ...rows] : rows;
 }

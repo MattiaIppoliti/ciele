@@ -75,9 +75,9 @@ export type Reranker = (
 ) => Promise<KnowledgeSearchResult[]>;
 
 /** The platform reranking model, or null when this deployment has no Gateway key. */
-export function platformRerankingModel(): RerankingModel | null {
+export function platformRerankingModel(modelId: string = RERANK_MODEL): RerankingModel | null {
   const apiKey = process.env[GATEWAY_ENV];
-  return apiKey ? createGateway({ apiKey }).rerankingModel(RERANK_MODEL) : null;
+  return apiKey ? createGateway({ apiKey }).rerankingModel(modelId) : null;
 }
 
 // Per process, keyed by Organization. A serverless instance that never saw a
@@ -99,6 +99,7 @@ export function createReranker(opts: {
   /** Injected in tests; production resolves the platform model once per searcher. */
   resolveModel?: () => RerankingModel | null;
   timeoutMs?: number;
+  modelId?: string;
 }): Reranker {
   const { attribution } = opts;
   const timeoutMs = opts.timeoutMs ?? RERANK_TIMEOUT_MS;
@@ -108,7 +109,7 @@ export function createReranker(opts: {
     const fallback = candidates.slice(0, limit);
     // Nothing to choose between: reranking would only cost money.
     if (candidates.length <= 1) return fallback;
-    if (model === undefined) model = (opts.resolveModel ?? platformRerankingModel)();
+    if (model === undefined) model = (opts.resolveModel ?? (() => platformRerankingModel(opts.modelId)))();
     if (!model) {
       if (!warnedNoKey) {
         warnedNoKey = true;
@@ -137,7 +138,7 @@ export function createReranker(opts: {
           conversationId: attribution.conversationId,
           stage: "rerank",
           provider: "voyage",
-          modelId: RERANK_MODEL,
+          modelId: opts.modelId ?? RERANK_MODEL,
           credentialKind: "platform",
           inputTokens:
             billedTokens(result.providerMetadata) ?? estimateRerankTokens(query, documents),

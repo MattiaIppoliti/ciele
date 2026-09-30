@@ -33,9 +33,8 @@ import {
   type ChatMsg,
 } from "@/components/chat/chat-thread";
 import { MessageScroller } from "@/components/agents/message";
-import { PromptInput, type PromptModel } from "@/components/agents/prompt-input";
-import { CieleAiLogo } from "@/components/teammates/ciele-ai-logo";
-import { AUTO_MODEL, AUTO_MODEL_DESCRIPTION } from "@/lib/teammates/auto-model";
+import { PromptInput } from "@/components/agents/prompt-input";
+import { AUTO_MODEL } from "@/lib/teammates/auto-model";
 import { toPromptModels } from "@/components/chat/use-chat-models";
 import {
   useComposerTrigger,
@@ -133,18 +132,7 @@ export function TeammateWorkspace({
   const [pending, setPending] = useState(false);
   // The picker's standing choice for this session; see `models` above.
   const [model, setModel] = useState<string | undefined>();
-  const promptModels: PromptModel[] = autoModel
-    ? [
-        {
-          value: AUTO_MODEL,
-          label: "Auto",
-          description: AUTO_MODEL_DESCRIPTION,
-          icon: <CieleAiLogo className="size-4" />,
-          separatorAfter: models.length > 0,
-        },
-        ...toPromptModels(models),
-      ]
-    : toPromptModels(models);
+  const promptModels = toPromptModels(models, autoModel);
   // Controlled only because `@` edits it from outside the input.
   const [draft, setDraft] = useState("");
   /**

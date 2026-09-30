@@ -160,6 +160,15 @@ describe("providerAvailability", () => {
 });
 
 describe("resolveChatModel (cross-provider fallback)", () => {
+  it("tries the configured fallback before the automatic provider order", () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
+    vi.stubEnv("AI_GATEWAY_API_KEY", undefined);
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "test-google-key");
+    vi.stubEnv("OPENAI_API_KEY", "test-openai-key");
+    expect(resolveChatModel("anthropic", "claude-sonnet-5", [], {
+      fallbackModel: { provider: "openai", modelId: "gpt-5.1" },
+    })).toMatchObject({ provider: "openai", modelId: "gpt-5.1", usedFallback: true });
+  });
   it("uses a connected personal subscription only for that Member's local Preview", () => {
     vi.stubEnv("ANTHROPIC_API_KEY", undefined);
     vi.stubEnv("OPENAI_API_KEY", undefined);

@@ -52,6 +52,19 @@ afterEach(() => {
 });
 
 describe("chatModelOptions", () => {
+  it("keeps configured and selected models visible in Preview without credentials", () => {
+    const options = chatModelOptions(GEMINI, [SONNET, GPT], [], [], { includeUnavailable: true });
+    expect(options.map((option) => option.provider)).toEqual(["google", "anthropic", "openai"]);
+    expect(options.every((option) => option.unavailable)).toBe(true);
+    expect(chatModelOptions(GEMINI, [SONNET, GPT], [])).toEqual([]);
+  });
+
+  it("marks only missing credentials as unavailable in Preview", () => {
+    const options = chatModelOptions(GEMINI, [SONNET], [byok("google")], [], { includeUnavailable: true });
+    expect(options[0].unavailable).toBeUndefined();
+    expect(options[1].unavailable).toBe(true);
+  });
+
   it("offers nothing when the allow-list is empty: no picker is the default", () => {
     expect(chatModelOptions(GEMINI, [], [byok("google")])).toEqual([]);
     expect(chatModelOptions(GEMINI, undefined, [byok("google")])).toEqual([]);

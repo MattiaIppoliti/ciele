@@ -1,3 +1,6 @@
+import { chatModelOptions } from "@agent-hub/agent";
+import { chatAllowedModels } from "@/lib/teammates/ciele-ai";
+import { listPlatformEvalModels } from "@/lib/platform";
 import { notFound } from "next/navigation";
 import { PageCrumb } from "@/components/shell/top-bar-slots";
 import { OperationError, getChannelOp } from "@ciele/ops";
@@ -41,6 +44,8 @@ export default async function ChannelPage({
     db.table("projects").list({ organizationId }),
   ]);
 
+  const allowed = chatAllowedModels({ systemKind: "ciele_ai", allowedModels: [] });
+  const models = chatModelOptions(allowed[0], allowed, await db.listProviderConnections(organizationId), await listPlatformEvalModels(), { includeUnavailable: true });
   const viewer = { userId: session.userId, role: role ?? "viewer" };
   const seatedMembers = new Set(
     view.participants.map((row) => row.userId).filter(Boolean)
@@ -55,6 +60,7 @@ export default async function ChannelPage({
     <ChannelWorkspace
       key={view.channel.id}
       channel={view.channel}
+      models={models}
       roster={view.roster}
       teammates={view.teammates}
       messages={view.messages}

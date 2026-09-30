@@ -104,6 +104,15 @@ describe("createReranker", () => {
     );
   });
 
+  it("uses and meters the Assistant's selected reranking model", async () => {
+    vi.stubEnv("AI_GATEWAY_API_KEY", "test-key");
+    const modelId = "voyage/rerank-2.5-lite";
+    expect(platformRerankingModel(modelId)).toMatchObject({ modelId });
+    const { db, recordAiUsage } = stubDb();
+    await createReranker({ attribution: attribution(db), modelId, resolveModel: reversingModel })("query", candidates, KNOWLEDGE_SEARCH_LIMIT);
+    expect(recordAiUsage.mock.calls[0]?.[0]).toEqual([expect.objectContaining({ modelId })]);
+  });
+
   it("meters one rerank row on the caller's spenders at the platform key", async () => {
     const { db, recordAiUsage } = stubDb();
     const rerank = createReranker({ attribution: attribution(db), resolveModel: reversingModel });

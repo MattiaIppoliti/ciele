@@ -10,6 +10,7 @@ import type {
   QuickReplyButton,
 } from "@agent-hub/core";
 import {
+  EVALUATION_STAGES,
   GUARDRAIL_TYPES,
   externalLinkUrl,
   guardrailListProblem,
@@ -92,6 +93,14 @@ export const assistantPatchSchema = z
     tools: z.custom<Assistant["tools"]>(
       (v) => typeof v === "object" && v !== null
     ).superRefine((tools, ctx) => {
+      if (tools.evaluationModels !== undefined) {
+        const defaults = z.partialRecord(z.enum(EVALUATION_STAGES), z.object({
+          provider: z.enum(["google", "anthropic", "openai", "openai_compatible", "typesafe", "voyage"]),
+          modelId: z.string().min(1).max(200),
+        }).strict()).safeParse(tools.evaluationModels);
+        if (!defaults.success) for (const issue of defaults.error.issues)
+          ctx.addIssue({ code: "custom", path: ["evaluationModels", ...issue.path], message: issue.message });
+      }
       if (tools.studyMode === undefined) return;
       const parsed = z.object({
         enabled: z.boolean(),

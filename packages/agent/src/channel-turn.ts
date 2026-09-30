@@ -1,5 +1,6 @@
 import type {
   AiUsageInput,
+  ChatAttachment,
   ChainCapReason,
   ChannelMessage,
   ChannelRosterEntry,
@@ -9,6 +10,7 @@ import type {
   TeammateChannel,
 } from "@agent-hub/core";
 import {
+  attachmentContextSection,
   chainCapMarker,
   chainTurnVerdict,
   channelPromptSection,
@@ -99,6 +101,7 @@ export type ChannelTurnRunner = (
 ) => Promise<ChannelTurnResult>;
 
 export interface ChannelChainInput {
+  attachments?: ChatAttachment[];
   db: Db;
   organizationId: string;
   channel: TeammateChannel;
@@ -457,6 +460,7 @@ async function modelChannelTurn(
       }),
       turn: {
         platformPrompt,
+        hasAttachments: (input.attachments?.length ?? 0) > 0,
         message: speakerLine(request.trigger, nameOf),
         // The transcript is read after the triggering message was persisted, so
         // the message this turn is answering is also the last thing in it.
@@ -479,7 +483,7 @@ async function modelChannelTurn(
           appOrigin: platformAppOrigin(),
         }),
         teammateActions: actions,
-        memoryDocuments,
+        memoryDocuments: [attachmentContextSection(input.attachments ?? []), ...memoryDocuments].filter((section): section is string => section !== null),
         // No referral tool: in a channel, mentioning IS the referral, and it
         // reaches somebody who is already here (#773 was the 1:1 answer).
         session: createTurnSession(channel.id, {}),

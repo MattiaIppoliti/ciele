@@ -459,6 +459,7 @@ export { estimateCostEur } from "./pricing";
 export {
   EVALUATION_RUN_STALE_MS,
   EVALUATION_STAGES,
+  recommendedEvaluationModel,
   autoModelFromEvaluations,
   evaluationLeaderboard,
   gradeEvaluation,

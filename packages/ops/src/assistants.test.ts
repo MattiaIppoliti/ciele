@@ -243,3 +243,15 @@ describe("Guardrails settings", () => {
     ]) expect(assistantPatchSchema.safeParse({ guardrails: invalid }).success).toBe(false);
   });
 });
+
+
+describe("Eval stage model settings", () => {
+  it("accepts a partial stage map and rejects malformed stages and model identities", () => {
+    expect(assistantPatchSchema.safeParse({ tools: { evaluationModels: { classifier: { provider: "google", modelId: "gemini-3.5-flash" } } } }).success).toBe(true);
+    for (const evaluationModels of [
+      { nonexistent: { provider: "google", modelId: "model" } },
+      { classifier: { provider: "unknown", modelId: "model" } },
+      { classifier: { provider: "google", modelId: "" } },
+    ]) expect(assistantPatchSchema.safeParse({ tools: { evaluationModels } }).success).toBe(false);
+  });
+});

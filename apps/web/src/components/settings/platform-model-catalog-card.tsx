@@ -121,7 +121,7 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
             Ciele model catalog
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Find a verified model and add it for use across Ciele. Its official name and estimated token prices are filled in automatically.
+            Find a model in the Vercel AI Gateway catalog and add it for use across Ciele. Its official name and estimated token prices come from AI Gateway and are filled in automatically.
           </p>
         </div>
         <Badge variant="outline" className="shrink-0 rounded-full">Platform admin</Badge>

@@ -4,6 +4,7 @@ import { creditsFor, type Provider, type ProviderConnection } from "@agent-hub/c
 import {
   JEV_DIRECT_MODEL_ID,
   JEV_GATEWAY_MODEL_ID,
+  evaluationModel,
   decide,
   resolveDecisionModel,
   type ResolvedDecisionModel,
@@ -221,5 +222,17 @@ describe("decide", () => {
     await expect(
       decide(resolvedOn(model), { state: "x", questions: { ok: { type: "boolean", instructions: "?" } } })
     ).rejects.toThrow("provider down");
+  });
+});
+
+
+describe("configured pre-flight model", () => {
+  it("uses the selected adapter instead of the automatic Jev preference", () => {
+    noPlatformKeys();
+    expect(evaluationModel({ provider: "google", modelId: "gemini-3.5-flash" }, [connection("google", "test-key")])).toMatchObject({ provider: "google", modelId: "gemini-3.5-flash", backend: "adapter" });
+  });
+  it("keeps platform-funded decisions off personal CLI turns", () => {
+    vi.stubEnv("AI_GATEWAY_API_KEY", "test-key");
+    expect(evaluationModel({ provider: "typesafe", modelId: JEV_GATEWAY_MODEL_ID }, [], { surface: "preview", memberId: "member-1", localSubscriptionProviders: ["anthropic"] })).toBeNull();
   });
 });

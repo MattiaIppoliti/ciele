@@ -1,4 +1,3 @@
-import { Experimental_EvaluationLanguageModel as EvaluationLanguageModel } from "@ai-sdk/provider-utils/experimental-evaluation";
 import { createGateway, rerank } from "ai";
 import {
   estimateCostEur,
@@ -17,8 +16,8 @@ import type { Db } from "@agent-hub/db";
 import { classifyIntent, runAssistantChat } from "./engine";
 import { buildKnowledgeSearcher } from "./retrieval";
 import { estimateRerankTokens } from "./rerank";
-import { gatewayModelId } from "./catalog";
-import { adapterModel } from "./decision-model";
+import { evaluationModel } from "./decision-model";
+export { evaluationModel } from "./decision-model";
 import { createTurnSession } from "./session";
 import { getRuntimeHost } from "./host";
 import { resolveChatModel, resolveProviderCredential } from "./models";
@@ -401,63 +400,5 @@ export async function evaluateCase(input: {
     }),
     autonomous,
     error,
-  };
-}
-
-/** Exported for its test; the barrel does not re-export it. */
-export function evaluationModel(
-  candidate: EvaluationCandidate,
-  connections: ProviderConnection[],
-) {
-  if (
-    candidate.provider === "voyage" ||
-    candidate.provider === "openai_compatible"
-  )
-    throw new Error("This provider has no pre-flight model.");
-  if (candidate.provider === "typesafe") {
-    const apiKey = process.env.AI_GATEWAY_API_KEY;
-    if (!apiKey || candidate.modelId !== "typesafe-ai/jev")
-      throw new Error("Jev requires AI Gateway and the typesafe-ai/jev model.");
-    return {
-      model: createGateway({ apiKey }).evaluationModel(candidate.modelId),
-      backend: "jev" as const,
-      provider: "typesafe" as const,
-      modelId: candidate.modelId,
-      credentialKind: "platform" as const,
-      calibrated: true,
-    };
-  }
-  // With the Gateway, as the chat stages resolve a candidate: a model only AI
-  // Gateway serves is wrapped the way the providers' own SDKs wrap theirs, so
-  // the adapter backend reads it like any other uncalibrated model.
-  const credential = resolveProviderCredential(candidate.provider, connections, {
-    gateway: true,
-  });
-  if (!credential || !("apiKey" in credential) || !credential.apiKey)
-    throw new Error("No credential is available for this provider.");
-  if ("route" in credential && credential.route === "gateway") {
-    const gatewayId = gatewayModelId(candidate.provider, candidate.modelId);
-    if (!gatewayId)
-      throw new Error("AI Gateway does not serve this model.");
-    return {
-      model: new EvaluationLanguageModel({
-        model: createGateway({ apiKey: credential.apiKey }).languageModel(gatewayId),
-        provider: "gateway.evaluation",
-      }),
-      backend: "adapter" as const,
-      provider: candidate.provider,
-      modelId: candidate.modelId,
-      credentialKind: credential.kind,
-      calibrated: false,
-    };
-  }
-  const model = adapterModel(candidate.provider, candidate.modelId, credential.apiKey);
-  return {
-    model,
-    backend: "adapter" as const,
-    provider: candidate.provider,
-    modelId: candidate.modelId,
-    credentialKind: credential.kind,
-    calibrated: false,
   };
 }

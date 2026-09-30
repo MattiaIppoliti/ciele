@@ -458,7 +458,8 @@ function GeneralFormBody({
           sources={modelSources}
         />
         <p className="text-muted-foreground text-xs">
-          {modelAllowListSummary(extraModels, unavailableProviders)}
+          Published chat: {modelAllowListSummary(extraModels, unavailableProviders)}
+          {extraModels.length > 0 && " Preview lists selected models and marks missing connections as unavailable."}
         </p>
       </div>
 

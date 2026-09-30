@@ -1,6 +1,7 @@
 import type { AssistantGuardrail, GuardrailTraceEntry } from "./guardrails";
 import type { TriageEvidence } from "./document-triage";
 import type { Reversibility } from "./approval-gate";
+import type { EvaluationCandidate, EvaluationStage } from "./evaluation";
 import type { ModelRef, ModelSource } from "./model-choice";
 import type { PreflightTraceRecord } from "./preflight";
 /**
@@ -852,6 +853,8 @@ export interface StudySubmission {
 }
 
 export interface AssistantTools {
+  /** Defaults selected in Eval, scoped to this Assistant and pipeline stage. */
+  evaluationModels?: Partial<Record<EvaluationStage, EvaluationCandidate>>;
   /** Built-in enablement overrides; unset = runtime default. */
   builtIns?: Partial<Record<BuiltInToolName, boolean>>;
   /** Opt-in interactive knowledge practice, disabled unless explicitly enabled. */
