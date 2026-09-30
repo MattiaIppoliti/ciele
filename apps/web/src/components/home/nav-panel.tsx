@@ -11,6 +11,7 @@ import {
 } from "@/components/home/animated-icons";
 import { FolderVisual } from "@/components/home/folder-visual";
 import { Reveal } from "@/components/home/reveal";
+import { HoverHighlight } from "@/components/ui/hover-highlight";
 import {
   DOCS,
   docsAreas,
@@ -23,21 +24,12 @@ import {
  * What the marketing nav's menus look like inside, the desktop dropdown's
  * contents and the mobile menu's list.
  *
- * Separate from `home-header.tsx` because the header owns the chrome: which
- * panel is open, where it sits, and the measurement that puts it there. What
- * lives here is markup over `nav-menu`'s data plus the motion *inside* a panel
- * (the row stagger, the mobile accordion), and the two facts it cannot know,
+ * The Motion Navigation Menu owns desktop interaction and measurement. This
+ * module renders `nav-menu` data and the mobile accordion. The two facts it
+ * cannot know,
  * close the menu once a link is taken, and which mobile group is expanded,
  * arrive as props.
  */
-
-/* Motion values of the directional-hover header the panel's movement is copied
-   from: every row inside a panel enters from ITEM_X and the rows fire
-   STAGGER_STEP apart, front-to-back when the pointer moved left along the nav,
-   back-to-front when it moved right. The panel's own cross-slide (CONTENT_X)
-   belongs to the header, which owns the panel. */
-const ITEM_X = 18;
-const STAGGER_STEP = 0.038;
 
 /**
  * The abstract artwork under a promo card's title. Decorative only (hence
@@ -231,82 +223,49 @@ function DocsAreaGrid({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
-/**
- * The stagger schedule for one panel's rows: `total` rows, played in reverse
- * when the pointer travelled right (`direction` +1), so the wave always runs
- * against the pointer's own travel. `direction` 0 (first open) keeps the
- * natural order.
- */
-function useRowMotion(total: number, direction: number) {
-  const reduceMotion = useReducedMotion();
-  const dx = reduceMotion ? 0 : direction > 0 ? ITEM_X : -ITEM_X;
-
-  return (index: number) => ({
-    initial: { opacity: 0, x: dx, y: reduceMotion ? 0 : 5 },
-    animate: { opacity: 1, x: 0, y: 0 },
-    transition: reduceMotion
-      ? { duration: 0 }
-      : {
-          duration: 0.18,
-          ease: "easeOut" as const,
-          delay: (direction > 0 ? total - 1 - index : index) * STAGGER_STEP,
-        },
-  });
-}
-
-/** The inside of one dropdown: link columns, then the grid or the promo cards. */
+/** The inside of the shared viewport: current links, artwork and docs tiles. */
 export function PanelContent({
   item,
-  direction,
   onNavigate,
 }: {
   item: MenuItem;
-  direction: number;
   onNavigate: () => void;
 }) {
-  /* One flat row index across the whole panel, the link columns first, then
-     the docs grid (counted as one row) or the promo cards. */
-  const columns = item.columns ?? [];
-  const links = columns.reduce((sum, column) => sum + column.length, 0);
-  const total = links + (item.areaGrid ? 1 : 0) + (item.cards?.length ?? 0);
-  const row = useRowMotion(total, direction);
-  let cursor = 0;
-
   return (
-    <div className="flex gap-2 p-2">
-      {/* Each column is sized to its longest label (with a floor) rather than
-          a fixed width: the one-column Enterprise panel was wrapping
-          "Enterprise governance" onto two lines. */}
-      {columns.map((column, columnIndex) => (
-        <ul key={columnIndex} className="w-max min-w-44 shrink-0 py-1">
+    <HoverHighlight
+      className="flex gap-2 p-2"
+      highlightClassName="bg-alpha-light rounded-xl"
+    >
+      {(item.columns ?? []).map((column, columnIndex) => (
+        <ul key={columnIndex} className="relative w-max min-w-44 shrink-0 py-1">
           {column.map((child) => (
-            <motion.li key={child.name} {...row(cursor++)}>
+            <li key={child.name}>
               <Link
+                data-highlight-row
+                data-slot="navigation-menu-link"
                 href={child.href}
                 target={child.external ? "_blank" : undefined}
                 rel={child.external ? "noopener noreferrer" : undefined}
                 onClick={onNavigate}
-                className="press text-muted-foreground hover:bg-muted hover:text-foreground block whitespace-nowrap rounded-xl px-3 py-2 duration-150"
+                className="press-text text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:ring-ring/50 relative block whitespace-nowrap rounded-xl px-3 py-2 outline-none transition-colors focus-visible:ring-2"
               >
                 {child.name}
               </Link>
-            </motion.li>
+            </li>
           ))}
         </ul>
       ))}
-      {/* Cards first, then the docs tiles: on the Docs panel the promo card is
-          the "Getting started" folder and the tiles sit to its right. */}
       {item.cards?.map((card) => (
-        <motion.div key={card.title} className="shrink-0" {...row(cursor++)}>
+        <div key={card.title} data-highlight-clear className="relative shrink-0">
           <DropdownCard card={card} onNavigate={onNavigate} />
-        </motion.div>
+        </div>
       ))}
       {item.areaGrid && (
-        <motion.div className="shrink-0 self-center" {...row(cursor++)}>
+        <div data-highlight-clear className="relative shrink-0 self-center">
           <DocsAreaGrid onNavigate={onNavigate} />
-        </motion.div>
+        </div>
       )}
-    </div>
+    </HoverHighlight>
   );
 }
 

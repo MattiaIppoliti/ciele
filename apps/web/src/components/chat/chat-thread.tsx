@@ -15,7 +15,7 @@ export type ActionApprovalPart = Extract<ChatReplyPart, { type: "action_approval
 import { UserRoundPlus } from "lucide-react";
 import { ToolApproval } from "@/components/agents/tool-approval";
 import { HelpCircle, Radio, UserCheck } from "lucide-react";
-import { ChatMarkdown } from "@/components/chat/chat-markdown";
+import { ChatMarkdown, type InlineCitationRenderer } from "@/components/chat/chat-markdown";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
 import { ComponentReplyPart } from "@/components/chat/component-part";
 import { ProgressLine } from "@/components/chat/progress-line";
@@ -473,6 +473,7 @@ export function ChatThread({
    */
   renderUserText,
   speechPlayback,
+  renderCitation,
 }: {
   messages: ChatMsg[];
   pending: boolean;
@@ -486,6 +487,8 @@ export function ChatThread({
   onDecideApproval?: DecideApproval;
   renderUserText?: (text: string) => ReactNode;
   speechPlayback?: VoiceEndpoint;
+  /** Preview can inspect Sources directly from the answer text. */
+  renderCitation?: InlineCitationRenderer;
 }) {
   return (
     <>
@@ -574,7 +577,11 @@ export function ChatThread({
                                   : undefined
                               }
                             >
-                              <ChatMarkdown text={part.text} />
+                              <ChatMarkdown
+                                text={part.text}
+                                inlineSources={renderCitation ? citationItems : undefined}
+                                renderCitation={renderCitation}
+                              />
                             </StreamingResponse>
                           );
                         }
@@ -603,7 +610,11 @@ export function ChatThread({
                       })}
                       {msg.streamingText !== null && (
                         <StreamingResponse status="streaming">
-                          <ChatMarkdown text={msg.streamingText} />
+                          <ChatMarkdown
+                            text={msg.streamingText}
+                            inlineSources={renderCitation ? citationItems : undefined}
+                            renderCitation={renderCitation}
+                          />
                           <span aria-hidden="true" className="animate-pulse motion-reduce:animate-none">▍</span>
                         </StreamingResponse>
                       )}

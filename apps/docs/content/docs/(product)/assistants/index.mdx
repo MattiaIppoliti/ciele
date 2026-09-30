@@ -22,6 +22,20 @@ An Assistant is the main configuration unit in Ciele. Each Assistant owns its Kn
 
 Changes affect Preview immediately. The live widget changes only after publication.
 
+Preview can use your connected local Claude or ChatGPT subscription from **Settings → AI**.
+The progress panel reports searches and their results. It does not request the model’s private reasoning.
+A connected model still needs Knowledge Sources to answer organization-specific questions reliably.
+
+## Inspect Sources in Preview
+
+Preview shows numbered Source citations inside the Assistant response. Hover over a citation or
+focus it with the keyboard to see its title and Source details. Press Escape to close the card.
+Click a citation with a public URL to open the original page in a new tab.
+
+Each sourced sentence or step carries its citation beside the text it supports. A Source can be
+cited more than once in the same answer. Private documents show a preview without an external
+link. Sources without an inline reference remain available in the Sources list below the response.
+
 ## Duplicate an Assistant
 
 Duplication copies configuration and Flows. It does not copy Knowledge content.

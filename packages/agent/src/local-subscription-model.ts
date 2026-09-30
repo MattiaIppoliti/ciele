@@ -104,22 +104,37 @@ function parseClaudeResult(
   result: LocalCommandResult,
   responseSchema?: JSONSchema7
 ): LocalCliResult {
-  if (result.code !== 0) {
-    throw new Error(result.stderr.trim() || "Claude CLI inference failed.");
-  }
-  const value = JSON.parse(result.stdout) as {
+  let value: {
     subtype?: string;
     is_error?: boolean;
     result?: string;
     structured_output?: unknown;
     usage?: { input_tokens?: number; output_tokens?: number };
     error?: string;
+    errors?: string[];
   };
-  if (value.subtype && value.subtype !== "success") {
-    throw new Error(value.error || "Claude CLI inference failed.");
+  try {
+    value = JSON.parse(result.stdout);
+  } catch (error) {
+    if (result.code !== 0) {
+      throw new Error(result.stderr.trim() || "Claude CLI inference failed.");
+    }
+    throw error;
   }
-  if (value.is_error) {
-    throw new Error(value.result || value.error || "Claude CLI inference failed.");
+  if (
+    result.code !== 0 ||
+    value.is_error ||
+    (value.subtype && value.subtype !== "success")
+  ) {
+    // Claude emits provider failures in stdout's JSON envelope even when
+    // stderr is empty and subtype is success. Preserve the actionable cause.
+    throw new Error(
+      (value.is_error ? value.result : undefined) ||
+      value.error ||
+      value.errors?.join("\n") ||
+      result.stderr.trim() ||
+      "Claude CLI inference failed."
+    );
   }
   const structuredText =
     responseSchema && value.structured_output !== undefined

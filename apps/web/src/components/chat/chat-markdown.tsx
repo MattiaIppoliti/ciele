@@ -5,6 +5,14 @@ import remarkGfm from "remark-gfm";
 import { CodeBlock } from "@/components/agents/code-block";
 import type { AgentCodeLanguage } from "@/components/agents/agent-code";
 import { cn } from "@/lib/utils";
+import type { CitationItem } from "@/components/agents/citations";
+import type { ReactNode } from "react";
+import { remarkInlineCitations } from "./remark-inline-citations";
+
+export type InlineCitationRenderer = (
+  citation: CitationItem,
+  index: number,
+) => ReactNode;
 
 /** Languages the shared shiki highlighter bundles; everything else is plain. */
 const CODE_LANGUAGES: readonly AgentCodeLanguage[] = [
@@ -32,26 +40,56 @@ function codeLanguage(className: string | undefined): AgentCodeLanguage {
 export function ChatMarkdown({
   text,
   className,
+  inlineSources = [],
+  renderCitation,
 }: {
   text: string;
   className?: string;
+  inlineSources?: readonly CitationItem[];
+  /** The Preview supplies its renderer so other chat surfaces load no popup code. */
+  renderCitation?: InlineCitationRenderer;
 }) {
   return (
     <div className={cn("space-y-2 [overflow-wrap:anywhere]", className)}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={
+          inlineSources.length > 0 && renderCitation
+            ? [
+                remarkGfm,
+                [
+                  remarkInlineCitations,
+                  {
+                    citations: inlineSources,
+                  },
+                ],
+              ]
+            : [remarkGfm]
+        }
         components={{
           p: ({ children }) => <p className="leading-relaxed">{children}</p>,
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium underline underline-offset-2 hover:opacity-80"
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children, node }) => {
+            const index = node?.properties["data-citation-index"];
+            const citation =
+              typeof index === "number" ? inlineSources[index] : undefined;
+            if (citation && typeof index === "number" && renderCitation) {
+              return (
+                <>
+                  {node?.properties["data-citation-numeric"] ? null : children}
+                  {renderCitation(citation, index)}
+                </>
+              );
+            }
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium underline underline-offset-2 hover:opacity-80"
+              >
+                {children}
+              </a>
+            );
+          },
           strong: ({ children }) => (
             <strong className="font-semibold">{children}</strong>
           ),
@@ -63,7 +101,9 @@ export function ChatMarkdown({
             <h2 className="text-base leading-snug font-semibold">{children}</h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-[0.9375rem] leading-snug font-semibold">{children}</h3>
+            <h3 className="text-[0.9375rem] leading-snug font-semibold">
+              {children}
+            </h3>
           ),
           h4: ({ children }) => (
             <h4 className="text-sm leading-snug font-semibold">{children}</h4>

@@ -85,6 +85,19 @@ import type { EscalationHelpDesk } from "@/lib/escalation-desks";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
 import { MessageSquareText } from "lucide-react";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import AICitation from "@/components/smoothui/ai-citation";
+import type { CitationItem } from "@/components/agents/citations";
+
+function renderPreviewCitation(citation: CitationItem, index: number) {
+  return (
+    <AICitation
+      label={index + 1}
+      title={citation.title}
+      description={citation.domain}
+      url={citation.url}
+    />
+  );
+}
 
 /** History shows this many recent conversations; pinned ones always stay. */
 const HISTORY_RECENT_LIMIT = 10;
@@ -1002,6 +1015,7 @@ export function PreviewPanel({
           )}
 
           <ChatThread
+            renderCitation={renderPreviewCitation}
             speechPlayback={assistant.voice?.enabled ? { endpoint: "/api/preview/voice/speech", assistantId: assistant.id } : undefined}
             messages={messages}
             pending={pending}

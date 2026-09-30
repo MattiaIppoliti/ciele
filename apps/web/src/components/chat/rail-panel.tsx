@@ -4,10 +4,7 @@ import type { ReactNode, RefObject } from "react";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronLeft } from "lucide-react";
-// Icon data, not components: the arrow reshapes between the two, as the left
-// sidebar's toggle does.
-import { PanelRightClose as PanelRightCloseData, PanelRightOpen as PanelRightOpenData } from "lucide";
-import { MorphIcon } from "morphicons/react";
+import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
 import { Hint } from "@agent-hub/ui";
 import { cn } from "@/lib/utils";
 import { SPRING_REFOLD, SPRING_UNFOLD } from "@/lib/ease";
@@ -407,10 +404,10 @@ export function RailCollapsed({
  * with a hover wash, drawn only on an open rail.
  */
 export function RailToggleButton({ label, onClick }: { label: string; onClick: () => void }) {
-  // It mounts afresh with the rail it sits on, showing the closed state the
-  // rail came from, and reshapes into the open one a tick later, which is what
-  // makes the arrow visibly turn round.
+  // Mount from the collapsed panel shape, then morph into the open shape
+  // as the rail enters. The collapsed strip and open header mount separately.
   const [shown, setShown] = useState(false);
+  const [hovered, setHovered] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setShown(true), 0);
     return () => window.clearTimeout(timer);
@@ -422,11 +419,15 @@ export function RailToggleButton({ label, onClick }: { label: string; onClick: (
         aria-label={label}
         aria-expanded
         onClick={onClick}
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setHovered(true);
+        }}
+        onPointerLeave={() => setHovered(false)}
         // The left sidebar's own toggle, mirrored: the icon alone, with the
         // shared hover wash, not a disc of its own.
         className="press-control text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors outline-none focus-visible:ring-2"
       >
-        <MorphIcon icon={shown ? PanelRightCloseData : PanelRightOpenData} size={16} />
+        <SidebarToggleIcon isOpen={shown && !hovered} side="right" className="size-4" />
       </button>
     </Hint>
   );

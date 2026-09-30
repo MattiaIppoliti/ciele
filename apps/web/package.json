@@ -70,6 +70,7 @@
   "devDependencies": {
     "@agent-hub/eslint-config": "workspace:*",
     "@tailwindcss/postcss": "^4",
+    "@types/mdast": "^4.0.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

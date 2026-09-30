@@ -305,6 +305,35 @@ describe("createLocalSubscriptionModel", () => {
     );
   });
 
+  it("preserves Claude's JSON inference error on a nonzero exit with empty stderr", async () => {
+    const run = createLocalCliRunner(async () => ({
+      code: 1,
+      stdout: JSON.stringify({
+        subtype: "success",
+        is_error: true,
+        result: "Provider refused the requested reasoning extraction.",
+      }),
+      stderr: "",
+    }));
+    await expect(run({ provider: "anthropic", prompt: "Question" })).rejects.toThrow(
+      "Provider refused the requested reasoning extraction."
+    );
+  });
+
+  it("preserves Claude's structured failure details", async () => {
+    const run = createLocalCliRunner(async () => ({
+      code: 1,
+      stdout: JSON.stringify({
+        subtype: "error_during_execution",
+        errors: ["The selected model is unavailable."],
+      }),
+      stderr: "",
+    }));
+    await expect(run({ provider: "anthropic", prompt: "Question" })).rejects.toThrow(
+      "The selected model is unavailable."
+    );
+  });
+
   it("uses Claude structured_output as the schema-constrained response", async () => {
     const execute = vi.fn(async () => ({
       code: 0,

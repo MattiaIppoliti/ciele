@@ -6,12 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
 import { ChevronsUpDown, LifeBuoy, MessageCircle, Search, Settings, type LucideIcon } from "lucide-react";
 import { BookOpen, Check, Loader2, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
-// Icon data, not components: the collapse arrow reshapes between the two.
-import {
-  PanelLeftClose as PanelLeftCloseData,
-  PanelLeftOpen as PanelLeftOpenData,
-} from "lucide";
-import { MorphIcon } from "morphicons/react";
+import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
 import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
 import { localGlyphFor } from "@/components/ui/icons/local-glyphs";
 import { switchOrganizationAction } from "@/app/actions";
@@ -421,22 +416,19 @@ function SidebarContent({
   collapsed,
   onToggle,
   toggleLabel,
-  expandsOnToggle,
 }: AppSidebarProps & {
   collapsed: boolean;
   onToggle: () => void;
   /** What the toggle does here: it hides, docks or closes depending on where
    * the sidebar is mounted, and "Toggle sidebar" said none of those. */
   toggleLabel: string;
-  /** True when the toggle grows the sidebar (rail → full, or peek → docked),
-   * so it shows the "open" glyph; false when it shrinks (full → rail). */
-  expandsOnToggle: boolean;
 }) {
   // The page under an open Settings dialog, not the dialog's URL: Settings
   // opened from the Chat keeps the Chat lit and the chat sidebar in place.
   const pathname = useUnderlyingPathname();
   const { openFind } = useShell();
   const assistants = useShellAssistants();
+  const [toggleHovered, setToggleHovered] = useState(false);
 
   const assistantsNav = navItem("assistants");
   // What watches the Assistants rather than configures them, under its own
@@ -468,16 +460,15 @@ function SidebarContent({
       <button
         type="button"
         aria-label={toggleLabel}
+        aria-expanded={!collapsed}
         onClick={onToggle}
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setToggleHovered(true);
+        }}
+        onPointerLeave={() => setToggleHovered(false)}
         className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors"
       >
-        {/* The arrow reverses by reshaping, not by swapping one glyph for
-            the other (morphicons.com), so the direction the sidebar is about
-            to move is legible mid-animation. */}
-        <MorphIcon
-          icon={expandsOnToggle ? PanelLeftOpenData : PanelLeftCloseData}
-          size={16}
-        />
+        <SidebarToggleIcon isOpen={toggleHovered ? collapsed : !collapsed} className="size-4" />
       </button>
     </Hint>
   );
@@ -816,7 +807,6 @@ function NavDrawer(props: AppSidebarProps) {
             <SidebarContent
               {...props}
               collapsed={false}
-              expandsOnToggle={false}
               toggleLabel="Close navigation"
               onToggle={() => setNavDrawerOpen(false)}
             />
@@ -994,7 +984,6 @@ export function AppSidebar(props: AppSidebarProps) {
                 <SidebarContent
                   {...props}
                   collapsed={collapsed}
-                  expandsOnToggle={false}
                   toggleLabel="Hide sidebar"
                   // Toggle fully hides the sidebar (never a rail). Width is
                   // preserved so reopening from the top bar restores the same
@@ -1096,7 +1085,6 @@ function UndockedSidebar({
             <SidebarContent
               {...props}
               collapsed={false}
-              expandsOnToggle
               toggleLabel="Dock sidebar"
               onToggle={() => {
                 setPeek(false);

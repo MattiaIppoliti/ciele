@@ -763,8 +763,8 @@ describe("buildSystemPrompt (prompt layering)", () => {
     expect(gather).not.toContain("Always answer in haiku.");
     expect(gather).toContain("you are in the FIRST one");
     expect(gather).toContain("readyToAnswer exactly once");
-    // The gather phase must not let the model address the user at all.
-    expect(gather).toContain("Do NOT write anything addressed to the user");
+    // Gathering may report progress, but cannot write the final answer.
+    expect(gather).toContain("Do not write the final answer");
     // ...and says nothing about a catalogue the assistant has not enabled.
     expect(gather).not.toContain("renderTable");
 
@@ -1115,17 +1115,16 @@ describe("search_knowledge streamed thinking (#584)", () => {
     ).toBe(false);
   });
 
-  it("the gather prompt requires thinking aloud in the user's language; the write prompt does not", () => {
+  it("the gather prompt requests public progress updates without private reasoning", () => {
     const gather = buildSystemPrompt("P", makeAssistant(), makeFlow());
-    expect(gather).toContain("Think out loud");
+    expect(gather).toContain("brief progress update");
     expect(gather).toContain("user's own language");
-    expect(gather).toContain("NEVER emit a tool call without");
     expect(gather).toContain("readyToAnswer call");
-
-    const write = buildSystemPrompt("P", makeAssistant(), makeFlow(), {
-      phase: "write",
-    });
-    expect(write).not.toContain("Think out loud");
+    expect(gather).not.toContain("Think out loud");
+    expect(gather).not.toContain("treated as your private reasoning");
+    expect(gather).toContain("Do not reveal private reasoning");
+    const write = buildSystemPrompt("P", makeAssistant(), makeFlow(), { phase: "write" });
+    expect(write).not.toContain("brief progress update");
   });
 });
 
@@ -1314,6 +1313,30 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
     content: "Enrollment closes on 30 September.",
     similarity: 0.92,
   };
+
+  it("carries earlier search results into the write phase after readyToAnswer", async () => {
+    let step = 0;
+    const model = new MockLanguageModelV3({
+      doStream: async (options) => {
+        if (step++ === 0) return searchStep("search-1", "enrollment deadline");
+        if (step === 2) return declareStep("answer")();
+        const transcript = JSON.stringify(options.prompt);
+        expect(transcript).toContain("Enrollment closes on 30 September.");
+        expect(transcript).toContain("Result of your searchKnowledge call");
+        expect(transcript).toContain("Result of your readyToAnswer call");
+        expect(transcript).toContain("[1](#ciele-source-k1)");
+        expect(transcript).toContain("immediately after each sentence, list item or step");
+        return writeStep(["Enrollment closes on 30 September."])();
+      },
+    });
+    const { ctx } = makeContext({
+      chatModel: model as unknown as LanguageModel,
+      searchKnowledge: async () => [strongResult],
+      message: "When does enrollment close?",
+    });
+    const result = await ACTION_HANDLERS.search_knowledge(ctx);
+    expect(result.parts.some((part) => part.type === "sources")).toBe(true);
+  });
 
   it("caps a keeps-finding-nothing turn at the iteration budget, then still writes", async () => {
     let seq = 0;

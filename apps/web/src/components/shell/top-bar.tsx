@@ -1,11 +1,11 @@
 "use client";
 
 import { prefetchFind } from "@/lib/find-client";
-import { useSyncExternalStore } from "react";
-import { PanelLeftOpen } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
 import { Search } from "lucide-react";
 import { Badge } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
+import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import {
   Breadcrumb,
@@ -38,6 +38,7 @@ function useIsLocalhost(): boolean {
 
 /** Global top bar: scope switcher on the left, page title centered. */
 export function TopBar({ demo }: { demo: boolean }) {
+  const [toggleHovered, setToggleHovered] = useState(false);
   const {
     sidebarDocked,
     setSidebarDocked,
@@ -76,21 +77,30 @@ export function TopBar({ demo }: { demo: boolean }) {
           aria-label="Open navigation"
           aria-expanded={navDrawerOpen}
           onClick={() => setNavDrawerOpen(true)}
-          className="text-muted-foreground hover:bg-muted hover:text-foreground z-10 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors md:hidden"
+          onPointerEnter={(event) => {
+            if (event.pointerType === "mouse") setToggleHovered(true);
+          }}
+          onPointerLeave={() => setToggleHovered(false)}
+          className="press-control text-muted-foreground hover:bg-muted hover:text-foreground z-10 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors md:hidden"
         >
-          <AnimatedIcon icon={PanelLeftOpen} size={16} />
+          <SidebarToggleIcon isOpen={toggleHovered ? !navDrawerOpen : navDrawerOpen} className="size-4" />
         </button>
         {navInBar && (
           <Hint label={onRail ? "Expand sidebar" : "Show sidebar"}>
             <button
               type="button"
               aria-label={onRail ? "Expand sidebar" : "Show sidebar"}
+              aria-expanded={false}
+              onPointerEnter={(event) => {
+                if (event.pointerType === "mouse") setToggleHovered(true);
+              }}
+              onPointerLeave={() => setToggleHovered(false)}
               onClick={() =>
                 onRail ? setSidebarWidth(DEFAULT_WIDTH) : setSidebarDocked(true)
               }
-              className="text-muted-foreground hover:bg-muted hover:text-foreground z-10 hidden size-8 shrink-0 items-center justify-center rounded-lg transition-colors md:flex"
+              className="press-control text-muted-foreground hover:bg-muted hover:text-foreground z-10 hidden size-8 shrink-0 items-center justify-center rounded-lg transition-colors md:flex"
             >
-              <AnimatedIcon icon={PanelLeftOpen} size={16} />
+              <SidebarToggleIcon isOpen={toggleHovered} className="size-4" />
             </button>
           </Hint>
         )}

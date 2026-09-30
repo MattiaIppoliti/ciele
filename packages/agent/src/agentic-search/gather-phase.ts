@@ -210,6 +210,9 @@ export async function runGatherPhase(
     refused,
     // Only the write phase reads these, so a refusal never waits on the
     // response to resolve.
-    responseMessages: refused ? [] : (await gather.response).messages,
+    // In AI SDK 7 `response.messages` belongs only to the final step.
+    // Writing needs the complete search/read transcript, not just the
+    // readyToAnswer acknowledgement.
+    responseMessages: refused ? [] : await gather.responseMessages,
   };
 }
