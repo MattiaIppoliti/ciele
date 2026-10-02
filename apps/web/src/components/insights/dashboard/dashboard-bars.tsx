@@ -6,100 +6,22 @@ import type {
   DashboardStageRow,
   DashboardSurface,
 } from "@agent-hub/core";
-import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from "recharts";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import { ArcFrame } from "@/components/charts/arc/arc-frame";
+import { BarChart } from "@/components/charts/arc/bar-chart/bar-chart";
+import { Streamgraph } from "@/components/charts/arc/streamgraph/streamgraph";
 import {
   formatCompact,
   formatEur,
-  formatEurTick,
   latencyBucketLabel,
 } from "@/lib/insights/dashboard-view";
 import { formatShortDay } from "@/lib/format";
-import { OUTCOME_COLORS, SINGLE_SERIES, SURFACE_COLORS, SURFACE_LABELS } from "./palette";
+import { OUTCOME_COLORS, SURFACE_LABELS } from "./palette";
 
-/**
- * Every bar chart on the Dashboard, in one module so `next/dynamic` loads
- * Recharts once, after first paint, for all of them.
- */
+const periodOf = (daily: DashboardDay[]) =>
+  daily.length
+    ? `${formatShortDay(daily[0]!.day)} – ${formatShortDay(daily[daily.length - 1]!.day)}`
+    : "Selected range";
 
-const colors = (pair: { light: string; dark: string }) => ({ light: pair.light, dark: pair.dark });
-
-/**
- * One bar chart for the whole Dashboard: vertical columns by default,
- * `horizontal` for ranked rows. `stacked` puts every series in one stack.
- * Recharts' stock tooltip and legend read the config, so they follow the theme.
- */
-function Bars({
-  data,
-  config,
-  category,
-  className,
-  horizontal = false,
-  stacked = false,
-  legend = false,
-  format,
-  tickFormatter,
-}: {
-  data: Array<Record<string, string | number | null>>;
-  config: ChartConfig;
-  category: string;
-  className: string;
-  horizontal?: boolean;
-  stacked?: boolean;
-  legend?: boolean;
-  format?: (value: number) => string;
-  tickFormatter?: (value: number) => string;
-}) {
-  const tick = tickFormatter ? (value: unknown) => tickFormatter(Number(value)) : undefined;
-  return (
-    <ChartContainer config={config} className={`${className} aspect-auto`}>
-      <BarChart data={data} layout={horizontal ? "vertical" : "horizontal"} accessibilityLayer>
-        <CartesianGrid horizontal={!horizontal} vertical={horizontal} />
-        {horizontal ? (
-          <>
-            <YAxis dataKey={category} type="category" tickLine={false} axisLine={false} width={120} />
-            <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={tick} />
-          </>
-        ) : (
-          <>
-            <XAxis dataKey={category} tickLine={false} axisLine={false} tickMargin={8} />
-            <YAxis tickLine={false} axisLine={false} tickFormatter={tick} />
-          </>
-        )}
-        <ChartTooltip
-          cursor={false}
-          content={
-            <ChartTooltipContent
-              formatter={
-                format
-                  ? (value, name) => (
-                      <span className="flex w-full justify-between gap-3">
-                        <span className="text-muted-foreground">{config[String(name)]?.label ?? name}</span>
-                        <span className="font-mono font-medium tabular-nums">{format(Number(value))}</span>
-                      </span>
-                    )
-                  : undefined
-              }
-            />
-          }
-        />
-        {legend && <Legend formatter={(key: string) => config[key]?.label ?? key} />}
-        {Object.keys(config).map((key) => (
-          <Bar key={key} dataKey={key} fill={`var(--color-${key})`} stackId={stacked ? "a" : undefined} />
-        ))}
-      </BarChart>
-    </ChartContainer>
-  );
-}
-
-const SURFACE_KEYS = ["assistants", "teammates", "internal", "unattributed"] as const;
-
-/** Daily estimated spend, stacked by the surface that produced it. */
 export function SpendBars({
   daily,
   surface,
@@ -107,56 +29,103 @@ export function SpendBars({
   daily: DashboardDay[];
   surface: DashboardSurface | "";
 }) {
-  // One surface picked means one series; otherwise the stack, minus any
-  // surface that spent nothing (an empty legend entry is noise).
-  const keys = surface
-    ? [surface]
-    : SURFACE_KEYS.filter((key) => daily.some((d) => d.spendBySurface[key] > 0));
-  const config = Object.fromEntries(
-    keys.map((key) => [key, { label: SURFACE_LABELS[key], theme: colors(SURFACE_COLORS[key]) }])
-  ) satisfies ChartConfig;
-  const data = daily.map((d) => ({
-    day: formatShortDay(d.day),
-    ...Object.fromEntries(keys.map((key) => [key, Number(d.spendBySurface[key].toFixed(4))])),
-  }));
   return (
-    <Bars data={data} config={config} category="day" stacked legend={keys.length > 1} className="h-72 w-full" tickFormatter={formatEurTick} format={formatEur} />
+    <ArcFrame>
+      <BarChart
+        label="Estimated spend per day"
+        period={periodOf(daily)}
+        data={daily.map((d) => ({
+          key: d.day,
+          label: d.day,
+          axisLabel: formatShortDay(d.day),
+          value: d.spendEur,
+        }))}
+        valueLabel="Estimated spend"
+        averageLabel="Daily average"
+        height={240}
+        formatValue={formatEur}
+        categoryLabel={
+          surface ? `${SURFACE_LABELS[surface]} · UTC day` : "UTC day"
+        }
+      />
+    </ArcFrame>
   );
 }
 
-/** Finished turns per day, succeeded under failed. */
+function Outcomes({
+  daily,
+  verdicts = false,
+}: {
+  daily: DashboardDay[];
+  verdicts?: boolean;
+}) {
+  return (
+    <ArcFrame>
+      <Streamgraph
+        label={
+          verdicts ? "Verifier verdicts per day" : "Finished turns per day"
+        }
+        offset="zero"
+        height={180}
+        directLabels={false}
+        series={[
+          {
+            key: "good",
+            label: verdicts ? "Passed" : "Succeeded",
+            color: OUTCOME_COLORS.good.light,
+          },
+          { key: "bad", label: "Failed", color: OUTCOME_COLORS.bad.light },
+        ]}
+        data={daily.map((d) => ({
+          key: d.day,
+          label: d.day,
+          axisLabel: formatShortDay(d.day),
+          values: {
+            good: verdicts ? d.passes : d.turns - d.failedTurns,
+            bad: verdicts ? d.fails : d.failedTurns,
+          },
+        }))}
+        formatValue={formatCompact}
+        categoryLabel="UTC day"
+      />
+    </ArcFrame>
+  );
+}
 export function OutcomeBars({ daily }: { daily: DashboardDay[] }) {
-  const config = {
-    succeeded: { label: "Succeeded", theme: colors(OUTCOME_COLORS.good) },
-    failed: { label: "Failed", theme: colors(OUTCOME_COLORS.bad) },
-  } satisfies ChartConfig;
-  const data = daily.map((d) => ({
-    day: formatShortDay(d.day),
-    succeeded: d.turns - d.failedTurns,
-    failed: d.failedTurns,
-  }));
-  return <Bars data={data} config={config} category="day" stacked legend className="h-56 w-full" tickFormatter={formatCompact} />;
+  return <Outcomes daily={daily} />;
 }
-
-/** Verifier verdicts per day, passes under failures. */
 export function VerdictBars({ daily }: { daily: DashboardDay[] }) {
-  const config = {
-    passed: { label: "Passed", theme: colors(OUTCOME_COLORS.good) },
-    failed: { label: "Failed", theme: colors(OUTCOME_COLORS.bad) },
-  } satisfies ChartConfig;
-  const data = daily.map((d) => ({ day: formatShortDay(d.day), passed: d.passes, failed: d.fails }));
-  return <Bars data={data} config={config} category="day" stacked legend className="h-56 w-full" />;
+  return <Outcomes daily={daily} verdicts />;
 }
 
-/** How long turns took: the latency histogram, one bar per bucket. */
-export function LatencyHistogram({ buckets }: { buckets: DashboardLatencyBucket[] }) {
-  const config = { turns: { label: "Turns", theme: colors(SINGLE_SERIES) } } satisfies ChartConfig;
-  // Trailing empty buckets carry nothing and squeeze the ones that do.
+export function LatencyHistogram({
+  buckets,
+}: {
+  buckets: DashboardLatencyBucket[];
+}) {
   const lastUsed = buckets.reduce((last, b, i) => (b.turns > 0 ? i : last), 0);
-  const data = buckets
-    .slice(0, Math.max(lastUsed + 1, 6))
-    .map((b) => ({ bucket: latencyBucketLabel(b), turns: b.turns }));
-  return <Bars data={data} config={config} category="bucket" className="h-56 w-full" tickFormatter={formatCompact} />;
+  return (
+    <ArcFrame>
+      <BarChart
+        label="Turn latency distribution"
+        period="Selected range"
+        categoryLabel="Duration bucket"
+        showAverage={false}
+        averageLabel="Mean turns per bucket"
+        valueLabel="Turns"
+        height={180}
+        formatValue={formatCompact}
+        data={buckets
+          .slice(0, Math.max(lastUsed + 1, 6))
+          .map((b, i) => ({
+            key: String(i),
+            label: latencyBucketLabel(b),
+            axisLabel: latencyBucketLabel(b),
+            value: b.turns,
+          }))}
+      />
+    </ArcFrame>
+  );
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -176,14 +145,25 @@ const STAGE_LABELS: Record<string, string> = {
   agent_memory: "Agent memory",
   decide: "Decide",
 };
-
-/** Spend per pipeline stage, largest first, as horizontal bars. */
 export function StageBars({ stages }: { stages: DashboardStageRow[] }) {
-  const config = { spend: { label: "Estimated spend", theme: colors(SINGLE_SERIES) } } satisfies ChartConfig;
-  const data = [...stages]
-    .slice(0, 8)
-    .map((s) => ({ stage: STAGE_LABELS[s.stage] ?? s.stage, spend: Number(s.spendEur.toFixed(4)) }));
   return (
-    <Bars data={data} config={config} category="stage" horizontal className="h-64 w-full" tickFormatter={formatEurTick} format={formatEur} />
+    <ArcFrame>
+      <BarChart
+        label="Estimated spend by pipeline stage"
+        period="Selected range"
+        categoryLabel="Stage"
+        showAverage={false}
+        averageLabel="Average per stage"
+        valueLabel="Estimated spend"
+        height={220}
+        formatValue={formatEur}
+        data={stages.map((s) => ({
+          key: s.stage,
+          label: STAGE_LABELS[s.stage] ?? s.stage,
+          axisLabel: STAGE_LABELS[s.stage] ?? s.stage,
+          value: s.spendEur,
+        }))}
+      />
+    </ArcFrame>
   );
 }

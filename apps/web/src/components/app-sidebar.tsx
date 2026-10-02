@@ -198,7 +198,6 @@ function NavRow({
   );
 }
 
-
 function OrgAvatar({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
   if (logoUrl) {
     return (
@@ -398,7 +397,7 @@ function OrgAvatarSwitcher({
 const SUPPORT_LINKS = [
   { label: "Help Guides", icon: BookOpen, href: "https://docs.ciele.app" },
   { label: "Support Portal", icon: Ticket },
-  { label: "Product Roadmap", icon: MapIcon },
+  { label: "Product Roadmap", icon: MapIcon, href: "https://ciele.app/change-log" },
   { label: "Chat with Support", icon: MessageCircleQuestion },
 ] as const;
 

@@ -1,0 +1,65 @@
+.figure { display: grid; min-width: 0; margin: 0; color: var(--foreground); font-family: var(--font-body); letter-spacing: var(--tracking-body); }
+
+/* Series colors (--series-1 to --series-4) come from registry/foundation.css. */
+
+/* Plot with a right-hand value axis, the date axis beneath, and the overview strip under both. */
+.chart { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 44px; grid-template-rows: auto 28px auto; row-gap: 0; min-width: 0; }
+.plot { position: relative; grid-area: 1 / 1; min-width: 0; outline: none; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: crosshair; }
+.svg { display: block; overflow: visible; }
+.grid { stroke: var(--border); stroke-width: 1; shape-rendering: crispEdges; }
+.baseline { stroke: var(--border-strong); stroke-width: 1; shape-rendering: crispEdges; }
+.line { fill: none; stroke: var(--series-1); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.area { fill: color-mix(in oklch, var(--series-1) 10%, transparent); stroke: none; }
+.trend { fill: none; stroke: var(--series-1); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.band { fill: color-mix(in oklch, var(--series-1) 14%, transparent); stroke: none; }
+.crosshair { stroke: var(--foreground); stroke-opacity: .45; stroke-width: 1; shape-rendering: crispEdges; opacity: 0; transition: opacity var(--duration-instant) var(--ease-standard); pointer-events: none; }
+.dot { fill: var(--series-1); stroke: var(--surface); stroke-width: 2; opacity: 0; transition: opacity var(--duration-instant) var(--ease-standard); pointer-events: none; }
+.chart[data-active] .crosshair, .chart[data-active] .dot { opacity: 1; }
+
+/* Events: a hairline through the plot, a dot in the second chart series on top, and a label when there is room for it. */
+.eventRule { stroke: var(--border-strong); stroke-width: 1; shape-rendering: crispEdges; transition: stroke var(--duration-fast) var(--ease-standard); }
+.eventRule[data-active] { stroke: var(--series-2); }
+.event { position: absolute; top: 6px; display: flex; box-sizing: border-box; min-height: 24px; align-items: center; gap: 6px; padding: 0 6px 0 0; margin-left: -12px; border: 0; background: transparent; color: var(--text-secondary); cursor: default; font: inherit; font-size: var(--text-xs); line-height: 1; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.event[data-flip] { flex-direction: row-reverse; padding: 0 0 0 6px; margin-left: 0; translate: calc(-100% + 12px) 0; }
+.eventDot { display: grid; width: 24px; height: 24px; flex: none; place-items: center; }
+.eventDot::before { width: 7px; height: 7px; border-radius: 50%; background: var(--series-2); box-shadow: 0 0 0 2px var(--surface); content: ""; transition: transform var(--duration-fast) var(--ease-standard); }
+.event[data-active] .eventDot::before { transform: scale(1.3); }
+.eventLabel { opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard); }
+.event[data-labelled] .eventLabel { opacity: 1; }
+.event[data-active] .eventLabel { color: var(--foreground); }
+
+.tooltip { position: absolute; top: 0; left: 0; z-index: 2; display: grid; min-width: 132px; max-width: min(220px, 100%); gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-raised); box-shadow: var(--shadow-floating); opacity: 0; pointer-events: none; scale: .96; transition: opacity var(--duration-fast) var(--ease-standard), scale var(--duration-fast) var(--ease-standard); }
+.chart[data-active] .tooltip { opacity: 1; scale: 1; }
+.tipTitle { margin: 0 0 2px; color: var(--text-secondary); font-size: var(--text-xs); line-height: var(--leading-body); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tipValue { margin: 0; color: var(--foreground); font-size: var(--text-base); font-weight: 500; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.tipNote { margin: 0; color: var(--text-muted); font-size: var(--text-xs); line-height: var(--leading-body); font-variant-numeric: tabular-nums; }
+.tipEvent { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; color: var(--foreground); font-size: var(--text-xs); line-height: var(--leading-body); }
+.tipEventDot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--series-2); }
+
+.message { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--text-muted); font-size: var(--text-sm); pointer-events: none; }
+
+.gutter { position: relative; grid-area: 1 / 2; min-width: 0; }
+.tick { position: absolute; left: 10px; color: var(--text-muted); font-size: var(--text-xs); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; translate: 0 -50%; pointer-events: none; }
+.axis { position: relative; grid-area: 2 / 1; min-width: 0; }
+.axisLabel { position: absolute; top: 9px; color: var(--text-muted); font-size: var(--text-xs); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Overview: the whole history, with everything outside the window stepped back. */
+.strip { position: relative; grid-area: 3 / 1; min-width: 0; margin-top: 8px; border-radius: 10px; background: color-mix(in oklch, var(--foreground) 2.5%, transparent); cursor: crosshair; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.overviewLine { fill: none; stroke: color-mix(in oklch, var(--foreground) 28%, var(--surface)); stroke-width: 1; stroke-linejoin: round; }
+.overviewArea { fill: color-mix(in oklch, var(--foreground) 4%, transparent); }
+.overviewLineIn { fill: none; stroke: var(--series-1); stroke-width: 1; stroke-linejoin: round; }
+.overviewAreaIn { fill: color-mix(in oklch, var(--series-1) 12%, transparent); }
+.overviewEvent { fill: var(--series-2); stroke: var(--surface); stroke-width: 1.5; }
+.shade { position: absolute; top: 0; bottom: 0; background: color-mix(in oklch, var(--surface) 45%, transparent); pointer-events: none; }
+.window { position: absolute; top: 0; bottom: 0; border-radius: 8px; box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--series-1) 45%, transparent); cursor: grab; outline: none; transition: box-shadow var(--duration-fast) var(--ease-standard); }
+.window:active { cursor: grabbing; }
+.handle { position: absolute; top: 50%; display: grid; width: 28px; height: 44px; place-items: center; margin-left: -14px; translate: 0 -50%; cursor: ew-resize; outline: none; touch-action: none; }
+.grip { width: 6px; height: 22px; border-radius: 3px; background: var(--surface-raised); box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 26%, transparent), 0 1px 3px oklch(0% 0 0 / .12); transition: transform var(--duration-instant) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard); }
+.handle:active .grip { transform: scaleY(1.12); }
+@media (hover: hover) and (pointer: fine) { .handle:hover .grip { transform: scaleY(1.12); } }
+
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .crosshair, .dot, .tooltip, .eventRule, .eventLabel, .eventDot::before, .grip, .window { transition: none; }
+}

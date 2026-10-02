@@ -37,6 +37,15 @@ describe("feedback provider placement", () => {
     expect(layoutMountsProvider("widget")).toBe(true);
   });
 
+  it("selects Bencho only for the admin segment", () => {
+    expect(readFileSync(join(APP_DIR, "(admin)", "layout.tsx"), "utf8"))
+      .toContain('soundSet="bencho"');
+    for (const segment of ["(marketing)", "widget"]) {
+      expect(readFileSync(join(APP_DIR, segment, "layout.tsx"), "utf8"))
+        .not.toContain('soundSet="bencho"');
+    }
+  });
+
   it("is never in the root layout", () => {
     // The root is what every other surface inherits, so a provider here would
     // silently sound the auth pages and any segment added later.

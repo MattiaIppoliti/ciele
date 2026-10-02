@@ -1,0 +1,93 @@
+.root {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(2rem, 8vw, 3rem) 1.25rem;
+  text-align: center;
+}
+.icon {
+  position: relative;
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  animation: empty-state-icon 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.glyph {
+  display: grid;
+  place-items: center;
+}
+.frame {
+  width: 100%;
+  max-width: 100%;
+}
+.copy {
+  display: flow-root;
+}
+.root h3 {
+  position: relative;
+  margin: 1.25rem 0 0;
+  color: var(--foreground);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.root p {
+  position: relative;
+  max-width: 18rem;
+  margin: 0.5rem auto 0;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+/* Centered copy wraps into even lines, so a new description never leaves a single word hanging. */
+.line {
+  display: block;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.action {
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+/* The icon settles in once when the state first appears; later changes crossfade in place. */
+@keyframes empty-state-icon {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    animation: none;
+  }
+}
+
+.root:global(.empty-state-sm) {
+  padding: 1.25rem 1rem;
+}
+.root:global(.empty-state-sm) .icon {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.root:global(.empty-state-sm) h3 {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+}
+.root:global(.empty-state-sm) p {
+  font-size: 0.75rem;
+}

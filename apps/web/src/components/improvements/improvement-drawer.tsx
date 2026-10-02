@@ -7,7 +7,6 @@ import type {
   ImprovementProposal,
 } from "@agent-hub/core";
 import { Button } from "@agent-hub/ui";
-import { DetailDrawer } from "@/components/ui/detail-drawer";
 import { getImprovementDetailAction } from "@/app/actions";
 import { ImprovementDetail } from "./improvement-detail";
 import { ImprovementDetailSkeleton } from "./improvement-detail-skeleton";
@@ -19,24 +18,17 @@ interface Detail {
   projects: { id: string; name: string }[];
 }
 
-/**
- * Right-side drawer over the Improvements board: the same screen the detail
- * route renders, without leaving the board. The shell, the resize handle and
- * full-screen state come from the console's shared `DetailDrawer`. Expanding
- * keeps this loaded instance mounted, so it does not navigate or fetch again.
- */
+/** Loaded task content stays mounted while its workspace panel expands. */
 export function ImprovementDrawer({
   improvementId,
   members,
   canEdit,
-  onClose,
   onUpdated,
   onDeleted,
 }: {
   improvementId: string;
   members: Array<{ userId: string; email: string }>;
   canEdit: boolean;
-  onClose: () => void;
   onUpdated: (improvement: Improvement) => void;
   onDeleted: (improvementId: string) => void;
 }) {
@@ -44,7 +36,6 @@ export function ImprovementDrawer({
   const [missing, setMissing] = useState(false);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [fullScreen, setFullScreen] = useState(false);
 
   // The board keys this component by improvement id, so a different id mounts a
   // fresh drawer, the effect only has to fetch, never reset.
@@ -65,13 +56,7 @@ export function ImprovementDrawer({
   }, [improvementId, attempt]);
 
   return (
-    <DetailDrawer
-      ariaLabel="Improvement"
-      fullScreen={fullScreen}
-      onFullScreenChange={setFullScreen}
-      resizeLabel="Resize improvement panel"
-      onClose={onClose}
-    >
+    <>
       {detail ? (
         <ImprovementDetail
           improvement={detail.improvement}
@@ -116,6 +101,6 @@ export function ImprovementDrawer({
           )}
         </div>
       )}
-    </DetailDrawer>
+    </>
   );
 }

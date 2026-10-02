@@ -84,11 +84,13 @@ export function channelChatMessages(
     if (message.authorType === "system") {
       // Nobody was speaking: a cap marker or a failed turn is a fact about the
       // thread, not somebody's bubble.
-      return { role: "notice", sentAt: message.createdAt, text: channelMessageText(message.content) };
+      return { id: message.id, threadParentId: message.chainId, role: "notice", sentAt: message.createdAt, text: channelMessageText(message.content) };
     }
     if (message.authorType === "member") {
       return {
         role: "user",
+        id: message.id,
+        threadParentId: message.chainId,
         text: channelMessageText(message.content),
         sentAt: message.createdAt,
         author: {
@@ -105,6 +107,7 @@ export function channelChatMessages(
     });
     return {
       role: "bot",
+      threadParentId: message.chainId,
       sentAt: message.createdAt,
       id: message.id,
       ...EMPTY_TURN_TRACE,

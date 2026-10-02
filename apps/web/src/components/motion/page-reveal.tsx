@@ -65,7 +65,7 @@ export function PageReveal({
       const plan = pickBlocks(wrapper);
       if (plan === "loading") return;
       settle();
-      if (plan === "nested") return;
+      if (plan === "nested" || wrapper.closest("[data-route-sliding-panel]")) return;
       const delays = revealDelays(plan.length, reduce);
       delays.forEach((delay, i) => {
         running.push(

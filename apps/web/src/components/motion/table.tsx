@@ -1,4 +1,6 @@
 "use client";
+
+import { EmptyState } from "@/components/ui/empty-state";
 // Source: https://beui.dev/components/motion/table (MIT)
 //
 // Ported down to the read-only surface this app needs: columns, sorting and
@@ -109,7 +111,7 @@ export function Table<T>({
 
   return (
     <TableCard footer={footer}>
-      <TableRoot>
+      <TableRoot empty={rows.length === 0}>
         <colgroup>
           {columns.map((column) => (
             <col
@@ -175,7 +177,7 @@ export function Table<T>({
                 colSpan={columns.length}
                 className="text-muted-foreground p-10 text-center"
               >
-                {emptyState}
+                {typeof emptyState === "string" ? <EmptyState size="sm" title="Nothing here yet" description={emptyState} /> : emptyState}
               </TableCell>
             </TableRow>
           ) : (

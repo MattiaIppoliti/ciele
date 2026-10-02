@@ -1,5 +1,7 @@
 "use client";
 
+import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
+
 import { useOptimistic, useTransition } from "react";
 import { useRouter, useSelectedLayoutSegment } from "next/navigation";
 import type { OrgKnowledgeStatusCounts, SourceStatus } from "@agent-hub/core";
@@ -13,12 +15,6 @@ import {
   type KnowledgeTabSlug,
 } from "@/lib/knowledge-hub";
 import { RollingNumber } from "@/components/motion/rolling-number";
-
-const HEALTH_DOT: Record<SourceStatus, string> = {
-  ready: "bg-emerald-500",
-  processing: "bg-amber-500",
-  error: "bg-red-500",
-};
 
 export interface LibraryTabSummary {
   total: number;
@@ -112,13 +108,7 @@ export function LibraryHeader({
                   className="text-xs opacity-70"
                 />
                 {health && (
-                  // A role, so the label is announced: on a bare span it is
-                  // ignored by most screen readers.
-                  <span
-                    role="img"
-                    className={`size-1.5 rounded-full ${HEALTH_DOT[health]}`}
-                    aria-label={`status: ${health}`}
-                  />
+                  <SourceStatusBadge status={health} />
                 )}
               </TabsTrigger>
             );

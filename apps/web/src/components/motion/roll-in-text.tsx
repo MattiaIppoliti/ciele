@@ -60,7 +60,14 @@ export function RollRow({ index, children }: { index: number; children: React.Re
   );
 }
 
-export function RollInText({
+export const TableText = createContext(false);
+
+export function RollInText(props: { text: string; className?: string; duration?: number; entrance?: boolean }) {
+  const table = useContext(TableText);
+  return table ? <span className={props.className}>{props.text}</span> : <AnimatedRollInText {...props} />;
+}
+
+function AnimatedRollInText({
   text,
   className,
   duration = TITLE_ROLL_MS,

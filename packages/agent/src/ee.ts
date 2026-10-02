@@ -59,6 +59,20 @@ export type {
   UsageWindowName,
 } from "@agent-hub/core";
 
+import type { PlatformInsightsRange, PlatformInsightsReport } from "@agent-hub/core";
+
+/** Trusted Member identity supplied by the host's authenticated session. */
+export interface PlatformAdminMember {
+  organizationId: string;
+  userId: string;
+}
+
+export interface PlatformAdminAccessor {
+  canAccess(member: PlatformAdminMember): Promise<boolean>;
+  /** Implementations must authorize again before reading across Organizations. */
+  getReport(member: PlatformAdminMember, range: PlatformInsightsRange): Promise<PlatformInsightsReport | null>;
+}
+
 /** Plan-cap enforcement at the model-call boundary. OSS default: allow all. */
 export interface MeteringEnforcement {
   checkUsage(input: UsageCheckInput): Promise<UsageOutcome>;
@@ -169,9 +183,14 @@ export interface EnterpriseCapabilities {
   metering: MeteringEnforcement;
   billing: BillingAccessor;
   activation: ActivationPolicy;
+  platformAdmin: PlatformAdminAccessor;
 }
 
 const OSS_DEFAULTS: EnterpriseCapabilities = {
+  platformAdmin: {
+    async canAccess() { return false; },
+    async getReport() { return null; },
+  },
   metering: {
     // OSS (and all BYOK traffic, in any edition) is never metered or blocked.
     // The enterprise edition overrides this to enforce plan caps on

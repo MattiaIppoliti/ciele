@@ -1,5 +1,20 @@
+import "./change-log.css";
+
 import { marketingMetadata } from "@/lib/marketing/seo";
-import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
+import { MarketingHero } from "@/components/marketing/marketing-hero";
+
+type ReleaseBlock =
+  | { type: "p"; text: string }
+  | { type: "h3"; text: string }
+  | { type: "ul"; items: string[] };
+
+type Release = {
+  id: string;
+  title: string;
+  date: string;
+  dateTime: string;
+  blocks: ReleaseBlock[];
+};
 
 export const metadata = marketingMetadata({
   title: "Change Log | Ciele",
@@ -7,11 +22,12 @@ export const metadata = marketingMetadata({
   path: "/change-log",
 });
 
-const SECTIONS: LegalSection[] = [
+const RELEASES: Release[] = [
   {
     id: "1-0-6",
     title: "1.0.6",
-    navLabel: "September 23, 2026",
+    date: "September 23, 2026",
+    dateTime: "2026-09-23",
     blocks: [
       { type: "p", text: "The latest release expands Knowledge, AI Teammates, and the tools teams use to run assistants." },
       { type: "h3", text: "Knowledge" },
@@ -48,7 +64,8 @@ const SECTIONS: LegalSection[] = [
   {
     id: "1-0-2",
     title: "1.0.2",
-    navLabel: "September 2, 2026",
+    date: "September 2, 2026",
+    dateTime: "2026-09-02",
     blocks: [
       {
         type: "ul",
@@ -62,7 +79,8 @@ const SECTIONS: LegalSection[] = [
   {
     id: "1-0-1",
     title: "1.0.1",
-    navLabel: "September 1, 2026",
+    date: "September 1, 2026",
+    dateTime: "2026-09-01",
     blocks: [
       {
         type: "ul",
@@ -77,7 +95,8 @@ const SECTIONS: LegalSection[] = [
   {
     id: "1-0-0",
     title: "1.0.0",
-    navLabel: "August 29, 2026",
+    date: "August 29, 2026",
+    dateTime: "2026-08-29",
     blocks: [
       {
         type: "p",
@@ -91,15 +110,88 @@ const SECTIONS: LegalSection[] = [
   },
 ];
 
+function ReleaseContent({ block }: { block: ReleaseBlock }) {
+  if (block.type === "h3") {
+    return (
+      <h3 className="text-foreground pt-2 text-sm font-semibold">{block.text}</h3>
+    );
+  }
+  if (block.type === "ul") {
+    return (
+      <ul className="text-muted-foreground list-disc space-y-2 pl-4 text-sm leading-relaxed marker:text-primary/60">
+        {block.items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <p className="text-muted-foreground text-sm leading-relaxed">{block.text}</p>
+  );
+}
+
 export default function ChangeLogPage() {
   return (
-    <LegalDoc
-      eyebrow="Product updates"
-      title="Change Log"
-      lastUpdated="September 23, 2026"
-      intro="A clear record of what’s new in Ciele. Follow product updates across Knowledge, Assistants, Flows, and the tools around them."
-      sections={SECTIONS}
-      showCallout={false}
-    />
+    <main className="relative px-4 pb-20 pt-28 sm:px-8 sm:pt-36 lg:px-12">
+      <div className="mx-auto w-full max-w-3xl">
+        <MarketingHero eyebrow="Product updates" title="Change Log">
+          <p className="text-muted-foreground mt-6 text-base leading-relaxed">
+            A clear record of what’s new in Ciele. Follow product updates across
+            Knowledge, Assistants, Flows, and the tools around them.
+          </p>
+        </MarketingHero>
+
+        <ol aria-label="Release history" className="changelog">
+          {RELEASES.map((release, index) => (
+            <li key={release.id} id={release.id} className="changelog-item">
+              <span aria-hidden="true" className="changelog-line" />
+              <span
+                aria-hidden="true"
+                className={`changelog-indicator ${index === 0 ? "changelog-latest" : "changelog-past"}`}
+              >
+                <span className="changelog-check" />
+              </span>
+
+              <div className="changelog-heading">
+                <h2 className="text-foreground text-sm font-semibold">
+                  Ciele {release.title}
+                </h2>
+                <span className="changelog-badge">
+                  {index === 0 ? "Latest release" : "Released"}
+                </span>
+                <time
+                  dateTime={release.dateTime}
+                  className="text-muted-foreground text-xs sm:ml-auto"
+                >
+                  {release.date}
+                </time>
+              </div>
+
+              <details open className="changelog-card shadow-light">
+                <summary className="changelog-summary press-text">
+                  <span className="flex items-center gap-2">
+                    <span aria-hidden="true" className="changelog-avatar text-2xs">
+                      C
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      Ciele team
+                    </span>
+                    <span className="sr-only">
+                      — Release notes for Ciele {release.title}
+                    </span>
+                  </span>
+                  <span aria-hidden="true" className="changelog-chevron" />
+                </summary>
+                <div className="changelog-content">
+                  {release.blocks.map((block, blockIndex) => (
+                    <ReleaseContent key={blockIndex} block={block} />
+                  ))}
+                </div>
+              </details>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </main>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { ChevronLeft, LoaderCircle } from "lucide-react";
@@ -277,20 +279,10 @@ export function PreviewEscalation({
                         <span className="min-w-0 text-lg font-semibold break-words">
                           {channel.name}
                         </span>
-                        <span className="bg-card ring-border inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">
-                          <span
-                            className={`size-1.5 rounded-full ${
-                              availability.available
-                                ? "bg-emerald-500"
-                                : "bg-muted-foreground/60"
-                            }`}
-                          />
-                          <RollInText
-                            text={
-                              availability.available ? "Available" : "Unavailable"
-                            }
-                          />
-                        </span>
+                        <StatusPill
+                          status={availability.available ? "online" : "offline"}
+                          primaryText={<RollInText text={availability.available ? "Available" : "Unavailable"} />}
+                        />
                       </div>
                       {!availability.available && availability.nextWindow && (
                         <p className="text-muted-foreground mt-1.5 text-sm">

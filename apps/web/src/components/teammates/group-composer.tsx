@@ -38,6 +38,7 @@ import {
  */
 export function GroupComposer({
   targets,
+  autoFocus = false,
   models,
   teammateId,
   onSubmit,
@@ -45,6 +46,7 @@ export function GroupComposer({
   placeholder,
   "aria-label": ariaLabel,
 }: {
+  autoFocus?: boolean;
   targets: MentionTarget[];
   models: ChatModelOption[];
   teammateId?: string;
@@ -163,7 +165,7 @@ export function GroupComposer({
           onPick={pick}
           renderItem={(target) => (
             <>
-              <GeneratedAvatar seed={target.avatarSeed} size="size-7" />
+              <GeneratedAvatar seed={target.avatarSeed} size="size-7" animated={target.kind === "teammate"} />
               <TriggerRow
                 name={target.name}
                 hint={
@@ -178,6 +180,7 @@ export function GroupComposer({
       )}
       <ComposerPulse loading={pending}>
         <PromptInput
+          autoFocus={autoFocus}
           // A resolved name is tinted where it stands, and wears the face of
           // whoever it names.
           //
@@ -198,6 +201,7 @@ export function GroupComposer({
                 <span className="invisible">@</span>
                 <GeneratedAvatar
                   seed={segment.target.avatarSeed}
+                  animated={segment.target.kind === "teammate"}
                   size="size-3.5"
                   // 14px over an `@` that is about 8px wide, pulled left so the
                   // overhang lands on the space before the name rather than on

@@ -52,6 +52,7 @@ export function MentionText({
           >
             <GeneratedAvatar
               seed={segment.target.avatarSeed}
+                  animated={segment.target.kind === "teammate"}
               size="size-3.5"
               className="shrink-0"
             />

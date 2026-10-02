@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { MessageSquareText, SquarePen, Trash2 } from "lucide-react";
 import { ScanTextIcon } from "@/components/ui/icons/scan-text";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
@@ -67,9 +69,7 @@ export function WidgetHistory({
       </div>
       <div className="no-scrollbar flex-1 overflow-y-auto px-2 py-2">
         {groups.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-8 text-center text-sm">
-            No previous conversations yet
-          </p>
+          <EmptyState size="sm" title="No previous conversations" description="Start a chat to see it here." />
         ) : (
           <AISidebar
             // History has nowhere to persist a rename or a move, so the rows

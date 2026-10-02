@@ -3,6 +3,7 @@
 import React from "react";
 import { usePathname } from "next/navigation";
 import { HomeCursorMount } from "@/components/home/home-cursor-mount";
+import { ReleaseAnnouncement } from "@/components/home/release-announcement";
 import { HomeHeader } from "@/components/home/home-header";
 import { MarketingScene } from "@/components/home/marketing-scene";
 
@@ -12,6 +13,7 @@ import { MarketingScene } from "@/components/home/marketing-scene";
 export function HomeShell({ children }: { children: React.ReactNode }) {
   const [scrolled, setScrolled] = React.useState(false);
   const pathname = usePathname();
+  const [announcementHeight, setAnnouncementHeight] = React.useState(44);
 
   return (
     <MarketingScene
@@ -19,7 +21,8 @@ export function HomeShell({ children }: { children: React.ReactNode }) {
       onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 50)}
       showClouds={pathname !== "/home"}
     >
-      <HomeHeader scrolled={scrolled} />
+      {pathname === "/home" && <ReleaseAnnouncement onHeightChange={setAnnouncementHeight} />}
+      <HomeHeader scrolled={scrolled} topOffset={pathname === "/home" ? announcementHeight : 0} />
       {children}
       <HomeCursorMount />
     </MarketingScene>

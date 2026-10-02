@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill, statusFromTone } from "@/components/spaceui/status-badge";
 
 import { useTransition } from "react";
 import Link from "next/link";
@@ -7,7 +8,7 @@ import { Copy, RotateCcw } from "lucide-react";
 import { EyeOff, Maximize2 } from "lucide-react";
 import type { SourceDocumentListItem } from "@agent-hub/core";
 import { sourceDocumentStatus, sourceDocumentStatusLabel } from "@agent-hub/core";
-import { Badge, Button } from "@agent-hub/ui";
+import { Button } from "@agent-hub/ui";
 import {
   Table,
   TableBody,
@@ -91,7 +92,8 @@ export function SourceDocumentsTable({
     ...(canEdit
       ? [{ key: "select", width: 44, fixed: true } as TableColumnLayout]
       : []),
-    { key: "document", width: 520, min: 200 },
+    { key: "document", width: 520 },
+    { key: "site", width: 240 },
     { key: "memories", width: 120 },
     { key: "status", width: 140 },
     { key: "updated", width: 180 },
@@ -200,6 +202,7 @@ export function SourceDocumentsTable({
                 onClear: () => go({ sort: "" }),
               }}
             />
+            <TableColumnHeader label="Site" resize={columns.handleFor("site")} />
             <TableColumnHeader
               label="Memories"
               resize={columns.handleFor("memories")}
@@ -237,7 +240,7 @@ export function SourceDocumentsTable({
           {documents.length === 0 && (
             <TableRow>
               <TableCell
-                colSpan={canEdit ? 5 : 4}
+                colSpan={layout.length}
                 className="hover:bg-transparent"
               >
                 {/* The crawl activity card counts pages while this counts
@@ -313,6 +316,9 @@ export function SourceDocumentsTable({
                     >
                       <RollInText text={document.title} />
                     </Link>
+                  </TableOpenCell>
+                </TableCell>
+                <TableCell>
                     {document.resourceUrl ? (
                       <a
                         href={document.resourceUrl}
@@ -327,15 +333,16 @@ export function SourceDocumentsTable({
                         <RollInText text={document.path} />
                       </span>
                     )}
-                  </TableOpenCell>
                 </TableCell>
                 <TableCell className="text-muted-foreground tabular-nums">
                   <RollingNumber value={memoryCounts[document.path] ?? 0} />
                 </TableCell>
                 <TableCell>
-                  <Badge tone={sourceDocumentTone(status)}>
-                    <RollInText text={sourceDocumentStatusLabel(status)} />
-                  </Badge>
+                  <StatusPill
+                    status={statusFromTone(sourceDocumentTone(status))}
+                    animated={status === "pending"}
+                    primaryText={<RollInText text={sourceDocumentStatusLabel(status)} />}
+                  />
                 </TableCell>
                 <TableCell
                   className="text-muted-foreground"

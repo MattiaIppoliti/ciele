@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useMemo, useState, useTransition } from "react";
@@ -180,9 +181,9 @@ export function MembersClient({
       width: "14%",
       cell: (row) =>
         row.status === "active" ? (
-          <Badge variant="secondary"><RollInText text="Active" /></Badge>
+          <StatusPill status="online" primaryText={<RollInText text="Active" />} />
         ) : (
-          <Badge variant="outline"><RollInText text="Pending" /></Badge>
+          <StatusPill status="away" primaryText={<RollInText text="Pending" />} />
         ),
     },
     {

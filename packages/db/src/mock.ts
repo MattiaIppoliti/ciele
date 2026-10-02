@@ -15,6 +15,7 @@ import {
   normalizeImprovementPageInput,
 } from "./improvement-pagination";
 import type {
+  MessageReaction,
   AiUsageInput,
   Alert,
   AnswerVerdictInput,
@@ -215,6 +216,7 @@ interface MockStore {
   teammateChannelParticipants: Map<string, TeammateChannelParticipant>;
   /** Channel transcripts (#778); ordered by a per-channel monotonic createdAt. */
   channelMessages: Map<string, ChannelMessage>;
+  messageReactions: Map<string, MessageReaction>;
   projects: Map<string, Project>;
   memoryDocuments: Map<string, MemoryDocument>;
   memoryDocumentEntries: Map<string, MemoryDocumentEntry>;
@@ -567,6 +569,7 @@ function emptyStore(): MockStore {
     teammateChannels: new Map(),
     teammateChannelParticipants: new Map(),
     channelMessages: new Map(),
+    messageReactions: new Map(),
     projects: new Map(),
     memoryDocuments: new Map(),
     memoryDocumentEntries: new Map(),
@@ -5829,6 +5832,22 @@ export const mockDb: Db = {
       .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
   },
 
+  async getChannelMessage(id) {
+    return getStore().channelMessages.get(id) ?? null;
+  },
+  async listMessageReactions(organizationId, messageId) {
+    return [...getStore().messageReactions.values()].filter((r) => r.organizationId === organizationId && r.messageId === messageId);
+  },
+  async setMessageReaction(reaction, selected) {
+    const key = JSON.stringify([reaction.organizationId, reaction.messageId, reaction.actorId, reaction.emoji]);
+    if (selected) {
+      for (const [previousKey, previous] of getStore().messageReactions) {
+        if (previous.organizationId === reaction.organizationId && previous.messageId === reaction.messageId && previous.actorId === reaction.actorId) getStore().messageReactions.delete(previousKey);
+      }
+      getStore().messageReactions.set(key, reaction);
+    }
+    else getStore().messageReactions.delete(key);
+  },
   async setMessageFeedback(messageId, feedback, reaction: FeedbackReactionId | null = null) {
     const store = getStore();
     const message = store.messages.get(messageId);

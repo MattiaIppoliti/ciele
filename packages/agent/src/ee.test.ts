@@ -28,6 +28,9 @@ describe("enterprise capability registry", () => {
     ).toEqual({ outcome: "allow" });
     expect(await caps.metering.getUsageLimits("o1")).toBeNull();
     expect(await caps.billing.getSubscription("o1")).toBeNull();
+    const member = { organizationId: "o1", userId: "u1" };
+    expect(await caps.platformAdmin.canAccess(member)).toBe(false);
+    expect(await caps.platformAdmin.getReport(member, { from: "2026-10-01", to: "2026-10-02" })).toBeNull();
   });
 
   it("registering an override replaces that capability at the registry boundary", async () => {

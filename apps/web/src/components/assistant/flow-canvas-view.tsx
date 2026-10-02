@@ -1,11 +1,11 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -37,8 +37,8 @@ import {
   ContextMenuTrigger,
 } from "@/components/motion/context-menu";
 import "@xyflow/react/dist/style.css";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ExternalLink, LayoutGrid, MousePointer2, MousePointerClick, Plus, RotateCcw, Search, SlidersHorizontal, Trash2, Unplug, Workflow, X, type LucideIcon } from "lucide-react";
-import { AlertCircle, Brush, Ellipsis, Hand, ListFilter, Maximize, Maximize2, Minimize2, Minus, Zap } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ExternalLink, LayoutGrid, MousePointerClick, Plus, RotateCcw, Search, SlidersHorizontal, Trash2, Unplug, Workflow, X, type LucideIcon } from "lucide-react";
+import { Brush, Ellipsis, ListFilter, Maximize, Maximize2, Minimize2 } from "lucide-react";
 import { Badge, Button, Hint, Input } from "@agent-hub/ui";
 import {
   DropdownMenu,
@@ -51,8 +51,8 @@ import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { useDeferredStoredValue } from "@/components/assistant/use-deferred-stored-value";
 import { FLOW_ACTIONS } from "@/lib/flow-actions";
 import { PromptInput } from "@/components/agents/prompt-input";
-import { motion, useReducedMotion } from "motion/react";
-import { EASE_GROW, EASE_OUT, GROW_DURATION_MS, SPRING_LAYOUT } from "@/lib/ease";
+import { CanvasToolbar } from "@/components/assistant/canvas-toolbar";
+import { CommandBar } from "@/components/assistant/command-bar";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
 import { isTypingTarget } from "@/lib/typing-target";
 import { newFlowCondition } from "@/lib/flow-conditions";
@@ -183,14 +183,10 @@ function CanvasNodeCard({ data }: NodeProps<CanvasNode>) {
         </span>
         <span className="text-muted-foreground block truncate text-xs">{data.subtitle}</span>
         {data.status === "needs_setup" && (
-          <span className="text-destructive mt-1.5 inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/5 px-1.5 py-0.5 text-2xs font-medium">
-            <AlertCircle className="size-3" /> Needs setup
-          </span>
+          <StatusPill status="error" className="mt-1.5 text-2xs" primaryText="Needs setup" />
         )}
         {data.status === "preview_only" && (
-          <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-2xs font-medium text-amber-600">
-            <AlertCircle className="size-3" /> Preview only
-          </span>
+          <StatusPill status="warning" className="mt-1.5 text-2xs" primaryText="Preview only" />
         )}
       </span>
       <Handle
@@ -765,6 +761,7 @@ function FlowCanvasInner({
       <ContextMenuTrigger>
       <div
         ref={canvasRef}
+        data-agent-launcher={!readOnly && showChain && Boolean(onAskAgent) && !agentOpen}
         className="flow-canvas bg-background relative min-w-0 flex-1"
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -825,100 +822,26 @@ function FlowCanvasInner({
           />
         </AddStepContext.Provider>
 
-        {/* The bottom bar: the pointer tools and Add on the left, and, once
-            the Flow has something in it, the line to the Flows Agent on the
-            right. Adding a step is a canvas gesture, so it belongs here beside
-            the other canvas gestures rather than in a rail the Preview wants. */}
-        {/* `z-20`: the empty-state card is painted after this row, and the
-            step picker grows up through the space that card occupies. */}
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-end justify-center gap-2">
-          <CanvasToolbar
-            tool={tool}
-            onToolChange={setTool}
-            entries={entries}
-            onPick={addStep}
-            readOnly={readOnly}
-            pickerOpen={pickerOpen}
-            onPickerOpenChange={setPickerOpen}
+        {/* Bencho's toolbar replaces both tool pills at the old view controls' position. */}
+        <div className="flow-canvas-tools absolute bottom-3 left-3 z-20">
+          <CanvasToolbar tool={tool} onToolChange={setTool} readOnly={readOnly}
+            pickerOpen={pickerOpen} onPickerOpenChange={setPickerOpen}
+            picker={<FlowStepPicker entries={entries} autoFocus={pickerOpen}
+              onPick={(choice) => { setPickerOpen(false); addStep(choice); }} />}
+            onFit={() => void fitView({ padding: 0.3, maxZoom: 1, duration: 200 })}
+            onZoomIn={() => void zoomIn()} onZoomOut={() => void zoomOut()}
+            controls={[
+              { label: "Tidy up (Shift+T)", icon: Brush, run: tidyUp },
+              { label: direction === "vertical" ? "Switch to horizontal layout" : "Switch to vertical layout",
+                icon: Workflow, run: () => changeDirection(direction === "vertical" ? "horizontal" : "vertical") },
+            ]}
           />
-
-          {/* Same prompt the empty canvas offers, kept within reach once the
-              canvas is no longer empty: Enter hands it to the Flows Agent,
-              which opens in the right-hand panel. */}
-          {!readOnly && showChain && onAskAgent && !agentOpen && (
+        </div>
+        {!readOnly && showChain && onAskAgent && !agentOpen && (
+          <div className="flow-canvas-agent pointer-events-none absolute inset-x-3 bottom-3 z-20 flex justify-center">
             <AgentPromptBar onAsk={onAskAgent} />
-          )}
-        </div>
-
-        {/* Zoom and fit, in the same pill the tools wear. React Flow's own
-            `Controls` is a square stack with its own colours, and it was the
-            one control on this screen that did not look like the product. */}
-        <div className="bg-card absolute bottom-3 left-3 flex flex-col items-center rounded-full border p-1 shadow-light">
-          {(
-            [
-              { label: "Zoom in", icon: Plus, run: () => void zoomIn() },
-              { label: "Zoom out", icon: Minus, run: () => void zoomOut() },
-              {
-                label: "Fit to view",
-                icon: Maximize,
-                run: () => void fitView({ padding: 0.3, maxZoom: 1, duration: 200 }),
-              },
-              {
-                label: "Tidy up (Shift+T)",
-                icon: Brush,
-                run: tidyUp,
-              },
-              {
-                label:
-                  direction === "vertical"
-                    ? "Switch to horizontal layout"
-                    : "Switch to vertical layout",
-                icon: Workflow,
-                run: () =>
-                  changeDirection(direction === "vertical" ? "horizontal" : "vertical"),
-              },
-            ] as const
-          ).map((control) => (
-            <Hint key={control.label} label={control.label} side="right">
-              <button
-                type="button"
-                aria-label={control.label}
-                onClick={control.run}
-                className={ROUND_ICON_BUTTON}
-              >
-                <control.icon className="size-4" />
-              </button>
-            </Hint>
-          ))}
-
-          {/* The panel's own two controls, repeated where the canvas keeps its
-              other controls: with the panel full screen its header is off in
-              the corner, and this pill is where a Member already looks. Only
-              while a step is selected, since both are about that step. */}
-          {panelShowing && (
-            <>
-              <span aria-hidden className="bg-border my-1 h-px w-5" />
-              <Hint
-                label={fullscreen ? "Exit full screen" : "Open full screen"}
-                side="right"
-              >
-                <button
-                  type="button"
-                  aria-label={fullscreen ? "Exit full screen" : "Open full screen"}
-                  onClick={() => setFullscreen(!fullscreen)}
-                  className={ROUND_ICON_BUTTON}
-                >
-                  {fullscreen ? (
-                    <Minimize2 className="size-4" />
-                  ) : (
-                    <Maximize2 className="size-4" />
-                  )}
-                </button>
-              </Hint>
-              <NodeMenu entries={nodeMenu} side="right" />
-            </>
-          )}
-        </div>
+          </div>
+        )}
 
         {!readOnly &&
           !showChain &&
@@ -1070,7 +993,7 @@ function NodeMenu({
   side,
 }: {
   entries: NodeMenuEntry[];
-  side: "bottom" | "right";
+  side: "bottom" | "right" | "top";
 }) {
   if (entries.length === 0) return null;
   return (
@@ -1224,330 +1147,21 @@ function CanvasContextMenu({
   );
 }
 
-/** Geometry of the expanding shell, in px, so the open size is arithmetic. */
-const BAR_HEIGHT = 40;
-/** Gap between the panel and the bar docked under it. */
-const PANEL_GAP = 4;
-/** The shell's padding (`p-1`) counted on both sides. */
-const SHELL_PADDING = 8;
-/** The step picker's own width; the shell takes it when it opens. */
-const PANEL_WIDTH = 320;
-
 /**
- * The shell grows on the product's growth curve: the same overshoot the
- * Preview takes into full screen, so a surface opening reads the same way
- * wherever it happens. A spring here settled slowly and fought the label
- * motion running beside it, which is what made the bar feel heavy.
- */
-const SHELL_GROW = { duration: GROW_DURATION_MS / 1000, ease: EASE_GROW } as const;
-/** The panel's own fade rides in a little ahead of the box it fills. */
-const PANEL_GROW = { duration: 0.26, ease: EASE_OUT } as const;
-/** The labels unfold on the same curve, quicker: they are small and there are three. */
-const LABEL_GROW = { duration: 0.26, ease: EASE_GROW } as const;
-
-/** An element's rendered size, tracked live. */
-function useMeasuredSize<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  const measure = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    const next = { width: el.offsetWidth, height: el.offsetHeight };
-    setSize((current) =>
-      current.width === next.width && current.height === next.height ? current : next
-    );
-  }, []);
-  useLayoutEffect(measure, [measure]);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [measure]);
-  return [ref, size] as const;
-}
-
-/**
- * The canvas's bottom-left bar: the pointer tools, and Add, which is the one
- * control that expands.
- *
- * Add does not open a menu floating over the canvas; the bar itself grows
- * upwards into it, docking the picker above the same row of controls. A menu
- * that appears somewhere else is a second surface to find, where this one is
- * the control the Member already has their pointer on, made bigger. Only Add
- * expands: Select and Pan act on the click and have nothing to show.
- *
- * At rest the bar is icons only, and the labels unfold on a resting pointer,
- * so it names its controls without spending the canvas's width on three words
- * read once. That is gated on `useHoverCapable`: a finger never hovers, and a
- * bar that expanded on tap would swallow the first tap on every control. The
- * pill behind the highlighted control is one `layoutId`, so it slides from
- * control to control rather than cross-fading.
- *
- * The open size is arithmetic over one measurement (the picker's height) rather
- * than a second, hidden copy of the picker: the panel stays mounted and
- * clipped, `inert` while closed, so it is measured before it is ever shown and
- * the shell knows its target on the first frame.
- */
-function CanvasToolbar({
-  tool,
-  onToolChange,
-  entries,
-  onPick,
-  readOnly,
-  pickerOpen,
-  onPickerOpenChange,
-}: {
-  tool: CanvasTool;
-  onToolChange: (tool: CanvasTool) => void;
-  entries: FlowStepEntry[];
-  onPick: (choice: FlowStepChoice) => void;
-  readOnly: boolean;
-  /** Owned by the canvas: the context menu's "Add a step" opens this too. */
-  pickerOpen: boolean;
-  onPickerOpenChange: (open: boolean) => void;
-}) {
-  const hoverCapable = useHoverCapable();
-  const reduce = useReducedMotion() ?? false;
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const [highlighted, setHighlighted] = useState<string | null>(null);
-  const shellRef = useRef<HTMLDivElement | null>(null);
-  const [panelRef, panelSize] = useMeasuredSize<HTMLDivElement>();
-  const [barRef, barSize] = useMeasuredSize<HTMLDivElement>();
-
-  const open = pickerOpen && !readOnly;
-  // An open panel holds the labels out: they would otherwise fold away the
-  // moment the pointer left the row for the list above it.
-  const expanded = hoverCapable && (hovered || focused || open);
-
-  // Outside press and Escape close it, the way an open menu behaves.
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) {
-      if (!shellRef.current?.contains(event.target as globalThis.Node | null)) {
-        onPickerOpenChange(false);
-      }
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onPickerOpenChange(false);
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, onPickerOpenChange]);
-
-  const tools = [
-    { id: "select", label: "Select", icon: MousePointer2 },
-    { id: "hand", label: "Pan", icon: Hand },
-  ] as const;
-  const active = highlighted ?? tool;
-
-  const closedWidth = barSize.width;
-  const target = open
-    ? {
-        width: Math.max(closedWidth, PANEL_WIDTH + SHELL_PADDING),
-        height: panelSize.height + PANEL_GAP + BAR_HEIGHT,
-      }
-    : { width: closedWidth, height: BAR_HEIGHT };
-
-  return (
-    <motion.div
-      ref={shellRef}
-      initial={false}
-      animate={barSize.width > 0 ? target : undefined}
-      transition={reduce ? { duration: 0 } : SHELL_GROW}
-      style={{ transformOrigin: "bottom center" }}
-      onPointerEnter={(event) => {
-        if (event.pointerType === "mouse") setHovered(true);
-      }}
-      onPointerLeave={(event) => {
-        if (event.pointerType === "mouse") setHovered(false);
-        setHighlighted(null);
-      }}
-      onFocus={() => setFocused(true)}
-      onBlur={(event) => {
-        // `globalThis.Node`: React Flow's `Node` is imported here and shadows
-        // the DOM one.
-        if (!event.currentTarget.contains(event.relatedTarget as globalThis.Node | null))
-          setFocused(false);
-      }}
-      className="bg-card pointer-events-auto flex flex-col overflow-hidden rounded-[20px] border shadow-light"
-    >
-      {/* The panel region takes whatever height the shell has beyond the bar,
-          and the panel is docked to its bottom edge, so the list grows up out
-          of the controls instead of appearing beside them. Always mounted, so
-          its height is known before it is ever shown, and `inert` while
-          clipped so nothing in it takes focus or a click. */}
-      <div className="relative min-h-0 flex-1">
-        <motion.div
-          aria-hidden={!open}
-          inert={!open}
-          initial={false}
-          animate={
-            open
-              ? { opacity: 1, y: 0, filter: "blur(0px)" }
-              : { opacity: 0, y: -8, filter: reduce ? "blur(0px)" : "blur(4px)" }
-          }
-          transition={reduce ? { duration: 0.12, ease: EASE_OUT } : PANEL_GROW}
-          style={{ transformOrigin: "top center" }}
-          className="absolute inset-x-1 bottom-0"
-        >
-          <div ref={panelRef} style={{ width: PANEL_WIDTH }}>
-            <FlowStepPicker
-              entries={entries}
-              onPick={(choice) => {
-                onPickerOpenChange(false);
-                onPick(choice);
-              }}
-              autoFocus={open}
-            />
-          </div>
-        </motion.div>
-      </div>
-
-      <div className="flex shrink-0 justify-center" style={{ height: BAR_HEIGHT }}>
-        <div
-          ref={barRef}
-          role="toolbar"
-          aria-label="Canvas tool"
-          className="flex w-max items-center gap-0.5 p-1"
-        >
-          {tools.map((option) => (
-            <Hint key={option.id} label={option.label} side="top">
-              <button
-                type="button"
-                aria-label={option.label}
-                aria-pressed={tool === option.id}
-                onClick={() => onToolChange(option.id)}
-                onPointerEnter={() => setHighlighted(option.id)}
-                className={cn(
-                  "press-control relative isolate flex h-8 items-center justify-center rounded-full px-2 text-sm font-medium transition-colors",
-                  tool === option.id
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {active === option.id && (
-                  <motion.span
-                    aria-hidden
-                    layoutId="canvas-tool-highlight"
-                    transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
-                    className="bg-primary/10 absolute inset-0 -z-10 rounded-full"
-                  />
-                )}
-                <option.icon className="size-4 shrink-0" />
-                <ToolbarLabel expanded={expanded} reduce={reduce}>
-                  {option.label}
-                </ToolbarLabel>
-              </button>
-            </Hint>
-          ))}
-          {!readOnly && (
-            <>
-              <span aria-hidden className="bg-border mx-1 h-5 w-px shrink-0" />
-              {/* No tooltip: this control carries its name inline once the bar
-                  is hovered, and a bubble over an already-labelled pill was a
-                  second, emptier label floating above it. */}
-              <button
-                type="button"
-                aria-label="Add a step"
-                aria-expanded={open}
-                onClick={() => onPickerOpenChange(!open)}
-                onPointerEnter={() => setHighlighted("add")}
-                className="press-control bg-primary text-primary-foreground flex h-8 items-center justify-center rounded-full px-2 text-sm font-medium transition-[filter] hover:brightness-110"
-              >
-                <motion.span
-                  aria-hidden
-                  animate={{ rotate: open ? 45 : 0 }}
-                  transition={reduce ? { duration: 0 } : LABEL_GROW}
-                  className="flex shrink-0"
-                >
-                  <Plus className="size-4" />
-                </motion.span>
-                <ToolbarLabel expanded={expanded} reduce={reduce}>
-                  Add a step
-                </ToolbarLabel>
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/** A control's name, folded away until the bar is hovered. */
-function ToolbarLabel({
-  expanded,
-  reduce,
-  children,
-}: {
-  expanded: boolean;
-  reduce: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <motion.span
-      aria-hidden={!expanded}
-      animate={{
-        width: expanded ? "auto" : 0,
-        opacity: expanded ? 1 : 0,
-        marginLeft: expanded ? 6 : 0,
-        ...(reduce ? {} : { filter: expanded ? "blur(0px)" : "blur(3px)" }),
-      }}
-      initial={false}
-      transition={reduce ? { duration: 0 } : LABEL_GROW}
-      className="inline-block overflow-hidden whitespace-nowrap"
-    >
-      {children}
-    </motion.span>
-  );
-}
-
-/**
- * The canvas's line to the Flows Agent: one row, the same height as the tool
- * pill beside it, because the two read as one bar. Submitting opens the agent
+ * The canvas's line to the Flows Agent: Bencho's liquid command bar centered
+ * below the Flow. Submitting opens the agent
  * in the right-hand panel with this as its first message, so this is a launcher
  * rather than a second transcript, and it takes no attachments and shows no
  * history.
  */
 function AgentPromptBar({ onAsk }: { onAsk: (message: string) => void }) {
-  const [value, setValue] = useState("");
-  const trimmed = value.trim();
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!trimmed) return;
-        onAsk(trimmed);
-        setValue("");
-      }}
-      className="bg-card focus-within:border-ring focus-within:ring-ring/50 pointer-events-auto flex h-10 w-[min(26rem,42%)] items-center gap-2 rounded-full border py-1 pr-1 pl-3 shadow-light transition-shadow focus-within:ring-3"
-    >
-      <Zap className="text-muted-foreground size-4" />
-      <input
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        placeholder="Ask the Flows Agent to change this flow…"
-        aria-label="Ask the Flows Agent"
-        className="placeholder:text-muted-foreground/70 min-w-0 flex-1 bg-transparent text-sm outline-none"
-      />
-      <Hint label="Send to the Flows Agent" side="top">
-        <button
-          type="submit"
-          aria-label="Send to the Flows Agent"
-          disabled={!trimmed}
-          className="press-control bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full transition-opacity disabled:opacity-40"
-        >
-          <ArrowUp className="size-4" />
-        </button>
-      </Hint>
-    </form>
+    <CommandBar
+      onSubmit={onAsk}
+      width="min(26rem,calc(100% - 8rem))"
+      placeholder="Ask the Flows Agent to change this flow…"
+      label="Ask the Flows Agent"
+    />
   );
 }
 
@@ -1836,14 +1450,10 @@ function NodePanel({
         <Icon className="text-muted-foreground size-4 shrink-0" />
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{node.title}</h2>
         {node.status === "needs_setup" && (
-          <Badge variant="outline" className="text-destructive border-destructive/30 rounded-full">
-            Needs setup
-          </Badge>
+          <StatusPill status="error" primaryText="Needs setup" />
         )}
         {node.status === "preview_only" && (
-          <Badge variant="outline" className="rounded-full border-amber-500/40 text-amber-600">
-            Preview only
-          </Badge>
+          <StatusPill status="warning" primaryText="Preview only" />
         )}
         {/* Removing lives in the `⋯` now, beside the step's other options,
             rather than as a bare destructive button one pixel from Close. */}

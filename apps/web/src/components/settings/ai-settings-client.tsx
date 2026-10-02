@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import {
   type ChangeEvent,
@@ -695,9 +696,7 @@ export function AiSettingsClient({
                     </span>
                   )}
                 </span>
-                <Badge variant="outline" className="rounded-full">
-                  Retired
-                </Badge>
+                <StatusPill status="offline" primaryText="Retired" />
                 {canManage && (
                   <Hint label="Remove retired subscription">
                     <Button

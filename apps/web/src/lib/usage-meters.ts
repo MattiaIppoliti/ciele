@@ -353,9 +353,9 @@ export function budgetMeterView(input: {
 
 /** Tailwind stroke classes per tone, so the gauge and the text agree. */
 export const TONE_STROKE: Record<MeterTone, string> = {
-  ok: "stroke-emerald-500",
-  warn: "stroke-amber-500",
-  over: "stroke-red-500",
+  ok: "stroke-tone-green-ink",
+  warn: "stroke-chart-2",
+  over: "stroke-tone-red-ink",
 };
 
 /** Tailwind text classes per tone. */

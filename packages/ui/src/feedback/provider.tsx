@@ -44,8 +44,11 @@ export function FeedbackProvider({
   children,
   muted: controlledMuted,
   onMutedChange,
+  soundSet,
 }: {
   children: ReactNode;
+  /** Admin sound identity; omitted on marketing and published widgets. */
+  soundSet?: "bencho";
   /**
    * Controlled mute, for a host that keeps the preference somewhere other than
    * this origin's localStorage (the desktop app's main-process settings). When
@@ -67,7 +70,7 @@ export function FeedbackProvider({
   const runtimeRef = useRef<FeedbackRuntime | null>(null);
 
   useEffect(() => {
-    const runtime = attachFeedback(document, { isMuted: () => mutedRef.current });
+    const runtime = attachFeedback(document, { isMuted: () => mutedRef.current, soundSet });
     runtimeRef.current = runtime;
     setActiveFeedbackRuntime(runtime);
     return () => {
@@ -75,7 +78,7 @@ export function FeedbackProvider({
       runtime.destroy();
       runtimeRef.current = null;
     };
-  }, []);
+  }, [soundSet]);
 
   // Cross-tab sync, the same way the theme does it.
   useEffect(() => {

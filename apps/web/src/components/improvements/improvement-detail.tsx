@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill, type StatusBadgeStatus } from "@/components/spaceui/status-badge";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ import {
   updateImprovementAction,
 } from "@/app/actions";
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
-import { Badge, Button } from "@agent-hub/ui";
+import { Button } from "@agent-hub/ui";
 import { Calendar } from "@/components/ui/calendar";
 import {
   isRedirectError,
@@ -45,6 +46,7 @@ import {
   PopoverTrigger,
 } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateTime, formatDay } from "@/lib/format";
 import {
   IMPROVEMENT_PRIORITIES,
@@ -113,6 +115,14 @@ const INLINE_FIELD =
 
 const PILL =
   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-60";
+
+const STATUS: Record<ImprovementStatus, StatusBadgeStatus> = {
+  to_do: "offline",
+  in_progress: "info",
+  in_review: "away",
+  done: "online",
+  archived: "offline",
+};
 
 export function ImprovementDetail({
   improvement,
@@ -570,10 +580,9 @@ export function ImprovementDetail({
               )}
             </div>
 
-            {!current && (
-              <p className="text-muted-foreground rounded-xl border px-4 py-8 text-center text-sm">
-                No messages are linked to this improvement.
-              </p>
+            {!current && !loadingAssociation && (
+              <EmptyState size="sm" className="rounded-xl border" title="No linked messages"
+                description="Link a flagged answer from the Inbox to keep the conversation with this improvement." />
             )}
 
             {current && (
@@ -627,7 +636,7 @@ export function ImprovementDetail({
                 <div className="bg-card rounded-xl border p-4">
                   <h3 className="mb-2 font-semibold">Sources</h3>
                   {sources.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No sources</p>
+                    <EmptyState size="sm" title="No sources" description="This answer has no stored source citations." />
                   ) : (
                     <div className="flex flex-col gap-1">
                       {sources.map((s, i) => (
@@ -729,7 +738,11 @@ export function ImprovementDetail({
                 disabled={!canEdit}
                 aria-label={`Status: ${statusLabel(status)}`}
               >
-                <RollInText text={statusLabel(status)} />
+                <StatusPill
+                  status={STATUS[status]}
+                  className="bg-transparent px-0 py-0"
+                  primaryText={<RollInText text={statusLabel(status)} />}
+                />
               </PopoverTrigger>
               <PopoverContent align="end" className="w-48 p-1">
                 {IMPROVEMENT_STATUSES.map((s) => (
@@ -1175,14 +1188,10 @@ function SuggestedFix({
       <div className="mb-2 flex items-center gap-2">
         <h2 className="font-semibold">Suggested fix</h2>
         {status === "accepted" && (
-          <Badge tone="green">
-            <RollInText text="Accepted" />
-          </Badge>
+          <StatusPill status="online" primaryText={<RollInText text="Accepted" />} />
         )}
         {status === "dismissed" && (
-          <Badge tone="gray">
-            <RollInText text="Dismissed" />
-          </Badge>
+          <StatusPill status="offline" primaryText={<RollInText text="Dismissed" />} />
         )}
       </div>
       <Card size="sm" className="gap-3 p-4">

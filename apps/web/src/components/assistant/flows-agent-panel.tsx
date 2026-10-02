@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { FlowPatch } from "@agent-hub/core";
@@ -331,9 +333,7 @@ export function FlowsAgentPanel({
                   Loading conversations…
                 </p>
               ) : history.length === 0 ? (
-                <p className="text-muted-foreground px-4 py-8 text-center text-sm">
-                  No earlier conversations about this flow
-                </p>
+                <EmptyState size="sm" title="No earlier conversations" description="Ask the Flows Agent to help with this flow to start a conversation." />
               ) : (
                 <ul className="space-y-1">
                   {history.map((entry) => (

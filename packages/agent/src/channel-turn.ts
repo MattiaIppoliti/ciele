@@ -207,6 +207,30 @@ async function runChain(
     .filter((id): id is string => Boolean(id));
 
   let history = await db.listChannelMessages(channel.id, CHANNEL_HISTORY_LIMIT);
+  // A human continuation answers its own thread, even when other discussions
+  // have moved the parent beyond the recent channel window.
+  if (startMessage.chainId) {
+    const ancestors = [startMessage];
+    const included = new Set([startMessage.id]);
+    let parentId: string | null = startMessage.chainId;
+    while (parentId && !included.has(parentId) && ancestors.length < CHANNEL_HISTORY_LIMIT) {
+      const parent = await db.getChannelMessage(parentId);
+      if (!parent || parent.channelId !== channel.id || parent.organizationId !== input.organizationId) break;
+      ancestors.unshift(parent);
+      included.add(parent.id);
+      parentId = parent.chainId;
+    }
+    const related = history.filter((message) => {
+      if (included.has(message.id)) return true;
+      if (message.chainId && included.has(message.chainId)) {
+        included.add(message.id);
+        return true;
+      }
+      return false;
+    });
+    const merged = new Map([...ancestors, ...related].map((message) => [message.id, message]));
+    history = [...merged.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
   let capped: ChainCapReason | null = null;
 
   // Turns this call ran. `taken` counts the whole chain (a resumed one included),

@@ -589,3 +589,25 @@ describe("attribution across a chain (#778, story 8)", () => {
     ]);
   });
 });
+
+describe("channel thread replies", () => {
+  it("persists human replies under their parent and keeps mention routing intact", async () => {
+    const db = getMockDb();
+    const { owner, channel, sam } = await seed(db);
+    const root = await postChannelMessageOp.run(owner, {id:channel.id,message:"A new discussion"});
+    const reply = await postChannelMessageOp.run(owner, {id:channel.id,message:"@Sam please check",replyToId:root.message.id});
+    expect(reply.message.chainId).toBe(root.message.id);
+    expect(reply.targets).toEqual([sam.id]);
+    expect((await getChannelOp.run(owner,{id:channel.id})).messages.at(-1)?.chainId).toBe(root.message.id);
+  });
+  it("rejects a parent from another channel or a missing parent before writing", async () => {
+    const db = getMockDb();
+    const { owner, channel } = await seed(db);
+    const other = await createChannelOp.run(owner,{name:"Other group"});
+    const root = await postChannelMessageOp.run(owner,{id:other.id,message:"Other discussion"});
+    for (const replyToId of [root.message.id,"missing"]) {
+      await expect(postChannelMessageOp.run(owner,{id:channel.id,message:"Reply",replyToId})).rejects.toMatchObject({code:"not_found"});
+    }
+    expect(await db.listChannelMessages(channel.id)).toHaveLength(0);
+  });
+});

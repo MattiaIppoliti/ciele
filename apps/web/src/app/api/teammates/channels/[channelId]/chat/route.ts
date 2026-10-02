@@ -6,7 +6,7 @@ import { listPlatformEvalModels } from "@/lib/platform";
 import { openAttachments } from "@/lib/attachments";
 import { NextRequest } from "next/server";
 import { CHANNEL_NDJSON_HEADERS, streamChannelChain } from "@agent-hub/agent";
-import { postChannelMessageOp } from "@ciele/ops";
+import { OperationError, postChannelMessageOp } from "@ciele/ops";
 import { getSession, profileName } from "@/lib/auth";
 import { getDb } from "@/lib/data";
 import { resolveTeammateActions } from "@/lib/teammates/actions";
@@ -37,8 +37,9 @@ export async function POST(
   }
 
   const { channelId } = await params;
-  const body = (await request.json()) as { message?: string; model?: unknown; attachments?: unknown };
-  const message = (body.message ?? "").trim();
+  const body = (await request.json()) as { message?: string; model?: unknown; attachments?: unknown; replyToId?: unknown };
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+  if (body.replyToId !== undefined && typeof body.replyToId !== "string") return new Response("Invalid reply message", { status: 400 });
   if (!message) return new Response("Empty message", { status: 400 });
 
   // The operation refuses with `not_found` for a channel this Member is not in,
@@ -46,7 +47,12 @@ export async function POST(
   const posted = await runOperation(postChannelMessageOp, {
     id: channelId,
     message,
+    replyToId: typeof body.replyToId === "string" ? body.replyToId : undefined,
+  }).catch((error: unknown) => {
+    if (error instanceof OperationError && error.code === "not_found") return null;
+    throw error;
   });
+  if (!posted) return new Response("Group or reply message not found", { status: 404 });
 
   const db = await getDb();
   const connections = await db.listProviderConnections(session.organization.id);
@@ -92,5 +98,5 @@ export async function POST(
     signal: request.signal,
   });
 
-  return new Response(stream, { headers: CHANNEL_NDJSON_HEADERS });
+  return new Response(stream, { headers: { ...CHANNEL_NDJSON_HEADERS, "X-Channel-Message-Id": posted.message.id } });
 }

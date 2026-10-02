@@ -22,6 +22,7 @@ export function App(): ReactNode {
     // origin's storage, so one switch covers the native screens and, through
     // the product window's own console, the whole machine's Ciele.
     <FeedbackProvider
+      soundSet="bencho"
       muted={state.settings.soundsMuted}
       onMutedChange={(muted) => void bridge().setSoundsMuted(muted)}
     >

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { GhostMark } from "@/components/auth/ghost-mark";
 import { CookiePreferencesButton } from "@/components/cookie-consent/cookie-preferences-button";
-import { FooterClock, FooterNewsletter } from "@/components/home/footer-widgets";
+import { FooterBottom } from "@/components/home/footer-widgets";
 import { DOCS } from "@/components/home/nav-menu";
 import {
   FallingStars,
@@ -154,15 +154,7 @@ export function HomeFooter() {
             </div>
           </div>
 
-          {/* Bottom: copyright + Rome clock on the left, newsletter on the right. */}
-          <div className="border-border mt-12 flex flex-col gap-8 border-t pt-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-muted-foreground flex flex-col gap-x-6 gap-y-1 text-sm sm:flex-row sm:items-center">
-              <span>© {new Date().getFullYear()} Ciele. AI you can trust.</span>
-              <FooterClock />
-            </div>
-
-            <FooterNewsletter />
-          </div>
+          <FooterBottom />
         </div>
       </div>
     </footer>

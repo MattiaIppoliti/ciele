@@ -1,4 +1,5 @@
 import type { PostgrestSingleResponse, SupabaseClient } from "@supabase/supabase-js";
+import type { MessageReaction } from "@agent-hub/core";
 import {
   RETRIEVAL_OVERFETCH,
   capPerSource,
@@ -4637,6 +4638,31 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as ChannelMessageRow[]).map(toChannelMessage);
     },
 
+    async getChannelMessage(id) {
+      const { data, error } = await client.from("teammate_channel_messages").select("*").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data ? toChannelMessage(data) : null;
+    },
+    async listMessageReactions(organizationId, messageId) {
+      const data = must(await client.from("message_reactions").select("*").eq("organization_id", organizationId).eq("target_id", messageId));
+      return data.map((row): MessageReaction => ({
+        organizationId: row.organization_id, messageId: row.target_id,
+        channelMessageId: row.channel_message_id, actorId: row.actor_id,
+        actorName: row.actor_name, emoji: row.emoji,
+      }));
+    },
+    async setMessageReaction(reaction, selected) {
+      if (selected) {
+        must(await client.from("message_reactions").upsert({
+          organization_id: reaction.organizationId, target_id: reaction.messageId,
+          message_id: reaction.channelMessageId ? null : reaction.messageId,
+          channel_message_id: reaction.channelMessageId, actor_id: reaction.actorId,
+          actor_name: reaction.actorName, emoji: reaction.emoji,
+        }, { onConflict: "organization_id,target_id,actor_id" }));
+      } else {
+        must(await client.from("message_reactions").delete().eq("organization_id", reaction.organizationId).eq("target_id", reaction.messageId).eq("actor_id", reaction.actorId).eq("emoji", reaction.emoji));
+      }
+    },
     async setMessageFeedback(messageId, feedback, reaction = null) {
       must(await client
         .from("messages")

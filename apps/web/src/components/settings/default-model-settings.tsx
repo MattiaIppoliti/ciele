@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -79,7 +81,9 @@ export function DefaultModelSettings({ assistants, canEdit }: {
             </tr></thead>
             <tbody>{context.recentRuns.flatMap(run => evaluationLeaderboard(run).rows.map(row =>
               <tr key={`${run.id}:${modelSelector(row.candidate)}`} className="border-t">
-                <td className="py-3 pr-4"><Link href={`/eval/${run.id}`} className="text-brand-ink hover:underline">{new Date(run.createdAt).toLocaleDateString("en-GB")}</Link><div className="text-xs text-muted-foreground">{run.datasetName} · {run.status}</div></td>
+                <td className="py-3 pr-4"><Link href={`/eval/${run.id}`} className="text-brand-ink hover:underline">{new Date(run.createdAt).toLocaleDateString("en-GB")}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{run.datasetName}
+                  <StatusPill status={run.status === "completed" ? "online" : run.status === "failed" ? "error" : run.status === "running" ? "info" : "away"} animated={run.status === "running"} primaryText={run.status} />
+                </div></td>
                 <td className="py-3 pr-4">{models.find(item => modelSelector(item) === modelSelector(row.candidate))?.label ?? row.candidate.modelId}</td>
                 <td className="py-3 pr-4">{row.accuracy === null ? "—" : `${Math.round(row.accuracy * 100)}%`}</td>
                 <td className="py-3 pr-4">{row.eurPer1000.toFixed(2)}</td>

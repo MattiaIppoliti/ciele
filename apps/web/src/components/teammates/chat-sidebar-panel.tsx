@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useMemo, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -387,9 +389,7 @@ export function ChatSidebarPanel({
           Groups
         </SectionLabel>
         {channels.length === 0 ? (
-          <p className="text-muted-foreground px-1 py-1 text-xs">
-            No groups yet.
-          </p>
+          <EmptyState size="sm" title="No groups yet" description="Start a shared conversation with your team." action={<button type="button" className="press-text text-sm underline underline-offset-4" onClick={onNewGroup}>New group</button>} />
         ) : (
           <div className="flex flex-col gap-0.5">{groupRows}</div>
         )}
@@ -398,9 +398,7 @@ export function ChatSidebarPanel({
       <section aria-label="Conversations">
         <SectionLabel>Conversations</SectionLabel>
         {conversations.length === 0 ? (
-          <p className="text-muted-foreground px-1 py-1 text-xs">
-            No conversations yet. Pick a teammate to start one.
-          </p>
+          <EmptyState size="sm" title="No conversations yet" description="Pick a teammate to start a conversation." />
         ) : (
           <AISidebar
             // Remounted when a new day appears, so its folder opens like the

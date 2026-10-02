@@ -1,44 +1,35 @@
-import { generatedAvatar } from "@/lib/avatar";
+"use client";
+
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 
-/**
- * The avatar drawn from a seed, for anyone without an uploaded picture.
- *
- * Server-renderable on purpose: `blobatar` returns SVG markup, so this needs no
- * client boundary, no effect and no hydration. That is why it uses the string
- * API rather than the library's React adapter, which memoizes for animation this
- * app does not use and would make every avatar a client component.
- *
- * `dangerouslySetInnerHTML` with markup from a pure local function over a seed
- * we chose: no user input reaches it, and nothing is fetched.
- */
+const StaticAvatar = dynamic(() => import("./static-avatar"));
+const AnimatedAvatar = dynamic(() => import("./animated-avatar"));
+
+/** Seeded identity: Members are static; Teammates and group marks opt into motion. */
 export function GeneratedAvatar({
   seed,
   size = "size-9",
   className,
+  animated = false,
 }: {
   seed: string;
-  /** A Tailwind size class. The SVG has no width of its own and fills this. */
   size?: string;
   className?: string;
+  animated?: boolean;
 }) {
   return (
     <span
-      className={cn(
-        size,
-        // `inline-flex`, not the span's default `inline`: an inline box ignores
-        // width and height, so the size class was silently dropped anywhere the
-        // avatar was not itself a flex item — a wrapping `<span title>` on an
-        // improvement card, a centred empty state — and the SVG stretched to
-        // the width of whatever contained it.
-        "inline-flex shrink-0 overflow-hidden rounded-full [&>svg]:size-full",
-        className
+      className={cn(size, "inline-flex shrink-0 overflow-hidden rounded-full", className)}
+      data-slot="generated-avatar"
+      data-avatar-motion={animated ? "animated" : "static"}
+      aria-hidden="true"
+    >
+      {animated ? (
+        <AnimatedAvatar seed={seed} />
+      ) : (
+        <StaticAvatar seed={seed} />
       )}
-      // Decorative: every place this appears, the person's or Teammate's name
-      // is already beside it, so announcing it again is noise for a screen
-      // reader rather than information.
-      aria-hidden
-      dangerouslySetInnerHTML={{ __html: generatedAvatar(seed) }}
-    />
+    </span>
   );
 }

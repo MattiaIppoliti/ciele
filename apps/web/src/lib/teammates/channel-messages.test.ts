@@ -55,6 +55,8 @@ describe("channelChatMessages", () => {
       CAST
     );
     expect(msg).toEqual({
+      id: "msg-1",
+      threadParentId: null,
       role: "user",
       text: "Where are we on the refund flow?",
       sentAt: "2026-08-24T09:00:00.000Z",
@@ -126,7 +128,7 @@ describe("channelChatMessages", () => {
       ],
       CAST
     );
-    expect(msg).toEqual({ role: "notice", sentAt: "2026-08-24T09:00:00.000Z", text: "The chain stopped here." });
+    expect(msg).toEqual({ id: "msg-1", threadParentId: null, role: "notice", sentAt: "2026-08-24T09:00:00.000Z", text: "The chain stopped here." });
   });
 
   it("gates the model's reasoning out of the stored trace for a Member", () => {

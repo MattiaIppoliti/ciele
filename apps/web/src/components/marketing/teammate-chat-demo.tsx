@@ -51,7 +51,7 @@ const TEAMMATE = "Chief of Staff";
    page is making, so the shot states it the way a group thread does.
 
    The seeds are arbitrary strings rather than ids because nothing here is a
-   record; `blobatar` only needs a stable seed to draw the same face twice. */
+   record; `Squishmoji` only needs a stable seed to draw the same face twice. */
 const CHIEF_OF_STAFF: ChatAuthor = {
   name: TEAMMATE,
   title: "Teammate",

@@ -1,4 +1,7 @@
-﻿"use client";
+"use client";
+
+import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -25,7 +28,7 @@ import {
   nextCrawlDue,
 } from "@agent-hub/core";
 
-import { conceptProvenanceView, type ConceptProvenanceView } from "@/lib/okf-provenance";
+import { conceptProvenanceView } from "@/lib/okf-provenance";
 import { assistantDocumentsHref } from "@/lib/source-documents";
 import { Bold, CloudUpload, Download, Copy, ExternalLink, Heading1, Heading2, Heading3, Heading4, Italic, Plus, RefreshCw, RemoveFormatting, TextQuote, Trash2, Unlink } from "lucide-react";
 import { ChevronDown, Code, FileUp, Globe, Info, Link2, List, ListOrdered, Maximize2, Minus, Pencil, Redo2, Undo2 } from "lucide-react";
@@ -126,6 +129,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCount, formatDateTime, formatDay } from "@/lib/format";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { canAutoFocus } from "@/lib/auto-focus";
 import { downloadFile } from "@/lib/download";
@@ -139,37 +143,6 @@ const MODES: Array<{ id: KnowledgeMode; label: string }> = [
   { id: "faqs", label: "FAQs" },
   { id: "concepts", label: "Concepts" },
 ];
-
-function StatusBadge({ source }: { source: Source }) {
-  // One Badge for every status, children in fixed slots, so React keeps the
-  // same RollInText across a change and Processing… rolls into READY rather
-  // than being swapped out for a new element.
-  const status = source.status;
-  const label =
-    status === "ready" ? "READY" : status === "error" ? "ERROR" : "Processing…";
-  return (
-    <Badge
-      variant={status === "error" ? "default" : "outline"}
-      tone={status === "error" ? "red" : "none"}
-      title={status === "error" ? source.error : undefined}
-      className={
-        status === "ready"
-          ? "text-muted-foreground gap-1.5 rounded-full bg-muted/40"
-          : status === "error"
-            ? undefined
-            : "rounded-full"
-      }
-    >
-      {status === "ready" && <span className="size-1.5 rounded-full bg-foreground" />}
-      <RollInText
-        text={label}
-        className={
-          status === "processing" ? "animate-pulse motion-reduce:animate-none" : undefined
-        }
-      />
-    </Badge>
-  );
-}
 
 /** "12/100": the count rolls as it changes, the limit stays put. */
 function CharCount({ count, max }: { count: number; max: number }) {
@@ -189,13 +162,10 @@ function DocumentCount({ count }: { count: number }) {
   );
 }
 
-/** "Never crawled" / "Last …" plus the next scheduled crawl, if any. */
-function crawlScheduleHint(source: Source): string {
-  const last = source.lastCrawledAt
-    ? `Last: ${formatDay(source.lastCrawledAt)}`
-    : "Never crawled";
+/** The next scheduled crawl; the last crawl has its own table column. */
+function nextCrawlHint(source: Source): string | null {
   const due = nextCrawlDue(source.recrawlSchedule, source.lastCrawledAt);
-  return due ? `${last} · Next: ${formatDay(due)}` : last;
+  return due ? `Next: ${formatDay(due)}` : null;
 }
 
 function Collapsible({ title, children }: { title: string; children: React.ReactNode }) {
@@ -791,6 +761,8 @@ function WebsitesTab({
       status: (s) => s.status,
       content: (s) => documentsOf(s).length,
       recrawl: (s) => s.recrawlSchedule,
+      lastCrawled: (s) => s.lastCrawledAt,
+      updated: (s) => s.updatedAt ?? s.createdAt,
     }
   );
   // The same footer the Library has, over rows this component already holds:
@@ -801,8 +773,10 @@ function WebsitesTab({
   const columns = useColumnWidths("assistant-websites", [
     { key: "select", width: 44, fixed: true },
     { key: "name", width: 380, min: 200 },
-    { key: "status", width: 200 },
+    { key: "status", width: 130 },
     { key: "content", width: 140 },
+    { key: "updated", width: 190 },
+    { key: "lastCrawled", width: 190 },
     { key: "recrawl", width: 170 },
     { key: "actions", width: 130, fixed: true },
   ] satisfies TableColumnLayout[]);
@@ -989,6 +963,16 @@ function WebsitesTab({
                 })}
               />
               <TableColumnHeader
+                label="Last updated"
+                resize={columns.handleFor("updated")}
+                sort={order.column("updated")}
+              />
+              <TableColumnHeader
+                label="Last crawled"
+                resize={columns.handleFor("lastCrawled")}
+                sort={order.column("lastCrawled")}
+              />
+              <TableColumnHeader
                 label="Re-crawl"
                 resize={columns.handleFor("recrawl")}
                 sort={order.column("recrawl")}
@@ -999,7 +983,7 @@ function WebsitesTab({
           <TableBody>
             {websiteSources.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="hover:bg-transparent">
+                <TableCell colSpan={8} className="hover:bg-transparent">
                   <EmptyState
                     size="sm"
                     title="No websites yet"
@@ -1010,6 +994,7 @@ function WebsitesTab({
             )}
             {paged.items.map((source) => {
               const documentCount = documentsOf(source).length;
+              const nextCrawl = nextCrawlHint(source);
               const remove = () =>
                 confirmDelete(
                   removeSourceRequest({
@@ -1091,12 +1076,6 @@ function WebsitesTab({
                           <span className="min-w-0 truncate">{source.config.url}</span>
                           <ExternalLink className="size-3 shrink-0" />
                         </a>
-                        <span className="text-muted-foreground block text-[0.7rem] capitalize">
-                          Crawler: {source.config.crawlerProvider ?? "auto"}
-                          {source.config.resolvedCrawlerProvider
-                            ? ` · Resolved: ${source.config.resolvedCrawlerProvider}`
-                            : ""}
-                        </span>
                         {/* A crawl refused for budget (#510) leaves the Source on
                             its previous status, so the reason needs saying here,
                             the status badge alone would look like nothing happened. */}
@@ -1120,13 +1099,7 @@ function WebsitesTab({
                     </TableOpenCell>
                   </TableCell>
                   <TableCell>
-                    <StatusBadge source={source} />
-                    <span
-                      className="text-muted-foreground mt-0.5 block text-xs"
-                      suppressHydrationWarning
-                    >
-                      Last update: {formatDateTime(source.updatedAt ?? source.createdAt)}
-                    </span>
+                    <SourceStatusBadge status={source.status} error={source.error} />
                   </TableCell>
                   <TableCell>
                     <Link
@@ -1136,6 +1109,12 @@ function WebsitesTab({
                     >
                       <DocumentCount count={documentCount} />
                     </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap" suppressHydrationWarning>
+                    {formatDateTime(source.updatedAt ?? source.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap" suppressHydrationWarning>
+                    {source.lastCrawledAt ? formatDateTime(source.lastCrawledAt) : "Never"}
                   </TableCell>
                   <TableCell>
                     <span className="flex flex-col gap-0.5">
@@ -1167,12 +1146,14 @@ function WebsitesTab({
                           <SelectItem value="monthly">Monthly</SelectItem>
                         </SelectContent>
                       </Select>
-                      <span
-                        className="text-muted-foreground text-[0.7rem]"
-                        suppressHydrationWarning
-                      >
-                        {crawlScheduleHint(source)}
-                      </span>
+                      {nextCrawl && (
+                        <span
+                          className="text-muted-foreground text-2xs"
+                          suppressHydrationWarning
+                        >
+                          {nextCrawl}
+                        </span>
+                      )}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -1468,7 +1449,7 @@ function DocumentsTab({
                 </TableCell>
                 <TableCell>
                   <span className="flex items-center gap-2">
-                    <StatusBadge source={source} />
+                    <SourceStatusBadge status={source.status} error={source.error} />
                     <span className="text-muted-foreground text-xs" suppressHydrationWarning>
                       {formatDateTime(source.createdAt)}
                     </span>
@@ -2337,9 +2318,7 @@ function FaqsTab({
                           a hand-typed FAQ is neither. Unverified stays unlabelled, since
                           a badge on every row would carry no signal. */}
                       <TrustTierBadge view={conceptProvenanceView(faq.frontmatter)} />
-                      <Badge variant="outline" className="text-muted-foreground gap-1.5 rounded-full bg-muted/40">
-                        READY
-                      </Badge>
+                      <StatusPill status="online" primaryText="READY" />
                     </span>
                   </TableCell>
                   <TableCell>
@@ -2394,16 +2373,8 @@ function FaqsTab({
 /* ----------------------------- Concept browser ---------------------------- */
 
 /** A Concept's OKF trust tier; unverified stays unlabelled. */
-function TrustTierBadge({ view }: { view: ConceptProvenanceView }) {
-  if (view.tier === "unverified") return null;
-  return (
-    <Badge
-      variant={view.tier === "human-reviewed" ? "default" : "secondary"}
-      className="shrink-0 rounded-full"
-    >
-      {view.trustLabel}
-    </Badge>
-  );
+function TrustTierBadge({ view }: { view: ReturnType<typeof conceptProvenanceView> }) {
+  return <StatusPill status={view.tier === "human-reviewed" ? "online" : "info"} primaryText={view.trustLabel} />;
 }
 
 /**
@@ -2442,12 +2413,14 @@ function ConceptCard({ assistantId, concept }: { assistantId: string; concept: C
         </button>
         <TrustTierBadge view={provenance} />
         {provenance.showStatus && (
-          <Badge variant="secondary" className="shrink-0 rounded-full capitalize">
-            {provenance.status}
-          </Badge>
+          <StatusPill
+            status={provenance.status === "stable" ? "online" : provenance.status === "deprecated" ? "offline" : "away"}
+            className="capitalize"
+            primaryText={provenance.status}
+          />
         )}
         {provenance.stale && (
-          <Badge variant="destructive" className="shrink-0 rounded-full">Stale</Badge>
+          <StatusPill status="warning" primaryText="Stale" />
         )}
         <Badge variant="outline" className="shrink-0 rounded-full">{concept.frontmatter.type}</Badge>
         <Button
@@ -2578,6 +2551,7 @@ export function KnowledgeClient({
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<KnowledgeMode>(initialMode);
+  const slideDirection = useSlidingDirection(mode, MODES.map((mode) => mode.id));
   const [isPending, startTransition] = useTransition();
   const tabsId = useId();
   function reembed() {
@@ -2655,7 +2629,7 @@ export function KnowledgeClient({
             </TabsList>
           </Tabs>
 
-          <div
+          <SlidingPanel activeKey={mode} direction={slideDirection} sizing="flow"
             role="tabpanel"
             id={`${tabsId}-panel`}
             aria-label={MODES.find((m) => m.id === mode)?.label}
@@ -2715,7 +2689,7 @@ export function KnowledgeClient({
               ))}
             </div>
           )}
-          </div>
+          </SlidingPanel>
         </>
       ) : (
         <p className="text-muted-foreground text-sm">

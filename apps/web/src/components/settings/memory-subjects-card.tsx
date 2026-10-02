@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useId, useRef, useState, useTransition } from "react";
 import type { Memory, MemorySubjectSummary } from "@agent-hub/core";
 import { Trash2, UserRound } from "lucide-react";
@@ -135,9 +137,7 @@ export function MemorySubjectsCard({
       </CardHeader>
       <CardContent>
         {subjects.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No memories stored yet.
-          </p>
+          <EmptyState size="sm" title="No remembered users yet" description="Users appear here when your assistants store their memories." />
         ) : (
           <>
             <Input

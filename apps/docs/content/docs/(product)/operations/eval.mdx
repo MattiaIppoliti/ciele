@@ -52,6 +52,10 @@ The reliability dashboard shows six charts for each model:
 - **Autonomy**, the turns that completed without a fallback or a refusal.
 - **Error rate**, the executions that had a technical error.
 
+**Latency distribution by model** compares the spread and tails of the recorded executions. Each curve uses raw latency observations, including technical failures. A model needs at least two observations to draw a curve. Curves with fewer than 20 samples are exploratory. Use the displayed counts and individual results to assess them. This chart uses a different population from the Leaderboard, which excludes technical failures from latency.
+
+A model with no recorded executions shows an absent measurement instead of a zero cost or latency.
+
 Under the charts, the **Leaderboard** table shows one row for each model. The most accurate model is first. When two models have the same accuracy, the less expensive model is first.
 
 - **Accuracy**, the examples with reference outputs that the model got correct.

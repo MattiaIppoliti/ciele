@@ -187,21 +187,13 @@ export function AssistantsPageClient({
           </div>
         )}
 
-        {/* Two different situations, and only one of them is an empty console.
-            A search that matched nothing gets a sentence: the list is there,
-            the query is the problem, and a full-height mark would read as "you
-            have no assistants" when you have several. */}
-        {filtered.length === 0 &&
-          (assistants.length === 0 ? (
-            <EmptyState
-              title="No assistants yet"
-              description="The chat your visitors talk to. Give it knowledge, then publish."
-            />
-          ) : (
-            <p className="text-muted-foreground mt-16 text-center text-sm break-words">
-              No assistants match “{query}”.
-            </p>
-          ))}
+        {filtered.length === 0 && (
+          <EmptyState
+            title={assistants.length === 0 ? "No assistants yet" : "No matching assistants"}
+            description={assistants.length === 0 ? "Create an assistant, give it knowledge, then publish it for your visitors." : "Try another name or clear the search."}
+            action={assistants.length > 0 ? <Button variant="outline" onClick={() => setQuery("")}>Clear search</Button> : undefined}
+          />
+        )}
       </div>
     </div>
   );

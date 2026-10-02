@@ -65,6 +65,7 @@ export function GroupAvatarCluster({
         <GeneratedAvatar
           key={face.id}
           seed={face.seed}
+          animated
           size={faceSize}
           // Top-left and top-right of the triangle. `ring-background` keeps the
           // two apart where they overlap, the same trick the channel header's

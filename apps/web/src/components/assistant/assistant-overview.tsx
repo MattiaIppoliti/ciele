@@ -1,5 +1,10 @@
 "use client";
 
+import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
+
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 // Client component: AnimatedIcon takes lucide component references as props,
 // which a Server Component cannot serialize across the RSC boundary.
 import Link from "next/link";
@@ -15,7 +20,11 @@ import type {
   UsageDashboardFilter,
 } from "@agent-hub/core";
 import {
-  ChevronRight,
+  ArrowUpRight,
+  Activity as ActivityIcon,
+  Bot,
+  ClipboardCheck,
+  ShieldCheck,
   CircleCheck,
   Circle,
   FileText,
@@ -30,7 +39,8 @@ import {
   Workflow,
 } from "lucide-react";
 import { BookOpen } from "lucide-react";
-import { RadialGauge } from "@agent-hub/charts";
+import { ArcFrame } from "@/components/charts/arc/arc-frame";
+import { Gauge } from "@/components/charts/arc/gauge/gauge";
 import { Tooltip } from "@/components/charts/beui/motion/tooltip";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
@@ -95,52 +105,75 @@ function ChecklistRow({
   );
 }
 
-/** A card with a title row and, when it leads somewhere, a chevron link to it. */
+/** Content sits in a dark inset; the caption and destination share the outer frame. */
 function Panel({
   title,
+  icon,
   meta,
   href,
   hrefLabel,
   children,
+  actions,
+  heading = "h2",
   className = "",
 }: {
-  title: React.ReactNode;
+  title: string;
+  icon: React.ReactNode;
   meta?: React.ReactNode;
   href?: string;
   hrefLabel?: string;
   children: React.ReactNode;
+  actions?: React.ReactNode;
+  heading?: "h1" | "h2";
   className?: string;
 }) {
+  const Heading = heading;
   return (
-    <section className={`bg-card flex min-w-0 flex-col rounded-xl border shadow-xs ${className}`}>
-      <header className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
-        <h2 className="flex min-w-0 items-center gap-2 text-sm font-medium">
-          {title}
-          {meta && <span className="text-muted-foreground text-xs font-normal">{meta}</span>}
-        </h2>
+    <section
+      data-slot="overview-card"
+      className={`overview-card flex min-w-0 flex-col ${className}`}
+    >
+      <div
+        data-slot="overview-card-content"
+        className="overview-card-content min-w-0 flex-1 p-2"
+      >
+        {children}
+      </div>
+      <footer
+        data-slot="overview-card-caption"
+        className="overview-card-caption flex flex-wrap items-center justify-between gap-3 px-3 py-3"
+      >
+        <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
+          <span
+            data-slot="overview-card-icon"
+            className="overview-card-icon flex size-9 shrink-0 items-center justify-center rounded-full"
+            aria-hidden
+          >
+            {icon}
+          </span>
+          <div className="min-w-0">
+            <Heading className="text-sm font-medium">{title}</Heading>
+            {meta && <div className="text-muted-foreground text-xs">{meta}</div>}
+          </div>
+        </div>
+        {actions}
         {href && (
           <Link
             href={href}
-            aria-label={hrefLabel}
-            className="press-text text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex shrink-0 items-center gap-0.5 rounded-sm text-xs font-medium outline-none focus-visible:ring-2"
+            aria-label={`${title}: ${hrefLabel || "Open"}`}
+            className="overview-card-link press-text text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex shrink-0 items-center gap-1.5 rounded-sm text-xs font-medium outline-none focus-visible:ring-2"
           >
             {hrefLabel}
-            <ChevronRight className="size-3.5" />
+            <ArrowUpRight className="overview-card-arrow size-4" aria-hidden />
           </Link>
         )}
-      </header>
-      <div className="min-w-0 flex-1 px-2 pb-2">{children}</div>
+      </footer>
     </section>
   );
 }
 
-function EmptyLine({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
-  return (
-    <div className="text-muted-foreground flex flex-col items-start gap-3 px-3 py-6 text-sm">
-      {children}
-      {action}
-    </div>
-  );
+function EmptyLine({ children, action, title = "Nothing here yet" }: { children: string; action?: React.ReactNode; title?: string }) {
+  return <EmptyState size="sm" title={title} description={children} action={action} />;
 }
 
 const SOURCE_ICONS: Record<SourceKind, React.ComponentType<{ className?: string }>> = {
@@ -150,18 +183,6 @@ const SOURCE_ICONS: Record<SourceKind, React.ComponentType<{ className?: string 
   text: Type,
   faq: HelpCircle,
   application: Plug,
-};
-
-const STATUS_DOT: Record<Source["status"], string> = {
-  ready: "bg-emerald-500",
-  processing: "bg-amber-500",
-  error: "bg-red-500",
-};
-
-const STATUS_LABEL: Record<Source["status"], string> = {
-  ready: "Ready",
-  processing: "Processing",
-  error: "Failed",
 };
 
 /**
@@ -200,18 +221,9 @@ function QualityRowView({ row }: { row: QualityRow }) {
           <span className="border-muted-foreground/30 size-6 shrink-0 rounded-full border-2 border-dashed" aria-hidden="true" />
         ) : (
           <span className="shrink-0 transition-transform duration-200 group-hover:scale-110 group-focus-visible:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
-            <RadialGauge
-              size={24}
-              strokeWidth={3}
-              gap={0}
-              rings={[
-                {
-                  fraction: row.rate,
-                  toneClass: "stroke-[#2a78d6] dark:stroke-[#3987e5]",
-                  label: `${row.label}: ${Math.round(row.rate * 100)}%`,
-                },
-              ]}
-            />
+            <ArcFrame>
+              <Gauge compact value={row.rate * 100} label={row.label} tone="success" />
+            </ArcFrame>
           </span>
         )}
         <span className="min-w-0 flex-1 truncate text-sm">{row.label}</span>
@@ -282,8 +294,8 @@ export function AssistantOverview({
     },
   ];
   const doneCount = checklist.filter((step) => step.done).length;
-  // The header leads to the first step still open, in checklist order, the
-  // same place the Activity and Quality headers lead to their detail. With
+  // The caption leads to the first step still open, in checklist order, the
+  // same place the Activity and Quality captions lead to their detail. With
   // every step done there is nowhere left to send anyone, so no link.
   const nextStep = checklist.find((step) => !step.done);
   const setupDone = doneCount === checklist.length;
@@ -300,11 +312,13 @@ export function AssistantOverview({
   const totals = activity.totals;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-6 @xl:px-8 @xl:py-8">
-      <div className="bg-card rounded-xl border shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
-          <h1 className="text-sm font-medium">Assistant</h1>
-          <div className="flex items-center gap-2">
+    <div className="assistant-overview mx-auto max-w-6xl px-5 py-6 @xl:px-8 @xl:py-8">
+      <Panel
+        title="Assistant"
+        heading="h1"
+        icon={<Bot className="size-4" />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               nativeButton={false}
@@ -319,20 +333,19 @@ export function AssistantOverview({
               Publish
             </Button>
           </div>
-        </div>
-        <div className="grid gap-8 px-6 py-6 @3xl:grid-cols-[1fr_1.2fr]">
+        }
+      >
+        <div className="grid gap-8 px-4 py-4 @3xl:grid-cols-[1fr_1.2fr]">
           {/* The Preview's own chat card in miniature, and the way to it:
               selecting it opens the live Preview in the right rail. */}
           <PreviewVignette assistant={assistant} base={base} />
 
           <div className="grid content-start gap-5 @md:grid-cols-2">
             <DetailRow label="Status">
-              <span
-                className={`size-2 rounded-full ${latest ? "bg-emerald-500" : "bg-amber-500"}`}
+              <StatusPill
+                status={latest ? "online" : "away"}
+                primaryText={latest ? `Published v${latest.version}` : "Draft"}
               />
-              <span className="ml-1">
-                {latest ? `Published v${latest.version}` : "Draft"}
-              </span>
             </DetailRow>
             <DetailRow label={latest ? "Last published" : "Created"}>
               {formatDay(latest ? latest.createdAt : assistant.createdAt)}
@@ -372,7 +385,7 @@ export function AssistantOverview({
             {countLabel(publications.length, "publication")}
           </Button>
         </div>
-      </div>
+      </Panel>
 
       {/* A finished checklist has nothing left to say: it goes, and Activity
           and Quality share the row. */}
@@ -380,6 +393,7 @@ export function AssistantOverview({
         {setupDone ? null : (
           <Panel
             title="Setup checklist"
+            icon={<ClipboardCheck className="size-4" />}
             meta={
               <span className="tabular-nums">
                 <RollingNumber value={doneCount} />/{checklist.length}
@@ -396,14 +410,15 @@ export function AssistantOverview({
 
         <Panel
           title="Activity"
+          icon={<ActivityIcon className="size-4" />}
           meta="7 days"
           href={`/insights/observability?${scope}`}
           hrefLabel="Observability"
         >
           {activity.totals.turns === 0 ? (
-            <EmptyLine>No turns in the last seven days. Try the Assistant in the Preview.</EmptyLine>
+            <EmptyLine title="No recent activity">No turns in the last seven days. Try the Assistant in the Preview.</EmptyLine>
           ) : (
-            // The same Spectrum cards the Insights dashboards use: hover or
+            // The same UI Arc cards the Insights dashboards use: hover or
             // arrow along a line to read each day, deltas against the week
             // before.
             <DashboardStatCards
@@ -415,7 +430,7 @@ export function AssistantOverview({
           )}
         </Panel>
 
-        <Panel title="Quality" meta="7 days" href={`/insights/observability?${scope}`} hrefLabel="Details">
+        <Panel icon={<ShieldCheck className="size-4" />} title="Quality" meta="7 days" href={`/insights/observability?${scope}`} hrefLabel="Details">
           {qualityRows(totals, previousActivity).map((row) => (
             <QualityRowView key={row.key} row={row} />
           ))}
@@ -431,11 +446,8 @@ export function AssistantOverview({
 
       <div className="mt-6 grid gap-6 @3xl:grid-cols-2">
         <Panel
-          title={
-            <>
-              <AnimatedIcon icon={Workflow} size={16} iconClassName="text-muted-foreground" /> Flows
-            </>
-          }
+          title="Flows"
+          icon={<Workflow className="size-4" />}
           meta={
             <span className="tabular-nums">
               <RollingNumber value={enabledFlows} /> of{" "}
@@ -447,6 +459,7 @@ export function AssistantOverview({
         >
           {shownFlows.length === 0 ? (
             <EmptyLine
+              title="No flows yet"
               action={
                 <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`${base}/flows`} />}>
                   Create a flow
@@ -463,17 +476,13 @@ export function AssistantOverview({
                     href={`${base}/flows/${flow.id}`}
                     className="press hover:bg-muted flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm"
                   >
-                    <span
-                      className={`size-2 shrink-0 rounded-full ${flow.enabled ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
-                      aria-label={flow.enabled ? "Enabled" : "Disabled"}
-                    />
                     <span className="min-w-0 flex-1 truncate font-medium">{flow.name}</span>
                     {flow.isDefault ? (
                       <Badge variant="outline">Always last</Badge>
                     ) : flow.builtIn ? (
                       <Badge variant="secondary">Built-in</Badge>
                     ) : null}
-                    {!flow.enabled && <span className="text-muted-foreground text-xs">Off</span>}
+                    <StatusPill status={flow.enabled ? "online" : "offline"} primaryText={flow.enabled ? "Enabled" : "Off"} />
                   </Link>
                 </li>
               ))}
@@ -487,11 +496,8 @@ export function AssistantOverview({
         </Panel>
 
         <Panel
-          title={
-            <>
-              <BookOpen className="text-muted-foreground size-4" /> Knowledge
-            </>
-          }
+          title="Knowledge"
+          icon={<BookOpen className="size-4" />}
           meta={
             <span className="tabular-nums">
               <RollingNumber value={sourceCount} />{" "}
@@ -505,6 +511,7 @@ export function AssistantOverview({
         >
           {recentSources.length === 0 ? (
             <EmptyLine
+              title="No knowledge sources"
               action={
                 <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`${base}/knowledge`} />}>
                   Add knowledge
@@ -525,10 +532,7 @@ export function AssistantOverview({
                     >
                       <Icon className="text-muted-foreground size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate font-medium">{source.name}</span>
-                      <span
-                        className={`size-2 shrink-0 rounded-full ${STATUS_DOT[source.status]}`}
-                        aria-label={STATUS_LABEL[source.status]}
-                      />
+                      <SourceStatusBadge status={source.status} error={source.error} />
                       <span className="text-muted-foreground w-24 shrink-0 text-right text-xs" title={formatDay(source.createdAt)}>
                         {relativeTimeLabel(source.createdAt, nowDate)}
                       </span>
@@ -543,16 +547,13 @@ export function AssistantOverview({
 
       <Panel
         className="mt-6"
-        title={
-          <>
-            <MessagesSquare className="text-muted-foreground size-4" /> Recent conversations
-          </>
-        }
+        title="Recent conversations"
+        icon={<MessagesSquare className="size-4" />}
         href={`/inbox?assistantId=${encodeURIComponent(assistant.id)}`}
         hrefLabel="Inbox"
       >
         {conversations.length === 0 ? (
-          <EmptyLine>No Visitor conversations yet. Publish the widget, or try it in the Preview.</EmptyLine>
+          <EmptyLine title="No conversations yet">No Visitor conversations yet. Publish the widget, or try it in the Preview.</EmptyLine>
         ) : (
           <ul className="divide-border divide-y">
             {conversations.map((conversation) => (
@@ -570,7 +571,7 @@ export function AssistantOverview({
                       <span className="truncate">{conversation.flowNames[0]}</span>
                     </Badge>
                   )}
-                  {conversation.metadata.escalated && <Badge variant="destructive">Escalated</Badge>}
+                  {conversation.metadata.escalated && <StatusPill status="warning" primaryText="Escalated" />}
                   {conversation.feedback === 1 && <ThumbsUp className="size-3.5 text-emerald-600" aria-label="Rated up" />}
                   {conversation.feedback === -1 && <ThumbsDown className="size-3.5 text-red-500" aria-label="Rated down" />}
                   <span className="text-muted-foreground w-20 text-xs tabular-nums">

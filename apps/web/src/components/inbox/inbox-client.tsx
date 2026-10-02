@@ -13,6 +13,7 @@ import type {
   InboxQuery,
   ReviewRequest,
   StoredMessage,
+  MessageReaction,
 } from "@agent-hub/core";
 import {
   feedbackReactionById,
@@ -26,6 +27,7 @@ import { useExitTransition } from "@/components/motion/use-exit-transition";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { CirclePlay, Download, ExternalLink, MessageSquareDashed, Search, ShieldCheck, SquareCheck, WandSparkles, Wrench, X } from "lucide-react";
 import { Calendar as CalendarIcon, ChevronLeft, Headphones, HelpCircle, Info, ListFilter, Radio, ShieldAlert } from "lucide-react";
+import { ReactionRecord } from "@/components/chat/reaction-record";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 import { toast } from "@/lib/toast";
 import {
@@ -495,7 +497,6 @@ export function InboxClient({
   assistants,
   canEdit = false,
   canViewReasoning = false,
-  canOverseeChannels = false,
   canManageRetention = false,
 }: {
   initialPage: InboxPage;
@@ -511,7 +512,6 @@ export function InboxClient({
    * Their own surface rather than a filter here: a channel has no subject and no
    * Assistant, so it would be two empty columns in this table.
    */
-  canOverseeChannels?: boolean;
   /**
    * Legal hold suspends a deletion the Organization has committed to, so the
    * toggle is `manageMembers` like the retention setting itself (#801, CYB-12).
@@ -554,6 +554,7 @@ export function InboxClient({
     replaceFilterParams({ ...filters, q: deferredSearch }, defaultInboxUrlState());
   }, [filters, deferredSearch]);
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
+  const [reactions, setReactions] = useState<MessageReaction[]>([]);
   const [messages, setMessages] = useState<StoredMessage[] | null>(null);
   const [transcriptError, setTranscriptError] = useState(false);
   const [links, setLinks] = useState<ImprovementMessageLink[]>([]);
@@ -789,6 +790,7 @@ export function InboxClient({
     replaceConversationParam(id);
     setDetailsOpen(false);
     setMessages(null);
+    setReactions([]);
     setTranscriptError(false);
     setLinks([]);
     setVerdicts([]);
@@ -808,6 +810,7 @@ export function InboxClient({
     review: Awaited<ReturnType<typeof getInboxConversationReviewAction>>,
   ) {
     setMessages(review.messages);
+    setReactions(review.reactions);
     setLinks(review.improvementLinks);
     setVerdicts(review.answerVerdicts);
     setReviews(review.reviews);
@@ -977,14 +980,6 @@ export function InboxClient({
         Inbox
       </h1>
       <SlotPortal id={TOP_BAR_SLOT}>
-        {canOverseeChannels && (
-          <Link
-            href="/inbox/channels"
-            className="text-muted-foreground hover:text-foreground hidden text-sm sm:inline"
-          >
-            Groups
-          </Link>
-        )}
         <div className="flex items-center gap-2">
           <div className="relative min-w-0">
             <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -1295,11 +1290,13 @@ export function InboxClient({
                 }`}
           </p>
           <p className="text-muted-foreground px-4 pb-2 text-xs">Latest activity first</p>
-          {conversations.length === 0 && (
+          {!loadingList && conversations.length === 0 && (
             <EmptyState
               size="sm"
               title="No conversations"
-              description="Nothing matches the current filters."
+              icon={<MessageSquareDashed size={24} />}
+              description="Try another search or reset the filters to see recent conversations."
+              action={<Button variant="outline" size="sm" onClick={() => { setSearch(""); setFilters(defaultInboxFilters()); }}>Reset filters</Button>}
             />
           )}
           {conversations.map((c, index) => (
@@ -1368,16 +1365,7 @@ export function InboxClient({
           }`}
         >
           {!selected && (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <span className="text-primary/40 flex size-24 items-center justify-center rounded-full border-2 border-dashed">
-                <MessageSquareDashed className="size-10" />
-              </span>
-              <h3 className="text-xl font-semibold">Select a conversation</h3>
-              <p className="text-muted-foreground max-w-sm text-sm">
-                Pick one from the list to view its details, or use search and
-                filters to find specific conversations.
-              </p>
-            </div>
+            <EmptyState className="h-full justify-center" icon={<MessageSquareDashed size={24} />} title="Select a conversation" description="Pick one from the list to view its details, or search for a specific conversation." />
           )}
 
           {selected && (
@@ -1472,7 +1460,8 @@ export function InboxClient({
                 <EmptyState
                   size="sm"
                   title="No messages"
-                  description="This conversation has no stored messages."
+                  icon={<MessageSquareDashed size={24} />}
+                  description="This conversation has no stored messages. Select another conversation from the list."
                 />
               )}
 
@@ -1492,7 +1481,8 @@ export function InboxClient({
                         <div className="bg-primary text-primary-foreground max-w-[75%] rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap">
                           {messageText(m.content)}
                         </div>
-                        <MessageTime iso={m.createdAt} />
+                        <ReactionRecord reactions={reactions.filter((reaction) => reaction.messageId === m.id)} />
+                    <MessageTime iso={m.createdAt} />
                       </div>
                     </div>
                   );
@@ -1617,6 +1607,7 @@ export function InboxClient({
                         />
                       </div>
                     </div>
+                    <ReactionRecord reactions={reactions.filter((reaction) => reaction.messageId === m.id)} />
                     <MessageTime iso={m.createdAt} />
                     {m.flowName && (
                       <WorkflowMarker

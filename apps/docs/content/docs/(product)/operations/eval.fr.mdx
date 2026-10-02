@@ -16,7 +16,7 @@ exécutions.
 
 - **Answer** compare la réponse, les Sources citées et la qualité de la réponse
   de chaque modèle.
-- **Classifier** compare le Flow que chaque modèle sélectionne.
+- **Classifier** compare le Flow sélectionné par chaque modèle.
 - **Orchestration** exécute le tour complet avec chaque modèle en tant que
   classificateur.
 - **Fallback** rend le fournisseur propre de l'Assistant indisponible et compare
@@ -29,7 +29,7 @@ exécutions.
   premiers résultats.
 
 Chaque étape affiche uniquement les modèles qui peuvent l'exécuter. Un modèle
-peut s'exécuter via une connexion fournisseur de l'organisation ou via AI
+peut s'exécuter via une connexion fournisseur de l'Organisation ou via AI
 Gateway.
 
 ## Importer un jeu de données
@@ -38,8 +38,8 @@ Gateway.
 2. Sélectionnez **Download example format** pour obtenir le format JSON.
 3. Rédigez un exemple pour chaque question. Chaque exemple comporte un `id` et
    un `inputs.question`.
-4. En option, ajoutez `reference_outputs`. Ciele les utilise pour mesurer la
-   précision.
+4. Vous pouvez, si vous le souhaitez, ajouter `reference_outputs`. Ciele les
+   utilise pour mesurer la précision.
 5. Saisissez un nom, sélectionnez le fichier, puis sélectionnez **Upload**.
 
 Un jeu de données peut contenir jusqu'à 50 exemples. Chaque ID d'exemple doit
@@ -47,9 +47,9 @@ Un jeu de données peut contenir jusqu'à 50 exemples. Chaque ID d'exemple doit
 
 Les champs de référence sont `answer_contains`, `flow_id`, `flow_name` et
 `source_url_contains`. Ciele les vérifie en tant que texte littéral.
-L'exactitude n'est pas un jugement portant sur le sens ou sur les faits.
+L'exactitude n'est pas un jugement portant sur le sens ni sur les faits.
 
-## Démarrer une exécution
+## Lancer une exécution
 
 1. Sélectionnez l'onglet **Runs**.
 2. Sélectionnez un Assistant, un jeu de données et une étape.
@@ -76,7 +76,19 @@ Le tableau de bord de fiabilité affiche six graphiques pour chaque modèle :
 - **Autonomy**, les tours qui se sont terminés sans fallback ni refusal.
 - **Error rate**, les exécutions qui ont rencontré une erreur technique.
 
-Sous les graphiques, le tableau **Leaderboard** affiche une ligne pour chaque
+**Latency distribution by model** compare l'écart et les queues des exécutions
+enregistrées. Chaque courbe utilise des observations brutes de latence, y
+compris les défaillances techniques. Un modèle a besoin d'au moins deux
+observations pour tracer une courbe. Les courbes comportant moins de 20
+échantillons sont exploratoires. Utilisez les nombres affichés et les résultats
+individuels pour les évaluer. Ce graphique utilise une population différente de
+celle du Leaderboard, qui exclut les défaillances techniques du calcul de la
+latence.
+
+Un modèle sans exécution enregistrée affiche une mesure absente au lieu d'un
+coût ou d'une latence égal à zéro.
+
+Sous les graphiques, le tableau **Leaderboard** présente une ligne pour chaque
 modèle. Le modèle le plus précis apparaît en premier. Lorsque deux modèles
 présentent la même précision, le modèle le moins coûteux est placé en premier.
 
@@ -86,7 +98,7 @@ présentent la même précision, le modèle le moins coûteux est placé en prem
 - **Errors**, uniquement lorsqu'un modèle a rencontré une erreur technique.
 - **€ / 1 000**, le coût estimé pour 1 000 exemples.
 - **Median** et **p95**, le temps par exemple. Les exécutions comportant une
-  erreur ne sont pas incluses.
+  erreur ne sont pas prises en compte.
 - À l'étape **Classifier**, une colonne pour chaque Flow de référence. Chaque
   colonne indique le nombre d'exemples corrects pour ce Flow.
 
@@ -98,7 +110,7 @@ les Sources et les erreurs de chaque modèle.
 ## Limites
 
 - Une exécution effectue une recherche dans la Knowledge en temps réel. Une
-  modification apportée à Knowledge pendant une exécution peut modifier ses
+  modification apportée à la Knowledge pendant une exécution peut modifier ses
   résultats.
 - Une exécution n'effectue pas d'actions ayant des effets externes, telles que
   **Send email** ou **API request**. Un Flow qui en contient un enregistre une

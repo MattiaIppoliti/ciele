@@ -1,6 +1,8 @@
 "use client";
 
-import { Cell, Pie, PieChart } from "recharts";
+import { ArcFrame } from "@/components/charts/arc/arc-frame";
+import { DonutChart } from "@/components/charts/arc/donut-chart/donut-chart";
+import { CHART_SERIES } from "@/components/charts/palette";
 import {
   Card,
   CardContent,
@@ -8,12 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@agent-hub/ui";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
 import { formatCredits } from "@/lib/usage-summary";
 
 /**
@@ -28,23 +24,6 @@ export interface UsageSlice {
   credits: number;
 }
 
-/**
- * Explicit hues rather than the theme's `--chart-*` variables: those are a
- * greyscale ramp, which reads fine as stacked areas but turns a donut's darker
- * slices invisible against the card. Same palette as the Insights series, so
- * the two analytics surfaces stay one visual language.
- */
-const COLORS = ["#2563eb", "#059669", "#ea580c", "#a855f7", "#0891b2"];
-
-function configFor(slices: UsageSlice[]): ChartConfig {
-  return Object.fromEntries(
-    slices.map((slice, index) => [
-      slice.key,
-      { label: slice.label, color: COLORS[index % COLORS.length] },
-    ])
-  );
-}
-
 function Donut({
   title,
   description,
@@ -55,7 +34,6 @@ function Donut({
   slices: UsageSlice[];
 }) {
   const total = slices.reduce((sum, slice) => sum + slice.credits, 0);
-  const config = configFor(slices);
   const percent = (slice: UsageSlice) =>
     Math.round((slice.credits / total) * 100);
 
@@ -74,42 +52,24 @@ function Donut({
           </p>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <ChartContainer
-              config={config}
-              className="aspect-square h-32 w-32 shrink-0"
-              role="img"
-              aria-label={`${title}: ${slices
-                .map((slice) => `${slice.label} ${percent(slice)}%`)
-                .join(", ")}`}
-            >
-              <PieChart>
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      nameKey="key"
-                      formatter={(value) => `${formatCredits(Number(value))} credits`}
-                    />
-                  }
-                />
-                <Pie
-                  data={slices}
-                  dataKey="credits"
-                  nameKey="key"
-                  innerRadius="58%"
-                  outerRadius="100%"
-                  paddingAngle={2}
-                  strokeWidth={0}
-                >
-                  {slices.map((slice, index) => (
-                    <Cell
-                      key={slice.key}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ChartContainer>
+            <ArcFrame className="w-full">
+              <DonutChart
+                label={title}
+                data={slices.map((slice, index) => ({
+                  key: slice.key,
+                  label: slice.label,
+                  value: slice.credits,
+                  color: CHART_SERIES[index % CHART_SERIES.length],
+                }))}
+                unit="credits"
+                formatValue={formatCredits}
+                size={144}
+                thickness={22}
+                groupBelow={0}
+                maxSegments={slices.length}
+                legend={false}
+              />
+            </ArcFrame>
             {/* Legend under the ring, not beside it: these cards sit two-up
                 inside the dialog, where a side legend truncates every label. */}
             <ul className="w-full space-y-1.5 text-sm">
@@ -118,7 +78,7 @@ function Donut({
                   <span
                     aria-hidden
                     className="size-2.5 shrink-0 rounded-full"
-                    style={{ background: COLORS[index % COLORS.length] }}
+                    style={{ background: CHART_SERIES[index % CHART_SERIES.length] }}
                   />
                   <span className="min-w-0 flex-1 truncate">{slice.label}</span>
                   <span className="shrink-0 tabular-nums">

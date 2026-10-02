@@ -1,0 +1,18 @@
+/* Adapted from https://uiarc.dev/components/announcement-bar (single announcement). */
+.collapse { position: sticky; top: 0; z-index: 30; overflow: hidden; container-type: inline-size; }
+.section { overflow: hidden; }
+.bar { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; background: var(--foreground); color: var(--background); }
+.message { display: flex; min-height: 32px; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 2px 12px; margin: 0; padding: 6px 0; font-size: var(--text-sm); line-height: 1.4; text-align: center; text-wrap: balance; }
+.cta { display: inline-flex; align-items: center; gap: 4px; color: inherit; font-weight: 500; text-decoration: none; white-space: nowrap; }
+.cta svg { transition: transform 120ms ease; }
+.icon { display: grid; width: 32px; height: 32px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; opacity: .7; cursor: pointer; }
+.icon:focus-visible, .cta:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .icon:hover { background: color-mix(in oklch, currentColor 10%, transparent); opacity: 1; }
+  .cta:hover svg { transform: translateX(2px); }
+}
+@container (max-width: 560px) {
+  .bar { grid-template-columns: 0 minmax(0, 1fr) 32px; gap: 0 8px; padding-left: 14px; }
+  .message { justify-content: flex-start; column-gap: 10px; text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { .cta svg { transition: none; } }

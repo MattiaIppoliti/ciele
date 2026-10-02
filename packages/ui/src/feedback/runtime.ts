@@ -1,5 +1,6 @@
 import type { CueName } from "@foleyjs/core";
 import type { AudioPatch } from "@web-kits/audio";
+import type { BenchoPlayer } from "./sounds/bencho";
 
 import { HAPTIC_PATTERNS, haptic, setHapticTransport } from "./haptics";
 import { minimal } from "./sounds";
@@ -18,7 +19,7 @@ import {
 /**
  * The browser half of the feedback module: one delegated listener set on the
  * document, the lazy loading of the sound engines and haptics, and the bridge
- * from an interaction to Minimal/Foley playback and WebHaptics' `trigger()`.
+ * from an interaction to Bencho or Minimal/Foley playback and WebHaptics' `trigger()`.
  *
  * Why not Foley's own `bind()`: it decides a toggle's state from `aria-pressed`
  * only (Base UI switches and checkboxes speak `aria-checked`), it has no way to
@@ -27,7 +28,7 @@ import {
  * attribute names are Foley's, the binder is ours, and `bind()` is never
  * called: calling it too would double every cue.
  *
- * Both sound engines and WebHaptics are imported dynamically inside the first
+ * The selected sound engine and WebHaptics are imported inside the first
  * user gesture. A page nobody touches downloads none, and a server bundle can
  * never evaluate a module that reaches for `AudioContext`.
  */
@@ -114,6 +115,8 @@ export interface FeedbackRuntime {
 
 export interface AttachOptions {
   isMuted: () => boolean;
+  /** The admin uses Bencho; other surfaces keep their established sound set. */
+  soundSet?: "bencho";
 }
 
 /** One cue to play, or the latest one waiting while the audio modules unlock. */
@@ -217,6 +220,8 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   const win = doc.defaultView;
   let foley: Pick<FoleyModule, "play" | "set"> | null = null;
   let minimalPatch: AudioPatch | null = null;
+  let bencho: BenchoPlayer | null = null;
+  let benchoSettled = false;
   let foleySettled = false;
   let minimalSettled = false;
   let unlocked = false;
@@ -261,6 +266,11 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
 
   /** Play on the engine that owns the cue; false while that engine is still loading. */
   function perform(request: CueRequest): boolean {
+    if (options.soundSet === "bencho") {
+      if (!bencho) return false;
+      bencho.play(request.interaction, request.options);
+      return true;
+    }
     const minimalCue = MINIMAL_CUES[request.interaction];
     if (minimalCue && minimalPatch) {
       performMinimalCue(minimalPatch, minimalCue, request.options);
@@ -281,7 +291,10 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
     }
     const queued = pendingCue;
     // Played, or its engine has settled without loading: either way it is done.
-    if (perform(queued) || ((!MINIMAL_CUES[queued.interaction] || minimalSettled) && foleySettled)) {
+    const settled = options.soundSet === "bencho"
+      ? benchoSettled
+      : ((!MINIMAL_CUES[queued.interaction] || minimalSettled) && foleySettled);
+    if (perform(queued) || settled) {
       pendingCue = null;
     }
   }
@@ -289,30 +302,45 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   function unlock(): void {
     if (unlocked || destroyed) return;
     unlocked = true;
-    void import("@foleyjs/core")
-      .then((mod) => {
-        if (destroyed) return;
-        foley = mod;
-        mod.set({ ...FOLEY_SETTINGS });
-        foleySettled = true;
-        flushPendingCue();
-      })
-      .catch(() => {
-        // No audio is a degraded state, not an error worth a console line.
-        foleySettled = true;
-        flushPendingCue();
-      });
-    void import("@web-kits/audio")
-      .then((mod) => {
-        if (destroyed) return;
-        minimalPatch = mod.createPatchInstance(minimal._patch);
-        minimalSettled = true;
-        flushPendingCue();
-      })
-      .catch(() => {
-        minimalSettled = true;
-        flushPendingCue();
-      });
+    if (options.soundSet === "bencho") {
+      void import("./sounds/bencho")
+        .then((mod) => {
+          if (destroyed) return;
+          bencho = mod.createBenchoPlayer(() => !destroyed && !options.isMuted() && !doc.hidden);
+          benchoSettled = true;
+          flushPendingCue();
+        })
+        .catch(() => {
+          // Unsupported audio stays silent rather than switching back to the old identity.
+          benchoSettled = true;
+          flushPendingCue();
+        });
+    } else {
+      void import("@foleyjs/core")
+        .then((mod) => {
+          if (destroyed) return;
+          foley = mod;
+          mod.set({ ...FOLEY_SETTINGS });
+          foleySettled = true;
+          flushPendingCue();
+        })
+        .catch(() => {
+          // No audio is a degraded state, not an error worth a console line.
+          foleySettled = true;
+          flushPendingCue();
+        });
+      void import("@web-kits/audio")
+        .then((mod) => {
+          if (destroyed) return;
+          minimalPatch = mod.createPatchInstance(minimal._patch);
+          minimalSettled = true;
+          flushPendingCue();
+        })
+        .catch(() => {
+          minimalSettled = true;
+          flushPendingCue();
+        });
+    }
     void import("web-haptics")
       .then((mod) => {
         // `showSwitch: false` keeps the iOS `<input switch>` WebHaptics clicks
@@ -429,6 +457,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
     play,
     destroy() {
       destroyed = true;
+      bencho?.destroy();
       doc.removeEventListener("pointerdown", onPointerDown, { capture: true });
       doc.removeEventListener("pointerup", onPointerUp, { capture: true });
       doc.removeEventListener("click", onCaptureClick, { capture: true });

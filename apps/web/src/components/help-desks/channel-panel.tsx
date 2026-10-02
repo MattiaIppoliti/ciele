@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
 import { useModalFocus } from "@/components/motion/use-modal-focus";
+import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -820,6 +821,7 @@ export function ChannelPanel({
 }) {
   const [state, setState] = useState<ChannelPanelState>(initial);
   const [tab, setTab] = useState<EditTab>("setup");
+  const slideDirection = useSlidingDirection(tab, ALL_EDIT_TABS.map((tab) => tab.key));
   // Create-step draft
   const [name, setName] = useState(
     initial.mode === "new" ? CHANNEL_KINDS[initial.kind].defaultName : ""
@@ -1269,7 +1271,7 @@ export function ChannelPanel({
 
               {/* A Viewer can open a channel to read it; the fieldset disables
                   every native control under it, so nothing looks editable. */}
-              <fieldset disabled={!canEdit} className="min-w-0">
+              <SlidingPanel activeKey={tab} direction={slideDirection} sizing="flow"><fieldset disabled={!canEdit} className="min-w-0">
                 {tab === "setup" && (
                   <div className="mt-8 space-y-6">
                     <div>
@@ -1404,7 +1406,7 @@ export function ChannelPanel({
                     }
                   />
                 )}
-              </fieldset>
+              </fieldset></SlidingPanel>
             </div>
           )}
         </div>

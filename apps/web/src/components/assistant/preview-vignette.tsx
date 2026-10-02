@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowUp, Ellipsis, Plus, SquarePen, X } from "lucide-react";
+import { ArrowUpRight, ArrowUp, MessageSquare, Ellipsis, Plus, SquarePen, X } from "lucide-react";
 import type { Assistant } from "@agent-hub/core";
 import { useShell } from "@/components/shell/shell-provider";
 import { ChatHeaderMock } from "./preview-peek";
@@ -12,10 +12,9 @@ import { previewPanelCode } from "./preview-panel-loader";
  *
  * It is the Preview's chat card as it opens (the same header row, the same
  * welcome text, the same composer), so selecting it and watching the rail slide
- * in shows the thing the Member was already looking at, now working. It lights
- * on hover the way a Find preview page does: the edge brightens and a glow
- * rises from the top, in the same ink, so the two read as one family of
- * "this opens".
+ * in shows the thing the Member was already looking at, now working. The
+ * Overview's shared frame stays dark while its inner surface and destination
+ * arrow brighten on hover or keyboard focus.
  *
  * Below `md` there is no right rail to open, so it goes to the Preview route,
  * which is the same panel as a page.
@@ -32,53 +31,62 @@ export function PreviewVignette({ assistant, base }: { assistant: Assistant; bas
 
   return (
     <button
+      data-slot="overview-card"
       type="button"
       onClick={open}
       onPointerEnter={previewPanelCode.prefetch}
       onFocus={previewPanelCode.prefetch}
       aria-label={`Open the Preview of ${nickname}`}
-      className="group/page bg-card border-foreground/15 hover:border-foreground/30 focus-visible:ring-ring relative flex min-h-64 flex-col overflow-hidden rounded-xl border text-left transition-[border-color,box-shadow] duration-300 outline-none hover:shadow-[0_0_18px_-4px_color-mix(in_srgb,var(--foreground)_16%,transparent)] focus-visible:ring-2 motion-reduce:transition-none"
+      className="overview-card press focus-visible:ring-ring relative flex min-h-64 flex-col text-left outline-none focus-visible:ring-2"
     >
-      {/* The light, on the chat card itself rather than on a frame around it:
-          one card, the one the Preview opens. */}
       <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover/page:opacity-100 motion-reduce:transition-none [background:radial-gradient(120%_70%_at_50%_0%,color-mix(in_srgb,var(--foreground)_10%,transparent),transparent_70%)]"
-      />
-      <span
-        aria-hidden
-        className="from-foreground/[0.11] group-hover/page:from-foreground/[0.22] pointer-events-none absolute inset-x-0 top-0 h-11 bg-gradient-to-b to-transparent transition-[height,--tw-gradient-from] duration-300 group-hover/page:h-24 motion-reduce:transition-none"
-      />
-
-      {/* `ChatHeader`'s row, the transcript's welcome message and the
-          composer under it. */}
-      <ChatHeaderMock aria-hidden className="relative" nickname={nickname}>
-        <span className="flex shrink-0 items-center">
-          <span className="flex size-9 items-center justify-center">
-            <SquarePen className="text-primary size-4" />
+        data-slot="overview-card-content"
+        className="overview-card-content relative flex min-w-0 flex-1 flex-col p-1"
+      >
+        {/* `ChatHeader`'s row, the transcript's welcome message and the
+            composer under it. */}
+        <ChatHeaderMock aria-hidden className="relative" nickname={nickname}>
+          <span className="flex shrink-0 items-center">
+            <span className="flex size-9 items-center justify-center">
+              <SquarePen className="text-primary size-4" />
+            </span>
+            <span className="flex size-9 items-center justify-center">
+              <Ellipsis className="text-primary size-4" />
+            </span>
+            <span className="flex size-9 items-center justify-center">
+              <X className="text-primary size-4" />
+            </span>
           </span>
-          <span className="flex size-9 items-center justify-center">
-            <Ellipsis className="text-primary size-4" />
-          </span>
-          <span className="flex size-9 items-center justify-center">
-            <X className="text-primary size-4" />
+        </ChatHeaderMock>
+        <span aria-hidden className="relative line-clamp-4 flex-1 px-4 py-5 text-[0.9375rem]">
+          {assistant.welcomeMessage || "Hi! How can I help?"}
+        </span>
+        <span
+          aria-hidden
+          className="bg-background/60 relative mx-3 mb-3 flex flex-col gap-3 rounded-2xl border px-4 py-3"
+        >
+          <span className="text-muted-foreground truncate text-sm">Ask {nickname}…</span>
+          <span className="flex items-center justify-between">
+            <Plus className="text-muted-foreground size-4" />
+            <span className="bg-primary/40 text-primary-foreground flex size-8 items-center justify-center rounded-full">
+              <ArrowUp className="size-4" />
+            </span>
           </span>
         </span>
-      </ChatHeaderMock>
-      <span aria-hidden className="relative line-clamp-4 flex-1 px-4 py-5 text-[0.9375rem]">
-        {assistant.welcomeMessage || "Hi! How can I help?"}
       </span>
       <span
+        data-slot="overview-card-caption"
         aria-hidden
-        className="bg-background/60 relative mx-3 mb-3 flex flex-col gap-3 rounded-2xl border px-4 py-3"
+        className="overview-card-caption overview-card-link text-muted-foreground relative flex items-center gap-3 px-3 py-3 text-sm font-medium"
       >
-        <span className="text-muted-foreground truncate text-sm">Ask {nickname}…</span>
-        <span className="flex items-center justify-between">
-          <Plus className="text-muted-foreground size-4" />
-          <span className="bg-primary/40 text-primary-foreground flex size-8 items-center justify-center rounded-full">
-            <ArrowUp className="size-4" />
-          </span>
+        <span
+          data-slot="overview-card-icon"
+          className="overview-card-icon flex size-9 shrink-0 items-center justify-center rounded-full"
+        >
+          <MessageSquare className="size-4" />
         </span>
+        <span className="flex-1">Open Preview</span>
+        <ArrowUpRight className="overview-card-arrow size-4" />
       </span>
     </button>
   );

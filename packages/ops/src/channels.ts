@@ -499,6 +499,7 @@ export const postChannelMessageOp = defineOperation({
   input: z.object({
     id: z.string().min(1),
     message: z.string().min(1).max(8000),
+    replyToId: z.string().min(1).optional(),
   }),
   entities: ({ id }) => channelEntities(id),
   run: async (ctx, input): Promise<PostedChannelMessage> => {
@@ -510,6 +511,12 @@ export const postChannelMessageOp = defineOperation({
         .filter((teammate) => !isTeammateRetired(teammate))
         .map((teammate) => teammate.id)
     );
+    if (input.replyToId) {
+      const parent = await ctx.db.getChannelMessage(input.replyToId);
+      if (!parent || parent.organizationId !== ctx.organizationId || parent.channelId !== channel.id || parent.authorType === "system") {
+        throw new OperationError("not_found", "Reply message not found in this group");
+      }
+    }
     const mentions = parseChannelMentions(input.message, roster);
     const message = await ctx.db.appendChannelMessage({
       organizationId: ctx.organizationId,
@@ -518,6 +525,7 @@ export const postChannelMessageOp = defineOperation({
       authorUserId: actor,
       content: [{ type: "text", text: input.message }],
       mentions,
+      chainId: input.replyToId ?? null,
     });
     // Posting is reading: nobody has unread messages of their own.
     await markRead(ctx, participants, actor, message.createdAt);

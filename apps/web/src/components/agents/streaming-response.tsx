@@ -16,6 +16,7 @@ import { AgentDisclosure } from "@/components/agents/agent-disclosure";
 import { useCopied } from "@/lib/hooks/use-copied";
 import { EASE_OUT, SPRING_PRESS, SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
+import { MessageReactions, type ReactionTarget } from "@/components/chat/message-reactions";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import type { FeedbackReactionId } from "@agent-hub/core";
@@ -26,6 +27,7 @@ export type StreamingResponseFeedback = FeedbackReactionId | null;
 export interface StreamingResponseProps {
   /** Rendered response content. Pass plain text or the output of a Markdown renderer. */
   children: ReactNode;
+  reactionTarget?: ReactionTarget;
   status?: StreamingResponseStatus;
   /** Plain-text value copied by the built-in copy action. */
   copyText?: string;
@@ -93,6 +95,7 @@ export function StreamingResponse({
   showFeedback = true,
   className,
   extraActions,
+  reactionTarget,
 }: StreamingResponseProps) {
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
@@ -120,7 +123,7 @@ export function StreamingResponse({
     onFeedbackChange?.(value);
   };
 
-  return (
+  const response = (
     <div
       data-state={status}
       aria-busy={streaming}
@@ -201,4 +204,5 @@ export function StreamingResponse({
       </AnimatePresence>
     </div>
   );
+  return reactionTarget && complete && showActions ? <MessageReactions key={reactionTarget.messageId} target={reactionTarget}>{response}</MessageReactions> : response;
 }

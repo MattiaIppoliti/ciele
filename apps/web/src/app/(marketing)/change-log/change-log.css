@@ -1,0 +1,140 @@
+/* Scoped to release notes; shared styles keep repeated timeline rows compact. */
+.changelog {
+  margin-top: 3.5rem;
+}
+.changelog-item {
+  position: relative;
+  scroll-margin-top: 7rem;
+  padding: 0 0 2.5rem 2.5rem;
+}
+.changelog-item:last-child {
+  padding-bottom: 0;
+}
+.changelog-line {
+  position: absolute;
+  inset: 1.75rem auto 0 .75rem;
+  width: 1px;
+  background: var(--border);
+}
+.changelog-item:last-child .changelog-line {
+  display: none;
+}
+.changelog-indicator {
+  position: absolute;
+  top: .125rem;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+}
+.changelog-latest {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.changelog-past {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.changelog-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem .75rem;
+  min-height: 1.75rem;
+  margin-bottom: .75rem;
+}
+.changelog-badge {
+  padding: .125rem .5rem;
+  border-radius: .375rem;
+  font-size: .75rem;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--foreground);
+}
+.changelog-card {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: .75rem;
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+}
+.changelog-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color .15s;
+}
+.changelog-summary::-webkit-details-marker {
+  display: none;
+}
+.changelog-summary:hover {
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+.changelog-summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.changelog-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+  font-weight: 600;
+}
+.changelog-chevron {
+  width: .375rem;
+  height: .375rem;
+  margin-right: .25rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  transition: transform .2s;
+}
+.changelog-card[open] .changelog-chevron {
+  transform: rotate(45deg);
+}
+.changelog-content {
+  padding: 1.25rem 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.changelog-content > * + * {
+  margin-top: 1rem;
+}
+@media (min-width: 640px) {
+  .changelog {
+    margin-top: 5rem;
+  }
+  .changelog-item {
+    padding-left: 3rem;
+  }
+  .changelog-content {
+    padding-inline: 1.25rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .changelog-chevron, .changelog-summary {
+    transition: none;
+  }
+}
+
+.changelog-check {
+  width: .375rem;
+  height: .625rem;
+  margin-top: -.125rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}

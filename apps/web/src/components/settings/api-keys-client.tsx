@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useState, useTransition } from "react";
@@ -185,13 +186,9 @@ export function ApiKeysClient({
       width: "12%",
       cell: (key) =>
         key.revokedAt ? (
-          <Badge variant="outline">
-            <RollInText text="Revoked" />
-          </Badge>
+          <StatusPill status="offline" primaryText={<RollInText text="Revoked" />} />
         ) : (
-          <Badge variant="secondary">
-            <RollInText text="Active" />
-          </Badge>
+          <StatusPill status="online" primaryText={<RollInText text="Active" />} />
         ),
     },
     {

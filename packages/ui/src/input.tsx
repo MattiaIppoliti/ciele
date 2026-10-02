@@ -29,7 +29,7 @@ function PasswordInput({
   const [visible, setVisible] = React.useState(false)
   return (
     <div className="relative">
-      <Input type={visible ? "text" : "password"} className={cn("pr-9", className)} {...props} />
+      <Input data-text-completion="off" type={visible ? "text" : "password"} className={cn("pr-9", className)} {...props} />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}

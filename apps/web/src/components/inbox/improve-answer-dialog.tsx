@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@agent-hub/ui"
 import { Input } from "@agent-hub/ui"
+import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs"
 import { RollInText } from "@/components/motion/roll-in-text"
 import { RollingNumber } from "@/components/motion/rolling-number"
@@ -43,6 +44,7 @@ export function ImproveAnswerDialog({
   onChanged: () => void
 }) {
   const [tab, setTab] = useState<Tab>("create")
+  const slideDirection = useSlidingDirection(tab, ["create", "link"])
   const [title, setTitle] = useState("")
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -177,6 +179,7 @@ export function ImproveAnswerDialog({
           </TabsList>
         </Tabs>
 
+        <SlidingPanel activeKey={tab} direction={slideDirection} sizing="flow">
         {tab === "create" ? (
           <form id="improve-answer-create" onSubmit={createNew}>
             <Input
@@ -262,6 +265,7 @@ export function ImproveAnswerDialog({
           </div>
         )}
 
+        </SlidingPanel>
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}

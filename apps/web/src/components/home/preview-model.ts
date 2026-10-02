@@ -192,7 +192,7 @@ export const CONVERSATIONS = [
 /* ---------------------------------------------------------------- */
 
 /* Everyone in the thread. `seed` feeds the same generated-avatar helper the
-   console uses (`@/lib/avatar`, blobatar), so each participant has a stable
+   console uses (`@/lib/avatar`, Squishmoji), so each participant has a stable
    drawn face rather than initials. Members seed from their address, as the
    console's `personAvatarSeed` does; Teammates from a chosen seed. `self` marks
    the signed-in Member, whose messages sit on the right as in the console. */

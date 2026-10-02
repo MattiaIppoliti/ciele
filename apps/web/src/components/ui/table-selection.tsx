@@ -82,14 +82,16 @@ export function SelectAllHead({
   disabled?: boolean;
 }) {
   return (
-    <TableHead className="w-10 pr-0">
-      <Checkbox
-        aria-label={state === "all" ? "Clear selection" : "Select all rows"}
-        checked={state === "all"}
-        indeterminate={state === "some"}
-        disabled={disabled}
-        onCheckedChange={onToggle}
-      />
+    <TableHead data-table-select className="w-10 px-0">
+      <div className="flex items-center justify-center">
+        <Checkbox
+          aria-label={state === "all" ? "Clear selection" : "Select all rows"}
+          checked={state === "all"}
+          indeterminate={state === "some"}
+          disabled={disabled}
+          onCheckedChange={onToggle}
+        />
+      </div>
     </TableHead>
   );
 }
@@ -105,12 +107,14 @@ export function SelectRowCell({
   label: string;
 }) {
   return (
-    <TableCell className="w-10 pr-0">
-      <Checkbox
-        aria-label={`Select ${label}`}
-        checked={checked}
-        onCheckedChange={onToggle}
-      />
+    <TableCell data-table-select className="w-10 px-0">
+      <div className="flex items-center justify-center">
+        <Checkbox
+          aria-label={`Select ${label}`}
+          checked={checked}
+          onCheckedChange={onToggle}
+        />
+      </div>
     </TableCell>
   );
 }

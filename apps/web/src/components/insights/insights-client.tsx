@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Activity, Download, UserRound, X } from "lucide-react";
-import { BellRing, Calendar as CalendarIcon, Info, ListFilter } from "lucide-react";
+import { BellRing, Calendar as CalendarIcon, ListFilter } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import { CalendarRange } from "@/components/ui/calendar";
 import {
@@ -26,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Hint } from "@agent-hub/ui";
+import { InsightsRangeChip } from "@/components/insights/insights-range-chip";
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import {
   Select,
@@ -38,6 +38,9 @@ import {
 import { FilterSelect } from "@/components/ui/filter-select";
 import { AssistantFilterDropdown } from "@/components/insights/assistant-filter-dropdown";
 import { DateRangeDropdown, formatRange } from "@/components/insights/date-range-dropdown";
+import { CHART_OUTCOMES, CHART_SERIES } from "@/components/charts/palette";
+import { ArcFrame } from "@/components/charts/arc/arc-frame";
+import { MetricCard } from "@/components/charts/arc/metric-card/metric-card";
 import { DeferredUsageCard } from "@/components/insights/deferred-usage-card";
 import { formatDuration } from "@/lib/insights/dashboard-view";
 import type {
@@ -52,7 +55,7 @@ import { DEFAULT_RANGE_DAYS, lastDaysRange } from "@/lib/insights/range";
 import { toast } from "@/lib/toast";
 import { replaceFilterParams } from "@/lib/url-state";
 
-// Recharts stays off the first load, as it does for the usage chart below.
+// Chart code stays off the first load, as it does for the usage chart below.
 const ConversationDepthCard = dynamic(
   () => import("@/components/insights/conversation-depth-card").then((m) => m.ConversationDepthCard),
   { ssr: false, loading: () => <div className="bg-muted/40 h-[22rem] animate-pulse rounded-xl border" /> }
@@ -97,21 +100,21 @@ const FIELD_CLASS =
   "h-10 w-full rounded-lg border bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring/50 md:text-sm";
 
 const SERIES_COLORS: Record<string, string> = {
-  Conversations: "#2563eb",
-  Escalation: "#059669",
-  "AI answers": "#ea580c",
-  "User messages": "#a855f7",
-  "Unique users": "#0891b2",
-  "Conversations / User": "#e11d48",
-  "Answers / Conversation": "#4d7c0f",
-  "Messages / Conversation": "#b45309",
-  "Questions / Conversation": "#0f766e",
-  "Avg. conversation time": "#7c3aed",
-  "Resolution rate": "#a21caf",
-  "Shortcut click": "#0d9488",
-  "Answer rating": "#3b82f6",
-  "Positive vote": "#22c55e",
-  "Negative vote": "#f97316",
+  Conversations: CHART_SERIES[0],
+  Escalation: CHART_SERIES[1],
+  "AI answers": CHART_SERIES[2],
+  "User messages": CHART_SERIES[3],
+  "Unique users": CHART_SERIES[4],
+  "Conversations / User": CHART_SERIES[0],
+  "Answers / Conversation": CHART_SERIES[1],
+  "Messages / Conversation": CHART_SERIES[2],
+  "Questions / Conversation": CHART_SERIES[3],
+  "Avg. conversation time": CHART_SERIES[4],
+  "Resolution rate": CHART_SERIES[0],
+  "Shortcut click": CHART_SERIES[1],
+  "Answer rating": CHART_SERIES[2],
+  "Positive vote": CHART_OUTCOMES.positive,
+  "Negative vote": CHART_OUTCOMES.negative,
 };
 
 function StatCard({
@@ -119,6 +122,9 @@ function StatCard({
   title,
   subtitle,
   value,
+  numericValue,
+  suffix,
+  decimals = 0,
   valueClass,
   action,
   className,
@@ -127,10 +133,17 @@ function StatCard({
   title: string;
   subtitle?: string;
   value: string;
+  numericValue?: number;
+  suffix?: string;
+  decimals?: number;
   valueClass?: string;
   action?: React.ReactNode;
   className?: string;
 }) {
+  if (numericValue !== undefined) return <ArcFrame className={`arc-stat-card flex flex-col overflow-hidden rounded-xl border bg-card ${className ?? ""}`}>
+    <MetricCard label={title} value={numericValue} suffix={suffix} decimals={decimals} context={subtitle ?? "Selected range"} />
+    {action && <div className="mt-auto px-4 pb-4">{action}</div>}
+  </ArcFrame>;
   return (
     <Card className={className}>
       <CardHeader>
@@ -476,19 +489,7 @@ export function InsightsClient({
             )}
           </div>
       <SlotPortal id={INSIGHTS_RANGE_SLOT}>
-        <span className="text-primary inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 px-3 py-1.5 text-sm font-medium">
-          Date Range:{" "}
-          <RollInText text={formatRange(filters.from, filters.to)} className="whitespace-nowrap" />
-          <Hint label="Metrics cover conversations started in this range.">
-            <button
-              type="button"
-              aria-label="About this range"
-              className="press-control focus-visible:outline-ring inline-flex rounded-sm hover:opacity-70 focus-visible:outline-2"
-            >
-              <Info className="size-3.5" aria-hidden />
-            </button>
-          </Hint>
-        </span>
+        <InsightsRangeChip from={filters.from} to={filters.to} hint="Metrics cover conversations started in this range." />
       </SlotPortal>
       </div>
 
@@ -497,20 +498,24 @@ export function InsightsClient({
           them until a retry or the next change replaces them. */}
       <div
         aria-busy={refreshing}
-        className={`grid grid-cols-12 gap-3 border-t px-4 pt-5 pb-6 transition-opacity sm:gap-4 sm:px-6 ${
+        className={`grid grid-cols-12 gap-3 px-4 pt-5 pb-6 transition-opacity sm:gap-4 sm:px-6 ${
           failed ? "opacity-60" : ""
         }`}
       >
         <StatCard
           title="AI Resolution Rate"
           value={stats.resolutionRate === null ? "N/A" : formatPercent(stats.resolutionRate)}
+          numericValue={stats.resolutionRate ?? undefined}
+          suffix="%"
           valueClass="text-green-600"
           className="col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Answer Rating"
           subtitle={`${formatStat(stats.positive)} positive and ${formatStat(stats.negative)} negative`}
-          value={formatPercent(stats.answerRating)}
+          value={stats.positive + stats.negative > 0 ? formatPercent(stats.answerRating) : "N/A"}
+          numericValue={stats.positive + stats.negative > 0 ? stats.answerRating : undefined}
+          suffix="%"
           valueClass="text-green-600"
           className="col-span-6 @5xl:col-span-3"
         />
@@ -518,11 +523,13 @@ export function InsightsClient({
           icon={Activity}
           title="Number of Conversations"
           value={formatStat(stats.total)}
+          numericValue={stats.total}
           className="col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Escalated to Human"
           value={formatStat(stats.escalated)}
+          numericValue={stats.escalated}
           className="col-span-6 @5xl:col-span-3"
         />
         {/* The two cards the pre-flight makes possible (#956). Both render a
@@ -536,6 +543,8 @@ export function InsightsClient({
               ? "—"
               : formatPercent(stats.escalationIntentRate)
           }
+          numericValue={stats.escalationIntentRate ?? undefined}
+          suffix="%"
           subtitle="Asked for a person at least once"
           className="col-span-6 @5xl:col-span-3"
         />
@@ -546,6 +555,8 @@ export function InsightsClient({
               ? "—"
               : formatPercent(stats.implicitSatisfaction)
           }
+          numericValue={stats.implicitSatisfaction ?? undefined}
+          suffix="%"
           subtitle="Ended calm, among those nobody rated"
           className="col-span-6 @5xl:col-span-3"
         />
@@ -553,6 +564,7 @@ export function InsightsClient({
         <StatCard
           title="Languages Spoken"
           value={formatStat(stats.languages.length)}
+          numericValue={stats.languages.length}
           className="col-span-12 @md:col-span-6 @5xl:col-span-4"
           action={
             <Dialog>
@@ -597,6 +609,7 @@ export function InsightsClient({
           title="Number of AI Answers"
           subtitle={`AI sent ${formatStat(stats.aiAnswers)} answers to ${formatStat(stats.userMessages)} user messages`}
           value={formatStat(stats.aiAnswers)}
+          numericValue={stats.aiAnswers}
           className="col-span-12 @md:col-span-6 @5xl:col-span-4"
         />
         {/* Proactive nudges are counted on their own, never as answers (#546):
@@ -610,6 +623,7 @@ export function InsightsClient({
               : `${formatCount(stats.notifications)} proactive message${stats.notifications === 1 ? "" : "s"} nobody had to ask for`
           }
           value={formatStat(stats.notifications)}
+          numericValue={stats.notifications}
           className="col-span-12 @md:col-span-6 @5xl:col-span-4"
         />
         <StatCard
@@ -617,6 +631,7 @@ export function InsightsClient({
           title="Unique Users"
           subtitle={`${formatStat(stats.uniqueUsers)} user${stats.uniqueUsers === 1 ? "" : "s"} engaged with assistant`}
           value={formatStat(stats.uniqueUsers)}
+          numericValue={stats.uniqueUsers}
           className="col-span-12 @md:col-span-6 @5xl:col-span-4"
         />
 
@@ -625,17 +640,23 @@ export function InsightsClient({
           title="Conversations / User"
           subtitle={`On average, each user started ${formatStat(stats.conversationsPerUser)} conversation${stats.conversationsPerUser === 1 ? "" : "s"}`}
           value={formatStat(stats.conversationsPerUser)}
+          numericValue={stats.conversationsPerUser}
+          decimals={1}
           className="col-span-12 @md:col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Answers / Conversation"
           value={formatStat(stats.answersPerConversation)}
+          numericValue={stats.answersPerConversation}
+          decimals={1}
           className="col-span-12 @md:col-span-6 @5xl:col-span-3"
         />
         <StatCard
           title="Questions / Conversation"
           subtitle="Messages the Visitor sent in each conversation"
           value={formatStat(questionsPerConversation)}
+          numericValue={questionsPerConversation ?? undefined}
+          decimals={1}
           className="col-span-12 @md:col-span-6 @5xl:col-span-3"
         />
         <StatCard

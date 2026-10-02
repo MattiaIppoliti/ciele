@@ -1,13 +1,9 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ArcFrame } from "@/components/charts/arc/arc-frame";
+import { LineChart } from "@/components/charts/arc/line-chart/line-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@agent-hub/ui";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
 import { formatStat } from "@/lib/format";
 import { formatDuration } from "@/lib/insights/dashboard-view";
 
@@ -65,7 +61,6 @@ export function ConversationDepthCard({
   );
 }
 
-const CONFIG = { value: { label: "Value", color: "#2a78d6" } } satisfies ChartConfig;
 
 function Panel({
   title,
@@ -82,7 +77,7 @@ function Panel({
   values: number[] | undefined;
   format: (value: number) => string;
 }) {
-  const data = labels.map((label, i) => ({ label, value: values?.[i] ?? 0 }));
+  const data = labels.map((label, i) => ({ key: label, label, axisLabel: label, values: { value: values?.[i] ?? 0 } }));
   const empty = !values || values.every((v) => v === 0);
   return (
     <div className="min-w-0">
@@ -90,28 +85,10 @@ function Panel({
       <p className="text-3xl font-semibold tracking-tight tabular-nums">{headline}</p>
       <p className="text-muted-foreground mb-3 text-xs">{caption}</p>
       {empty ? (
-        <p className="text-muted-foreground flex h-44 items-center justify-center rounded-lg border border-dashed text-sm">
-          No conversations with messages in this range.
-        </p>
+        <EmptyState size="sm" className="min-h-44" title="No conversations in this range" description="Choose a wider date range or wait for new conversations." />
       ) : (
-        <ChartContainer config={CONFIG} className="h-44 w-full">
-          <AreaChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={28} fontSize={10} />
-            <YAxis tickLine={false} axisLine={false} width={60} fontSize={10} tickFormatter={format} />
-            <ChartTooltip
-              content={<ChartTooltipContent hideIndicator formatter={(value) => `${title}: ${format(Number(value))}`} />}
-            />
-            <Area
-              dataKey="value"
-              type="monotone"
-              stroke="var(--color-value)"
-              fill="var(--color-value)"
-              fillOpacity={0.12}
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ChartContainer>
+        <ArcFrame><LineChart data={data} series={[{ key: "value", label: title, area: true }]}
+          label={title} height={160} legend={false} formatValue={format} formatTick={format} /></ArcFrame>
       )}
     </div>
   );

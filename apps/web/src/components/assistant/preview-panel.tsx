@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { feedbackReactionScore, type Assistant, type Conversation, type FeedbackReactionId } from "@agent-hub/core";
@@ -883,9 +885,7 @@ export function PreviewPanel({
                   </Button>
                 </div>
               ) : historyGroups.length === 0 ? (
-                <p className="text-muted-foreground px-4 py-8 text-center text-sm">
-                  No previous conversations yet
-                </p>
+                <EmptyState size="sm" title="No previous conversations" description="Start a preview conversation to see it here." />
               ) : (
                 <AISidebar
                   editable={false}

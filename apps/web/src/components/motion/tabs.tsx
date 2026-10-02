@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cancelFrame, frame, motion, MotionConfig, useReducedMotion } from "motion/react";
 import {
+  Children,
+  isValidElement,
   createContext,
   useCallback,
   useContext,
@@ -16,8 +18,10 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import { EASE_OUT, SPRING_LAYOUT } from "@/lib/ease";
+import { SPRING_LAYOUT } from "@/lib/ease";
 import { cn } from "@/lib/utils";
+import { SlidingTabPanel, useSlidingDirection, type SlidingPanelDirection } from "./sliding-panel";
+import { startRouteSlide } from "./route-sliding-panel";
 
 // A link tab (`href`, outside a tablist) marks itself with aria-current, not
 // aria-pressed. Leaving it out of this selector found no active control, so
@@ -27,6 +31,7 @@ const ACTIVE_CONTROL_SELECTOR =
   '[data-tabs-value][aria-selected="true"], [data-tabs-value][aria-pressed="true"], [data-tabs-value][aria-current="page"]';
 
 type Ctx = {
+  direction: SlidingPanelDirection;
   value: string;
   setValue: (v: string) => void;
   layoutId: string;
@@ -131,8 +136,19 @@ export function Tabs({
     (panelValue: string) => `${layoutId}-panel-${encodeURIComponent(panelValue)}`,
     [layoutId],
   );
+  const direction = useSlidingDirection(current, Array.from(panelValues));
+  const items = Children.toArray(children);
+  const panels = items.filter((child) => isValidElement(child) && child.type === TabsContent);
+  let placedPanels = false;
+  const content = panels.length ? items.map((child) => {
+    if (!isValidElement(child) || child.type !== TabsContent) return child;
+    if (placedPanels) return null;
+    placedPanels = true;
+    return <div key="tab-panels" data-slot="tab-panels" className="relative grid min-h-0 min-w-0 flex-1 overflow-hidden">{panels}</div>;
+  }) : children;
   const contextValue = useMemo(
     () => ({
+      direction,
       value: current,
       setValue,
       layoutId,
@@ -142,7 +158,7 @@ export function Tabs({
       tabId,
       panelId,
     }),
-    [current, layoutId, setValue, panelValues, registerPanel, unregisterPanel, tabId, panelId],
+    [direction, current, layoutId, setValue, panelValues, registerPanel, unregisterPanel, tabId, panelId],
   );
   return (
     <MotionConfig transition={reduce ? { duration: 0 } : transition}>
@@ -152,7 +168,7 @@ export function Tabs({
             movement. The pill only ever travels within the list, so scoping
             projection to the Tabs wrapper is always correct. */}
         <motion.div layoutRoot className={className}>
-          {children}
+          {content}
         </motion.div>
       </TabsCtx.Provider>
     </MotionConfig>
@@ -426,7 +442,11 @@ export function TabsTrigger({
           onClick={(event) => {
             if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
             event.preventDefault();
-            setValue(value);
+            const list = event.currentTarget.closest('[role="group"], [role="tablist"]');
+            const links = list ? Array.from(list.querySelectorAll('[data-tabs-value]')) : [];
+            const currentIndex = links.findIndex((link) => link.getAttribute('aria-current') === 'page');
+            const nextIndex = links.indexOf(event.currentTarget);
+            startRouteSlide(() => setValue(value), nextIndex < currentIndex ? -1 : 1);
           }}
         >
           {content}
@@ -490,43 +510,12 @@ export function TabsContent({
   children: ReactNode;
   className?: string;
 }) {
-  const { value: current, registerPanel, unregisterPanel, tabId, panelId } = useTabs();
-  const reduce = useReducedMotion();
-  const active = current === value;
+  const { value: current, direction, registerPanel, unregisterPanel, tabId, panelId } = useTabs();
   useLayoutEffect(() => {
     registerPanel(value);
     return () => unregisterPanel(value);
   }, [registerPanel, unregisterPanel, value]);
-  // Inactive panels stay mounted but hidden, so their content (e.g. source
-  // code) is present in the server-rendered HTML for crawlers and assistive
-  // tech, instead of being dropped from the DOM.
-  if (!active) {
-    return (
-      <div
-        id={panelId(value)}
-        role="tabpanel"
-        aria-labelledby={tabId(value)}
-        tabIndex={0}
-        hidden
-        className={className}
-      >
-        {children}
-      </div>
-    );
-  }
-  return (
-    <motion.div
-      key={value}
-      id={panelId(value)}
-      role="tabpanel"
-      aria-labelledby={tabId(value)}
-      tabIndex={0}
-      initial={{ opacity: 0, y: reduce ? 0 : 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, ease: EASE_OUT }}
-      className={cn("mt-4", className)}
-    >
-      {children}
-    </motion.div>
-  );
+  return <SlidingTabPanel active={current === value} direction={direction}
+    id={panelId(value)} role="tabpanel" aria-labelledby={tabId(value)} tabIndex={0}
+    className={cn("mt-4", className)}>{children}</SlidingTabPanel>;
 }

@@ -9,6 +9,7 @@ import { ResizeHandle, SHELL_GAP } from "@/components/ui/resizable-panel";
 import { useDockedRail } from "@/components/shell/right-rail";
 import { SPRING_REFOLD, SPRING_UNFOLD } from "@/lib/ease";
 import { CodeBlock } from "@/components/ui/code-block";
+import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { useShell } from "@/components/shell/shell-provider";
 import { RailToggleButton } from "@/components/chat/rail-panel";
@@ -286,6 +287,7 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
     return () => controller.abort();
   }, [key]);
 
+  const slideDirection = useSlidingDirection(snippetTab, SNIPPET_TABS);
   return (
     // The left sidebar, mirrored: it sits on the shell's frame beside the
     // workspace panel rather than inside it, opens and closes on the same
@@ -349,7 +351,7 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
               ))}
             </TabsList>
           </Tabs>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+          <SlidingPanel activeKey={snippetTab} direction={slideDirection} className="min-h-0 flex-1" panelClassName="overflow-y-auto px-3 py-4">
             {failed ? (
               <p className="text-muted-foreground text-xs">
                 The developer catalogue could not be loaded. The API reference at{" "}
@@ -377,7 +379,7 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
                 ))}
               </div>
             )}
-          </div>
+          </SlidingPanel>
         </div>
       </div>
     </motion.aside>

@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type {
@@ -205,15 +207,10 @@ export function ImprovementsKanban({
             </header>
             <div className="flex min-h-24 flex-1 flex-col gap-2.5 p-2">
               {items.length === 0 ? (
-                <p className="text-muted-foreground px-1 py-6 text-center text-xs">
-                  {lanes.draggingId
-                    ? "Drop an improvement here."
-                    : filterActive
-                      ? "No loaded improvements match."
-                      : canEdit
-                        ? "Drop an improvement here."
-                        : "Nothing here."}
-                </p>
+                <EmptyState size="sm"
+                  title={lanes.draggingId ? "Drop an improvement here" : filterActive ? "No matching improvements" : "No improvements in this lane"}
+                  description={lanes.draggingId ? "Release to move it into this status." : filterActive ? "Try another search or load more improvements." : canEdit ? "Move an improvement here when it reaches this status." : "Your team's improvements will appear here."}
+                />
               ) : (
                 // Lanes sit side by side, so the budget is per lane: the top
                 // cards of every lane are on screen together.

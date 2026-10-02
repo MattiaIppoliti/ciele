@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useId, useRef, useState, useTransition, type ReactNode } from "react";
 import type {
@@ -37,7 +38,7 @@ import { moveOrderedId, reorderItemsByIds } from "@/lib/list-order";
 import { toast } from "@/lib/toast";
 import { applyMarkdownCommand, type MarkdownCommand } from "@/lib/markdown-toolbar";
 import { updateAssistantAction, uploadAssistantAvatarAction } from "@/app/actions";
-import { Badge } from "@agent-hub/ui";
+
 import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
@@ -75,17 +76,7 @@ function quickReplyTypeLabel(type: QuickReplyType): string {
 
 /** The on/off pill beside a section's switch. */
 function StatePill({ on, children }: { on: boolean; children: ReactNode }) {
-  return (
-    <Badge
-      variant="outline"
-      className={on ? "gap-1.5 rounded-full bg-muted/50 text-foreground" : "gap-1.5 rounded-full"}
-    >
-      <span
-        className={`size-1.5 rounded-full ${on ? "bg-foreground" : "bg-muted-foreground/50"}`}
-      />
-      {children}
-    </Badge>
-  );
+  return <StatusPill status={on ? "online" : "offline"} primaryText={children} />;
 }
 
 /**
@@ -183,9 +174,6 @@ function GeneralFormBody({
   const titleRef = useRef<HTMLInputElement>(null);
   const [titleError, setTitleError] = useState("");
 
-  const [launcherEnabled, setLauncherEnabled] = useState(
-    assistant.chatLauncherEnabled
-  );
   const [title, setTitle] = useState(assistant.title);
   const [nickname, setNickname] = useState(assistant.nickname);
   const [avatarUrl, setAvatarUrl] = useState(assistant.avatarUrl ?? "");
@@ -244,7 +232,6 @@ function GeneralFormBody({
   const modelSourceDirty = modelSource !== (assistant.modelSource ?? null);
   const dirty =
     voiceDirty ||
-    launcherEnabled !== assistant.chatLauncherEnabled ||
     title !== assistant.title ||
     nickname !== assistant.nickname ||
     description !== assistant.description ||
@@ -287,7 +274,6 @@ function GeneralFormBody({
     startTransition(async () => {
       try {
       await updateAssistantAction(assistant.id, {
-        chatLauncherEnabled: launcherEnabled,
         title: title.trim(),
         nickname: nickname.trim(),
         description,
@@ -359,136 +345,6 @@ function GeneralFormBody({
   return (
     <div className="pt-10 pb-24">
       <SectionTimeline>
-      <TimelineSection title="Chat launcher">
-      {/* Chat launcher */}
-      <Card size="sm" className="gap-0 p-4">
-        {/* The switch group never shrinks, so on a narrow screen the copy is
-            what gives, stack them instead of squeezing the paragraph into a
-            one-word column. */}
-        <div className="flex flex-col gap-3 @lg:flex-row @lg:items-start @lg:justify-between @lg:gap-4">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">Enable chat launcher</h2>
-            <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-              Shows the chat button on your pages.
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <StatePill on={launcherEnabled}>
-              <RollInText text={launcherEnabled ? "Active" : "Inactive"} />
-            </StatePill>
-            <Switch
-              checked={launcherEnabled}
-              onCheckedChange={setLauncherEnabled}
-              aria-label="Enable chat launcher"
-            />
-          </div>
-        </div>
-      </Card>
-      </TimelineSection>
-
-      <TimelineSection title="Model & knowledge" boxed>
-      <div className="space-y-8">
-      {/* Model */}
-      <div className="space-y-3">
-        <FieldHeader
-          title="Model"
-          hint="Answers published chats. Needs an organization credential in Settings → AI. The Preview uses your own default model."
-        />
-        {/* Stacked until the page column has room for the three side by side;
-            its width, not the window's, since both sidebars can take from it. */}
-        <div className="flex flex-col gap-2 @lg:flex-row">
-          <Select value={modelProvider} onValueChange={(provider) => {
-            const next = provider as Provider;
-            setModelProvider(next);
-            setModelId(modelCatalog[next][0].id);
-            setModelSource(null);
-          }} className="w-full @lg:w-40">
-            <SelectTrigger className="h-11" aria-label="Model provider">
-              <SelectValue>{PROVIDER_NAMES[modelProvider]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {/* Providers without a static catalog (openai_compatible) are
-                  not offered per-assistant: the runtime reaches them through
-                  cross-provider fallback with the connection's chat model. */}
-              {(Object.keys(PROVIDER_NAMES) as Provider[])
-                .filter((p) => modelCatalog[p].length > 0)
-                .map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {PROVIDER_NAMES[p]}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-          <Select value={modelId} onValueChange={(next) => {
-            setModelId(next);
-            setModelSource(null);
-          }} className="min-w-0 flex-1">
-            <SelectTrigger className="h-11" aria-label="Model">
-              <SelectValue>{modelCatalog[modelProvider].find((m) => m.id === modelId)?.label ?? modelId}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {modelCatalog[modelProvider].map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label}
-                  <span className="text-muted-foreground ml-auto font-mono text-xs">{m.id}</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <ModelSourceSelect
-            sources={modelSources[modelSelector({ provider: modelProvider, modelId })] ?? []}
-            value={modelSource}
-            onChange={setModelSource}
-          />
-        </div>
-      </div>
-
-      {/* Models the chat window offers */}
-      <div className="space-y-3">
-        <FieldHeader
-          title="Let visitors choose the model"
-          hint="Extra models visitors can switch to. Leave empty to hide the picker."
-        />
-        <ModelAllowList
-          catalog={modelCatalog}
-          configured={configured}
-          value={allowedModels}
-          onChange={setAllowedModels}
-          unavailable={unavailableProviders}
-          sources={modelSources}
-        />
-        <p className="text-muted-foreground text-xs">
-          Published chat: {modelAllowListSummary(extraModels, unavailableProviders)}
-          {extraModels.length > 0 && " Preview lists selected models and marks missing connections as unavailable."}
-        </p>
-      </div>
-
-      {/* Visitor attachments */}
-      <div className="space-y-3">
-        <FieldHeader
-          title="Let visitors attach files"
-          hint="Visitors can attach a PDF, Office file, text file or image. Files are read once and never stored."
-        />
-        <div className="flex items-center gap-3">
-          <Switch
-            checked={attachmentsEnabled}
-            onCheckedChange={setAttachmentsEnabled}
-            aria-label="Let visitors attach files"
-          />
-          <span className="text-muted-foreground text-sm">
-            {attachmentsEnabled
-              ? "Visitors can attach files."
-              : "Visitors cannot attach files."}
-          </span>
-        </div>
-      </div>
-      </div>
-      </TimelineSection>
-
-      <TimelineSection title="Voice mode">
-        <VoiceSettings assistantId={assistant.id} value={voice} onChange={setVoice} />
-      </TimelineSection>
-
       <TimelineSection title="Identity" boxed>
       <div className="space-y-8">
       {/* Logo */}
@@ -648,6 +504,109 @@ function GeneralFormBody({
         </div>
       </div>
       </div>
+      </TimelineSection>
+
+      <TimelineSection title="Model & knowledge" boxed>
+      <div className="space-y-8">
+      {/* Model */}
+      <div className="space-y-3">
+        <FieldHeader
+          title="Model"
+          hint="Answers published chats. Needs an organization credential in Settings → AI. The Preview uses your own default model."
+        />
+        {/* Stacked until the page column has room for the three side by side;
+            its width, not the window's, since both sidebars can take from it. */}
+        <div className="flex flex-col gap-2 @lg:flex-row">
+          <Select value={modelProvider} onValueChange={(provider) => {
+            const next = provider as Provider;
+            setModelProvider(next);
+            setModelId(modelCatalog[next][0].id);
+            setModelSource(null);
+          }} className="w-full @lg:w-40">
+            <SelectTrigger className="h-11" aria-label="Model provider">
+              <SelectValue>{PROVIDER_NAMES[modelProvider]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {/* Providers without a static catalog (openai_compatible) are
+                  not offered per-assistant: the runtime reaches them through
+                  cross-provider fallback with the connection's chat model. */}
+              {(Object.keys(PROVIDER_NAMES) as Provider[])
+                .filter((p) => modelCatalog[p].length > 0)
+                .map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {PROVIDER_NAMES[p]}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          <Select value={modelId} onValueChange={(next) => {
+            setModelId(next);
+            setModelSource(null);
+          }} className="min-w-0 flex-1">
+            <SelectTrigger className="h-11" aria-label="Model">
+              <SelectValue>{modelCatalog[modelProvider].find((m) => m.id === modelId)?.label ?? modelId}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {modelCatalog[modelProvider].map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.label}
+                  <span className="text-muted-foreground ml-auto font-mono text-xs">{m.id}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <ModelSourceSelect
+            sources={modelSources[modelSelector({ provider: modelProvider, modelId })] ?? []}
+            value={modelSource}
+            onChange={setModelSource}
+          />
+        </div>
+      </div>
+
+      {/* Models the chat window offers */}
+      <div className="space-y-3">
+        <FieldHeader
+          title="Let visitors choose the model"
+          hint="Extra models visitors can switch to. Leave empty to hide the picker."
+        />
+        <ModelAllowList
+          catalog={modelCatalog}
+          configured={configured}
+          value={allowedModels}
+          onChange={setAllowedModels}
+          unavailable={unavailableProviders}
+          sources={modelSources}
+        />
+        <p className="text-muted-foreground text-xs">
+          Published chat: {modelAllowListSummary(extraModels, unavailableProviders)}
+          {extraModels.length > 0 && " Preview lists selected models and marks missing connections as unavailable."}
+        </p>
+      </div>
+
+      {/* Visitor attachments */}
+      <div className="space-y-3">
+        <FieldHeader
+          title="Let visitors attach files"
+          hint="Visitors can attach a PDF, Office file, text file or image. Files are read once and never stored."
+        />
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={attachmentsEnabled}
+            onCheckedChange={setAttachmentsEnabled}
+            aria-label="Let visitors attach files"
+          />
+          <span className="text-muted-foreground text-sm">
+            {attachmentsEnabled
+              ? "Visitors can attach files."
+              : "Visitors cannot attach files."}
+          </span>
+        </div>
+      </div>
+      </div>
+      </TimelineSection>
+
+      <TimelineSection title="Voice mode">
+        <VoiceSettings assistantId={assistant.id} value={voice} onChange={setVoice} />
       </TimelineSection>
 
       <TimelineSection title="Behavior" boxed>

@@ -1,5 +1,8 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, type ChangeEvent } from "react";
@@ -403,7 +406,11 @@ export function EvalLibrary({
                             ),
                           )}
                         </td>
-                        <td className="px-4 py-3">{run.status}</td>
+                        <td className="px-4 py-3"><StatusPill
+                          status={run.status === "completed" ? "online" : run.status === "failed" ? "error" : run.status === "running" ? "info" : "away"}
+                          animated={run.status === "running"}
+                          primaryText={run.status}
+                        /></td>
                         <td className="px-4 py-3">
                           <ArrowRight className="size-4" />
                         </td>
@@ -413,9 +420,7 @@ export function EvalLibrary({
                 </tbody>
               </table>
               {!runs.length && (
-                <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-                  No runs yet. Upload a dataset and start your first comparison.
-                </p>
+                <EmptyState title="No runs yet" description="Upload a dataset and start your first comparison." />
               )}
             </div>
             <div className="flex items-center justify-end gap-4 border-t px-5 py-3 text-xs">
@@ -554,9 +559,10 @@ export function EvalLibrary({
                             </div>
                           )}
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs ${available ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
-                          {available ? "Available" : "Configure provider"}
-                        </span>
+                        <StatusPill
+                          status={available ? "online" : "offline"}
+                          primaryText={available ? "Available" : "Configure provider"}
+                        />
                       </div>
                     );
                   })}

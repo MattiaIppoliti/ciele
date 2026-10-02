@@ -4,7 +4,7 @@ import * as React from "react";
 import { grabOffsetFor } from "@agent-hub/ui/resize-geometry";
 
 import {
-  fitColumnWidths,
+  resolveColumnWidths,
   MAX_COLUMN_WIDTH,
   MIN_COLUMN_WIDTH,
   columnWidthFor,
@@ -28,7 +28,7 @@ export interface TableColumnLayout {
   key: string;
   /** Starting width in px, and what a reset returns to. */
   width: number;
-  /** Below this the column's own content is gone; defaults to the shared floor. */
+  /** Readable floor for initial fitting. Every data column shares the drag minimum. */
   min?: number;
   /** Above this the table becomes difficult to scan; defaults to the shared cap. */
   max?: number;
@@ -111,24 +111,6 @@ export function useColumnWidths(
 ): ColumnWidths {
   const key = columnWidthsKey(tableId);
   const [measurements, setMeasurements] = React.useState({ available: 0, actions: 0 });
-  const measureColumns = React.useCallback((group: HTMLTableColElement | null) => {
-    const table = group?.closest("table");
-    const container = table?.parentElement;
-    if (!table || !container) return;
-    const measure = () => {
-      const actionCells = table.querySelectorAll("tbody tr > :last-child > div");
-      for (const cell of actionCells) observer.observe(cell);
-      const actions = Math.max(64, ...Array.from(actionCells, (cell) => cell.scrollWidth + 24));
-      const available = container.clientWidth;
-      setMeasurements((previous) => previous.available === available && previous.actions === actions ? previous : { available, actions });
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(container);
-    const changes = new MutationObserver(measure);
-    changes.observe(table, { childList: true, subtree: true });
-    measure();
-    return () => { observer.disconnect(); changes.disconnect(); };
-  }, []);
   // Which column's grip is under the pointer. It lights the whole column,
   // not the header cell the grip lives in: the boundary being dragged is the
   // column's, and a lit header over eleven unlit rows points at the wrong
@@ -140,10 +122,7 @@ export function useColumnWidths(
   // `setItem` per pointermove is a synchronous write, plus a JSON encode and a
   // notification to every subscribed table, sixty times a second on the same
   // thread that has to paint the column moving.
-  const [draft, setDraft] = React.useState<{
-    key: string;
-    width: number;
-  } | null>(null);
+  const [draft, setDraft] = React.useState<Record<string, number> | null>(null);
   const raw = React.useSyncExternalStore(
     subscribeStore,
     () => readStore(key),
@@ -164,17 +143,22 @@ export function useColumnWidths(
     ...column,
     fixed: column.fixed || column.key === "actions",
     width: column.key === "actions" && measurements.actions ? measurements.actions : preferred[column.key],
-    min: column.min ?? Math.max(MIN_COLUMN_WIDTH, Math.min(column.width, column.width * 0.7)),
+    min: MIN_COLUMN_WIDTH,
   }));
-  const widths = measurements.available
-    ? fitColumnWidths(responsiveLayout, measurements.available)
-    : Object.fromEntries(responsiveLayout.map((column) => [column.key, column.width]));
-
-  if (draft) widths[draft.key] = draft.width;
+  // Fit only the initial layout. A user resize freezes all rendered widths.
+  const initialLayout = responsiveLayout.map((column, index) => ({
+    ...column,
+    min: Math.max(MIN_COLUMN_WIDTH, layout[index]?.min ?? MIN_COLUMN_WIDTH, Math.min(column.width, 160)),
+  }));
+  const widths = draft ?? resolveColumnWidths(
+    Object.keys(stored).length ? responsiveLayout : initialLayout,
+    measurements.available,
+    stored
+  );
 
   const commit = (columnKey: string, width: number) => {
     setDraft(null);
-    writeStore(key, JSON.stringify({ ...stored, [columnKey]: width }));
+    writeStore(key, JSON.stringify({ ...widths, [columnKey]: width }));
   };
 
   const handleFor = (
@@ -185,14 +169,41 @@ export function useColumnWidths(
     return {
       label: columnKey,
       value: widths[columnKey],
-      minWidth: column.min ?? MIN_COLUMN_WIDTH,
+      minWidth: responsiveLayout.find((entry) => entry.key === columnKey)?.min ?? MIN_COLUMN_WIDTH,
       maxWidth: column.max ?? MAX_COLUMN_WIDTH,
-      onResize: (width) => setDraft({ key: columnKey, width }),
+      onResize: (width) => setDraft({ ...widths, [columnKey]: width }),
       onCommit: (width) => commit(columnKey, width),
       onReset: () => commit(columnKey, column.width),
       onActive: (on: boolean) => setActive(on ? columnKey : null),
     };
   };
+
+  const totalWidth = Object.values(widths).reduce((sum, width) => sum + width, 0);
+  const measureColumns = React.useCallback((group: HTMLTableColElement | null) => {
+    const table = group?.closest("table");
+    const container = table?.parentElement;
+    if (!table || !container) return;
+    // Explicit table width prevents the browser from redistributing a drag.
+    table.style.setProperty("--table-width", `${totalWidth}px`);
+    const measure = () => {
+      const actionCells = table.querySelectorAll("tbody tr > td:not([colspan]):last-child > div");
+      for (const cell of actionCells) observer.observe(cell);
+      // Measure controls rather than the allocated cell to avoid width feedback.
+      const actions = Math.max(64, ...Array.from(actionCells, (cell) => {
+        const controls = Array.from(cell.querySelectorAll<HTMLElement>("button, a"));
+        return controls.reduce((sum, control) => sum + control.offsetWidth, 24)
+          + Math.max(0, controls.length - 1) * 6;
+      }));
+      const available = container.clientWidth;
+      setMeasurements((previous) => previous.available === available && previous.actions === actions ? previous : { available, actions });
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    const changes = new MutationObserver(measure);
+    changes.observe(table, { childList: true, subtree: true });
+    measure();
+    return () => { observer.disconnect(); changes.disconnect(); };
+  }, [totalWidth]);
 
   const colGroup = (
     <colgroup ref={measureColumns}>

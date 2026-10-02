@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import {
   createContext,
   createElement,
@@ -163,9 +165,7 @@ function AssistantCard({
           <PreviewIcon icon={MessageCircle} size={16} />
         </span>
         <span className="flex items-center gap-2">
-          <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">
-            Active
-          </span>
+          <StatusPill status="online" primaryText="Active" />
           <Ellipsis className="text-muted-foreground size-4" />
         </span>
       </div>
@@ -178,7 +178,6 @@ function AssistantCard({
       </div>
       <div className="mt-auto flex items-center gap-2">
         <span className="bg-muted text-muted-foreground flex items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-2xs">
-          <span className="size-1.5 rounded-full bg-emerald-500" />
           {id}
         </span>
         <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-2xs">
@@ -438,6 +437,7 @@ function TeammatesPane() {
                 <GeneratedAvatar
                   key={participant.id}
                   seed={participant.seed}
+                  animated={participant.kind === "teammate"}
                   size="size-6"
                   className="ring-background ring-2"
                 />
@@ -498,7 +498,7 @@ function TeammatesPane() {
                 >
                   {mention && (
                     <span className="bg-background flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-1 text-xs font-medium">
-                      <GeneratedAvatar seed={mention.seed} size="size-4" />
+                      <GeneratedAvatar seed={mention.seed} size="size-4" animated={mention.kind === "teammate"} />
                       {mention.name}
                     </span>
                   )}
@@ -511,7 +511,7 @@ function TeammatesPane() {
           return (
             <div key={index} className="flex flex-col gap-1.5">
               <span className="flex items-center gap-2 text-sm">
-                <GeneratedAvatar seed={author.seed} size="size-6" />
+                <GeneratedAvatar seed={author.seed} size="size-6" animated />
                 <span className="font-medium">{author.name}</span>
                 <span className="text-muted-foreground text-xs">
                   {author.role}
@@ -595,7 +595,7 @@ function LibraryPane() {
             {tab.label}
             <span className="text-xs opacity-70">{tab.count}</span>
             {tab.live && (
-              <span className="size-1.5 rounded-full bg-emerald-500" />
+              <StatusPill status="online" primaryText="Ready" />
             )}
           </span>
         ))}

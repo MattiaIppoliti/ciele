@@ -1,38 +1,14 @@
-import { Cloud, Mail, Workflow } from "lucide-react";
-import { Cloudy, HardDrive, Hash } from "lucide-react";
 import type { ApplicationProvider } from "@agent-hub/core";
+import { APP_BRAND_PATHS } from "./app-brand-paths";
 import { cn } from "@/lib/utils";
 
-/**
- * How a connected Application is drawn, in one place.
- *
- * Both surfaces that name a provider read this: the Library's Applications
- * panel, where somebody connects one, and the marketing Knowledge shot, where
- * a visitor sees which ones exist. They used to disagree, and the console's own
- * icons were picked by shape rather than by subject, Google Drive was a
- * `Building2`.
- *
- * **On official logos.** Each brand's own mark would be better than a tile, and
- * an integration directory naming the product it integrates with is ordinary
- * nominative use. What stopped it here is sourcing, not permission: none of
- * these five is in `simple-icons` any more (16.28 carries no Salesforce,
- * ServiceNow, Slack, OneDrive or Google Drive), and drawing a brand mark from
- * memory produces a wrong logo, which is worse than an honest tile. This repo
- * is also mirrored publicly, so committing vendored brand assets is a call for
- * whoever owns the trademark relationship, not a detail to slip into a UI
- * change.
- *
- * So each provider gets its real brand colour and the closest honest symbol,
- * and this file is the single seam: dropping the official SVGs in later means
- * replacing `mark` here and nothing else.
- */
+/** Official application marks, shared by Knowledge and marketing. */
 export interface AppBrand {
   label: string;
   /** The brand's own colour, used as the tile ground. */
   color: string;
   /** Foreground on that ground. Slack's aubergine and Drive's green need white. */
   onColor: string;
-  mark: typeof Cloud;
 }
 
 export const APP_BRANDS: Record<ApplicationProvider, AppBrand> = {
@@ -40,35 +16,26 @@ export const APP_BRANDS: Record<ApplicationProvider, AppBrand> = {
     label: "Salesforce",
     color: "#00A1E0",
     onColor: "#FFFFFF",
-    // Salesforce's mark is a cloud, so this is the shape rather than a stand-in.
-    mark: Cloudy,
   },
   servicenow: {
     label: "ServiceNow",
     color: "#62D84E",
     onColor: "#0B1F12",
-    // A workflow engine, which is what the product is and what it imports from.
-    mark: Workflow,
   },
   slack: {
     label: "Slack",
     color: "#4A154B",
     onColor: "#FFFFFF",
-    // The octothorpe: Slack's own mark is built from it, and a channel is what
-    // you actually pick when you import.
-    mark: Hash,
   },
   onedrive: {
     label: "OneDrive",
     color: "#0078D4",
     onColor: "#FFFFFF",
-    mark: Cloud,
   },
   google_drive: {
     label: "Google Drive",
     color: "#1FA463",
     onColor: "#FFFFFF",
-    mark: HardDrive,
   },
   // Not a knowledge source (#841): the Human review sender. Branded so the
   // Applications list and the Flow Builder draw it the same way, but kept out
@@ -77,7 +44,6 @@ export const APP_BRANDS: Record<ApplicationProvider, AppBrand> = {
     label: "Microsoft 365 mail",
     color: "#0078D4",
     onColor: "#FFFFFF",
-    mark: Mail,
   },
 };
 
@@ -104,7 +70,6 @@ export function AppBrandMark({
   className?: string;
 }) {
   const brand = APP_BRANDS[provider];
-  const Mark = brand.mark;
   return (
     <span
       className={cn(
@@ -116,7 +81,9 @@ export function AppBrandMark({
       // The label is always beside it; the tile is identity, not information.
       aria-hidden
     >
-      <Mark className="size-[55%]" />
+      {provider === "servicenow" ? <svg viewBox="95 5 16 15" className="size-[65%]"><path d="m102.8 5.762c-4.2 0-7.5 3.3-7.5 7.5 0 2.2 0.9 4.2 2.3 5.6 0.5 0.5 1.4 0.5 2 0.1 0.8-0.7 2-1.1 3.2-1.1 1.3 0 2.3 0.4 3.2 1.1 0.6 0.5 1.4 0.4 2-0.2 1.4-1.4 2.3-3.3 2.3-5.5-0.1-4.1-3.4-7.5-7.5-7.5m-0.1 11.4c-2.3 0-3.8-1.7-3.8-3.8s1.5-3.8 3.8-3.8 3.8 1.7 3.8 3.8-1.5 3.8-3.8 3.8" fill="currentColor" fillRule="evenodd" /></svg> : (
+        <svg viewBox="0 0 24 24" className="size-[65%]"><path d={APP_BRAND_PATHS[provider]} fill="currentColor" /></svg>
+      )}
     </span>
   );
 }

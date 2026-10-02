@@ -16,8 +16,8 @@
  * table fighting back rather than as a limit.
  */
 
-/** Below this a cell shows its padding and nothing else. */
-export const MIN_COLUMN_WIDTH = 72;
+/** Keep enough room for a heading and its controls. */
+export const MIN_COLUMN_WIDTH = 120;
 /** Wide enough for a long URL, narrow enough that one column cannot eat the table. */
 export const MAX_COLUMN_WIDTH = 900;
 
@@ -87,7 +87,12 @@ export function parseColumnWidths(
 }
 
 /** Fit flexible columns to the viewport, retaining their readable floors. */
-export function fitColumnWidths(columns: readonly { key: string; width: number; min: number; fixed?: boolean }[], available: number): Record<string, number> {
+export function fitColumnWidths(columns: readonly { key: string; width: number; min: number; fixed?: boolean }[], available: number, chosen: Readonly<Record<string, number>> = {}): Record<string, number> {
+  // Readable starting floors must not undo an explicit resize on release.
+  // Other columns absorb spare room; chosen columns keep their exact width.
+  columns = columns.map((column) => !column.fixed && chosen[column.key] !== undefined
+    ? { ...column, width: Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, chosen[column.key]!)), fixed: true }
+    : column);
   const fixed = columns.filter((column) => column.fixed).reduce((sum, column) => sum + column.width, 0);
   const flexible = columns.filter((column) => !column.fixed);
   const floor = flexible.reduce((sum, column) => sum + column.min, 0);
@@ -96,4 +101,10 @@ export function fitColumnWidths(columns: readonly { key: string; width: number; 
   const ratio = preferred > floor ? Math.min(1, (room - floor) / (preferred - floor)) : 0;
   const extra = Math.max(0, room - preferred) / Math.max(1, flexible.length);
   return Object.fromEntries(columns.map((column) => [column.key, column.fixed ? column.width : column.min + (Math.max(column.min, column.width) - column.min) * ratio + extra]));
+}
+
+/** Saved layouts retain each width even when the viewport changes. */
+export function resolveColumnWidths(columns: readonly { key: string; width: number; min: number; max?: number; fixed?: boolean }[], available: number, stored: Record<string, number>): Record<string, number> {
+  if (!Object.keys(stored).length) return available ? fitColumnWidths(columns, available) : Object.fromEntries(columns.map((column) => [column.key, column.width]));
+  return Object.fromEntries(columns.map((column) => [column.key, column.fixed ? column.width : Math.min(column.max ?? MAX_COLUMN_WIDTH, Math.max(column.min, stored[column.key] ?? column.width))]));
 }

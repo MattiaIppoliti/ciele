@@ -35,6 +35,7 @@ export {
 // warn threshold). The runtime's enterprise registry re-exports these; new
 // code should import them from here.
 export * from "./billing";
+export type { PlatformInsightsRange, PlatformOrganizationInsights, PlatformInsightsReport } from "./platform-insights";
 export { applicationConnectionOwnerType } from "./application-connections";
 
 // Open Knowledge Format v0.2: the Concept frontmatter vocabulary and the

@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import {
   type ReactNode,
   useEffect,
@@ -321,9 +323,7 @@ export function AssistantHelpDesks({
 
         <div className="mt-4 space-y-3">
           {visible.length === 0 && (
-            <p className="text-muted-foreground py-6 text-center text-sm">
-              No help desks match this view.
-            </p>
+            <EmptyState size="sm" title="No matching help desks" description="Try another view or add a help desk for this assistant." />
           )}
           {visible.map((desk) => (
             <div key={desk.id} className="rounded-lg border bg-muted/20 p-3.5">

@@ -9,6 +9,11 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
+import { useSetTopBarSlot } from "@/components/shell/top-bar-slots";
+import { Settings2 } from "lucide-react";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
+import { useTopBarFormActions } from "@/components/settings/form-actions";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { ChannelUnread, Teammate, TeammateVisibility } from "@agent-hub/core";
@@ -103,24 +108,26 @@ const TEMPLATES: Array<{
   },
 ];
 
-function CreateTeammateDialog({
-  open,
+export function CreateTeammatePage({
   collections,
   sources,
   sourcesTruncated,
   projects,
-  onClose,
 }: {
-  open: boolean;
   collections: CollectionOption[];
   /** The Library items the new Teammate's scope can name one at a time. */
   sources: ScopeSource[];
   sourcesTruncated: boolean;
   /** Live Projects the new Teammate can attach to right away (#771). */
   projects: { id: string; name: string }[];
-  onClose: () => void;
 }) {
   const router = useRouter();
+  const onClose = () => router.push("/teammates");
+  const setSlot = useSetTopBarSlot();
+  useEffect(() => {
+    setSlot("title", <span>Teammates › New AI Teammate</span>);
+    return () => setSlot("title", null);
+  }, [setSlot]);
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [roleDescription, setRoleDescription] = useState("");
@@ -176,10 +183,7 @@ function CreateTeammateDialog({
           await updateTeammateAction(teammate.id, { projectId });
         }
         toast.success(`${teammate.name} is ready`);
-        // The dialog stays mounted in the layout: the next "New teammate"
-        // must not open on this one's answers.
         reset();
-        onClose();
         router.push(`/teammates/${teammate.id}`);
       } catch (error) {
         toast.error(
@@ -189,15 +193,16 @@ function CreateTeammateDialog({
     });
   }
 
+  const formActions = useTopBarFormActions({ dirty: Boolean(name.trim()), saving: isPending, saveLabel: "Create teammate", cancelAlwaysEnabled: true, onSave: handleCreate, onCancel: onClose });
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl">New AI Teammate</DialogTitle>
-        </DialogHeader>
+    <div className="h-full min-h-0 overflow-y-auto">
+      <div className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
+        <SectionHeading icon={Settings2} title="New AI Teammate" description="Give your teammate a name, a standing role and the knowledge it needs." />
+        <div className="pt-10 pb-24"><SectionTimeline>
+        <TimelineSection title="Start from a role" boxed>
 
         <div className="space-y-2">
-          <p className="font-semibold">Start from a role</p>
+
           <div className="grid grid-cols-2 gap-3 pt-1 sm:grid-cols-4">
             {TEMPLATES.map((template) => (
               <button
@@ -205,7 +210,7 @@ function CreateTeammateDialog({
                 type="button"
                 onClick={() => pick(template)}
                 aria-pressed={title === template.title}
-className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
+className={`press-control flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
                   title === template.title
                     ? "border-primary ring-primary/30 shadow-light ring-1"
                     : "hover:bg-muted/50"
@@ -220,6 +225,8 @@ className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm
           </div>
         </div>
 
+        </TimelineSection>
+        <TimelineSection title="Identity" boxed>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="teammate-name">
@@ -243,8 +250,10 @@ className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm
           </div>
         </div>
 
+        </TimelineSection>
+        <TimelineSection title="Standing role" boxed>
         <div className="space-y-2">
-          <Label htmlFor="teammate-role">Standing role</Label>
+          <Label htmlFor="teammate-role" className="sr-only">Standing role</Label>
           <Textarea
             id="teammate-role"
             value={roleDescription}
@@ -259,6 +268,8 @@ className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm
           </p>
         </div>
 
+        </TimelineSection>
+        <TimelineSection title="Knowledge" boxed>
         <KnowledgeScopePicker
           collections={collections}
           sources={sources}
@@ -269,6 +280,8 @@ className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm
           onSourcesChange={setSourceIds}
         />
 
+        </TimelineSection>
+        <TimelineSection title="Project" boxed>
         <ProjectSection
           projects={projects}
           value={projectId}
@@ -276,18 +289,16 @@ className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm
           canEdit
         />
 
+        </TimelineSection>
+        <TimelineSection title="Access" boxed>
         <VisibilityPicker value={visibility} onChange={setVisibility} />
 
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button variant="outline" className="h-10 px-5" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button className="h-10 px-5" onClick={handleCreate} disabled={isPending}>
-            <RollInText text={isPending ? "Creating…" : "Create teammate"} />
-          </Button>
+        </TimelineSection>
+        </SectionTimeline>
+        <div className="flex justify-end border-t pt-6">{formActions}</div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -515,7 +526,7 @@ export function TeammatesShell({
   /** The open thread, or the placeholder at `/teammates`. */
   children: ReactNode;
 }) {
-  const [createOpen, setCreateOpen] = useState(false);
+  const router = useRouter();
   const [channelOpen, setChannelOpen] = useState(false);
   const { chatSidebarSlot } = useShell();
   // The rows the chat reported belong to this visit to the chat area.
@@ -531,7 +542,7 @@ export function TeammatesShell({
           <SidebarPanel
             data={data}
             collapsed={chatSidebarSlot.collapsed}
-            onNewTeammate={() => setCreateOpen(true)}
+            onNewTeammate={() => router.push("/teammates/new")}
             onNewGroup={() => setChannelOpen(true)}
           />
         </Suspense>,
@@ -550,9 +561,7 @@ export function TeammatesShell({
       <Suspense fallback={null}>
         <ShellDialogs
           data={data}
-          createOpen={createOpen}
           channelOpen={channelOpen}
-          onCloseCreate={() => setCreateOpen(false)}
           onCloseChannel={() => setChannelOpen(false)}
         />
       </Suspense>
@@ -624,28 +633,16 @@ function PanelSkeleton({ collapsed }: { collapsed: boolean }) {
 
 function ShellDialogs({
   data,
-  createOpen,
   channelOpen,
-  onCloseCreate,
   onCloseChannel,
 }: {
   data: Promise<TeammatesShellData>;
-  createOpen: boolean;
   channelOpen: boolean;
-  onCloseCreate: () => void;
   onCloseChannel: () => void;
 }) {
-  const { teammates, members, collections, sources, sourcesTruncated, projects } = use(data);
+  const { teammates, members } = use(data);
   return (
     <>
-      <CreateTeammateDialog
-        open={createOpen}
-        collections={collections}
-        sources={sources}
-        sourcesTruncated={sourcesTruncated}
-        projects={projects}
-        onClose={onCloseCreate}
-      />
       <CreateChannelDialog
         open={channelOpen}
         teammates={teammates}

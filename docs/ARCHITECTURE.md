@@ -792,7 +792,7 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   transcript, a `system` marker in the thread when a cap or a failed turn stops one, the shared
   transcript component with per-author rendering, a 0..1 Project binding that is both shared context
   and where the decision-writing tool points, unread badges with mention-only highlighting, and
-  Owner/Admin oversight at `/inbox/channels` behind a `manageMembers` operation. `streamChannelChain`
+  group access through the Teammates workspace. The former Inbox Groups pages redirect to `/inbox`. `streamChannelChain`
   reuses the 1:1 turn (persona, Knowledge Scope search, granted actions, memory layers) with the two
   #776 departures: the User memory layer is the chain-starter's only, and the Project layer can be two
   documents. Chains run on org Provider Connections only, and the same budget/activation/plan gates a
@@ -860,3 +860,9 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
 
 Keep this section honest: it's the fastest way for a new contributor (human or agent) to know what to
 trust versus what to build.
+
+### Platform reporting
+
+The enterprise edition hosts global reporting at `/insights/admin` in the web app. The Insights layout resolves the `platformAdmin` capability and appends **Admin** only for explicit Owner/Admin Members of the designated Organization. The page authorizes again before each global read. `platform_admin_organization` stores one immutable Organization ID and is service-role-only; naming an Organization Ciele grants no access.
+
+Cross-Organization reporting uses a separate privileged read path, without widening the tenant-scoped `Db` contract. Closed UTC days come from the durable usage rollup and today comes from the live ledger. Shared pricing distinguishes total estimated cost from platform-funded cost. The public edition returns no access or report.

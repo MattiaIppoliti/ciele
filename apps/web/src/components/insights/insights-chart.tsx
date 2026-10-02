@@ -2,7 +2,10 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import { ChevronDown, Table2 } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { ArcFrame } from "@/components/charts/arc/arc-frame";
+import { LineChart } from "@/components/charts/arc/line-chart/line-chart";
+import { Streamgraph } from "@/components/charts/arc/streamgraph/streamgraph";
+import { BrushChart } from "@/components/charts/arc/brush-chart/brush-chart";
 import { Button } from "@agent-hub/ui";
 import {
   Card,
@@ -11,12 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@agent-hub/ui";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
 import {
   Table,
   TableBody,
@@ -27,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { formatDay, formatShortDay, formatStat } from "@/lib/format";
@@ -105,24 +103,16 @@ function elapsedLabel(since: number, nowMs: number): string {
   return `Updated ${Math.floor(minutes / 60)}h ago`;
 }
 
-/** Series keys are display strings ("Answers / Conversation"), map each to a
- * CSS-variable-safe dataKey for Recharts + the chart config. */
-function slugifyKeys(rows: Row[]): Map<string, string> {
-  const slugs = new Map<string, string>();
-  const used = new Set<string>(["date"]);
-  for (const row of rows) {
-    let slug = row.key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "series";
-    while (used.has(slug)) slug = `${slug}-x`;
-    used.add(slug);
-    slugs.set(row.key, slug);
-  }
-  return slugs;
+function metricUnit(key: string) {
+  if (key === "Resolution rate" || key === "Answer rating") return "Percent";
+  if (key === "Avg. conversation time") return "Seconds";
+  return key.includes(" / ") ? "Per conversation / user" : "Counts";
 }
 
 /**
  * "Usage" card: a tab strip (Metrics / Assistants / Channels) switches the
  * chart between a toggleable multi-line view of the KPI series and stacked
- * bar breakdowns by assistant or channel, the latter's legend rows carry a
+ * area breakdowns by assistant or channel, the latter's legend rows carry a
  * total + share of the range.
  */
 export function UsageCard({
@@ -148,6 +138,8 @@ export function UsageCard({
     [metrics, defaultVisibleMetrics]
   );
 
+  const [zoom, setZoom] = useState<{ signature: string; range: [number, number] } | null>(null);
+  const signature = labels.join(",");
   const [tab, setTab] = useState<Tab>("metrics");
   const [hidden, setHidden] = useState<Set<string>>(initialHiddenMetrics);
   const [showTable, setShowTable] = useState(false);
@@ -199,51 +191,23 @@ export function UsageCard({
     });
   }
 
-  // Breakdown tabs partition a single total → stack the areas; the Metrics tab
-  // holds independent KPI series → overlap them with translucent fills.
-  const stacked = tab !== "metrics";
+  const indices = labels.flatMap((label, index) => {
+    const time = Date.parse(label.length === 7 ? `${label}-01T00:00:00Z` : `${label}T00:00:00Z`);
+    return zoom?.signature === signature && (time < zoom.range[0] || time > zoom.range[1]) ? [] : [index];
+  });
+  const chartData = indices.map((index) => ({ key: labels[index]!, label: bucketLabel(labels[index]!, unit),
+    axisLabel: tickLabel(labels[index]!, unit), values: Object.fromEntries(rows.map((row) => [row.key, row.values[index]])) }));
+  const chartSeries = visible.map((row) => ({ key: row.key, label: row.label, color: row.color }));
+  const metricGroups = ["Counts", "Percent", "Per conversation / user", "Seconds"].map((label) => ({
+    label, series: chartSeries.filter((row) => metricUnit(row.key) === label),
+  })).filter((group) => group.series.length > 0);
+  const conversations = metrics.find((row) => row.key === "Conversations");
+  const brushData = labels.map((label, index) => ({
+    date: Date.parse(label.length === 7 ? `${label}-01T00:00:00Z` : `${label}T00:00:00Z`),
+    value: conversations?.values[index] ?? 0,
+  }));
 
-  const slugs = useMemo(() => slugifyKeys(rows), [rows]);
-
-  const chartConfig = useMemo(() => {
-    const config: ChartConfig = {};
-    for (const row of rows) {
-      config[slugs.get(row.key)!] = { label: row.label, color: row.color };
-    }
-    return config;
-  }, [rows, slugs]);
-
-  const chartData = useMemo(
-    () =>
-      labels.map((label, i) => ({
-        date: label,
-        ...Object.fromEntries(rows.map((r) => [slugs.get(r.key)!, r.values[i]])),
-      })),
-    [labels, rows, slugs]
-  );
-
-  const xAxisProps = {
-    dataKey: "date",
-    tickLine: false,
-    axisLine: false,
-    tickMargin: 10,
-    angle: -45,
-    textAnchor: "end",
-    height: 70,
-    minTickGap: 12,
-    tick: { fontSize: 11 },
-    tickFormatter: (label: string) => tickLabel(label, unit),
-  } as const;
-
-  const yAxisProps = {
-    tickLine: false,
-    axisLine: false,
-    width: 44,
-    domain: [0, "auto"],
-    tickFormatter: (v: number) => COMPACT_FORMATTER.format(v),
-    tick: { fontSize: 12 },
-  } as const;
-
+  const slideDirection = useSlidingDirection(tab, TABS.map((tab) => tab.id));
   return (
     <Card>
       <CardHeader className="border-b [.border-b]:pb-4">
@@ -259,7 +223,7 @@ export function UsageCard({
 
       <CardContent>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Tabs value={tab} onValueChange={(value) => selectTab(value as Tab)}>
+          <Tabs value={tab} onValueChange={(value) => { if (value === "metrics" || value === "assistants" || value === "channels") selectTab(value); }}>
             {/* Library's pill rail: every section switcher in the console is
                 the same control. */}
             <TabsList aria-label="Usage chart view">
@@ -273,66 +237,26 @@ export function UsageCard({
           <span className="text-muted-foreground text-sm">{elapsedLabel(fetchedAt, now)}</span>
         </div>
 
-        {/* A figure, not an img: the accessibility layer keeps the chart
-            keyboard-focusable, and an img's children are presentational. */}
-        <ChartContainer
-          config={chartConfig}
-          role="figure"
-          aria-label="Usage chart"
-          aria-describedby={summaryId}
-          className="mt-4 aspect-auto h-80 w-full"
-        >
-          <AreaChart accessibilityLayer data={chartData} margin={{ left: 0, right: 12 }}>
-            <defs>
-              {visible.map((r) => {
-                const slug = slugs.get(r.key)!;
-                return (
-                  <linearGradient key={slug} id={`fill-${slug}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor={`var(--color-${slug})`}
-                      stopOpacity={stacked ? 0.8 : 0.4}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor={`var(--color-${slug})`}
-                      stopOpacity={stacked ? 0.1 : 0.05}
-                    />
-                  </linearGradient>
-                );
-              })}
-            </defs>
-            <CartesianGrid vertical={false} />
-            <XAxis {...xAxisProps} />
-            <YAxis {...yAxisProps} />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  indicator="dot"
-                  labelFormatter={(label) =>
-                    typeof label === "string" ? bucketLabel(label, unit) : label
-                  }
-                />
-              }
-            />
-            {visible.map((r) => {
-              const slug = slugs.get(r.key)!;
-              return (
-                <Area
-                  key={r.key}
-                  dataKey={slug}
-                  type="natural"
-                  fill={`url(#fill-${slug})`}
-                  stroke={`var(--color-${slug})`}
-                  strokeWidth={2}
-                  stackId={stacked ? "total" : undefined}
-                  isAnimationActive={false}
-                />
-              );
-            })}
-          </AreaChart>
-        </ChartContainer>
+        <SlidingPanel activeKey={tab} direction={slideDirection} sizing="flow">
+          <ArcFrame className="mt-4 space-y-5">
+            {tab === "metrics" ? metricGroups.map((group) => <div key={group.label}>
+              <p className="mb-2 text-xs text-muted-foreground">{group.label}</p>
+              <LineChart data={chartData} series={group.series} label={`Usage · ${group.label}`} height={240} legend={false}
+                formatValue={(value) => group.label === "Percent" ? `${formatValue(value)}%` : formatValue(value)}
+                formatTick={(value) => group.label === "Percent" ? `${COMPACT_FORMATTER.format(value)}%` : COMPACT_FORMATTER.format(value)} />
+            </div>) : <Streamgraph data={chartData} series={chartSeries} label={`Conversations by ${tab}`}
+              height={280} offset="zero" legend={false} directLabels={false} formatValue={formatValue} />}
+            {tab === "metrics" && metricGroups.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Select a metric below to show its trend.</p>}
+            {conversations && brushData.length >= 2 && <div className="border-t pt-4">
+              <p className="mb-2 text-sm font-medium">Explore conversations over time</p>
+              <p className="mb-3 text-xs text-muted-foreground">Drag the window to zoom the charts above. Summary totals, the data table and exports cover the full selected range.</p>
+              <BrushChart key={signature} data={brushData} label="Conversations timeline" height={130} overviewHeight={40}
+                minSpan={86_400_000} formatValue={formatValue} formatTick={(value) => COMPACT_FORMATTER.format(value)}
+                formatDate={(date) => bucketLabel(date.toISOString().slice(0, unit === "month" ? 7 : 10), unit)}
+                onRangeChange={(range) => setZoom({ signature, range })} />
+            </div>}
+          </ArcFrame>
+        </SlidingPanel>
         <p id={summaryId} className="sr-only">
           {summary}
         </p>

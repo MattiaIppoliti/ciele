@@ -17,7 +17,7 @@ interface BreakdownSeries {
   percent?: number;
 }
 
-/** Keep Recharts out of the critical path until its card nears the viewport. */
+/** Keep chart code out of the critical path until its card nears the viewport. */
 export function DeferredUsageCard(props: {
   labels: string[];
   metrics: ChartSeries[];

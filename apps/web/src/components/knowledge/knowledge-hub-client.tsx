@@ -1,5 +1,7 @@
 "use client";
 
+import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
+
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,7 +16,6 @@ import {
   Copy,
   Maximize2,
   Download,
-  ExternalLink,
   FileText,
   Globe,
   Link2,
@@ -34,7 +35,6 @@ import {
 } from "@/components/knowledge/application-knowledge-panel";
 import type { PublicApplicationConnection } from "@/lib/application-connections";
 import type { ApplicationOAuthAvailability } from "@/lib/application-oauth";
-import type { BadgeTone } from "@agent-hub/ui";
 import {
   Badge,
   Button,
@@ -100,27 +100,12 @@ const TAB_ROW_NOUN: Record<KnowledgeTabSlug, string> = {
   faqs: "FAQ",
 };
 
-const STATUS_TONE: Record<SourceStatus, BadgeTone> = {
-  ready: "green",
-  processing: "amber",
-  error: "red",
-};
-
 function formatWhen(iso: string): string {
   if (!iso) return "—";
   // The explicit-locale, UTC formatter: `toLocaleString(undefined, …)` took the
   // server's locale and zone on the server and the reader's in the browser, so
   // every dated row hydrated to different text (React #418) on the Library.
   return formatDateTime(iso);
-}
-
-function StatusBadge({ status }: { status: SourceStatus }) {
-  return (
-    <Badge tone={STATUS_TONE[status]} className="text-2xs uppercase">
-      {/* Rolls, so a crawl finishing reads as the row changing state. */}
-      <RollInText text={status} />
-    </Badge>
-  );
 }
 
 function LinkedAssistantChips({
@@ -267,7 +252,7 @@ export function KnowledgeHubClient({
       ? [{ key: "answer", width: 360, min: 160 } as TableColumnLayout]
       : []),
     ...(tab === "websites"
-      ? [{ key: "content", width: 140 } as TableColumnLayout]
+      ? [{ key: "site", width: 240 }, { key: "content", width: 140 } as TableColumnLayout]
       : []),
     { key: "linked", width: 220, min: 120 },
     ...(tab === "files"
@@ -275,6 +260,7 @@ export function KnowledgeHubClient({
       : []),
     { key: "status", width: 130 },
     { key: "updated", width: 190 },
+    ...(tab === "websites" ? [{ key: "lastCrawled", width: 190 }] : []),
     { key: "actions", width: 150, fixed: true },
   ];
   const columns = useColumnWidths(`library-${tab}`, layout);
@@ -284,12 +270,7 @@ export function KnowledgeHubClient({
    * because the columns are conditional on the tab and the reader's Role and
    * a stale number leaves the mark hanging under the first column.
    */
-  const columnCount =
-    (canEdit ? 1 : 0) +
-    (tab === "faqs" ? 2 : 1) +
-    (tab === "websites" ? 1 : 0) +
-    (tab === "files" ? 1 : 0) +
-    4;
+  const columnCount = layout.length;
 
   const apply = (patch: Partial<HubSearchParams>) => {
     const next = { ...filters, q: query, ...patch };
@@ -489,6 +470,7 @@ export function KnowledgeHubClient({
                       resize={columns.handleFor("answer")}
                     />
                   )}
+                  {tab === "websites" && <TableColumnHeader label="Site" resize={columns.handleFor("site")} />}
                   {tab === "websites" && (
                     <TableColumnHeader
                       label="Content"
@@ -555,6 +537,9 @@ export function KnowledgeHubClient({
                       onClear: () => apply({ sort: "", page: 1 }),
                     }}
                   />
+                  {tab === "websites" && (
+                    <TableColumnHeader label="Last crawled" resize={columns.handleFor("lastCrawled")} />
+                  )}
                   {/* Named, rather than the blank cell it was: a column of
                       controls with no heading reads as an overflow of the one
                       before it. */}
@@ -572,7 +557,11 @@ export function KnowledgeHubClient({
                       colSpan={columnCount}
                       className="hover:bg-transparent"
                     >
-                      <EmptyState size="sm" title="Nothing here yet" />
+                      <EmptyState size="sm"
+                        title={filters.q || filters.status || filters.assistant ? "No matching sources" : "Nothing here yet"}
+                        description={filters.q || filters.status || filters.assistant ? "Try another search or clear the filters." : canEdit ? "Use Add to connect a source to your library." : "Sources will appear here when your team adds them."}
+                        action={filters.q || filters.status || filters.assistant ? <Button variant="outline" size="sm" onClick={() => { setQuery(""); apply({ q: "", status: "", assistant: "", page: 1 }); }}>Clear filters</Button> : undefined}
+                      />
                     </TableCell>
                   </TableRow>
                 )}
@@ -688,23 +677,11 @@ export function KnowledgeHubClient({
                             >
                               <RollInText text={item.name} />
                             </Link>
-                            {tab === "websites" && item.config.url && (
-                              <a
-                                href={item.config.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-                              >
-                                <span className="truncate">
-                                  <RollInText text={item.config.url} />
-                                </span>
-                                <ExternalLink className="size-3 shrink-0" />
-                              </a>
-                            )}
                             </span>
                         </TableOpenCell>
                       </TableCell>
                     )}
+                    {tab === "websites" && <TableCell>{item.config.url ? <a href={item.config.url} target="_blank" rel="noreferrer" className="block truncate text-muted-foreground hover:text-foreground" title={item.config.url}>{item.config.url}</a> : "—"}</TableCell>}
                     {tab === "websites" && (
                       <TableCell>
                         <Link
@@ -756,11 +733,16 @@ export function KnowledgeHubClient({
                       </TableCell>
                     )}
                     <TableCell>
-                      <StatusBadge status={item.status} />
+                      <SourceStatusBadge status={item.status} error={item.error} />
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                       <RollInText text={formatWhen(item.updatedAt)} />
                     </TableCell>
+                    {tab === "websites" && (
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        <RollInText text={item.lastCrawledAt ? formatWhen(item.lastCrawledAt) : "Never"} />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <TableActions>
                         {tab === "files" && (

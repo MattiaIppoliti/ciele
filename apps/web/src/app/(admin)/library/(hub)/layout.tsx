@@ -1,3 +1,4 @@
+import { RouteSlidingPanel } from "@/components/motion/route-sliding-panel";
 import { Suspense, type ReactNode } from "react";
 import { Skeleton } from "@agent-hub/ui";
 import { LibraryHeader } from "@/components/knowledge/library-header";
@@ -30,7 +31,7 @@ export default function LibraryLayout({
       <Suspense fallback={<LibraryHeaderSkeleton />}>
         <LibraryHeaderLoader />
       </Suspense>
-      {children}
+      <RouteSlidingPanel className="min-h-0 flex-1 overflow-hidden">{children}</RouteSlidingPanel>
     </div>
   );
 }

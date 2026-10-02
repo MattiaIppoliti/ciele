@@ -76,6 +76,7 @@ import {
   type FlowView,
 } from "@/lib/flow-canvas";
 import { cn } from "@/lib/utils";
+import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { isTypingTarget } from "@/lib/typing-target";
 import { TrustBadge } from "@/components/assistant/trust-badge";
 import { isRedirectError, useConfirmDelete } from "@/components/ui/confirm-delete-modal";
@@ -454,6 +455,7 @@ export function FlowBuilder({
   // form and the first client paint agree.
   const viewKey = flowViewKey(memberId);
   const [view, setView] = useState<FlowView>("form");
+  const slideDirection = useSlidingDirection(view, ["form", "canvas"]);
   useDeferredStoredValue(viewKey, parseFlowView, (stored) => {
     if (stored) setView(stored);
   });
@@ -835,6 +837,7 @@ export function FlowBuilder({
 
   if (view === "canvas") {
     return (
+      <SlidingPanel activeKey={view} direction={slideDirection}>
       <div
         className={cn(
           "flex h-full min-h-0 flex-col",
@@ -888,10 +891,12 @@ export function FlowBuilder({
         {triggerDialog}
         {confirmDeleteModal}
       </div>
+      </SlidingPanel>
     );
   }
 
   return (
+    <SlidingPanel activeKey={view} direction={slideDirection} panelClassName="overflow-y-auto">
     <div
       className={cn(
         "mx-auto max-w-2xl px-4 py-5 sm:px-5",
@@ -1095,5 +1100,6 @@ export function FlowBuilder({
       {footer}
       {confirmDeleteModal}
     </div>
+    </SlidingPanel>
   );
 }

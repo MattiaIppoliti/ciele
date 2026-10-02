@@ -7,7 +7,15 @@ Insights calcula las métricas de la organización a partir de los eventos de
 tiempo de ejecución almacenados. Utiliza el intervalo de fechas disponible y los
 filtros de Assistant para cambiar el conjunto de datos.
 
-## Resumen actual
+Los gráficos de Insights, Eval, Assistant Overview y Usage utilizan una paleta
+en escala de grises que se adapta a los temas claros y oscuros. Los resultados
+positivos y negativos siguen siendo verdes y rojos. Los cambios se basan en la
+dirección de cada métrica: la reducción de costes, de la latencia y de los
+fallos es positiva. Las etiquetas, las leyendas y los valores exactos
+identifican cada métrica. La línea temporal de latencia utiliza una línea
+discontinua para el p95.
+
+## Descripción general actual
 
 La vista general puede incluir estas métricas:
 
@@ -17,7 +25,7 @@ La vista general puede incluir estas métricas:
 - valoraciones de las respuestas y datos de satisfacción del cliente
 - derivaciones
 - respuestas por conversación
-- preguntas por conversación: el número de mensajes que ha enviado el visitante
+- questions per Conversation: el número de mensajes que ha enviado el visitante
 - duración media de la conversación: el tiempo transcurrido desde el inicio de
   una conversación hasta su último mensaje
 - idiomas y ratios de interacción
@@ -29,18 +37,29 @@ seleccionado.
 
 El gráfico **Conversation depth** muestra la duración media de las
 conversaciones y el número de preguntas por conversación para cada día, semana o
-mes. Ciele asigna cada Conversación al periodo en el que se inició. Una
+mes. Ciele asigna cada Conversation al periodo en el que se inició. Una
 Conversation que continúa después del final del intervalo conserva su duración
 completa.
 
+El gráfico **Usage** separa recuentos, porcentajes, ratios y segundos para que
+las diferentes unidades no compartan un mismo eje. Selecciona una métrica para
+mostrarla u ocultarla. Las pestañas **Assistants** y **Channels** muestran
+desgloses de las conversaciones.
+
+Utiliza la ventana **Explore conversations over time** para ampliar los gráficos
+dentro del intervalo de fechas seleccionado. Arrastra la ventana o sus
+controladores, o usa las teclas de dirección después de seleccionar un
+controlador. Las tarjetas de resumen, la tabla de datos y las exportaciones
+siguen abarcando todo el intervalo de fechas.
+
 ## Costes y observabilidad
 
-Dos paneles muestran cuánto cuesta la IA de tu organización y cómo funciona.
-**Costs** muestra el gasto y el uso. **Observability** muestra la fiabilidad, la
-velocidad y la calidad de las respuestas.
+Dos paneles muestran cuánto cuesta la IA de tu organización y cómo de bien
+funciona. **Costs** muestra el gasto y el uso. **Observability** muestra la
+fiabilidad, la velocidad y la calidad de las respuestas.
 
-Ambos paneles utilizan los mismos filtros. Selecciona un intervalo de fechas y,
-a continuación, selecciona **All**, **Assistants**, **Teammates** o
+Ambos paneles de control utilizan los mismos filtros. Selecciona un intervalo de
+fechas y, a continuación, selecciona **All**, **Assistants**, **Teammates** o
 **Internal**.
 
 - **Assistants** muestra el tráfico de widgets y de la vista previa, así como
@@ -55,17 +74,24 @@ Assistant.
 
 Cada panel de control comienza con tarjetas de estadísticas. Una tarjeta muestra
 un valor para el intervalo, una línea con sus valores diarios y la variación
-respecto al período anterior. El periodo anterior tiene la misma duración y
+respecto al periodo anterior. El periodo anterior tiene la misma duración y
 finaliza el día anterior al inicio del intervalo. Mueve el puntero a lo largo de
 la línea para leer el valor de cada día.
 
 ### Costes
 
 - gasto estimado, coste por turno, llamadas al modelo y tokens
-- gasto estimado por día, desglosado por superficie
-- la proporción del gasto de cada superficie en cada periodo
+- gasto total estimado por día
+- un streamgraph del gasto diario estimado por superficie. El grosor de la banda
+  representa una cantidad, no un porcentaje
 - un calendario del uso de tokens por día
 - gasto por modelo y por etapa del pipeline
+- un treemap del gasto por proveedor y por modelo. Selecciona un proveedor para
+  inspeccionar sus modelos
+
+El filtro Surface se aplica a los gráficos diarios y al desglose por modelo. Los
+totales de las superficies que aparecen debajo del streamgraph siempre comparan
+todas las superficies.
 
 El gasto es una estimación en euros. Ciele lo calcula a partir del número de
 tokens y de los precios de lista. No es una factura.
@@ -76,14 +102,18 @@ tokens y de los precios de lista. No es una factura.
   por turno
 - latencia por turno: mediana, percentil 95, un histograma y una tendencia
   diaria
-- **Answer accuracy**: la proporción de respuestas del asistente que superaron
+- **Answer accuracy**: el porcentaje de respuestas del asistente que superaron
   la verificación
-- **Autonomy**: el porcentaje de conversaciones de visitantes que no se
+- **Autonomy**: el porcentaje de conversaciones con visitantes que no se
   derivaron a un servicio de asistencia
+- un indicador de fiabilidad y una cuadrícula de autonomía, con los recuentos
+  exactos junto a los gráficos
+- una comparación de la fiabilidad, la precisión y la autonomía con respecto al
+  periodo anterior, en puntos porcentuales
 - las clases de error más frecuentes
 - los cinco Flows más utilizados, clasificados entre sí por día o por semana
 
-**Answer accuracy** y **Autonomy** se aplican únicamente a los Assistants. Para
+**Answer accuracy** y **Autonomy** solo se aplican a los asistentes. Para
 **Teammates** y **Internal**, estas métricas no se muestran.
 
 ### Notas
@@ -96,17 +126,29 @@ Usa **Export CSV** para descargar una fila por cada día del intervalo. Para
 obtener un archivo de informe con más opciones, utiliza
 [Exports](/operations/exports).
 
+## Informes de la plataforma
+
+En las implementaciones gestionadas, los Owners y Admins autorizados de la
+Organization designada de la plataforma ven **Admin** como la última pestaña de
+Insights. Esta pestaña muestra el uso y los costes estimados en todas las
+organizaciones, incluida la organización de la plataforma. Selecciona un
+intervalo de fechas para revisar las llamadas a modelos, los tokens, las páginas
+rastreadas y los costes estimados de cada organización. El coste financiado por
+la plataforma no incluye las claves API de los clientes ni las suscripciones
+personales. Otras organizaciones y otros miembros no tienen acceso a esta
+pestaña.
+
 ## Actualidad de los datos
 
 Insights almacena la vista general calculada y los paneles durante un máximo de
-cinco minutos para cada organización y conjunto de filtros. Todos los Members de
-la Organization leen los mismos datos almacenados.
+cinco minutos para cada organización y conjunto de filtros. Todos los Miembros
+de la Organización leen los mismos datos almacenados.
 
-Cuando un miembro realiza un cambio en la consola (en un asistente, una
-conversación o una mejora), la vista general almacenada se borra al instante. El
-tráfico de widgets (nuevas Conversations, valoraciones de respuestas,
-puntuaciones de satisfacción, escalaciones) alcanza las cifras en un plazo de
-cinco minutos.
+Cualquier cambio que un Member realice en la consola (en un Assistant, una
+Conversation o una Improvement) borra al instante la vista general almacenada.
+El tráfico de widgets (nuevas Conversations, valoraciones de respuestas,
+puntuaciones de satisfacción, escaladas) alcanza las cifras en un plazo de cinco
+minutos.
 
 Para forzar un nuevo cálculo antes de que transcurran los cinco minutos, envía
 `DELETE /api/insights` desde una sesión de navegador en la que hayas iniciado
@@ -116,18 +158,18 @@ general. Cualquier Member de la Organization puede enviar esta solicitud.
 ## Recuento de notificaciones
 
 Una notificación no es una respuesta de IA. Una sesión solo de notificaciones no
-aumenta los KPI de Conversación ni de respuestas.
+aumenta los KPI de Conversation ni de respuestas.
 
 La métrica **Notifications Sent** y sus series de gráficos registran la entrega
 proactiva por separado.
 
 ## Investiga un cambio
 
-1. Selecciona el intervalo de fechas y el asistente que quieras.
+1. Selecciona el intervalo de fechas y el Assistant que quieras.
 2. Identifica la métrica que ha cambiado.
-3. Abre la bandeja de entrada (Inbox) con el mismo ámbito.
+3. Abre la Inbox con el mismo ámbito.
 4. Lee Conversations representativas.
-5. Crea Improvements para los problemas de respuestas con medidas concretas.
+5. Crea Improvements para los problemas de respuestas procesables.
 
 Utiliza [Exports](/operations/exports) para obtener registros estructurados de
-conversaciones.
+las conversaciones.

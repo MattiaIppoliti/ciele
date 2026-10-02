@@ -1,3 +1,4 @@
+import { StatusBadge as StatusPill, statusFromTone } from "@/components/spaceui/status-badge";
 import Link from "next/link";
 import { Download, ExternalLink } from "lucide-react";
 import type {
@@ -123,9 +124,11 @@ export function DocumentView({
         />
         <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">
           <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
-          <Badge tone={sourceDocumentTone(status)}>
-            <RollInText text={sourceDocumentStatusLabel(status)} />
-          </Badge>
+          <StatusPill
+            status={statusFromTone(sourceDocumentTone(status))}
+            animated={status === "pending"}
+            primaryText={<RollInText text={sourceDocumentStatusLabel(status)} />}
+          />
         </h1>
       </header>
 

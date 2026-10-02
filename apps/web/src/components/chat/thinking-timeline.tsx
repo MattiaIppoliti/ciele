@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { TurnStep } from "@agent-hub/agent/client";
@@ -44,31 +45,14 @@ import {
  */
 function StatusBadge({ value }: { value: unknown }) {
   const status = typeof value === "number" ? value : null;
-  if (status === null && value !== "failed") {
-    const answered = value === "answer";
-    return (
-      <span
-        className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-xs ${
-          answered
-            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-            : "bg-muted text-muted-foreground"
-        }`}
-      >
-        {answered && "✅"} {String(value)}
-      </span>
-    );
-  }
-  const ok = status !== null && status >= 200 && status < 300;
+  const outcome = status !== null || value === "failed";
+  const ok = outcome ? status !== null && status >= 200 && status < 300 : value === "answer";
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-xs ${
-        ok
-          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-          : "bg-destructive/10 text-destructive"
-      }`}
-    >
-      {ok ? "✅" : "⚠️"} {status ?? String(value)}
-    </span>
+    <StatusPill
+      status={ok ? "online" : outcome ? "error" : "info"}
+      className="font-mono"
+      primaryText={String(value)}
+    />
   );
 }
 

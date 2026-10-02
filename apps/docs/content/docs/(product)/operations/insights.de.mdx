@@ -3,9 +3,16 @@ title: Insights
 description: Überprüfen Sie die aktuellen Metriken für Conversation, Answer, Escalation, Feedback und Notification.
 ---
 
-Insights berechnet Organisationsmetriken auf Basis gespeicherter Laufzeitevents.
+Insights berechnet Organisationsmetriken aus gespeicherten Laufzeitevents.
 Verwenden Sie den verfügbaren Datumsbereich und die Assistant-Filter, um den
 Datensatz zu ändern.
+
+Diagramme in Insights, Eval, Assistant Overview und Usage verwenden eine
+Graustufenpalette, die sich an helle und dunkle Designs anpasst. Positive und
+negative Ergebnisse bleiben grün bzw. rot. Bei Änderungen wird die Richtung der
+jeweiligen Kennzahl berücksichtigt: Niedrigere Kosten, Latenz und Fehlerzahlen
+sind positiv. Labels, Legends und genaue Werte identifizieren jede Kennzahl. Die
+Latenz-Zeitleiste verwendet eine gestrichelte Linie für p95.
 
 ## Aktuelle Übersicht
 
@@ -32,7 +39,18 @@ Das Diagramm **Conversation depth** zeigt die durchschnittliche Gesprächsdauer
 und die Anzahl der Fragen pro Gespräch für jeden Tag, jede Woche oder jeden
 Monat. Ciele ordnet jede Conversation dem Zeitraum zu, in dem sie begonnen hat.
 Eine Conversation, die nach dem Ende des Zeitraums fortgesetzt wird, behält ihre
-volle Dauer.
+volle Dauer bei.
+
+Das **Usage**-Diagramm trennt Anzahlen, Prozentsätze, Verhältnisse und Sekunden,
+sodass unterschiedliche Einheiten nicht dieselbe Achse teilen. Wählen Sie eine
+Metrik aus, um sie ein- oder auszublenden. Die Registerkarten **Assistants** und
+**Channels** zeigen Aufschlüsselungen der Konversationen an.
+
+Verwenden Sie das Fenster **Explore conversations over time**, um die Diagramme
+innerhalb des ausgewählten Datumsbereichs zu zoomen. Ziehen Sie das Fenster oder
+seine Griffe, oder verwenden Sie die Pfeiltasten, nachdem Sie einen Griff
+fokussiert haben. Summary cards, die Datentabelle und die Exporte decken
+weiterhin den gesamten Datumsbereich ab.
 
 ## Kosten und Beobachtbarkeit
 
@@ -45,30 +63,36 @@ und wählen Sie anschließend **All**, **Assistants**, **Teammates** oder
 **Internal**.
 
 - **Assistants** zeigt den Traffic von Widgets und der Vorschau sowie eingehende
-  HTTP-Flows an.
-- **Teammates** zeigt AI Teammate Chats, Channel Turns und Routines an.
+  HTTP-Flows.
+- **Teammates** zeigt AI Teammate-Chats, Channel Turns und Routines an.
 - **Internal** zeigt die Plattformaktivitäten: Indexierung, geplante Jobs sowie
   Aufrufe über API-Schlüssel und MCP.
 
-Wenn **All** oder **Assistants** ausgewählt ist, können Sie außerdem einen
-Assistant auswählen.
+Wenn **All** oder **Assistants** ausgewählt ist, können Sie auch einen Assistant
+auswählen.
 
-Jedes Dashboard beginnt mit Stat-Karten. Eine Karte zeigt einen Wert für den
-Zeitraum, eine Linie mit den Tageswerten sowie die Veränderung gegenüber dem
+Jedes Dashboard beginnt mit Stat-Cards. Eine Karte zeigt einen Wert für den
+Zeitraum, eine Linie mit den Tageswerten und die Veränderung gegenüber dem
 vorherigen Zeitraum. Der vorherige Zeitraum hat die gleiche Länge und endet am
-Tag vor dem Beginn des ausgewählten Zeitraums. Bewegen Sie den Mauszeiger
-entlang der Linie, um den Wert für jeden Tag abzulesen.
+Tag vor dem Beginn des Bereichs. Bewegen Sie den Mauszeiger entlang der Linie,
+um den Wert für jeden Tag abzulesen.
 
 ### Kosten
 
 - geschätzte Ausgaben, Kosten pro Turn, Modellaufrufe und Tokens
-- geschätzte Ausgaben pro Tag, aufgeschlüsselt nach Surface
-- der Anteil der Ausgaben für jede Oberfläche in jedem Zeitraum
+- Geschätzte Gesamtausgaben pro Tag
+- Ein Streamgraph der täglich geschätzten Ausgaben nach Surface. Die Bandbreite
+  repräsentiert einen Betrag, keinen Prozentsatz.
 - ein Kalender der täglichen Token-Nutzung
 - Ausgaben pro Modell und pro Pipeline-Phase
+- Eine Treemap der Ausgaben nach Provider und Modell. Wählen Sie einen Provider
+  aus, um dessen Modelle zu prüfen
 
-Die Ausgaben sind eine Schätzung in Euro. Ciele berechnet dies anhand der Anzahl
-der Token und der Listenpreise. Dies ist keine Rechnung.
+Der Filter „Surface“ gilt für die Tagesdiagramme und die Modellaufschlüsselung.
+Die Surface-Summen unter dem Streamgraph vergleichen stets alle Surfaces.
+
+Die Ausgaben sind eine Schätzung in Euro. Ciele berechnet dies anhand der
+Token-Anzahl und der Listenpreise. Dies ist keine Rechnung.
 
 ### Observability
 
@@ -76,10 +100,14 @@ der Token und der Listenpreise. Dies ist keine Rechnung.
   Turn
 - Turn-Latenz: Median, 95. Perzentil, ein Histogramm und ein täglicher Trend
 - **Answer accuracy**: der Anteil der Antworten des Assistenten, die der
-  Verifizierer als erfolgreich bewertet hat
-- **Autonomy**: der Anteil der Besuchergespräche, die nicht an einen Helpdesk
-  weitergeleitet wurden
-- die häufigsten Fehlerklassen
+  Verifizierer als korrekt bewertet hat
+- **Autonomy**: der Anteil der Visitor Conversations, die nicht an einen Help
+  Desk weitergeleitet wurden
+- eine Anzeige der Zuverlässigkeit und ein Autonomie-Raster, mit genauen
+  Zählungen neben den Diagrammen
+- ein Vergleich von Reliability, Accuracy und Autonomy mit dem vorherigen
+  Zeitraum, in Prozentpunkten
+- die am häufigsten auftretenden Fehlerklassen
 - die fünf am häufigsten verwendeten Flows, im Vergleich zueinander pro Tag oder
   pro Woche
 
@@ -90,11 +118,22 @@ der Token und der Listenpreise. Dies ist keine Rechnung.
 
 Tage sind UTC-Tage. Ein Modellaufruf, der vor der Surface-Zuordnung
 aufgezeichnet wurde, hat keine Surface. Es wird in **All** als **Unattributed**
-gezählt und in keiner anderen Oberfläche.
+gezählt und in keiner anderen Surface.
 
 Verwenden Sie **Export CSV**, um für jeden Tag im Zeitraum eine Zeile
 herunterzuladen. Für eine Berichtsdatei mit weiteren Optionen verwenden Sie
 [Exports](/operations/exports).
+
+## Plattform-Berichterstattung
+
+Bei verwalteten Bereitstellungen sehen autorisierte Owners und Admins der
+festgelegten Plattform-Organisation **Admin** als letzte Registerkarte
+„Insights“. Diese Registerkarte zeigt die Nutzung und die geschätzten Kosten für
+alle Organisationen, einschließlich der Plattformorganisation. Wählen Sie einen
+Datumsbereich aus, um Modellaufrufe, Tokens, Crawl-Seiten und geschätzte Kosten
+für jede Organisation zu überprüfen. Die von der Plattform finanzierten Kosten
+umfassen weder Kunden-API-Schlüssel noch persönliche Abonnements. Andere
+Organisationen und Mitglieder haben keinen Zugriff auf diese Registerkarte.
 
 ## Aktualität der Daten
 
@@ -109,13 +148,13 @@ Scores, Eskalationen) erreicht die Zahlen innerhalb von fünf Minuten.
 
 Um eine neue Berechnung vor Ablauf der fünf Minuten zu erzwingen, senden Sie
 `DELETE /api/insights` von einer angemeldeten Browsersitzung aus. Die Antwort
-lautet `204`, und beim nächsten Lesen wird die Übersicht erneut berechnet. Jedes
+lautet `204`, und beim nächsten Abruf wird die Übersicht erneut berechnet. Jedes
 Mitglied der Organisation kann diese Anfrage senden.
 
 ## Zählung von Benachrichtigungen
 
-Eine Notification ist keine KI-Antwort. Eine reine Notification-Sitzung erhöht
-weder die KPIs für Conversations noch die KPIs für Answers.
+Eine Notification ist keine KI-Antwort. Eine reine Notification-only-Sitzung
+erhöht weder die Conversation- noch die Answer-KPIs.
 
 Die Kennzahl **Notifications Sent** und ihre Diagrammreihen erfassen die
 proaktive Bereitstellung separat.
@@ -124,7 +163,7 @@ proaktive Bereitstellung separat.
 
 1. Wählen Sie den gewünschten Datumsbereich und den gewünschten Assistant aus.
 2. Identifizieren Sie die Metrik, die sich geändert hat.
-3. Öffnen Sie den Inbox mit demselben Scope.
+3. Öffnen Sie die Inbox mit demselben Scope.
 4. Lesen Sie repräsentative Conversations.
 5. Erstellen Sie Improvements für umsetzbare Probleme bei Antworten.
 

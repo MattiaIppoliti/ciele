@@ -28,7 +28,6 @@ import {
   Label,
 } from "@agent-hub/ui";
 import {
-  ChatThread,
   type ChatBotMsg,
   type ChatMsg,
 } from "@/components/chat/chat-thread";
@@ -37,6 +36,7 @@ import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { FULLSCREEN_GUTTER, WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { ChatSurface } from "@/components/chat/rail-panel";
 import { MessageScroller } from "@/components/agents/message";
+import { GroupThread } from "@/components/teammates/group-thread";
 import { GroupComposer } from "@/components/teammates/group-composer";
 import { MentionText } from "@/components/teammates/mention-text";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
@@ -73,19 +73,7 @@ import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
-/**
- * A Teammate group (#778, "channel" in the code): the 1:1 chat's transcript
- * with more than two people in it.
- *
- * The transcript and composer are the shared preview/widget chat pieces
- * (`ChatThread`, `PromptInput` via `GroupComposer`), so a group gets the same
- * bubbles, Thinking panel, tool cards, Concept → Source citations and composer
- * pulse a private chat has. What a group adds is exactly three things: a name
- * and a face above each bubble, a roster to manage, and the `@` picker.
- * Everything else that looks group-specific here (the mention hint, the cap
- * notice) is copy. The code keeps the channel vocabulary (routes, actions,
- * types); only what a Member reads says "group".
- */
+/** A shared group feed: human and AI messages use the same comment rows and reply rails. */
 
 export interface AddableTeammate {
   id: string;
@@ -127,7 +115,6 @@ export function ChannelWorkspace({
 }) {
   const router = useRouter();
   const { fullscreen, setFullscreen, surfaceRef, animating, spacerRef } = useFullscreenGrow();
-  const [entryVersion, setEntryVersion] = useState(0);
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -138,7 +125,6 @@ export function ChannelWorkspace({
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen, setFullscreen]);
   const [pending, setPending] = useState(false);
-  const [freshEntry, setFreshEntry] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -173,14 +159,15 @@ export function ChannelWorkspace({
    * words back, because a bubble that looks delivered over an empty box is a
    * message silently lost. A chain that fails later was still delivered.
    */
-  async function send(text: string, model = AUTO_CHAT_MODEL, attachments: string[] = []): Promise<boolean> {
+  async function send(text: string, model = AUTO_CHAT_MODEL, attachments: string[] = [], replyToId?: string): Promise<boolean> {
     const message = text.trim();
     if (!message || pending) return false;
-    setFreshEntry(false);
     setPending(true);
     playFeedback("send");
     const optimistic: ChatMsg = {
       role: "user",
+      id: crypto.randomUUID(),
+      threadParentId: replyToId ?? null,
       text: message,
       sentAt: new Date().toISOString(),
       author: {
@@ -198,13 +185,15 @@ export function ChannelWorkspace({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, model, attachments }),
+          body: JSON.stringify({ message, model, attachments, replyToId }),
         }
       );
       if (!response.ok || !response.body) {
         throw new Error(`Channel message failed (${response.status})`);
       }
       delivered = true;
+      const postedId = response.headers.get("X-Channel-Message-Id") ?? optimistic.id;
+      setMessages((prev) => prev.map((entry) => entry === optimistic ? { ...optimistic, id: postedId } : entry));
       await consumeChannelStream<ChatBotMsg>(response.body, {
         // A Teammate is about to speak: open its bubble, and every update that
         // follows belongs to it until the next speaker.
@@ -214,6 +203,7 @@ export function ChannelWorkspace({
             ...prev,
             {
               role: "bot",
+              threadParentId: postedId,
               id: null,
               sentAt: new Date().toISOString(),
               ...EMPTY_TURN_TRACE,
@@ -233,7 +223,7 @@ export function ChannelWorkspace({
             // is a notice rather than somebody's bubble.
             setMessages((prev) => [
               ...prev,
-              { role: "notice", sentAt: message.createdAt, text: channelMessageText(message.content) },
+              { role: "notice", id: message.id, threadParentId: message.chainId, sentAt: message.createdAt, text: channelMessageText(message.content) },
             ]);
             return;
           }
@@ -305,6 +295,7 @@ export function ChannelWorkspace({
         id: teammate.id,
         name: teammate.name,
         seed: teammateAvatarSeed(teammate),
+        animated: true,
         note: teammate.title,
       })),
       onPick: (item) =>
@@ -342,6 +333,7 @@ export function ChannelWorkspace({
               id: entry.id,
               name: entry.name,
               seed: entry.avatarSeed,
+              animated: entry.kind === "teammate",
             }))}
             groups={addSections}
             label={`Who is in ${channel.name}`}
@@ -365,22 +357,11 @@ export function ChannelWorkspace({
         <ChatSurface fullscreen={fullscreen} animating={animating} surfaceRef={surfaceRef} spacerRef={spacerRef}>
         <ChatHeader
           nickname={channel.name}
-          historyOpen={!freshEntry}
-          onToggleHistory={() => {
-            setFreshEntry(!freshEntry);
-            setEntryVersion((version) => version + 1);
-          }}
-          onNewChat={() => {
-            // A group is one shared history: start at a blank live edge without deleting it.
-            setFreshEntry(true);
-            setEntryVersion((version) => version + 1);
-          }}
           busy={pending}
           fullscreen={fullscreen}
           onToggleFullscreen={() => setFullscreen(!fullscreen)}
         />
         <MessageScroller
-          key={entryVersion}
           className="min-h-0 flex-1"
           busy={pending}
           status={liveTurnStatus(messages, pending)}
@@ -388,22 +369,21 @@ export function ChannelWorkspace({
           viewportClassName={`py-5 [container-type:size] ${WIDEN_TRANSITION} ${fullscreen ? FULLSCREEN_GUTTER : "px-4"}`}
           contentClassName="space-y-4"
         >
-          <ChatThread
+          <GroupThread
+            channelId={channel.id}
+            targets={mentionTargets}
+            models={models}
+            teammateId={teammates[0]?.id}
             messages={messages}
-            showTimestamps
             pending={pending}
             onSend={send}
             // The whole roster, not `mentionTargets`: a colleague naming *you*
             // is the mention that matters most, and the picker's list is the one
             // place your own name is deliberately absent.
-            renderUserText={(text) => (
+            renderText={(text) => (
               <MentionText text={text} targets={withFaces} />
             )}
           />
-          {/* Keep history above the initial viewport. Sending rejoins the live edge. */}
-          {freshEntry && (
-            <div aria-hidden="true" data-slot="group-entry-space" className="h-[calc(100cqh+3rem)]" />
-          )}
         </MessageScroller>
 
         <div className={`shrink-0 space-y-1.5 ${WIDEN_TRANSITION} ${fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))] pb-6" : "px-4 pb-4"}`}>
@@ -591,6 +571,7 @@ function ChannelSettingsDialog({
                 <li key={entry.id} className="flex items-center gap-3">
                   <GeneratedAvatar
                     seed={rosterAvatarSeed(entry, teammates)}
+                    animated={entry.kind === "teammate"}
                     size="size-7"
                   />
                   <p className="min-w-0 flex-1 truncate text-sm">

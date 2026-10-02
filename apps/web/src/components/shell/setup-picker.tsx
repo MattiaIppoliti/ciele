@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronUp, MessageCircle, Plus, Search, X } from "lucide-react";
@@ -30,18 +32,7 @@ const sweepSpring = {
 };
 
 function StatusTag({ active }: { active: boolean }) {
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-full border px-2.5 py-1 text-xs font-normal tracking-wide uppercase",
-        active
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400"
-          : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
-      )}
-    >
-      <RollInText text={active ? "Active" : "Inactive"} />
-    </span>
-  );
+  return <StatusPill status={active ? "online" : "offline"} primaryText={<RollInText text={active ? "Active" : "Inactive"} />} />;
 }
 
 function AssistantAvatar({
@@ -105,11 +96,6 @@ function AssistantItem({
       >
         <div className="relative mr-4 shrink-0">
           <AssistantAvatar assistant={assistant} className="size-12" />
-          {assistant.active && (
-            <span className="bg-background absolute right-0 bottom-0 flex size-3.5 items-center justify-center rounded-full shadow-light">
-              <span className="size-2 rounded-full bg-emerald-500" />
-            </span>
-          )}
         </div>
         <div className="min-w-0 flex-1">
           {/* A row title, not a section heading: the rows sit under the

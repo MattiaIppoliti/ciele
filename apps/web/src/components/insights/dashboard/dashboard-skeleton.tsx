@@ -10,7 +10,7 @@ export function DashboardSkeleton({ statRows }: { statRows: 2 | 4 }) {
     <div className="flex min-h-full flex-col" role="status" aria-busy="true">
       {/* A skeleton is silent to a screen reader; this is what it hears. */}
       <span className="sr-only">Loading dashboard…</span>
-      <div className="space-y-4 border-t px-4 pt-5 pb-8 sm:px-6">
+      <div className="space-y-4 px-4 pt-5 pb-8 sm:px-6">
         <div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
           {Array.from({ length: statRows * 2 }).map((_, i) => (
             <Skeleton key={`stat-${i}`} className="h-[106px] rounded-2xl" />

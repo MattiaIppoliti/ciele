@@ -12,6 +12,9 @@ first, then the type.
 A tenant company with its own isolated workspace of assistants and members.
 _Avoid_: company, azienda, workspace, tenant (in code)
 
+**Platform Organization**:
+The single Organization designated by deployment staff to review usage and estimated costs across all Organizations. Explicit Owner/Admin Members see the final **Admin** tab in Insights. The designation uses its immutable ID, not its editable name; it does not widen ordinary Organization queries.
+
 **Assistant**:
 A configurable AI chatbot owned by one Organization, edited in the admin and published as a widget.
 _Avoid_: agent, agente, bot, chatbot (as entity name)
@@ -586,3 +589,12 @@ Channels + ticketing, Authentication (SSO/OIDC + User data), LMS/Course integrat
 tracker, Alerts, richer Publish channels (LTI, campus portals, pop-up), and the full Flow action
 catalog (Button/Iframe/API request/Send email/Handover/Study Mode/H5P). Treat the "Out (for later
 phases)" list as *sequenced*, not *excluded*; `CLAUDE.md` §11 ranks the highest-leverage gaps.
+
+### Message Reaction
+
+A **Message Reaction** is an emoji attached by a Member or Visitor to an AI reply.
+Several actors can add the same emoji. Each actor has at most one emoji per reply; choosing another replaces it.
+Its actor identity and display name come from the verified session, or the widget
+subject. Social reactions are separate from answer-quality feedback and never
+change grading or resolution metrics. In a group, only current participants can
+read or change reactions; a participant can remove only their own reaction. Inbox readers can see the emoji and its author without assigning it a sentiment or quality score.

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Plus, Search, UserRoundPlus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import {
   Button,
   Hint,
@@ -46,6 +46,8 @@ export interface Assignee {
   name: string;
   /** Resolved by the caller: a Teammate's seed is not a person's user id. */
   seed: string;
+  /** Teammates move; people keep a static face. */
+  animated?: boolean;
   /** A second line in the picker, e.g. a Teammate's title. */
   note?: string;
 }
@@ -164,9 +166,18 @@ export function Assignees({
         open={openFrom === "add"}
         onOpenChange={(next) => setOpenFrom(next ? "add" : null)}
         groups={groups}
-        trigger={<Button variant="outline" size="sm" />}
+        trigger={
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={addLabel}
+            title={addLabel}
+            className="text-muted-foreground border-muted-foreground/50 hover:border-muted-foreground rounded-full border-2 border-dashed p-0"
+            style={{ width: geometry.faceSize, height: geometry.faceSize }}
+          />
+        }
       >
-        <UserRoundPlus className="size-4" /> {addLabel}
+        <Plus className="size-4" />
       </Picker>
     </div>
   );
@@ -203,6 +214,7 @@ function Face({
       >
         <GeneratedAvatar
           seed={assignee.seed}
+          animated={assignee.animated}
           size="size-full"
           // The wrapper owns the shape. The avatar's own `rounded-full` would
           // clip a square corner straight back into a circle.
@@ -309,7 +321,7 @@ function Picker({
                         onClick={() => pick(group, item)}
                         className="hover:bg-alpha-light flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors disabled:opacity-50"
                       >
-                        <GeneratedAvatar seed={item.seed} size="size-7" />
+                        <GeneratedAvatar seed={item.seed} size="size-7" animated={item.animated} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium">
                             {item.name}

@@ -16,6 +16,7 @@ import { formatCompact, formatEur, tokenHighlights } from "@/lib/insights/dashbo
 import {
   DashboardFrame,
   DashboardStatCards,
+  ModelSpendTree,
   Section,
   SpendBars,
   StageBars,
@@ -71,7 +72,7 @@ export function CostDashboard({
 
       <Section
         title="Estimated spend per day"
-        description={filter.surface ? `${SURFACE_LABELS[filter.surface]} only` : "Stacked by the surface that spent it"}
+        description={filter.surface ? `${SURFACE_LABELS[filter.surface]} only` : "Total estimated spend across all surfaces"}
       >
         <SpendBars daily={dashboard.daily} surface={filter.surface} />
       </Section>
@@ -79,7 +80,7 @@ export function CostDashboard({
       <div className="grid grid-cols-12 gap-4">
           <Section
             title="Token usage"
-            description="Input and output tokens per day. Click a day, then another, to total a span."
+            description="Input and output tokens per UTC day. Hover or use arrow keys to inspect a day."
             className="col-span-12 @5xl:col-span-5"
           >
             <div className="overflow-x-auto">
@@ -104,8 +105,8 @@ export function CostDashboard({
           </Section>
 
           <Section
-            title="Spend by surface"
-            description="Each surface's share, whichever one is selected above"
+            title="Spend mix over time"
+            description={filter.surface ? `Daily amounts for ${SURFACE_LABELS[filter.surface]}; totals below compare all surfaces` : "Daily estimated amounts by surface; thicker bands mean more spend"}
             className="col-span-12 @5xl:col-span-7"
           >
             <SurfaceComposition daily={dashboard.daily} />
@@ -135,6 +136,10 @@ export function CostDashboard({
             </dl>
           </Section>
       </div>
+
+        <Section title="Spend by provider and model" description="Tile area represents estimated spend. Select a provider to inspect its models.">
+          <ModelSpendTree models={dashboard.models} />
+        </Section>
 
         <Section title="Models" description="Every model that ran in this range, by estimated spend">
           {dashboard.models.length === 0 ? (
@@ -166,7 +171,7 @@ export function CostDashboard({
                         <div className="flex items-center gap-2">
                           <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
                             <div
-                              className="h-full rounded-full bg-[#2a78d6] dark:bg-[#3987e5]"
+                              className="h-full rounded-full bg-chart-1"
                               style={{ width: `${model.share * 100}%` }}
                             />
                           </div>

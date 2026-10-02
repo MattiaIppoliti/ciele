@@ -1,3 +1,4 @@
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 import { CircleCheck, Clock } from "lucide-react";
 import {
   Button,
@@ -153,8 +154,12 @@ export function ActivationStatusCard({
           <dt className="text-muted-foreground">Plan</dt>
           <dd className="font-medium capitalize">{subscription.plan}</dd>
           <dt className="text-muted-foreground">Status</dt>
-          <dd className="font-medium capitalize">
-            {subscription.status.replace(/_/g, " ")}
+          <dd>
+            <StatusPill
+              status={subscription.status === "active" || subscription.status === "comped" ? "online" : subscription.status === "past_due" ? "warning" : "offline"}
+              className="capitalize"
+              primaryText={subscription.status.replace(/_/g, " ")}
+            />
           </dd>
         </dl>
         {subscription.status === "past_due" && (

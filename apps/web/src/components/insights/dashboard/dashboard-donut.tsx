@@ -1,22 +1,12 @@
 "use client";
 
-import { Cell, Pie, PieChart } from "recharts";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import { ArcFrame } from "@/components/charts/arc/arc-frame";
+import { DonutChart } from "@/components/charts/arc/donut-chart/donut-chart";
+import { Gauge } from "@/components/charts/arc/gauge/gauge";
+import { WaffleChart } from "@/components/charts/arc/waffle-chart/waffle-chart";
 import { formatCount } from "@/lib/format";
 import { OUTCOME_COLORS } from "./palette";
 
-/**
- * A two-part rate (turns that succeeded and failed, answers that passed and
- * failed, conversations resolved and escalated) as a donut, with
- * the headline share in the hole. `loading` is the chart's own skeleton,
- * shown while a filter change is being fetched, so the ring never shows the
- * previous filter's split under the new filter's heading.
- */
 export function RateDonut({
   good,
   bad,
@@ -24,6 +14,7 @@ export function RateDonut({
   badLabel,
   title,
   loading,
+  variant = "donut",
 }: {
   good: number;
   bad: number;
@@ -31,67 +22,66 @@ export function RateDonut({
   badLabel: string;
   title: string;
   loading: boolean;
+  variant?: "donut" | "gauge" | "waffle";
 }) {
-  const config = {
-    good: { label: goodLabel, theme: OUTCOME_COLORS.good },
-    bad: { label: badLabel, theme: OUTCOME_COLORS.bad },
-  } satisfies ChartConfig;
-  const data = [
-    { outcome: "good", count: good },
-    { outcome: "bad", count: bad },
-  ];
+  if (loading)
+    return (
+      <div
+        aria-label="Loading chart"
+        className="h-44 animate-pulse rounded-lg bg-muted/40"
+      />
+    );
   const total = good + bad;
-  const share = total > 0 ? Math.round((good / total) * 100) : 0;
+  const data = [
+    {
+      key: "good",
+      label: goodLabel,
+      value: good,
+      color: OUTCOME_COLORS.good.light,
+    },
+    {
+      key: "bad",
+      label: badLabel,
+      value: bad,
+      color: OUTCOME_COLORS.bad.light,
+    },
+  ];
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative size-36 shrink-0">
-        <ChartContainer config={config} className="aspect-auto size-full" aria-busy={loading}>
-          <PieChart>
-            <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey="outcome" hideLabel />} />
-            <Pie
-              data={loading ? [] : data}
-              dataKey="count"
-              nameKey="outcome"
-              innerRadius={44}
-              outerRadius="100%"
-              paddingAngle={bad > 0 ? 3 : 0}
-              cornerRadius={4}
-              strokeWidth={0}
-            >
-              {data.map((d) => (
-                <Cell key={d.outcome} fill={`var(--color-${d.outcome})`} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ChartContainer>
-        {!loading && (
-          <span
-            aria-label={`${title}: ${share}%`}
-            className="pointer-events-none absolute inset-0 flex items-center justify-center text-xl font-semibold tabular-nums"
-          >
-            {share}%
-          </span>
-        )}
-      </div>
-      {/* The legend carries the counts, so identity is never colour alone. */}
-      <dl className="grid gap-2 text-sm">
-        {(
-          [
-            ["good", goodLabel, good],
-            ["bad", badLabel, bad],
-          ] as const
-        ).map(([key, label, count]) => (
-          <div key={key} className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ background: OUTCOME_COLORS[key].light }}
-            />
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd className="font-medium tabular-nums">{formatCount(count)}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
+    <ArcFrame>
+      {variant === "gauge" ? (
+        <div className="mx-auto max-w-56">
+          <Gauge
+            value={total ? (good / total) * 100 : 0}
+            label={title}
+            detail={`${formatCount(good)} ${goodLabel.toLowerCase()} · ${formatCount(bad)} ${badLabel.toLowerCase()}`}
+            tone="success"
+          />
+        </div>
+      ) : variant === "waffle" ? (
+        <>
+          <WaffleChart data={data} label={title} formatValue={formatCount} />
+          <p className="mt-2 text-xs text-muted-foreground">
+            {formatCount(good)} {goodLabel.toLowerCase()} · {formatCount(bad)}{" "}
+            {badLabel.toLowerCase()}. Each cell approximates 1% of
+            conversations.
+          </p>
+        </>
+      ) : (
+        <DonutChart
+          data={data}
+          label={title}
+          totalLabel="Graded answers"
+          size={180}
+          formatValue={formatCount}
+          legendAction="select"
+        />
+      )}
+      {variant === "donut" && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {total ? ((good / total) * 100).toFixed(1) : "0"}%{" "}
+          {goodLabel.toLowerCase()}
+        </p>
+      )}
+    </ArcFrame>
   );
 }

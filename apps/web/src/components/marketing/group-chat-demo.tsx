@@ -40,7 +40,7 @@ const GROUP = "Release 4.2";
 /* Deliberately not the Chief of Staff from the hero. The page has just shown
    one Teammate answering alone; the point here is that a room holds several,
    and reusing the same name would blunt it. Seeds are arbitrary stable strings,
-   `blobatar` needs nothing else to draw the same face twice. */
+   `Squishmoji` needs nothing else to draw the same face twice. */
 const SUPPORT_LEAD: ChatAuthor = {
   name: "Support Lead",
   title: "Teammate",

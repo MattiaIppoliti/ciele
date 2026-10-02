@@ -92,7 +92,7 @@ export default function AdminLayout({
       {/* Interface sounds + haptics (#817). Here and in the marketing
           layout, never in the root layout: the widget inherits only the
           root, and that placement is what keeps it silent. */}
-      <FeedbackProvider>
+      <FeedbackProvider soundSet="bencho">
       <TooltipProvider delay={300}>
         <ShellProvider assistants={assistants} findScope={findScope}>
           {/* The siblings below are keyed in development only, for the root

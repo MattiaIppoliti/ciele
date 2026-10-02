@@ -2243,8 +2243,9 @@ export interface ChannelMessage {
   mentions: string[];
   /**
    * The chain this message belongs to: the id of the human message that started
-   * it. Null on that human message itself, which is what makes "everything one
-   * message triggered" a single `where chain_id = ?` rather than a walk.
+   * it. A human reply uses this link to point to its parent message; a new
+   * top-level human message has no link. Teammate turns still point to their
+   * immediate human trigger, so execution caps stay scoped to one chain.
    */
   chainId: string | null;
   /** How the answer was reached, as in a Conversation message; null otherwise. */
@@ -4577,4 +4578,14 @@ export type FlowPatch = Partial<
 export interface CurrentOrg {
   organization: Organization;
   role: Role;
+}
+
+/** Social reactions are independent of answer-quality feedback. */
+export interface MessageReaction {
+  organizationId: string;
+  messageId: string;
+  channelMessageId: string | null;
+  actorId: string;
+  actorName: string;
+  emoji: string;
 }

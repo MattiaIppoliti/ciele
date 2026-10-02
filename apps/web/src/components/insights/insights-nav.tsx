@@ -17,17 +17,18 @@ const ITEMS = [
  * the layout and read the same optimistic tab, so the pill glides and the title
  * rolls on click rather than when the server answers, and neither remounts.
  */
-export function InsightsNav() {
+export function InsightsNav({ showAdmin = false }: { showAdmin?: boolean }) {
+  const items = showAdmin ? [...ITEMS, { label: "Admin", href: "/insights/admin" }] : ITEMS;
   const router = useRouter();
   const pathname = usePathname();
-  const current = ITEMS.find((item) => item.href === pathname)?.href ?? "/insights";
+  const current = items.find((item) => item.href === pathname)?.href ?? "/insights";
   const [, startTransition] = useTransition();
   const [tab, setTab] = useOptimistic(current);
 
-  const title = ITEMS.find((item) => item.href === tab)?.label ?? "Insights";
+  const title = items.find((item) => item.href === tab)?.label ?? "Insights";
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       {/* The breadcrumb is the visible title. */}
       <h1 className="sr-only" data-testid="insights-heading">
         {title}
@@ -43,7 +44,7 @@ export function InsightsNav() {
           }
         >
           <TabsList aria-label="Insights tabs">
-            {ITEMS.map((item) => (
+            {items.map((item) => (
               <TabsTrigger key={item.href} value={item.href} href={item.href}>
                 {item.label}
               </TabsTrigger>

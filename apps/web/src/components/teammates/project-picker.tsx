@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useId } from "react";
 import { Label } from "@agent-hub/ui";
 import { onRadioKeyDown } from "@/lib/radio-keys";
@@ -37,9 +39,7 @@ export function ProjectPicker({
     <div className="space-y-2">
       <Label id={labelId}>Project</Label>
       {projects.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No projects yet. A project shares your team&apos;s decisions with this teammate.
-        </p>
+        <EmptyState size="sm" title="No projects yet" description="Create a project to share your team's decisions with this teammate." />
       ) : (
         <div role="radiogroup" aria-labelledby={labelId} className="flex flex-wrap gap-2">
           <button

@@ -34,7 +34,6 @@ import {
 } from "@/components/motion/select";
 import { SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
-import { SmoothCaret } from "./smooth-caret";
 
 // Stable Lucide icon data lets MorphIcon reshape one SVG path in place.
 const ArrowUpData = [
@@ -286,9 +285,9 @@ export function PromptInput({
           // 16px below `md`: iOS Safari zooms the page in when a focused field
           // is smaller than that, and never zooms back out, on the chat
           // composer, the one control every mobile visitor touches.
-          // The native caret is hidden: `SmoothCaret` paints one that glides.
+          // The app-wide focused-field painter owns the smooth caret.
           className={cn(
-            "scrollbar-hide relative block w-full resize-none overflow-y-auto bg-transparent caret-transparent outline-none placeholder:text-muted-foreground/55",
+            "scrollbar-hide relative block w-full resize-none overflow-y-auto bg-transparent caret-foreground outline-none placeholder:text-muted-foreground/55",
             TEXT_LAYER,
             // With a highlight layer under it the glyphs come from there, and
             // this element contributes only the selection.
@@ -297,7 +296,6 @@ export function PromptInput({
               : "text-foreground",
           )}
         />
-        <SmoothCaret textareaRef={textareaRef} value={currentValue} textClassName={TEXT_LAYER} />
       </div>
 
       <div className="mt-1 flex min-h-8 items-center gap-1">
@@ -377,7 +375,7 @@ export function PromptInput({
                 </span>
               </span>
             </SelectTrigger>
-            <SelectContent className="right-auto w-64 shadow-none">
+            <SelectContent side="top" className="right-auto w-64 shadow-none">
               {models.map((option) => (
                 <Fragment key={option.value}>
                 <SelectItem

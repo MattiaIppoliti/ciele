@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
@@ -247,9 +249,7 @@ export function AssistantCard({
           />
           </span>
           <div className="z-[2] flex items-center gap-1">
-            <span className="bg-foreground/5 text-muted-foreground rounded-md px-2 py-1 text-xs font-medium dark:bg-white/10">
-              Active
-            </span>
+            <StatusPill status="online" primaryText="Active" />
             <MoreActionsButton />
           </div>
         </div>

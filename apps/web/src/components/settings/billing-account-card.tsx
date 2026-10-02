@@ -1,6 +1,8 @@
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 import { CreditCard, ExternalLink } from "lucide-react";
 import type { BillingAccountSnapshot } from "@agent-hub/agent";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@agent-hub/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@agent-hub/ui";
 import {
   Table,
   TableBody,
@@ -97,9 +99,7 @@ export function BillingAccountCard({
         </CardHeader>
         <CardContent>
           {account.invoices.length === 0 ? (
-            <p className="text-muted-foreground py-2 text-sm">
-              No invoices issued yet.
-            </p>
+            <EmptyState size="sm" title="No invoices yet" description="Invoices appear here after your first billing cycle." />
           ) : (
             <TableCard
               footer={
@@ -133,7 +133,10 @@ export function BillingAccountCard({
                       {row.numberLabel}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={row.statusVariant}>{row.statusLabel}</Badge>
+                      <StatusPill
+                        status={row.statusVariant === "secondary" ? "online" : row.statusVariant === "destructive" ? "error" : "away"}
+                        primaryText={row.statusLabel}
+                      />
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {row.amountLabel}

@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusBadge as StatusPill, type StatusBadgeStatus } from "@/components/spaceui/status-badge";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CircleCheck, OctagonX, X } from "lucide-react";
@@ -22,7 +24,6 @@ import {
   type IngestionActivityState,
   type IngestionItemStatus,
 } from "@/lib/ingestion-activity";
-import { cn } from "@/lib/utils";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 
@@ -266,18 +267,20 @@ function ActivityRow({ item }: { item: IngestionActivityItem }) {
           </span>
         ) : null}
       </span>
-      <span className={cn("shrink-0 text-xs", STATUS_TEXT[item.status])}>
-        <RollInText text={ingestionStatusLabel(item.status)} duration={380} />
-      </span>
+      <StatusPill
+        status={STATUS[item.status]}
+        animated={item.status === "running"}
+        primaryText={<RollInText text={ingestionStatusLabel(item.status)} duration={380} />}
+      />
     </li>
   );
 }
 
-const STATUS_TEXT: Record<IngestionItemStatus, string> = {
-  queued: "text-muted-foreground",
-  running: "text-muted-foreground",
-  indexed: "text-emerald-600 dark:text-emerald-400",
-  failed: "text-destructive",
+const STATUS: Record<IngestionItemStatus, StatusBadgeStatus> = {
+  queued: "away",
+  running: "info",
+  indexed: "online",
+  failed: "error",
 };
 
 function StatusGlyph({ status }: { status: IngestionItemStatus }) {

@@ -7,17 +7,25 @@ Insights calcule les métriques de l'organisation à partir des événements
 d'exécution stockés. Utilisez la plage de dates disponible et les filtres
 Assistant pour modifier l'ensemble de données.
 
+Les graphiques dans Insights, Eval, Assistant Overview et Usage utilisent une
+palette de gris qui s'adapte aux thèmes clairs et sombres. Les résultats
+positifs et négatifs restent en vert et en rouge. Les évolutions reflètent la
+direction de chaque indicateur : une baisse des coûts, de la latence et des
+échecs est considérée comme positive. Les labels, les légendes et les valeurs
+exactes identifient chaque mesure. La chronologie de la latence utilise une
+ligne pointillée pour le p95.
+
 ## Aperçu actuel
 
-L'aperçu peut inclure les indicateurs suivants :
+L'aperçu peut inclure les mesures suivantes :
 
-- Conversations et Visiteurs uniques
+- Conversations et visiteurs uniques
 - Réponses de l'IA
 - Taux de résolution par l'IA
 - évaluations des réponses et données de satisfaction client
 - remontées (escalations)
 - réponses par Conversation
-- questions per Conversation : le nombre de messages envoyés par le Visiteur
+- questions par Conversation : le nombre de messages envoyés par le Visiteur
 - durée moyenne d'une Conversation : le temps écoulé entre le début d'une
   Conversation et son dernier message
 - langues et taux d'engagement
@@ -33,9 +41,20 @@ chaque mois. Ciele place chaque Conversation dans la période au cours de
 laquelle elle a débuté. Une Conversation qui se poursuit après la fin de la
 période conserve sa durée totale.
 
+Le graphique **Usage** sépare les nombres, les pourcentages, les ratios et les
+secondes afin que des unités différentes ne partagent pas le même axe.
+Sélectionnez une métrique pour l'afficher ou la masquer. Les onglets
+**Assistants** et **Channels** affichent les décompositions des Conversations.
+
+Utilisez la fenêtre **Explore conversations over time** pour zoomer sur les
+graphiques dans la plage de dates sélectionnée. Faites glisser la fenêtre ou ses
+poignées, ou utilisez les touches fléchées après avoir sélectionné une poignée.
+Les cartes de synthèse, le tableau de données et les exportations couvrent
+toujours l'intégralité de la plage de dates.
+
 ## Coûts et observabilité
 
-Deux tableaux de bord indiquent le coût de l'IA de votre organisation et ses
+Deux tableaux de bord indiquent les coûts de l'IA de votre organisation et ses
 performances. **Costs** présente les dépenses et l'utilisation.
 **Observability** présente la fiabilité, la vitesse et la qualité des réponses.
 
@@ -46,8 +65,8 @@ dates, puis sélectionnez **All**, **Assistants**, **Teammates** ou **Internal**
   flux HTTP entrants.
 - **Teammates** affiche les chats des AI Teammates, les tours de parole dans les
   canaux et les Routines.
-- **Internal** affiche l'activité de la plateforme : indexation, tâches
-  planifiées et appels provenant des clés API et de MCP.
+- **Internal** affiche l'activité de la plateforme : l'indexation, les tâches
+  planifiées et les appels provenant des clés API et de MCP.
 
 Lorsque **All** ou **Assistants** est sélectionné, vous pouvez également
 sélectionner un Assistant.
@@ -61,10 +80,17 @@ de la courbe pour lire la valeur de chaque jour.
 ### Coûts
 
 - dépenses estimées, coût par tour, appels au modèle et tokens
-- dépenses estimées par jour, ventilées par surface
-- la part des dépenses pour chaque surface au cours de chaque période
+- dépenses totales estimées par jour
+- un streamgraph des dépenses quotidiennes estimées par surface. L'épaisseur de
+  la bande représente un montant, et non un pourcentage
 - un calendrier de l'utilisation des tokens par jour
 - dépenses par modèle et par étape du pipeline
+- un treemap des dépenses par fournisseur et par modèle. Sélectionnez un
+  fournisseur pour inspecter ses modèles
+
+Le filtre Surface s'applique aux graphiques quotidiens et à la répartition par
+modèle. Les totaux des surfaces situés sous le streamgraph comparent toujours
+toutes les surfaces.
 
 Les dépenses sont une estimation en euros. Ciele le calcule à partir du nombre
 de tokens et des prix catalogue. Il ne s'agit pas d'une facture.
@@ -74,10 +100,14 @@ de tokens et des prix catalogue. Il ne s'agit pas d'une facture.
 - turns terminés, taux de réussite, turns échoués et appels d'outils par turn
 - latence par tour : médiane, 95e percentile, histogramme et tendance
   quotidienne
-- **Answer accuracy** : la part des réponses de l'Assistant validées par le
-  vérificateur
+- **Answer accuracy** : la part des réponses de l'Assistant que le vérificateur
+  a validées
 - **Autonomy** : la part des conversations de visiteurs qui n'ont pas été
   transférées à un service d'assistance
+- une jauge de fiabilité et une grille d'autonomie, avec les nombres exacts
+  indiqués à côté des graphiques
+- une comparaison de la fiabilité, de la précision et de l'autonomie par rapport
+  à la période précédente, en points de pourcentage
 - les classes d'erreurs les plus fréquentes
 - les cinq Flows les plus utilisés, classés les uns par rapport aux autres par
   jour ou par semaine
@@ -88,12 +118,23 @@ de tokens et des prix catalogue. Il ne s'agit pas d'une facture.
 ### Remarques
 
 Les jours sont des jours UTC. Un appel de modèle enregistré avant l'attribution
-de la surface n'a pas de surface. Il est comptabilisé dans **All** en tant que
+d'une surface n'a pas de surface. Il est comptabilisé dans **All** en tant que
 **Unattributed**, et dans aucune autre surface.
 
 Utilisez **Export CSV** pour télécharger une ligne pour chaque jour de la plage.
 Pour un fichier de rapport offrant davantage d'options, utilisez
 [Exports](/operations/exports).
+
+## Rapports de la plateforme
+
+Dans les déploiements gérés, les Owners et Admins autorisés de l'Organisation de
+la plateforme désignée voient **Admin** comme le dernier onglet Insights. Cet
+onglet affiche l'utilisation et les coûts estimés pour l'ensemble des
+Organisations, y compris l'Organisation de la plateforme. Sélectionnez une plage
+de dates pour consulter les appels de modèles, les tokens, les pages explorées
+et les coûts estimés pour chaque Organisation. Les coûts financés par la
+plateforme n'incluent pas les clés API des clients ni les abonnements
+personnels. Les autres organisations et membres n'ont pas accès à cet onglet.
 
 ## Actualité des données
 
@@ -102,26 +143,26 @@ cinq minutes pour chaque Organisation et chaque ensemble de filtres. Chaque
 membre de l'organisation lit les mêmes données stockées.
 
 Toute modification apportée par un membre dans la console (à un Assistant, à une
-Conversation ou à une Amélioration) efface immédiatement l'aperçu stocké. Le
+Conversation ou à une Improvement) efface immédiatement l'aperçu stocké. Le
 trafic des widgets (nouvelles Conversations, évaluations des réponses, scores de
-satisfaction, remontées) atteint les chiffres en moins de cinq minutes.
+satisfaction, remontées) atteint les chiffres dans un délai de cinq minutes.
 
 Pour forcer un nouveau calcul avant la fin des cinq minutes, envoyez
 `DELETE /api/insights` depuis une session de navigateur connectée. La réponse
-est `204` et la prochaine lecture recalcule l'aperçu. Tout Member de
+est `204` et la prochaine lecture recalculera l'aperçu. Tout Member de
 l'Organization peut envoyer cette requête.
 
 ## Comptage des notifications
 
-Une notification n'est pas une réponse de l'IA. Une session « Notification
-uniquement » n'augmente pas les KPI Conversation ni ceux des réponses.
+Une Notification n'est pas une réponse de l'IA. Une session Notification-only
+n'augmente pas les KPI Conversation ni Answer.
 
 La mesure **Notifications Sent** et ses séries de graphiques enregistrent la
 livraison proactive séparément.
 
 ## Examiner un changement
 
-1. Sélectionnez la plage de dates souhaitée et l'Assistant.
+1. Sélectionnez la plage de dates requise et l'Assistant.
 2. Identifiez l'indicateur qui a changé.
 3. Ouvrez l'Inbox avec le même scope.
 4. Lisez des Conversations représentatives.

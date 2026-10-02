@@ -1,4 +1,4 @@
-﻿import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CHANNEL_CHAIN_TEAMMATE_TURN_CAP,
   CHANNEL_CHAIN_TURN_CAP,
@@ -109,6 +109,7 @@ function fakeDb() {
       messages.push(message);
       return message;
     },
+    async getChannelMessage(id: string) { return messages.find((message) => message.id === id) ?? null; },
     async listChannelMessages(channelId: string, limit = 100) {
       return messages.filter((m) => m.channelId === channelId).slice(-limit);
     },
@@ -909,5 +910,20 @@ describe("the memory layers a channel turn reads", () => {
         sharedProjectId: ADA_CHANNEL.projectId,
       })
     ).toEqual([]);
+  });
+});
+
+
+describe("channel reply context", () => {
+  it("reads the parent discussion and excludes unrelated recent messages", async () => {
+    const { db } = fakeDb();
+    const root = await db.appendChannelMessage({organizationId:ORG,channelId:CHANNEL_ID,authorType:"member",content:[{type:"text",text:"Original discussion"}]});
+    for (let i = 0; i < 30; i++) await db.appendChannelMessage({organizationId:ORG,channelId:CHANNEL_ID,authorType:"member",content:[{type:"text",text:"Unrelated discussion"}]});
+    const reply = await db.appendChannelMessage({organizationId:ORG,channelId:CHANNEL_ID,authorType:"member",content:[{type:"text",text:"@Sam continue"}],chainId:root.id});
+    let observed: readonly ChannelMessage[] = [];
+    const stream = await streamChannelChain({db,organizationId:ORG,channel:ADA_CHANNEL,roster:ROSTER,teammates:[SAM],connections:[],startMessage:reply,startedBy:{userId:"m-ada"},targets:[SAM.id],signal:new AbortController().signal,
+      runTurn:async ({history}) => { observed=history; return {parts:[{type:"text",action:"search_knowledge",text:"Continuing"}],trace:null}; }});
+    await new Response(stream).text();
+    expect(observed.map((message) => message.id)).toEqual([root.id,reply.id]);
   });
 });

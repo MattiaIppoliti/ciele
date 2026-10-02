@@ -56,6 +56,7 @@ import { createChannelAction } from "@/app/(admin)/teammates/channels/actions";
 import { ThreadHistoryMenu } from "@/components/teammates/thread-history-menu";
 import { toast } from "@/lib/toast";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
+import { EyeTracker } from "@/components/teammates/eye-tracker";
 import {
   readTeammateConversationAction,
   setTeammateMessageFeedbackAction,
@@ -534,7 +535,7 @@ export function TeammateWorkspace({
   const heroEmpty = messages.length === 0 && !fullscreen;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div data-eye-tracker-frame className="flex h-full flex-col overflow-hidden">
       {/* No header bar above the chat: the Teammate's name is in the chat's
           own header, and Configure is its right-click menu in the sidebar. */}
 
@@ -581,7 +582,11 @@ export function TeammateWorkspace({
         <>
             {heroEmpty ? (
               <div className="flex flex-1 flex-col items-center justify-end gap-4 px-4 pb-6 text-center">
-                <TeammateAvatar teammate={teammate} className="size-16" />
+                {platformLayer ? (
+                  <EyeTracker shape="Ciele" size={64} follow={24} bounce={0} />
+                ) : (
+                  <TeammateAvatar teammate={teammate} className="size-16" />
+                )}
                 <h1 className="text-3xl font-bold tracking-tight">What can I do for you?</h1>
               </div>
             ) : (

@@ -8,6 +8,23 @@ const scene: SurfaceFieldScene = {
 };
 
 describe("SurfaceField controller lifecycle", () => {
+  it("retains links like the scene, replays them to a late mount, and keeps its own copy", () => {
+    const controller = createSurfaceFieldController();
+    const points = [{ x: 0, y: 0 }, { x: 40, y: 10 }];
+    controller.setLinks([{ from: "a", to: "b", motion: "loop" }, { points, width: 10 }]);
+    points[1].x = 999;
+    const listener = vi.fn();
+    subscribeSurfaceField(controller, listener);
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenLastCalledWith({
+      kind: "links",
+      value: [{ from: "a", to: "b", motion: "loop" }, { points: [{ x: 0, y: 0 }, { x: 40, y: 10 }], width: 10 }],
+    });
+    listener.mockClear();
+    controller.setLinks(null);
+    expect(listener).toHaveBeenCalledWith({ kind: "links", value: null });
+  });
+
   it("replays only the latest committed scene after a late mount or strict-mode remount", () => {
     const controller = createSurfaceFieldController();
     controller.setScene(scene);

@@ -22,5 +22,5 @@ export function TeammateAvatar({
 }) {
   // Ciele AI is the one face that is drawn, not generated.
   if (teammate.systemKind === "ciele_ai") return <CieleAiLogo className={className} />;
-  return <GeneratedAvatar seed={teammateAvatarSeed(teammate)} size={className} />;
+  return <GeneratedAvatar seed={teammateAvatarSeed(teammate)} size={className} animated />;
 }

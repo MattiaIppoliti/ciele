@@ -1,4 +1,5 @@
 "use client";
+import { ReactionRecord } from "@/components/chat/reaction-record";
 
 import { useState, type ReactNode } from "react";
 import type { ChatReplyPart, TurnView } from "@agent-hub/agent/client";
@@ -392,6 +393,8 @@ export interface ChatAuthor {
 }
 
 export interface ChatUserMsg {
+  id?: string;
+  threadParentId?: string | null;
   role: "user";
   text: string;
   /** Sent timestamp; older 1:1 transcripts may omit it. */
@@ -400,6 +403,7 @@ export interface ChatUserMsg {
   author?: ChatAuthor;
 }
 export interface ChatBotMsg extends TurnView {
+  threadParentId?: string | null;
   role: "bot";
   sentAt?: string;
   /** Persisted message id, null while the turn is still streaming. */
@@ -415,6 +419,8 @@ export interface ChatBotMsg extends TurnView {
  * about the thread rather than something a participant said.
  */
 export interface ChatNoticeMsg {
+  id?: string;
+  threadParentId?: string | null;
   role: "notice";
   sentAt?: string;
   text: string;
@@ -428,10 +434,10 @@ export type ChatMsg = ChatUserMsg | ChatBotMsg | ChatNoticeMsg;
  * than a lookalike: that shot's whole claim is "this is a colleague", and the
  * face and name are what carry it.
  */
-export function AuthorLine({ author }: { author: ChatAuthor }) {
+export function AuthorLine({ author, animated = false }: { author: ChatAuthor; animated?: boolean }) {
   return (
     <div className="mb-1 flex items-center gap-2">
-      <GeneratedAvatar seed={author.avatarSeed} size="size-6" />
+      <GeneratedAvatar seed={author.avatarSeed} size="size-6" animated={animated} />
       <span className="text-sm font-semibold">{author.name}</span>
       {author.title && (
         <span className="text-muted-foreground text-xs">{author.title}</span>
@@ -478,8 +484,14 @@ export function ChatThread({
   speechPlayback,
   renderCitation,
   showTimestamps = false,
+  reactionChannelId,
+  recordedReactions = [],
+  presentation = "chat",
 }: {
+  presentation?: "chat" | "comment";
   showTimestamps?: boolean;
+  reactionChannelId?: string;
+  recordedReactions?: import("@agent-hub/core").MessageReaction[];
   messages: ChatMsg[];
   pending: boolean;
   onSend: (text: string) => void;
@@ -514,15 +526,19 @@ export function ChatThread({
                 <span className="bg-border h-px flex-1" />
               </div>
             ) : msg.role === "user" ? (
-              <Message key={i} from="user" animateIn className="group relative">
+              <Message key={i} from={presentation === "comment" ? "assistant" : "user"} animateIn={presentation === "chat"} className="group relative">
                 <MessageContent>
-                  {msg.author && <AuthorLine author={msg.author} />}
-                  <MessageBubble>
+                  {presentation === "chat" && msg.author && <AuthorLine author={msg.author} />}
+                  {presentation === "comment" ? (
+                    <div className="w-full text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">
+                      {renderUserText ? renderUserText(msg.text) : msg.text}
+                    </div>
+                  ) : <MessageBubble>
                     <MessageBubbleContent className="max-w-[85%] text-primary-foreground whitespace-pre-wrap [overflow-wrap:anywhere] [&>span[aria-hidden]]:bg-primary">
                       {renderUserText ? renderUserText(msg.text) : msg.text}
                     </MessageBubbleContent>
-                  </MessageBubble>
-                  {msg.sentAt && (
+                  </MessageBubble>}
+                  {presentation === "chat" && msg.sentAt && (
                     <>
                       {/* Shown on hover or keyboard focus; the sr-only twin
                           carries it for a reader, who sees neither. */}
@@ -555,7 +571,7 @@ export function ChatThread({
                 return (
                   <Message key={i} from="assistant">
                     <MessageContent className="gap-2">
-                      {msg.author && <AuthorLine author={msg.author} />}
+                      {presentation === "chat" && msg.author && <AuthorLine author={msg.author} animated />}
                       {/* Flows are deliberately invisible to chat users, routing
                           is audited in the Inbox transcript only. */}
                       <ThinkingPanel
@@ -571,6 +587,7 @@ export function ChatThread({
                             <StreamingResponse
                               key={j}
                               status="complete"
+                              reactionTarget={isLast && msg.id && (onVote || (reactionChannelId && presentation === "chat")) ? { messageId: msg.id, channelId: reactionChannelId } : undefined}
                               // The surrounding log already announces the
                               // turn; a second live region reads it twice.
                               announce={false}
@@ -621,6 +638,7 @@ export function ChatThread({
                           />
                         );
                       })}
+                      <ReactionRecord reactions={recordedReactions.filter((reaction) => reaction.messageId === msg.id)} />
                       {msg.streamingText !== null && (
                         <StreamingResponse status="streaming">
                           <ChatMarkdown

@@ -33,7 +33,7 @@ export default function InsightsLoading() {
       </div>
 
       {/* Metric-card grid, the same col-spans insights-client uses */}
-      <div className="grid grid-cols-12 gap-3 border-t px-4 pt-5 pb-6 sm:gap-4 sm:px-6">
+      <div className="grid grid-cols-12 gap-3 px-4 pt-5 pb-6 sm:gap-4 sm:px-6">
         {/* Six headline cards, two per row until xl */}
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={`r1-${i}`} className="col-span-6 h-40 rounded-xl xl:col-span-3" />

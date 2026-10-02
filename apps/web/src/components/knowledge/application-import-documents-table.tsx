@@ -1,10 +1,11 @@
 "use client";
+import { StatusBadge as StatusPill, statusFromTone } from "@/components/spaceui/status-badge";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Copy, ExternalLink, Maximize2 } from "lucide-react";
 import type { ApplicationImportDocumentRow } from "@ciele/ops";
-import { Badge } from "@agent-hub/ui";
+
 import {
   Table,
   TableBody,
@@ -146,9 +147,11 @@ export function ApplicationImportDocumentsTable({
                     {row.memoryCount}
                   </TableCell>
                   <TableCell>
-                    <Badge tone={applicationImportRowTone(row.status)}>
-                      {applicationImportRowStatusLabel(row.status)}
-                    </Badge>
+                    <StatusPill
+                      status={statusFromTone(applicationImportRowTone(row.status))}
+                      animated={row.status === "pending"}
+                      primaryText={applicationImportRowStatusLabel(row.status)}
+                    />
                   </TableCell>
                   <TableCell
                     className="text-muted-foreground"

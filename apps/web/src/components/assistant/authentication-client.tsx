@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -9,16 +10,7 @@ import type {
 } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
 import { useBrowserOrigin } from "@/lib/hooks/use-browser-origin";
-import {
-  Badge,
-  Button,
-  Card,
-  CopyFeedbackIcon,
-  Input,
-  Label,
-  PasswordInput,
-  useCopyFeedback,
-} from "@agent-hub/ui";
+import { Button, Card, CopyFeedbackIcon, Input, Label, PasswordInput, useCopyFeedback } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
 import {
   Select,
@@ -93,11 +85,12 @@ function CopyField({ label, value }: { label: string; value: string }) {
 }
 
 function StatusBadge({ status }: { status: SsoValidationStatus }) {
-  if (status === "valid")
-    return <Badge variant="default"><RollInText text="Validated" /></Badge>;
-  if (status === "invalid")
-    return <Badge variant="destructive"><RollInText text="Invalid" /></Badge>;
-  return <Badge variant="secondary"><RollInText text="Not validated" /></Badge>;
+  return (
+    <StatusPill
+      status={status === "valid" ? "online" : status === "invalid" ? "error" : "offline"}
+      primaryText={<RollInText text={status === "valid" ? "Validated" : status === "invalid" ? "Invalid" : "Not validated"} />}
+    />
+  );
 }
 
 export function AuthenticationClient({

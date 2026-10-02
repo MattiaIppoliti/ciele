@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import type { ReactNode } from "react";
 import type { MemoryDocumentChange } from "@agent-hub/core";
 import { formatDateTime } from "@/lib/format";
@@ -37,7 +39,7 @@ export function MemoryHistory({
   renderAction?: (change: MemoryDocumentChange) => ReactNode;
 }) {
   if (changes.length === 0) {
-    return <p className="text-muted-foreground text-sm">{emptyHint}</p>;
+    return <EmptyState size="sm" title="No changes yet" description={emptyHint} />;
   }
 
   return (

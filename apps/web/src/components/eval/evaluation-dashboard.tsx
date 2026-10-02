@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -14,16 +15,24 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import { modelSelector, type EvaluationResult, type EvaluationRun } from "@agent-hub/core";
+import { modelSelector, type EvaluationRun } from "@agent-hub/core";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { EvaluationLeaderboard } from "@/components/eval/evaluation-leaderboard";
 import { ChartSkeleton } from "@/components/insights/dashboard/dashboard-kit";
+import { ArcFrame } from "@/components/charts/arc/arc-frame";
+import { MetricCard } from "@/components/charts/arc/metric-card/metric-card";
+import { evaluationCandidateStats } from "@/lib/insights/chart-comparisons";
 import { RANK_COLORS } from "@/components/insights/dashboard/palette";
 
 const MetricBars = dynamic(() => import("./evaluation-bars").then((m) => m.MetricBars), {
   ssr: false,
   loading: () => <ChartSkeleton className="h-44" />,
+});
+
+const EvaluationDistributions = dynamic(() => import("./evaluation-distributions").then((m) => m.EvaluationDistributions), {
+  ssr: false,
+  loading: () => <ChartSkeleton className="h-64" />,
 });
 
 const METRICS = [
@@ -78,31 +87,8 @@ function number(value: number, unit: string) {
       ? `${value.toFixed(1)}%`
       : `${Math.round(value)}${unit ? ` ${unit}` : ""}`;
 }
-function candidateStats(results: EvaluationResult[]) {
-  const count = results.length || 1;
-  const graded = results.filter((result) => result.accuracy !== null);
-  return {
-    accuracy: graded.length
-      ? (100 * graded.filter((result) => result.accuracy).length) /
-        graded.length
-      : null,
-    cost: results.reduce((sum, result) => sum + result.costEur, 0) / count,
-    tokens:
-      results.reduce(
-        (sum, result) => sum + result.inputTokens + result.outputTokens,
-        0,
-      ) / count,
-    latency: results.reduce((sum, result) => sum + result.latencyMs, 0) / count,
-    autonomy: results.some((result) => result.autonomous !== null)
-      ? (100 * results.filter((result) => result.autonomous === true).length) /
-        results.filter((result) => result.autonomous !== null).length
-      : null,
-    error:
-      (100 * results.filter((result) => result.error !== null).length) / count,
-  };
-}
 
-type CandidateStats = ReturnType<typeof candidateStats> & {
+type CandidateStats = ReturnType<typeof evaluationCandidateStats> & {
   key: string;
   label: string;
   color: string;
@@ -118,13 +104,15 @@ function MetricChart({
   stats: CandidateStats[];
 }) {
   const rows = stats
-    .filter((row) => row[metric.key] !== null)
-    .map((row) => ({
+    .flatMap((row) => {
+      const value = row[metric.key];
+      return value === null ? [] : [{
       key: `m${stats.indexOf(row)}`,
       model: row.label,
-      value: row[metric.key] as number,
+      value,
       color: row.color,
-    }));
+    }];
+    });
   const Icon = metric.icon;
   return (
     <div className="rounded-xl border bg-card p-4">
@@ -135,6 +123,7 @@ function MetricChart({
       <div className="mt-3 w-full">
         {rows.length ? (
           <MetricBars
+            label={metric.title}
             rows={rows}
             format={(value) => number(value, metric.unit)}
           />
@@ -164,7 +153,7 @@ export function EvaluationDashboard({
     key: candidateKey(candidate),
     color: RANK_COLORS[index % RANK_COLORS.length]!,
     label: labels[candidateKey(candidate)] ?? candidate.modelId,
-    ...candidateStats(
+    ...evaluationCandidateStats(
       run.results.filter(
         (result) => candidateKey(result.candidate) === candidateKey(candidate),
       ),
@@ -195,7 +184,11 @@ export function EvaluationDashboard({
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {assistantName} · <RollingNumber value={dataset.examples.length} /> examples ·{" "}
-              {new Date(run.createdAt).toLocaleString("en-GB")} · <RollInText text={run.status} />
+              {new Date(run.createdAt).toLocaleString("en-GB")} · <StatusPill
+                status={run.status === "completed" ? "online" : run.status === "failed" ? "error" : run.status === "running" ? "info" : "away"}
+                animated={run.status === "running"}
+                primaryText={<RollInText text={run.status} />}
+              />
             </p>
           </div>
           <div className="rounded-full border px-3 py-1 text-xs text-muted-foreground">
@@ -208,6 +201,11 @@ export function EvaluationDashboard({
           {run.error}
         </p>
       )}
+      <ArcFrame className="grid gap-3 md:grid-cols-3">
+        <MetricCard label="Executed comparisons" value={run.results.length} context={`${run.examples.length * run.candidates.length} expected across all models`} />
+        <MetricCard label="Dataset examples" value={run.examples.length} context="The same questions for every model" />
+        <MetricCard label="Models compared" value={run.candidates.length} context="Candidates in this evaluation run" />
+      </ArcFrame>
       <section className="grid gap-3 md:grid-cols-3">
         {stats.map((row) => (
           <div key={row.key} className="rounded-xl border bg-card p-4">
@@ -232,8 +230,8 @@ export function EvaluationDashboard({
                 <div className="text-xs text-muted-foreground">accuracy</div>
               </div>
               <div className="text-right text-xs text-muted-foreground">
-                <div>{number(row.cost, "€")} / question · model</div>
-                <div>{Math.round(row.latency)} ms average</div>
+                <div>{row.cost === null ? "—" : number(row.cost, "€")} / question · model</div>
+                <div>{row.latency === null ? "—" : `${Math.round(row.latency)} ms average`}</div>
               </div>
             </div>
           </div>
@@ -253,6 +251,7 @@ export function EvaluationDashboard({
           ))}
         </div>
       </section>
+      <EvaluationDistributions run={run} labels={labels} />
       <EvaluationLeaderboard run={run} labels={labels} />
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="border-b px-5 py-4">

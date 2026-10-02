@@ -1,4 +1,7 @@
-﻿"use client";
+"use client";
+
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useId, useState, useTransition } from "react";
 import { toast } from "@/lib/toast";
@@ -8,7 +11,7 @@ import {
   deleteGoalAction,
   updateGoalAction,
 } from "@/app/actions";
-import { Badge, Card } from "@agent-hub/ui";
+import { Card } from "@agent-hub/ui";
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { Button } from "@agent-hub/ui";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -214,9 +217,7 @@ export function GoalsClient({
             </div>
 
             {goals.length === 0 && !adding && (
-              <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
-                No goals yet. Add the questions that matter most, like pricing or policies.
-              </p>
+              <EmptyState size="sm" title="No goals yet" description="Add the questions that matter most, like pricing or policies." action={canEdit ? <Button variant="outline" size="sm" disabled={full} onClick={() => setAdding(true)}>Add goal</Button> : undefined} />
             )}
 
             {goals.length > 0 && (
@@ -252,10 +253,10 @@ export function GoalsClient({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="min-w-0 font-medium break-words">{goal.question}</span>
-                          {goal.status === "quarantined" && <Badge variant="outline">Quarantined</Badge>}
-                          {goal.lastResult === "pass" && <Badge>Passing</Badge>}
-                          {goal.lastResult === "fail" && <Badge variant="destructive">Failing</Badge>}
-                          {goal.lastResult === null && <Badge variant="secondary">Not run yet</Badge>}
+                          {goal.status === "quarantined" && <StatusPill status="warning" primaryText="Quarantined" />}
+                          {goal.lastResult === "pass" && <StatusPill status="online" primaryText="Passing" />}
+                          {goal.lastResult === "fail" && <StatusPill status="error" primaryText="Failing" />}
+                          {goal.lastResult === null && <StatusPill status="offline" primaryText="Not run yet" />}
                         </div>
                         <p className="text-muted-foreground mt-0.5 text-xs break-words">
                           {[

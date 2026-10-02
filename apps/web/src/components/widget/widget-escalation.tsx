@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import { CHAT_CARD, CHAT_CARD_HOVER } from "@/components/chat/chat-card";
 import { useEffect, useRef, useState } from "react";
 import type {
@@ -365,10 +367,10 @@ export function WidgetEscalation({
                     <div>
                       <div className="flex items-center gap-2.5">
                         <span className="text-lg font-semibold">{channel.name}</span>
-                        <span className="bg-background text-muted-foreground ring-border inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">
-                          <span className={`size-1.5 rounded-full ${availability.available ? "bg-emerald-500" : "bg-neutral-400"}`} />
-                          {availability.available ? "Available" : "Unavailable"}
-                        </span>
+                        <StatusPill
+                          status={availability.available ? "online" : "offline"}
+                          primaryText={availability.available ? "Available" : "Unavailable"}
+                        />
                       </div>
                       {!availability.available && availability.nextWindow && (
                         <p className="text-muted-foreground mt-1.5 text-sm">

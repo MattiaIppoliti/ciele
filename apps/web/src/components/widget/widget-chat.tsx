@@ -236,6 +236,7 @@ function BotMessageView({
               <StreamingResponse
                 key={j}
                 status="complete"
+                reactionTarget={isLast && msg.id ? { messageId: msg.id, assistantId, visitorId: visitorId() } : undefined}
                 copyText={part.text}
                 showActions={isLast && Boolean(msg.id)}
                 extraActions={isLast && voiceEnabled && conversationId && msg.id && !active ? (

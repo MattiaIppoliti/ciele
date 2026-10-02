@@ -1,5 +1,8 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge as StatusPill, statusFromTone } from "@/components/spaceui/status-badge";
+
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -768,8 +771,10 @@ function ImportDialog({
 /** The Configured imports table, laid out like the Library's Websites table. */
 const IMPORT_COLUMNS: TableColumnLayout[] = [
   { key: "name", width: 360, min: 200 },
-  { key: "status", width: 190 },
+  { key: "status", width: 150 },
   { key: "content", width: 130 },
+  { key: "failed", width: 100 },
+  { key: "updated", width: 190 },
   { key: "actions", width: 140, fixed: true },
 ];
 
@@ -964,11 +969,12 @@ export function ApplicationKnowledgePanel({
                           {connection.name}
                           {connection.ownerType === "member" ? " · Personal" : ""}
                         </span>
-                        <span className="text-muted-foreground block truncate text-xs">
-                          {connection.status === "connected"
-                            ? "Connected"
-                            : connection.error || connection.status.replaceAll("_", " ")}
-                        </span>
+                        <StatusPill
+                          status={connection.status === "connected" ? "online" : connection.status === "pending" ? "away" : connection.status === "reauthorization_required" ? "warning" : "error"}
+                          className="mt-1 capitalize"
+                          primaryText={connection.status.replaceAll("_", " ")}
+                        />
+                        {connection.error && <span className="text-destructive block truncate text-xs" title={connection.error}>{connection.error}</span>}
                         <span className="text-muted-foreground block truncate text-xs">
                           {countLabel(
                             imports.filter((item) => item.connectionId === connection.id)
@@ -1087,9 +1093,8 @@ export function ApplicationKnowledgePanel({
           </Badge>
         </div>
         {visibleImports.length === 0 ? (
-          <div className="text-muted-foreground rounded-xl border border-dashed px-4 py-8 text-center text-sm">
-            Connect an application, then configure an import to add its content.
-          </div>
+          <EmptyState size="sm" className="rounded-xl border" title="No configured imports"
+            description="Connect an application above, then configure an import to add its content." />
         ) : (
           <TableCard className={isPending ? "opacity-60" : undefined}>
             <Table fixed>
@@ -1099,6 +1104,8 @@ export function ApplicationKnowledgePanel({
                   <TableColumnHeader label="Name" resize={importColumns.handleFor("name")} />
                   <TableColumnHeader label="Status" resize={importColumns.handleFor("status")} />
                   <TableColumnHeader label="Content" resize={importColumns.handleFor("content")} />
+                  <TableColumnHeader label="Failed" resize={importColumns.handleFor("failed")} />
+                  <TableColumnHeader label="Last updated" resize={importColumns.handleFor("updated")} />
                   <TableColumnHeader label="Actions" align="right" />
                 </TableRow>
               </TableHeader>
@@ -1232,26 +1239,15 @@ export function ApplicationKnowledgePanel({
                           </TableOpenCell>
                         </TableCell>
                         <TableCell className="align-top">
-                          <Badge
-                            tone={applicationImportStatusTone(item.status, item.enabled)}
+                          <StatusPill
+                            status={statusFromTone(applicationImportStatusTone(item.status, item.enabled))}
+                            animated={item.enabled && item.status === "syncing"}
                             title={item.error || undefined}
-                          >
-                            <RollInText text={applicationImportStatusLabel(item.status, item.enabled)} />
-                          </Badge>
-                          <span className="text-muted-foreground mt-1 block text-xs">
-                            Last update: {when(item.lastSyncedAt)}
-                          </span>
+                            primaryText={<RollInText text={applicationImportStatusLabel(item.status, item.enabled)} />}
+                          />
                           {item.enabled && item.nextSyncAt && (
                             <span className="text-muted-foreground block text-xs">
                               Next: {when(item.nextSyncAt)}
-                            </span>
-                          )}
-                          {lastRun && (
-                            <span
-                              className="text-muted-foreground block truncate text-xs"
-                              title={`${lastRun.discovered} discovered · ${lastRun.upserted} updated · ${lastRun.deleted} removed · ${lastRun.skipped} skipped · ${lastRun.failed} failed`}
-                            >
-                              {lastRun.upserted} updated · {lastRun.failed} failed
                             </span>
                           )}
                           {lastRun?.skippedReasons.length ? (
@@ -1275,6 +1271,15 @@ export function ApplicationKnowledgePanel({
                           >
                             {countLabel(documentCount, "Document")}
                           </Link>
+                        </TableCell>
+                        <TableCell
+                          className={`align-top tabular-nums ${lastRun && lastRun.failed > 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}
+                          title="Failed items in the latest synchronization"
+                        >
+                          {lastRun ? <RollingNumber value={lastRun.failed} /> : "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground align-top whitespace-nowrap">
+                          <RollInText text={when(item.lastSyncedAt)} />
                         </TableCell>
                         <TableCell className="align-top text-right">
                           {canEdit && (
@@ -1325,9 +1330,12 @@ export function ApplicationKnowledgePanel({
                   <span className="block truncate text-sm font-medium">
                     {item.name}
                   </span>
-                  <span className="text-muted-foreground text-xs">
-                    {item.status}
-                  </span>
+                  <StatusPill
+                    status={statusFromTone(applicationImportStatusTone(item.status, item.enabled))}
+                    animated={item.enabled && item.status === "syncing"}
+                    className="mt-1 capitalize"
+                    primaryText={item.enabled ? item.status : "Disabled"}
+                  />
                 </span>
                 {canEdit && (
                   <Button

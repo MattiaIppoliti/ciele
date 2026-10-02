@@ -1,4 +1,5 @@
 "use server";
+import { readReactionRecords } from "@/lib/inbox/reaction-records";
 
 import { z, ZodError } from "zod";
 import type {
@@ -2083,8 +2084,11 @@ export async function getInboxFacetsAction(): Promise<InboxFacets> {
  */
 export async function getInboxConversationReviewAction(
   conversationId: string,
-): Promise<InboxConversationDetail> {
-  return runOperation(getInboxConversationReviewOp, { conversationId });
+): Promise<InboxConversationDetail & { reactions: import("@agent-hub/core").MessageReaction[] }> {
+  const review = await runOperation(getInboxConversationReviewOp, { conversationId });
+  const { session } = await requireMember("member");
+  const reactions = await readReactionRecords(getWidgetDb(), session.organization.id, review.messages.filter((message) => message.role === "assistant").map((message) => message.id));
+  return { ...review, reactions };
 }
 
 /** Every filtered summary for the lightweight CSV export. */

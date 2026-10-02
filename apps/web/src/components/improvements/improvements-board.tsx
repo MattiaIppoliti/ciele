@@ -10,9 +10,9 @@ import type {
   ImprovementPriority,
   ImprovementStatus,
 } from "@agent-hub/core";
-import { Columns3, Download, GalleryVerticalEnd, MessageSquare, Search } from "lucide-react";
-import { ChevronDown, ChevronRight, ListFilter } from "lucide-react";
-import { Button, Skeleton } from "@agent-hub/ui";
+import { Columns3, Download, GalleryVerticalEnd, Search } from "lucide-react";
+import { ChevronDown, ListFilter } from "lucide-react";
+import { Button } from "@agent-hub/ui";
 import { ImprovementDetailSkeleton } from "./improvement-detail-skeleton";
 import { listImprovementsPageAction } from "@/app/actions";
 import { toast } from "@/lib/toast";
@@ -30,9 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatDay } from "@/lib/format";
 import { memberDisplayName } from "@/lib/members";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { replaceFilterParams } from "@/lib/url-state";
 import {
@@ -41,13 +39,10 @@ import {
   IMPROVEMENT_STATUSES,
   type ImprovementsUrlState,
   emptyLaneRecord,
-  improvementKey,
-  improvementKeyClass,
   keepsLinkNavigation,
   laneCountsWithOverrides,
   matchesImprovementFilters,
   mergeImprovementRows,
-  priorityMeta,
   recordImprovementUpdate,
   retainPushedOffRows,
   type ImprovementLanePages,
@@ -58,30 +53,24 @@ import { useImprovementLanes } from "./use-improvement-lanes";
 import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { motion, useReducedMotion } from "motion/react";
+import { ImprovementWorkspace } from "./improvement-workspace";
+import { ImprovementGroupedPanel } from "./improvement-grouped-panel";
+import {
+  ImprovementGroupedRow,
+  GROUPED_TABLE_SPRING,
+} from "./improvement-grouped-row";
 
-// Opened only after a click, so it never renders on the server anyway; the
-// dynamic import keeps the detail view out of the board's first bundle. The
-// fallback is the drawer's own frame (DetailDrawer's 760px default and 44px
-// toolbar) over the detail's skeleton, so the click answers before the chunk
-// arrives rather than after.
+// Keep task content out of the first bundle; the workspace owns its frame.
 const ImprovementDrawer = dynamic(
-  () => import("./improvement-drawer").then((module) => module.ImprovementDrawer),
+  () =>
+    import("./improvement-drawer").then((module) => module.ImprovementDrawer),
   {
     loading: () => (
-      <aside
-        className="bg-background shadow-strong fixed inset-y-0 right-0 z-50 flex w-[760px] max-w-full flex-col border-l"
-        role="status"
-        aria-busy="true"
-      >
+      <div role="status" aria-busy="true" className="h-full">
         <span className="sr-only">Loading improvement…</span>
-        <div className="flex h-11 shrink-0 items-center justify-end gap-1 px-3">
-          <Skeleton className="size-8" />
-          <Skeleton className="size-8" />
-        </div>
-        <div className="min-h-0 flex-1">
-          <ImprovementDetailSkeleton variant="drawer" />
-        </div>
-      </aside>
+        <ImprovementDetailSkeleton variant="drawer" />
+      </div>
     ),
   },
 );
@@ -185,7 +174,10 @@ export function ImprovementsBoard({
     const retained = emptyLaneRecord<ImprovementListItem[]>(() => []);
     for (const lane of IMPROVEMENT_STATUSES) {
       retained[lane.value] = retainPushedOffRows(
-        [...snapshot.retained[lane.value], ...snapshot.source[lane.value].items],
+        [
+          ...snapshot.retained[lane.value],
+          ...snapshot.source[lane.value].items,
+        ],
         initialLanes[lane.value],
         additional[lane.value],
       );
@@ -239,6 +231,7 @@ export function ImprovementsBoard({
     initialUrlState.priority,
   );
   const [assignee, setAssignee] = useState(initialUrlState.assignee);
+  const reduceMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState<Set<ImprovementStatus>>(new Set());
   const [view, setView] = useState<ViewMode>(initialUrlState.view);
   // A reload or a copied link keeps the same search, filters and layout.
@@ -563,216 +556,209 @@ export function ImprovementsBoard({
         </div>
       </SlotPortal>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-        <div className={view === "kanban" ? "" : "mx-auto max-w-5xl space-y-3"}>
-          {view === "kanban" && totalCount > 0 && (
-            <ImprovementsKanban
-              improvements={filtered}
+      <ImprovementWorkspace
+        open={Boolean(openId)}
+        onClose={() => setOpenId(null)}
+        detail={
+          openId ? (
+            <ImprovementDrawer
+              key={openId}
+              improvementId={openId}
               members={members}
-              tagOptions={tagOptions}
               canEdit={canEdit}
-              lanes={lanes}
-              onOpen={setOpenId}
-              onTagRemembered={rememberTag}
               onUpdated={recordUpdate}
-              laneCount={(status) =>
-                filterActive
-                  ? (byStatus.get(status)?.length ?? 0)
-                  : totals[status]
-              }
-              laneFooter={(status) => <LaneFooter paging={pagingOf(status)} />}
-              filterActive={filterActive}
+              onDeleted={removeRow}
             />
-          )}
+          ) : null
+        }
+      >
+        <div
+          className={`h-full min-h-0 ${view === "kanban" ? "overflow-y-auto" : "overflow-hidden"}`}
+        >
+          <div
+            className={
+              view === "kanban" ? "" : "mx-auto h-full min-h-0 max-w-6xl"
+            }
+          >
+            {view === "kanban" && totalCount > 0 && (
+              <ImprovementsKanban
+                improvements={filtered}
+                members={members}
+                tagOptions={tagOptions}
+                canEdit={canEdit}
+                lanes={lanes}
+                onOpen={setOpenId}
+                onTagRemembered={rememberTag}
+                onUpdated={recordUpdate}
+                laneCount={(status) =>
+                  filterActive
+                    ? (byStatus.get(status)?.length ?? 0)
+                    : totals[status]
+                }
+                laneFooter={(status) => (
+                  <LaneFooter paging={pagingOf(status)} />
+                )}
+                filterActive={filterActive}
+              />
+            )}
 
-          {view === "list" &&
-            IMPROVEMENT_STATUSES.map((lane) => {
-              const items = byStatus.get(lane.value) ?? [];
-              const isCollapsed = collapsed.has(lane.value);
-              const paging = pagingOf(lane.value);
-              const bodyId = `improvements-lane-${lane.value}`;
-              return (
-                <section
-                  key={lane.value}
-                  {...lanes.laneProps(lane.value)}
-                  className={`bg-card overflow-hidden rounded-xl border transition-colors ${
-                    lanes.dropLane === lane.value
-                      ? "border-primary bg-primary/5"
-                      : ""
-                  }`}
-                >
-                  <div className="bg-muted/40 flex items-center gap-2 px-4 py-2.5">
-                    <button
-                      type="button"
-                      onClick={() => toggle(lane.value)}
-                      aria-expanded={!isCollapsed}
-                      aria-controls={bodyId}
-                      className="text-muted-foreground hover:text-foreground press-text flex items-center gap-2"
-                    >
-                      {isCollapsed ? (
-                        <ChevronRight className="size-4" />
-                      ) : (
-                        <ChevronDown className="size-4" />
-                      )}
-                      <span className="text-sm font-semibold">
-                        {lane.label}
-                      </span>
-                      <RollingNumber
-                        value={filterActive ? items.length : paging.total}
-                        className="text-muted-foreground text-xs"
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={exporting || paging.total === 0}
-                      onClick={() =>
-                        runExport({ status: lane.value, format: "csv" })
-                      }
-                      aria-label={`Export ${lane.label} as CSV`}
-                      className="text-primary press-text ml-auto text-xs font-semibold hover:underline disabled:opacity-40 disabled:no-underline"
-                    >
-                      Export report
-                    </button>
-                  </div>
-
-                  {/* Always mounted, so `aria-controls` names an element that
-                      exists; collapsed, it holds nothing. */}
-                  <div id={bodyId} hidden={isCollapsed}>
-                  {!isCollapsed && (
-                    <div className="divide-y">
-                      {items.length === 0 && (
-                        <p className="text-muted-foreground px-4 py-6 text-center text-sm">
-                          {lanes.draggingId
-                            ? "Drop an improvement here."
-                            : filterActive
-                              ? "No loaded improvements match; load more or narrow the search."
-                              : "No improvements in this lane."}
-                        </p>
-                      )}
-                      {items.map((i) => {
-                        const email = emailOf(i.assigneeId);
-                        const pri = priorityMeta(i.priority);
-                        const drag = lanes.dragProps(i.id);
-                        return (
-                          <RollRow key={i.id} index={boardRow++}>
-                          <ImprovementContextMenu
-                            item={i}
-                            members={members}
-                            tagOptions={tagOptions}
-                            canEdit={canEdit}
-                            onOpenDrawer={() => setOpenId(i.id)}
-                            onTagRemembered={rememberTag}
-                            onUpdated={recordUpdate}
-                            status={lanes.statusOf(i)}
-                            onMove={(status) => lanes.move(i.id, status)}
+            {view === "list" && (totalCount > 0 || improvements.length > 0) && (
+              <ImprovementGroupedPanel>
+                {(panelWidth) =>
+                  IMPROVEMENT_STATUSES.map((lane) => {
+                    const items = byStatus.get(lane.value) ?? [];
+                    const isCollapsed = collapsed.has(lane.value);
+                    const paging = pagingOf(lane.value);
+                    const bodyId = `improvements-lane-${lane.value}`;
+                    return (
+                      <section
+                        key={lane.value}
+                        aria-label={lane.label}
+                        data-improvement-lane={lane.value}
+                        {...lanes.laneProps(lane.value)}
+                        className={`mb-2 rounded-xl transition-colors ${
+                          lanes.dropLane === lane.value
+                            ? "bg-primary/5 ring-1 ring-inset ring-primary"
+                            : ""
+                        }`}
+                      >
+                        <div className="bg-muted/60 flex items-center gap-2 rounded-xl px-4 py-2.5">
+                          <button
+                            type="button"
+                            onClick={() => toggle(lane.value)}
+                            aria-expanded={!isCollapsed}
+                            aria-controls={bodyId}
+                            className="text-muted-foreground hover:text-foreground press-text flex min-w-0 flex-1 items-center gap-2 text-left"
                           >
-                            <Link
-                              href={`/improvements/${i.id}`}
-                              {...drag}
-                              onClick={(e) => {
-                                if (keepsLinkNavigation(e)) return;
-                                e.preventDefault();
-                                setOpenId(i.id);
-                              }}
-                              className={`hover:bg-muted/40 flex items-center gap-3 px-4 py-3 transition-colors [content-visibility:auto] [contain-intrinsic-size:auto_3.25rem] ${
-                                lanes.draggingId === i.id ? "opacity-40" : ""
-                              } ${lanes.draggingId ? "select-none" : ""} ${
-                                drag.draggable
-                                  ? "cursor-grab active:cursor-grabbing"
-                                  : ""
-                              }`}
+                            <span className="text-sm font-semibold">
+                              {lane.label}
+                            </span>
+                            <RollingNumber
+                              value={filterActive ? items.length : paging.total}
+                              className="bg-foreground/5 text-muted-foreground flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs"
+                            />
+                            <motion.span
+                              animate={{ rotate: isCollapsed ? 180 : 0 }}
+                              transition={
+                                reduceMotion
+                                  ? { duration: 0 }
+                                  : GROUPED_TABLE_SPRING
+                              }
+                              className="ml-auto"
                             >
-                              <span
-                                className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-xs ${improvementKeyClass(i.status)}`}
-                              >
-                                <RollInText text={improvementKey(i.seq)} />
-                              </span>
-                              <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                                <RollInText text={i.title} />
-                              </span>
-                              {i.messageCount > 0 && (
-                                <span className="text-muted-foreground inline-flex items-center gap-1 text-xs tabular-nums">
-                                  <MessageSquare className="size-3.5" />
-                                  <RollingNumber value={i.messageCount} />
-                                </span>
-                              )}
-                              <span className="text-muted-foreground hidden text-xs sm:inline">
-                                <RollInText text={`Created ${formatDay(i.createdAt)}`} />
-                              </span>
-                              {i.tags.length > 0 ? (
-                                <span className="hidden gap-1 md:flex">
-                                  {i.tags.slice(0, 2).map((t) => (
-                                    <span
-                                      key={t}
-                                      className="max-w-32 truncate rounded-full border px-2 py-0.5 text-2xs"
+                              <ChevronDown
+                                className="size-4 rotate-180"
+                                aria-hidden="true"
+                              />
+                            </motion.span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={exporting || paging.total === 0}
+                            onClick={() =>
+                              runExport({ status: lane.value, format: "csv" })
+                            }
+                            aria-label={`Export ${lane.label} as CSV`}
+                            title={`Export ${lane.label} as CSV`}
+                            className="text-muted-foreground hover:text-foreground press-text flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-foreground/5 disabled:opacity-40"
+                          >
+                            <Download className="size-3.5" aria-hidden="true" />
+                          </button>
+                        </div>
+
+                        <motion.div
+                          id={bodyId}
+                          inert={isCollapsed}
+                          aria-hidden={isCollapsed}
+                          initial={false}
+                          animate={{
+                            height: isCollapsed ? 0 : "auto",
+                            opacity: isCollapsed ? 0 : 1,
+                          }}
+                          transition={
+                            reduceMotion
+                              ? { duration: 0 }
+                              : GROUPED_TABLE_SPRING
+                          }
+                          style={{ clipPath: "inset(0 -100vw)" }}
+                        >
+                          <div className="py-1">
+                            {items.length === 0 && (
+                              <EmptyState size="sm"
+                                title={lanes.draggingId ? "Drop an improvement here" : filterActive ? "No matching improvements" : "No improvements in this lane"}
+                                description={lanes.draggingId ? "Release to move it into this status." : filterActive ? "Load more improvements or narrow your search." : "Move an improvement here when it reaches this status."}
+                              />
+                            )}
+                            {items.map((i) => {
+                              const email = emailOf(i.assigneeId);
+                              const drag = lanes.dragProps(i.id);
+                              return (
+                                <RollRow key={i.id} index={boardRow++}>
+                                  <ImprovementContextMenu
+                                    item={i}
+                                    members={members}
+                                    tagOptions={tagOptions}
+                                    canEdit={canEdit}
+                                    onOpenDrawer={() => setOpenId(i.id)}
+                                    onTagRemembered={rememberTag}
+                                    onUpdated={recordUpdate}
+                                    status={lanes.statusOf(i)}
+                                    onMove={(status) =>
+                                      lanes.move(i.id, status)
+                                    }
+                                  >
+                                    <Link
+                                      href={`/improvements/${i.id}`}
+                                      {...drag}
+                                      onClick={(e) => {
+                                        if (keepsLinkNavigation(e)) return;
+                                        e.preventDefault();
+                                        setOpenId(i.id);
+                                      }}
+                                      className={`hover:bg-muted/40 block rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                                        lanes.draggingId === i.id
+                                          ? "opacity-40"
+                                          : ""
+                                      } ${lanes.draggingId ? "select-none" : ""} ${
+                                        drag.draggable
+                                          ? "cursor-grab active:cursor-grabbing"
+                                          : ""
+                                      }`}
                                     >
-                                      <RollInText text={t} />
-                                    </span>
-                                  ))}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground hidden text-xs md:inline">
-                                  No tags
-                                </span>
-                              )}
-                              {i.priority !== "none" && (
-                                <span
-                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium ${pri.chip}`}
-                                >
-                                  <pri.icon className="size-3" />
-                                  <RollInText text={pri.label} />
-                                </span>
-                              )}
-                              {email ? (
-                                <span title={memberDisplayName(email)}>
-                                  <UserAvatar
-                                    userId={i.assigneeId}
-                                    email={email}
-                                    size="size-6"
-                                  />
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground bg-muted flex size-6 shrink-0 items-center justify-center rounded-full text-2xs font-semibold">
-                                  N/A
-                                </span>
-                              )}
-                            </Link>
-                          </ImprovementContextMenu>
-                          </RollRow>
-                        );
-                      })}
-                      <LaneFooter paging={paging} />
-                    </div>
-                  )}
-                  </div>
-                </section>
-              );
-            })}
+                                      <ImprovementGroupedRow
+                                        item={i}
+                                        status={lanes.statusOf(i)}
+                                        email={email}
+                                        width={panelWidth}
+                                      />
+                                    </Link>
+                                  </ImprovementContextMenu>
+                                </RollRow>
+                              );
+                            })}
+                            <LaneFooter paging={paging} />
+                          </div>
+                        </motion.div>
+                      </section>
+                    );
+                  })
+                }
+              </ImprovementGroupedPanel>
+            )}
 
-          {totalCount === 0 && improvements.length === 0 && (
-            <EmptyState
-              title="No improvements yet"
-              description={
-                canEdit
-                  ? "Open the Inbox, pick an AI answer, and use “Improve Answer” to track a fix here."
-                  : "Flagged AI answers will show up here once your team starts tracking them."
-              }
-            />
-          )}
+            {totalCount === 0 && improvements.length === 0 && (
+              <EmptyState
+                title="No improvements yet"
+                description={
+                  canEdit
+                    ? "Open the Inbox, pick an AI answer, and use “Improve Answer” to track a fix here."
+                    : "Flagged AI answers will show up here once your team starts tracking them."
+                }
+              />
+            )}
+          </div>
         </div>
-      </div>
-
-      {openId && (
-        <ImprovementDrawer
-          key={openId}
-          improvementId={openId}
-          members={members}
-          canEdit={canEdit}
-          onClose={() => setOpenId(null)}
-          onUpdated={recordUpdate}
-          onDeleted={removeRow}
-        />
-      )}
+      </ImprovementWorkspace>
     </div>
   );
 }

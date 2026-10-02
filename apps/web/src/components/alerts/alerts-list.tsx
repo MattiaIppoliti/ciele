@@ -1,9 +1,11 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import type { Alert, AlertType } from "@agent-hub/core";
-import { CircleCheck } from "lucide-react";
-import { TriangleAlert } from "lucide-react";
+import { Check, CircleCheck, Ellipsis, LoaderCircle } from "lucide-react";
 import { resolveAlertAction } from "@/app/actions";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
@@ -14,9 +16,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@agent-hub/ui";
+import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { useColumnWidths } from "@/components/ui/table-columns";
-import { Table, TableCard, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Table, TableActions, TableCard, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
+import { TableColumnHeader, useClientSort } from "@/components/ui/table-column-header";
 import { formatDateTime } from "@/lib/format";
 import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
@@ -37,7 +41,6 @@ const TYPE_LABELS: Record<AlertType, string> = {
 
 type Tab = AlertsUrlState["status"];
 
-
 export function AlertsList({
   alerts,
   canEdit,
@@ -54,14 +57,20 @@ export function AlertsList({
     { key: "detected", width: 160, min: 145 },
     { key: "resolved", width: 160, min: 145 },
     { key: "status", width: 110, min: 100 },
-    { key: "actions", width: 250, fixed: true },
+    { key: "actions", width: 100, fixed: true },
   ]);
   const [tab, setTab] = useState<Tab>(initialUrlState.status);
+  const [category, setCategory] = useState("");
+  const [query, setQuery] = useState("");
+  const [detected, setDetected] = useState("");
+  const [resolved, setResolved] = useState("");
+  const order = useClientSort();
   const [details, setDetails] = useState<Alert | null>(null);
   const [pending, startTransition] = useTransition();
   // Which row asked, so "Resolving…" shows on that row and not on all of them.
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
+  const slideDirection = useSlidingDirection(tab, ["all", "active", "resolved"]);
   // A reload or a copied link keeps the tab.
   useEffect(() => {
     replaceFilterParams({ status: tab }, DEFAULT_ALERTS_URL_STATE);
@@ -72,11 +81,17 @@ export function AlertsList({
     [alerts]
   );
 
-  const visible = useMemo(() => {
-    if (tab === "active") return alerts.filter((a) => a.status === "active");
-    if (tab === "resolved") return alerts.filter((a) => a.status === "resolved");
-    return alerts;
-  }, [alerts, tab]);
+  const filtered = alerts.filter((alert) =>
+    (tab === "all" || alert.status === tab) &&
+    (!category || alert.type === category) &&
+    (!query || `${alert.title} ${alert.detail}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())) &&
+    (!detected || formatDateTime(alert.detectedAt).toLocaleLowerCase().includes(detected.toLocaleLowerCase())) &&
+    (!resolved || (alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "N/A").toLocaleLowerCase().includes(resolved.toLocaleLowerCase()))
+  );
+  const visible = order.sorted(filtered, {
+    category: (alert) => TYPE_LABELS[alert.type], issue: (alert) => alert.title,
+    detected: (alert) => alert.detectedAt, resolved: (alert) => alert.resolvedAt ?? "", status: (alert) => alert.status,
+  });
 
   const tabs: Array<{ value: Tab; label: ReactNode }> = [
     { value: "all", label: "All" },
@@ -113,29 +128,27 @@ export function AlertsList({
         </TabsList>
       </Tabs>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-        {visible.length === 0 ? (
-          <div className="text-muted-foreground flex flex-col items-center gap-2 py-16 text-sm">
-            <CircleCheck className="size-8 text-emerald-500" />
-            {tab === "resolved"
-              ? "No resolved alerts yet."
-              : "All clear, no alerts need attention."}
-          </div>
-        ) : (
+      <SlidingPanel activeKey={tab} direction={slideDirection} className="min-h-0 flex-1" panelClassName="overflow-y-auto px-4 py-4 sm:px-6">
           <TableCard>
-            <Table fixed aria-label="Alerts">
+            <Table fixed empty={visible.length === 0} aria-label="Alerts">
               {columns.colGroup}
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Category</TableHead>
-                  <TableHead>Issue</TableHead>
-                  <TableHead>Detected</TableHead>
-                  <TableHead>Resolved</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead><span className="sr-only">Actions</span></TableHead>
+                  <TableColumnHeader label="Category" resize={columns.handleFor("category")} sort={order.column("category", { asc: "A to Z", desc: "Z to A" })} filter={{ kind: "options", value: category, anyLabel: "All categories", options: Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label })), onChange: setCategory }} />
+                  <TableColumnHeader label="Issue" resize={columns.handleFor("issue")} sort={order.column("issue", { asc: "A to Z", desc: "Z to A" })} filter={{ kind: "text", value: query, placeholder: "Search issues…", onChange: setQuery }} />
+                  <TableColumnHeader label="Detected" resize={columns.handleFor("detected")} sort={order.column("detected", { asc: "Oldest first", desc: "Newest first" })} filter={{ kind: "text", value: detected, placeholder: "Search detected dates…", onChange: setDetected }} />
+                  <TableColumnHeader label="Resolved" resize={columns.handleFor("resolved")} sort={order.column("resolved", { asc: "Oldest first", desc: "Newest first" })} filter={{ kind: "text", value: resolved, placeholder: "Search resolved dates…", onChange: setResolved }} />
+                  <TableColumnHeader label="Status" resize={columns.handleFor("status")} filter={{ kind: "options", value: tab === "all" ? "" : tab, anyLabel: "All statuses", options: [{ value: "active", label: "Active" }, { value: "resolved", label: "Resolved" }], onChange: (value) => setTab(value === "active" || value === "resolved" ? value : "all") }} />
+                  <TableColumnHeader label="Actions" align="right" />
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {visible.length === 0 && <TableRow><TableCell colSpan={6}><EmptyState
+                  icon={<CircleCheck size={24} />}
+                  title={alerts.length ? "No matching alerts" : "All clear"}
+                  description={alerts.length ? "Try another category or clear the filters." : "No alerts need attention. New issues will appear here."}
+                  action={alerts.length ? <Button variant="outline" size="sm" onClick={() => { setCategory(""); setQuery(""); setDetected(""); setResolved(""); setTab("all"); }}>Clear filters</Button> : undefined}
+                /></TableCell></TableRow>}
                 {visible.map((alert, index) => (
                   <RollRow key={alert.id} index={index}>
                     <TableRow>
@@ -154,16 +167,16 @@ export function AlertsList({
                       </TableCell>
                       <TableCell><StatusBadge status={alert.status} /></TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-end gap-2">
+                        <TableActions>
                           {canEdit && alert.status === "active" && (
-                            <Button variant="outline" size="sm" disabled={pending} onClick={() => resolve(alert.id)}>
-                              <RollInText text={pending && resolvingId === alert.id ? "Resolving…" : "Mark resolved"} />
+                            <Button variant="ghost" size="icon" disabled={pending} aria-label={`${pending && resolvingId === alert.id ? "Resolving" : "Mark resolved"}: ${alert.title}`} title={pending && resolvingId === alert.id ? "Resolving…" : "Mark resolved"} onClick={() => resolve(alert.id)}>
+                              {pending && resolvingId === alert.id ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Check className="size-4 text-emerald-500" aria-hidden="true" />}
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm" aria-label={`Details: ${alert.title}`} onClick={() => setDetails(alert)}>
-                            More details
+                          <Button variant="ghost" size="icon" aria-label={`Details: ${alert.title}`} title="More details" onClick={() => setDetails(alert)}>
+                            <Ellipsis className="size-4" aria-hidden="true" />
                           </Button>
-                        </div>
+                        </TableActions>
                       </TableCell>
                     </TableRow>
                   </RollRow>
@@ -171,8 +184,7 @@ export function AlertsList({
               </TableBody>
             </Table>
           </TableCard>
-        )}
-      </div>
+      </SlidingPanel>
 
       <Dialog
         open={details !== null}
@@ -225,9 +237,9 @@ export function AlertsList({
 function StatusBadge({ status }: { status: Alert["status"] }) {
   const active = status === "active";
   return (
-    <Badge variant={active ? "destructive" : "secondary"}>
-      {active ? <TriangleAlert /> : <CircleCheck />}
-      <RollInText text={active ? "Active" : "Resolved"} />
-    </Badge>
+    <StatusPill
+      status={active ? "error" : "online"}
+      primaryText={<RollInText text={active ? "Active" : "Resolved"} />}
+    />
   );
 }

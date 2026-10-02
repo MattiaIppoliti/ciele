@@ -1,8 +1,9 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useEffect, useRef, useState } from "react";
 import type { AssistantVoiceSettings, VoiceModelRef, VoiceProvider } from "@agent-hub/core";
-import { Button, Card, Badge } from "@agent-hub/ui";
+import { Button, Card } from "@agent-hub/ui";
 import { Play, Square, RefreshCw, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -149,7 +150,10 @@ export function VoiceSettings({ assistantId, value, onChange }: {
           <p className="text-muted-foreground mt-1 text-sm">Enable microphone input and AI-generated audio playback.</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <Badge variant="outline" className="rounded-full"><RollInText text={value.enabled ? "Active" : "Inactive"} /></Badge>
+          <StatusPill
+            status={value.enabled ? "online" : "offline"}
+            primaryText={<RollInText text={value.enabled ? "Active" : "Inactive"} />}
+          />
           <Switch aria-label="Enable voice mode" checked={value.enabled} onCheckedChange={enable} disabled={!value.enabled && (!connected || loading)} />
         </div>
       </div>

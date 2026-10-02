@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useId, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
@@ -50,15 +51,7 @@ const STAGE: Record<GuardrailType, string> = {
 
 /** The on/off pill beside a guardrail's switch, as on the General page. */
 function StatePill({ on }: { on: boolean }) {
-  return (
-    <Badge
-      variant="outline"
-      className={on ? "bg-muted/50 text-foreground gap-1.5 rounded-full" : "gap-1.5 rounded-full"}
-    >
-      <span className={`size-1.5 rounded-full ${on ? "bg-foreground" : "bg-muted-foreground/50"}`} />
-      <RollInText text={on ? "Active" : "Off"} />
-    </Badge>
-  );
+  return <StatusPill status={on ? "online" : "offline"} primaryText={<RollInText text={on ? "Active" : "Off"} />} />;
 }
 
 function summary(guardrail: AssistantGuardrail): string {

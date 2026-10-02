@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useState, useSyncExternalStore, useTransition } from "react";
 import type { RoutineCadence, TeammateRoutine } from "@agent-hub/core";
 import { ROUTINE_CADENCES, TEAMMATE_ROUTINE_CAP } from "@agent-hub/core";
@@ -92,7 +94,7 @@ export function RoutinesPanel({
       </div>
 
       {routines.length === 0 && !adding && (
-        <p className="text-muted-foreground text-sm">{ROUTINES_EMPTY_HINT}</p>
+        <EmptyState size="sm" title="No routines yet" description={ROUTINES_EMPTY_HINT} action={canEdit ? <Button variant="outline" size="sm" onClick={() => setAdding(true)}>Add routine</Button> : undefined} />
       )}
 
       {routines.map((routine) => (

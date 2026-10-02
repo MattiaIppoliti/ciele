@@ -180,6 +180,9 @@ importers:
       '@ciele/ops':
         specifier: workspace:*
         version: link:../../packages/ops
+      '@emoji-mart/data':
+        specifier: 1.2.1
+        version: 1.2.1
       '@floating-ui/dom':
         specifier: ^1.8.0
         version: 1.8.0
@@ -201,9 +204,12 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.0
         version: 2.110.0
+      '@usespaceui/squishmoji':
+        specifier: ^0.1.0
+        version: 0.1.0(react@19.2.4)
       '@vercel/analytics':
         specifier: ^2.0.1
-        version: 2.0.1(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+        version: 2.0.1(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@vercel/speed-insights':
         specifier: ^2.0.0
         version: 2.0.0(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -213,9 +219,6 @@ importers:
       ai:
         specifier: ^7.0.107
         version: 7.0.107(zod@4.4.3)
-      blobatar:
-        specifier: ^2.5.0
-        version: 2.5.0(react@19.2.4)
       ciele-animated-icons:
         specifier: ^0.1.0
         version: 0.1.0(lucide-react@1.23.0(react@19.2.4))(motion@12.42.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -225,6 +228,9 @@ importers:
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
+      liquid-gooey:
+        specifier: ^0.2.2
+        version: 0.2.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       lucide:
         specifier: ^1.28.0
         version: 1.28.0
@@ -1054,6 +1060,9 @@ packages:
 
   '@emnapi/wasi-threads@1.2.2':
     resolution: {integrity: sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA==}
+
+  '@emoji-mart/data@1.2.1':
+    resolution: {integrity: sha512-no2pQMWiBy6gpBEiqGeU77/bFejDqUTRY7KX+0+iur13op3bqUsXdnwoZs6Xb1zbv0gAj5VvS1PWoUUckSr5Dw==}
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -3501,6 +3510,19 @@ packages:
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
 
+  '@usespaceui/gradients@0.1.4':
+    resolution: {integrity: sha512-h/7FOgcMVYUL1cE/mqMzwBI07xE31yA51QoBzXjxR+qW5dha+R1bZxc/+o7HNn5EUTquoQxTh0fygAM0Vvnh0Q==}
+    engines: {node: '>=18.0.0'}
+
+  '@usespaceui/squishmoji@0.1.0':
+    resolution: {integrity: sha512-k/SzfXwxJiVQhfLTNv41yENPzlM4WFTg62f/HzhRAxLb7cQQpw935Ahgm7TZZx0AhL/m5TgmXjDgD4BRgsmI3Q==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      react: '>=18'
+    peerDependenciesMeta:
+      react:
+        optional: true
+
   '@vercel/analytics@2.0.1':
     resolution: {integrity: sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g==}
     peerDependencies:
@@ -3895,17 +3917,6 @@ packages:
 
   bignumber.js@9.3.1:
     resolution: {integrity: sha512-Ko0uX15oIUS7wJ3Rb30Fs6SkVbLmPBAKdlm7q9+ak9bbIeFf0MwuBsQV6z7+X768/cHsfg+WlysDWJcmthjsjQ==}
-
-  blobatar@2.5.0:
-    resolution: {integrity: sha512-fVFzNgElUbqiLt8NLWYPRg7ljbOPP2/L+8hW6wdVntULNaTnQjlsy1FPr2JTux/Sckpfmc1misXWt+6CL3xXqg==}
-    peerDependencies:
-      react: '>=18'
-      vue: '>=3'
-    peerDependenciesMeta:
-      react:
-        optional: true
-      vue:
-        optional: true
 
   bluebird@3.4.7:
     resolution: {integrity: sha512-iD3898SR7sWVRHbiQv+sHUtHnMvC1o3nW5rAcqnq3uOn07DSAppZYUkIGslDz6gXC7HfunPe7YVBgoEJASPcHA==}
@@ -5945,6 +5956,12 @@ packages:
 
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
+
+  liquid-gooey@0.2.2:
+    resolution: {integrity: sha512-UnnNSYdZoNHXowmHKo2pOF6suI1+pLMKf7qBMj1wT6wG3u0gqXP7qiLVMpCjJM2ETkr/GqF8n4fcuIgWb1fHQQ==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
 
   locate-path@3.0.0:
     resolution: {integrity: sha512-7AO748wWnIhNqAuaty2ZWHkQHRSNfPVIsPIfwEOWO22AmaoVrWavlOcMR5nzTLNYvp36X220/maaRsrec1G65A==}
@@ -8438,6 +8455,8 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
+  '@emoji-mart/data@1.2.1': {}
+
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
 
@@ -10471,7 +10490,15 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
-  '@vercel/analytics@2.0.1(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
+  '@usespaceui/gradients@0.1.4': {}
+
+  '@usespaceui/squishmoji@0.1.0(react@19.2.4)':
+    dependencies:
+      '@usespaceui/gradients': 0.1.4
+    optionalDependencies:
+      react: 19.2.4
+
+  '@vercel/analytics@2.0.1(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
     optionalDependencies:
       next: 16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react: 19.2.4
@@ -10878,10 +10905,6 @@ snapshots:
   baseline-browser-mapping@2.10.40: {}
 
   bignumber.js@9.3.1: {}
-
-  blobatar@2.5.0(react@19.2.4):
-    optionalDependencies:
-      react: 19.2.4
 
   bluebird@3.4.7: {}
 
@@ -13291,6 +13314,11 @@ snapshots:
       lightningcss-win32-x64-msvc: 1.32.0
 
   lines-and-columns@1.2.4: {}
+
+  liquid-gooey@0.2.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   locate-path@3.0.0:
     dependencies:

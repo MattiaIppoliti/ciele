@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Search } from "lucide-react";
 import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
@@ -151,11 +153,7 @@ export function DocumentChunks({
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-muted-foreground bg-card rounded-xl border px-5 py-10 text-center text-sm">
-          {chunks.length === 0
-            ? "Nothing indexes this Document yet."
-            : "No loaded chunk contains that."}
-        </p>
+        <EmptyState className="bg-card rounded-xl border" size="sm" title={chunks.length === 0 ? "No indexed chunks yet" : "No matching chunks"} description={chunks.length === 0 ? "Chunks appear after this document is indexed." : "Try a different term or clear the search."} action={chunks.length > 0 ? <Button variant="outline" size="sm" onClick={() => setQuery("")}>Clear search</Button> : undefined} />
       ) : (
         <div className="grid gap-3 @lg:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
           {shown.map((chunk) => (

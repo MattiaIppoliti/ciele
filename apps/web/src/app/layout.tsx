@@ -6,7 +6,7 @@ import localFont from "next/font/local";
 import { AuthHintScript } from "@/components/auth-hint-script";
 import { ThemeScript } from "@/components/theme-script";
 import { CookieConsent } from "@/components/cookie-consent/cookie-consent";
-import { Toasts } from "@/components/notifications/toasts";
+import { AppInteractions } from "@/components/app-interactions";
 import "./globals.css";
 
 // Brand wordmark ("Ciele"). Self-hosted Solitus (SIL OFL), see
@@ -109,7 +109,7 @@ export default function RootLayout({
         <ThemeScript key={devKey("theme-script")} />
         <AuthHintScript key={devKey("auth-hint-script")} />
         {process.env.NODE_ENV === "production" ? children : <Fragment key="page">{children}</Fragment>}
-        <Toasts key={devKey("toasts")} />
+        <AppInteractions key={devKey("app-interactions")} />
         {/* Owns the consent banner *and* the Vercel analytics scripts, which it
             renders only once the visitor has allowed the analytics category,
             see components/cookie-consent/cookie-consent-ui.tsx. Mounting the

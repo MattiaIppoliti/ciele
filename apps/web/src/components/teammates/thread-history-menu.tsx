@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useMemo, useState } from "react";
 import { MessageCircle, Search } from "lucide-react";
 import { groupByDay, relativeShort } from "@/lib/history-groups";
@@ -61,9 +63,9 @@ export function ThreadHistoryMenu({
       )}
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-1.5">
         {entries.length === 0 ? (
-          <p className="text-muted-foreground px-3 py-6 text-center text-sm">No conversations yet</p>
+          <EmptyState size="sm" title="No conversations yet" description="Start a conversation to see it in your history." />
         ) : groups.length === 0 ? (
-          <p className="text-muted-foreground px-3 py-6 text-center text-sm">Nothing matches</p>
+          <EmptyState size="sm" title="No matching conversations" description="Try a shorter search or another word." />
         ) : (
           groups.map((group, index) => (
             <div key={group.id}>

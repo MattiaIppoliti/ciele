@@ -1,0 +1,57 @@
+.figure { display: grid; min-width: 0; margin: 0; color: var(--foreground); font-family: var(--font-body); letter-spacing: var(--tracking-body); }
+
+/* Series colors (--series-1 to --series-4) come from registry/foundation.css. */
+
+.plot { position: relative; min-width: 0; outline: none; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: crosshair; }
+.svg { position: absolute; inset: 0; display: block; overflow: visible; }
+
+/* Ridges are opaque, so each one hides the valleys of the row behind it. */
+.ridge { transition: opacity var(--duration-standard) var(--ease-standard); }
+.fill { fill: color-mix(in oklch, var(--ridge) 34%, var(--surface)); stroke: none; transition: fill var(--duration-considered) var(--ease-standard); }
+.line { fill: none; stroke: var(--ridge); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; transition: stroke var(--duration-considered) var(--ease-standard); }
+.median { stroke: color-mix(in oklch, var(--ridge) 55%, var(--surface)); stroke-width: 1; transition: stroke var(--duration-considered) var(--ease-standard); }
+.plot[data-active] .ridge[data-dim] { opacity: .38; }
+.ridge[data-lifted] { opacity: 0; transition-duration: var(--duration-instant); }
+
+/* The lifted ridge is a copy drawn above the rest, so it can rise over its neighbours. */
+.lens { opacity: 0; pointer-events: none; transform: translateY(0); transition: opacity var(--duration-fast) var(--ease-standard), transform var(--duration-spring) var(--ease-spring); }
+.lens[data-on] { opacity: 1; transform: translateY(-6px); }
+.lensFill { fill: color-mix(in oklch, var(--ridge) 18%, var(--surface)); stroke: none; }
+.lensBand { fill: color-mix(in oklch, var(--ridge) 48%, var(--surface)); stroke: none; }
+.lensMedian { stroke: var(--foreground); stroke-width: 1.5; stroke-linecap: round; }
+.lensLine { fill: none; stroke: var(--ridge); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+
+.ticks { position: absolute; top: 0; right: 0; left: 0; pointer-events: none; }
+.tick { position: absolute; bottom: 0; left: 0; width: 1px; background: var(--border-subtle); will-change: transform; animation: tickIn var(--duration-standard) var(--ease-standard); }
+.tickLabel { position: absolute; bottom: 0; left: 0; color: var(--text-muted); font-size: var(--text-xs); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; translate: -50% 0; }
+@keyframes tickIn { from { opacity: 0; } }
+
+.crosshair { position: absolute; left: 0; width: 1px; background: var(--foreground); opacity: 0; pointer-events: none; transition: opacity var(--duration-instant) var(--ease-standard); }
+.plot[data-cursor] .crosshair { opacity: .35; }
+
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.rowLabel { position: absolute; left: 0; overflow: hidden; color: var(--text-secondary); font-size: var(--text-xs); line-height: 18px; text-overflow: ellipsis; white-space: nowrap; transition: color var(--duration-fast) var(--ease-standard); }
+.rowLabel[data-active] { color: var(--foreground); font-weight: 500; }
+
+.message { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--text-muted); font-size: var(--text-sm); pointer-events: none; }
+
+.tooltip { position: absolute; top: 0; left: 0; z-index: 2; display: grid; min-width: 170px; max-width: min(240px, 100%); gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-raised); box-shadow: var(--shadow-floating); opacity: 0; pointer-events: none; scale: .96; transition: opacity var(--duration-fast) var(--ease-standard), scale var(--duration-fast) var(--ease-standard); }
+.plot[data-active] .tooltip { opacity: 1; scale: 1; }
+.tipTitle { margin: 0 0 2px; color: var(--text-secondary); font-size: var(--text-xs); line-height: var(--leading-body); }
+.tipValue, .tipRow { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tipValue { color: var(--foreground); font-size: var(--text-sm); font-weight: 500; line-height: 1.4; }
+.tipRow { color: var(--foreground); font-size: var(--text-xs); line-height: var(--leading-body); }
+.tipKey { color: var(--text-muted); font-weight: 400; }
+.tipNote { margin: 4px 0 0; color: var(--text-muted); font-size: var(--text-xs); line-height: var(--leading-body); font-variant-numeric: tabular-nums; }
+
+.scale { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: var(--space-3); color: var(--text-muted); font-size: var(--text-xs); line-height: var(--leading-body); font-variant-numeric: tabular-nums; }
+.scaleLabel { margin-right: 4px; color: var(--text-secondary); }
+.steps { display: inline-flex; gap: 2px; }
+.step { width: 18px; height: 10px; border-radius: 3px; background: var(--ridge); }
+
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ridge, .lens, .crosshair, .tooltip, .rowLabel { transition: none; }
+  .tick { animation: none; }
+}

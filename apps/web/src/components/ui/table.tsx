@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { TableText } from "@/components/motion/roll-in-text";
+
 import { cn } from "@/lib/utils";
 
 /**
@@ -70,36 +72,37 @@ function Table({
 }: React.ComponentProps<"table"> & {
   fixed?: boolean;
   /**
-   * No rows. The header then drops its dividers and its fixed widths: a
-   * band of empty columns ruled over nothing is a grid drawn around an
-   * absence, and the column boundaries say nothing until there is something
-   * in them to separate.
+   * No rows. Hide column chrome and fill the panel so the empty state's
+   * guidance stays reachable on narrow screens. Saved column widths and
+   * resize handles return when there are rows again.
    */
   empty?: boolean;
 }) {
   return (
-    <div
+    <TableText.Provider value={true}><div
       data-slot="table-container"
-      // The bar itself is hidden: a scrollbar under every table reads as chrome.
-      // The wide ones still pan with a trackpad or shift-wheel.
-      className="relative w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      style={{ scrollbarWidth: "auto", scrollbarColor: "auto" }}
+      // Keep the native column layout and its resize grips at every width.
+      // A visible scrollbar exposes columns that do not fit the panel.
+      className="relative w-full overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
     >
       <table
+        role="table"
         data-slot="table"
         data-empty={empty ? "true" : undefined}
         className={cn(
-          "w-full caption-bottom text-sm",
-          "[&:has(col[data-column=actions])_td:last-child>div]:w-max [&:has(col[data-column=actions])_td:last-child>div]:ml-auto",
+          "w-[var(--table-width,100%)] caption-bottom text-sm",
+          "[&:has(col[data-column=actions])_td:not([colspan]):last-child>div]:w-max [&:has(col[data-column=actions])_td:not([colspan]):last-child>div]:ml-auto",
           // The last cell has no neighbour to divide it from, and the border
           // would sit on the card's own edge.
           "[&_td:not(:last-child)]:border-r [&_th:not(:last-child)]:border-r",
-          "data-[empty=true]:table-auto data-[empty=true]:[&_th]:border-r-0",
+          "data-[empty=true]:w-full data-[empty=true]:[&_col]:!w-auto data-[empty=true]:[&_thead]:hidden",
           fixed && "table-fixed",
           className,
         )}
         {...props}
       />
-    </div>
+    </div></TableText.Provider>
   );
 }
 
@@ -117,6 +120,7 @@ function Table({
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
+      role="rowgroup"
       data-slot="table-header"
       // The rule goes on the cells rather than on the row, beside the `border-r`
       // dividers they already carry, so both edges of a heading come from one
@@ -152,6 +156,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
+      role="rowgroup"
       data-slot="table-body"
       className={cn(
         "[&_tr:last-child]:border-0",
@@ -185,6 +190,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
+      role="row"
       data-slot="table-row"
       // `group/row` is what the hover controls inside a cell hang off, chiefly
       // `TableOpenCell`: they answer the row being hovered, not the cell.
@@ -208,9 +214,10 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
  * of the icons said anything the word did not; the row now reads as a row.
  * What a header carries instead is behaviour, see `TableColumnHeader`.
  */
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+function TableHead({ className, children, ...props }: React.ComponentProps<"th">) {
   return (
     <th
+      role="columnheader"
       data-slot="table-head"
       // `relative` so a column's resize handle can sit on its right border.
       className={cn(
@@ -218,23 +225,28 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
         className,
       )}
       {...props}
-    />
+    >
+      <div data-table-value>{children}</div>
+    </th>
   );
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+function TableCell({ className, children, ...props }: React.ComponentProps<"td">) {
   return (
     <td
+      role="cell"
       data-slot="table-cell"
       // `relative` for the hover controls a cell can carry (the Open pill),
       // `overflow-hidden` because a fixed-layout column that its content can
       // push wider is not a column the reader resized.
       className={cn(
-        "relative overflow-hidden px-3 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "relative overflow-hidden text-ellipsis px-3 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
-    />
+    >
+      <div data-table-value>{children}</div>
+    </td>
   );
 }
 

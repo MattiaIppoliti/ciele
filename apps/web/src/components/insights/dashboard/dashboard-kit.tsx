@@ -1,8 +1,10 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, Download, Info } from "lucide-react";
+import { AlertTriangle, Download } from "lucide-react";
 import type { DashboardSurface, UsageDashboardFilter } from "@agent-hub/core";
 import { recordsToCsv } from "@ciele/ops/csv";
 import {
@@ -12,14 +14,15 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Hint,
+  Skeleton,
 } from "@agent-hub/ui";
+import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AssistantFilterDropdown } from "@/components/insights/assistant-filter-dropdown";
 import { DateRangeDropdown } from "@/components/insights/date-range-dropdown";
 import { defaultDashboardFilter, type DashboardView } from "@/lib/insights/dashboard-filter";
 import { INSIGHTS_RANGE_SLOT, SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
-import { formatShortDay } from "@/lib/format";
+import { InsightsRangeChip } from "@/components/insights/insights-range-chip";
 import { replaceFilterParams } from "@/lib/url-state";
 
 export { DashboardStatCards } from "./dashboard-stat-cards";
@@ -39,7 +42,7 @@ export function ChartSkeleton({ className }: { className: string }) {
   return <div aria-label="Loading chart" className={`bg-muted/40 animate-pulse rounded-lg ${className}`} />;
 }
 
-// The Recharts bar and pie charts and the motion charts stay off the route's first
+// The Arc charts and the specialized legacy charts stay off the route's first
 // load: each card paints its frame, then its chart module arrives.
 export const SpendBars = dynamic(() => import("./dashboard-bars").then((m) => m.SpendBars), {
   ssr: false,
@@ -58,6 +61,14 @@ export const LatencyHistogram = dynamic(() => import("./dashboard-bars").then((m
   loading: () => <ChartSkeleton className="h-56" />,
 });
 export const StageBars = dynamic(() => import("./dashboard-bars").then((m) => m.StageBars), {
+  ssr: false,
+  loading: () => <ChartSkeleton className="h-64" />,
+});
+export const ModelSpendTree = dynamic(() => import("./dashboard-comparisons").then((m) => m.ModelSpendTree), {
+  ssr: false,
+  loading: () => <ChartSkeleton className="h-80" />,
+});
+export const RateComparison = dynamic(() => import("./dashboard-comparisons").then((m) => m.RateComparison), {
   ssr: false,
   loading: () => <ChartSkeleton className="h-64" />,
 });
@@ -160,6 +171,7 @@ export function DashboardFrame({
   exportRows: () => Array<Record<string, string | number>>;
   children: ReactNode;
 }) {
+  const slideDirection = useSlidingDirection(filter.surface, SURFACE_TABS.map((tab) => tab.value));
   const assistantScoped = filter.surface === "" || filter.surface === "assistants";
 
   function exportCsv() {
@@ -217,12 +229,7 @@ export function DashboardFrame({
       </SlotPortal>
 
       <SlotPortal id={INSIGHTS_RANGE_SLOT}>
-        <span className="text-primary border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium">
-          {formatShortDay(filter.from)} – {formatShortDay(filter.to)} (UTC days)
-          <Hint label={hint}>
-            <Info className="size-3.5" />
-          </Hint>
-        </span>
+        <InsightsRangeChip from={filter.from} to={filter.to} hint={hint} />
       </SlotPortal>
 
       {unavailable && (
@@ -235,7 +242,7 @@ export function DashboardFrame({
         </div>
       )}
 
-      <div className="space-y-4 border-t px-4 pt-5 pb-8 sm:px-6">{children}</div>
+      <SlidingPanel activeKey={filter.surface} direction={slideDirection} sizing="flow" panelClassName="space-y-4 px-4 pt-5 pb-8 sm:px-6">{children}</SlidingPanel>
     </div>
   );
 }
@@ -275,6 +282,7 @@ export function RateCard({
   loading,
   className,
   children,
+  variant = "donut",
 }: {
   title: string;
   description: string;
@@ -287,14 +295,17 @@ export function RateCard({
   loading: boolean;
   className?: string;
   children?: ReactNode;
+  variant?: "donut" | "gauge" | "waffle";
 }) {
   return (
     <Section title={title} description={description} className={className}>
-      {good + bad === 0 ? (
-        <p className="text-muted-foreground py-6 text-sm">{empty}</p>
+      {loading ? (
+        <Skeleton aria-label="Loading chart" className="h-44 w-full rounded-xl" />
+      ) : good + bad === 0 ? (
+        <EmptyState size="sm" title="No data in this range" description={empty} />
       ) : (
         <div className="space-y-4">
-          <RateDonut good={good} bad={bad} goodLabel={goodLabel} badLabel={badLabel} title={title} loading={loading} />
+          <RateDonut good={good} bad={bad} goodLabel={goodLabel} badLabel={badLabel} title={title} loading={loading} variant={variant} />
           {detail && <p className="text-muted-foreground text-sm">{detail}</p>}
           {children}
         </div>

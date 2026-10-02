@@ -88,6 +88,37 @@ export function describeDbContract(
 
     const newAssistant = () =>
       db.createAssistant(ctx.organizationId, { title: "Contract Fixture" });
+    describe("social message reactions", () => {
+      it("replaces each actor's emoji without changing answer feedback", async () => {
+        const assistant = await newAssistant();
+        const conversation = await db.createConversation({ assistantId: assistant.id, subjectType: "visitor", subjectId: "reaction-test" });
+        const message = await db.appendMessage({ conversationId: conversation.id, role: "assistant", content: [{ type: "text", text: "Hello" }] });
+        const reaction = { organizationId: ctx.organizationId, messageId: message.id, channelMessageId: null, actorId: "member:reaction-1", actorName: "Ada", emoji: "❤️" };
+        await systemDb.setMessageReaction(reaction, true);
+        await systemDb.setMessageReaction(reaction, true);
+        await systemDb.setMessageReaction({ ...reaction, emoji: "👍" }, true);
+        await systemDb.setMessageReaction({ ...reaction, actorId: "member:reaction-2", actorName: "Grace" }, true);
+        expect(await systemDb.listMessageReactions(ctx.organizationId, message.id)).toHaveLength(2);
+        expect(await systemDb.listMessageReactions(ctx.foreignOrganizationId, message.id)).toEqual([]);
+        await systemDb.setMessageReaction(reaction, false);
+        await systemDb.setMessageReaction(reaction, false);
+        const remaining = await systemDb.listMessageReactions(ctx.organizationId, message.id);
+        expect(remaining).toHaveLength(2);
+        expect(remaining).toContainEqual({ ...reaction, emoji: "👍" });
+        await systemDb.setMessageReaction({ ...reaction, emoji: "👍" }, false);
+        expect(await systemDb.listMessageReactions(ctx.organizationId, message.id)).toEqual([{ ...reaction, actorId: "member:reaction-2", actorName: "Grace" }]);
+        expect(remaining).toContainEqual({ ...reaction, actorId: "member:reaction-2", actorName: "Grace" });
+        expect((await db.getMessage(message.id))?.feedback).toBe(0);
+      });
+      it("stores reactions on group replies", async () => {
+        const channel = await db.table("teammateChannels").insert({ organizationId: ctx.organizationId, name: "Reaction group", createdBy: ctx.userId });
+        const message = await systemDb.appendChannelMessage({ organizationId: ctx.organizationId, channelId: channel.id, authorType: "system", content: [] });
+        expect(await systemDb.getChannelMessage(message.id)).toMatchObject({ id: message.id, channelId: channel.id });
+        const reaction = { organizationId: ctx.organizationId, messageId: message.id, channelMessageId: message.id, actorId: "member:reaction-1", actorName: "Ada", emoji: "😂" };
+        await systemDb.setMessageReaction(reaction, true);
+        expect(await systemDb.listMessageReactions(ctx.organizationId, message.id)).toEqual([reaction]);
+      });
+    });
     describe("profile & organization branding", () => {
       it("patches the caller's own profile partially", async () => {
         const before = await db.getProfile();

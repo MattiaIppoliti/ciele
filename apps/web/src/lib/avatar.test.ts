@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { generatedAvatar } from "./avatar-generator";
 import {
-  generatedAvatar,
   personAvatarSeed,
   rosterAvatarSeed,
   teammateAvatarSeed,
 } from "./avatar";
 
 /**
- * The generated avatars (blobatar). The component that draws them is `.tsx` and
+ * The generated avatars (Squishmoji). The component that draws them is `.tsx` and
  * outside this app's vitest include, so what is testable is the part that
  * decides identity: the seed, and that the drawing is deterministic.
  */

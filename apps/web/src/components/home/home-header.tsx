@@ -101,7 +101,7 @@ function GithubLink() {
  * half is `display: none`, so it is out of the accessibility tree too, a screen
  * reader announces one CTA, not both. Rules live in home.css.
  */
-export function HomeHeader({ scrolled }: { scrolled: boolean }) {
+export function HomeHeader({ scrolled, topOffset = 0 }: { scrolled: boolean; topOffset?: number }) {
   const [menuState, setMenuState] = React.useState(false);
   const [mobileGroup, setMobileGroup] = React.useState<string | null>(null);
 
@@ -120,6 +120,7 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
         // utilities and stays in sync across auth/menu states.
         data-scrolled={scrolled ? "true" : undefined}
         className="fixed z-20 w-full px-2"
+        style={{ top: topOffset }}
       >
         <div
           className={cn(

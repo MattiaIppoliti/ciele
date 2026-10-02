@@ -264,6 +264,8 @@ export type {
   UsageMeterSnapshot,
   UsageLimitsSnapshot,
   BillingAccessor,
+  PlatformAdminAccessor,
+  PlatformAdminMember,
   BillingAccountSnapshot,
   BillingInvoice,
   BillingPaymentMethod,

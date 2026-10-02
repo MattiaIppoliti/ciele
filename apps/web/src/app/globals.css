@@ -222,11 +222,12 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Shared monochrome chart ramp, darkest first on a light surface. */
+  --chart-1: oklch(0.30 0 0);
+  --chart-2: oklch(0.40 0 0);
+  --chart-3: oklch(0.50 0 0);
+  --chart-4: oklch(0.58 0 0);
+  --chart-5: oklch(0.62 0 0);
   /* 8px, Twenty's control radius. `rounded-lg` is the app's default and
      lands on it exactly; the xl/2xl steps above scale off the same base. */
   --radius: 0.5rem;
@@ -325,11 +326,12 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Reverse the ramp so each series remains visible on dark cards. */
+  --chart-1: oklch(0.92 0 0);
+  --chart-2: oklch(0.82 0 0);
+  --chart-3: oklch(0.72 0 0);
+  --chart-4: oklch(0.62 0 0);
+  --chart-5: oklch(0.54 0 0);
   --sidebar: #191919;
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.922 0 0);
@@ -1325,7 +1327,7 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
 
 .sld-say {
   position: absolute;
-  inset: 0;
+  inset: 2px;
   display: grid;
   place-items: center;
   /* ── CENTRED IN THE PILL, not in the room beside it ──────
@@ -1586,4 +1588,720 @@ scritto-text:not(:defined) {
 
 @utility admin-panel {
   @apply bg-content flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border shadow-[0_1px_3px_rgb(0_0_0/0.06)];
+}
+
+/* ══ Eye tracker ═══════════════════════════════════════════
+   See components/teammates/eye-tracker.tsx. The frame holds the largest ball the
+   Size knob allows, so the wall never rescales it. */
+.eyt {
+  width: 200px;
+  height: 200px;
+  display: grid;
+  place-items: center;}
+
+.eyt-ball {
+  width: var(--eyt-size, 100px);
+  height: var(--eyt-size, 100px);
+  overflow: visible;}
+
+/* the ball is the Fill's own slab and the eyes its ink: white
+   with dark eyes on a light fill, near-black with light eyes on
+   a dark one */
+.eyt-body { fill: var(--background); }
+
+.eyt-eye { fill: var(--foreground); }
+
+.eyt.eyt-mark { width: auto; height: auto; }
+
+.eyt-mark .eyt-body { fill: var(--foreground); }
+
+.eyt-mark .eyt-eye { fill: var(--background); }
+
+/* the circle and pill in dark mode match the hexagon: a lifted
+   dark body with the eyes kept white */
+.dark .eyt-mark .eyt-body { fill: var(--muted); }
+
+.dark .eyt-mark .eyt-eye { fill: var(--foreground); }
+
+/* The chat welcome retains its 64px ghost and the shared logo's theme tokens. */
+.eyt.eyt-ciele { width: var(--eyt-size); height: var(--eyt-size); }
+.eyt-ciele .eyt-ball { overflow: hidden; }
+.eyt-ciele .eyt-body {
+  fill: var(--background);
+  stroke: var(--muted-foreground);
+  stroke-width: 7.0755;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.eyt-ciele .eyt-eye { fill: var(--muted-foreground); }
+
+/* D — command bar */
+/* the group lays the two bodies out; the library moves them */
+.command-bar .cmd-goo {
+  display: flex;
+  align-items: center;
+  gap: 8px;}
+
+/* NO 1/k CORRECTION HERE. These are morph items, and morph
+   positions its bodies with a CSS transform in layout pixels,
+   which the card's own scale then handles correctly. The
+   correction exists for `move`, which measures screen pixels —
+   applying it to morph shrinks the silhouette below the
+   element it belongs to. */
+.command-bar .cmd-slot { display: block; }
+
+.command-bar .cmd {
+  position: relative;
+  display: flex; align-items: center;
+  gap: 6px;
+/* ── THE BAR AND THE BUTTON TRADE ONE WIDTH ───────────────
+     Both states add up to the same 320 the component sits in —
+     274 + 8 + 38 at rest, 266 + 8 + 46 once the button opens
+     out. Holding the total fixed is not tidiness: this is a
+     card on the wall, and a box that changes size re-packs
+     every column around it. So the bar gives up exactly what
+     the button takes, and the outer box never moves. */
+  width: 100%;
+  transition: width 340ms cubic-bezier(0.24, 1.34, 0.38, 1);
+  /* smaller: 54 was a bar you could have put two lines in */
+  height: 56px;
+  /* the right side is padded for the mic rather than for text */
+  padding: 0 8px 0 20px;
+  border-radius: var(--cmd-r, 28px);
+  /* no background: <Liquid> paints the bar, and a fill here
+     would lay a hard rectangle over the liquid edge exactly
+     where the button is leaving it */
+  background: none;
+  isolation: isolate;}
+
+.command-bar .cmd[data-has="true"] { width: 100%; }
+
+/* ── NOT THE STROKE'S ANY MORE, THE GLASS'S ─────────────────
+   Stroke is gone from this component, so on a flat surface
+   this border stays transparent and draws nothing. It is kept
+   because the GLASS surface needs a box to paint its lit rim
+   into — a gradient cannot go in a border without a second
+   element to carry it, and this is that element. Delete it and
+   the bar loses its rim under glass. */
+.command-bar .cmd::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  pointer-events: none;}
+
+.command-bar .cmd input {
+  flex: 1; min-width: 0;
+  border: 0; outline: none; background: none;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  letter-spacing: -0.005em;
+  color: var(--foreground);}
+
+.command-bar .cmd input::placeholder { color: var(--muted-foreground); }
+
+/* one slot, two faces, stacked so neither one moves the other */
+/* Inside the bar, and it does not travel. Fading is the whole
+   of what it does — see the note in the component. */
+.command-bar .cmd-mic {
+  flex: none;
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  border: 0; border-radius: 999px;
+  background: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  /* it only fades. No scale, no travel — the one thing it does
+     is stop being there. */
+  opacity: 0;
+  transition: opacity 150ms ease;}
+
+.command-bar .cmd-mic[data-show="true"] { opacity: 1; }
+
+.command-bar .cmd-mic:hover { color: var(--foreground); }
+
+.command-bar .cmd-go {
+  position: relative;
+  flex: none;
+  width: 38px; height: 38px;
+  border: 0; border-radius: 999px;
+  /* NOTHING AT REST. Tucked inside the bar it is a body for
+     the goo to split from and nothing more — no disc, and its
+     glyph is hidden too, so what you see is one bar. */
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: grid; place-items: center;
+  opacity: 0;
+  transition:
+    background 220ms ease, color 220ms ease, opacity 160ms ease,
+    width 340ms cubic-bezier(0.24, 1.34, 0.38, 1),
+    height 340ms cubic-bezier(0.24, 1.34, 0.38, 1),
+    transform 320ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+/* it arrives at full size, into the room the bar just made */
+.command-bar .cmd-go[data-on="true"] { opacity: 1; width: 46px; height: 46px; }
+
+/* ── THE SAME MATERIAL AS THE BAR ───────────────────────────
+   It was an ink disc with a light glyph, which made the thing
+   that splits off a different object from the thing it split
+   FROM — and the goo's whole claim is that they are one body
+   separating. Same fill as the field, ink glyph, and the seam
+   between them while they neck is now continuous. */
+.command-bar .cmd-go[data-on="true"] {
+  background: var(--muted);
+  color: var(--foreground);}
+
+/* ── TWO STATES, AND NEITHER HAS AN EDGE ────────────────────
+   Focused with an empty field, the button is the same material
+   as the bar it just split out of: present and offered, asking
+   for nothing. The first character makes it the thing you are
+   about to press, and it says so by filling — the only solid
+   object in the component, which is what a primary action is.
+
+   Filled, not outlined, in both: the only edge either state
+   can ever have is the hairline the Stroke switch draws
+   below. */
+.command-bar .cmd-go[data-armed="true"] {
+  background: var(--foreground);
+  color: var(--muted);}
+
+.command-bar .cmd-go:active { transform: scale(0.92); }
+
+/* ── the rim ─────────────────────────────────────────────────
+   Every glass surface already drew a 1px ring in one flat
+   colour. A flat rim is the single clearest tell that a thing
+   is a rectangle with a border rather than a pane with
+   thickness: real edges are lit unevenly, and evenly lit ones
+   read as ink.
+
+   So the ring becomes a gradient — bright at the corner
+   facing the light, almost nothing along the sides that run
+   edge-on to it, and a second weaker catch at the far corner
+   where the light has come through the pane and out again.
+
+   Painting a gradient in a border needs the border box filled
+   and the padding box punched out of it, which is what the
+   two masks do: one covers the whole element, one covers only
+   the inside, and compositing them apart leaves the rim. It
+   is the only way to get a gradient into a border without a
+   second element to draw it on.
+
+   Only under glass. Flat keeps its honest hairline, which is
+   what a solid pane should have. */
+[data-surface="glass"] .command-bar .cmd::before {
+  border-color: transparent;
+  background:
+    linear-gradient(
+      142deg,
+      rgba(255, 255, 255, var(--g-edge-hi, 0)) 0%,
+      rgba(255, 255, 255, var(--g-edge-lo, 0)) 26%,
+      rgba(255, 255, 255, var(--g-edge-lo, 0)) 62%,
+      rgba(255, 255, 255, var(--g-edge-far, 0)) 100%
+    ) border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;}
+
+/* ── thickness ───────────────────────────────────────────────
+   Three marks, and between them they are the difference
+   between a pane and a wash.
+
+   The lit line along the top is where light enters the edge of
+   a real sheet. The ring is the sheet's own thickness seen
+   from straight on. The shadow underneath says the pane is
+   ABOVE the page rather than painted onto it — which is the
+   one thing a backdrop-filter alone can never say, because a
+   filter has no depth.
+
+   All three ride on --glass and are gone at zero, where the
+   fallbacks take over and the surface is flat. */
+[data-surface="glass"] .command-bar .cmd {
+  box-shadow: var(--g-shadow,
+    /* the top face, catching light through the thickness of
+       the pane — inside the rim, not on it */
+    inset 0 1px 0 rgba(255, 255, 255, var(--g-spec, 0)),
+    /* And what it casts on the page below — wide and soft
+       rather than tight and close. It is a different claim
+       about how far the pane floats, and the softer one is
+       what reads as a sheet resting above the page instead of
+       a card stuck to it. */
+    0 10px 40px rgba(var(--cmd-shadow-rgb), var(--g-lift, 0)));}
+
+[data-surface="flat"] .command-bar .cmd {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;}
+
+/* ── a flat rim, for comparison ──────────────────────────────
+   Reverts the graded rim to one colour all the way round —
+   which is what almost every published glass snippet does,
+   Apple's own included. It is here so the two can be judged
+   against each other on the same ground rather than taken on
+   trust, and it applies only inside a test board. */
+.gtry[data-rim="flat"] .command-bar .cmd::before {
+  border-color: var(--border);
+  background: none;
+  -webkit-mask: none;
+  mask: none;}
+
+/* Local fallbacks for Bencho glass controls, never global design tokens. */
+.command-bar {
+  --cmd-shadow-rgb: 0, 0, 0;
+  --g-edge-hi: 0; --g-edge-lo: 0; --g-edge-far: 0;
+  --g-lift: 0; --g-spec: 0; --g-shadow: var(--elevation-light);
+}
+/* The original 320px footprint also scales down beside the canvas tools. */
+.command-bar .cmd-goo { width: 100%; }
+.command-bar .cmd-field-slot {
+  width: calc(100% - 46px); min-width: 0; flex: none;
+  transition: width 340ms cubic-bezier(0.24, 1.34, 0.38, 1);
+}
+.command-bar .cmd-goo[data-has="true"] .cmd-field-slot { width: calc(100% - 54px); }
+.command-bar .cmd-send-slot { flex: none; }
+.command-bar .cmd { box-sizing: border-box; }
+.command-bar .cmd input { width: 100%; }
+.command-bar .cmd-mic[data-show="false"],
+.command-bar .cmd-go[data-on="false"] { pointer-events: none; }
+.command-bar .cmd-go:disabled { cursor: default; }
+.command-bar .cmd input:disabled { cursor: not-allowed; opacity: 0.5; }
+.command-bar .cmd:focus-within::before { border-color: var(--ring); }
+.command-bar button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.command-bar[data-reduced-motion="true"] * { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .command-bar * { transition: none; }
+}
+
+/* Selection remains centered in the native header and body cells. */
+[data-table-select] { padding-left: 0 !important; padding-right: 0 !important; }
+[data-table-select] > [data-table-value] {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+[data-table-value] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Bencho Canvas toolbar (MIT) — see components/assistant/canvas-toolbar.LICENSE. */
+.canvas-toolbar.bar-well {
+  position: relative;
+  width: max-content; height: auto;
+  display: flex; align-items: center; justify-content: center;}
+
+.canvas-toolbar .bar-rail {
+  display: inline-flex; flex-direction: column; align-items: center; gap: var(--bar-gap);
+  padding: var(--bar-pad);
+  border-radius: var(--bar-r, 14px);}
+
+.canvas-toolbar .bar-tool {
+  position: relative;
+  width: var(--bar-slot); height: var(--bar-slot);
+  display: grid; place-items: center;
+  border: 0; /* the rail's corner less the 4px between them */
+  border-radius: var(--bar-tool-r, 10px);
+  background: transparent;
+  /* ── full ink, every tool ────────────────────────────────
+     They sat at 45% and the whole rail read as disabled — a
+     toolbar where every tool looks unavailable is one nobody
+     trusts to do anything. The tools are all live, so they
+     are all ink, and the selected one is told apart by its
+     pad rather than by the others being dimmed. */
+  color: var(--ink);
+  cursor: pointer;
+  transition: color 200ms ease, background 200ms ease;}
+
+.canvas-toolbar .bar-tool:hover { background: var(--inlay); }
+
+/* ── THE SELECTED PAD ARRIVES ───────────────────────────────
+   It was `background: var(--pane-thumb)` on the button, which
+   can only cross-fade — the slot was lit or it was not, and
+   picking a tool read as a value being set rather than as
+   anything happening.
+
+   A pseudo-element can be scaled where the button cannot: the
+   button holds the glyph, and scaling it would take the icon
+   with it. So the pad is its own layer, opening from 0.72 on a
+   curve that goes just past 1. The glyph lifts a hair with it,
+   which is what ties the two together — 1.05, small enough to
+   be felt rather than watched. */
+.canvas-toolbar .bar-tool::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  /* the canvas's selection blue — the colour every design tool
+     uses for "this is the tool in your hand" */
+  background: var(--pick);
+  opacity: 0;
+  scale: 0.72;
+  transition: opacity 140ms ease, scale 300ms cubic-bezier(0.3, 1.42, 0.4, 1);
+  pointer-events: none;}
+
+/* the mark rides over its own pad */
+.canvas-toolbar .bar-tool > svg {
+  position: relative;
+  z-index: 1;
+  transition: scale 300ms cubic-bezier(0.3, 1.42, 0.4, 1);}
+
+.canvas-toolbar .bar-tool[data-on="true"] { color: #ffffff; }
+
+.canvas-toolbar .bar-tool[data-on="true"]:hover { background: transparent; }
+
+.canvas-toolbar .bar-tool[data-on="true"]::before { opacity: 1; scale: 1; }
+
+.canvas-toolbar .bar-tool[data-on="true"] > svg { scale: 1.05; }
+
+/* pressed, it yields before it lights */
+.canvas-toolbar .bar-tool:active > svg { scale: 0.92; transition-duration: 90ms; }
+
+.canvas-toolbar .bar-split {
+  width: 20px; height: 1px;
+  margin: 5px 0;
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);}
+
+/* The step catalogue opens beside the vertical rail. */
+.canvas-toolbar .bar-flyout {
+  position: absolute;
+  left: calc(100% + 8px);
+  bottom: 0;
+  display: flex; gap: 2px;
+  padding: 6px;
+  /* the flyout is the rail's own shape, opened */
+  border-radius: var(--bar-r, 14px);
+  /* A rise you can follow. 240ms on a curve overshooting to
+     1.34 is a pop — the panel was at full size before the eye
+     had found it, which is why it read as simply being there.
+     Longer, gentler, and the opacity given its own slower
+     ramp so the fade is the part you notice and the movement
+     is what carries it. */
+  animation: canvas-toolbar-rise 300ms cubic-bezier(0.22, 1.14, 0.36, 1) both;}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas-toolbar .bar-flyout { animation-duration: 1ms; }
+}
+
+
+/* Ciele uses the actual toolbar footprint, without the demo's 150px stage.
+   The step catalogue opens beside the bar and fits the available canvas. */
+.canvas-toolbar {
+  --bar-gap: 2px;
+  --bar-pad: 4px;
+  --bar-slot: 38px;
+  --ink: var(--foreground);
+  --pane: var(--card);
+  --pane-edge: var(--border);
+  --inlay: var(--muted);
+  --pick: var(--primary);
+}
+/* The bare pane has no layout of its own. Only this toolbar gets the material:
+   reuse Ciele's fill, edge and elevation rather than exporting Bencho tokens. */
+.canvas-toolbar .gpane {
+  position: relative;
+  background: var(--pane);
+  color: var(--ink);
+  isolation: isolate;
+  border: 1px solid var(--pane-edge);
+  box-shadow: var(--elevation-light);
+  backdrop-filter: blur(2px) saturate(150%);
+  -webkit-backdrop-filter: blur(2px) saturate(150%);
+}
+.canvas-toolbar .bar-flyout {
+  position: absolute;
+  display: block;
+  width: min(320px, calc(100cqw - 84px));
+  max-height: min(480px, calc(100dvh - 180px));
+  overflow-y: auto;
+}
+.canvas-toolbar .bar-tool { flex: none; }
+.canvas-toolbar .bar-tool[data-on="true"] { color: var(--primary-foreground); }
+.canvas-toolbar button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+@keyframes canvas-toolbar-rise {
+  from { opacity: 0; transform: translateY(9px) scale(0.965); }
+  55% { opacity: 1; }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.flow-canvas { container-type: inline-size; }
+@container (max-width: 360px) {
+  .canvas-toolbar { --bar-slot: 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas-toolbar .bar-tool,
+  .canvas-toolbar .bar-tool::before,
+  .canvas-toolbar .bar-tool > svg,
+  .canvas-toolbar .bar-tool:active > svg,
+  .canvas-toolbar .bar-flyout { transition: none; animation: none; }
+}
+
+/* Bencho radial fan: staggered, overshooting expansion, scoped to Flow tools. */
+.canvas-radial { position: relative; width: var(--bar-slot); height: var(--bar-slot); }
+.canvas-radial .fan-arc { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 3; }
+.canvas-radial .fan-opt { position: absolute; left: -24px; top: -24px; width: 48px; height: 48px; border-radius: 999px; display: grid; place-items: center; opacity: 0; pointer-events: none; transition: transform 420ms cubic-bezier(.24,1.34,.38,1), opacity 200ms ease, box-shadow 200ms ease; }
+.canvas-radial[data-open="true"] .fan-opt { opacity: 1; pointer-events: auto; }
+.canvas-radial .fan-opt[data-live="true"] { box-shadow: 0 0 0 2px var(--ring); }
+.canvas-radial .fan-label { position: absolute; bottom: calc(100% + 5px); padding: 3px 6px; border-radius: 6px; background: var(--card); color: var(--foreground); font-size: 11px; white-space: nowrap; opacity: 0; pointer-events: none; }
+.canvas-radial .fan-opt:hover .fan-label, .canvas-radial .fan-opt:focus-visible .fan-label, .canvas-radial .fan-opt[data-live="true"] .fan-label { opacity: 1; }
+.canvas-radial .fan-core { touch-action: none; }
+.canvas-radial[data-open="true"] .fan-core { background: var(--inlay); border-radius: 999px; box-shadow: 0 0 0 2px var(--ring); }
+.canvas-radial .fan-core > svg { animation: canvas-radial-core 380ms cubic-bezier(.24,1.34,.38,1); }
+@keyframes canvas-radial-core { from { transform: rotate(-135deg) scale(.72); } to { transform: rotate(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .canvas-radial .fan-opt, .canvas-radial .fan-core > svg { transition: none; animation: none; } }
+
+/* Sliding Panel timing supplied by the user, also applied to routed tabs. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+::view-transition-group(tab-page) { animation-duration: 220ms; animation-timing-function: cubic-bezier(.23,1,.32,1); overflow: clip; }
+::view-transition-old(tab-page) { animation: tab-page-out 220ms cubic-bezier(.23,1,.32,1) both; }
+::view-transition-new(tab-page) { animation: tab-page-in 220ms cubic-bezier(.23,1,.32,1) both; }
+@keyframes tab-page-in { from { opacity: 0; transform: translateX(var(--tab-enter-x,100%)); } to { opacity: 1; transform: translateX(0); } }
+@keyframes tab-page-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(var(--tab-exit-x,-100%)); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(tab-page) { animation: tab-page-fade-out 150ms cubic-bezier(.23,1,.32,1) both; }
+  ::view-transition-new(tab-page) { animation: tab-page-fade-in 150ms cubic-bezier(.23,1,.32,1) both; }
+  @keyframes tab-page-fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes tab-page-fade-out { from { opacity: 1; } to { opacity: 0; } }
+}
+
+/* Overview: a gray frame, black inset and a caption beneath the content.
+   Paint stays separate from text so the squircle filter cannot soften it. */
+.assistant-overview {
+  --overview-frame: #e4e4e7;
+  --overview-frame-hover: #d9d9dd;
+  --overview-border: #c6c6cc;
+  --overview-border-hover: #aaaab2;
+  --overview-inset: #ffffff;
+  --overview-inset-hover: #fafafa;
+  --overview-inset-border: #d5d5db;
+  --overview-icon: #f4f4f5;
+}
+.dark .assistant-overview {
+  --overview-frame: #202023;
+  --overview-frame-hover: #29292d;
+  --overview-border: #343439;
+  --overview-border-hover: #505058;
+  --overview-inset: #080809;
+  --overview-inset-hover: #0d0d0f;
+  --overview-inset-border: #151518;
+  --overview-icon: #303035;
+}
+.assistant-overview .overview-card {
+  position: relative;
+  isolation: isolate;
+  padding: 8px;
+  border: 1px solid var(--overview-border);
+  border-radius: 24px;
+  background: var(--overview-frame);
+  box-shadow: none;
+  transition: background-color 220ms cubic-bezier(.23,1,.32,1), border-color 220ms cubic-bezier(.23,1,.32,1), transform 100ms ease-out, opacity 100ms ease-out;
+}
+.assistant-overview .overview-card-content {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--overview-inset-border);
+  border-radius: 17px;
+}
+.assistant-overview .overview-card-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--overview-inset);
+  pointer-events: none;
+  transition: background-color 220ms cubic-bezier(.23,1,.32,1);
+}
+.assistant-overview .overview-card-icon {
+  border: 1px solid var(--overview-border);
+  background: var(--overview-icon);
+  color: var(--foreground);
+}
+.assistant-overview .overview-card:focus-within {
+  border-color: var(--overview-border-hover);
+  background-color: var(--overview-frame-hover);
+}
+.assistant-overview .overview-card:focus-within > .overview-card-content::before {
+  background-color: var(--overview-inset-hover);
+}
+.assistant-overview .overview-card-arrow {
+  flex-shrink: 0;
+  opacity: .5;
+  transform: rotate(0deg);
+  transition: transform 220ms cubic-bezier(.23,1,.32,1), opacity 220ms ease, color 220ms ease;
+}
+.assistant-overview .overview-card:focus-within > .overview-card-caption .overview-card-link,
+.assistant-overview .overview-card:focus-within > .overview-card-link { color: var(--foreground); }
+.assistant-overview .overview-card:focus-within > .overview-card-caption .overview-card-arrow {
+  color: var(--foreground);
+  opacity: 1;
+  transform: rotate(45deg);
+}
+@media (hover: hover) {
+  .assistant-overview .overview-card:hover {
+    border-color: var(--overview-border-hover);
+    background-color: var(--overview-frame-hover);
+  }
+  .assistant-overview .overview-card:hover > .overview-card-content::before { background-color: var(--overview-inset-hover); }
+  .assistant-overview .overview-card:hover > .overview-card-caption .overview-card-link,
+  .assistant-overview .overview-card:hover > .overview-card-link { color: var(--foreground); }
+  .assistant-overview .overview-card:hover > .overview-card-caption .overview-card-arrow { color: var(--foreground); opacity: 1; transform: rotate(45deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-overview .overview-card,
+  .assistant-overview .overview-card-content::before,
+  .assistant-overview .overview-card-arrow { transition: none; }
+}
+@media (forced-colors: active) {
+  .assistant-overview .overview-card,
+  .assistant-overview .overview-card-content,
+  .assistant-overview .overview-card-icon {
+    background: Canvas;
+    border-color: CanvasText;
+  }
+  .assistant-overview .overview-card-content::before { background: Canvas; }
+}
+
+/* A single visual caret follows the focused native editor without changing
+   its box, form semantics, text selection or accessibility tree. */
+[data-smooth-caret-active] { caret-color: transparent !important; }
+.smooth-field-mirror {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+.smooth-field-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2147483647;
+}
+.smooth-field-layer::backdrop { background: transparent; pointer-events: none; }
+.smooth-field-caret {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  pointer-events: none;
+}
+.smooth-field-suggestion {
+  position: absolute;
+  white-space: pre;
+  opacity: .4;
+  pointer-events: none;
+}
+
+/* Skiper UI squicircle — gxuri, https://skiper-ui.com/v1/skiper63.
+   Filter paint layers only: labels, icons, focus rings and resize edges stay
+   outside the SVG filter. The 4px inset compensates for the expanded alpha. */
+html[data-app-surface="admin"][data-squircle-ready] :is(
+  [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card,
+  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)
+) {
+  isolation: isolate;
+  background-color: transparent;
+  background-image: none;
+}
+html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card) {
+  position: relative;
+  border-color: transparent;
+}
+/* The frame and fill need the same filtered contour. A native border or
+   Tailwind ring keeps rounded-rectangle corners around the squircle paint. */
+html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card):not(:focus-visible) {
+  --tw-ring-color: transparent;
+}
+html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: -2;
+  border-radius: inherit;
+  background: var(--border);
+  filter: url(#SquiCircleFilter);
+  pointer-events: none;
+}
+html[data-app-surface="admin"][data-squircle-ready] :is(
+  [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card,
+  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)
+)::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  z-index: -1;
+  border-radius: inherit;
+  background-color: var(--card);
+  filter: url(#SquiCircleFilter);
+  pointer-events: none;
+}
+html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::after {
+  inset: 5px;
+  background-image:
+    linear-gradient(90deg, transparent 25%, var(--card-sheen-line) 63%, transparent 92%),
+    radial-gradient(90% 55% at 63% -5%, var(--card-sheen-glow), transparent 70%),
+    linear-gradient(180deg, transparent 45%, var(--card-sheen-shade));
+  background-size: 100% 1px, 100% 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
+html[data-app-surface="admin"][data-squircle-ready] [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)::after { background-color: var(--popover); }
+html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content {
+  border-color: transparent;
+}
+html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  z-index: -2;
+  border-radius: inherit;
+  background: var(--overview-inset-border);
+  filter: url(#SquiCircleFilter);
+  pointer-events: none;
+}
+html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content::before {
+  inset: 5px;
+  filter: url(#SquiCircleFilter);
+}
+html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-rail { background: transparent; }
+html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-rail::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--pane);
+  filter: url(#SquiCircleFilter);
+  pointer-events: none;
+}
+html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::before {
+  inset: 4px;
+  filter: url(#SquiCircleFilter);
+}
+@media (forced-colors: active) {
+  html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::before,
+  html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content::after { content: none; }
+  html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content { border-color: CanvasText; }
+  html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card, [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto), .canvas-toolbar .bar-rail)::after {
+    inset: 0;
+    filter: none;
+    background: Canvas;
+    border: 1px solid CanvasText;
+  }
+  html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content::before { inset: 0; filter: none; }
+  html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::before { inset: 0; filter: none; }
 }

@@ -2,7 +2,7 @@ import { Skeleton } from "@agent-hub/ui";
 
 /**
  * Mirrors inbox-client.tsx, measured against a production build: the header
- * (title, Groups link, search and the two 37px buttons pushed right from
+ * (title, search and the two 37px buttons pushed right from
  * `sm`), the date-range chip in its own row, then the conversation log, which
  * owns the full width below `lg` and is the 18rem left pane above it, beside
  * the thread.
@@ -14,7 +14,6 @@ export default function InboxLoading() {
       <span className="sr-only">Loading conversations…</span>
       <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <Skeleton className="h-8 w-20" />
-        <Skeleton className="h-5 w-12" />
         <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
           <Skeleton className="h-10 min-w-0 flex-1 sm:w-64 sm:flex-none" />
           <Skeleton className="h-10 w-24" />

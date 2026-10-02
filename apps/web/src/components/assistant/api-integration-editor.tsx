@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { useId, useState, useTransition } from "react";
 import {
   endpointPathParams,
@@ -420,9 +422,7 @@ export function ApiIntegrationEditor({
         </div>
 
         {endpoints.length === 0 && (
-          <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm">
-            No endpoints described yet, the assistant has no API to query.
-          </p>
+          <EmptyState size="sm" title="No endpoints yet" description="Describe an endpoint above so the assistant can query your API." />
         )}
 
         {endpoints.map((draft) => {

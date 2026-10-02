@@ -1,0 +1,28 @@
+/* Comment layout adapted from Arc UI's open-source comment-thread component.
+   https://uiarc.dev/components/comment-thread */
+.list, .replies { display: grid; margin: 0; padding: 0; list-style: none; }
+.list { padding: 0 8px; gap: 8px; }
+.replies { position: relative; margin-left: 24px; padding-left: 12px; }
+.replies::before { content: ""; position: absolute; top: 2px; bottom: 14px; left: 0; width: 1px; background: var(--border); }
+.comment { display: flex; gap: 10px; padding: 10px; border-radius: 16px; }
+.main { display: grid; min-width: 0; flex: 1; gap: 2px; }
+.meta { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
+.name { overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.time { flex: none; color: var(--muted-foreground); font-size: var(--text-xs); }
+.body { color: var(--foreground); overflow-wrap: anywhere; }
+.footer { display: flex; min-height: 30px; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; }
+.action, .toggle { display: inline-flex; width: fit-content; height: 28px; align-items: center; gap: 6px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: var(--muted-foreground); cursor: pointer; font: inherit; font-size: var(--text-xs); font-weight: 500; transition: background-color 120ms, color 120ms; }
+.toggle { margin: 2px 0 0 -6px; padding-left: 6px; color: var(--foreground); }
+.action:disabled { opacity: .45; cursor: default; }
+.action:focus-visible, .toggle:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.composer { margin: 8px 10px 12px 48px; min-width: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .comment:hover { background: color-mix(in oklch, var(--muted) 45%, transparent); }
+  .action:hover, .toggle:hover { background: var(--muted); color: var(--foreground); }
+}
+@media (max-width: 420px) {
+  .list { padding: 0; }
+  .replies { margin-left: 12px; padding-left: 6px; }
+  .composer { margin-left: 18px; }
+  .meta { flex-wrap: wrap; gap: 2px 8px; }
+}

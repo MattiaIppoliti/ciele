@@ -4,6 +4,7 @@ export type { SurfaceFieldProps } from "./SurfaceField";
 export type {
   SurfaceFieldController,
   SurfaceFieldFootprint,
+  SurfaceFieldLink,
   SurfaceFieldPreview,
   SurfaceFieldRect,
   SurfaceFieldScene,

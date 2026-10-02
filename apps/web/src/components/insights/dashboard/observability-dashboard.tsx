@@ -13,6 +13,7 @@ import {
   LatencyTrend,
   OutcomeBars,
   RateCard,
+  RateComparison,
   Section,
   VerdictBars,
   useDashboardView,
@@ -103,6 +104,7 @@ export function ObservabilityDashboard({
         <div className="grid grid-cols-12 gap-4">
           <RateCard
             title="Reliability"
+            variant="gauge"
             description="Turns that finished without an error"
             good={totals.succeededTurns}
             bad={totals.failedTurns}
@@ -146,6 +148,7 @@ export function ObservabilityDashboard({
           </RateCard>
           <RateCard
             title="Autonomy"
+            variant="waffle"
             description="Visitor conversations resolved without a human"
             good={totals.conversations - totals.escalated}
             bad={totals.escalated}
@@ -160,6 +163,10 @@ export function ObservabilityDashboard({
             className="col-span-12 @3xl:col-span-6 @5xl:col-span-4"
           />
         </div>
+
+      <Section title="Change from the prior period" description="The same rates in consecutive periods of equal length. Changes are percentage points.">
+        {stale ? <div aria-label="Loading comparison" className="h-64 animate-pulse rounded-lg bg-muted/40" /> : <RateComparison current={totals} previous={view.previous} />}
+      </Section>
 
       <Section
         title="Most used Flows"

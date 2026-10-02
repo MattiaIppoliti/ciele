@@ -5,6 +5,8 @@ description: Review current Conversation, answer, escalation, feedback, and Noti
 
 Insights calculates Organization metrics from stored runtime events. Use the available date range and Assistant filters to change the data set.
 
+Charts in Insights, Eval, Assistant Overview, and Usage use a grayscale palette that adapts to light and dark themes. Positive and negative outcomes remain green and red. Changes use each measure's direction: lower costs, latency, and failures are positive. Labels, legends, and exact values identify each measure. The latency timeline uses a dashed line for p95.
+
 ## Current overview
 
 The overview can include these measures:
@@ -25,6 +27,10 @@ The exact cards depend on available data for the selected period.
 
 The **Conversation depth** chart shows the average Conversation time and the questions per Conversation for each day, week, or month. Ciele puts each Conversation in the period when it started. A Conversation that continues after the end of the range keeps its full time.
 
+The **Usage** chart separates counts, percentages, ratios, and seconds so different units do not share one axis. Select a metric to show or hide it. The **Assistants** and **Channels** tabs show Conversation breakdowns.
+
+Use the **Explore conversations over time** window to zoom the charts within the selected date range. Drag the window or its handles, or use the arrow keys after focusing a handle. Summary cards, the data table, and exports still cover the full date range.
+
 ## Costs and Observability
 
 Two dashboards show what the AI of your Organization costs and how well it works. **Costs** shows spend and usage. **Observability** shows reliability, speed, and answer quality.
@@ -42,10 +48,13 @@ Each dashboard starts with stat cards. A card shows a value for the range, a lin
 ### Costs
 
 - estimated spend, cost per turn, model calls, and tokens
-- estimated spend per day, split by surface
-- the share of spend for each surface in each period
+- total estimated spend per day
+- a streamgraph of daily estimated spend by surface. Band thickness represents an amount, not a percentage
 - a calendar of token use per day
 - spend per model and per pipeline stage
+- a treemap of spend by provider and model. Select a provider to inspect its models
+
+The surface filter applies to the daily charts and model breakdown. The surface totals below the streamgraph always compare all surfaces.
 
 Spend is an estimate in euros. Ciele calculates it from token counts and list prices. It is not an invoice.
 
@@ -55,6 +64,8 @@ Spend is an estimate in euros. Ciele calculates it from token counts and list pr
 - turn latency: median, 95th percentile, a histogram, and a daily trend
 - **Answer accuracy**: the share of Assistant answers that the verifier passed
 - **Autonomy**: the share of Visitor Conversations that did not go to a help desk
+- a reliability gauge and an autonomy grid, with exact counts beside the charts
+- a comparison of reliability, accuracy, and autonomy against the prior period, in percentage points
 - the most frequent error classes
 - the five most used Flows, ranked against each other per day or per week
 
@@ -65,6 +76,14 @@ Spend is an estimate in euros. Ciele calculates it from token counts and list pr
 Days are UTC days. A model call recorded before surface attribution has no surface. It counts in **All** as **Unattributed**, and in no other surface.
 
 Use **Export CSV** to download one row for each day in the range. For a report file with more options, use [Exports](/operations/exports).
+
+## Platform reporting
+
+In managed deployments, authorized Owners and Admins of the designated platform Organization see **Admin** as the last Insights tab.
+This tab shows usage and estimated costs across all Organizations, including the platform Organization.
+Select a date range to review model calls, tokens, crawl pages, and estimated costs for each Organization.
+Platform-funded cost excludes customer API keys and personal subscriptions.
+Other Organizations and Members do not have access to this tab.
 
 ## Data freshness
 

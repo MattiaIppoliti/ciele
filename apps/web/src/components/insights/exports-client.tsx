@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { useEffect, useState, useTransition } from "react";
@@ -8,7 +9,7 @@ import { Download, FileText, RotateCw } from "lucide-react";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { retryExportJobAction } from "@/app/(admin)/insights/exports/actions";
 import { CreateExportDialog } from "@/components/insights/create-export-dialog";
-import { Badge } from "@agent-hub/ui";
+
 import { Button } from "@agent-hub/ui";
 import { formatCount, formatDateTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -48,16 +49,13 @@ const STATUS: Record<
 };
 
 function StatusBadge({ status }: { status: ExportJobStatus }) {
-  const { label, variant } = STATUS[status];
-  // One badge whatever the status, so the label rolls from "Queued" to
-  // "Ready" in place instead of a new badge replacing the old one.
+  const { label } = STATUS[status];
   return (
-    <Badge variant={variant}>
-      {status === "running" && (
-        <Loader2 className="size-3 motion-safe:animate-spin" aria-hidden />
-      )}
-      <RollInText text={label} />
-    </Badge>
+    <StatusPill
+      status={status === "done" ? "online" : status === "error" ? "error" : status === "running" ? "info" : "away"}
+      animated={status === "running"}
+      primaryText={<RollInText text={label} />}
+    />
   );
 }
 

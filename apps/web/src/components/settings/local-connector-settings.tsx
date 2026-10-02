@@ -1,18 +1,12 @@
-﻿"use client";
+"use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MonitorDown, PlugZap, RotateCw } from "lucide-react";
-import { CheckCircle2, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
-import {
-  Badge,
-  Button,
-  Card,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@agent-hub/ui";
+import { Button, Card, Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import {
   Select,
   SelectContent,
@@ -206,9 +200,12 @@ function ProviderRow({
       <span role="status" aria-live="polite" className="sr-only">
         {label}: {statusText}
       </span>
-      <Badge variant="outline" className="rounded-full" aria-hidden="true">
-        <RollInText text={statusText} />
-      </Badge>
+      <StatusPill
+        status={connected ? "online" : connecting ? "info" : available ? "away" : "offline"}
+        animated={connecting}
+        aria-hidden="true"
+        primaryText={<RollInText text={statusText} />}
+      />
       {trailing}
       <Button
         size="sm"
@@ -651,22 +648,13 @@ export function LocalConnectorSettings({
               <PlugZap className="text-primary size-4" />
               <h2 className="text-base font-semibold">Local AI accounts</h2>
               {localTest && (
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                >
-                  Local test
-                </Badge>
+                <StatusPill status="warning" primaryText="Local test" />
               )}
               {status && (
-                <Badge variant="outline" className="rounded-full">
-                  <CheckCircle2 className="mr-1 size-3" /> Connector {status.version}
-                </Badge>
+                <StatusPill status="online" primaryText={`Connector ${status.version}`} />
               )}
               {status?.relayConnected && (
-                <Badge variant="outline" className="rounded-full">
-                  Preview relay ready
-                </Badge>
+                <StatusPill status="online" primaryText="Preview relay ready" />
               )}
             </div>
             <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
@@ -681,10 +669,7 @@ export function LocalConnectorSettings({
           )}
           <span role="status" aria-live="polite">
             {checking && (
-              <Badge variant="outline" className="rounded-full">
-                <LoaderCircle className="mr-1 size-3 animate-spin" aria-hidden="true" />{" "}
-                Detecting
-              </Badge>
+              <StatusPill status="info" animated primaryText="Detecting" />
             )}
           </span>
         </div>

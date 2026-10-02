@@ -2,10 +2,26 @@
 
 import React from "react";
 import { Button, cn } from "@agent-hub/ui";
+import { FooterGithubCard } from "./footer-github-card";
 import {
   subscribeToNewsletterAction,
   type SubscribeResult,
 } from "@/app/(marketing)/newsletter/actions";
+
+export function FooterBottom() {
+  return (
+    <div className="border-border mt-12 flex flex-col gap-8 border-t pt-8 lg:flex-row lg:items-center lg:justify-between">
+      <div className="text-muted-foreground flex flex-col flex-wrap gap-x-6 gap-y-3 text-sm sm:flex-row sm:items-center">
+        <span>© {new Date().getFullYear()} Ciele.</span>
+        <div className="relative flex flex-wrap items-center gap-x-6 gap-y-3">
+          <FooterClock />
+          <FooterGithubCard />
+        </div>
+      </div>
+      <FooterNewsletter />
+    </div>
+  );
+}
 
 /* Live Rome clock. useSyncExternalStore (not useEffect+setState) keeps it
    SSR-safe and off the react-hooks/set-state-in-effect rule: the server

@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useId, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
@@ -27,16 +28,7 @@ import {
 import { useApplicationConnectedToast } from "@/components/knowledge/use-application-connected";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { AlertCircle, KeyRound, Plug } from "lucide-react";
-import {
-  Badge,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-} from "@agent-hub/ui";
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
 import {
   Select,
   SelectContent,
@@ -580,9 +572,10 @@ export function TestConnectorControl({ settings }: { settings: ConnectorActionSe
       {outcome && (
         <div role="status" className="bg-muted/30 space-y-2 rounded-lg border p-3 text-xs">
           <p className="flex items-center gap-2">
-            <Badge variant="outline" className={cn("rounded-full", outcome.ok ? "text-emerald-600" : "text-destructive")}>
-              {outcome.ok ? "ok" : outcome.error?.code ?? "failed"}
-            </Badge>
+            <StatusPill
+              status={outcome.ok ? "online" : "error"}
+              primaryText={outcome.ok ? "ok" : outcome.error?.code ?? "failed"}
+            />
             {outcome.status !== null && (
               <span className="font-mono">
                 HTTP <RollingNumber value={outcome.status} />

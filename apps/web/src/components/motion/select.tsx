@@ -382,11 +382,12 @@ export function SelectValue({
 }
 
 export interface SelectContentProps {
+  side?: "top" | "bottom";
   className?: string;
   children: ReactNode;
 }
 
-export function SelectContent({ className, children }: SelectContentProps) {
+export function SelectContent({ className, children, side }: SelectContentProps) {
   const ctx = useSelectContext("SelectContent");
   const innerRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
@@ -415,8 +416,8 @@ export function SelectContent({ className, children }: SelectContentProps) {
     const h = node.offsetHeight;
     const below = window.innerHeight - rect.bottom;
     const above = rect.top;
-    setPlacement(below < h + 16 && above > below ? "top" : "bottom");
-  }, [open, ctx.triggerId, setPlacement]);
+    setPlacement(side ?? (below < h + 16 && above > below ? "top" : "bottom"));
+  }, [open, ctx.triggerId, setPlacement, side]);
 
   // Specify EVERY corner + both margins each render. The near edge (facing the
   // trigger) animates flat->round and the gap opens on that side; the far edge

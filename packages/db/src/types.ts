@@ -14,6 +14,7 @@
  */
 
 import type {
+  MessageReaction,
   AiUsageInput,
   Alert,
   AlertType,
@@ -159,6 +160,9 @@ import type {
 import type { DbTableAccessor, DbTableName } from "./table-access";
 
 export interface Db {
+  getChannelMessage(id: string): Promise<ChannelMessage | null>;
+  listMessageReactions(organizationId: string, messageId: string): Promise<MessageReaction[]>;
+  setMessageReaction(reaction: MessageReaction, selected: boolean): Promise<void>;
   // Organizations & membership
   /**
    * Resolves the caller's active Organization. When `preferredOrgId` is
@@ -1157,7 +1161,7 @@ export interface Db {
     content: unknown[];
     /** Everybody the message addressed: Members and Teammates alike. */
     mentions?: string[];
-    /** The human message this belongs to; null on that message itself. */
+    /** The human trigger for AI turns, or the parent message for a human reply. */
     chainId?: string | null;
     trace?: StoredTurnTrace | null;
   }): Promise<ChannelMessage>;

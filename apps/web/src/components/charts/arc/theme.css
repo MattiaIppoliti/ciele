@@ -1,0 +1,94 @@
+/* UI Arc foundation adapted to Ciele tokens and scoped to chart containers. */
+.arc-charts {
+
+  --neutral-0: oklch(100% 0 0);
+  --neutral-1: oklch(99% 0 0);
+  --neutral-2: oklch(97.8% 0 0);
+  --neutral-3: oklch(95.8% 0 0);
+  --neutral-4: oklch(91.5% 0 0);
+  --neutral-5: oklch(84% 0 0);
+  --neutral-6: oklch(72% 0 0);
+  --neutral-7: oklch(59% 0 0);
+  --neutral-8: oklch(46% 0 0);
+  --neutral-9: oklch(34% 0 0);
+  --neutral-10: oklch(23% 0 0);
+  --neutral-11: oklch(15% 0 0);
+
+  --surface: var(--card);
+  --surface-raised: var(--popover);
+  --surface-muted: var(--muted);
+
+  --text-secondary: var(--muted-foreground);
+  --text-muted: var(--muted-foreground);
+
+  --border-subtle: oklch(96.5% 0 0);
+  --border-strong: oklch(82% 0 0);
+  --accent: oklch(33% 0 0);
+  --accent-strong: oklch(24% 0 0);
+  --accent-subtle: oklch(33% 0 0 / .1);
+  --accent-foreground: var(--background);
+  /* Selection controls (switch, checkbox, radio, slider). --control-on fills a chosen control; --control-glyph is the check or dot drawn on it;
+     thumbs stay white in both states so they always read against the track. Tuned per accent below so white thumbs hold on every hue. */
+  --control-on: oklch(23% 0 0);
+  --control-glyph: oklch(100% 0 0);
+  --control-track: oklch(89.5% 0 0);
+  --control-track-hover: oklch(86% 0 0);
+  --control-thumb: oklch(100% 0 0);
+  --control-thumb-on: oklch(100% 0 0);
+  --control-thumb-shadow: 0 0 0 .5px oklch(0% 0 0 / .07), 0 1px 2px oklch(0% 0 0 / .14), 0 2px 6px oklch(0% 0 0 / .06);
+  --control-on-subtle: color-mix(in oklch, var(--control-on) 10%, transparent);
+  /* Slider fills. Same as --control-on except neutral dark, where a mid grey keeps the white thumb distinct. */
+  --control-fill: var(--control-on);
+  /* Retain visible keyboard focus inside chart controls. */
+  --focus-ring: var(--ring);
+  --success: var(--tone-green-ink);
+  --warning: var(--chart-2);
+  --danger: var(--tone-red-ink);
+  --shadow-resting: none;
+  --shadow-raised: var(--shadow-light);
+  --shadow-floating: var(--shadow-strong);
+  --arc-gradient: linear-gradient(100deg, var(--chart-1), var(--chart-3));
+  --arc-gradient-foreground: var(--background);
+  --arc-gradient-soft: linear-gradient(135deg, var(--neutral-2), var(--neutral-4));
+  --arc-gradient-line: linear-gradient(100deg, var(--chart-4), var(--chart-5));
+  --arc-gradient-ink: linear-gradient(100deg, var(--chart-1), var(--chart-2));
+  --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem;
+  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+  --space-12: 3rem; --space-16: 4rem; --space-20: 5rem; --space-24: 6rem;
+  --radius-control: 8px; --radius-panel: 1.625rem; --radius-surface: 12px; --radius-pill: 9999px;
+  --control-height-sm: 2.25rem; --control-height-md: 2.75rem; --control-height-lg: 3.125rem;
+  --font-display: var(--font-host-grotesk), sans-serif;
+  --font-body: var(--font-host-grotesk), sans-serif;
+  --text-xs: .75rem; --text-sm: .875rem; --text-base: 1rem; --text-lg: 1.125rem;
+  --text-xl: 1.375rem; --text-2xl: 1.75rem; --text-3xl: 2.25rem;
+  --text-4xl: 3.25rem; --text-5xl: 4.5rem;
+  --tracking-display: -.03em; --tracking-body: -.01em;
+  --leading-display: 1.1; --leading-body: 1.4;
+  --ease-enter: cubic-bezier(.16,1,.3,1);
+  --ease-standard: cubic-bezier(.22,1,.36,1);
+  --ease-exit: cubic-bezier(.7,0,.84,0);
+  --ease-in-out: cubic-bezier(.65,0,.35,1);
+  --ease-spring: var(--ease-standard);
+  --duration-instant: 120ms; --duration-fast: 160ms; --duration-standard: 240ms; --duration-considered: 480ms; --duration-spring: 580ms;
+}
+
+
+.arc-charts {
+  min-width: 0;
+  --accent: var(--chart-1);
+  --accent-strong: var(--chart-1);
+  --series-1: var(--chart-1);
+  --series-2: var(--chart-3);
+  --series-3: var(--chart-5);
+  --series-4: var(--chart-2);
+  --border-subtle: var(--border);
+  --border-strong: var(--border);
+}
+.arc-charts :focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+/* Metric cards do not assume that an increase is good (costs, errors). */
+.arc-charts article small[data-trend] { color: var(--muted-foreground); background: var(--muted); }
+.arc-stat-card > article { border: 0; border-radius: 0; padding: 1rem; background: transparent; }
+.arc-stat-card > article > div { margin-bottom: 1rem; }
+
+.arc-charts [data-change-tone="success"] small[data-trend] { color: var(--success); background: color-mix(in oklab, var(--success) 10%, transparent); }
+.arc-charts [data-change-tone="danger"] small[data-trend] { color: var(--danger); background: color-mix(in oklab, var(--danger) 10%, transparent); }

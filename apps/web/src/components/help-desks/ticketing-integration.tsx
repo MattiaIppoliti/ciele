@@ -1,8 +1,10 @@
 ﻿"use client";
 
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import { useId, useState, useTransition } from "react";
 import type { HelpDesk, TicketingPlatform } from "@agent-hub/core";
-import { CircleCheck, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import {
@@ -180,9 +182,7 @@ export function TicketingIntegrationSection({
                 {integration.config.baseUrl}
               </p>
             </div>
-            <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium">
-              <CircleCheck className="size-3.5" /> Connected
-            </span>
+            <StatusPill status="online" primaryText="Connected" />
             {canEdit && (
               <Hint label="Disconnect integration">
                 <Button

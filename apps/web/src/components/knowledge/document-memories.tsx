@@ -1,5 +1,8 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
+
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -375,36 +378,20 @@ function MemoriesEmpty({
   return (
     <div className="bg-card space-y-3 rounded-xl border px-5 py-10 text-center">
       {state.kind === "no_provider" && (
-        <>
-          <p className="font-medium">Memories need a Provider Connection</p>
-          <p className="text-muted-foreground text-sm">
-            Connect a model in{" "}
-            <Link href="/settings/ai" className="text-primary hover:underline">
-              Settings → AI
-            </Link>{" "}
-            and the next crawl of this Source extracts them.
-          </p>
-        </>
+        <EmptyState size="sm" title="Memories need a Provider Connection"
+          description="Connect a model and the next crawl of this source extracts its memories."
+          action={<Link href="/settings/ai" className="press-text text-primary underline underline-offset-4">Settings → AI</Link>}
+        />
       )}
       {state.kind === "not_extracted" && (
-        <>
-          <p className="font-medium">No memories yet</p>
-          {/* `formatDay` is fixed to UTC and en-GB, so server and browser
-              render the same date and no hydration guard is needed. */}
-          <p className="text-muted-foreground text-sm">
-            Nothing has extracted memories from this Document yet.{" "}
-            {state.nextCrawlAt
+        <EmptyState size="sm" title="No memories yet"
+          description={`Nothing has extracted memories from this document yet. ${state.nextCrawlAt
               ? `The next crawl, due ${formatDay(state.nextCrawlAt)}, will.`
               : canEdit
                 ? "Extract memories starts it now."
-                : "An Editor can start it with Extract memories on the Source's page."}
-          </p>
-          {canEdit && (
-            <div className="flex justify-center pt-1">
-              <ExtractMemoriesButton sourceId={sourceId} />
-            </div>
-          )}
-        </>
+                : "An Editor can start it with Extract memories on the Source's page."}`}
+          action={canEdit ? <ExtractMemoriesButton sourceId={sourceId} /> : undefined}
+        />
       )}
       {state.kind === "extracting" && (
         <>
@@ -486,7 +473,7 @@ function MemoryDialog({
               <Badge variant="secondary">
                 {memoryActorLabel(memory.generatedBy)}
               </Badge>
-              {memory.forgottenAt && <Badge variant="outline">Forgotten</Badge>}
+              {memory.forgottenAt && <StatusPill status="offline" primaryText="Forgotten" />}
             </div>
 
             <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-y-2 font-mono text-xs">

@@ -1,19 +1,18 @@
 ---
 title: Eval
-description: Compara dos o tres modelos en una etapa de un asistente, con las mismas preguntas.
+description: Compara dos o tres modelos en una etapa de un asistente, utilizando las mismas preguntas.
 ---
 
 **Eval** somete las mismas preguntas a dos o tres modelos y compara los
 resultados. Una ejecución de Eval prueba una etapa de un asistente. No crea
 ninguna Conversation, por lo que no aparece en Inbox ni en Insights.
 
-Cualquier miembro puede abrir **Eval** y leer las ejecuciones. Los editores, los
-administradores y los propietarios pueden subir conjuntos de datos e iniciar
-ejecuciones.
+Cualquier miembro puede abrir **Eval** y leer las ejecuciones. Los Editors,
+Admins y Owners pueden subir conjuntos de datos e iniciar ejecuciones.
 
 ## Etapas
 
-- **Answer** compara la respuesta, las fuentes citadas y la calidad de la
+- **Answer** compara la respuesta, las Sources citadas y la calidad de la
   respuesta de cada modelo.
 - **Classifier** compara qué Flow selecciona cada modelo.
 - **Orchestration** ejecuta el turno completo con cada modelo como clasificador.
@@ -60,7 +59,7 @@ La ejecución finaliza antes de que la página muestre sus resultados. Una
 ejecución que se detiene antes de finalizar aparece como failed. Ciele conserva
 los resultados que guardó antes de detenerse.
 
-## Consulta los resultados
+## Lee los resultados
 
 El panel de fiabilidad muestra seis gráficos para cada modelo:
 
@@ -72,6 +71,17 @@ El panel de fiabilidad muestra seis gráficos para cada modelo:
 - **Autonomy**, los turnos que se completaron sin recurrir a un fallback ni a un
   rechazo.
 - **Error rate**, las ejecuciones que presentaron un error técnico.
+
+**Latency distribution by model** compara la dispersión y las colas de las
+ejecuciones registradas. Cada curva utiliza observaciones de latencia en bruto,
+incluidos los fallos técnicos. Un modelo necesita al menos dos observaciones
+para trazar una curva. Las curvas con menos de 20 muestras son exploratorias.
+Utiliza los recuentos mostrados y los resultados individuales para evaluarlos.
+Este gráfico utiliza una población diferente a la de la Leaderboard, que excluye
+los fallos técnicos de la latencia.
+
+Un modelo sin ejecuciones registradas muestra una medición ausente en lugar de
+un coste o una latencia de cero.
 
 Debajo de los gráficos, la tabla **Leaderboard** muestra una fila por cada
 modelo. El modelo más preciso aparece en primer lugar. Cuando dos modelos tienen

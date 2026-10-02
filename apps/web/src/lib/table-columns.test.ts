@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   fitColumnWidths,
+  resolveColumnWidths,
   MAX_COLUMN_WIDTH,
   MIN_COLUMN_WIDTH,
   columnWidthFor,
@@ -28,8 +29,8 @@ describe("columnWidthFor", () => {
 
   it("honours a column's own minimum", () => {
     expect(
-      columnWidthFor({ pointer: 210, grabOffset: 0, left: 200, minWidth: 40 })
-    ).toBe(40);
+      columnWidthFor({ pointer: 210, grabOffset: 0, left: 200, minWidth: 180 })
+    ).toBe(180);
   });
 
   it("returns whole pixels, so the colgroup does not jitter", () => {
@@ -71,6 +72,9 @@ describe("parseColumnWidths", () => {
       "ciele.table-widths.library-websites"
     );
   });
+  it("rejects legacy widths below the new readable minimum", () => {
+    expect(parseColumnWidths('{"name":40,"status":56}', keys)).toEqual({});
+  });
 });
 
 describe("fitColumnWidths", () => {
@@ -93,5 +97,35 @@ describe("fitColumnWidths", () => {
     const widths = fitColumnWidths(columns, 900);
     expect(widths.actions).toBe(88);
     expect(Object.values(widths).reduce((sum, width) => sum + width, 0)).toBeCloseTo(900);
+  });
+  it("keeps a chosen narrow width after release and puts spare space elsewhere", () => {
+    const widths = fitColumnWidths(columns, 900, { name: 40 });
+    expect(widths.name).toBe(120);
+    expect(widths.date).toBe(692);
+    expect(widths.actions).toBe(88);
+  });
+  it("does not stretch columns when all data widths are chosen", () => {
+    expect(fitColumnWidths(columns, 900, { name:40, date:56 })).toEqual({name:120,date:120,actions:88});
+  });
+});
+
+
+describe("saved column layouts", () => {
+  const columns = [
+    { key: "name", width: 380, min: 180 },
+    { key: "status", width: 180, min: 140 },
+    { key: "actions", width: 88, min: 88, fixed: true },
+  ];
+  it("keeps neighbors unchanged after shrinking or expanding the middle column", () => {
+    const initial = resolveColumnWidths(columns, 900, {});
+    for (const status of [140, 600]) {
+      const saved = { ...initial, status };
+      for (const viewport of [400, 900, 1400]) {
+        expect(resolveColumnWidths(columns, viewport, saved)).toEqual(saved);
+      }
+    }
+  });
+  it("enforces individual minimum widths on old saved layouts", () => {
+    expect(resolveColumnWidths(columns, 900, { name: 72, status: 72 })).toEqual({ name: 180, status: 140, actions: 88 });
   });
 });

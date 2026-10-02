@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * same reason as `components/motion/grid-beam.tsx`: cult-ui's registry sits
  * behind a bot checkpoint that answers 429 to both fetch and the shadcn CLI, so
  * the source could not be installed. Two deliberate differences from upstream:
- * the tab strip is the repo's Base UI `Tabs` rather than a bespoke one, and the
+ * the tab strip is the repo's shared motion `Tabs` rather than a bespoke one, and the
  * code is rendered as plain text; there is no syntax highlighter in this
  * workspace, and pulling one in for a handful of shell lines would cost far
  * more than it shows. `language` therefore labels the block (and lands in
@@ -94,7 +94,7 @@ export function CodeBlock({ code, language, tabs, className }: CodeBlockProps) {
       <Tabs
         value={active.label}
         onValueChange={(value) => setActiveLabel(String(value))}
-        className={cn(shell, "gap-0")}
+        className={cn(shell, "flex flex-col gap-0")}
       >
         <div className={bar}>
           {/* Scrolls rather than wraps: a wrapped tab strip changes the height
@@ -119,7 +119,7 @@ export function CodeBlock({ code, language, tabs, className }: CodeBlockProps) {
           />
         </div>
         {tabs.map((tab) => (
-          <TabsContent key={tab.label} value={tab.label}>
+          <TabsContent key={tab.label} value={tab.label} className="mt-0">
             <CodeSurface code={tab.code} language={tab.language} />
           </TabsContent>
         ))}
