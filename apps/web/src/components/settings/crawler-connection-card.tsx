@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Globe } from "lucide-react";
@@ -160,7 +162,7 @@ export function CrawlerConnectionCard({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending || !token.trim()}>
-              {isPending ? "Checking…" : "Save"}
+              <RollInText text={isPending ? "Checking…" : "Save"} />
             </Button>
           </div>
         </form>

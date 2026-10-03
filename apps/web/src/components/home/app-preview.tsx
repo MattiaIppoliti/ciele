@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useContext, useEffect, useRef, useState } from "react";
 import { ChevronsUpDown, PanelLeft, Search, LifeBuoy } from "lucide-react";
 import { Ellipsis } from "lucide-react";
@@ -269,7 +271,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
                       <span className="bg-primary/80 size-3.5 shrink-0 rounded-full" />
                       <span className="min-w-0">
                         <span className="block truncate font-medium">
-                          {assistant.title}
+                          <RollInText text={assistant.title} />
                         </span>
                         <span className="text-muted-foreground block truncate text-xs">
                           {assistant.nickname}

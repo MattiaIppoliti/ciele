@@ -31,7 +31,7 @@ export default function LibraryLayout({
       <Suspense fallback={<LibraryHeaderSkeleton />}>
         <LibraryHeaderLoader />
       </Suspense>
-      <RouteSlidingPanel className="min-h-0 flex-1 overflow-hidden">{children}</RouteSlidingPanel>
+      <RouteSlidingPanel bouncy className="min-h-0 flex-1 overflow-hidden">{children}</RouteSlidingPanel>
     </div>
   );
 }

@@ -26,7 +26,7 @@ export function SurfaceComposition({ daily }: { daily: DashboardDay[] }) {
   const keys = SURFACES.filter((key) => daily.some((d) => d.spendBySurface[key] > 0));
   if (keys.length === 0) return <EmptyState size="sm" title="No spend in this range" description="Choose a wider date range to see recorded usage." />;
   return <ArcFrame><Streamgraph label="Estimated spend by surface over time" height={260}
-    series={keys.map((key) => ({ key, label: SURFACE_LABELS[key], color: SURFACE_COLORS[key].light }))}
+    series={keys.map((key) => ({ key, label: SURFACE_LABELS[key], color: SURFACE_COLORS[key] }))}
     data={daily.map((d) => ({ key: d.day, label: d.day, axisLabel: formatShortDay(d.day), values: d.spendBySurface }))}
     formatValue={formatEur} categoryLabel="UTC day" emptyLabel="No spend in this range." /></ArcFrame>;
 }

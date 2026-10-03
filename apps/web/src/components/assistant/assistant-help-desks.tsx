@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import { RollInText } from "@/components/motion/roll-in-text";
 
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -329,7 +331,7 @@ export function AssistantHelpDesks({
             <div key={desk.id} className="rounded-lg border bg-muted/20 p-3.5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-base font-semibold break-words">{desk.name}</p>
+                  <p className="text-base font-semibold break-words"><RollInText text={desk.name} /></p>
                   <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
                     {desk.description || "No description yet."}
                   </p>

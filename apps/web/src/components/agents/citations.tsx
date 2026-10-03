@@ -1,5 +1,9 @@
 "use client";
 
+import { RollingNumber } from "@/components/motion/rolling-number";
+
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { ExternalLink } from "lucide-react";
 import { BookOpen, BookOpenText, ChevronDown, Globe2 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -122,7 +126,7 @@ function CitationRow({
       <CitationFavicon url={citation.url} />
       <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <span className="truncate text-sm font-medium text-foreground/80 transition-colors group-hover/citation:text-foreground">
-          {citation.title}
+          {typeof citation.title === "string" ? <RollInText text={citation.title} /> : citation.title}
         </span>
         {citation.domain ? (
           <span className="min-w-0 truncate text-xs text-muted-foreground/60">
@@ -239,7 +243,7 @@ export function Citations({
         <BookOpenText className="size-4" />
         <span className="font-medium">{title}</span>
         <span className="rounded-full bg-muted px-1.5 py-0.5 text-2xs font-semibold tabular-nums">
-          {citations.length}
+          <RollingNumber value={citations.length} />
         </span>
         <motion.span
           aria-hidden="true"

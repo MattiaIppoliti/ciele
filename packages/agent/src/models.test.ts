@@ -6,6 +6,7 @@ import {
   CLASSIFIER_MODEL,
   getClassifierModel,
   providerAvailability,
+  resolveAssistantChatModel,
   resolveChatModel,
   resolveProviderCredential,
 } from "./models";
@@ -44,6 +45,46 @@ function connection(
 }
 
 afterEach(() => vi.unstubAllEnvs());
+
+describe("Assistant answer resolution", () => {
+  const assistant = {
+    modelProvider: "openai" as const,
+    modelId: "gpt-5.4-mini",
+    modelSource: null,
+    tools: { evaluationModels: {
+      fallback: { provider: "anthropic" as const, modelId: "claude-sonnet-5" },
+    } },
+  };
+
+  it("prefers the configured reserve to a caller's reserve and the automatic fallback tier", () => {
+    vi.stubEnv("OPENAI_API_KEY", undefined);
+    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "test-google");
+    vi.stubEnv("AI_GATEWAY_API_KEY", undefined);
+    expect(resolveAssistantChatModel(assistant, [connection("anthropic", "api_key", "test-reserve")], {
+      fallbackModel: { provider: "google", modelId: "gemini-3.5-pro" },
+    })).toMatchObject({
+      provider: "anthropic", modelId: "claude-sonnet-5", credentialKind: "api_key", usedFallback: true,
+    });
+  });
+
+  it("keeps an invoking Member's own CLI ahead of the Organization reserve", () => {
+    const resolution = {
+      surface: "preview" as const, memberId: "member-1",
+      localSubscriptionProviders: ["openai" as const],
+      localSubscriptionModel: { provider: "openai" as const, modelId: "gpt-5.4-mini" },
+    };
+    expect(resolveAssistantChatModel(assistant, [connection("anthropic", "api_key", "test-reserve")], resolution))
+      .toMatchObject({ provider: "openai", credentialKind: "local_subscription", usedFallback: false });
+  });
+
+  it("preserves the configured source pin before resolving any reserve", () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-platform");
+    const connections = [connection("openai", "api_key", "test-byok")];
+    expect(resolveAssistantChatModel({ ...assistant, modelSource: "platform" }, connections))
+      .toMatchObject({ provider: "openai", credentialKind: "platform", usedFallback: false });
+  });
+});
 
 describe("resolveProviderCredential", () => {
   it("returns the BYOK credential capability before platform fallback", () => {

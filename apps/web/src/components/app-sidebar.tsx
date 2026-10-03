@@ -4,7 +4,7 @@ import { prefetchFind } from "@/lib/find-client";
 import Link, { useLinkStatus } from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
-import { ChevronsUpDown, LifeBuoy, MessageCircle, Search, Settings, type LucideIcon } from "lucide-react";
+import { Bot, ChevronsUpDown, LifeBuoy, Search, Settings, type LucideIcon } from "lucide-react";
 import { BookOpen, Check, Loader2, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
 import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
 import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
@@ -55,7 +55,6 @@ import {
 } from "@/components/settings/settings-nav";
 import {
   useShell,
-  useShellAssistants,
 } from "@/components/shell/shell-provider";
 import { canManageMembers } from "@/lib/rbac";
 import { canAutoFocus } from "@/lib/auto-focus";
@@ -125,7 +124,6 @@ function NavRowPending() {
 
 function NavRow({
   icon: Icon,
-  avatarUrl,
   label,
   href,
   active,
@@ -133,9 +131,6 @@ function NavRow({
   collapsed,
 }: {
   icon?: LucideIcon;
-  /** Renders the assistant's circular logo instead of `icon`, used for the
-   * scoped assistant's "Overview" row when the assistant has an image. */
-  avatarUrl?: string;
   label: string;
   href: string;
   active: boolean;
@@ -158,14 +153,7 @@ function NavRow({
       {/* `flex items-center`, not `block`: a block span takes the row's line
           height, not the icon's, and left every glyph ~2px above its label. */}
       <span data-nav-target className="relative flex shrink-0 items-center justify-center">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatarUrl}
-            alt=""
-            className="size-4 shrink-0 rounded-full object-cover"
-          />
-        ) : localGlyph ? (
+        {localGlyph ? (
           <AnimatedGlyph icon={localGlyph} size={16} className="shrink-0" />
         ) : Icon ? (
           <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
@@ -426,7 +414,6 @@ function SidebarContent({
   // opened from the Chat keeps the Chat lit and the chat sidebar in place.
   const pathname = useUnderlyingPathname();
   const { openFind } = useShell();
-  const assistants = useShellAssistants();
   const [toggleHovered, setToggleHovered] = useState(false);
 
   const assistantsNav = navItem("assistants");
@@ -445,9 +432,6 @@ function SidebarContent({
   const chatMode = isChatPath(pathname);
 
   const scopedId = assistantIdFromPath(pathname);
-  const scopedAssistant = scopedId
-    ? assistants.find((assistant) => assistant.id === scopedId)
-    : undefined;
   const currentSetup = scopedId
     ? assistantSectionFromPath(pathname)
     : pathname.startsWith("/setup/")
@@ -583,8 +567,7 @@ function SidebarContent({
               scopedId ? (
                 <NavRow
                   key="overview"
-                  icon={MessageCircle}
-                  avatarUrl={scopedAssistant?.avatarUrl ?? undefined}
+                  icon={Bot}
                   label="Overview"
                   href={`/assistants/${scopedId}`}
                   collapsed={collapsed}

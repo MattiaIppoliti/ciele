@@ -1,6 +1,7 @@
 "use client";
 
 import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
+
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
@@ -585,7 +586,7 @@ function WebsiteEditDialog({
     <Dialog open onOpenChange={(o) => !o && requestClose()}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit knowledge source: {source.name}</DialogTitle>
+          <DialogTitle>Edit knowledge source: <RollInText text={source.name} /></DialogTitle>
           <SourceSummary source={source} documentCount={documents.length} />
         </DialogHeader>
 
@@ -1061,7 +1062,7 @@ function WebsitesTab({
                     >
                     <span className="flex items-center gap-2 text-sm font-medium">
                       <Globe className="text-muted-foreground size-4 shrink-0" />
-                      <span className="truncate">{source.name}</span>
+                      <span className="truncate"><RollInText text={source.name} /></span>
                     </span>
                     {source.config.url && (
                       <span className="ml-6 block min-w-0">
@@ -1435,7 +1436,7 @@ function DocumentsTab({
                   >
                   <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
                     <Download className="text-muted-foreground size-4 shrink-0" />
-                    <span className="truncate">{source.name}</span>
+                    <span className="truncate"><RollInText text={source.name} /></span>
                   </span>
                   {source.status === "error" && source.error && (
                     <p
@@ -1451,7 +1452,7 @@ function DocumentsTab({
                   <span className="flex items-center gap-2">
                     <SourceStatusBadge status={source.status} error={source.error} />
                     <span className="text-muted-foreground text-xs" suppressHydrationWarning>
-                      {formatDateTime(source.createdAt)}
+                      <RollInText text={formatDateTime(source.createdAt)} />
                     </span>
                   </span>
                 </TableCell>
@@ -2409,7 +2410,7 @@ function ConceptCard({ assistantId, concept }: { assistantId: string; concept: C
           >
             {concept.path}
           </code>
-          <span className="truncate text-sm font-medium">{concept.frontmatter.title ?? concept.path}</span>
+          <span className="truncate text-sm font-medium"><RollInText text={concept.frontmatter.title ?? concept.path} /></span>
         </button>
         <TrustTierBadge view={provenance} />
         {provenance.showStatus && (
@@ -2679,7 +2680,7 @@ export function KnowledgeClient({
             <div className="space-y-2">
               {/* Reader-facing copy: no internal vocabulary, no ADR numbers. */}
               <p className="text-muted-foreground text-sm">
-                {formatCount(nonFaqConcepts.length)} concept
+                <RollInText text={formatCount(nonFaqConcepts.length)} /> concept
                 {nonFaqConcepts.length === 1 ? "" : "s"} this assistant can
                 cite, each one traceable to the source it came from and to who
                 wrote or reviewed it.

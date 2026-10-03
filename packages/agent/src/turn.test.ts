@@ -1713,6 +1713,31 @@ describe("plan-cap gate (#442)", () => {
     expect(turnConnectionKind(assistant, [])).toBe("platform");
   });
 
+  it("admits the configured reserve's funding when the default provider has no key", async () => {
+    const { assistant } = await fixture();
+    vi.stubEnv("OPENAI_API_KEY", undefined);
+    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
+    vi.stubEnv("AI_GATEWAY_API_KEY", undefined);
+    vi.stubEnv(PLATFORM_KEY, "test-platform-google");
+    try {
+      expect(turnConnectionKind({
+        ...assistant,
+        modelProvider: "openai",
+        modelId: "gpt-5.4-mini",
+        tools: { ...assistant.tools, evaluationModels: {
+          fallback: { provider: "anthropic", modelId: "claude-sonnet-5" },
+        } },
+      }, [{
+        id: "reserve-connection", organizationId: assistant.organizationId,
+        provider: "anthropic", type: "api_key", displayName: "Reserve",
+        encryptedKey: "plain:test-reserve", keyHint: "", config: {},
+        createdBy: null, createdAt: assistant.createdAt, preferredForEmbedding: false,
+      }])).toBe("byok");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("a blocking enforcement pauses a platform-funded turn with a graceful reply", async () => {
     const { assistant, flows } = await fixture();
     process.env[PLATFORM_KEY] = "test-platform-key";

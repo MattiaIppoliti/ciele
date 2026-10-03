@@ -1,19 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ClipboardEvent, DragEvent } from "react";
-import { MAX_ATTACHMENTS_PER_MESSAGE } from "@agent-hub/core";
-import {
-  ATTACHMENT_ACCEPT,
-  checkAttachment,
-  type AttachmentReceipt,
-} from "@/lib/attachments";
-
-/** One row in the composer's attachment strip. */
-export type AttachmentEntry =
-  | { state: "reading"; id: string; name: string }
-  | { state: "ready"; id: string; name: string; chars: number; token: string }
-  | { state: "failed"; id: string; name: string; message: string };
+import { ATTACHMENT_ACCEPT } from "@/lib/attachment-policy";
+import { createAttachmentSession, type AttachmentUpload } from "@/lib/attachment-session";
+import type { AttachmentReceipt } from "@/lib/attachments";
+export type { AttachmentEntry } from "@/lib/attachment-session";
 
 /**
  * The composer's attachments: picked, read, and kept for the conversation.
@@ -35,22 +27,15 @@ export type AttachmentEntry =
  * `upload` is the caller's, because the two surfaces differ: the widget posts
  * to its own route, the console calls a Server Action.
  */
-export function useAttachments(
-  upload: (file: File) => Promise<
-    { ok: true; name: string; chars: number; token: string } | { ok: false; message: string }
-  >
-) {
-  const [entries, setEntries] = useState<AttachmentEntry[]>([]);
+export function useAttachments(upload: AttachmentUpload) {
+  const [session] = useState(createAttachmentSession);
+  const { entries, tokens, busy, full } = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const [dragging, setDragging] = useState(false);
-  const nextId = useRef(0);
-  /** `dragenter`/`dragleave` fire per child; this counts the pair off. */
   const depth = useRef(0);
-
-  const ready = entries.filter(
-    (entry): entry is Extract<AttachmentEntry, { state: "ready" }> =>
-      entry.state === "ready"
-  );
-  const full = entries.length >= MAX_ATTACHMENTS_PER_MESSAGE;
+  const { remove, clear } = session;
+  const attach = (file: File) => session.attach(file, upload);
+  const attachAll = (files: ArrayLike<File> | null | undefined) => session.attachAll(files, upload);
+  useEffect(() => () => clear(), [clear]);
 
   /**
    * Swallows a file dropped anywhere else.
@@ -71,55 +56,6 @@ export function useAttachments(
       window.removeEventListener("drop", swallow);
     };
   }, []);
-
-  async function attach(file: File) {
-    if (full) return;
-    const check = checkAttachment({ name: file.name, size: file.size });
-    const id = `a${nextId.current++}`;
-    if (!check.ok) {
-      setEntries((prev) => [
-        ...prev,
-        { state: "failed", id, name: file.name, message: check.reason },
-      ]);
-      return;
-    }
-    setEntries((prev) => [...prev, { state: "reading", id, name: file.name }]);
-    const result = await upload(file).catch(() => ({
-      ok: false as const,
-      message: "That file could not be read.",
-    }));
-    setEntries((prev) =>
-      prev.map((entry) =>
-        entry.id === id
-          ? result.ok
-            ? {
-                state: "ready" as const,
-                id,
-                name: result.name,
-                chars: result.chars,
-                token: result.token,
-              }
-            : {
-                state: "failed" as const,
-                id,
-                name: file.name,
-                message: result.message,
-              }
-          : entry
-      )
-    );
-  }
-
-  /** Several at once, up to the cap; a drop or a paste can carry more than one. */
-  async function attachAll(files: ArrayLike<File> | null | undefined) {
-    if (!files) return;
-    const room = MAX_ATTACHMENTS_PER_MESSAGE - entries.length;
-    // Sequential rather than parallel: each one is parser work and an image is
-    // a model call, and three at once on a phone is how a drop becomes a stall.
-    for (const file of Array.from(files).slice(0, Math.max(0, room))) {
-      await attach(file);
-    }
-  }
 
   return {
     entries,
@@ -179,14 +115,13 @@ export function useAttachments(
     },
     attachAll,
     /** What goes with the message; only the ones that actually read. */
-    tokens: ready.map((entry) => entry.token),
+    tokens,
     /** A read is in flight: sending now would drop it silently. */
-    busy: entries.some((entry) => entry.state === "reading"),
+    busy,
     full,
     attach,
-    remove: (id: string) =>
-      setEntries((prev) => prev.filter((entry) => entry.id !== id)),
-    clear: () => setEntries([]),
+    remove,
+    clear,
     accept: ATTACHMENT_ACCEPT,
   };
 }

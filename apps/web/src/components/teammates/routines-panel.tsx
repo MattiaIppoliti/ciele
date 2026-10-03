@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { useState, useSyncExternalStore, useTransition } from "react";
@@ -122,7 +124,7 @@ export function RoutinesPanel({
               routine.lastStatus === "failed" ? (
                 // Paused and failed read no clock, so they need not wait.
                 <span className="min-w-0 [overflow-wrap:anywhere]">
-                  {statusLine(routine, now ?? new Date(0))}
+                  <RollInText text={statusLine(routine, now ?? new Date(0))} />
                 </span>
               ) : (
                 <span aria-hidden="true">&nbsp;</span>

@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useState, useTransition } from "react";
 import { Boxes } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -116,7 +118,7 @@ export function EmbeddingConnectionCard({
 
         {canManage && (
           <Button onClick={save} disabled={!dirty || isPending}>
-            {isPending ? "Saving…" : "Save"}
+            <RollInText text={isPending ? "Saving…" : "Save"} />
           </Button>
         )}
       </CardContent>

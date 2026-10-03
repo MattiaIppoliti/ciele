@@ -1,4 +1,5 @@
 "use client";
+
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useId, useRef, useState, useTransition, type ReactNode } from "react";
@@ -878,7 +879,7 @@ function GeneralFormBody({
         {/* The live region stays mounted: one that appears together with its
             text is not reliably announced. */}
         <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
-          {dirty ? "Unsaved changes" : ""}
+          <RollInText text={dirty ? "Unsaved changes" : ""} />
         </span>
         {formActions}
       </div>

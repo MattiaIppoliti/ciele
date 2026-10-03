@@ -1,3 +1,5 @@
+
+import { RollInText } from "@/components/motion/roll-in-text";
 import {
   Card,
   CardContent,
@@ -46,9 +48,9 @@ export function UsageSpendersBlock({
               {section.entries.map((entry, index) => (
                 <div key={`${entry.id ?? "unattributed"}-${index}`}>
                   <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="truncate">{entry.label}</span>
+                    <span className="truncate"><RollInText text={entry.label} /></span>
                     <span className="tabular-nums shrink-0">
-                      {formatCredits(entry.credits)}
+                      <RollInText text={formatCredits(entry.credits)} />
                     </span>
                   </div>
                   <div
@@ -61,7 +63,7 @@ export function UsageSpendersBlock({
                     />
                   </div>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    {formatCount(entry.calls)} calls
+                    <RollInText text={formatCount(entry.calls)} /> calls
                     {entry.ownCredits > 0
                       ? ` · ${formatCredits(entry.ownCredits)} on your own credentials`
                       : null}

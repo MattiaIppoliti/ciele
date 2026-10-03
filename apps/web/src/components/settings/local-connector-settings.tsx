@@ -1,4 +1,5 @@
 "use client";
+
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -132,7 +133,7 @@ function ModelPicker({
         <SelectValue>
           <span className="flex min-w-0 items-center gap-2">
             {selected ? <ProviderBrandIcon provider={selected.provider} className="size-4 shrink-0" /> : null}
-            <span className="truncate">{selected?.label ?? "Automatic"}</span>
+            <span className="truncate"><RollInText text={selected?.label ?? "Automatic"} /></span>
           </span>
         </SelectValue>
       </SelectTrigger>
@@ -260,7 +261,7 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
         </svg>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-3">
-        <p className="text-sm font-medium">{provider.label} usage</p>
+        <p className="text-sm font-medium"><RollInText text={provider.label} /> usage</p>
         {provider.tokenUsage && (
           <div className="bg-muted/60 mt-2 rounded-md px-2.5 py-2 text-xs">
             <p className="font-medium">Ciele Preview tokens</p>
@@ -270,7 +271,7 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
             </p>
             {provider.tokenUsage.updatedAt && (
               <p className="text-muted-foreground mt-0.5 text-2xs">
-                Updated {formatDateTime(provider.tokenUsage.updatedAt * 1_000)}
+                Updated <RollInText text={formatDateTime(provider.tokenUsage.updatedAt * 1_000)} />
               </p>
             )}
           </div>
@@ -280,7 +281,7 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
             {provider.usage.windows.map((window) => (
               <div key={`${window.label}-${window.resetsAt ?? "unknown"}`}>
                 <div className="flex items-center justify-between text-sm">
-                  <span>{window.label}</span>
+                  <span><RollInText text={window.label} /></span>
                   <span>
                     <RollingNumber value={window.remainingPercent} format="percent" /> left
                   </span>
@@ -293,7 +294,7 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
                 </div>
                 {window.resetsAt && (
                   <p className="text-muted-foreground mt-1 text-2xs">
-                    Resets {formatDateTime(window.resetsAt * 1_000)}
+                    Resets <RollInText text={formatDateTime(window.resetsAt * 1_000)} />
                   </p>
                 )}
               </div>

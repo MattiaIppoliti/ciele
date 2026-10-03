@@ -10,6 +10,8 @@ imports point to this folder's local token file. Spring bounce is disabled for
 console motion. MetricCard forwards optional prefix and decimals to its animated
 counter so sub-cent spend and rates retain their precision. Bar-chart averages
 retain fractions rather than rounding to integers before the caller formats them.
+Bar-chart axes scale to positive fractional values, with a fallback only for an empty or zero range.
+Brush-chart tooltip comparisons and average captions follow the supplied day, week or month bucket.
 Slope charts omit rank copy and table columns when ranks are disabled.
 Gauge supports a compact ring for the Assistant Overview, with its exact rate alongside it.
 Categorical chart marks use the shared grayscale `--chart-*` ramp in both themes.

@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { Button, CopyFeedbackIcon, useCopyFeedback } from "@agent-hub/ui";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +45,7 @@ export function InstallCommand({
       {/* `text-left` because the hero this sits in is centered, and a command
           drifting away from its prompt reads as two separate things. */}
       <code className="text-foreground no-scrollbar min-w-0 flex-1 overflow-x-auto py-1.5 text-left font-mono text-[0.8125rem] whitespace-nowrap sm:text-sm">
-        {command}
+        <RollInText text={command} />
       </code>
       <Button
         type="button"

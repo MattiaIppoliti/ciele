@@ -72,9 +72,9 @@ function Outcomes({
           {
             key: "good",
             label: verdicts ? "Passed" : "Succeeded",
-            color: OUTCOME_COLORS.good.light,
+            color: OUTCOME_COLORS.good,
           },
-          { key: "bad", label: "Failed", color: OUTCOME_COLORS.bad.light },
+          { key: "bad", label: "Failed", color: OUTCOME_COLORS.bad },
         ]}
         data={daily.map((d) => ({
           key: d.day,

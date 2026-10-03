@@ -1,6 +1,7 @@
 import type { BackgroundJob, BackgroundJobKind } from "@agent-hub/core";
 import { thrownMessage } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { observe, reportError } from "@agent-hub/diagnostics";
 import { createHash } from "node:crypto";
 
 import { getRuntimeHost } from "./host";
@@ -370,7 +371,10 @@ export async function enqueueGoalProposalJob(
   } catch (error) {
     // The Improvement is filed and the Alert is up; a missing draft leaves the
     // reviewer the "no proposal" state they already handle.
-    console.error("[goal-runner] proposal enqueue failed:", error);
+    reportError("job.goal_proposal.enqueue", error, {
+      organizationId: goal.organizationId,
+      assistantId: goal.assistantId,
+    });
   }
 }
 
@@ -679,7 +683,10 @@ export async function enqueueDocumentMemoryExtractions(
     drainMemoryExtractionsAfterResponse(deps);
   } catch (error) {
     // Cron is the backstop; the next commit enqueues again.
-    console.error("[memory-extraction] enqueue failed:", error);
+    reportError("job.memory_extraction.enqueue", error, {
+      organizationId: input.organizationId,
+      sourceId: input.sourceId,
+    });
   }
 }
 
@@ -816,65 +823,76 @@ async function runClaimedJob(
   deps: JobDeps,
   now: Date
 ): Promise<JobOutcome> {
-  const handler = JOB_HANDLERS[record.kind];
-  if (!record.leaseToken) throw new Error("Claimed job has no lease token");
-  try {
-    await handler.perform(record, deps);
-    const settled = handler.settleSuccess
-      ? await handler.settleSuccess(record, deps, now)
-      : await deps.db.settleBackgroundJob({
+  return observe({
+    name: "job",
+    context: {
+      surface: "background", organizationId: record.organizationId,
+      jobId: record.id, jobKind: record.kind, sourceId: record.sourceId ?? undefined,
+      attempt: record.attempts,
+    },
+    outcome: (status) => ({ status }),
+  }, async () => {
+    const handler = JOB_HANDLERS[record.kind];
+    if (!record.leaseToken) throw new Error("Claimed job has no lease token");
+    try {
+      await handler.perform(record, deps);
+      const settled = handler.settleSuccess
+        ? await handler.settleSuccess(record, deps, now)
+        : await deps.db.settleBackgroundJob({
+            id: record.id,
+            leaseToken: record.leaseToken,
+            now: now.toISOString(),
+            outcome: { status: "succeeded" },
+          });
+      if (!settled) return "superseded";
+      return "succeeded";
+    } catch (error) {
+      reportError("job.perform", error);
+      const message = thrownMessage(error, "Job failed");
+      const retryable =
+        typeof error !== "object" ||
+        error === null ||
+        !("retryable" in error) ||
+        error.retryable !== false;
+      if (!retryable || record.attempts >= record.maxAttempts) {
+        // Cleanup must complete before the durable terminal transition. If the
+        // hook fails, the running lease eventually becomes eligible for the
+        // retryable terminal-cleanup claim path.
+        await handler.onTerminalFailure?.(record, deps, message);
+        const settled = await deps.db.settleBackgroundJob({
           id: record.id,
           leaseToken: record.leaseToken,
           now: now.toISOString(),
-          outcome: { status: "succeeded" },
+          outcome: { status: "failed", error: message },
         });
-    if (!settled) return "superseded";
-    return "succeeded";
-  } catch (error) {
-    const message = thrownMessage(error, "Job failed");
-    const retryable =
-      typeof error !== "object" ||
-      error === null ||
-      !("retryable" in error) ||
-      error.retryable !== false;
-    if (!retryable || record.attempts >= record.maxAttempts) {
-      // Cleanup must complete before the durable terminal transition. If the
-      // hook fails, the running lease eventually becomes eligible for the
-      // retryable terminal-cleanup claim path.
-      await handler.onTerminalFailure?.(record, deps, message);
+        if (!settled) return "superseded";
+        return "failed";
+      }
+
+      const requestedRetryMs =
+        typeof error === "object" &&
+        error !== null &&
+        "retryAfterMs" in error &&
+        typeof error.retryAfterMs === "number"
+          ? error.retryAfterMs
+          : 0;
+      const retryAt = new Date(
+        now.getTime() +
+          Math.max(RETRY_BACKOFF_MS * record.attempts, requestedRetryMs)
+      );
       const settled = await deps.db.settleBackgroundJob({
         id: record.id,
         leaseToken: record.leaseToken,
         now: now.toISOString(),
-        outcome: { status: "failed", error: message },
+        outcome: {
+          status: "queued",
+          error: message,
+          nextRunAt: retryAt.toISOString(),
+        },
       });
-      if (!settled) return "superseded";
-      return "failed";
+      return settled ? "retried" : "superseded";
     }
-
-    const requestedRetryMs =
-      typeof error === "object" &&
-      error !== null &&
-      "retryAfterMs" in error &&
-      typeof error.retryAfterMs === "number"
-        ? error.retryAfterMs
-        : 0;
-    const retryAt = new Date(
-      now.getTime() +
-        Math.max(RETRY_BACKOFF_MS * record.attempts, requestedRetryMs)
-    );
-    const settled = await deps.db.settleBackgroundJob({
-      id: record.id,
-      leaseToken: record.leaseToken,
-      now: now.toISOString(),
-      outcome: {
-        status: "queued",
-        error: message,
-        nextRunAt: retryAt.toISOString(),
-      },
-    });
-    return settled ? "retried" : "superseded";
-  }
+  });
 }
 
 /**
@@ -916,23 +934,34 @@ export async function runDueJobs(
       limit,
     });
     for (const record of terminal) {
-      if (!record.leaseToken) throw new Error("Terminal cleanup job has no lease token");
-      const message = record.error || "Worker lease expired after final attempt";
-      try {
-        await JOB_HANDLERS[kind].onTerminalFailure?.(record, deps, message);
-        const settled = await deps.db.settleBackgroundJob({
-          id: record.id,
-          leaseToken: record.leaseToken,
-          now: now.toISOString(),
-          outcome: { status: "failed", error: message },
-        });
-        result[settled ? "failed" : "superseded"] += 1;
-      } catch (error) {
-        // Keep the row running under this lease. A later drain reclaims it
-        // after staleAfterMs and retries cleanup before terminal settlement.
-        console.error("[jobs] terminal cleanup failed:", error);
-        result.retried += 1;
-      }
+      const outcome = await observe<JobOutcome>({
+        name: "job.terminal_cleanup",
+        context: {
+          surface: "background", organizationId: record.organizationId,
+          jobId: record.id, jobKind: record.kind, sourceId: record.sourceId ?? undefined,
+          attempt: record.attempts,
+        },
+        outcome: (status) => ({ status }),
+      }, async () => {
+        if (!record.leaseToken) throw new Error("Terminal cleanup job has no lease token");
+        const message = record.error || "Worker lease expired after final attempt";
+        try {
+          await JOB_HANDLERS[kind].onTerminalFailure?.(record, deps, message);
+          const settled = await deps.db.settleBackgroundJob({
+            id: record.id,
+            leaseToken: record.leaseToken,
+            now: now.toISOString(),
+            outcome: { status: "failed", error: message },
+          });
+          return settled ? "failed" : "superseded";
+        } catch (error) {
+          // Keep the row running under this lease. A later drain reclaims it
+          // after staleAfterMs and retries cleanup before terminal settlement.
+          reportError("job.terminal_cleanup", error);
+          return "retried";
+        }
+      });
+      result[outcome] += 1;
     }
     const remaining = Math.max(limit - terminal.length, 0);
     if (remaining === 0) continue;

@@ -9,10 +9,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@agent-hub/ui": "workspace:*",
-    "@number-flow/react": "^0.5.10",
-    "lucide-react": "^1.23.0",
-    "motion": "^12.23.0"
+    "@agent-hub/ui": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19",

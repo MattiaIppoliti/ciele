@@ -1,4 +1,9 @@
 "use client";
+
+import { RollingNumber } from "@/components/motion/rolling-number";
+
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
+
 import { StatusBadge as StatusPill, statusFromTone } from "@/components/spaceui/status-badge";
 
 import Link from "next/link";
@@ -99,11 +104,11 @@ export function ApplicationImportDocumentsTable({
               </TableCell>
             </TableRow>
           )}
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const href = applicationImportRowHref(sourcePrefix, row);
             return (
+              <RollRow key={row.sourceId} index={index}>
               <TableRowMenu
-                key={row.sourceId}
                 title={row.title}
                 actions={[
                   { label: "Open", icon: Maximize2, href },
@@ -124,7 +129,7 @@ export function ApplicationImportDocumentsTable({
                         href={href}
                         className="press-text block truncate font-medium hover:underline"
                       >
-                        {row.title}
+                        <RollInText text={row.title} />
                       </Link>
                       {row.remoteUrl ? (
                         <a
@@ -138,13 +143,13 @@ export function ApplicationImportDocumentsTable({
                         </a>
                       ) : row.documentCount > 1 ? (
                         <span className="text-muted-foreground block truncate text-xs">
-                          {row.documentCount} Documents
+                          <RollingNumber value={row.documentCount} /> Documents
                         </span>
                       ) : null}
                     </TableOpenCell>
                   </TableCell>
                   <TableCell className="text-muted-foreground tabular-nums">
-                    {row.memoryCount}
+                    <RollingNumber value={row.memoryCount} />
                   </TableCell>
                   <TableCell>
                     <StatusPill
@@ -158,10 +163,11 @@ export function ApplicationImportDocumentsTable({
                     title={new Date(row.updatedAt).toISOString()}
                     suppressHydrationWarning
                   >
-                    {relativeTimeLabel(row.updatedAt, now)}
+                    <RollInText text={relativeTimeLabel(row.updatedAt, now)} />
                   </TableCell>
                 </TableRow>
               </TableRowMenu>
+              </RollRow>
             );
           })}
         </TableBody>

@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { useMemo, useState } from "react";
@@ -94,7 +96,7 @@ export function ThreadHistoryMenu({
                   }`}
                 >
                   <MessageCircle className="text-muted-foreground size-4 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+                  <span className="min-w-0 flex-1 truncate"><RollInText text={entry.label} /></span>
                   <span className="text-muted-foreground shrink-0 text-xs">
                     {relativeShort(entry.updatedAt)}
                   </span>

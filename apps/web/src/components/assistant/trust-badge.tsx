@@ -1,3 +1,5 @@
+
+import { RollInText } from "@/components/motion/roll-in-text";
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 import type { FlowTrust } from "@agent-hub/core";
 import { Hint } from "@agent-hub/ui";
@@ -22,7 +24,7 @@ export function TrustBadge({ trust }: { trust: FlowTrust }) {
         className="tabular-nums"
         primaryText={<>
         <span aria-hidden>
-          {trust.tier} · {formatPercent(rate)} of {formatCount(trust.runs)}
+          {trust.tier} · <RollInText text={formatPercent(rate)} /> of <RollInText text={formatCount(trust.runs)} />
         </span>
         <span className="sr-only">
           {trust.tier}: {detail}

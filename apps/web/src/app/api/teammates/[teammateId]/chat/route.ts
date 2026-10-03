@@ -1,3 +1,4 @@
+import { withRequestDiagnostics } from "@/lib/request-diagnostics";
 import { NextRequest } from "next/server";
 import {
   isCieleAi,
@@ -8,7 +9,7 @@ import {
 } from "@agent-hub/core";
 import {
   NDJSON_HEADERS,
-  chatModelOptions,
+  chatModelCandidates,
   sessionMetadata,
   streamConversationTurn,
 } from "@agent-hub/agent";
@@ -34,7 +35,7 @@ export const maxDuration = 300;
  * is what makes an edited Standing Role apply to the next turn with no
  * publish step in between.
  */
-export async function POST(
+export const POST = withRequestDiagnostics("/api/teammates/[teammateId]/chat", "teammate", async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ teammateId: string }> }
 ) {
@@ -127,7 +128,7 @@ export async function POST(
       ? await resolveAutoModel(
           db,
           session.organization.id,
-          chatModelOptions(
+          chatModelCandidates(
             configured,
             chatAllowedModels(teammate),
             connections,
@@ -184,4 +185,4 @@ export async function POST(
   });
 
   return new Response(stream, { headers: NDJSON_HEADERS });
-}
+});

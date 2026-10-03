@@ -83,6 +83,7 @@ describe("channelChatMessages", () => {
           id: "msg-2",
           authorType: "teammate",
           authorTeammateId: "tm-1",
+          chainId: "root-msg",
           content: parts,
         }),
       ],
@@ -91,6 +92,7 @@ describe("channelChatMessages", () => {
     expect(msg).toMatchObject({
       role: "bot",
       id: "msg-2",
+      threadParentId: "root-msg",
       phase: "done",
       parts,
       streamingText: null,

@@ -186,6 +186,12 @@ _Avoid_: evaluation (alone), classification (that is the LLM call), judgment
 The user-visible trace of what the runtime did for a reply (classify → search → generate), expandable in the chat UI.
 _Avoid_: reasoning, chain of thought (in UI)
 
+**Chat Attachment**:
+A file shared for one Conversation, available to its follow-up questions until the participant
+removes it. It never becomes a Knowledge Source. Starting or opening another Conversation
+clears the current attachments, including files still being read.
+_Avoid_: Source (permanent knowledge), upload (the operation).
+
 **Conversation Turn**:
 One user message and everything the runtime does to answer it: get-or-create the Conversation, persist the user message, route through the flow engine, persist the reply with its flow markers, apply deferred effects, stream Thinking Steps + reply. One module (`packages/agent/src/turn.ts`) owns it; Widget and Preview are thin adapters over it.
 _Avoid_: exchange, round, request (alone)

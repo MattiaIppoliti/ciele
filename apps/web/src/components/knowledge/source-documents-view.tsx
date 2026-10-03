@@ -1,3 +1,5 @@
+
+import { RollInText } from "@/components/motion/roll-in-text";
 import { ExternalLink } from "lucide-react";
 import type { Source, SourceDocumentListItem } from "@agent-hub/core";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
@@ -60,7 +62,7 @@ export function SourceDocumentsView({
           <div className="min-w-0">
             <h1 className="flex flex-wrap items-center gap-2">
               <span className="text-2xl font-semibold [overflow-wrap:anywhere]">
-                {source.name}
+                <RollInText text={source.name} />
               </span>
               <CopyIdButton id={source.id} />
             </h1>
@@ -69,7 +71,7 @@ export function SourceDocumentsView({
                 third time the same fact is stated. */}
             <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-sm">
               {/* No hydration guard: `formatDay` is fixed to UTC and en-GB. */}
-              <span>Added {formatDay(source.createdAt)}</span>
+              <span>Added <RollInText text={formatDay(source.createdAt)} /></span>
               {source.config.url && (
                 <a
                   href={source.config.url}

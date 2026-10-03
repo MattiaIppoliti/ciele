@@ -313,18 +313,9 @@ describe("finalizeDueCrawls", () => {
       { now }
     );
 
-    expect(error).toHaveBeenCalledWith(
-      "[runtime] durable queue age SLO breached",
-      expect.objectContaining({
-        overdue: [
-          expect.objectContaining({
-            queue: "background:ingest",
-            due: 7,
-            ageSeconds: 1800,
-          }),
-        ],
-      })
-    );
+    expect(error.mock.calls.map(([record]) => JSON.parse(record))).toContainEqual(expect.objectContaining({
+      event: "jobs.queue_overdue", level: "error", queue: "background:ingest", count: 7, ageSeconds: 1800,
+    }));
     error.mockRestore();
   });
 
@@ -344,12 +335,10 @@ describe("finalizeDueCrawls", () => {
       },
       { now: new Date("2026-08-29T12:00:00.000Z") }
     );
-    expect(error).toHaveBeenCalledWith("[runtime] durable jobs failed terminally", {
-      failed: [
-        { queue: "background:draft_improvement_proposal", failed: 2 },
-        { queue: "turn-effects", failed: 1 },
-      ],
-    });
+    expect(error.mock.calls.map(([record]) => JSON.parse(record))).toEqual(expect.arrayContaining([
+      expect.objectContaining({ event: "jobs.terminal_failures", queue: "background:draft_improvement_proposal", count: 2 }),
+      expect.objectContaining({ event: "jobs.terminal_failures", queue: "turn-effects", count: 1 }),
+    ]));
     error.mockRestore();
   });
 

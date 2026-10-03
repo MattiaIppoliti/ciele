@@ -6,6 +6,7 @@ import type {
 } from "@agent-hub/core";
 import { creditsFor } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 
 import { checkOrgBudget } from "./budget-gate";
 import { getEnterpriseCapabilities } from "./ee";
@@ -64,10 +65,7 @@ export async function admitAiSpend(options: {
     getEnterpriseCapabilities()
       .activation.getActivation(organizationId)
       .catch((error) => {
-        console.error(
-          "[spend-admission] activation check failed (failing open):",
-          error,
-        );
+        reportError("runtime.spend.activation", error, { organizationId });
         return { state: "active" as const };
       }),
     Promise.all(
@@ -79,10 +77,7 @@ export async function admitAiSpend(options: {
             resource: "ai",
           })
           .catch((error): UsageOutcome => {
-            console.error(
-              "[spend-admission] usage check failed (failing open):",
-              error,
-            );
+            reportError("runtime.spend.usage_check", error, { organizationId });
             return { outcome: "allow" };
           }),
       ),
@@ -133,10 +128,7 @@ export async function admitAiSpend(options: {
         blocked = { reason: "budget", detail: "Daily AI budget reached" };
       }
     } catch (error) {
-      console.error(
-        "[spend-admission] hard-budget reservation failed (failing closed):",
-        error,
-      );
+      reportError("runtime.spend.reserve", error, { organizationId });
       blocked = {
         reason: "budget",
         detail: "Daily AI budget admission unavailable",
@@ -150,7 +142,7 @@ export async function admitAiSpend(options: {
     if (!reservationId || settlementAttempted || released) return;
     released = true;
     await db.releaseOrgBudgetReservation(reservationId).catch((error) =>
-      console.error("[spend-admission] reservation release failed:", error),
+      reportError("runtime.spend.release", error, { organizationId }),
     );
   };
 
@@ -188,12 +180,12 @@ export async function admitAiSpend(options: {
       try {
         const settled = await db.settleOrgBudgetReservation(reservationId, rows);
         if (!settled) {
-          console.error("[spend-admission] reservation settlement was rejected");
+          reportError("runtime.spend.settle", undefined, { organizationId, count: rows.length });
         }
       } catch (error) {
         // Do not release after a failed settlement: the reservation expires,
         // preserving the hard ceiling while accounting is uncertain.
-        console.error("[spend-admission] reservation settlement failed:", error);
+        reportError("runtime.spend.settle", error, { organizationId, count: rows.length });
       }
     },
   };

@@ -25,6 +25,7 @@ import type {
   UsageLimitsSnapshot,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { observe } from "@agent-hub/diagnostics";
 import type { ZodType } from "zod";
 import type { MutatedEntity } from "./entities";
 
@@ -428,9 +429,15 @@ export interface Operation<In, Out> {
   run(ctx: OperationContext, input: In): Promise<Out>;
 }
 
-/** Identity helper: keeps inference tight at definition sites. */
+/** Observe every caller through the same interface; callers still authorize. */
 export function defineOperation<In, Out>(
   op: Operation<In, Out>
 ): Operation<In, Out> {
-  return op;
+  return {
+    ...op,
+    run: (ctx, input) => observe({
+      name: "operation",
+      context: { operation: op.name, organizationId: ctx.organizationId },
+    }, () => op.run(ctx, input)),
+  };
 }

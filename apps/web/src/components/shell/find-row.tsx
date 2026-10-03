@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { memo } from "react";
 import {
   CornerDownLeft,
@@ -84,7 +86,7 @@ export const FindRow = memo(function FindRow({
         <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
       )}
       <span className="min-w-0 flex-1 truncate">
-        <span className="text-foreground font-medium">{item.label}</span>
+        <span className="text-foreground font-medium"><RollInText text={item.label} /></span>
         {item.hint && (
           <span className="text-muted-foreground text-xs">
             {" · "}

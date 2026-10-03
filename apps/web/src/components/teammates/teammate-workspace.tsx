@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import {
   useEffect,
   useEffectEvent,
@@ -344,14 +346,16 @@ export function TeammateWorkspace({
 
   // A reset from anywhere (New chat here, in the sidebar, ⌘O, or the thread
   // leaving the URL) clears the transcript.
+  const clearAttachments = attachments.clear;
   const seenResets = useRef(resets);
   useEffect(() => {
     if (resets === seenResets.current) return;
     seenResets.current = resets;
+    clearAttachments();
     setConversationMeta(null);
     setMessages([]);
     setHistoryOpen(false);
-  }, [resets]);
+  }, [resets, clearAttachments]);
 
   const openFromUrl = useEffectEvent((id: string) => void openConversation(id));
   useEffect(() => {
@@ -468,6 +472,7 @@ export function TeammateWorkspace({
     try {
       const { messages: stored, conversation } =
         await readTeammateConversationAction(teammate.id, id);
+      attachments.clear();
       chatSession.opened(id);
       setConversationMeta(conversation.metadata ?? null);
       setMessages(chatMessagesFromStored(stored));
@@ -643,7 +648,7 @@ export function TeammateWorkspace({
             >
               {retired ? (
                 <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-3 text-center text-sm">
-                  {teammate.name} was deleted. Your conversations with it stay
+                  <RollInText text={teammate.name} /> was deleted. Your conversations with it stay
                   readable, and it answers nothing more.
                 </p>
               ) : (

@@ -15,7 +15,8 @@
 .toggle { margin: 2px 0 0 -6px; padding-left: 6px; color: var(--foreground); }
 .action:disabled { opacity: .45; cursor: default; }
 .action:focus-visible, .toggle:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.composer { margin: 8px 10px 12px 48px; min-width: 0; }
+/* Align with nested reply text and keep this box smaller than the channel composer. */
+.composer { margin: 8px 10px 12px 84px; min-width: 0; max-width: 28rem; }
 @media (hover: hover) and (pointer: fine) {
   .comment:hover { background: color-mix(in oklch, var(--muted) 45%, transparent); }
   .action:hover, .toggle:hover { background: var(--muted); color: var(--foreground); }

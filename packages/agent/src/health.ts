@@ -1,5 +1,6 @@
 import type { AlertType, UsageResource } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 import type { ProviderHealthEvent } from "./engine";
 import type { UsageWindowName } from "./ee";
 
@@ -119,7 +120,7 @@ export async function signalHealth(
       });
     }
   } catch (error) {
-    console.error(`[${logLabel}] alert update failed:`, error);
+    reportError(`${logLabel}.alert.persist`, error, { organizationId });
   }
 }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useState, useTransition } from "react";
 import type { MemoryDocumentEntry } from "@agent-hub/core";
@@ -128,7 +130,7 @@ export function MemoryClient({
             disabled={!dirty || isPending}
             onClick={save}
           >
-            {isPending ? "Saving…" : "Save"}
+            <RollInText text={isPending ? "Saving…" : "Save"} />
           </Button>
         </div>
       </div>
@@ -147,7 +149,7 @@ export function MemoryClient({
               onClick={() => revert(entry)}
             >
               <Undo2 className="size-4" />
-              {revertLabel(entry)}
+              <RollInText text={revertLabel(entry)} />
             </Button>
           )}
         />

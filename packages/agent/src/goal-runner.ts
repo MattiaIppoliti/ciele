@@ -9,7 +9,7 @@ import { createTurnSession } from "./session";
 import { gradeGoalReply, type GoalVerdict } from "./goals";
 import { alertKeys, signalHealth } from "./health";
 import { getRuntimeHost } from "./host";
-import { resolveChatModel } from "./models";
+import { resolveAssistantChatModel } from "./models";
 import {
   admitAiSpend,
   CONVERSATION_SPEND_CAPACITY,
@@ -105,12 +105,7 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalRun> {
     usage: { surface: "scheduled" },
   });
   const platformPrompt = await getRuntimeHost().getPlatformSystemPrompt();
-  const resolvedModel = resolveChatModel(
-    assistant.modelProvider,
-    assistant.modelId,
-    connections,
-    { source: assistant.modelSource ?? undefined },
-  );
+  const resolvedModel = resolveAssistantChatModel(assistant, connections);
   const admission = resolvedModel
     ? await admitAiSpend({
         db,

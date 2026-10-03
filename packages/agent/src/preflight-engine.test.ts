@@ -86,7 +86,7 @@ vi.mock("./models", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./models")>();
   return {
     ...actual,
-    resolveChatModel: () => ({
+    resolveAssistantChatModel: () => ({
       model: new MockLanguageModelV3({}),
       provider: "anthropic",
       modelId: "claude-opus-4-8",

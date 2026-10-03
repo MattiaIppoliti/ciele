@@ -1,5 +1,6 @@
+import { withRequestDiagnostics } from "@/lib/request-diagnostics";
 import { parseModelSelector, resolveRequestedModel } from "@agent-hub/core";
-import { chatModelOptions } from "@agent-hub/agent";
+import { chatModelCandidates } from "@agent-hub/agent";
 import { chatAllowedModels } from "@/lib/teammates/ciele-ai";
 import { AUTO_MODEL, resolveAutoModel } from "@/lib/teammates/auto-model";
 import { listPlatformEvalModels } from "@/lib/platform";
@@ -27,7 +28,7 @@ export const maxDuration = 300;
  * are the Teammates the message named and that are seated and live; a Teammate
  * nobody named takes no turn, and there is no branch that could make it.
  */
-export async function POST(
+export const POST = withRequestDiagnostics("/api/teammates/channels/[channelId]/chat", "channel", async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ channelId: string }> }
 ) {
@@ -59,7 +60,7 @@ export async function POST(
 
   const allowed = chatAllowedModels({ systemKind: "ciele_ai", allowedModels: [] });
   const auto = body.model === AUTO_MODEL
-    ? await resolveAutoModel(db, session.organization.id, chatModelOptions(allowed[0], allowed, connections, await listPlatformEvalModels()))
+    ? await resolveAutoModel(db, session.organization.id, chatModelCandidates(allowed[0], allowed, connections, await listPlatformEvalModels()))
     : null;
   const teammates = posted.teammates.map((teammate) => {
     const chosen = resolveRequestedModel(parseModelSelector(auto?.selector ?? (typeof body.model === "string" ? body.model : null)), {
@@ -99,4 +100,4 @@ export async function POST(
   });
 
   return new Response(stream, { headers: { ...CHANNEL_NDJSON_HEADERS, "X-Channel-Message-Id": posted.message.id } });
-}
+});

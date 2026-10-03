@@ -1,3 +1,4 @@
+import { withRequestDiagnostics } from "@/lib/request-diagnostics";
 import { NextRequest } from "next/server";
 import type { Assistant } from "@agent-hub/core";
 import { parseModelSelector, resolveRequestedModel } from "@agent-hub/core";
@@ -22,7 +23,7 @@ export const maxDuration = 300;
  * The turn itself (conversation, persistence, engine, effects, stream)
  * lives in the Conversation Turn module.
  */
-export async function POST(
+export const POST = withRequestDiagnostics("/api/widget/[assistantId]/chat", "widget", async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ assistantId: string }> }
 ) {
@@ -178,6 +179,6 @@ export async function POST(
   });
 
   return new Response(stream, { headers: { ...cors, ...NDJSON_HEADERS } });
-}
+});
 
 export const OPTIONS = widgetOptions;

@@ -9,10 +9,7 @@ import {
 import {
   formatDuration,
   formatEur,
-  formatEurTick,
-  heatCalendarFromDaily,
   latencyBucketLabel,
-  surfaceCompositionFromDaily,
   tokenHighlights,
 } from "./dashboard-view";
 
@@ -88,10 +85,6 @@ describe("formatters", () => {
     expect(formatEur(711.7416)).toBe("€711.74");
   });
 
-  it("writes axis ticks without trailing zeros", () => {
-    expect([0, 0.25, 1, 12].map(formatEurTick)).toEqual(["€0", "€0.25", "€1", "€12"]);
-  });
-
   it("reads durations at the unit that suits them", () => {
     expect(formatDuration(null)).toBe("—");
     expect(formatDuration(850)).toBe("850 ms");
@@ -108,28 +101,6 @@ describe("formatters", () => {
   });
 });
 
-describe("heatCalendarFromDaily", () => {
-  it("lays days out Monday first, one column per week, scaled to the busiest day", () => {
-    // 2026-09-02 is a Wednesday, 2026-09-08 the next Tuesday.
-    const daily = ["02", "03", "04", "05", "06", "07", "08"].map((d, i) =>
-      day(`2026-09-${d}`, i === 2 ? 1000 : 250)
-    );
-    const grid = heatCalendarFromDaily(daily);
-    expect(grid?.weeks).toBe(2);
-    expect(grid?.maxCount).toBe(1000);
-    // Monday and Tuesday of the first week precede the window.
-    expect(grid?.values[0].slice(0, 3)).toEqual([0, 0, 0.25]);
-    expect(grid?.values[0][3]).toBe(0.25);
-    expect(grid?.values[0][4]).toBe(1);
-    expect(grid?.values[1].slice(0, 2)).toEqual([0.25, 0.25]);
-    expect(grid?.endDate.toISOString()).toBe("2026-09-08T00:00:00.000Z");
-  });
-
-  it("is null for an empty window", () => {
-    expect(heatCalendarFromDaily([])).toBeNull();
-  });
-});
-
 describe("tokenHighlights", () => {
   it("names the peak day and the busiest weekday, and reports none on a silent window", () => {
     const highlights = tokenHighlights([day("2026-09-07", 10), day("2026-09-08", 40), day("2026-09-14", 35)]);
@@ -137,33 +108,5 @@ describe("tokenHighlights", () => {
     expect(highlights.busiestWeekday).toBe("Monday");
     expect(highlights.averageTokens).toBeCloseTo(85 / 3);
     expect(tokenHighlights([day("2026-09-07", 0)]).peakDay).toBeNull();
-  });
-});
-
-describe("surfaceCompositionFromDaily", () => {
-  const spend = (date: string, assistants: number, teammates: number): DashboardDay => ({
-    ...day(date, 0),
-    spendBySurface: { assistants, teammates, internal: 0, unattributed: 0 },
-  });
-
-  it("keeps days as periods up to three weeks and drops surfaces that spent nothing", () => {
-    const composition = surfaceCompositionFromDaily([spend("2026-09-01", 1, 0.5), spend("2026-09-02", 2, 0)]);
-    expect(composition.granularity).toBe("day");
-    expect(composition.periods).toEqual(["1 Sept", "2 Sept"]);
-    expect(composition.series).toEqual([
-      { surface: "assistants", values: [1, 2] },
-      { surface: "teammates", values: [0.5, 0] },
-    ]);
-  });
-
-  it("sums into Monday-started weeks past three weeks", () => {
-    // 2026-08-31 is a Monday; 22 days span four weeks.
-    const daily = Array.from({ length: 22 }, (_, i) =>
-      spend(new Date(Date.UTC(2026, 7, 31 + i)).toISOString().slice(0, 10), 1, 0)
-    );
-    const composition = surfaceCompositionFromDaily(daily);
-    expect(composition.granularity).toBe("week");
-    expect(composition.periods[0]).toBe("w/c 31 Aug");
-    expect(composition.series[0].values).toEqual([7, 7, 7, 1]);
   });
 });

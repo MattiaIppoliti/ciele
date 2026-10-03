@@ -13,12 +13,12 @@ import type { ChromaticTextRevealProps } from "@/components/motion/text-animatio
    Nothing moves in the swap: the fallback is the same inline-grid, sized by the
    same invisible copies of every word, so the headline's line breaks and the
    ghost beside it are settled before any JavaScript arrives. What a visitor
-   loses if the module is slow (or never arrives) is the sweep, not the
+   loses if the module is slow (or never arrives) is the roll, not the
    sentence. */
-const ChromaticTextReveal = dynamic(
+const HeroRollingWord = dynamic(
   () =>
-    import("@/components/motion/text-animation").then(
-      (m) => m.ChromaticTextReveal
+    import("./hero-rolling-word").then(
+      (m) => m.HeroRollingWord
     ),
   { ssr: false, loading: () => null }
 );
@@ -51,12 +51,12 @@ function useArmed() {
   );
 }
 
-/** The word that rotates under the hero's chromatic sweep, animated or not. */
+/** The headline noun, server-rendered first and then rolled by Scritto. */
 export function HeroRotatingWord(props: ChromaticTextRevealProps) {
   const ready = useArmed();
   const { words, suffix = "", className, foregroundColor } = props;
 
-  if (ready) return <ChromaticTextReveal {...props} />;
+  if (ready) return <HeroRollingWord {...props} />;
 
   return (
     <span className={`relative inline-grid ${className ?? ""}`}>

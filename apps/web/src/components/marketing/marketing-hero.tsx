@@ -1,8 +1,10 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { cn } from "@agent-hub/ui";
 import { RollInText } from "@/components/motion/roll-in-text";
 
-/** Shared centered heading block for every top-level marketing page. */
+/** Keep the animated heading's markup behind one client reference per page. */
 export function MarketingHero({
   eyebrow,
   title,

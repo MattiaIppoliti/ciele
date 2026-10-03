@@ -62,7 +62,7 @@ const clamp = (value: number, low: number, high: number) => Math.min(high, Math.
 
 /** Clean gridlines: the smallest step of 1, 2, 3, or 5 that covers the data in four rows or fewer, so shared steps survive a range change. */
 function scaleFor(max: number) {
-  const safe = Math.max(max, 1);
+  const safe = Number.isFinite(max) && max > 0 ? max : 1;
   const magnitude = 10 ** Math.floor(Math.log10(safe / 4));
   for (const factor of [1, 2, 3, 5, 10]) {
     const step = factor * magnitude, rows = Math.ceil(safe / step);

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import type { BackgroundJob } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
@@ -8,6 +8,8 @@ import { ingestSource } from "./ingest";
 vi.mock("./ingest", () => ({
   ingestSource: vi.fn(),
 }));
+
+afterEach(() => vi.restoreAllMocks());
 
 function fakeDb(overrides: Partial<Db> = {}): Db {
   return {
@@ -300,6 +302,22 @@ describe("runDueJobs, ingest_source", () => {
     });
   });
 
+  it("keeps retry settlement intact when all diagnostic log channels fail", async () => {
+    for (const method of ["log", "warn", "error"] as const) {
+      vi.spyOn(console, method).mockImplementation(() => { throw new Error("sink down"); });
+    }
+    const db = fakeDb({
+      getSource: vi.fn().mockResolvedValue(null),
+      claimBackgroundJobs: vi.fn().mockResolvedValue([job({ attempts: 1, maxAttempts: 3 })]),
+    });
+    await expect(runDueJobs({ db }, {
+      kinds: ["ingest_source"], now: new Date("2026-07-09T10:01:00.000Z"), workerId: "worker1",
+    })).resolves.toMatchObject({ retried: 1, failed: 0 });
+    expect(db.settleBackgroundJob).toHaveBeenCalledWith(expect.objectContaining({
+      id: "job1", outcome: { status: "queued", error: "Not found", nextRunAt: "2026-07-09T10:02:00.000Z" },
+    }));
+  });
+
   it("marks the Source error when the last attempt fails", async () => {
     const db = fakeDb({
       getSource: vi.fn().mockResolvedValue(null) as Db["getSource"],
@@ -337,6 +355,8 @@ describe("runDueJobs, ingest_source", () => {
   });
 
   it("runs terminal cleanup for a lease that crashed on its last attempt", async () => {
+    const logs = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     const terminal = job({
       attempts: 3,
       maxAttempts: 3,
@@ -371,9 +391,31 @@ describe("runDueJobs, ingest_source", () => {
         error: "Worker lease expired after final attempt",
       },
     });
+    expect(JSON.parse(logs.mock.calls[0]![0])).toMatchObject({
+      event: "job.terminal_cleanup", status: "started", jobId: "job1", attempt: 3,
+    });
+    expect(JSON.parse(errors.mock.calls[0]![0])).toMatchObject({
+      event: "job.terminal_cleanup", status: "failed", jobId: "job1", durationMs: expect.any(Number),
+    });
+    expect(JSON.stringify([...logs.mock.calls, ...errors.mock.calls])).not.toContain(terminal.error);
+  });
+
+  it("reports a superseded terminal cleanup without changing its settlement fence", async () => {
+    const logs = vi.spyOn(console, "log").mockImplementation(() => {});
+    const db = fakeDb({
+      claimTerminalBackgroundJobs: vi.fn().mockResolvedValue([job({ attempts: 3, maxAttempts: 3 })]),
+      settleBackgroundJob: vi.fn().mockResolvedValue(false),
+    });
+    await expect(runDueJobs({ db }, { kinds: ["ingest_source"] })).resolves.toMatchObject({ superseded: 1, failed: 0 });
+    expect(JSON.parse(logs.mock.calls.at(-1)![0])).toMatchObject({
+      event: "job.terminal_cleanup", status: "superseded", jobId: "job1",
+    });
   });
 
   it("retries terminal cleanup when its side effect fails transiently", async () => {
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errors = vi.spyOn(console, "error").mockImplementation(() => { throw new Error("sink down"); });
+    vi.spyOn(console, "log").mockImplementation(() => {});
     const terminal = job({ attempts: 3, maxAttempts: 3 });
     const db = fakeDb({
       claimTerminalBackgroundJobs: vi
@@ -392,6 +434,10 @@ describe("runDueJobs, ingest_source", () => {
       superseded: 0,
     });
     expect(db.settleBackgroundJob).not.toHaveBeenCalled();
+    expect(JSON.parse(warnings.mock.calls[0]![0])).toMatchObject({
+      event: "job.terminal_cleanup", status: "retried", jobId: "job1",
+    });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("database unavailable");
   });
 });
 

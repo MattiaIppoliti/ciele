@@ -1,3 +1,5 @@
+import { withRequestDiagnostics } from "@/lib/request-diagnostics";
+
 /**
  * The single authentication seam for `/api/cron/*` routes.
  *
@@ -12,16 +14,21 @@ export function withCronAuth(
   handler: (request: Request) => Promise<Response>
 ): (request: Request) => Promise<Response> {
   return async (request) => {
-    const secret = process.env.CRON_SECRET;
-    if (!secret) {
-      return Response.json(
-        { error: "CRON_SECRET not configured" },
-        { status: 503 }
-      );
-    }
-    if (request.headers.get("authorization") !== `Bearer ${secret}`) {
-      return Response.json({ error: "unauthorized" }, { status: 401 });
-    }
-    return handler(request);
+    // Cron routes are static. A malformed path is never diagnostic content.
+    const pathname = new URL(request.url).pathname;
+    const route = /^\/api\/cron\/[a-z-]+$/.test(pathname) ? pathname : "/api/cron/[route]";
+    return withRequestDiagnostics(route, "cron", async (request: Request) => {
+      const secret = process.env.CRON_SECRET;
+      if (!secret) {
+        return Response.json(
+          { error: "CRON_SECRET not configured" },
+          { status: 503 }
+        );
+      }
+      if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      return handler(request);
+    })(request);
   };
 }

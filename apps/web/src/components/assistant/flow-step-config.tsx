@@ -2121,7 +2121,7 @@ function HttpFlowRunHistory({ flowId }: { flowId: string }) {
           {runs.map((run) => (
             <li key={run.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2.5 py-1.5">
               <span className="text-muted-foreground tabular-nums">
-                {formatDateTime(run.createdAt)}
+                <RollInText text={formatDateTime(run.createdAt)} />
               </span>
               <span className="font-mono">{run.method}</span>
               <span
@@ -2133,7 +2133,7 @@ function HttpFlowRunHistory({ flowId }: { flowId: string }) {
                       : "font-medium"
                 }
               >
-                {run.status}
+                <RollInText text={String(run.status)} />
               </span>
               <span className="text-muted-foreground tabular-nums">
                 {DURATION_FORMATTER.format(run.durationMs)}

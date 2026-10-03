@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { EmptyState } from "@/components/ui/empty-state";
 
 import type { ReactNode } from "react";
@@ -57,7 +59,7 @@ export function MemoryHistory({
                 <span className="text-muted-foreground font-normal">
                   {" · "}
                   {/* `formatDateTime` renders UTC, so it says so. */}
-                  {formatDateTime(entry.createdAt)} UTC
+                  <RollInText text={formatDateTime(entry.createdAt)} /> UTC
                   {" · "}
                   {historyChangeSummary(change)}
                 </span>

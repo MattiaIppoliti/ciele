@@ -16,24 +16,12 @@ import {
 import { availableModelSources, providerAvailability } from "./models";
 
 /**
- * The models a chat window may actually offer, from what an admin allowed.
- *
- * Two filters, and the order matters. The allow-list decides *intent*; the
- * Organization's Provider Connections decide *capability*. A model an admin
- * picked months ago whose provider has since lost its credential is dropped
- * here rather than offered and failed on: the fallback inside `resolveChatModel`
- * would quietly answer on a different provider than the one the asker chose,
- * which is worse than never offering it.
- *
- * Preview can retain missing capabilities as disabled `unavailable` rows.
- * Published chats keep the capability filter.
- *
- * Returns **one entry, or none at all**, when there is no real choice: a
- * single-entry picker is a control that does nothing, and the composer draws no
- * picker for a list of one. That is the default state of every Assistant, and
- * the reason this returns a list rather than a flag.
+ * Complete configured and allowed model candidates, with capability, catalogue
+ * labels, source pins and ordering resolved once. A sole eligible candidate is
+ * still a candidate: Auto routing and unavailable diagnostics need it even when
+ * a composer has no choice to offer.
  */
-export function chatModelOptions(
+export function chatModelCandidates(
   configured: ModelRef,
   allowed: readonly ModelRef[] | undefined,
   connections: ProviderConnection[],
@@ -41,7 +29,6 @@ export function chatModelOptions(
   optionsPolicy: { includeUnavailable?: boolean } = {},
 ): ChatModelOption[] {
   const choices = modelChoices(configured, allowed ?? []);
-  if (choices.length < 2) return [];
 
   const availability = providerAvailability(connections);
   const options: ChatModelOption[] = [];
@@ -81,9 +68,18 @@ export function chatModelOptions(
         : {}),
     });
   }
-  // Losing every alternative to a removed connection leaves the configured
-  // model alone, which is again no choice.
-  return options.length < 2 ? [] : options;
+  return options;
+}
+
+/**
+ * Composer presentation of the complete candidates: fewer than two rows means
+ * no choice, so existing Widget and Preview pickers remain hidden in that case.
+ */
+export function chatModelOptions(
+  ...args: Parameters<typeof chatModelCandidates>
+): ChatModelOption[] {
+  const candidates = chatModelCandidates(...args);
+  return candidates.length < 2 ? [] : candidates;
 }
 
 export type { ChatModelOption };

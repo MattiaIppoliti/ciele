@@ -37,13 +37,13 @@ export function RateDonut({
       key: "good",
       label: goodLabel,
       value: good,
-      color: OUTCOME_COLORS.good.light,
+      color: OUTCOME_COLORS.good,
     },
     {
       key: "bad",
       label: badLabel,
       value: bad,
-      color: OUTCOME_COLORS.bad.light,
+      color: OUTCOME_COLORS.bad,
     },
   ];
   return (

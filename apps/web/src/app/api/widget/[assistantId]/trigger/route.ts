@@ -1,3 +1,4 @@
+import { withRequestDiagnostics } from "@/lib/request-diagnostics";
 import { NextRequest } from "next/server";
 import type { Assistant, FlowTrigger } from "@agent-hub/core";
 import { isProactiveTrigger } from "@agent-hub/core";
@@ -27,7 +28,7 @@ export const maxDuration = 60;
  * resolved server-side, so a reopen loop or a replayed report changes nothing. A
  * trigger nothing is configured for streams zero bytes and writes nothing.
  */
-export async function POST(
+export const POST = withRequestDiagnostics("/api/widget/[assistantId]/trigger", "widget", async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ assistantId: string }> }
 ) {
@@ -110,6 +111,6 @@ export async function POST(
   });
 
   return new Response(stream, { headers: { ...cors, ...NDJSON_HEADERS } });
-}
+});
 
 export const OPTIONS = widgetOptions;

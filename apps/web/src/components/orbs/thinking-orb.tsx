@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 // Vendored from thinking-orbs (github.com/Jakubantalik/thinking-orbs, MIT,
 // see ./LICENSE); source, not the npm package, per the beui-restyle brief.
-// Only change besides this header: useResolvedDark reads the root theme
-// (theme.ts was rewritten on useSyncExternalStore) so it takes no host ref.
+// Adapted to the four inline states used by the thinking panel, with
+// root theme and reduced-motion subscriptions in theme.ts.
 //
 // The ThinkingOrb component. One shared clock (performance.now) keeps
 // every mounted orb in phase; each instance runs its own rAF loop but
@@ -14,51 +14,43 @@ import { useEffect, useRef } from 'react';
 import { MODE_DRAWS } from './engine/registry';
 import { resolvePreset } from './presets';
 import { useReducedMotion, useResolvedDark } from './theme';
-import type { ThinkingOrbProps } from './types';
+import type { OrbState, ThinkingOrbProps } from './types';
 
-const LABELS: Record<string, string> = {
+const SIZE = 20;
+
+const LABELS: Record<OrbState, string> = {
   working: 'Working…',
   searching: 'Searching…',
   solving: 'Solving…',
-  listening: 'Listening…',
   connecting: 'Connecting…',
-  weaving: 'Weaving…',
-  composing: 'Composing…',
-  breathing: 'Thinking…',
-  shaping: 'Shaping…'
 };
 
 export function ThinkingOrb({
   state = 'working',
-  size = 64,
-  theme = 'auto',
-  speed = 1,
-  paused = false,
   style,
   'aria-label': ariaLabel,
   ...rest
 }: ThinkingOrbProps) {
   const ref = useRef<HTMLCanvasElement | null>(null);
-  const dark = useResolvedDark(theme);
+  const dark = useResolvedDark();
   const reduced = useReducedMotion();
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const dpr = Math.min(2, (typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1);
-    canvas.width = Math.round(size * dpr);
-    canvas.height = Math.round(size * dpr);
+    canvas.width = Math.round(SIZE * dpr);
+    canvas.height = Math.round(SIZE * dpr);
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const { mode, speed: baseSpeed, opts } = resolvePreset(state, size);
+    const { mode, speed, opts } = resolvePreset(state);
     const draw = MODE_DRAWS[mode];
-    const effSpeed = baseSpeed * speed;
 
     const frame = (tSec: number) => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, size, size);
-      draw(ctx, size, tSec, dark, opts);
+      ctx.clearRect(0, 0, SIZE, SIZE);
+      draw(ctx, SIZE, tSec, dark, opts);
     };
 
     // reduced motion → one static, deterministic frame
@@ -70,11 +62,11 @@ export function ThinkingOrb({
     let raf = 0;
     let running = false;
     const loop = () => {
-      frame((performance.now() / 1000) * effSpeed);
+      frame((performance.now() / 1000) * speed);
       if (running) raf = requestAnimationFrame(loop);
     };
     const start = () => {
-      if (running || paused) return;
+      if (running) return;
       running = true;
       raf = requestAnimationFrame(loop);
     };
@@ -83,8 +75,8 @@ export function ThinkingOrb({
       cancelAnimationFrame(raf);
     };
 
-    // draw at least one frame even when paused/offscreen
-    frame((performance.now() / 1000) * effSpeed);
+    // draw at least one frame even when offscreen
+    frame((performance.now() / 1000) * speed);
 
     // pause offscreen + on hidden tabs, free when not visible
     let visible = true;
@@ -109,14 +101,14 @@ export function ThinkingOrb({
       io?.disconnect();
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [state, size, dark, speed, paused, reduced]);
+  }, [state, dark, reduced]);
 
   return (
     <canvas
       ref={ref}
       role="img"
       aria-label={ariaLabel ?? LABELS[state]}
-      style={{ width: size, height: size, display: 'block', ...style }}
+      style={{ width: SIZE, height: SIZE, display: 'block', ...style }}
       {...rest}
     />
   );

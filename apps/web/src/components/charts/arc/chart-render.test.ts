@@ -25,6 +25,8 @@ describe("chart numeric and accessible output", () => {
     );
     expect(markup).toContain("Daily average €0.0003");
     expect(text(markup)).toContain("€0.0003");
+    expect(text(markup)).toContain("€0.0006");
+    expect(text(markup)).not.toContain("€1.2000");
   });
   it("keeps fractional numeric cards readable independently of animated digits", () => {
     const markup = renderToStaticMarkup(

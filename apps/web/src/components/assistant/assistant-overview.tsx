@@ -2,6 +2,8 @@
 
 import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
@@ -22,7 +24,6 @@ import type {
 import {
   ArrowUpRight,
   Activity as ActivityIcon,
-  Bot,
   ClipboardCheck,
   ShieldCheck,
   CircleCheck,
@@ -42,7 +43,8 @@ import { BookOpen } from "lucide-react";
 import { ArcFrame } from "@/components/charts/arc/arc-frame";
 import { Gauge } from "@/components/charts/arc/gauge/gauge";
 import { Tooltip } from "@/components/charts/beui/motion/tooltip";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
+import { BotIcon } from "@/components/ui/icons/bot";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
 import { PreviewVignette } from "@/components/assistant/preview-vignette";
 import { DashboardStatCards } from "@/components/insights/dashboard/dashboard-stat-cards";
@@ -201,7 +203,7 @@ function QualityRowView({ row }: { row: QualityRow }) {
       <span className="grid gap-1">
         <span className="font-medium">{row.label}</span>
         <span>
-          {formatCount(row.good)} {row.goodLabel} · {formatCount(row.bad)} {row.badLabel}
+          <RollInText text={formatCount(row.good)} /> {row.goodLabel} · <RollInText text={formatCount(row.bad)} /> {row.badLabel}
         </span>
         <span className="text-muted-foreground">
           {row.previousRate === null
@@ -316,7 +318,7 @@ export function AssistantOverview({
       <Panel
         title="Assistant"
         heading="h1"
-        icon={<Bot className="size-4" />}
+        icon={<AnimatedGlyph icon={BotIcon} size={16} aria-hidden />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -382,7 +384,7 @@ export function AssistantOverview({
             To update the live widget, publish again from the Publish section.
           </span>
           <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`${base}/publish`} />}>
-            {countLabel(publications.length, "publication")}
+            <RollInText text={countLabel(publications.length, "publication")} />
           </Button>
         </div>
       </Panel>
@@ -439,7 +441,7 @@ export function AssistantOverview({
             className="press hover:bg-muted mt-1 flex items-center justify-between gap-3 rounded-lg border-t px-3 py-2.5 text-sm"
           >
             <span className="text-muted-foreground">Estimated spend</span>
-            <span className="font-medium tabular-nums">{formatEur(totals.spendEur)}</span>
+            <span className="font-medium tabular-nums"><RollInText text={formatEur(totals.spendEur)} /></span>
           </Link>
         </Panel>
       </div>
@@ -476,7 +478,7 @@ export function AssistantOverview({
                     href={`${base}/flows/${flow.id}`}
                     className="press hover:bg-muted flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm"
                   >
-                    <span className="min-w-0 flex-1 truncate font-medium">{flow.name}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium"><RollInText text={flow.name} /></span>
                     {flow.isDefault ? (
                       <Badge variant="outline">Always last</Badge>
                     ) : flow.builtIn ? (
@@ -531,7 +533,7 @@ export function AssistantOverview({
                       className="press hover:bg-muted flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm"
                     >
                       <Icon className="text-muted-foreground size-4 shrink-0" />
-                      <span className="min-w-0 flex-1 truncate font-medium">{source.name}</span>
+                      <span className="min-w-0 flex-1 truncate font-medium"><RollInText text={source.name} /></span>
                       <SourceStatusBadge status={source.status} error={source.error} />
                       <span className="text-muted-foreground w-24 shrink-0 text-right text-xs" title={formatDay(source.createdAt)}>
                         {relativeTimeLabel(source.createdAt, nowDate)}
@@ -575,7 +577,7 @@ export function AssistantOverview({
                   {conversation.feedback === 1 && <ThumbsUp className="size-3.5 text-emerald-600" aria-label="Rated up" />}
                   {conversation.feedback === -1 && <ThumbsDown className="size-3.5 text-red-500" aria-label="Rated down" />}
                   <span className="text-muted-foreground w-20 text-xs tabular-nums">
-                    {countLabel(conversation.messageCount, "message")}
+                    <RollInText text={countLabel(conversation.messageCount, "message")} />
                   </span>
                   <span className="text-muted-foreground w-24 text-right text-xs" title={formatDay(conversation.updatedAt)}>
                     {relativeTimeLabel(conversation.updatedAt, nowDate)}

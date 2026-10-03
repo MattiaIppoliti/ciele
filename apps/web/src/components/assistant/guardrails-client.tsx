@@ -1,4 +1,5 @@
 "use client";
+
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useId, useState, useTransition } from "react";
@@ -429,7 +430,7 @@ export function GuardrailsClient({
                         >
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="min-w-0 font-medium break-words">{guardrail.name}</span>
+                              <span className="min-w-0 font-medium break-words"><RollInText text={guardrail.name} /></span>
                               {guardrail.type !== "sensitive_content_stream" && guardrail.action === "log" && (
                                 <Badge variant="outline">Log only</Badge>
                               )}

@@ -6,6 +6,7 @@ import { AnimatePresence, animate, motion, useInView, useMotionValue, useReduced
 import type { Variants } from "motion/react";
 import { motionTokens } from "../motion-tokens";
 import styles from "./activity-heatmap.module.css";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 export interface ActivityDay {
   /** Calendar day as YYYY-MM-DD. */
@@ -100,47 +101,9 @@ const tipText = (reduced: boolean): Variants => ({
   gone: (change: Change) => change === "instant" || reduced ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: `${-.3 * (change || 1)}em`, filter: `blur(${motionTokens.blur.subtle}px)`, transition: { duration: .12, ease: standard } },
 });
 
-/** A total that rolls digit by digit in the direction it moved. Places keep their identity, so only changed digits turn,
- *  and when the number gains or loses a digit the width follows on a spring instead of shifting the sentence in one frame. */
-function RollingNumber({ value, locale, reduced }: { value: number; locale: string; reduced: boolean }) {
-  const [state, setState] = useState({ value, direction: 1 });
-  if (state.value !== value) setState({ value, direction: value > state.value ? 1 : -1 });
-  const inner = useRef<HTMLSpanElement>(null);
-  const width = useMotionValue<number | "auto">("auto");
-  const armedUntil = useRef(0), lastValue = useRef(value);
-  useLayoutEffect(() => {
-    if (lastValue.current === value) return;
-    lastValue.current = value;
-    armedUntil.current = performance.now() + 600;
-  }, [value]);
-  useEffect(() => {
-    const node = inner.current;
-    if (!node || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => {
-      const next = node.getBoundingClientRect().width;
-      if (reduced || width.get() === "auto" || performance.now() > armedUntil.current) width.jump(next);
-      else animate(width, next, motionTokens.spring.morph);
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [reduced, width]);
-  const chars = [...new Intl.NumberFormat(locale).format(value)];
-  const variants: Variants = {
-    from: (direction: number) => reduced ? { opacity: 0 } : { opacity: 0, y: `${.3 * direction}em`, filter: `blur(${motionTokens.blur.soft}px)` },
-    to: { opacity: 1, y: "0em", filter: "blur(0px)" },
-    gone: (direction: number) => reduced ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: `${-.3 * direction}em`, filter: `blur(${motionTokens.blur.subtle}px)`, transition: { duration: .14, ease: standard } },
-  };
-  return <motion.span className={styles.rollingFrame} style={{ width }} aria-hidden="true"><span ref={inner} className={styles.rolling}>
-    {chars.map((char, index) => {
-      const place = chars.length - index;
-      return <span key={place} className={styles.place}>
-        <AnimatePresence mode="popLayout" initial={false} custom={state.direction}>
-          <motion.span key={char} className={styles.placeChar} custom={state.direction} variants={variants} initial="from" animate="to" exit="gone"
-            transition={reduced ? { duration: .15 } : { duration: .22, ease: enter, delay: Math.min(place * .018, .09) }}>{char}</motion.span>
-        </AnimatePresence>
-      </span>;
-    })}
-  </span></motion.span>;
+/** Use the same Scritto counter as the rest of the platform, with the chart's locale. */
+function RollingNumber({ value, locale }: { value: number; locale: string; reduced: boolean }) {
+  return <RollInText text={new Intl.NumberFormat(locale).format(value)} duration={380} entrance={false} />;
 }
 
 /** A short word that changes rises in from a soft blur while the old one lifts away a little faster. */

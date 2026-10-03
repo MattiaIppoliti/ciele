@@ -12,6 +12,7 @@ import {
   webhookTemplateVariables,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 import { executeApiRequest, extractApiJsonPaths } from "./api-request";
 import { resumeGateTurn } from "./resume-gate-turn";
 import { gateTokens } from "./gate-token";
@@ -259,7 +260,10 @@ async function countWebhookCall(
       },
     ]);
   } catch (error) {
-    console.error("[webhook] usage-event persist failed:", error);
+    reportError("runtime.usage_events.persist", error, {
+      organizationId: subscription.organizationId, assistantId: subscription.assistantId ?? undefined,
+      conversationId: subscription.conversationId, count: 1,
+    });
   }
 }
 

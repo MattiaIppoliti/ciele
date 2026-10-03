@@ -38,6 +38,7 @@ import {
   type GuardrailTraceEntry,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 
 import type {
   ChatReplyPart,
@@ -97,7 +98,7 @@ import {
 } from "./spend-admission";
 import {
   isOperatorSurface,
-  resolveChatModel,
+  resolveAssistantChatModel,
   type KeyResolution,
   type ProviderCredential,
 } from "./models";
@@ -347,12 +348,7 @@ function turnModelIdentity(
   connections: ProviderConnection[],
   keyResolution: KeyResolution = {}
 ): { provider: Provider; credentialKind: ProviderCredential["kind"] } | null {
-  const resolved = resolveChatModel(
-    assistant.modelProvider,
-    assistant.modelId,
-    connections,
-    { ...keyResolution, source: assistant.modelSource ?? undefined }
-  );
+  const resolved = resolveAssistantChatModel(assistant, connections, keyResolution);
   return resolved
     ? { provider: resolved.provider, credentialKind: resolved.credentialKind }
     : null;
@@ -478,7 +474,7 @@ async function streamProactiveTurn(
       input.organizationId
     );
   } catch (error) {
-    console.error("[runtime] activation check failed (failing open):", error);
+    reportError("runtime.spend.activation", error, { organizationId: input.organizationId, assistantId: assistant.id });
   }
   if (activation.state === "pending") return silentTurn();
 
@@ -1828,7 +1824,10 @@ export async function streamConversationTurn(
                   }))
                 );
               } catch (error) {
-                console.error("[runtime] usage-event persist failed:", error);
+                reportError("runtime.usage_events.persist", error, {
+                  organizationId: input.organizationId, assistantId: attributedAssistantId ?? undefined,
+                  conversationId, count: operationCounts.length,
+                });
               }
             }
             if (session.dirty) {
@@ -1930,7 +1929,10 @@ export async function streamConversationTurn(
             try {
               await spendAdmission.settle(rows);
             } catch (settleError) {
-              console.error("[runtime] failed-turn usage settle failed:", settleError);
+              reportError("runtime.spend.settle", settleError, {
+                organizationId: input.organizationId, assistantId: attributedAssistantId ?? undefined,
+                conversationId, count: rows.length,
+              });
             }
           }
         }

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ModelRef, ProviderConnection } from "@agent-hub/core";
-import { chatModelOptions } from "./model-options";
+import { chatModelCandidates, chatModelOptions } from "./model-options";
 
 const GEMINI: ModelRef = { provider: "google", modelId: "gemini-3.5-flash" };
 const SONNET: ModelRef = { provider: "anthropic", modelId: "claude-sonnet-5" };
@@ -29,6 +29,7 @@ function byok(provider: ProviderConnection["provider"]): ProviderConnection {
 const PLATFORM_KEYS = [
   "ANTHROPIC_API_KEY",
   "OPENAI_API_KEY",
+  "GOOGLE_GENERATIVE_AI_API_KEY",
   "GOOGLE_API_KEY",
   "GEMINI_API_KEY",
   "AI_GATEWAY_API_KEY",
@@ -138,6 +139,38 @@ describe("chatModelOptions", () => {
       [added],
     );
     expect(options.map((option) => option.label)).toEqual(["Gemini 3.5 Flash", "Claude New"]);
+  });
+});
+
+describe("complete chat model candidates", () => {
+  it("retains the sole eligible alternative for routing while hiding its picker", () => {
+    const connections = [byok("google")];
+    expect(chatModelCandidates(SONNET, [GEMINI], connections).map((row) => row.selector))
+      .toEqual(["google:gemini-3.5-flash"]);
+    expect(chatModelOptions(SONNET, [GEMINI], connections)).toEqual([]);
+  });
+
+  it("shows the sole configured candidate's real capability for diagnostics", () => {
+    expect(chatModelCandidates(GEMINI, [], [byok("google")], [], { includeUnavailable: true }))
+      .toMatchObject([{ selector: "google:gemini-3.5-flash" }]);
+    expect(chatModelCandidates(GEMINI, [], [], [], { includeUnavailable: true }))
+      .toMatchObject([{ selector: "google:gemini-3.5-flash", unavailable: true }]);
+  });
+
+  it("retains each source pin, including the unavailable source for the same model", () => {
+    const candidates = chatModelCandidates(
+      GEMINI,
+      [{ ...GEMINI, source: "api_key" }, { ...GEMINI, source: "platform" }],
+      [{ ...byok("google"), encryptedKey: "plain:test-google" }],
+      [],
+      { includeUnavailable: true },
+    );
+    expect(candidates.map(({ selector, unavailable }) => [selector, Boolean(unavailable)]))
+      .toEqual([
+        ["google:gemini-3.5-flash", false],
+        ["google:gemini-3.5-flash#api_key", false],
+        ["google:gemini-3.5-flash#platform", true],
+      ]);
   });
 });
 

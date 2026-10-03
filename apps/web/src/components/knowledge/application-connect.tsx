@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { LoaderCircle } from "lucide-react";
@@ -94,7 +96,7 @@ export function ApplicationConnect({
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
               <Button className="w-full" onClick={connect} disabled={pending}>
                 {pending && <LoaderCircle className="size-4 animate-spin" />}
-                {pending ? `Opening ${label}…` : "Continue connecting"}
+                <RollInText text={pending ? `Opening ${label}…` : "Continue connecting"} />
               </Button>
             </div>
           ) : showSetupGuide ? (

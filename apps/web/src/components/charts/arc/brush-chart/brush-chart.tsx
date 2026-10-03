@@ -3,6 +3,7 @@
 import { useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type PointerEvent, type Ref } from "react";
 import { animate, motion, useInView, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { motionTokens } from "../motion-tokens";
+import { brushComparison, type BrushChartBucket } from "./comparison";
 import styles from "./brush-chart.module.css";
 
 export interface BrushChartDatum {
@@ -22,6 +23,8 @@ export interface BrushChartAnnotation {
 /** Use a brush chart for a long, dense time series where people need the whole history and a close look at any stretch of it. */
 export interface BrushChartProps {
   data: BrushChartDatum[];
+  /** Interval between the supplied buckets, used for tooltip comparisons and averages. */
+  bucket?: BrushChartBucket;
   /** What is measured, such as "Daily active users". Names the chart for assistive technology. */
   label: string;
   /** Unit after each value, such as "users". */
@@ -158,7 +161,7 @@ function useWidth<T extends HTMLElement>() {
   return [node, width] as const;
 }
 
-export function BrushChart({ data, label, unit = "", formatValue = value => grouped.format(value), formatTick = value => compact.format(value), formatDate = date => fullDate.format(date), annotations = [], range, defaultRange, onRangeChange, minSpan = 7 * DAY, height = 240, overviewHeight = 52, emptyLabel = "No data yet", ref, className }: BrushChartProps) {
+export function BrushChart({ data, bucket = "day", label, unit = "", formatValue = value => grouped.format(value), formatTick = value => compact.format(value), formatDate = date => fullDate.format(date), annotations = [], range, defaultRange, onRangeChange, minSpan = 7 * DAY, height = 240, overviewHeight = 52, emptyLabel = "No data yet", ref, className }: BrushChartProps) {
   const reduced = useReducedMotionSafe();
   const uid = `brush${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const figure = useRef<HTMLElement>(null);
@@ -367,8 +370,7 @@ export function BrushChart({ data, label, unit = "", formatValue = value => grou
 
   const format = (value: number) => `${formatValue(value)}${unit ? ` ${unit}` : ""}`;
   const reading = index === null ? null : points[index];
-  const previous = index !== null && index >= 7 ? points[index - 7] : null;
-  const change = reading && previous && previous.value ? (reading.value - previous.value) / previous.value : null;
+  const { change, comparisonLabel, averageLabel } = brushComparison(points, index, bucket);
   const windowText = `${shortDate.format(start)} to ${shortDate.format(end)}`;
   const inWindow = events.filter(event => event.t >= start && event.t <= end);
   // Event labels are placed left to right and skipped when they would collide with the one before.
@@ -416,8 +418,8 @@ export function BrushChart({ data, label, unit = "", formatValue = value => grou
           </> : reading ? <>
             <p className={styles.tipTitle}>{formatDate(new Date(reading.t))}</p>
             <p className={styles.tipValue}>{format(reading.value)}</p>
-            {detail < 1 && index !== null && <p className={styles.tipNote}>{`${formatValue(Math.round(smooth[index].value))} seven day average`}</p>}
-            {change !== null && <p className={styles.tipNote}>{`${change >= 0 ? "+" : "\u2212"}${Math.abs(change * 100).toFixed(1)}% vs a week earlier`}</p>}
+            {detail < 1 && index !== null && <p className={styles.tipNote}>{`${formatValue(Math.round(smooth[index].value))} ${averageLabel}`}</p>}
+            {change !== null && <p className={styles.tipNote}>{`${change >= 0 ? "+" : "\u2212"}${Math.abs(change * 100).toFixed(1)}% ${comparisonLabel}`}</p>}
             {eventAt && <p className={styles.tipEvent}><span className={styles.tipEventDot} />{eventAt.label}</p>}
           </> : null}
         </motion.div>

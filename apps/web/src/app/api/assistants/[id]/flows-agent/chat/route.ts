@@ -1,3 +1,4 @@
+import { withRequestDiagnostics } from "@/lib/request-diagnostics";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -64,7 +65,7 @@ const bodySchema = z.object({
  * Editors only. A Viewer's canvas is read-only, so an agent that drafts into
  * it would draft into nothing.
  */
-export async function POST(
+export const POST = withRequestDiagnostics("/api/assistants/[id]/flows-agent/chat", "flows-agent", async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -189,4 +190,4 @@ export async function POST(
   });
 
   return new Response(stream, { headers: NDJSON_HEADERS });
-}
+});

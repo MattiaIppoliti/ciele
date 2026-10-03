@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { ArcFrame } from "@/components/charts/arc/arc-frame";
 import { DonutChart } from "@/components/charts/arc/donut-chart/donut-chart";
 import { CHART_SERIES } from "@/components/charts/palette";
@@ -85,7 +87,7 @@ function Donut({
                     {percent(slice)}%
                   </span>
                   <span className="text-muted-foreground w-14 shrink-0 text-right tabular-nums">
-                    {formatCredits(slice.credits)}
+                    <RollInText text={formatCredits(slice.credits)} />
                   </span>
                 </li>
               ))}

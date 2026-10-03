@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@agent-hub/db";
 import { getMockDb } from "@agent-hub/db";
 
 import { errorClassOf, errorMessageOf, recordRuntimeEvent } from "./telemetry";
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("errorClassOf", () => {
   it("reads the error's class name", () => {
@@ -46,10 +48,11 @@ describe("errorMessageOf", () => {
 
 describe("recordRuntimeEvent", () => {
   it("swallows a sink failure instead of throwing (fire-safe)", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     const failingDb: Db = {
       ...getMockDb(),
       recordRuntimeEvent: async () => {
-        throw new Error("sink down");
+        throw new Error("sink down with private credential");
       },
     };
     await expect(
@@ -59,5 +62,12 @@ describe("recordRuntimeEvent", () => {
         status: "succeeded",
       })
     ).resolves.toBeUndefined();
+    expect(JSON.parse(errors.mock.calls[0]![0])).toMatchObject({
+      event: "runtime.telemetry.persist", organizationId: "org-1", errorClass: "Error",
+    });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("private credential");
+    errors.mockImplementation(() => { throw new Error("log sink also down"); });
+    await expect(recordRuntimeEvent(failingDb, { organizationId: "org-1", kind: "chat_turn", status: "succeeded" }))
+      .resolves.toBeUndefined();
   });
 });

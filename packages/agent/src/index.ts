@@ -170,7 +170,7 @@ export { availableModelSources, providerAvailability } from "./models";
 // The models a chat window may offer (allow-list ∩ the org's connections), and
 // the row shape the client draws. Server-side because capability is read from
 // the Provider Connections and the platform environment.
-export { chatModelOptions } from "./model-options";
+export { chatModelCandidates, chatModelOptions } from "./model-options";
 export type { ChatModelOption } from "./model-options";
 export { validateProviderApiKey, InvalidProviderKeyError } from "./validate-key";
 // "Test connection" for an OpenAI-compatible endpoint: one-token chat call +

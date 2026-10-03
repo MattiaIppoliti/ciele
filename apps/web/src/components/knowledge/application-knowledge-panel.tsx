@@ -966,7 +966,7 @@ export function ApplicationKnowledgePanel({
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">
-                          {connection.name}
+                          <RollInText text={connection.name} />
                           {connection.ownerType === "member" ? " · Personal" : ""}
                         </span>
                         <StatusPill
@@ -1221,7 +1221,7 @@ export function ApplicationKnowledgePanel({
                                 href={href}
                                 className="press-text block truncate font-medium hover:underline"
                               >
-                                {item.name}
+                                <RollInText text={item.name} />
                               </Link>
                               <span className="text-muted-foreground block truncate text-xs">
                                 {provider?.label ?? "Application"} · {importScopeSummary(item)}
@@ -1269,7 +1269,7 @@ export function ApplicationKnowledgePanel({
                             href={href}
                             className="text-primary press-text font-medium hover:underline tabular-nums"
                           >
-                            {countLabel(documentCount, "Document")}
+                            <RollInText text={countLabel(documentCount, "Document")} />
                           </Link>
                         </TableCell>
                         <TableCell
@@ -1328,7 +1328,7 @@ export function ApplicationKnowledgePanel({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">
-                    {item.name}
+                    <RollInText text={item.name} />
                   </span>
                   <StatusPill
                     status={statusFromTone(applicationImportStatusTone(item.status, item.enabled))}

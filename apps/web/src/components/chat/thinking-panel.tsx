@@ -145,7 +145,6 @@ export function ThinkingPanel({
                   being written, solving otherwise. */}
               <ThinkingOrb
                 state={liveOrbState(steps)}
-                size={20}
                 className="shrink-0"
               />
               <ThinkingShimmer className="leading-5">

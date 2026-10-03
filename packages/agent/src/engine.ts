@@ -33,6 +33,7 @@ import type { TurnSession } from "./session";
 import {
   getClassifierModel,
   isOperatorSurface,
+  resolveAssistantChatModel,
   resolveChatModel,
   type KeyResolution,
   type ProviderCredential,
@@ -654,12 +655,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
   // dropping to the keyword engine (which would silently skip every
   // system-prompt layer).
   const defaults = assistant.tools.evaluationModels;
-  const resolved = resolveChatModel(
-    assistant.modelProvider,
-    assistant.modelId,
-    connections,
-    { ...keyResolution, fallbackModel: defaults?.fallback && defaults.fallback.provider !== "typesafe" && defaults.fallback.provider !== "voyage" ? { provider: defaults.fallback.provider, modelId: defaults.fallback.modelId } : keyResolution.fallbackModel, source: assistant.modelSource ?? undefined }
-  );
+  const resolved = resolveAssistantChatModel(assistant, connections, keyResolution);
   const routingDefault = defaults?.orchestration ?? defaults?.classifier;
   const configuredClassifier = routingDefault && routingDefault.provider !== "typesafe" && routingDefault.provider !== "voyage"
     ? resolveChatModel(routingDefault.provider, routingDefault.modelId, connections, { ...keyResolution, source: undefined }) : null;

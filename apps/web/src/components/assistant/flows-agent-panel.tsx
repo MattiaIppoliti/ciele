@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -347,7 +349,7 @@ export function FlowsAgentPanel({
                           {entry.title || "Conversation"}
                         </span>
                         <span className="text-muted-foreground text-xs">
-                          {formatDateTime(entry.updatedAt)}
+                          <RollInText text={formatDateTime(entry.updatedAt)} />
                         </span>
                       </button>
                     </li>
@@ -456,7 +458,7 @@ function ProposalCard({
   return (
     <div className="bg-card mt-3 rounded-lg border p-3 text-sm shadow-light">
       <p className="text-muted-foreground text-xs font-medium uppercase">Proposed flow</p>
-      <p className="mt-1 font-semibold break-words">{flow.name}</p>
+      <p className="mt-1 font-semibold break-words"><RollInText text={flow.name} /></p>
       <p className="text-muted-foreground mt-1 text-xs">
         {FLOW_TRIGGER_LABELS[trigger]}
         {flow.actions?.length

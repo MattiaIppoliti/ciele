@@ -7,7 +7,6 @@
 // to `prefers-color-scheme`.
 
 import { useSyncExternalStore } from "react";
-import type { OrbTheme } from "./types";
 
 function subscribeTheme(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
@@ -42,11 +41,8 @@ function rootDark(): boolean {
 }
 
 /** Resolve the effective dark/light substrate. SSR renders dark first. */
-export function useResolvedDark(theme: OrbTheme): boolean {
-  const dark = useSyncExternalStore(subscribeTheme, rootDark, () => true);
-  if (theme === "dark") return true;
-  if (theme === "light") return false;
-  return dark;
+export function useResolvedDark(): boolean {
+  return useSyncExternalStore(subscribeTheme, rootDark, () => true);
 }
 
 const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";

@@ -1,5 +1,5 @@
-﻿// Density profiles + the multiplier machinery that scales them. The base
-// rows are inkform's `fine` profiles; each shipped preset (state × size)
+// Density profiles + the multiplier machinery that scales them. The base
+// rows are inkform's `fine` profiles; each inline preset
 // applies count / radius multipliers on top, resolved once per mount.
 
 export interface ModeOpts {
@@ -8,14 +8,8 @@ export interface ModeOpts {
 
 // 2-D lattices (rings × dots-per-ring) come in pairs, each side takes
 // √scale so the TOTAL dot count scales by `scale`; flat lists scale
-// linearly. `iconD` sets the morph outline's sampling density.
-const COUNT_PAIRS: ReadonlyArray<readonly [string, string]> = [
-  ['latRings', 'lonDensity'],
-  ['rings', 'lonDensity'],
-  ['lanes', 'segs']
-];
-const COUNT_KEYS = ['orbitN', 'ghostN', 'nodeN', 'strandN', 'signals'] as const;
-const ICON_DENSITY_KEYS = ['iconD'] as const;
+// linearly.
+const COUNT_KEYS = ['orbitN', 'ghostN', 'nodeN', 'signals'] as const;
 
 // Every key that sets a dot's rendered radius, scaling all of them keeps
 // a dot's near/far falloff intact while shrinking or growing the mark.
@@ -23,7 +17,6 @@ const RADIUS_KEYS = [
   'rBase',
   'rDepth',
   'rActive',
-  'rDot',
   'ghostR',
   'partR',
   'partRDepth',
@@ -33,27 +26,14 @@ const RADIUS_KEYS = [
 
 export function scaleCounts(opts: ModeOpts, scale: number): ModeOpts {
   const out: ModeOpts = { ...opts };
-  const done = new Set<string>();
-  const rt = Math.sqrt(scale);
-  for (const [a, b] of COUNT_PAIRS) {
-    const va = out[a];
-    const vb = out[b];
-    if (va != null && vb != null && !done.has(a) && !done.has(b)) {
-      out[a] = Math.max(2, Math.round(va * rt));
-      out[b] = Math.max(2, Math.round(vb * rt));
-      done.add(a);
-      done.add(b);
-    }
+  if (out.latRings != null && out.lonDensity != null) {
+    const rt = Math.sqrt(scale);
+    out.latRings = Math.max(2, Math.round(out.latRings * rt));
+    out.lonDensity = Math.max(2, Math.round(out.lonDensity * rt));
   }
   for (const k of COUNT_KEYS) {
     const v = out[k];
-    // 0 means the mode opted out of that layer entirely (ring has no ghost
-    // sphere), scaling must not resurrect it as a single stray dot
-    if (v != null && v !== 0 && !done.has(k)) out[k] = Math.max(1, Math.round(v * scale));
-  }
-  for (const k of ICON_DENSITY_KEYS) {
-    const v = out[k];
-    if (v != null) out[k] = Math.max(0.02, v * scale);
+    if (v != null && v !== 0) out[k] = Math.max(1, Math.round(v * scale));
   }
   return out;
 }
@@ -64,9 +44,6 @@ export function scaleRadii(opts: ModeOpts, scale: number): ModeOpts {
     const v = out[k];
     if (v != null) out[k] = v * scale;
   }
-  // remember the multiplier itself, spacing-derived radii (the morph
-  // outline) use it, since they aren't based on any single radius key
-  out.rSizeMul = (out.rSizeMul ?? 1) * scale;
   return out;
 }
 
@@ -106,14 +83,6 @@ export const BASE_PROFILES: Record<string, ModeOpts> = {
     rsPow: 0.6,
     rMin: 0.3
   },
-  wave: {
-    rings: 15,
-    lonDensity: 40,
-    rBase: 0.6,
-    rDepth: 1.7,
-    rsPow: 0.6,
-    rMin: 0.3
-  },
   web: {
     nodeN: 30,
     thr: 0.72,
@@ -124,39 +93,4 @@ export const BASE_PROFILES: Record<string, ModeOpts> = {
     rsPow: 0.6,
     rMin: 0.3
   },
-  braid: {
-    strandN: 52,
-    turns: 3.0,
-    ghostN: 150,
-    rBase: 1.2,
-    rDepth: 1.8,
-    rsPow: 0.6,
-    rMin: 0.3
-  },
-  ribbon: {
-    lanes: 5,
-    segs: 88,
-    ghostN: 150,
-    rBase: 1.1,
-    rDepth: 1.7,
-    rsPow: 0.6,
-    rMin: 0.3
-  },
-  // ring shares ribbon's painter; faceOn cancels the camera tilt and moves
-  // the undulation onto the radius, and there is no ghost sphere behind it
-  ring: {
-    lanes: 5,
-    segs: 88,
-    ghostN: 0,
-    faceOn: 1,
-    rBase: 1.1,
-    rDepth: 1.7,
-    rsPow: 0.6,
-    rMin: 0.3
-  },
-  morph: {
-    rDot: 0.021,
-    iconD: 1,
-    rMin: 0.25
-  }
 };

@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import { RollInText } from "@/components/motion/roll-in-text";
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -262,7 +264,7 @@ export function ToolsClient({
                   onCheckedChange={(on) => toggleSkill(skill, on === true)}
                 />
                 <span className="min-w-0">
-                  <span className="block font-medium">{skill.name}</span>
+                  <span className="block font-medium"><RollInText text={skill.name} /></span>
                   {skill.description && (
                     <span className="text-muted-foreground block truncate text-xs">
                       {skill.description}

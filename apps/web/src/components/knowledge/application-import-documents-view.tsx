@@ -1,3 +1,5 @@
+
+import { RollInText } from "@/components/motion/roll-in-text";
 import type { ApplicationImport } from "@agent-hub/core";
 import type { ApplicationImportDocumentRow } from "@ciele/ops";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
@@ -41,7 +43,7 @@ export function ApplicationImportDocumentsView({
         />
         <h1 className="flex flex-wrap items-center gap-2">
           <span className="text-2xl font-semibold break-all">
-            {applicationImport.name}
+            <RollInText text={applicationImport.name} />
           </span>
           <CopyIdButton id={applicationImport.id} />
         </h1>
@@ -49,7 +51,7 @@ export function ApplicationImportDocumentsView({
           className="text-muted-foreground mt-1 text-sm"
           suppressHydrationWarning
         >
-          Added {formatDay(applicationImport.createdAt)}
+          Added <RollInText text={formatDay(applicationImport.createdAt)} />
           {applicationImport.lastSyncedAt
             ? ` · Last synchronized ${formatDay(applicationImport.lastSyncedAt)}`
             : " · Not synchronized yet"}

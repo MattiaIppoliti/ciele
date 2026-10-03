@@ -395,7 +395,6 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
 | A tooltip or hint | `Hint` | a `title` attribute on a control |
 | A card | `Card` + `CardHeader`/`CardContent`/`CardFooter` (`size="sm"` for dense) | `div.rounded-xl.border.bg-card` by hand |
 | A modal | `Dialog` (shared); `confirm-delete-modal` for destructive confirms; `slide-to-confirm` for irreversible ones | a custom overlay |
-| A side panel | `detail-drawer` | a fixed div with `shadow-2xl` |
 | A popover | `Popover` (shared) | |
 | A menu | `dropdown-menu`, `motion/context-menu` for right-click | |
 | A select | `ui/select` | `<select>`, `motion/select` (see §6) |
@@ -585,7 +584,7 @@ import paths. "Kept" follows usage. If the retired one has a behaviour the kept 
    `packages/charts`, the docs site and the staff console. The only raw ones left are the
    exemptions in §2.7.
 2. **Type below `xs`.** Done: 48 pixel sizes moved to `text-2xs` / `text-xs` / `text-sm`. The
-   vendored charts (`charts/beui`, `spectrumui`) keep theirs, which is also why the mobile
+   vendored charts (`charts/beui`) keep theirs, which is also why the mobile
    `[class~="text-[10px]"]` rescue in `globals.css` stays.
 3. **`StatusDot` in `packages/ui`.** `tone` prop, solid hue from the tone's ink, `aria-hidden`
    with the label beside it. Replaces status maps like the `ready/processing/error` object in

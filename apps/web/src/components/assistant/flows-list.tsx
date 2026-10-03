@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import { RollInText } from "@/components/motion/roll-in-text";
 
 import { useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -170,7 +172,7 @@ export function FlowsList({
             <GraduationCap className="size-5 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-semibold">{studyFlow.name}</h2>
+                <h2 className="text-base font-semibold"><RollInText text={studyFlow.name} /></h2>
                 <Badge variant="outline" className="rounded-md"><GraduationCap className="size-3.5" /> Enter study mode</Badge>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">Interactive exercises. Enabled and managed in Tools &amp; Skills.</p>
@@ -233,7 +235,7 @@ export function FlowsList({
                   on a phone the trigger and trust badges drop to a second line
                   instead of pushing out past the card's edge. */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <h2 className="min-w-0 text-base font-semibold break-words">{flow.name}</h2>
+                <h2 className="min-w-0 text-base font-semibold break-words"><RollInText text={flow.name} /></h2>
                 {flow.builtIn && (
                   <Badge
                     variant="outline"
@@ -249,7 +251,7 @@ export function FlowsList({
                     variant="outline"
                     className="text-muted-foreground rounded-full"
                   >
-                    {FLOW_TRIGGER_LABELS[flow.trigger ?? "message"]}
+                    <RollInText text={FLOW_TRIGGER_LABELS[flow.trigger ?? "message"]} />
                   </Badge>
                 )}
                 {(() => {
@@ -305,7 +307,7 @@ export function FlowsList({
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="min-w-0 text-base font-semibold break-words">{defaultFlow.name}</h2>
+                <h2 className="min-w-0 text-base font-semibold break-words"><RollInText text={defaultFlow.name} /></h2>
                 <Badge
                   variant="outline"
                   className="text-muted-foreground rounded-full"

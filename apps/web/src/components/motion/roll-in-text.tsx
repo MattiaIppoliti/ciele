@@ -4,6 +4,7 @@ import type { Scritto } from "@scritto/core";
 import { useReducedMotion } from "motion/react";
 import { createContext, createElement, useContext, useLayoutEffect, useRef } from "react";
 import { isInitialCommit } from "./page-reveal";
+import { fitRollingText } from "./fit-rolling-text";
 
 /**
  * Slower than Scritto's 550ms default, so a title visibly builds letter by
@@ -60,18 +61,12 @@ export function RollRow({ index, children }: { index: number; children: React.Re
   );
 }
 
-export const TableText = createContext(false);
-
-export function RollInText(props: { text: string; className?: string; duration?: number; entrance?: boolean }) {
-  const table = useContext(TableText);
-  return table ? <span className={props.className}>{props.text}</span> : <AnimatedRollInText {...props} />;
-}
-
-function AnimatedRollInText({
+export function RollInText({
   text,
   className,
   duration = TITLE_ROLL_MS,
   entrance: entranceProp,
+  truncate,
 }: {
   text: string;
   className?: string;
@@ -82,6 +77,8 @@ function AnimatedRollInText({
    * `RollRow`'s answer, or yes outside one. A change of `text` rolls either way.
    */
   entrance?: boolean;
+  /** Pass the current mode when a responsive label switches truncation on/off. */
+  truncate?: boolean;
 }) {
   const host = useRef<HTMLSpanElement>(null);
   const latest = useRef(text);
@@ -90,6 +87,8 @@ function AnimatedRollInText({
   const mayEnter = entranceProp ?? inherited;
   /** Whether the element has taken over drawing the text. */
   const live = useRef(false);
+  const initialized = useRef(false);
+  const displayText = useRef((value: string) => value);
 
   // Declared first so it runs first: the load below reads the newest text.
   useLayoutEffect(() => {
@@ -104,6 +103,7 @@ function AnimatedRollInText({
     // pending PageReveal: nobody has seen the title yet.
     const entrance =
       mayEnter &&
+      !initialized.current &&
       !reduce &&
       !(isInitialCommit() && !span.closest('[data-page-reveal="pending"]'));
     // An entrance starts from nothing, so the title waits unseen for the
@@ -111,6 +111,7 @@ function AnimatedRollInText({
     if (entrance) span.style.opacity = "0";
     let cancelled = false;
     let frame = 0;
+    let observer: ResizeObserver | undefined;
     loadScritto().then(
       () => {
         if (cancelled) return;
@@ -118,13 +119,60 @@ function AnimatedRollInText({
         span.style.opacity = "";
         if (!el) return;
         el.setOptions({ transition: { duration } });
+        // A custom element is an atomic inline box, so its shadow-root glyphs
+        // cannot receive the parent's native text-overflow ellipsis. Fit the
+        // displayed value to a truncating container; aria-label keeps the full
+        // value. Observe only constrained labels, never every table cell.
+        const container = truncate === false ? null : span.closest<HTMLElement>(".truncate");
+        if (container) {
+          const context = document.createElement("canvas").getContext("2d");
+          if (context) {
+            const parent = container.parentElement;
+            const style = getComputedStyle(container);
+            // A tag or an inline label owns its intrinsic width. Use the
+            // enclosing slot's room so a longer value can grow before fitting.
+            const intrinsic = parent && (style.display === "inline" ||
+              style.display === "inline-block" ||
+              (getComputedStyle(parent).display.includes("flex") && style.flexGrow === "0"));
+            const slot = intrinsic ? parent : container;
+            displayText.current = (value) => {
+              if (!container.matches(".truncate")) return value;
+              const style = getComputedStyle(span);
+              context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+              context.fontKerning = "none";
+              const spacing = parseFloat(style.letterSpacing) || 0;
+              const containerStyle = getComputedStyle(slot);
+              const labelStyle = getComputedStyle(container);
+              const siblings = intrinsic ? Array.from(slot.children).filter((child) => child !== container) : [];
+              const width = slot.clientWidth -
+                (parseFloat(containerStyle.paddingLeft) || 0) -
+                (parseFloat(containerStyle.paddingRight) || 0) -
+                siblings.reduce((total, child) => total + child.getBoundingClientRect().width, 0) -
+                siblings.length * (parseFloat(containerStyle.columnGap) || 0) -
+                (intrinsic ? (parseFloat(labelStyle.paddingLeft) || 0) + (parseFloat(labelStyle.paddingRight) || 0) +
+                  (parseFloat(labelStyle.borderLeftWidth) || 0) + (parseFloat(labelStyle.borderRightWidth) || 0) : 0);
+              return fitRollingText(value, width, (glyph) => context.measureText(glyph).width + spacing);
+            };
+            let width = slot.clientWidth;
+            observer = new ResizeObserver(() => {
+              if (width === slot.clientWidth) return;
+              width = slot.clientWidth;
+              el.update(displayText.current(latest.current), false);
+            });
+            observer.observe(slot);
+            if (document.fonts.status === "loading") void document.fonts.ready.then(() => {
+              if (!cancelled) el.update(displayText.current(latest.current), false);
+            });
+          }
+        }
         live.current = true;
+        initialized.current = true;
         if (!entrance) {
-          el.update(latest.current, false);
+          el.update(displayText.current(latest.current), false);
           return;
         }
         el.update("", false);
-        frame = requestAnimationFrame(() => el.update(latest.current, true));
+        frame = requestAnimationFrame(() => el.update(displayText.current(latest.current), true));
       },
       // Offline or blocked: the plain text child is still there to read.
       () => {
@@ -134,15 +182,19 @@ function AnimatedRollInText({
     return () => {
       cancelled = true;
       cancelAnimationFrame(frame);
+      observer?.disconnect();
+      live.current = false;
+      displayText.current = (value) => value;
       span.style.opacity = "";
     };
-    // Mount only: later changes of `text` roll through the effect below.
+    // Rebind only when a responsive caller switches truncation modes.
+    // Later changes of `text` roll through the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [truncate]);
 
   useLayoutEffect(() => {
     if (!live.current) return;
-    host.current?.querySelector<Scritto>("scritto-text")?.update(text, !reduce);
+    host.current?.querySelector<Scritto>("scritto-text")?.update(displayText.current(text), !reduce);
   }, [text, reduce]);
 
   return (

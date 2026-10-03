@@ -4,6 +4,7 @@ import type {
   UsageSurface,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 import type { UsageEvent } from "./types";
 
 /**
@@ -128,6 +129,9 @@ export async function meterUsage(db: Db, rows: AiUsageInput[]): Promise<void> {
   try {
     await db.recordAiUsage(rows);
   } catch (error) {
-    console.error("[runtime] usage-ledger persist failed:", error);
+    reportError("runtime.usage.persist", error, {
+      organizationId: rows[0]?.organizationId,
+      count: rows.length,
+    });
   }
 }

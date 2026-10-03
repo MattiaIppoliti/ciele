@@ -7,10 +7,11 @@ The app mounts one SVG definition through `AppInteractions`, with blur `10`,
 alpha multiplier `20`, and alpha offset `-7`.
 
 The filter applies to background pseudo-elements on shared Cards, standard
-Dialogs, Overview cards, the Improvements list and task panel, and the Flow
+Dialogs, the Improvements list and task panel, and the Flow
 toolbar rail and selected tool pad. Text, icons, native inputs, focus rings,
 resizing handles and hit areas remain outside the filter. Overview retains its
-gray outer frame, black inner panel and hover treatment. Its title and circular
+gray outer frame, inner panel and hover treatment. Its outlined inset uses native
+rounding so the border and fill share one contour. Its title and circular
 icon sit below the content, outside the filtered background. Other cards retain
 the existing sheen.
 

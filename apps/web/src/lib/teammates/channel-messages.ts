@@ -4,9 +4,8 @@ import type {
   Teammate,
 } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
-import { EMPTY_TURN_TRACE } from "@agent-hub/agent/client";
 import type { ChatAuthor, ChatMsg } from "@/components/chat/chat-thread";
-import { visibleTraceSteps } from "@/components/chat/stored-trace";
+import { storedBotMessage } from "@/components/chat/stored-messages";
 
 /**
  * A stored channel message as the shared transcript renders it (#778).
@@ -102,21 +101,9 @@ export function channelChatMessages(
     // The stored trace, so a channel read back keeps the Thinking panel it had
     // live: the transcript is the audit (#778, story 17), and a reader who
     // scrolls up should still see which tools ran.
-    const trace = visibleTraceSteps(message.trace, {
-      canViewReasoning: cast.canViewReasoning,
-    });
     return {
-      role: "bot",
+      ...storedBotMessage(message, { canViewReasoning: cast.canViewReasoning }),
       threadParentId: message.chainId,
-      sentAt: message.createdAt,
-      id: message.id,
-      ...EMPTY_TURN_TRACE,
-      steps: trace?.steps ?? [],
-      searchCount: trace?.searchCount ?? 0,
-      phase: "done",
-      parts: message.content as ChatReplyPart[],
-      streamingText: null,
-      feedback: 0,
       author: teammateAuthor(
         message.authorTeammateId
           ? teammateById.get(message.authorTeammateId)

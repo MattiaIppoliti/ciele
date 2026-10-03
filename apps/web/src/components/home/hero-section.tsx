@@ -102,13 +102,13 @@ export function HeroSection() {
                 the row. */}
             <span className="whitespace-nowrap">
               <HeroGhost className="mr-[0.18em] inline-block h-[0.9em] w-auto align-[-0.16em]" />
-              {/* The closing noun rotates under the chromatic sweep:
+              {/* The closing noun rolls through Scritto:
                   clouds → sky → ciele → cielo → back to clouds. No prefix,
                   the ghost sits immediately before it. */}
               <HeroRotatingWord
                 words={["clouds", "sky", "ciele", "cielo"]}
                 // The h1 paints a top-to-bottom fade over the whole block, and
-                // this word paints its own gradient, so it cannot inherit that
+                // this word uses its own glyphs, so it cannot inherit that
                 // fade. Left at full --foreground it settled two tones darker
                 // than the "above the" beside it. This is what the h1's fade
                 // works out to on the last line, so the row lands as one color.
@@ -118,7 +118,7 @@ export function HeroSection() {
                 pauseDuration={1.6}
                 // Above the fold: run on mount instead of waiting on an
                 // IntersectionObserver frame, which never arrives in hidden or
-                // prerendering tabs and would leave the word clipped away.
+                // prerendering tabs and would delay the rotating word.
                 startOnView={false}
               />
             </span>

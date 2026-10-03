@@ -2,6 +2,10 @@
 
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
+import { RollingNumber } from "@/components/motion/rolling-number";
+
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import {
   createContext,
   createElement,
@@ -280,7 +284,7 @@ function HelpDesksPane() {
               <Ellipsis className="text-muted-foreground size-4" />
             </div>
             <div>
-              <span className="text-sm font-semibold">{desk.name}</span>
+              <span className="text-sm font-semibold"><RollInText text={desk.name} /></span>
               <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
                 {desk.description}
               </p>
@@ -338,10 +342,10 @@ function InboxPane() {
             >
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-medium">
-                  {conversation.who}
+                  <RollInText text={conversation.who} />
                 </span>
                 <span className="text-muted-foreground ml-auto text-xs">
-                  {conversation.time}
+                  <RollInText text={conversation.time} />
                 </span>
               </div>
               <p className="text-muted-foreground line-clamp-1 text-sm">
@@ -349,7 +353,7 @@ function InboxPane() {
               </p>
               <div className="flex items-center gap-2">
                 <span className="bg-muted text-muted-foreground rounded-full border px-2 py-px text-2xs">
-                  {conversation.assistant}
+                  <RollInText text={conversation.assistant} />
                 </span>
                 {conversation.up ? (
                   <span aria-label="Positive response" title="Positive response">🎉</span>
@@ -486,7 +490,7 @@ function TeammatesPane() {
                   )}
                 >
                   <GeneratedAvatar seed={author.seed} size="size-6" />
-                  {author.name}
+                  <RollInText text={author.name} />
                 </span>
                 <div
                   className={cn(
@@ -512,7 +516,7 @@ function TeammatesPane() {
             <div key={index} className="flex flex-col gap-1.5">
               <span className="flex items-center gap-2 text-sm">
                 <GeneratedAvatar seed={author.seed} size="size-6" animated />
-                <span className="font-medium">{author.name}</span>
+                <span className="font-medium"><RollInText text={author.name} /></span>
                 <span className="text-muted-foreground text-xs">
                   {author.role}
                 </span>
@@ -661,7 +665,7 @@ function LibraryPane() {
             <span className="flex min-w-0 items-center gap-2.5">
               <Globe className="text-muted-foreground size-4 shrink-0" />
               <span className="min-w-0 leading-tight">
-                <span className="block truncate font-medium">{site.name}</span>
+                <span className="block truncate font-medium"><RollInText text={site.name} /></span>
                 <span className="text-muted-foreground flex items-center gap-1 truncate text-xs">
                   {site.url}
                   <ExternalLink className="size-3 shrink-0" />
@@ -768,9 +772,9 @@ function ImprovementsPane() {
             )}
           >
             <div className="flex items-center gap-2 px-1 pb-3">
-              <span className="text-sm font-semibold">{column.label}</span>
+              <span className="text-sm font-semibold"><RollInText text={column.label} /></span>
               <span className="bg-muted text-muted-foreground rounded-full px-2 py-px text-xs">
-                {column.items.length}
+                <RollingNumber value={column.items.length} />
               </span>
             </div>
             <div className="space-y-2">
@@ -793,7 +797,7 @@ function ImprovementsPane() {
                     dragging === item.title && "opacity-40",
                   )}
                 >
-                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-sm font-medium"><RollInText text={item.title} /></p>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="bg-muted text-muted-foreground rounded-full border px-2 py-px text-2xs">
                       {item.assistant}
@@ -1057,7 +1061,7 @@ export function SetupPane({ slug }: { slug: string }) {
               >
                 <span className="bg-primary/80 size-4 shrink-0 rounded-full" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate">{assistant.title}</span>
+                  <span className="block truncate"><RollInText text={assistant.title} /></span>
                   <span className="text-muted-foreground block truncate text-xs font-normal">
                     {assistant.nickname}
                   </span>

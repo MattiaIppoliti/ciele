@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AiUsageInput } from "@agent-hub/core";
+import type { Db } from "@agent-hub/db";
 import { getMockDb } from "@agent-hub/db";
 import {
   registerEnterpriseCapabilities,
@@ -47,6 +49,99 @@ describe("AI spend admission", () => {
     await afterRelease.release();
   });
 
+});
+
+describe("spend accounting failures", () => {
+  afterEach(() => {
+    resetEnterpriseCapabilities();
+    vi.restoreAllMocks();
+  });
+
+  function failingSink() {
+    return vi.spyOn(console, "error").mockImplementation(() => { throw new Error("sink down"); });
+  }
+
+  async function limitedDb() {
+    const db = getMockDb();
+    const organizationId = `spend-failure-${crypto.randomUUID()}`;
+    await db.setOrgBudget(organizationId, {
+      dailyTokenLimit: 40_000, dailyEuroLimit: null, enforcement: "block",
+    });
+    return { db, organizationId };
+  }
+
+  it("keeps activation and usage checks fail-open and excludes their error contents", async () => {
+    const errors = failingSink();
+    registerEnterpriseCapabilities({
+      activation: { getActivation: vi.fn().mockRejectedValue(new Error("private activation data")) },
+      metering: {
+        checkUsage: vi.fn().mockRejectedValue(new Error("private usage data")),
+        getUsageLimits: async () => null,
+      },
+    });
+    const admission = await admitAiSpend({
+      db: getMockDb(), organizationId: "spend-check-failures", connectionKinds: ["platform"],
+      capacity: CONVERSATION_SPEND_CAPACITY,
+    });
+    expect(admission.blocked).toBeNull();
+    expect(errors.mock.calls.map(([record]) => JSON.parse(record).event)).toEqual([
+      "runtime.spend.activation", "runtime.spend.usage_check",
+    ]);
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("private");
+  });
+
+  it("keeps a failed hard-budget reservation closed even when logging fails", async () => {
+    const errors = failingSink();
+    const { db, organizationId } = await limitedDb();
+    const settle = vi.fn<Db["settleOrgBudgetReservation"]>();
+    const admission = await admitAiSpend({
+      db: { ...db, reserveOrgBudget: vi.fn().mockRejectedValue(new Error("private reservation data")), settleOrgBudgetReservation: settle },
+      organizationId, connectionKinds: ["platform"], capacity: CONVERSATION_SPEND_CAPACITY,
+    });
+    expect(admission.blocked).toEqual({ reason: "budget", detail: "Daily AI budget admission unavailable" });
+    await admission.settle([]);
+    expect(settle).not.toHaveBeenCalled();
+    expect(JSON.parse(errors.mock.calls[0]![0])).toMatchObject({ event: "runtime.spend.reserve", organizationId });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("private reservation data");
+  });
+
+  it("keeps release best-effort and does not release twice when storage and logging fail", async () => {
+    const errors = failingSink();
+    const { db, organizationId } = await limitedDb();
+    const release = vi.fn().mockRejectedValue(new Error("private release data"));
+    const admission = await admitAiSpend({
+      db: { ...db, releaseOrgBudgetReservation: release }, organizationId,
+      connectionKinds: ["platform"], capacity: CONVERSATION_SPEND_CAPACITY,
+    });
+    await expect(admission.release()).resolves.toBeUndefined();
+    await expect(admission.release()).resolves.toBeUndefined();
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(errors.mock.calls[0]![0])).toMatchObject({ event: "runtime.spend.release", organizationId });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("private release data");
+  });
+
+  it.each(["throws", "refuses"])("retains reserved capacity when settlement %s and logging fails", async (failure) => {
+    const errors = failingSink();
+    const { db, organizationId } = await limitedDb();
+    const settle = vi.fn<Db["settleOrgBudgetReservation"]>();
+    if (failure === "throws") settle.mockRejectedValue(new Error("private settlement data"));
+    else settle.mockResolvedValue(false);
+    const release = vi.fn<Db["releaseOrgBudgetReservation"]>();
+    const admission = await admitAiSpend({
+      db: { ...db, settleOrgBudgetReservation: settle, releaseOrgBudgetReservation: release },
+      organizationId, connectionKinds: ["platform"], capacity: CONVERSATION_SPEND_CAPACITY,
+    });
+    const rows: AiUsageInput[] = [{
+      organizationId, assistantId: null, stage: "generate", provider: "google",
+      modelId: "gemini-2.5-flash", inputTokens: 10, outputTokens: 5,
+    }];
+    await expect(admission.settle(rows)).resolves.toBeUndefined();
+    await admission.release();
+    expect(settle).toHaveBeenCalledWith(expect.any(String), rows);
+    expect(release).not.toHaveBeenCalled();
+    expect(JSON.parse(errors.mock.calls[0]![0])).toMatchObject({ event: "runtime.spend.settle", organizationId, count: 1 });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("private settlement data");
+  });
 });
 
 describe("funding a turn from a top-up balance (#851)", () => {

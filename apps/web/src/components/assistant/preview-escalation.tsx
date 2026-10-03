@@ -232,7 +232,7 @@ export function PreviewEscalation({
                   className="bg-muted/50 hover:bg-muted flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition-colors"
                 >
                   <span className="min-w-0 text-base font-semibold break-words">
-                    {desk.name}
+                    <RollInText text={desk.name} />
                   </span>
                   <span className="bg-card flex size-10 shrink-0 items-center justify-center rounded-xl border">
                     <AnimatedIcon icon={ArrowRight} size={16} />
@@ -251,7 +251,7 @@ export function PreviewEscalation({
               tabIndex={-1}
               className="text-2xl leading-snug font-semibold break-words outline-none"
             >
-              How would you like to contact {activeDesk.name}?
+              How would you like to contact <RollInText text={activeDesk.name} />?
             </h2>
             <div className="mt-5 space-y-3">
               {activeDesk.channels.map((channel) => {
@@ -277,7 +277,7 @@ export function PreviewEscalation({
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                         <span className="min-w-0 text-lg font-semibold break-words">
-                          {channel.name}
+                          <RollInText text={channel.name} />
                         </span>
                         <StatusPill
                           status={availability.available ? "online" : "offline"}

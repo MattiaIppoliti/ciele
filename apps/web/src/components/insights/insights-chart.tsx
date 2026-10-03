@@ -250,7 +250,7 @@ export function UsageCard({
             {conversations && brushData.length >= 2 && <div className="border-t pt-4">
               <p className="mb-2 text-sm font-medium">Explore conversations over time</p>
               <p className="mb-3 text-xs text-muted-foreground">Drag the window to zoom the charts above. Summary totals, the data table and exports cover the full selected range.</p>
-              <BrushChart key={signature} data={brushData} label="Conversations timeline" height={130} overviewHeight={40}
+              <BrushChart key={signature} data={brushData} bucket={unit} label="Conversations timeline" height={130} overviewHeight={40}
                 minSpan={86_400_000} formatValue={formatValue} formatTick={(value) => COMPACT_FORMATTER.format(value)}
                 formatDate={(date) => bucketLabel(date.toISOString().slice(0, unit === "month" ? 7 : 10), unit)}
                 onRangeChange={(range) => setZoom({ signature, range })} />

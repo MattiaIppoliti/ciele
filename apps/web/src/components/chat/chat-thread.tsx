@@ -1,4 +1,7 @@
 "use client";
+
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { ReactionRecord } from "@/components/chat/reaction-record";
 
 import { useState, type ReactNode } from "react";
@@ -89,7 +92,7 @@ function PartView({
   if (part.type === "notification") {
     return (
       <div className="bg-muted/60 max-w-[90%] space-y-1 rounded-2xl rounded-tl-sm border-l-2 px-3.5 py-2.5 text-sm">
-        {part.title && <p className="font-medium">{part.title}</p>}
+        {part.title && <p className="font-medium"><RollInText text={part.title} /></p>}
         <ChatMarkdown text={part.content} />
       </div>
     );
@@ -170,7 +173,7 @@ function PartView({
             <p className="truncate text-sm font-medium">Waiting on {host}</p>
             <p className="text-muted-foreground text-xs">
               {part.simulated ? "Simulated turn. " : ""}
-              Until {formatTime(part.expiresAt)} UTC
+              Until <RollInText text={formatTime(part.expiresAt)} /> UTC
             </p>
           </div>
         </div>
@@ -189,7 +192,7 @@ function PartView({
             <UserCheck className="size-4" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-medium">{part.title}</p>
+            <p className="text-sm font-medium"><RollInText text={part.title} /></p>
             <p className="text-muted-foreground text-xs">
               {closed
                 ? reviewDecisionLabel(part)
@@ -438,9 +441,9 @@ export function AuthorLine({ author, animated = false }: { author: ChatAuthor; a
   return (
     <div className="mb-1 flex items-center gap-2">
       <GeneratedAvatar seed={author.avatarSeed} size="size-6" animated={animated} />
-      <span className="text-sm font-semibold">{author.name}</span>
+      <span className="text-sm font-semibold"><RollInText text={author.name} /></span>
       {author.title && (
-        <span className="text-muted-foreground text-xs">{author.title}</span>
+        <span className="text-muted-foreground text-xs"><RollInText text={author.title} /></span>
       )}
     </div>
   );

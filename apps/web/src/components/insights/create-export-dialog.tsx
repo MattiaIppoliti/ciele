@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useState, useTransition } from "react";
 import { Download } from "lucide-react";
 import type { ExportJobFormat, ExportJobKind, InsightsFilter } from "@agent-hub/core";
@@ -244,7 +246,7 @@ export function CreateExportDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? "Creating…" : "Create"}
+              <RollInText text={pending ? "Creating…" : "Create"} />
             </Button>
           </DialogFooter>
         </form>

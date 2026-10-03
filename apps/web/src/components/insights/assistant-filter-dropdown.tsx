@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useState } from "react";
 import { LayoutGrid, Search } from "lucide-react";
 import { Check } from "lucide-react";
@@ -65,7 +67,7 @@ export function AssistantFilterDropdown({
         ) : (
           <LayoutGrid className="size-4 shrink-0" aria-hidden />
         )}
-        <span className="truncate">{selected ? selected.title : "All Assistants"}</span>
+        <span className="truncate"><RollInText text={selected ? selected.title : "All Assistants"} /></span>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0" align="start">
         {/* The input draws no outline of its own, so the row shows focus. */}

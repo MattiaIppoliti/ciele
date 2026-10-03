@@ -5,14 +5,14 @@ import {
   visibleTeammates,
   type Teammate,
 } from "@agent-hub/core";
-import { chatModelOptions } from "@agent-hub/agent";
+import { chatModelCandidates, chatModelOptions } from "@agent-hub/agent";
 import { TeammateWorkspace } from "@/components/teammates/teammate-workspace";
 import { requirePageMember } from "@/lib/authz";
 import { starterSkills } from "@/lib/composer/skills";
 import { findVisibleTeammate } from "@/lib/teammates/access";
 import { PageCrumb } from "@/components/shell/top-bar-slots";
 import { listPlatformEvalModels } from "@/lib/platform";
-import { chatAllowedModels, cieleAiPickerModels } from "@/lib/teammates/ciele-ai";
+import { chatAllowedModels } from "@/lib/teammates/ciele-ai";
 
 /**
  * One Teammate's chat, as both routes that open one render it:
@@ -81,13 +81,19 @@ export async function TeammateChat({
 
   // Capability, resolved server-side: this page is already dynamic and
   // authenticated, so unlike the widget there is nothing to fetch later.
-  const askable = chatModelOptions(
+  const modelCandidates = isCieleAi(teammate) ? chatModelCandidates : chatModelOptions;
+  const models = modelCandidates(
     { provider: teammate.modelProvider, modelId: teammate.modelId, source: teammate.modelSource ?? undefined },
     chatAllowedModels(teammate),
     connections,
     await listPlatformEvalModels(),
+    { includeUnavailable: isCieleAi(teammate) },
   );
-  const models = isCieleAi(teammate) ? cieleAiPickerModels(teammate, askable) : askable;
+  if (isCieleAi(teammate)) {
+    // Keep askable choices before the unavailable diagnostics, as this picker
+    // has always done; capability itself preserves the configured ordering.
+    models.sort((a, b) => Number(Boolean(a.unavailable)) - Number(Boolean(b.unavailable)));
+  }
   // "Auto" leads any picker: the best model of the latest Eval, else the
   // configured one, which the chat route resolves on every send.
   const autoModel = models.length > 0;

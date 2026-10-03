@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { OperationError, type Operation, type OperationContext } from "@ciele/ops";
+import { withDiagnosticContext } from "@agent-hub/diagnostics";
 import { profileName } from "@/lib/auth";
 import { requireMember } from "@/lib/authz";
 import { webOperationPorts } from "@/lib/op-ports";
@@ -30,9 +31,11 @@ export async function runOperation<In, Out>(
       actorEmail: session.email,
     }),
   };
-  const result = await op.run(ctx, input);
-  revalidateEntities(op.entities(input, result), session.organization.id);
-  return result;
+  return withDiagnosticContext({ surface: "console" }, async () => {
+    const result = await op.run(ctx, input);
+    revalidateEntities(op.entities(input, result), session.organization.id);
+    return result;
+  });
 }
 
 /**

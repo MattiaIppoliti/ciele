@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { RollInText } from "@/components/motion/roll-in-text";
 import { NotFoundArt } from "./not-found-art";
 import styles from "./not-found.module.css";
 
@@ -9,9 +12,9 @@ export default function NotFound() {
 
       <section className={styles.message} aria-labelledby="not-found-title">
         <p className={styles.code} aria-hidden="true">
-          404
+          <RollInText text="404" entrance={false} />
         </p>
-        <h1 id="not-found-title">Page not found</h1>
+        <h1 id="not-found-title"><RollInText text="Page not found" /></h1>
         <Link className={styles.cta} href="/home">
           Ask Ciele
         </Link>

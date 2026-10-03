@@ -15,6 +15,7 @@
 import type { RetentionSweepEventInput, SourceStatus } from "@agent-hub/core";
 import { thrownMessage } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 
 import { runCompostPass } from "./compost";
 import { runDueGoalEvals } from "./goal-runner";
@@ -165,7 +166,11 @@ function alertOnOldQueueWork(
     // Deployment error-log alerts are the cross-tenant operational channel;
     // product health alerts remain organization-scoped and cannot represent
     // this service-wide queue SLO without leaking another tenant's backlog.
-    console.error("[runtime] durable queue age SLO breached", { overdue });
+    for (const state of overdue) {
+      reportError("jobs.queue_overdue", undefined, {
+        queue: state.queue, count: state.due, ageSeconds: state.ageSeconds,
+      });
+    }
   }
   // Terminal failures, on the same channel. A job that exhausted its attempts
   // left the due count, so the age check above never saw it, and two kinds
@@ -180,7 +185,9 @@ function alertOnOldQueueWork(
     failed.push({ queue: "turn-effects", failed: backlog.turnEffects.failed });
   }
   if (failed.length > 0) {
-    console.error("[runtime] durable jobs failed terminally", { failed });
+    for (const state of failed) {
+      reportError("jobs.terminal_failures", undefined, { queue: state.queue, count: state.failed });
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import type { Provider } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 
 import type { ProviderCredential } from "./models";
 import type { TurnOverloadCode } from "./types";
@@ -167,7 +168,7 @@ export async function admitTurnConcurrency(options: {
         expiresAt: new Date(now + leaseMs).toISOString(),
       });
     } catch (error) {
-      console.error("[turn-concurrency] slot store unavailable (failing open):", error);
+      reportError("turn.capacity.acquire", error);
       return NO_SLOT;
     }
     if (leaseId) return { status: "admitted", release: releaser(db, leaseId) };
@@ -205,7 +206,7 @@ function releaser(
     released = true;
     // A failed release is not worth failing a turn for: the lease expires.
     await db.releaseTurnConcurrency(leaseId).catch((error) => {
-      console.error("[turn-concurrency] slot release failed:", error);
+      reportError("turn.capacity.release", error);
     });
   };
 }

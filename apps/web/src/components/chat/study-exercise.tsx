@@ -1,5 +1,9 @@
 "use client";
 
+import { RollingNumber } from "@/components/motion/rolling-number";
+
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -10,10 +14,6 @@ import {
   X,
   GraduationCap,
 } from "lucide-react";
-import { defineCatalog } from "@json-render/core";
-import { defineRegistry, JSONUIProvider, Renderer } from "@json-render/react";
-import { schema } from "@json-render/react/schema";
-import { z } from "zod";
 import type { StudyExercise, StudyFormat } from "@agent-hub/core";
 import { Button, Input } from "@agent-hub/ui";
 import { useStudyContext } from "./study-context";
@@ -37,11 +37,11 @@ function Results({ exercise }: { exercise: StudyExercise }) {
         <span>
           <span className="block font-medium">
             {STUDY_LABELS[exercise.format]} ·{" "}
-            {complete ? "Completed" : "Unfinished"}
+            <RollInText text={complete ? "Completed" : "Unfinished"} />
           </span>
           <span className="text-muted-foreground">
-            {exercise.answers.length} of {exercise.questions.length} answered ·{" "}
-            {exercise.answers.filter((a) => a.correct).length} correct
+            <RollingNumber value={exercise.answers.length} /> of <RollingNumber value={exercise.questions.length} /> answered ·{" "}
+            <RollingNumber value={exercise.answers.filter((a) => a.correct).length} /> correct
           </span>
         </span>
       </summary>
@@ -152,10 +152,10 @@ function ExerciseCard({ exercise }: { exercise: StudyExercise }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-3">
             <h3 className="min-w-0 flex-1 text-base font-medium leading-5">
-              {exercise.title}
+              <RollInText text={exercise.title} />
             </h3>
             <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-              {step + 1}/{exercise.questions.length}
+              {step + 1}/<RollingNumber value={exercise.questions.length} />
             </span>
           </div>
           <p className="text-muted-foreground mt-1 text-xs">
@@ -320,45 +320,12 @@ function ExerciseCard({ exercise }: { exercise: StudyExercise }) {
   );
 }
 
-// App-owned component catalogue and props. No generated HTML, JavaScript,
-// network actions or JSONL layout stream is interpreted by the client.
-const entry = {
-  props: z.object({ exercise: z.custom<StudyExercise>() }),
-  description: "A bounded study exercise with server-checked answers.",
-};
-const catalog = defineCatalog(schema, {
-  components: {
-    MultipleChoice: entry,
-    DragWords: entry,
-    TrueFalse: entry,
-    Flashcards: entry,
-  },
-  actions: {},
-});
-const renderCard = ({ props }: { props: { exercise: StudyExercise } }) => (
-  <ExerciseCard exercise={props.exercise} />
-);
-const { registry } = defineRegistry(catalog, {
-  components: {
-    MultipleChoice: renderCard,
-    DragWords: renderCard,
-    TrueFalse: renderCard,
-    Flashcards: renderCard,
-  },
-});
-const components: Record<StudyFormat, string> = {
-  multiple_choice: "MultipleChoice",
-  drag_words: "DragWords",
-  true_false: "TrueFalse",
-  flashcards: "Flashcards",
-};
-
 export function StudyExerciseReply({ exercise }: { exercise: StudyExercise }) {
   const context = useStudyContext();
   if (
     !exercise?.id ||
     !Array.isArray(exercise.questions) ||
-    !components[exercise.format]
+    !STUDY_LABELS[exercise.format]
   )
     return null;
   // One activity card in the transcript; later persisted response snapshots
@@ -369,19 +336,5 @@ export function StudyExerciseReply({ exercise }: { exercise: StudyExercise }) {
   )
     return null;
   const current = context?.latest.get(exercise.id) ?? exercise;
-  const spec = {
-    root: current.id,
-    elements: {
-      [current.id]: {
-        type: components[current.format],
-        props: { exercise: current },
-        children: [],
-      },
-    },
-  };
-  return (
-    <JSONUIProvider registry={registry}>
-      <Renderer spec={spec} registry={registry} />
-    </JSONUIProvider>
-  );
+  return <ExerciseCard exercise={current} />;
 }

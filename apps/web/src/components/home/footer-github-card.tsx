@@ -1,5 +1,10 @@
 "use client";
 
+import { RollingNumber } from "@/components/motion/rolling-number";
+
+import { RollInText } from "@/components/motion/roll-in-text";
+
+
 // Adapted from Saurabh Sharma's Great UI Github Card.
 // https://great-ui.com/components/github-card — Great UI Custom License Agreement.
 import { useEffect, useState, type PointerEvent } from "react";
@@ -98,7 +103,7 @@ function GithubProfileCard({ profile }: { profile: FooterGithubProfile }) {
               <img src={`${PROFILE}.png?size=96`} alt="" width={48} height={48}
                 className="border-border size-12 rounded-full border object-cover" />
               <div className="min-w-0">
-                <p className="text-foreground text-base font-semibold">{profile.name}</p>
+                <p className="text-foreground text-base font-semibold"><RollInText text={profile.name} /></p>
                 <a href={PROFILE} target="_blank" rel="noopener noreferrer"
                   className="press-text text-sm hover:text-foreground">@{profile.username}</a>
               </div>
@@ -112,11 +117,11 @@ function GithubProfileCard({ profile }: { profile: FooterGithubProfile }) {
                   ))}
                 </div>
                 <p className="mt-3 font-mono text-xs">
-                  {activity.reduce((total, day) => total + day.count, 0).toLocaleString("en-US")} contributions in the last {activity.length} days
+                  <RollInText text={activity.reduce((total, day) => total + day.count, 0).toLocaleString("en-US")} /> contributions in the last <RollingNumber value={activity.length} /> days
                 </p>
               </>
             ) : (
-              <p className="text-xs" role="status">{failed ? "Contribution activity unavailable." : "Loading contribution activity…"}</p>
+              <p className="text-xs" role="status"><RollInText text={failed ? "Contribution activity unavailable." : "Loading contribution activity…"} /></p>
             )}
           </motion.div>
         )}

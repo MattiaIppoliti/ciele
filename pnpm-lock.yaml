@@ -153,6 +153,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@agent-hub/diagnostics':
+        specifier: workspace:*
+        version: link:../../packages/diagnostics
       '@agent-hub/agent':
         specifier: workspace:*
         version: link:../../packages/agent
@@ -186,12 +189,6 @@ importers:
       '@floating-ui/dom':
         specifier: ^1.8.0
         version: 1.8.0
-      '@json-render/core':
-        specifier: 0.21.0
-        version: 0.21.0(zod@4.4.3)
-      '@json-render/react':
-        specifier: 0.21.0
-        version: 0.21.0(react@19.2.4)(zod@4.4.3)
       '@modelcontextprotocol/server':
         specifier: ^2.0.0
         version: 2.0.0
@@ -216,9 +213,6 @@ importers:
       '@xyflow/react':
         specifier: ^12.11.6
         version: 12.11.6(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      ai:
-        specifier: ^7.0.107
-        version: 7.0.107(zod@4.4.3)
       ciele-animated-icons:
         specifier: ^0.1.0
         version: 0.1.0(lucide-react@1.23.0(react@19.2.4))(motion@12.42.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -331,6 +325,9 @@ importers:
 
   packages/agent:
     dependencies:
+      '@agent-hub/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       '@agent-hub/core':
         specifier: workspace:*
         version: link:../core
@@ -410,15 +407,6 @@ importers:
       '@agent-hub/ui':
         specifier: workspace:*
         version: link:../ui
-      '@number-flow/react':
-        specifier: ^0.5.10
-        version: 0.5.14(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      lucide-react:
-        specifier: ^1.23.0
-        version: 1.23.0(react@19.2.4)
-      motion:
-        specifier: ^12.23.0
-        version: 12.42.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: ^19
         version: 19.2.4
@@ -555,6 +543,27 @@ importers:
         specifier: ^4.1.9
         version: 4.1.9(@types/node@20.19.43)(vite@8.1.3(@types/node@20.19.43)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.1))
 
+  packages/diagnostics:
+    devDependencies:
+      '@agent-hub/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@types/node':
+        specifier: ^20.19.43
+        version: 20.19.43
+      '@typescript/native':
+        specifier: npm:typescript@^7.0.2
+        version: typescript@7.0.2
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4(jiti@2.7.0)
+      typescript:
+        specifier: npm:@typescript/typescript6@^6.0.2
+        version: '@typescript/typescript6@6.0.2'
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@20.19.43)(vite@8.1.3(@types/node@20.19.43)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.1))
+
   packages/eslint-config:
     dependencies:
       '@eslint/js':
@@ -607,6 +616,9 @@ importers:
 
   packages/ops:
     dependencies:
+      '@agent-hub/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       '@agent-hub/core':
         specifier: workspace:*
         version: link:../core
@@ -1837,16 +1849,6 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@json-render/core@0.21.0':
-    resolution: {integrity: sha512-vysEbTjO1y8mEgAsp0tztRyaWCkNsBrG8MhAqbndGK3qmMXjMRdCNtk21+AQRNKdRelFGVAwBgtUNW8tfjQlsw==}
-    peerDependencies:
-      zod: ^4.0.0
-
-  '@json-render/react@0.21.0':
-    resolution: {integrity: sha512-z/fZg0L8fJe2dnnQjWkmMw409iBclSWcOqdjoBy8eLHeBr/7F7VipzkY1CfgA2Fa5uW+zxZ54OvWMtdDcsp/yg==}
-    peerDependencies:
-      react: ^19.2.3
-
   '@malept/cross-spawn-promise@2.0.0':
     resolution: {integrity: sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg==}
     engines: {node: '>= 12.13.0'}
@@ -1984,12 +1986,6 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
-
-  '@number-flow/react@0.5.14':
-    resolution: {integrity: sha512-FGUqjh/P5/ukr0U0ySwb987M0SbRkrnZq70f0wQFncDbXa3SIib4L+FTr5ngvWwGAW8S6b391eTXcfhErZsw4w==}
-    peerDependencies:
-      react: ^18 || ^19
-      react-dom: ^18 || ^19
 
   '@orama/orama@3.1.18':
     resolution: {integrity: sha512-a61ljmRVVyG5MC/698C8/FfFDw5a8LOIvyOLW5fztgUXqUpc1jOfQzOitSCbge657OgXXThmY3Tk8fpiDb4UcA==}
@@ -4869,9 +4865,6 @@ packages:
       jiti:
         optional: true
 
-  esm-env@1.2.2:
-    resolution: {integrity: sha512-Epxrv+Nr/CaL4ZcFGPJIYLWFom+YeV1DqMLHJoEd9SYRxNbaFruBwfEX/kkHUJf55j2+TUbmDcmuilbP1TmXHA==}
-
   espree@10.4.0:
     resolution: {integrity: sha512-j6PAQ2uUr79PZhBjP5C5fhl8e39FmRnOjsD5lGnWrFU8i2G776tBK7+nP8KuQUTTyAZUwfQqXAgrVH5MbH9CYQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -6440,9 +6433,6 @@ packages:
 
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
-
-  number-flow@0.5.12:
-    resolution: {integrity: sha512-CIs21h2JkfYG4rfgERaUNAk0Cz+Ef14fNJfSCbGGhgRgconQc9b7rcCQfi9SZ36kNjVXmsl2BrzDbjGtEgumAA==}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -8955,17 +8945,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@json-render/core@0.21.0(zod@4.4.3)':
-    dependencies:
-      zod: 4.4.3
-
-  '@json-render/react@0.21.0(react@19.2.4)(zod@4.4.3)':
-    dependencies:
-      '@json-render/core': 0.21.0(zod@4.4.3)
-      react: 19.2.4
-    transitivePeerDependencies:
-      - zod
-
   '@malept/cross-spawn-promise@2.0.0':
     dependencies:
       cross-spawn: 7.0.6
@@ -9126,13 +9105,6 @@ snapshots:
       fastq: 1.20.1
 
   '@nolyfill/is-core-module@1.0.39': {}
-
-  '@number-flow/react@0.5.14(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      esm-env: 1.2.2
-      number-flow: 0.5.12
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
 
   '@orama/orama@3.1.18': {}
 
@@ -12134,8 +12106,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  esm-env@1.2.2: {}
-
   espree@10.4.0:
     dependencies:
       acorn: 8.17.0
@@ -14040,10 +14010,6 @@ snapshots:
   nth-check@2.1.1:
     dependencies:
       boolbase: 1.0.0
-
-  number-flow@0.5.12:
-    dependencies:
-      esm-env: 1.2.2
 
   object-assign@4.1.1: {}
 

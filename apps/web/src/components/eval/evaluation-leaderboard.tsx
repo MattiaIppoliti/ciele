@@ -1,3 +1,5 @@
+
+import { RollingNumber } from "@/components/motion/rolling-number";
 import {
   evaluationLeaderboard,
   modelSelector,
@@ -66,7 +68,7 @@ export function EvaluationLeaderboard({
       <div className="border-b px-5 py-4">
         <h2 className="font-medium">Leaderboard</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          {run.examples.length} examples per model. Cost is the EUR estimate per 1,000 examples.
+          <RollingNumber value={run.examples.length} /> examples per model. Cost is the EUR estimate per 1,000 examples.
           {run.stage === "classifier" && flows.length > 0 &&
             ` Flow columns count correct examples out of ${
               new Set(flows.map((flow) => flow.examples)).size === 1

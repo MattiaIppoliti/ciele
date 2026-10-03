@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import type { BadgeTone } from "@agent-hub/ui";
 import { cn } from "@/lib/utils";
+import { RollInText } from "@/components/motion/roll-in-text";
 
 export type StatusBadgeStatus =
   | "online"
@@ -66,7 +67,9 @@ export function StatusBadge({
           animated && "motion-safe:animate-pulse",
         )}
       />
-      {primaryText}
+      {typeof primaryText === "string" || typeof primaryText === "number" ? (
+        <RollInText text={String(primaryText)} />
+      ) : primaryText}
     </span>
   );
 }

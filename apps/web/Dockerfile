@@ -39,6 +39,7 @@ COPY packages/charts/package.json packages/charts/
 COPY packages/client/package.json packages/client/
 COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
+COPY packages/diagnostics/package.json packages/diagnostics/
 COPY packages/mcp/package.json packages/mcp/
 COPY packages/ops/package.json packages/ops/
 COPY packages/ui/package.json packages/ui/

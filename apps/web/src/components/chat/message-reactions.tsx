@@ -1,9 +1,11 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { RollingNumber } from "@/components/motion/rolling-number";
+
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { SmilePlus } from "lucide-react";
-import type { MessageReaction } from "@agent-hub/core";
+import { createReactionSession } from "@/lib/reaction-session";
 import { groupMessageReactions, QUICK_REACTIONS } from "@/lib/message-reactions";
 import { cn } from "@/lib/utils";
 
@@ -16,16 +18,6 @@ export interface ReactionTarget {
   visitorId?: string;
 }
 
-function parseReactions(value: unknown): { reactions: MessageReaction[]; actorId: string } | null {
-  if (!value || typeof value !== "object" || !("reactions" in value) || !Array.isArray(value.reactions) || !("actorId" in value) || typeof value.actorId !== "string") return null;
-  const reactions: MessageReaction[] = [];
-  for (const row of value.reactions) {
-    if (!row || typeof row !== "object" || typeof row.organizationId !== "string" || typeof row.messageId !== "string" || (row.channelMessageId !== null && typeof row.channelMessageId !== "string") || typeof row.actorId !== "string" || typeof row.actorName !== "string" || typeof row.emoji !== "string") return null;
-    reactions.push(row);
-  }
-  return { reactions, actorId: value.actorId };
-}
-
 /** Shared across Preview, published widget, private Teammates and groups. */
 export function MessageReactions({ target, children, presentation = "chat" }: { target: ReactionTarget; children: ReactNode; presentation?: "chat" | "comment" }) {
   const query = new URLSearchParams({ messageId: target.messageId });
@@ -33,30 +25,22 @@ export function MessageReactions({ target, children, presentation = "chat" }: { 
   if (target.assistantId) query.set("assistantId", target.assistantId);
   if (target.visitorId) query.set("visitorId", target.visitorId);
   const endpoint = `/api/chat/reactions?${query}`;
-  const [reactions, setReactions] = useState<MessageReaction[]>([]);
-  const [available, setAvailable] = useState(false);
-  const [actorId, setActorId] = useState("");
+  return <ReactionControls key={endpoint} endpoint={endpoint} presentation={presentation}>{children}</ReactionControls>;
+}
+
+function ReactionControls({ endpoint, children, presentation }: { endpoint: string; children: ReactNode; presentation: "chat" | "comment" }) {
+  const [session] = useState(() => createReactionSession(endpoint));
+  const { reactions, available, actorId, saving, error } = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [more, setMore] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const abort = new AbortController();
-    fetch(endpoint, { signal: abort.signal }).then(async (response) => {
-      if (!response.ok) return;
-      const payload = parseReactions(await response.json());
-      if (payload && !abort.signal.aborted) {
-        setAvailable(true);
-        setReactions(payload.reactions);
-        setActorId(payload.actorId);
-      }
-    }).catch(() => {});
-    return () => abort.abort();
-  }, [endpoint]);
+    void session.load();
+    return () => session.close();
+  }, [session]);
 
   useEffect(() => {
     if (!menu) return;
@@ -85,26 +69,14 @@ export function MessageReactions({ target, children, presentation = "chat" }: { 
 
   function open(x: number, y: number) {
     setMore(false);
-    setError(null);
     setMenu({ x: Math.max(8, Math.min(x, window.innerWidth - 252)), y: Math.max(8, Math.min(y, window.innerHeight - 56)) });
   }
 
   async function toggle(emoji: string) {
-    if (saving) return;
-    setSaving(true);
-    setError(null);
-    const selected = !reactions.some((r) => r.emoji === emoji && r.actorId === actorId);
-    try {
-      const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emoji, selected }) });
-      const payload = response.ok ? parseReactions(await response.json()) : null;
-      if (!payload) throw new Error("Could not save reaction");
-      setReactions(payload.reactions);
-      setActorId(payload.actorId);
+    if (await session.toggle(emoji)) {
       setMenu(null);
       trigger.current?.focus();
-    } catch {
-      setError("Could not save your reaction. Try again.");
-    } finally { setSaving(false); }
+    }
   }
 
   return (
@@ -124,7 +96,7 @@ export function MessageReactions({ target, children, presentation = "chat" }: { 
         {groupMessageReactions(reactions).map(({ emoji, actors }) => (
           <span key={emoji} className="group/badge relative">
             <button type="button" disabled={saving} aria-label={`${emoji}: ${actors.map((a) => a.actorName).join(", ")}`} aria-pressed={actors.some((a) => a.actorId === actorId)} onClick={() => void toggle(emoji)} className={cn("press-control flex items-center justify-center gap-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring", presentation === "comment" ? "h-7 border bg-background px-2 text-xs aria-pressed:bg-primary/10 aria-pressed:border-primary/40" : "min-h-8 min-w-8 border-2 border-background bg-brand px-1.5 text-lg shadow-light")}>
-              {emoji}{(presentation === "comment" || actors.length > 1) && <span className="text-xs">{actors.length}</span>}
+              {emoji}{(presentation === "comment" || actors.length > 1) && <span className="text-xs"><RollingNumber value={actors.length} /></span>}
             </button>
             <span role="tooltip" className="pointer-events-none absolute right-0 top-full z-40 mt-1 w-max max-w-64 rounded-xl border bg-popover px-3 py-2 text-xs text-popover-foreground opacity-0 shadow-strong transition-opacity group-hover/badge:opacity-100 group-focus-within/badge:opacity-100">
               {actors.map((a) => a.actorName).join(", ")}

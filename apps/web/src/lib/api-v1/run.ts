@@ -1,4 +1,5 @@
 import { OrgPinnedDbError } from "@agent-hub/db";
+import { observe, reportError } from "@agent-hub/diagnostics";
 import { OperationError, type Operation, type OperationContext } from "@ciele/ops";
 import {
   resolveApiKeyContext,
@@ -10,6 +11,7 @@ import { apiError } from "@/lib/api-v1/http";
 import { webOperationPorts } from "@/lib/op-ports";
 import { revalidateEntities } from "@/lib/org-mutation";
 import { invalidatePublicationFromRoute } from "@/lib/widget-db";
+import { requestDiagnosticContext, responseDiagnosticOutcome } from "@/lib/request-diagnostics";
 
 /**
  * The /api/v1 twin of `lib/operations.ts` (#620): authenticate the key,
@@ -31,68 +33,75 @@ export async function runApiOperation<In, Out>(
     throttle?: (ctx: ApiKeyContext) => Response | null;
   } = {}
 ): Promise<{ ctx: ApiKeyContext; result: Out } | Response> {
-  const ctx = await resolveApiKeyContext(request);
-  if (ctx instanceof Response) return ctx;
-  const denied = requireApiCapability(ctx, op.capability);
-  if (denied) return denied;
-  const throttled = options.throttle?.(ctx);
-  if (throttled) return throttled;
+  return observe({
+    name: "api.operation",
+    context: { ...requestDiagnosticContext(request, "/api/v1", "api"), operation: op.name },
+    outcome: (result) => result instanceof Response ? responseDiagnosticOutcome(result) : { status: "succeeded" },
+  }, async () => {
+    const ctx = await resolveApiKeyContext(request);
+    if (ctx instanceof Response) return ctx;
+    const denied = requireApiCapability(ctx, op.capability);
+    if (denied) return denied;
+    const throttled = options.throttle?.(ctx);
+    if (throttled) return throttled;
 
-  const parsed = op.input.safeParse(rawInput);
-  if (!parsed.success) {
-    return apiError(422, "invalid_input", parsed.error.issues[0]?.message ?? "Invalid input");
-  }
+    const parsed = op.input.safeParse(rawInput);
+    if (!parsed.success) {
+      return apiError(422, "invalid_input", parsed.error.issues[0]?.message ?? "Invalid input");
+    }
 
-  const opCtx: OperationContext = {
-    organizationId: ctx.organizationId,
-    userId: ctx.actorUserId,
-    role: ctx.role,
-    // A key has no email, so an assignee rule never matches it; its decisions
-    // are the admin override's and are attributed to the key.
-    actorName: `API key ${ctx.keyId}`,
-    // Attribution only (#849): the key's Role is already in `role` above, so
-    // nothing downstream may branch on this.
-    apiKeyId: ctx.keyId,
-    db: ctx.db,
-    // Ports need more Db surface than the pinned view exposes; the raw
-    // service Db is confined to them, never handed to operations directly.
-    ports: webOperationPorts(getApiV1Db(), {
+    const opCtx: OperationContext = {
       organizationId: ctx.organizationId,
-      actorEmail: "an API key",
-      invalidatePublication: invalidatePublicationFromRoute,
-      // Indexing this call triggers is the key's spend, not the spend of
-      // whoever minted it (#849).
-      usage: { spenders: { apiKeyId: ctx.keyId }, surface: "api" },
-      apiKey: { keyId: ctx.keyId, memberId: ctx.actorUserId },
-    }),
-  };
+      userId: ctx.actorUserId,
+      role: ctx.role,
+      // A key has no email, so an assignee rule never matches it; its decisions
+      // are the admin override's and are attributed to the key.
+      actorName: `API key ${ctx.keyId}`,
+      // Attribution only (#849): the key's Role is already in `role` above, so
+      // nothing downstream may branch on this.
+      apiKeyId: ctx.keyId,
+      db: ctx.db,
+      // Ports need more Db surface than the pinned view exposes; the raw
+      // service Db is confined to them, never handed to operations directly.
+      ports: webOperationPorts(getApiV1Db(), {
+        organizationId: ctx.organizationId,
+        actorEmail: "an API key",
+        invalidatePublication: invalidatePublicationFromRoute,
+        // Indexing this call triggers is the key's spend, not the spend of
+        // whoever minted it (#849).
+        usage: { spenders: { apiKeyId: ctx.keyId }, surface: "api" },
+        apiKey: { keyId: ctx.keyId, memberId: ctx.actorUserId },
+      }),
+    };
 
-  let result: Out;
-  try {
-    result = await op.run(opCtx, parsed.data);
-  } catch (error) {
-    if (error instanceof OperationError) {
-      const status =
-        error.code === "not_found" ? 404
-          : error.code === "conflict" ? 409
-            : error.code === "invalid_input" ? 422
-              : 400;
-      return apiError(status, error.code, error.message);
+    let result: Out;
+    try {
+      result = await op.run(opCtx, parsed.data);
+    } catch (error) {
+      if (error instanceof OperationError) {
+        const status =
+          error.code === "not_found" ? 404
+            : error.code === "conflict" ? 409
+              : error.code === "invalid_input" ? 422
+                : 400;
+        return apiError(status, error.code, error.message);
+      }
+      if (error instanceof OrgPinnedDbError) {
+        // cross_org should have been caught by the operation's own not_found
+        // guard; if the wrapper fires it anyway, disclose nothing.
+        if (error.reason === "cross_org") return apiError(404, "not_found", "Not found");
+        throw error; // not_exposed = a server bug (missing allow-list entry)
+      }
+      throw error;
     }
-    if (error instanceof OrgPinnedDbError) {
-      // cross_org should have been caught by the operation's own not_found
-      // guard; if the wrapper fires it anyway, disclose nothing.
-      if (error.reason === "cross_org") return apiError(404, "not_found", "Not found");
-      throw error; // not_exposed = a server bug (missing allow-list entry)
-    }
-    throw error;
-  }
 
-  try {
-    revalidateEntities(op.entities(parsed.data, result), ctx.organizationId);
-  } catch {
-    // Outside a Next request scope (unit tests) revalidatePath throws;
-    // UI freshness is best-effort and must never fail an API call.
-  }
-  return { ctx, result };
+    try {
+      revalidateEntities(op.entities(parsed.data, result), ctx.organizationId);
+    } catch (error) {
+      // Outside a Next request scope (unit tests) revalidatePath throws;
+      // UI freshness is best-effort and must never fail an API call.
+      reportError("api.revalidation", error, { organizationId: ctx.organizationId, operation: op.name });
+    }
+    return { ctx, result };
+  });
 }

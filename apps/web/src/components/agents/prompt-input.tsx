@@ -1,4 +1,7 @@
 "use client";
+
+import { RollInText } from "@/components/motion/roll-in-text";
+
 // beui.dev/components/agents/prompt-input
 
 import { Plus } from "lucide-react";
@@ -371,7 +374,7 @@ export function PromptInput({
                   </span>
                 ) : null}
                 <span className="truncate text-muted-foreground">
-                  {currentModel?.label ?? "Choose model"}
+                  {typeof currentModel?.label === "string" ? <RollInText text={currentModel.label} truncate={false} /> : currentModel?.label ?? "Choose model"}
                 </span>
               </span>
             </SelectTrigger>

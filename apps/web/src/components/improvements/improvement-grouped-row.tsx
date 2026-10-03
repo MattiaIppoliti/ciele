@@ -4,6 +4,8 @@ import { motion, useReducedMotion } from "motion/react";
 import { GitPullRequest, MessageSquare } from "lucide-react";
 import type { ImprovementListItem, ImprovementStatus } from "@agent-hub/core";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 import { formatDay } from "@/lib/format";
 import { memberDisplayName } from "@/lib/members";
 import {
@@ -75,7 +77,7 @@ export function ImprovementGroupedRow({
           title={item.title}
           className={`py-3 ${columns ? "min-w-0 truncate" : "shrink-0"}`}
         >
-          {item.title}
+          <RollInText text={item.title} truncate={columns} />
         </motion.span>
         <motion.span
           {...animate}
@@ -84,7 +86,7 @@ export function ImprovementGroupedRow({
           className={`inline-flex h-6 shrink-0 items-center gap-1.5 justify-self-start rounded-full border px-2 text-xs ${improvementKeyClass(status)}`}
         >
           <GitPullRequest className="size-3.5" aria-hidden="true" />
-          {improvementKey(item.seq)}
+          <RollInText text={improvementKey(item.seq)} />
         </motion.span>
         {expanded && (
           <motion.span
@@ -93,13 +95,9 @@ export function ImprovementGroupedRow({
             className="inline-flex min-w-0 items-center gap-1 overflow-hidden"
             title={item.tags.join(", ")}
           >
-            {item.tags.length ? (
-              <span className="text-muted-foreground truncate rounded-full border px-2 py-0.5 text-xs">
-                {item.tags.join(", ")}
-              </span>
-            ) : (
-              <span className="text-muted-foreground text-xs">No tags</span>
-            )}
+            <span className={`text-muted-foreground truncate text-xs ${item.tags.length ? "rounded-full border px-2 py-0.5" : ""}`}>
+              <RollInText text={item.tags.length ? item.tags.join(", ") : "No tags"} />
+            </span>
           </motion.span>
         )}
         <motion.span
@@ -110,7 +108,7 @@ export function ImprovementGroupedRow({
         >
           <span className="inline-flex items-center gap-1">
             <MessageSquare className="size-3.5" aria-hidden="true" />
-            {item.messageCount}
+            <RollingNumber value={item.messageCount} />
           </span>
           {!columns && item.priority !== "none" && (
             <priority.icon
@@ -133,7 +131,7 @@ export function ImprovementGroupedRow({
         title={`${item.dueDate ? "Due" : "Created"} ${formatDay(date)}`}
       >
         <span className="sr-only">{item.dueDate ? "Due" : "Created"} </span>
-        {formatDay(date)}
+        <RollInText text={formatDay(date)} />
       </motion.span>
       <motion.span
         {...animate}

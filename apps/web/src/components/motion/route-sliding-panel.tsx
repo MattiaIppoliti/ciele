@@ -13,13 +13,17 @@ export function startRouteSlide(
   direction: SlidingPanelDirection,
 ) {
   const generation = ++navigationGeneration;
+  const panel = document.querySelector("[data-route-sliding-panel]");
+  const bouncy = panel?.hasAttribute("data-route-bouncy");
+  document.documentElement.style.setProperty("--tab-slide-duration", bouncy ? "460ms" : "220ms");
+  document.documentElement.style.setProperty("--tab-slide-ease", bouncy ? "cubic-bezier(.22,1.18,.36,1)" : "cubic-bezier(.23,1,.32,1)");
   document.documentElement.style.setProperty(
     "--tab-enter-x",
-    `${direction * 100}%`,
+    `${direction * (bouncy ? 24 : 100)}%`,
   );
   document.documentElement.style.setProperty(
     "--tab-exit-x",
-    `${-direction * 100}%`,
+    `${-direction * (bouncy ? 24 : 100)}%`,
   );
   if (
     !document.startViewTransition ||
@@ -57,9 +61,11 @@ export function startRouteSlide(
 export function RouteSlidingPanel({
   children,
   className,
+  bouncy = false,
 }: {
   children: ReactNode;
   className?: string;
+  bouncy?: boolean;
 }) {
   const pathname = usePathname();
   const panel = useRef<HTMLDivElement>(null);
@@ -78,11 +84,11 @@ export function RouteSlidingPanel({
             opacity: 0,
             transform: reduce
               ? "translateX(0)"
-              : `translateX(${document.documentElement.style.getPropertyValue("--tab-enter-x") || "100%"})`,
+              : `translateX(${document.documentElement.style.getPropertyValue("--tab-enter-x") || (bouncy ? "24%" : "100%")})`,
           },
           { opacity: 1, transform: "translateX(0)" },
         ],
-        { duration: reduce ? 150 : 220, easing: "cubic-bezier(.23,1,.32,1)" },
+        { duration: reduce ? 150 : bouncy ? 460 : 220, easing: bouncy && !reduce ? "cubic-bezier(.22,1.18,.36,1)" : "cubic-bezier(.23,1,.32,1)" },
       );
       return () => animation?.cancel();
     }
@@ -97,12 +103,13 @@ export function RouteSlidingPanel({
     if (root) observer.observe(root, { subtree: true, childList: true });
     ready();
     return () => observer.disconnect();
-  }, [pathname]);
+  }, [pathname, bouncy]);
   return (
     <div
       ref={panel}
       className={className}
       data-route-sliding-panel
+      data-route-bouncy={bouncy ? "" : undefined}
       style={{ viewTransitionName: "tab-page" }}
     >
       {children}

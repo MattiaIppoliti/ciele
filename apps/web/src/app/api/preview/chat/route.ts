@@ -1,3 +1,4 @@
+import { withRequestDiagnostics } from "@/lib/request-diagnostics";
 import { NextRequest } from "next/server";
 import { parseModelSelector, resolveRequestedModel } from "@agent-hub/core";
 import { getSession, profileName } from "@/lib/auth";
@@ -23,7 +24,7 @@ export const maxDuration = 300;
  * pinned to the latest Publication). The turn itself lives in the
  * Conversation Turn module.
  */
-export async function POST(request: NextRequest) {
+export const POST = withRequestDiagnostics("/api/preview/chat", "preview", async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session?.organization) {
     return new Response("Unauthorized", { status: 401 });
@@ -132,4 +133,4 @@ export async function POST(request: NextRequest) {
   });
 
   return new Response(stream, { headers: NDJSON_HEADERS });
-}
+});

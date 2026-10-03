@@ -340,7 +340,7 @@ export function InsightsClient({
                       <span className="flex items-center gap-2">
                         <CalendarIcon className="text-muted-foreground size-4 shrink-0" aria-hidden />
                         <span id={dateValueId} className="whitespace-nowrap">
-                          {formatRange(filters.from, filters.to)}
+                          <RollInText text={formatRange(filters.from, filters.to)} />
                         </span>
                       </span>
                     </PopoverTrigger>
@@ -595,7 +595,7 @@ export function InsightsClient({
                       >
                         <span className="font-medium">{language}</span>
                         <span className="text-muted-foreground tabular-nums">
-                          {formatCount(count)} conversation{count === 1 ? "" : "s"}
+                          <RollInText text={formatCount(count)} /> conversation{count === 1 ? "" : "s"}
                         </span>
                       </li>
                     ))}

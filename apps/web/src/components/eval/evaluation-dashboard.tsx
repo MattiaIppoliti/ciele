@@ -1,4 +1,5 @@
 "use client";
+
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import dynamic from "next/dynamic";
@@ -180,7 +181,7 @@ export function EvaluationDashboard({
               <RollInText text={`Reliability dashboard · ${run.stage}`} />
             </div>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-              {dataset.name}
+              <RollInText text={dataset.name} />
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {assistantName} · <RollingNumber value={dataset.examples.length} /> examples ·{" "}

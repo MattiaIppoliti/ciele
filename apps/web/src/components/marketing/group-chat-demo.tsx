@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useEffect, useRef, useState } from "react";
 import { UserRoundPlus } from "lucide-react";
 import { Hash } from "lucide-react";
@@ -482,7 +484,7 @@ function MentionChip({ author }: { author: ChatAuthor }) {
   return (
     <span className="bg-current/20 mx-0.5 inline-flex max-w-full items-center gap-1 truncate rounded-md px-1.5 py-0.5 align-middle">
       <GeneratedAvatar seed={author.avatarSeed} size="size-3.5" />
-      <span className="truncate font-medium">{author.name}</span>
+      <span className="truncate font-medium"><RollInText text={author.name} /></span>
     </span>
   );
 }

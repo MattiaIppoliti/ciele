@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -286,7 +288,7 @@ export function TeammateSettingsForm({
         </Link>
         <ChevronRight aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
         <Link href={chatHref} onClick={(event) => guardedClick(event, chatHref)} className="text-muted-foreground hover:text-foreground truncate">
-          {teammate.name}
+          <RollInText text={teammate.name} />
         </Link>
         <ChevronRight aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
         <span aria-current="page">Configure</span>
@@ -407,7 +409,7 @@ export function TeammateSettingsForm({
       {platformLayer ? (
         <div>
           <p className="text-muted-foreground text-sm">
-            {teammate.name} searches the whole Library and works across the platform
+            <RollInText text={teammate.name} /> searches the whole Library and works across the platform
             with the permissions of whoever is chatting with it, never more. Deleting
             or publishing always waits for them to confirm.
           </p>

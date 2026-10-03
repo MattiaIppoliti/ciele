@@ -59,7 +59,7 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 │   │                    # 0014 backend migration · 0015 local CLI connections ·
 │   │                    # 0016 Db facade · 0017 Suggested Fix (graph half superseded) ·
 │   │                    # 0018 runtime as a package · 0019 domain under the Db seam ·
-│   │                    # 0025 verbatim chunks + rerank
+│   │                    # 0025 verbatim chunks + rerank · 0026 application diagnostics
 │   └── runbooks/        # operational procedures (crawler providers, OSS release, …)
 ├── apps/web/            # Next.js app (admin console + widget + API), ciele.app
 │   └── src/
@@ -79,6 +79,7 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 ├── packages/db/         # @agent-hub/db: the Db interface + mock/supabase adapters + contract suite
 ├── packages/core/       # @agent-hub/core: the domain, ~150 types + pure derivations (OKF, flow
 │                        # router, Insights oracle, publication, recrawl). Zero dependencies.
+├── packages/diagnostics/ # Node-only context + lifecycle logs, no runtime deps (ADR-0026)
 ├── packages/ui/ charts/ # shared primitives consumed by the apps
 ├── services/            # worker containers: crawl4ai-worker (opt-in)
 ├── deploy/              # the self-host Docker Compose stack + bootstrap
@@ -128,6 +129,18 @@ projects on a legacy symmetric JWT secret transparently fall back to the server 
   hover/focus by default and deduplicates each destination in a short intent window. Viewport
   prefetch is opt-in with `prefetch={true}`; `false` disables both modes. Navigation itself stays on
   Next.js' standard click path: there is no early `mousedown` router push.
+
+**Application diagnostics** (ADR-0026) sit at execution seams rather than in
+business logic. `defineOperation` observes every operation's work; API admission,
+org mutations, cron authentication and chat dispatch add their host context.
+Durable job execution and runtime accounting failures share the same JSON log
+contract through `@agent-hub/diagnostics`. The web app's `onRequestError` covers
+uncaught route, action and render failures. Async-local context isolates concurrent
+tenants. Diagnostic records contain identifiers, timings, outcomes and error
+classes; they omit payloads, credentials and raw exceptions. A logging failure
+cannot change the original result or error. These invocation logs complement
+the retained `runtime_events`; they add no storage or exporter. Chat dispatch
+timings end at response headers, while the existing runtime tracks streamed turns.
 
 ### 2.3 The assistant editor shell (nested route modules)
 

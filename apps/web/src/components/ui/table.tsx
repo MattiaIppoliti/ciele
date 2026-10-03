@@ -2,8 +2,6 @@
 
 import * as React from "react";
 
-import { TableText } from "@/components/motion/roll-in-text";
-
 import { cn } from "@/lib/utils";
 
 /**
@@ -79,7 +77,7 @@ function Table({
   empty?: boolean;
 }) {
   return (
-    <TableText.Provider value={true}><div
+    <div
       data-slot="table-container"
       style={{ scrollbarWidth: "auto", scrollbarColor: "auto" }}
       // Keep the native column layout and its resize grips at every width.
@@ -102,7 +100,7 @@ function Table({
         )}
         {...props}
       />
-    </div></TableText.Provider>
+    </div>
   );
 }
 

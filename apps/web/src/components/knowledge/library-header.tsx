@@ -15,6 +15,7 @@ import {
   type KnowledgeTabSlug,
 } from "@/lib/knowledge-hub";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { SPRING_NUDGE } from "@/lib/ease";
 
 export interface LibraryTabSummary {
   total: number;
@@ -76,6 +77,7 @@ export function LibraryHeader({
       {/* One pill rail rather than an underline: the tab is also the route, so
           the selected bucket has to read as a place you are, not a border. */}
       <Tabs
+        transition={SPRING_NUDGE}
         value={tab}
         onValueChange={(slug) =>
           startTransition(() => {

@@ -1,4 +1,5 @@
 "use client";
+
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
@@ -358,7 +359,7 @@ export function ApiKeysClient({
                 variant={secretCopied ? "default" : "destructive"}
                 onClick={closeSecret}
               >
-                {secretCopied ? "Done" : "Close without copying"}
+                <RollInText text={secretCopied ? "Done" : "Close without copying"} />
               </Button>
             ) : (
               <Button onClick={() => setConfirmingClose(true)}>Done</Button>
@@ -381,7 +382,7 @@ export function ApiKeysClient({
               </div>
               <div>
                 <h3 className="text-base font-semibold">
-                  {dialog.verb} &ldquo;{dialog.name}&rdquo;?
+                  {dialog.verb} &ldquo;<RollInText text={dialog.name} />&rdquo;?
                 </h3>
                 <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
                   {dialog.body}

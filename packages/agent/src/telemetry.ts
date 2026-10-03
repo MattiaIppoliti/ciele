@@ -1,5 +1,6 @@
 import type { RuntimeEventInput } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 
 /**
  * Runtime telemetry (ADR-0011: AI observability within budget).
@@ -16,7 +17,12 @@ export async function recordRuntimeEvent(
   try {
     await db.recordRuntimeEvent(event);
   } catch (error) {
-    console.error("[runtime] telemetry persist failed:", error);
+    reportError("runtime.telemetry.persist", error, {
+      organizationId: event.organizationId,
+      assistantId: event.assistantId ?? undefined,
+      conversationId: event.conversationId ?? undefined,
+      traceId: event.traceId ?? undefined,
+    });
   }
 }
 

@@ -31,6 +31,7 @@ import {
   SPRING_UNFOLD_FLAT,
 } from "@/lib/ease";
 import { cn } from "@/lib/utils";
+import { RollInText } from "./roll-in-text";
 
 const INSTANT_TRANSITION: Transition = { duration: 0 };
 
@@ -376,7 +377,9 @@ export function SelectValue({
     <span
       className={cn(label ? "text-foreground" : "text-muted-foreground", className)}
     >
-      {content}
+      {typeof content === "string" || typeof content === "number" ? (
+        <RollInText text={String(content)} entrance={false} duration={380} />
+      ) : content}
     </span>
   );
 }
@@ -653,4 +656,3 @@ export function SelectSeparator({ className, ...props }: HTMLAttributes<HTMLDivE
     />
   );
 }
-

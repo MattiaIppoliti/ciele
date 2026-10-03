@@ -12,6 +12,7 @@
   "dependencies": {
     "@agent-hub/core": "workspace:*",
     "@agent-hub/db": "workspace:*",
+    "@agent-hub/diagnostics": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {

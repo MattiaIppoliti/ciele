@@ -195,7 +195,7 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
                     className="press-control flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="min-w-0">
-                      <span className="block font-medium">{model.label}</span>
+                      <span className="block font-medium"><RollInText text={model.label} /></span>
                       <span className="block truncate font-mono text-xs text-muted-foreground">{model.modelId}</span>
                     </span>
                     {model.added && <span className="shrink-0 text-xs text-muted-foreground">Already available</span>}
@@ -234,7 +234,7 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
             {models.map((model) => (
               <div key={modelSelector(model)} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
                 <div className="min-w-0">
-                  <div className="font-medium">{model.label}</div>
+                  <div className="font-medium"><RollInText text={model.label} /></div>
                   <div className="break-all font-mono text-xs text-muted-foreground">{model.provider}/{model.modelId}</div>
                 </div>
                 <div className="col-start-1 text-xs text-muted-foreground sm:col-start-auto sm:text-right">

@@ -52,7 +52,7 @@ export function GroupAvatarCluster({
   const shown = faces.slice(0, 2);
   const rest = Math.max(0, participantCount - shown.length);
   const small = size === "sm";
-  const faceSize = small ? "size-6" : "size-7";
+  const faceSize = small ? "size-5.5" : "size-6.5";
 
   return (
     <div
@@ -67,12 +67,10 @@ export function GroupAvatarCluster({
           seed={face.seed}
           animated
           size={faceSize}
-          // Top-left and top-right of the triangle. `ring-background` keeps the
-          // two apart where they overlap, the same trick the channel header's
-          // roster strip uses.
           className={cn(
-            "ring-background absolute top-0 ring-2",
-            index === 0 ? "left-0" : "right-0"
+            "absolute bg-neutral-200 dark:bg-neutral-700",
+            rest > 0 ? "top-0" : "top-1/2 -translate-y-1/2",
+            shown.length === 1 ? "left-1/2 -translate-x-1/2" : index === 0 ? "left-0" : "right-0"
           )}
         />
       ))}
@@ -81,7 +79,7 @@ export function GroupAvatarCluster({
           // The triangle's lower vertex. Centred rather than offset, so a group
           // with one face and a `+N` still reads as a cluster.
           className={cn(
-            "bg-muted text-muted-foreground ring-background absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full font-semibold ring-2 text-2xs",
+            "bg-neutral-200 dark:bg-neutral-700 text-muted-foreground absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full font-semibold text-2xs",
             faceSize
           )}
         >

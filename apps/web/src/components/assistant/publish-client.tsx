@@ -276,7 +276,7 @@ export function PublishClient({
               <div key={p.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm">
                 <span className="font-mono">v{p.version}</span>
                 <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
-                  {formatDateTime(p.createdAt)}
+                  <RollInText text={formatDateTime(p.createdAt)} />
                 </span>
                 {canPublish && (
                   <Button

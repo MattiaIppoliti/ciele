@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import React from "react";
 import { Button, cn } from "@agent-hub/ui";
 import { FooterGithubCard } from "./footer-github-card";
@@ -46,7 +48,7 @@ export function FooterClock({ className }: { className?: string }) {
   );
   return (
     <span className={className}>
-      Rome, <time suppressHydrationWarning>{time}</time>
+      Rome, <time suppressHydrationWarning><RollInText text={time} /></time>
     </span>
   );
 }
@@ -126,7 +128,7 @@ export function FooterNewsletter() {
               disabled={pending}
               className="shrink-0 rounded-full px-4"
             >
-              {pending ? "Sending…" : "Subscribe"}
+              <RollInText text={pending ? "Sending…" : "Subscribe"} />
             </Button>
           </form>
           {message ? (

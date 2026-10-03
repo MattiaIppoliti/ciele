@@ -1,3 +1,5 @@
+import type { Instrumentation } from "next";
+
 /**
  * Next.js instrumentation: runs once when the server process starts.
  *
@@ -100,3 +102,19 @@ export async function register() {
 
   await import("@/ee/register");
 }
+
+/** Caught server errors across rendering, routes and actions, without payloads. */
+export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const { reportError, requestIdFromHeaders } = await import("@agent-hub/diagnostics");
+  reportError("next.request", error, {
+    requestId: requestIdFromHeaders({ get: (name) => {
+      const value = request.headers[name];
+      return typeof value === "string" ? value : null;
+    } }),
+    route: context.routePath,
+    method: request.method,
+    routeType: context.routeType,
+    surface: "server",
+  });
+};

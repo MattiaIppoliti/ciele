@@ -329,6 +329,7 @@ export function ChannelWorkspace({
               the Add button are one block (`components/ui/assignees.tsx`), and
               both open the same picker. */}
           <Assignees
+            overlap={6}
             assigned={withFaces.map((entry) => ({
               id: entry.id,
               name: entry.name,
@@ -575,7 +576,7 @@ function ChannelSettingsDialog({
                     size="size-7"
                   />
                   <p className="min-w-0 flex-1 truncate text-sm">
-                    {entry.name}
+                    <RollInText text={entry.name} />
                     {entry.id === currentUserId && (
                       <span className="text-muted-foreground"> (you)</span>
                     )}

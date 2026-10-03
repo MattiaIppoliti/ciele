@@ -7,7 +7,7 @@ vi.mock("@/lib/operations", () => ({ runOperation: async () => ({ channel: { id:
 vi.mock("@/lib/platform", () => ({ listPlatformEvalModels: async () => [] }));
 vi.mock("@/lib/teammates/actions", () => ({ resolveTeammateActions: vi.fn() }));
 vi.mock("@/lib/teammates/auto-model", () => ({ AUTO_MODEL: "auto", resolveAutoModel: mocks.auto, modelKey: (ref: { provider: string; modelId: string }) => `${ref.provider}:${ref.modelId}` }));
-vi.mock("@agent-hub/agent", () => ({ CHANNEL_NDJSON_HEADERS: {}, streamChannelChain: mocks.stream, chatModelOptions: () => [] }));
+vi.mock("@agent-hub/agent", () => ({ CHANNEL_NDJSON_HEADERS: {}, streamChannelChain: mocks.stream, chatModelCandidates: () => [] }));
 vi.mock("@/lib/attachments", () => ({ openAttachments: (tokens: unknown) => tokens === "sealed" ? [{ name: "notes.txt", text: "Attached context" }] : [] }));
 import { POST } from "./route";
 async function post(model: string, attachments?: unknown) {

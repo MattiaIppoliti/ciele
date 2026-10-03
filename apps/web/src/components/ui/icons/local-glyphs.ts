@@ -1,4 +1,5 @@
-import { Mailbox, Telescope, UsersRound, type LucideIcon } from "lucide-react";
+import { Bot, Mailbox, Telescope, UsersRound, type LucideIcon } from "lucide-react";
+import { BotIcon } from "./bot";
 import { MailboxIcon } from "./mailbox";
 import { TelescopeIcon } from "./telescope";
 import { UsersRoundIcon } from "./users-round";
@@ -11,6 +12,7 @@ import { UsersRoundIcon } from "./users-round";
  * every call site.
  */
 const LOCAL_GLYPHS = new Map<LucideIcon, typeof TelescopeIcon>([
+  [Bot, BotIcon],
   [Mailbox, MailboxIcon],
   [Telescope, TelescopeIcon],
   [UsersRound, UsersRoundIcon],

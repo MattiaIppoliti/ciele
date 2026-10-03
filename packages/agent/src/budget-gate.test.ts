@@ -103,4 +103,20 @@ describe("checkOrgBudget", () => {
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
   });
+
+  it("still fails open when both accounting and the diagnostic sink fail", async () => {
+    const db = makeDb({ getOrgBudget: vi.fn().mockRejectedValue(new Error("private ledger data")) });
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => { throw new Error("sink down"); });
+    try {
+      await expect(checkOrgBudget(db, "org-1")).resolves.toEqual({
+        overBudget: false, enforcement: "notify", limited: false, usedEur: 0,
+      });
+      expect(JSON.parse(consoleError.mock.calls[0]![0])).toMatchObject({
+        event: "runtime.budget.check", organizationId: "org-1", errorClass: "Error",
+      });
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain("private ledger data");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
 });

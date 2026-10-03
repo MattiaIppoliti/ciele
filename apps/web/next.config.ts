@@ -41,6 +41,7 @@ const nextConfig: NextConfig = {
     "@agent-hub/agent",
     "@agent-hub/core",
     "@agent-hub/db",
+    "@agent-hub/diagnostics",
     "@agent-hub/ui",
     "@ciele/mcp",
     "ciele-animated-icons",

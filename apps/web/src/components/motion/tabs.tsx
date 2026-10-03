@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cancelFrame, frame, motion, MotionConfig, useReducedMotion } from "motion/react";
+import { cancelFrame, frame, motion, MotionConfig, useReducedMotion, type Transition } from "motion/react";
 import {
   Children,
   isValidElement,
@@ -92,12 +92,14 @@ export function Tabs({
   onValueChange,
   children,
   className,
+  transition: tabTransition = transition,
 }: {
   defaultValue?: string;
   value?: string;
   onValueChange?: (v: string) => void;
   children: ReactNode;
   className?: string;
+  transition?: Transition;
 }) {
   const [internal, setInternal] = useState(defaultValue ?? "");
   const layoutId = useId();
@@ -161,7 +163,7 @@ export function Tabs({
     [direction, current, layoutId, setValue, panelValues, registerPanel, unregisterPanel, tabId, panelId],
   );
   return (
-    <MotionConfig transition={reduce ? { duration: 0 } : transition}>
+    <MotionConfig transition={reduce ? { duration: 0 } : tabTransition}>
       <TabsCtx.Provider value={contextValue}>
         {/* layoutRoot: the indicator's layoutId measures in page coordinates, so
             inside fixed/scrolled containers it would replay scroll offsets as

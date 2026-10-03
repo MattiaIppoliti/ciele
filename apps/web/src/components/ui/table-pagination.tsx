@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { RollingNumber } from "@/components/motion/rolling-number";
 
 /**
  * The bar at the foot of a table card: which slice is on screen, how big a
@@ -59,11 +61,11 @@ export function TablePagination({
     >
       <div className="flex items-center gap-3">
         <span>
-          {total === 0
+          <RollInText duration={380} entrance={false} text={total === 0
             ? `No ${pluralNoun ?? `${noun}s`}`
             : paged
               ? `Showing ${window.from}–${window.to} of ${countLabel(total, noun, pluralNoun)}`
-              : `Showing ${countLabel(total, noun, pluralNoun)}`}
+              : `Showing ${countLabel(total, noun, pluralNoun)}`} />
         </span>
         {onPageSizeChange && pageSize !== undefined && (
           <Select
@@ -101,7 +103,7 @@ export function TablePagination({
             </button>
           )}
           <span className="tabular-nums">
-            Page {current} of {window.pageCount}
+            Page <RollingNumber value={current} /> of <RollingNumber value={window.pageCount} />
           </span>
           {onPageChange && window.pageCount > 1 && (
             <button

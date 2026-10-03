@@ -204,7 +204,7 @@ function Face({
         initial={still ? false : { scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 520, damping: 34 }}
-        className="ring-background bg-muted block overflow-hidden ring-2"
+        className="block overflow-hidden bg-neutral-200 dark:bg-neutral-700"
         style={{
           width: geometry.faceSize,
           height: geometry.faceSize,

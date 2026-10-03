@@ -1,5 +1,7 @@
 "use client";
 
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -86,7 +88,7 @@ export function ScopeSwitcher() {
             />
           )}
           <span className="truncate">
-            {scoped ? scoped.title : "All Assistants"}
+            <RollInText text={scoped ? scoped.title : "All Assistants"} />
           </span>
           <AnimatedIcon
             icon={ChevronsUpDown}

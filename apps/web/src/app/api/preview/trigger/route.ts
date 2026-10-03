@@ -1,3 +1,4 @@
+import { withRequestDiagnostics } from "@/lib/request-diagnostics";
 import { NextRequest } from "next/server";
 import type { FlowTrigger } from "@agent-hub/core";
 import {
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
   );
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withRequestDiagnostics("/api/preview/trigger", "preview", async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session?.organization) {
     return new Response("Unauthorized", { status: 401 });
@@ -107,4 +108,4 @@ export async function POST(request: NextRequest) {
   });
 
   return new Response(stream, { headers: NDJSON_HEADERS });
-}
+});

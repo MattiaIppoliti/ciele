@@ -1,3 +1,5 @@
+
+import { RollInText } from "@/components/motion/roll-in-text";
 import dynamic from "next/dynamic";
 import { GraduationCap, LoaderCircle } from "lucide-react";
 import type { StudyExercise } from "@agent-hub/core";
@@ -79,7 +81,7 @@ function TableComponent({
       className="w-full max-w-[92%] space-y-1.5"
       aria-busy={pending ? true : undefined}
     >
-      {table.title && <p className="text-sm font-medium">{table.title}</p>}
+      {table.title && <p className="text-sm font-medium"><RollInText text={table.title} /></p>}
       {/* A chat bubble is narrow and a table is not: it scrolls in its own box
           rather than widening the conversation. */}
       <div className="overflow-x-auto rounded-xl border">

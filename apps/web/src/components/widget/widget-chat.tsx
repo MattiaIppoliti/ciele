@@ -33,6 +33,7 @@ import {
 } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
 import { SpeechPlayback } from "@/components/chat/speech-playback";
+import { chatMessagesFromStored } from "@/components/chat/stored-messages";
 import { patchLastBot, runTurn } from "@/components/chat/turn-session";
 import { AUTO_CHAT_MODEL, toPromptModels, useChatModels } from "@/components/chat/use-chat-models";
 import { useComposerTrigger, replaceToken } from "@/components/chat/use-composer-trigger";
@@ -991,24 +992,10 @@ export function WidgetChat({
       { cache: "no-store" }
     );
     const data = await response.json();
+    attachments.clear();
     setConversationId(id);
     setHistoryOpen(false);
-    setMessages(
-      (data.messages ?? []).map((m: { id: string; role: string; content: unknown[]; feedback: -1 | 0 | 1; feedbackReaction?: FeedbackReactionId | null; createdAt?: string }): Msg => {
-        if (m.role === "user") {
-          const first = m.content[0] as { text?: string } | undefined;
-          return { role: "user", text: first?.text ?? "", sentAt: m.createdAt ?? null };
-        }
-        return {
-          ...emptyBot(),
-          id: m.id,
-          parts: m.content as ChatReplyPart[],
-          phase: "done",
-          feedback: m.feedback,
-          feedbackReaction: m.feedbackReaction ?? null,
-        };
-      })
-    );
+    setMessages(chatMessagesFromStored(data.messages ?? []));
   }
 
   async function vote(bot: BotMsg, reaction: FeedbackReactionId | null) {
@@ -1043,6 +1030,7 @@ export function WidgetChat({
   const composerClosed = repliesClosed(botReplies);
 
   function newChat() {
+    attachments.clear();
     abortRef.current?.abort();
     setMessages([]);
     setConversationId(null);

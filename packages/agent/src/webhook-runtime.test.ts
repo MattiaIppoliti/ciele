@@ -186,6 +186,26 @@ describe("the signed callback URL", () => {
 });
 
 describe("applying a callback", () => {
+  it("continues a committed callback when both accounting and logging fail", async () => {
+    const { db, store, jobs } = fakeDb([subscription()]);
+    const errors = vi.spyOn(console, "error").mockImplementation(() => { throw new Error("sink down"); });
+    try {
+      const failingDb: Db = {
+        ...db, recordUsageEvents: vi.fn().mockRejectedValue(new Error("private callback accounting data")),
+      };
+      await expect(deliverWebhookCallback({ db: failingDb, now: () => NOW }, "wh1", "private payload"))
+        .resolves.toEqual({ ok: true, duplicate: false });
+      expect(store.get("wh1")!.status).toBe("received");
+      expect(jobs).toHaveLength(1);
+      expect(JSON.parse(errors.mock.calls[0]![0])).toMatchObject({
+        event: "runtime.usage_events.persist", organizationId: "org1", conversationId: "c1",
+      });
+      expect(JSON.stringify(errors.mock.calls)).not.toContain("private");
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
   it("records the body once and queues the continuation", async () => {
     const { db, store, jobs } = fakeDb([subscription()]);
     const first = await deliverWebhookCallback({ db, now: () => NOW }, "wh1", '{"state":"done"}');

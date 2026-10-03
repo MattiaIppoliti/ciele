@@ -118,7 +118,7 @@ export function CostDashboard({
                     <span
                       aria-hidden="true"
                       className="size-2 shrink-0 rounded-full"
-                      style={{ background: SURFACE_COLORS[row.surface].light }}
+                      style={{ background: SURFACE_COLORS[row.surface] }}
                     />
                     {SURFACE_LABELS[row.surface]}
                   </dt>

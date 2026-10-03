@@ -333,7 +333,7 @@ export function ChatSidebarPanel({
         />
         {!collapsed && (
           <>
-            <span className="min-w-0 flex-1 truncate">
+            <span className="min-w-0 flex-1 truncate leading-none">
               <RollInText text={channel.name} />
             </span>
             {unread}

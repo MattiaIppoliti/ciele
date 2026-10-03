@@ -2057,9 +2057,9 @@ scritto-text:not(:defined) {
 
 /* Sliding Panel timing supplied by the user, also applied to routed tabs. */
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-::view-transition-group(tab-page) { animation-duration: 220ms; animation-timing-function: cubic-bezier(.23,1,.32,1); overflow: clip; }
-::view-transition-old(tab-page) { animation: tab-page-out 220ms cubic-bezier(.23,1,.32,1) both; }
-::view-transition-new(tab-page) { animation: tab-page-in 220ms cubic-bezier(.23,1,.32,1) both; }
+::view-transition-group(tab-page) { animation-duration: var(--tab-slide-duration,220ms); animation-timing-function: var(--tab-slide-ease,cubic-bezier(.23,1,.32,1)); overflow: clip; }
+::view-transition-old(tab-page) { animation: tab-page-out var(--tab-slide-duration,220ms) var(--tab-slide-ease,cubic-bezier(.23,1,.32,1)) both; }
+::view-transition-new(tab-page) { animation: tab-page-in var(--tab-slide-duration,220ms) var(--tab-slide-ease,cubic-bezier(.23,1,.32,1)) both; }
 @keyframes tab-page-in { from { opacity: 0; transform: translateX(var(--tab-enter-x,100%)); } to { opacity: 1; transform: translateX(0); } }
 @keyframes tab-page-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(var(--tab-exit-x,-100%)); } }
 @media (prefers-reduced-motion: reduce) {
@@ -2108,6 +2108,8 @@ scritto-text:not(:defined) {
   border-radius: 17px;
 }
 .assistant-overview .overview-card-content::before {
+  /* The outlined inset needs one contour for its border and fill. An SVG
+     squircle on the fill alone separates the two curves at the corners. */
   content: "";
   position: absolute;
   inset: 0;
@@ -2260,23 +2262,6 @@ html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-ca
   background-repeat: no-repeat;
 }
 html[data-app-surface="admin"][data-squircle-ready] [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)::after { background-color: var(--popover); }
-html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content {
-  border-color: transparent;
-}
-html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content::after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  z-index: -2;
-  border-radius: inherit;
-  background: var(--overview-inset-border);
-  filter: url(#SquiCircleFilter);
-  pointer-events: none;
-}
-html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content::before {
-  inset: 5px;
-  filter: url(#SquiCircleFilter);
-}
 html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-rail { background: transparent; }
 html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-rail::after {
   content: "";
@@ -2302,6 +2287,5 @@ html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::b
     background: Canvas;
     border: 1px solid CanvasText;
   }
-  html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content::before { inset: 0; filter: none; }
   html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::before { inset: 0; filter: none; }
 }

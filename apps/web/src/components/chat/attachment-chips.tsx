@@ -2,7 +2,7 @@
 
 import { FileText, Upload, X } from "lucide-react";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
-import { isImageAttachment } from "@/lib/attachments";
+import { isImageAttachment } from "@/lib/attachment-policy";
 import type { AttachmentEntry } from "@/components/chat/use-attachments";
 import { formatCount } from "@/lib/format";
 import { RollInText } from "@/components/motion/roll-in-text";
@@ -47,7 +47,7 @@ export function AttachmentChips({
                 <FileText />
               )}
             </span>
-            <span className="min-w-0 truncate font-medium">{entry.name}</span>
+            <span className="min-w-0 truncate font-medium"><RollInText text={entry.name} /></span>
             {/* Polite: a file finishing its read, or failing, is news the
                 composer's user would otherwise only see. */}
             <span aria-live="polite" className="shrink-0 whitespace-nowrap">

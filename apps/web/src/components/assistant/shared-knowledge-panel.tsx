@@ -1,3 +1,5 @@
+
+import { RollInText } from "@/components/motion/roll-in-text";
 import Link from "next/link";
 import type { OrgKnowledgeSourceListItem } from "@agent-hub/core";
 import { Badge } from "@agent-hub/ui";
@@ -31,7 +33,7 @@ export function SharedKnowledgePanel({
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium" title={item.name}>
-                {item.name}
+                <RollInText text={item.name} />
               </p>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 {item.conceptCount === 1

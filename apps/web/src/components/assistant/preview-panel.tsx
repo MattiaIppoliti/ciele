@@ -58,6 +58,7 @@ import {
 import { StudyProvider } from "@/components/chat/study-context";
 import { StudyMenu } from "@/components/chat/study-menu";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
+import { chatMessagesFromStored } from "@/components/chat/stored-messages";
 import { patchLastBot, runTurn } from "@/components/chat/turn-session";
 import { latestHelpDeskId } from "@/components/chat/visible-reply-parts";
 import { PreviewEscalation } from "./preview-escalation";
@@ -627,6 +628,7 @@ export function PreviewPanel({
   }
 
   function newChat() {
+    attachments.clear();
     stop();
     setMessages([]);
     conversationIdRef.current = null;
@@ -706,27 +708,10 @@ export function PreviewPanel({
     // Stop only once the other transcript is in hand, so a failed load leaves
     // the current one running rather than blank.
     stop();
+    attachments.clear();
     conversationIdRef.current = conversation.id;
     setConversationId(conversation.id);
-    setMessages(
-      stored.map((m): ChatMsg => {
-        if (m.role === "user") {
-          const first = m.content[0] as { text?: string } | undefined;
-          return { role: "user", text: first?.text ?? "", sentAt: m.createdAt ?? null };
-        }
-        return {
-          role: "bot",
-          id: m.id,
-          ...EMPTY_TURN_TRACE,
-          flowName: m.flowName,
-          parts: m.content as ChatReplyPart[],
-          streamingText: null,
-          phase: "done",
-          feedback: m.feedback,
-          feedbackReaction: m.feedbackReaction ?? null,
-        };
-      })
-    );
+    setMessages(chatMessagesFromStored(stored));
   }
 
   async function vote(bot: ChatBotMsg, reaction: FeedbackReactionId | null) {

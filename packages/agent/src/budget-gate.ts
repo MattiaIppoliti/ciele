@@ -1,5 +1,6 @@
 import type { BudgetEnforcement } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { reportError } from "@agent-hub/diagnostics";
 
 import { alertKeys, signalHealth } from "./health";
 
@@ -79,7 +80,7 @@ export async function checkOrgBudget(
       usedEur,
     };
   } catch (error) {
-    console.error("[runtime] budget check failed:", error);
+    reportError("runtime.budget.check", error, { organizationId });
     return {
       overBudget: false,
       enforcement: "notify",

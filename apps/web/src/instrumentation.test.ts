@@ -20,7 +20,7 @@ vi.mock("@/lib/platform", () => ({
 vi.mock("@/ee/register", () => ({}));
 vi.mock("@/lib/widget-db", () => ({ getWidgetDb: vi.fn() }));
 
-import { register } from "./instrumentation";
+import { onRequestError, register } from "./instrumentation";
 
 /**
  * `@agent-hub/agent` is framework-free and reaches Next only through the ports it
@@ -32,12 +32,45 @@ import { register } from "./instrumentation";
 
 const NODE = "nodejs";
 
+afterEach(() => vi.restoreAllMocks());
+
 beforeEach(() => {
   mocks.registerRuntimeHost.mockReset();
   mocks.after.mockReset();
   mocks.isSupabaseConfigured.mockReset();
   mocks.isSupabaseConfigured.mockReturnValue(false);
   process.env.NEXT_RUNTIME = NODE;
+});
+
+describe("instrumentation onRequestError()", () => {
+  const context = { routerKind: "App Router", routeType: "action", routePath: "/assistants/[id]", revalidateReason: undefined } as const;
+  const request = {
+    path: "/assistants/private-id?token=private-query", method: "POST",
+    headers: { authorization: "Bearer private-token", cookie: "private-cookie", "x-vercel-id": "iad1::request-a" },
+  };
+
+  it("reports route context without error messages or request payloads", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    await onRequestError(new TypeError("private provider response"), request, context);
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(errors.mock.calls[0]![0])).toMatchObject({
+      event: "next.request", route: "/assistants/[id]", routeType: "action", method: "POST",
+      requestId: "iad1::request-a", errorClass: "TypeError",
+    });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain("private");
+  });
+
+  it("does not load Node diagnostics in the edge runtime", async () => {
+    process.env.NEXT_RUNTIME = "edge";
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    await onRequestError(new Error("private"), request, context);
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it("contains diagnostic sink failures", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => { throw new Error("sink down"); });
+    await expect(onRequestError(new Error("original"), request, context)).resolves.toBeUndefined();
+  });
 });
 
 describe("instrumentation register()", () => {

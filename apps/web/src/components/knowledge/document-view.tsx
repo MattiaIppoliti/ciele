@@ -233,7 +233,7 @@ export function DocumentView({
                     className="max-w-full"
                     title={collection.name}
                   >
-                    <span className="min-w-0 truncate">{collection.name}</span>
+                    <span className="min-w-0 truncate"><RollInText text={collection.name} /></span>
                   </Badge>
                 </DetailRow>
                 <DetailRow label="Source">
@@ -241,7 +241,7 @@ export function DocumentView({
                     href={backHref}
                     className="press-text [overflow-wrap:anywhere] hover:underline"
                   >
-                    {source.name}
+                    <RollInText text={source.name} />
                   </Link>
                 </DetailRow>
                 <DetailRow label="How it got here">
@@ -310,7 +310,7 @@ export function DocumentView({
                 ) : (
                   <DetailRow label="Excluded from retrieval">
                     <span className="font-mono text-xs">
-                      {document.excluded ? "yes" : "no"}
+                      <RollInText text={document.excluded ? "yes" : "no"} />
                     </span>
                   </DetailRow>
                 )}

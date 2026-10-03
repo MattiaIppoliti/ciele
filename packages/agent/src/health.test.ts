@@ -48,21 +48,27 @@ describe("signalHealth", () => {
     vi.mocked(db.raiseAlert).mockRejectedValue(new Error("db down"));
     const consoleError = vi
       .spyOn(console, "error")
-      .mockImplementation(() => {});
-    await expect(
-      signalHealth(
-        db,
-        "org-1",
-        {
-          key: alertKeys.budget("org-1"),
-          healthy: false,
-          alert: { type: "system", title: "t", detail: "d" },
-        },
-        "budget"
-      )
-    ).resolves.toBeUndefined();
-    expect(consoleError).toHaveBeenCalled();
-    consoleError.mockRestore();
+      .mockImplementation(() => { throw new Error("sink down"); });
+    try {
+      await expect(
+        signalHealth(
+          db,
+          "org-1",
+          {
+            key: alertKeys.budget("org-1"),
+            healthy: false,
+            alert: { type: "system", title: "t", detail: "d" },
+          },
+          "budget"
+        )
+      ).resolves.toBeUndefined();
+      expect(JSON.parse(consoleError.mock.calls[0]![0])).toMatchObject({
+        event: "budget.alert.persist", organizationId: "org-1", errorClass: "Error",
+      });
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain("db down");
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it("alertKeys pins the persisted sourceKey formats", () => {

@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import type { MutatedEntity } from "@ciele/ops";
+import { observe } from "@agent-hub/diagnostics";
 import { expireOrganizationInsights } from "@/lib/insights/cache";
 import { expireFindCaches } from "@/lib/find-cache";
 import {
@@ -234,16 +235,19 @@ export async function orgMutation<T>(
   fn: (ctx: MemberContext) => Promise<T>
 ): Promise<T> {
   const ctx = await requireMember(options.capability);
-  const result = await fn(ctx);
-
-  if (!options.revalidateIf || options.revalidateIf(result)) {
-    revalidateEntities(
-      typeof options.entities === "function"
-        ? options.entities(result)
-        : options.entities,
-      ctx.organizationId,
-    );
-  }
-
-  return result;
+  return observe({
+    name: "org.mutation",
+    context: { surface: "console", organizationId: ctx.organizationId },
+  }, async () => {
+    const result = await fn(ctx);
+    if (!options.revalidateIf || options.revalidateIf(result)) {
+      revalidateEntities(
+        typeof options.entities === "function"
+          ? options.entities(result)
+          : options.entities,
+        ctx.organizationId,
+      );
+    }
+    return result;
+  });
 }

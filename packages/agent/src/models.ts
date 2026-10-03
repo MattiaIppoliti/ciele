@@ -5,6 +5,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createGateway, wrapLanguageModel, type LanguageModel } from "ai";
 import { MODEL_SOURCES } from "@agent-hub/core";
 import type {
+  Assistant,
   GoogleVertexFederatedConfig,
   ModelSource,
   Provider,
@@ -667,6 +668,27 @@ export function resolveChatModel(
     };
   }
   return null;
+}
+
+/**
+ * The Assistant answer's configured model and reserve, shared by execution,
+ * spend admission, and concurrency admission. A reserve names an answer model;
+ * classifier and explicit Eval candidates continue to resolve independently.
+ */
+export function resolveAssistantChatModel(
+  assistant: Pick<Assistant, "modelProvider" | "modelId" | "modelSource" | "tools">,
+  connections: ProviderConnection[],
+  resolution: KeyResolution = {},
+): ResolvedChatModel | null {
+  const reserve = assistant.tools.evaluationModels?.fallback;
+  const fallbackModel = reserve && reserve.provider !== "typesafe" && reserve.provider !== "voyage"
+    ? { provider: reserve.provider, modelId: reserve.modelId }
+    : resolution.fallbackModel;
+  return resolveChatModel(assistant.modelProvider, assistant.modelId, connections, {
+    ...resolution,
+    fallbackModel,
+    source: assistant.modelSource ?? undefined,
+  });
 }
 
 export type ResolvedClassifierModel = Omit<ResolvedChatModel, "usedFallback">;

@@ -61,6 +61,7 @@ describe("runtime public interface", () => {
       // The models a chat window may offer: the admin's allow-list intersected
       // with what the Organization's Provider Connections can actually run.
       // Server-side because capability is read from the environment.
+      "chatModelCandidates",
       "chatModelOptions",
       // The save-time egress check for a tenant-typed OpenAI-compatible base URL.
       "checkOpenAiCompatibleBaseUrl",

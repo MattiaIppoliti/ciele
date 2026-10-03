@@ -1,4 +1,7 @@
 "use client";
+
+import { RollInText } from "@/components/motion/roll-in-text";
+
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import {
@@ -174,7 +177,7 @@ function CanvasNodeCard({ data }: NodeProps<CanvasNode>) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold">{data.title}</span>
+          <span className="truncate text-sm font-semibold"><RollInText text={data.title} /></span>
           {data.kind === "action" && data.action && FLOW_ACTIONS[data.action].beta && (
             <Badge variant="outline" className="text-muted-foreground rounded-full">
               beta
@@ -1081,7 +1084,7 @@ function CanvasContextMenu({
     >
       {node && (
         <>
-          <ContextMenuLabel>{node.title}</ContextMenuLabel>
+          <ContextMenuLabel><RollInText text={node.title} /></ContextMenuLabel>
           <ContextMenuItem textValue="Configure" onSelect={() => onConfigure(node.id)}>
             <SlidersHorizontal className="size-4" /> Configure
           </ContextMenuItem>
@@ -1448,7 +1451,7 @@ function NodePanel({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <Icon className="text-muted-foreground size-4 shrink-0" />
-        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{node.title}</h2>
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold"><RollInText text={node.title} /></h2>
         {node.status === "needs_setup" && (
           <StatusPill status="error" primaryText="Needs setup" />
         )}
