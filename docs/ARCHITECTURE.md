@@ -506,7 +506,7 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
   Conversation injects up to five relevant facts; a memory-search tool supports later recall.
   Extraction and recall are disabled by default and never run for anonymous Visitors.
 - **Bounds**: `MAX_SEARCH_PASSES = 6` `searchKnowledge` calls per turn, counted specifically, so
-  non-search tools cannot consume retrieval budget, plus `stepCountIs(MAX_SEARCH_PASSES + 6)` as
+  non-search tools cannot consume retrieval budget, plus a bounded manual gather-step loop as
   the runaway guard, per-call timeouts and response caps, and explicit handling for a refusal
   (`finishReason === "content-filter"` / raw `refusal`; never retried on another provider), a
   `length` truncation, and a gate that ends the loop before any text streamed (clarify, or a
@@ -514,6 +514,10 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
 - **Egress** (`egress.ts`): the one policy gate for every model- or admin-supplied URL, validation
   at DNS-resolution time, connections pinned to the validated addresses, every redirect hop
   re-validated, and one indistinguishable message for "blocked" vs "down".
+
+The [harness implementation map](harness-implementation.md) describes ordered tool batches,
+whole-request context admission, durable Flow continuations, Channel approvals, failure settlement,
+and production-path replay tests. It also records the DeepSeek study and the remaining limits.
 
 ### 5.5 The scheduled quality loop (nothing grades its own homework)
 

@@ -261,6 +261,7 @@ export const modelStep: SetupStep = {
       hint: "Any OpenAI-compatible server. For Ollama on this machine, use http://host.docker.internal:11434/v1.",
       placeholder: "http://host.docker.internal:11434/v1",
     },
+    { id: "contextWindow", label: "Context window (tokens)", hint: "Enter the capacity configured on your model server.", placeholder: "32768" },
     { id: "chatModel", label: "Chat model", placeholder: "llama3.1:8b" },
     { id: "embeddingModel", label: "Embedding model", placeholder: "nomic-embed-text" },
     { id: "apiKey", label: "API key", hint: "Leave empty for a local server.", secret: true },
@@ -268,6 +269,9 @@ export const modelStep: SetupStep = {
   async execute(context) {
     const baseUrl = (context.input.baseUrl ?? "").trim();
     if (!baseUrl) throw new Error("Enter a model server address, or skip this step.");
+
+    const contextWindow = Number(context.input.contextWindow);
+    if (!Number.isSafeInteger(contextWindow) || contextWindow < 8192 || contextWindow > 10000000) throw new Error("Enter the configured context window, from 8192 to 10000000 tokens.");
 
     const envPath = context.bag[BAG.envPath];
     if (!envPath) throw new Error("The configuration file is missing.");
@@ -279,6 +283,7 @@ export const modelStep: SetupStep = {
     const updated = fillEnvTemplate(current, {
       OPENAI_COMPATIBLE_BASE_URL: baseUrl,
       OPENAI_COMPATIBLE_CHAT_MODEL: (context.input.chatModel ?? "").trim(),
+      OPENAI_COMPATIBLE_CONTEXT_WINDOW: String(contextWindow),
       OPENAI_COMPATIBLE_EMBEDDING_MODEL: (context.input.embeddingModel ?? "").trim(),
       OPENAI_COMPATIBLE_API_KEY: (context.input.apiKey ?? "").trim(),
     });

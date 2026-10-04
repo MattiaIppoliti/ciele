@@ -9,8 +9,8 @@ als aktuelle Variablenreferenz.
 ## Öffentliche Origins
 
 Setzen Sie `PUBLIC_URL` auf den öffentlichen Anwendungsursprung. Setzen Sie
-`SUPABASE_PUBLIC_URL` auf den für den Browser zugänglichen Ursprung des
-Datenbank-Gateways.
+`SUPABASE_PUBLIC_URL` auf den für den Browser zugänglichen
+Database-Gateway-Ursprung.
 
 Erstellen Sie die Anwendung neu, nachdem Sie `SUPABASE_PUBLIC_URL` geändert
 haben. Das Browser-Bundle enthält diesen Wert zur Build-Zeit.
@@ -39,25 +39,29 @@ automatisch.
 E-Mail-Aktionen zur Laufzeit verwenden `RESEND_API_KEY` und `EMAIL_FROM`. Sie
 melden ein unkonfiguriertes Ergebnis, wenn einer der beiden Werte fehlt.
 
-## Modell-Endpoints
+## Modell-Endpunkte
 
 Konfigurieren Sie die Provider-Schlüssel für Anthropic, OpenAI oder Google. Sie
 können auch einen mit OpenAI kompatiblen Chat- und Embedding-Endpoint
-konfigurieren.
+konfigurieren. Setzen Sie `OPENAI_COMPATIBLE_CONTEXT_WINDOW` auf die
+konfigurierte Kontextgröße des Chat-Servers, mindestens 8192 Token. Ciele
+überprüft die gesamte Anfrage, bevor das Modell aufgerufen wird. Wenn der
+erforderliche Inhalt dieses Fenster überschreitet, verwenden Sie ein größeres
+Modell oder reduzieren Sie die Anfrage.
 
-Die Knowledge Search verwendet lexikalisches Matching, wenn kein
-Embedding-Modell verfügbar ist.
+Die Wissenssuche verwendet lexikalisches Matching, wenn kein Embedding-Modell
+verfügbar ist.
 
 ## Chat-Kapazität
 
-Jeder Chat-Turnus, der ein Modell aufruft, belegt einen Slot, bevor der erste
+Jeder Chat-Turn, der ein Modell aufruft, belegt einen Slot, bevor der erste
 Modellaufruf erfolgt. Die Slots befinden sich in der Datenbank, sodass alle
 Anwendungsinstanzen einen gemeinsamen Zähler verwenden.
 
 | Variable | Default | Effect |
 |---|---|---|
 | `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | Die maximale Anzahl von Turns, die gleichzeitig für eine Organisation ausgeführt werden. |
-| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Die maximale Anzahl von Turns, die gleichzeitig auf einem Platform Provider Key ausgeführt werden. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Die maximale Anzahl von Turns, die gleichzeitig mit einem Schlüssel eines Plattformanbieters ausgeführt werden. |
 | `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Wie lange ein Turn auf einen freien Slot wartet, in Millisekunden. Der Höchstwert beträgt `60000`. |
 
 Setzen Sie einen Grenzwert auf `0` oder `off`, um ihn zu entfernen. Lassen Sie

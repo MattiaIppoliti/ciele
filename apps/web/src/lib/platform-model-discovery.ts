@@ -2,6 +2,7 @@ import type { PlatformEvalModel, Provider } from "@agent-hub/core";
 
 type CatalogEntry = {
   id?: string;
+  context_window?: number;
   name?: string;
   type?: string;
   modalities?: { output?: string[] };
@@ -38,6 +39,7 @@ export function catalogModelOptions(entries: CatalogEntry[]): CatalogModelOption
     if (
       !CATALOG_PROVIDERS.some((item) => item === provider) ||
       !modelId || modelId.length > 160 || !/^[\w./:-]+$/.test(modelId) ||
+      !Number.isSafeInteger(entry.context_window) || (entry.context_window ?? 0) < 8192 ||
       !entry.name || entry.name.length > 100 ||
       entry.type !== "language" || !entry.modalities?.output?.includes("text") ||
       !entry.pricing?.input?.trim() || !entry.pricing?.output?.trim() ||
@@ -55,7 +57,7 @@ export async function listDiscoverableModels(): Promise<CatalogModelOption[]> {
 export async function discoverPlatformModel(
   provider: Exclude<Provider, "openai_compatible">,
   modelId: string,
-): Promise<Pick<PlatformEvalModel, "provider" | "modelId" | "label" | "inputEurPerMillion" | "outputEurPerMillion">> {
+): Promise<Pick<PlatformEvalModel, "provider" | "modelId" | "label" | "inputEurPerMillion" | "outputEurPerMillion" | "contextWindow">> {
   const [catalogResponse, fxResponse] = await Promise.all([
     fetchCatalog(),
     fetch("https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml", { next: { revalidate: 3600 }, signal: AbortSignal.timeout(10000) }),
@@ -64,6 +66,8 @@ export async function discoverPlatformModel(
   const entry = catalogResponse.find((item) => item.id === `${provider}/${modelId}`);
   if (!entry || entry.type !== "language" || !entry.modalities?.output?.includes("text"))
     throw new Error("This model ID was not found as a text model in the verified catalog.");
+  if (!Number.isSafeInteger(entry.context_window) || (entry.context_window ?? 0) < 8192)
+    throw new Error("Verified context capacity is unavailable for this model.");
   const inputUsdPerToken = Number(entry.pricing?.input);
   const outputUsdPerToken = Number(entry.pricing?.output);
   const usdRate = /currency=['"]USD['"]\s+rate=['"]([\d.]+)['"]/.exec(await fxResponse.text());
@@ -79,6 +83,7 @@ export async function discoverPlatformModel(
   return {
     provider,
     modelId,
+    contextWindow: entry.context_window,
     label: entry.name,
     inputEurPerMillion,
     outputEurPerMillion,

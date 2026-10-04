@@ -549,7 +549,7 @@ describe("the channel chain", () => {
     // Filed under Sam rather than under the runtime: it is Sam's turn that was
     // spent, and the transcript is where the next run reads that from.
     const marker = messages.find((m) => m.authorTeammateId === SAM.id);
-    expect(JSON.stringify(marker!.content)).toContain("Could not answer");
+    expect(JSON.stringify(marker!.content)).toContain("Could not finish this answer");
     expect(messages.some((m) => m.authorType === "system")).toBe(false);
     expect(endEvent(events)).toMatchObject({ turns: 2 });
 

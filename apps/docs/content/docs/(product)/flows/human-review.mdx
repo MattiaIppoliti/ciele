@@ -42,6 +42,14 @@ A pending request also appears in the **Inbox**. Open the conversation to see it
 - **Approved**: the actions after the Human review run. The reviewer's inputs are available as template variables, `{{review.<id>}}`, together with `{{review.decidedBy}}` and `{{review.approved}}`. The reply is added to the conversation as the next Assistant message.
 - **Rejected** or **expired**: the halt message is added instead.
 
+The pending request keeps the Flow actions, Assistant settings, Skills, and extracted variables admitted when it started.
+Ordinary edits apply to new requests. Disabling or deleting the Flow, or unpublishing the Assistant, permanently stops pending work.
+Enabling or publishing again does not restart that work. Current credentials and permissions still apply when the Flow continues.
+Typed authentication credentials can rotate while a request waits. Changes to free-form request headers or query parameters halt it safely.
+Those fields can contain custom credentials, so Ciele retains no raw values in the continuation.
+Original attachments and saved identity proof are not retained. An identity-dependent action requires a new attended request.
+Older requests without a saved continuation stop with an explanation. Start a new request to continue.
+
 The Visitor sees the outcome the next time they write or reopen the chat.
 
 ## Preview

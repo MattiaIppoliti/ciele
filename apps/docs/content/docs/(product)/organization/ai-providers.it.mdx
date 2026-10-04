@@ -5,23 +5,23 @@ description: Collega un provider di modelli e seleziona il modello per ciascun A
 
 Ciele utilizza un'unica astrazione del provider per i modelli di Anthropic,
 OpenAI e Google. Un Assistant seleziona la propria connessione al provider e il
-modello.
+proprio modello.
 
 ## Tipi di connessione al provider
 
 | Type | Use |
 | --- | --- |
 | Platform plan | Utilizza i modelli forniti dal piano Ciele gestito. |
-| Subscription | Utilizza un abbonamento del membro per le chat personali di quel membro. |
+| Subscription | Utilizza l'abbonamento di un membro per le sue chat personali. |
 | API key | Utilizza una chiave del provider gestita dall'organizzazione. |
 | AI Gateway | Utilizza i modelli di Anthropic, OpenAI e Google tramite AI Gateway. |
 
 Un abbonamento membro gestisce solo le chat di quel membro: l'Assistant Preview
 e le sue chat con un AI Teammate. Non serve un widget pubblicato e non gestisce
 la chat di un altro membro. Seleziona un piano Platform o una connessione
-tramite API key per il traffico pubblicato.
+tramite chiave API per il traffico pubblicato.
 
-## Aggiungi una connessione con API key
+## Aggiungi una connessione tramite chiave API
 
 1. Apri **Settings**.
 2. Seleziona **AI Provider**.
@@ -41,18 +41,19 @@ chiave AI Gateway della piattaforma quando il deployment ne ha una. Il piano
 della piattaforma copre i costi di queste chiamate.
 
 AI Gateway non supporta tutti i modelli. Un modello non servito da AI Gateway
-non mostra AI Gateway come origine.
+non mostra AI Gateway come fonte.
 
 ## Altri tipi di connessione
 
 - **OpenAI-compatible endpoints** collega un server come Ollama, vLLM o LM
-  Studio. Inserisci il suo base URL e i modelli. La chiave API è facoltativa.
-  L'URL di base deve utilizzare HTTPS e puntare a un host pubblico. Ciele
-  rifiuta gli indirizzi su una rete privata, come `localhost`, `10.x.x.x` o
-  `192.168.x.x`. Per utilizzare un endpoint su una rete privata, impostalo
-  nell'ambiente di deployment. Consulta
+  Studio. Inserisci l'URL di base, i modelli e **Context window** in token.
+  Utilizza la dimensione del contesto configurata su quel server. La chiave API
+  è facoltativa. L'URL di base deve utilizzare HTTPS e puntare a un host
+  pubblico. Ciele rifiuta gli indirizzi su una rete privata, come `localhost`,
+  `10.x.x.x` o `192.168.x.x`. Per utilizzare un endpoint su una rete privata,
+  impostalo nell'ambiente di deployment. Consulta
   [Configuration](/self-hosting/configuration).
-- **Keyless enterprise auth** connette Google Vertex, Anthropic o Azure OpenAI
+- **Keyless enterprise auth** collega Google Vertex, Anthropic o Azure OpenAI
   tramite la federazione delle identità dei workload. Ciele non memorizza alcuna
   chiave statica per queste connessioni.
 
@@ -61,7 +62,7 @@ personal key che dispone di autorizzazioni non correlate.
 
 Le connessioni ElevenLabs forniscono modelli vocali. Seleziona questi modelli
 nelle impostazioni **General** dell'Assistente, alla voce **Voice mode**. Anche
-le connessioni a Google e OpenAI possono fornire modelli vocali. I modelli
+le connessioni Google e OpenAI possono fornire modelli vocali. I modelli
 disponibili dipendono dall'account collegato e dalle sue autorizzazioni API.
 ElevenLabs non compare nei selettori del modello di testo né in quelli
 dell'embedding della conoscenza.
@@ -79,7 +80,7 @@ dell'embedding della conoscenza.
 ## Origini dei modelli
 
 Un modello può essere disponibile da più di una fonte. Ad esempio, Claude Sonnet
-5 può utilizzare la tua chiave API Anthropic e anche AI Gateway. Il selettore
+5 può utilizzare la tua chiave API di Anthropic e anche AI Gateway. Il selettore
 delle fonti viene visualizzato quando un modello ha due o più fonti.
 
 - **Automatic** utilizza la prima fonte disponibile. L'ordine è: la tua API key,
@@ -98,12 +99,12 @@ con un altro modello disponibile, come fa quando un provider non dispone di
 credenziali.
 
 I modelli che i visitatori o i colleghi possono scegliere possono anch'essi
-utilizzare una sola source ciascuno. L'elenco mostra un modello una volta per
-ogni source, con il nome della source dopo il nome del modello.
+utilizzare una sola fonte ciascuno. L'elenco mostra un modello una sola volta
+per ciascuna source, con il nome della source indicato dopo il nome del modello.
 
 L'abbonamento personale di un membro non è una fonte che puoi selezionare.
 Gestisce le chat personali di quel membro, indipendentemente dal modello o dalla
-source utilizzati dall'Assistente.
+fonte utilizzati dall'Assistente.
 
 Il widget pubblicato utilizza il provider e il modello presenti nel suo snapshot
 di pubblicazione. Le modifiche generali apportate successivamente richiedono

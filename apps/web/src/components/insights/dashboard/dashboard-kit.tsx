@@ -1,5 +1,6 @@
 "use client";
 
+import { AnalyticsCard } from "../analytics-card";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import dynamic from "next/dynamic";
@@ -9,11 +10,6 @@ import type { DashboardSurface, UsageDashboardFilter } from "@agent-hub/core";
 import { recordsToCsv } from "@ciele/ops/csv";
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Skeleton,
 } from "@agent-hub/ui";
 import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
@@ -259,13 +255,9 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="text-base font-semibold">{title}</CardTitle>
-        {description && <CardDescription className="mt-1">{description}</CardDescription>}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
+    <AnalyticsCard title={title} description={description} className={className}>
+      {children}
+    </AnalyticsCard>
   );
 }
 

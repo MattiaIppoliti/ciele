@@ -27,11 +27,13 @@ import {
   type TerminalState,
   type WriteTimeStyle,
 } from "./ready-to-answer";
+import { conversationContext } from "../context-budget";
 import { refusalParts, runGatherPhase } from "./gather-phase";
 import {
   clarifyQuestion,
   resolveWriteEnding,
   runWritePhase,
+  writePhaseMessages,
 } from "./write-phase";
 
 /**
@@ -513,7 +515,9 @@ export async function runAgenticSearch(
       ].join("\n\n"),
     },
   ];
+  const projectContext = conversationContext({ model: chatModel, history: baseMessages.slice(0, -1), current: baseMessages.at(-1)!, summaryFence: text => wrapUntrustedContent({ provenance: "Older conversation summary", body: text }, untrustedNonce), signal, recordUsage });
   const gather = await runGatherPhase({
+    projectContext,
     chatModel,
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
       persona,
@@ -564,6 +568,7 @@ export async function runAgenticSearch(
   const status = resolveTerminalStatus(terminal.status, sourcesPart !== null);
 
   const write = await runWritePhase({
+    projectContext: (system) => projectContext(system, gather.responseMessages, undefined, writePhaseMessages),
     chatModel,
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
       persona,

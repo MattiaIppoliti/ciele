@@ -43,6 +43,7 @@ export function lengthNoticePart(): ChatReplyPart {
 }
 
 export interface WritePhaseInput {
+  projectContext?: (system: string) => Promise<ModelMessage[]>;
   chatModel: LanguageModel;
   system: string;
   /** History + user message + the gather phase's own messages. */
@@ -156,7 +157,7 @@ export async function runWritePhase(
   const write = streamText({
     model: input.chatModel,
     system: input.system,
-    messages: writePhaseMessages(input.messages),
+    messages: writePhaseMessages(input.projectContext ? await input.projectContext(input.system) : input.messages),
     abortSignal: input.signal,
   });
 

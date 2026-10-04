@@ -56007,6 +56007,9 @@
                               {
                                 "type": "object",
                                 "properties": {
+                                  "contextWindow": {
+                                    "type": "number"
+                                  },
                                   "kind": {
                                     "type": "string",
                                     "const": "openai_compatible"
@@ -56432,6 +56435,9 @@
                             {
                               "type": "object",
                               "properties": {
+                                "contextWindow": {
+                                  "type": "number"
+                                },
                                 "kind": {
                                   "type": "string",
                                   "const": "openai_compatible"
@@ -56658,6 +56664,9 @@
                             {
                               "type": "object",
                               "properties": {
+                                "contextWindow": {
+                                  "type": "number"
+                                },
                                 "kind": {
                                   "type": "string",
                                   "const": "openai_compatible"
@@ -57117,6 +57126,9 @@
                             {
                               "type": "object",
                               "properties": {
+                                "contextWindow": {
+                                  "type": "number"
+                                },
                                 "kind": {
                                   "type": "string",
                                   "const": "openai_compatible"
@@ -57343,6 +57355,9 @@
                             {
                               "type": "object",
                               "properties": {
+                                "contextWindow": {
+                                  "type": "number"
+                                },
                                 "kind": {
                                   "type": "string",
                                   "const": "openai_compatible"
@@ -57596,6 +57611,11 @@
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "type": "object",
                 "properties": {
+                  "contextWindow": {
+                    "type": "integer",
+                    "minimum": 8192,
+                    "maximum": 10000000
+                  },
                   "displayName": {
                     "type": "string",
                     "maxLength": 200
@@ -57616,6 +57636,7 @@
                   }
                 },
                 "required": [
+                  "contextWindow",
                   "baseUrl",
                   "chatModel"
                 ]
@@ -57799,6 +57820,9 @@
                         {
                           "type": "object",
                           "properties": {
+                            "contextWindow": {
+                              "type": "number"
+                            },
                             "kind": {
                               "type": "string",
                               "const": "openai_compatible"

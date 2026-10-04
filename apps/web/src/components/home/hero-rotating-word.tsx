@@ -2,7 +2,7 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
-import type { ChromaticTextRevealProps } from "@/components/motion/text-animation";
+import type { HeroRollingWordProps } from "./hero-rolling-word";
 
 /* The headline's rotating word is the public site's only above-the-fold use of
    `motion/react`, and that library was the heaviest single thing every
@@ -52,7 +52,7 @@ function useArmed() {
 }
 
 /** The headline noun, server-rendered first and then rolled by Scritto. */
-export function HeroRotatingWord(props: ChromaticTextRevealProps) {
+export function HeroRotatingWord(props: HeroRollingWordProps) {
   const ready = useArmed();
   const { words, suffix = "", className, foregroundColor } = props;
 

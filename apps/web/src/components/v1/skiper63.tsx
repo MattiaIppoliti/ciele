@@ -31,10 +31,6 @@ export function SquiCircleFilter({
   );
 }
 
-export function SquiCircleFilterStatic() {
-  return <SquiCircleFilter id="SkiperSquiCircleFilterLayout" />;
-}
-
 const subscribe = () => () => {};
 const clientBody = () => document.body;
 const serverBody = () => null;

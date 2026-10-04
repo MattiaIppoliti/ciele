@@ -1076,7 +1076,7 @@ const humanReview: ActionHandler = async ({
     inputs: settings.inputs ?? [],
     expiresAt: reviewExpiresAt(now, reviewTimeoutHours(settings)),
     haltMessage: settings.haltMessage ?? "",
-  });
+  }, { flow, variables: ctx, message });
   const card: ChatReplyPart = {
     type: "human_review",
     action: "human_review",
@@ -1155,7 +1155,7 @@ const httpWebhook: ActionHandler = async ({
     unsubscribeBody: null,
     expiresAt: webhookExpiresAt(now, timeout),
     haltMessage: settings.haltMessage ?? "",
-  });
+  }, { flow, variables: ctx, message });
 
   // The one variable the subscribe call exists to carry.
   const subscribeCtx = {

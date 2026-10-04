@@ -1222,6 +1222,19 @@ export interface Db {
     id: string,
     patch: Pick<ReviewRequest, "status" | "decision" | "decidedBy" | "decidedByName" | "decidedAt">
   ): Promise<ReviewRequest | null>;
+  /** Atomically open a gate with its protected admitted checkpoint. */
+  openFlowGate(input:
+    | { kind: "review"; gate: import("@agent-hub/core").ReviewRequestInput; continuation: import("@agent-hub/core").FlowContinuation }
+    | { kind: "webhook"; gate: import("@agent-hub/core").WebhookSubscriptionInput; continuation: import("@agent-hub/core").FlowContinuation }
+  ): Promise<{ kind: "review"; gate: ReviewRequest } | { kind: "webhook"; gate: WebhookSubscription }>;
+  /** Close new gate admission before deletion scans external subscriptions. */
+  closeFlowGateAdmission(target: { assistantId: string } | { conversationId: string }): Promise<void>;
+  /** Bounded repair for settled/stopped gates missing their durable resume job. */
+  recoverFlowContinuations(limit?: number): Promise<void>;
+  readFlowContinuation(id: string): Promise<{
+    continuation: import("@agent-hub/core").FlowContinuation | null;
+    originStatus: "running" | "completed" | "failed" | null;
+  }>;
   /**
    * Closes a pending action approval (#958) exactly once: the same
    * compare-and-set, so a Member approving and the expiry sweep cannot both

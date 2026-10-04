@@ -83,6 +83,10 @@ _Avoid_: callback action, listener, API request (the one-call action), hook
 One awaited callback an HTTP Webhook raised: the Conversation, the Flow and the action index it stopped at, the resolved subscribe and unsubscribe calls, the expiry, and its status, pending → received | expired | failed (the subscribe call was refused). Created by the runtime before the subscribe call goes out, because the callback address names the row; closed exactly once by the first callback or by the clock, then resumed by a durable job. A second callback is acknowledged and changes nothing. Members read it in the Inbox; no Member writes it.
 _Avoid_: webhook (alone, that is the action), registration, hook
 
+**Flow Continuation**:
+The remaining actions of a Flow paused for Human Review or an HTTP Webhook, using the Flow definition and accumulated values admitted before the pause. Ordinary edits apply to new executions; an explicit disable or unpublish stops pending continuations, and resumed actions remain subject to current authorization.
+_Avoid_: replay (repeats earlier work), restart (begins a new execution), background turn
+
 **On HTTP request**:
 The fifth **Flow Trigger** (`http_request`): another system calls a Flow of a published Assistant at its own endpoint, authorized by an Organization API key, and holds the socket for the answer. A run is not a Conversation: no Visitor, no transcript, no Intent Classification (the URL names the Flow) and no conditions. The request reaches the actions as template variables (`{{request.body}}`, `{{request.query.*}}`, `{{request.header.*}}`, never the credential headers). It may run only the doing actions plus a **Response**; the two gates (Human Review, HTTP Webhook) are excluded because there is nowhere to resume to.
 _Avoid_: webhook trigger, endpoint Flow, API trigger

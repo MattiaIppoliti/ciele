@@ -139,6 +139,7 @@ const EMPTY_AZURE = {
   audience: "",
 };
 const EMPTY_COMPAT = {
+  contextWindow: "",
   displayName: "",
   baseUrl: "",
   apiKey: "",
@@ -981,6 +982,7 @@ export function AiSettingsClient({
                 () =>
                   createOpenAiCompatibleConnectionAction({
                     ...compat,
+                    contextWindow: Number(compat.contextWindow),
                     apiKey: compat.apiKey || undefined,
                     embeddingModel: compat.embeddingModel || undefined,
                   }),
@@ -1023,6 +1025,16 @@ export function AiSettingsClient({
               spellCheck={false}
               {...compatField("chatModel")}
               placeholder="llama3.1:8b"
+              required
+            />
+            <Field
+              id="compat-context-window"
+              label="Context window (tokens)"
+              type="number"
+              min={8192}
+              max={10000000}
+              {...compatField("contextWindow")}
+              placeholder="e.g. 32768"
               required
             />
             <Field

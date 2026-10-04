@@ -194,10 +194,9 @@ export interface ReviewRequest {
  * say yes, and `operation` + `input` are what let the action a Member approved
  * be the action that actually runs.
  */
-export interface ActionApproval {
+interface ActionApprovalFields {
   id: string;
   organizationId: string;
-  conversationId: string;
   /** The actor, when there is one. Null for an API request a Flow made. */
   teammateId: string | null;
   /** Attribution stays the invoking Member even when a Teammate is the actor. */
@@ -225,6 +224,12 @@ export interface ActionApproval {
   updatedAt: string;
 }
 
+/** Exactly one truthful container owns the card. */
+export type ActionApprovalTarget =
+  | { conversationId: string; channelId?: null }
+  | { conversationId: null; channelId: string };
+export type ActionApproval = ActionApprovalFields & ActionApprovalTarget;
+
 export type ApprovalReviewReason =
   | "irreversible"
   | "out_of_mandate"
@@ -239,7 +244,7 @@ export type ActionApprovalPatch = Partial<
 >;
 
 export type ActionApprovalInput = Omit<
-  ActionApproval,
+  ActionApprovalFields,
   | "id"
   | "status"
   | "decidedBy"
@@ -248,7 +253,7 @@ export type ActionApprovalInput = Omit<
   | "executedAt"
   | "createdAt"
   | "updatedAt"
->;
+> & ActionApprovalTarget;
 
 export type ReviewRequestInput = Omit<
   ReviewRequest,
@@ -1310,6 +1315,8 @@ export interface AzureOpenAiFederatedConfig {
  * ignore it). Embeddings are padded or truncated to the shared 1536.
  */
 export interface OpenAiCompatibleConfig {
+  /** Declared capacity of the actual configured deployment, in tokens. */
+  contextWindow?: number;
   kind: "openai_compatible";
   baseUrl: string;
   chatModel: string;
@@ -1697,6 +1704,8 @@ export interface AssistantVoiceSettings {
 
 export interface Assistant {
   id: string;
+  /** Server-owned stop generation; absent on deployments before the migration. */
+  continuationEpoch?: number;
   organizationId: string;
   title: string;
   nickname: string;
@@ -4494,6 +4503,8 @@ export interface RuntimeEventInput {
 
 export interface Flow {
   id: string;
+  /** Server-owned stop generation, incremented even if a Flow is re-enabled. */
+  continuationEpoch?: number;
   assistantId: string;
   name: string;
   description: string;
@@ -4510,6 +4521,36 @@ export interface Flow {
   /** Message sent by the custom_message action. */
   customMessage: string;
   isDefault: boolean;
+}
+
+/** Protected admitted execution state. Never exposed with a gate's public card. */
+export interface FlowContinuation {
+  id: string;
+  organizationId: string;
+  assistantId: string;
+  conversationId: string;
+  flowId: string;
+  gateKind: "review" | "webhook";
+  gateId: string;
+  originRequestId: string;
+  /** Receipt survives expiry of the short-lived Conversation Turn claim. */
+  originStatus?: "completed" | "failed" | null;
+  snapshot: {
+    assistant: Assistant;
+    flow: Flow;
+    skills: SkillSnapshot[];
+    variables: Record<string, string>;
+    message: string;
+    publicationId: string | null;
+    /** Detect edits to opaque credential-capable request pairs without retaining their values. */
+    opaqueRequestDigest?: string;
+    assistantEpoch: number;
+    flowEpoch: number;
+  };
+  stoppedAt: string | null;
+  stopReason: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AssistantInput {

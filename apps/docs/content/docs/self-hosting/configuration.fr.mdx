@@ -25,8 +25,8 @@ La pile nécessite Postgres, JSON Web Token, un rôle de service, le chiffrement
 de l'application et des secrets cron. Laissez le script de bootstrap les
 générer.
 
-Ne modifiez pas `JWT_SECRET`, `ANON_KEY` ou `SERVICE_ROLE_KEY` de manière
-indépendante. Ils constituent une configuration de signature unique.
+Ne modifiez pas `JWT_SECRET`, `ANON_KEY` ou `SERVICE_ROLE_KEY` indépendamment
+les uns des autres. Ils constituent une seule configuration de signature.
 
 ## Comptes et e-mail
 
@@ -36,15 +36,18 @@ Le premier compte devient le propriétaire de l'organisation. Définissez
 Sans configuration SMTP, `MAILER_AUTOCONFIRM=true` confirme automatiquement les
 nouveaux comptes.
 
-Les actions d'e-mail au runtime utilisent `RESEND_API_KEY` et `EMAIL_FROM`.
-Elles signalent un résultat non configuré lorsque l'une ou l'autre de ces
-valeurs est absente.
+Les actions d'e-mail au runtime utilisent `RESEND_API_KEY` et `EMAIL_FROM`. Ils
+signalent un résultat « unconfigured » lorsque l'une ou l'autre de ces valeurs
+est absente.
 
 ## Points de terminaison des modèles
 
 Configurez les clés des fournisseurs Anthropic, OpenAI ou Google. Vous pouvez
-également configurer un point de terminaison de chat et d'embedding compatible
-avec OpenAI.
+également configurer un endpoint de chat et d'embedding compatible avec OpenAI.
+Définissez `OPENAI_COMPATIBLE_CONTEXT_WINDOW` sur la taille de contexte
+configurée du serveur de chat, avec un minimum de 8 192 tokens. Ciele vérifie
+l'intégralité de la requête avant d'appeler le modèle. Si le contenu requis
+dépasse cette fenêtre, utilisez un modèle plus grand ou réduisez la requête.
 
 La recherche dans la base de connaissances utilise la correspondance lexicale
 lorsqu'aucun modèle d'embedding n'est disponible.
@@ -52,7 +55,7 @@ lorsqu'aucun modèle d'embedding n'est disponible.
 ## Capacité de chat
 
 Chaque tour de conversation qui appelle un modèle utilise un slot avant son
-premier appel de modèle. Les slots se trouvent dans la base de données ; par
+premier appel de modèle. Les slots sont dans la base de données ; par
 conséquent, toutes les instances de l'application partagent un même compteur.
 
 | Variable | Valeur par défaut | Effet |
@@ -61,8 +64,8 @@ conséquent, toutes les instances de l'application partagent un même compteur.
 | `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Le nombre maximal de tours exécutés simultanément sur une seule clé de fournisseur de plateforme. |
 | `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Durée pendant laquelle un tour attend un slot libre, en millisecondes. La valeur maximale est `60000`. |
 
-Définissez une limite à `0` ou à `off` pour la supprimer. Laissez la variable
-vide pour utiliser la valeur par défaut.
+Définissez une limite à `0` ou `off` pour la supprimer. Laissez la variable vide
+pour utiliser la valeur par défaut.
 
 Un tour qui n'obtient aucun slot pendant le temps d'attente n'est pas exécuté.
 Le widget indique au Visiteur de réessayer dans quelques secondes.
@@ -71,9 +74,9 @@ Lorsqu'un fournisseur refuse une requête en raison de sa limite de taux,
 l'application tente à nouveau la requête après un délai aléatoire. Le widget
 affiche le même message si toutes les tentatives échouent.
 
-Le widget limite également chaque Visitor à 12 messages par minute. Une adresse
-réseau peut envoyer 300 messages par minute à un Assistant. De nombreux
-Visiteurs peuvent partager une même adresse, par exemple sur un réseau
+Le widget limite également chaque Visitor à 12 messages par minute. Une seule
+adresse réseau peut envoyer 300 messages par minute à un seul Assistant. De
+nombreux Visiteurs peuvent partager une même adresse, par exemple sur un réseau
 d'entreprise.
 
 Les tours effectués dans le cadre d'un abonnement personnel n'occupent pas de

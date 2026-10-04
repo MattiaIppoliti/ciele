@@ -37,7 +37,7 @@ AI Gateway does not serve every model. A model that AI Gateway does not serve do
 
 ## Other connection types
 
-- **OpenAI-compatible endpoints** connect a server such as Ollama, vLLM, or LM Studio. Enter its base URL and models. The API key is optional.
+- **OpenAI-compatible endpoints** connect a server such as Ollama, vLLM, or LM Studio. Enter its base URL, models, and **Context window** in tokens. Use the context size configured on that server. The API key is optional.
   The base URL must use HTTPS and point to a public host. Ciele refuses addresses on a private network, such as `localhost`, `10.x.x.x`, or `192.168.x.x`. To use an endpoint on a private network, set it in the deployment environment. See [Configuration](/self-hosting/configuration).
 - **Keyless enterprise auth** connects Google Vertex, Anthropic, or Azure OpenAI through workload identity federation. Ciele stores no static key for these connections.
 

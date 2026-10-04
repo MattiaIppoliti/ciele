@@ -318,7 +318,7 @@ describe("the optional steps", () => {
     await engine.skip();
     engine.setInput("model", {
       baseUrl: "http://host.docker.internal:11434/v1",
-      chatModel: "llama3.1:8b",
+      chatModel: "llama3.1:8b", contextWindow: "32768",
       embeddingModel: "nomic-embed-text",
     });
     const snapshot = await engine.run();
@@ -327,6 +327,7 @@ describe("the optional steps", () => {
     const env = parseEnvFile(ports.files.get("/data/.env")!);
     expect(env.OPENAI_COMPATIBLE_BASE_URL).toBe("http://host.docker.internal:11434/v1");
     expect(env.OPENAI_COMPATIBLE_CHAT_MODEL).toBe("llama3.1:8b");
+    expect(env.OPENAI_COMPATIBLE_CONTEXT_WINDOW).toBe("32768");
     expect(ports.composeCalls.at(-1)).toContain("up -d app");
   });
 

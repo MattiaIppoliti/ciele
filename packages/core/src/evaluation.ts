@@ -39,6 +39,8 @@ export interface EvaluationCandidate {
 
 /** Extra chat model offered in Eval by the Ciele platform owner. */
 export interface PlatformEvalModel {
+  /** Verified server-side against the provider catalog; absent on legacy rows. */
+  contextWindow?: number | null;
   provider: Exclude<Provider, "openai_compatible">;
   modelId: string;
   label: string;

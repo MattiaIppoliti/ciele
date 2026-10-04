@@ -3,7 +3,7 @@
 import { EmptyState } from "@/components/ui/empty-state";
 import { ArcFrame } from "@/components/charts/arc/arc-frame";
 import { LineChart } from "@/components/charts/arc/line-chart/line-chart";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@agent-hub/ui";
+import { AnalyticsCard } from "./analytics-card";
 import { formatStat } from "@/lib/format";
 import { formatDuration } from "@/lib/insights/dashboard-view";
 
@@ -32,14 +32,9 @@ export function ConversationDepthCard({
   const time = series.find((s) => s.key === "Avg. conversation time")?.values;
   const questions = series.find((s) => s.key === "Questions / Conversation")?.values;
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold tracking-tight">Conversation depth</CardTitle>
-        <CardDescription>
-          How long conversations last and how many questions Visitors ask in each, by the day the conversation started
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-6 lg:grid-cols-2">
+    <AnalyticsCard title="Conversation depth"
+      description="How long conversations last and how many questions Visitors ask in each, by the day the conversation started"
+      contentClassName="grid gap-6 @3xl:grid-cols-2">
         <Panel
           title="Average conversation time"
           headline={formatDuration(avgConversationSeconds === null ? null : avgConversationSeconds * 1000)}
@@ -56,8 +51,7 @@ export function ConversationDepthCard({
           values={questions}
           format={(value) => formatStat(value)}
         />
-      </CardContent>
-    </Card>
+    </AnalyticsCard>
   );
 }
 

@@ -151,6 +151,7 @@ export const POST = withRequestDiagnostics("/api/widget/[assistantId]/chat", "wi
   }
 
   const stream = await streamConversationTurn({
+    publicationId: publication.id,
     db,
     systemDb: getRuntimeDb(db),
     assistant,

@@ -21,6 +21,14 @@ async function requireApproval(
   if (!approval || approval.organizationId !== ctx.organizationId) {
     throw new OperationError("not_found", "That approval request does not exist");
   }
+  if (approval.channelId) {
+    const channel = await ctx.db.table("teammateChannels").get(approval.channelId);
+    const participants = await ctx.db.table("teammateChannelParticipants").list({ channelId: approval.channelId });
+    const oversight = ctx.role === "owner" || ctx.role === "admin";
+    if (!channel || channel.organizationId !== ctx.organizationId || (!oversight && !participants.some(row => row.userId === ctx.userId))) {
+      throw new OperationError("not_found", "That approval request does not exist");
+    }
+  }
   return approval;
 }
 

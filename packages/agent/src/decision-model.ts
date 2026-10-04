@@ -1,9 +1,7 @@
 import { Experimental_EvaluationLanguageModel as EvaluationLanguageModel } from "@ai-sdk/provider-utils/experimental-evaluation";
+import { ContextBudgetError, requestUpperBound } from "./context-budget";
 import { gatewayModelId } from "./catalog";
 import type { EvaluationCandidate } from "@agent-hub/core";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAI } from "@ai-sdk/openai";
 import { createTypeSafeAi } from "@ai-sdk/typesafe-ai";
 import {
   createGateway,
@@ -19,6 +17,7 @@ import type {
   UsageProvider,
 } from "@agent-hub/core";
 import {
+  buildModel,
   CLASSIFIER_MODEL,
   mayUsePersonalSubscription,
   resolveProviderCredential,
@@ -154,16 +153,7 @@ export function adapterModel(
   modelId: string,
   apiKey: string
 ): Experimental_EvaluationModel {
-  switch (provider) {
-    case "anthropic":
-      return createAnthropic({ apiKey }).evaluationModel(modelId);
-    case "openai":
-      return createOpenAI({ apiKey }).evaluationModel(modelId);
-    case "google":
-      return createGoogleGenerativeAI({ apiKey }).evaluationModel(modelId);
-    default:
-      throw new Error(`No evaluation adapter for ${provider satisfies never}`);
-  }
+  return new EvaluationLanguageModel({ model: buildModel(provider, modelId, { provider, kind: "api_key", apiKey }), provider: `${provider}.evaluation` });
 }
 
 export interface Decision<Q extends Record<string, Experimental_EvaluationQuestion>> {
@@ -202,6 +192,8 @@ export async function decide<const Q extends Record<string, Experimental_Evaluat
   }
 ): Promise<Decision<Q>> {
   const startedAt = performance.now();
+  // Native Jev has no output generation. Its verified Gateway window is 32k.
+  if (resolved.backend === "jev" && requestUpperBound(input, 1) > 32000) throw new ContextBudgetError("The decision request exceeds its verified context window.");
   const result = await experimental_evaluate({
     model: resolved.model,
     state: input.state,
@@ -282,7 +274,7 @@ export function evaluationModel(
       throw new Error("AI Gateway does not serve this model.");
     return {
       model: new EvaluationLanguageModel({
-        model: createGateway({ apiKey: credential.apiKey }).languageModel(gatewayId),
+        model: buildModel(candidate.provider, candidate.modelId, credential),
         provider: "gateway.evaluation",
       }),
       backend: "adapter" as const,

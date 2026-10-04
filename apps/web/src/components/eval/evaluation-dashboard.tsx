@@ -20,6 +20,7 @@ import { modelSelector, type EvaluationRun } from "@agent-hub/core";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { EvaluationLeaderboard } from "@/components/eval/evaluation-leaderboard";
+import { AnalyticsCard } from "@/components/insights/analytics-card";
 import { ChartSkeleton } from "@/components/insights/dashboard/dashboard-kit";
 import { ArcFrame } from "@/components/charts/arc/arc-frame";
 import { MetricCard } from "@/components/charts/arc/metric-card/metric-card";
@@ -116,12 +117,8 @@ function MetricChart({
     });
   const Icon = metric.icon;
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <h3 className="flex items-center gap-2 text-sm font-medium">
-        <Icon className="size-4 text-muted-foreground" /> {metric.title}
-      </h3>
-      <p className="mt-1 text-xs text-muted-foreground">{metric.note}</p>
-      <div className="mt-3 w-full">
+    <AnalyticsCard title={<span className="flex items-center gap-2"><Icon className="size-4 text-muted-foreground" aria-hidden />{metric.title}</span>} description={metric.note}>
+      <div className="w-full">
         {rows.length ? (
           <MetricBars
             label={metric.title}
@@ -134,7 +131,7 @@ function MetricChart({
           </div>
         )}
       </div>
-    </div>
+    </AnalyticsCard>
   );
 }
 

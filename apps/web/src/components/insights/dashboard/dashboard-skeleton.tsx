@@ -1,3 +1,4 @@
+import { AnalyticsCard } from "../analytics-card";
 import { Skeleton } from "@agent-hub/ui";
 
 /**
@@ -13,10 +14,10 @@ export function DashboardSkeleton({ statRows }: { statRows: 2 | 4 }) {
       <div className="space-y-4 px-4 pt-5 pb-8 sm:px-6">
         <div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
           {Array.from({ length: statRows * 2 }).map((_, i) => (
-            <Skeleton key={`stat-${i}`} className="h-[106px] rounded-2xl" />
+            <AnalyticsCard key={`stat-${i}`} title={<Skeleton className="h-4 w-28" />} description={<Skeleton className="h-3 w-36" />} action={<Skeleton className="h-7 w-16 rounded-full" />}><Skeleton className="h-28 w-full" /></AnalyticsCard>
           ))}
         </div>
-        <Skeleton className="h-96 rounded-xl" />
+        <AnalyticsCard title={<Skeleton className="h-4 w-40" />} description={<Skeleton className="h-3 w-60" />}><Skeleton className="h-72 w-full" /></AnalyticsCard>
         <div className="grid grid-cols-12 gap-4">
           <Skeleton className="col-span-12 h-[34rem] rounded-xl @5xl:col-span-5" />
           <Skeleton className="col-span-12 h-[34rem] rounded-xl @5xl:col-span-7" />

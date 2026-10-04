@@ -148,11 +148,17 @@ running on the host:
 ollama pull llama3.1:8b && ollama pull nomic-embed-text
 ```
 
-then in `deploy/.env`:
+Configure Ollama to serve the same window Ciele admits: start it with
+`OLLAMA_CONTEXT_LENGTH=32768 ollama serve` (or set that environment variable
+on its service and restart it). The OpenAI compatible API does not set the
+server context size; see [Ollama context configuration](https://github.com/ollama/ollama/blob/main/docs/context-length.mdx).
+
+Then in `deploy/.env`:
 
 ```sh
 OPENAI_COMPATIBLE_BASE_URL=http://host.docker.internal:11434/v1
 OPENAI_COMPATIBLE_CHAT_MODEL=llama3.1:8b
+OPENAI_COMPATIBLE_CONTEXT_WINDOW=32768
 OPENAI_COMPATIBLE_EMBEDDING_MODEL=nomic-embed-text
 ```
 

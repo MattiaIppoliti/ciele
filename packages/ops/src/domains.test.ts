@@ -458,7 +458,7 @@ describe("integration and provider operations", () => {
   });
 
   it("saves nothing when the egress port refuses the base URL or is unwired", async () => {
-    const input = { baseUrl: "http://169.254.169.254/v1", chatModel: "m" };
+    const input = { baseUrl: "http://169.254.169.254/v1", chatModel: "m", contextWindow: 32768 };
     const refused = await createOpenAiCompatibleConnectionOp.run(
       ctx({
         role: "admin",
@@ -479,6 +479,7 @@ describe("integration and provider operations", () => {
         displayName: "Local models",
         baseUrl: "http://127.0.0.1:11434/v1",
         chatModel: "llama3",
+        contextWindow: 32768,
       }
     );
     expect(result.error).toBeUndefined();

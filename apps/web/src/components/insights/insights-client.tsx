@@ -6,13 +6,7 @@ import { Activity, Download, UserRound, X } from "lucide-react";
 import { BellRing, Calendar as CalendarIcon, ListFilter } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import { CalendarRange } from "@/components/ui/calendar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@agent-hub/ui";
+import { AnalyticsCard } from "./analytics-card";
 import {
   Dialog,
   DialogContent,
@@ -140,36 +134,15 @@ function StatCard({
   action?: React.ReactNode;
   className?: string;
 }) {
-  if (numericValue !== undefined) return <ArcFrame className={`arc-stat-card flex flex-col overflow-hidden rounded-xl border bg-card ${className ?? ""}`}>
-    <MetricCard label={title} value={numericValue} suffix={suffix} decimals={decimals} context={subtitle ?? "Selected range"} />
-    {action && <div className="mt-auto px-4 pb-4">{action}</div>}
+  if (numericValue !== undefined) return <ArcFrame className={className}>
+    <MetricCard label={title} value={numericValue} suffix={suffix} decimals={decimals} context={subtitle ?? "Selected range"} action={action} />
   </ArcFrame>;
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold tracking-tight">
-          <h2 className="flex items-center gap-3">
-            {Icon && (
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border">
-                <Icon className="size-4" aria-hidden />
-              </span>
-            )}
-            {title}
-          </h2>
-        </CardTitle>
-        {subtitle && <CardDescription>{subtitle}</CardDescription>}
-      </CardHeader>
-      <CardContent className="mt-auto flex items-end justify-between gap-3">
-        {/* Every KPI rolls to its new value when a filter changes; the
-            value is already formatted, so "N/A" and "—" roll as text. */}
-        <p
-          className={`min-w-0 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl ${valueClass ?? ""}`}
-        >
-          <RollInText text={value} />
-        </p>
-        {action}
-      </CardContent>
-    </Card>
+    <AnalyticsCard title={<span className="flex items-center gap-2">{Icon && <Icon className="size-4 text-muted-foreground" aria-hidden />}{title}</span>} description={subtitle} className={className} action={action}>
+      <p className={`min-w-0 text-3xl font-semibold tracking-tight tabular-nums ${valueClass ?? ""}`}>
+        <RollInText text={value} />
+      </p>
+    </AnalyticsCard>
   );
 }
 

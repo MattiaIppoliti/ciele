@@ -55,6 +55,11 @@ import { shortId } from "@agent-hub/core";
  * (plus a store binding in the mock), not three hand-written methods.
  */
 export interface DbTableMap {
+  flowContinuations: {
+    row: import("@agent-hub/core").FlowContinuation;
+    insert: Omit<import("@agent-hub/core").FlowContinuation, "createdAt" | "updatedAt" | "stoppedAt" | "stopReason">;
+    update: Partial<Pick<import("@agent-hub/core").FlowContinuation, "stoppedAt" | "stopReason">>;
+  };
   evaluationDatasets: {
     row: EvaluationDataset;
     insert: Pick<EvaluationDataset, "organizationId" | "name" | "examples">;
@@ -553,6 +558,13 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       decidedAt: null,
       executedAt: null,
     },
+    ascending: false,
+    touchesUpdatedAt: true,
+  },
+  flowContinuations: {
+    table: "flow_continuations",
+    id: "shortId",
+    defaults: { stoppedAt: null, stopReason: null },
     ascending: false,
     touchesUpdatedAt: true,
   },

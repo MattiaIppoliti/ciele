@@ -21,6 +21,8 @@ import {
 import type { Db } from "@agent-hub/db";
 
 import { resolveChatModel } from "./models";
+import { resolveDecisionModel } from "./decision-model";
+import { gateTeammateActions } from "./approval-gate";
 import { createTurnSession } from "./session";
 import { getRuntimeHost } from "./host";
 import { buildTemplateContext, platformAppOrigin } from "./template";
@@ -41,6 +43,7 @@ import type {
   HistoryMessage,
   RuntimeEvent,
   TeammateActionTool,
+  UsageEvent,
 } from "./types";
 
 /**
@@ -87,6 +90,8 @@ export interface ChannelTurnResult {
   trace: StoredTurnTrace | null;
   /** Actual model usage, settled against this speaker's admission. */
   usage?: AiUsageInput[];
+  /** A failed answer still owns the completed calls that must be settled. */
+  failed?: { error: unknown };
   /** Record success only after the reply has a durable Channel message ID. */
   recordSucceeded?: (messageId: string) => Promise<void>;
 }
@@ -303,7 +308,7 @@ async function runChain(
       teammateId: teammate.id,
       teammateName: teammate.name,
     });
-    let result: ChannelTurnResult;
+    let result: ChannelTurnResult | undefined;
     try {
       result = await runTurn({
         teammate,
@@ -315,6 +320,7 @@ async function runChain(
         emit: (event) => emit(event),
         signal: input.signal,
       });
+      if (result.failed) throw result.failed.error;
     } catch (error) {
       // One Teammate's failure is not the chain's: the others were asked too,
       // and a silent gap reads as "it ignored me". The failed turn still counts
@@ -327,14 +333,21 @@ async function runChain(
       ran += 1;
       const detail = error instanceof Error ? error.message : "Unknown error";
       if (!input.signal.aborted) emit({ type: "error", message: detail });
-      const marker = await appendMarker(
-        input,
-        `Could not answer: ${detail}`,
-        teammate
-      );
-      history = [...history, marker].slice(-CHANNEL_HISTORY_LIMIT);
-      emit({ type: "channel-message", message: marker });
-      await spendAdmission.release();
+      try {
+        const marker = await appendMarker(
+          input,
+          "Could not finish this answer. Please try again.",
+          teammate
+        );
+        history = [...history, marker].slice(-CHANNEL_HISTORY_LIMIT);
+        emit({ type: "channel-message", message: marker });
+      } finally {
+        try {
+          await spendAdmission.settle(result?.usage ?? []);
+        } finally {
+          await spendAdmission.release();
+        }
+      }
       continue;
     }
     taken.push(teammate.id);
@@ -454,6 +467,7 @@ async function modelChannelTurn(
   const { teammate } = request;
   const turnStart = Date.now();
   const nameOf = nameResolver(input.roster);
+  const gateUsage: UsageEvent[] = [];
 
   const [platformPrompt, actions, memoryDocuments] = await Promise.all([
     getRuntimeHost().getPlatformSystemPrompt(),
@@ -506,7 +520,13 @@ async function modelChannelTurn(
           conversationId: channel.id,
           appOrigin: platformAppOrigin(),
         }),
-        teammateActions: actions,
+        teammateActions: gateTeammateActions({
+          db, organizationId, actions, teammate,
+          target: { conversationId: null, channelId: channel.id },
+          requestedBy: input.startedBy.userId,
+          resolved: resolveDecisionModel(teammate.modelProvider, input.connections, {}),
+          signal: request.signal, recordUsage: event => gateUsage.push(event),
+        }),
         memoryDocuments: [attachmentContextSection(input.attachments ?? []), ...memoryDocuments].filter((section): section is string => section !== null),
         // No referral tool: in a channel, mentioning IS the referral, and it
         // reaches somebody who is already here (#773 was the 1:1 answer).
@@ -528,11 +548,17 @@ async function modelChannelTurn(
         surface: "channel",
         memberId: input.startedBy.userId,
       },
+      additionalUsage: gateUsage,
       // Deliberately no keyResolution: see the module comment.
     });
   if (!outcome.ok) {
     await outcome.recordFailed();
-    throw outcome.error;
+    return {
+      parts: [],
+      trace: null,
+      usage: outcome.usageRows(null),
+      failed: { error: outcome.error },
+    };
   }
   return {
     parts: outcome.parts,

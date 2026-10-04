@@ -6,6 +6,7 @@
 
 import * as React from "react";
 import { useState } from "react";
+import { VisualEllipse, VisualGradient, VisualGrid } from "./visual-backdrops";
 
 interface Visual2Props {
   mainColor?: string;
@@ -44,14 +45,14 @@ export function Visual2({
           secondaryColor={secondaryColor}
         />
         <Layer2 color={mainColor} label={label} />
-        <Layer3 color={mainColor} />
+        <VisualGradient color={mainColor} />
         <Layer4
           color={mainColor}
           secondaryColor={secondaryColor}
           hovered={hovered}
         />
-        <EllipseGradient color={mainColor} />
-        <GridLayer color={gridColor} />
+        <VisualEllipse color={mainColor} />
+        <VisualGrid color={gridColor} />
       </div>
     </>
   );
@@ -62,45 +63,6 @@ interface LayerProps {
   secondaryColor?: string;
   hovered?: boolean;
 }
-
-const EllipseGradient: React.FC<{ color: string }> = ({ color }) => {
-  return (
-    <div className="absolute inset-0 z-[5] flex h-full w-full items-center justify-center">
-      <svg
-        width="356"
-        height="196"
-        viewBox="0 0 356 180"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <rect width="356" height="180" fill="url(#paint0_radial_v2)" />
-        <defs>
-          <radialGradient
-            id="paint0_radial_v2"
-            cx="0"
-            cy="0"
-            r="1"
-            gradientUnits="userSpaceOnUse"
-            gradientTransform="translate(178 98) rotate(90) scale(98 178)"
-          >
-            <stop stopColor={color} stopOpacity="0.25" />
-            <stop offset="0.34" stopColor={color} stopOpacity="0.15" />
-            <stop offset="1" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-      </svg>
-    </div>
-  );
-};
-
-const GridLayer: React.FC<{ color: string }> = ({ color }) => {
-  return (
-    <div
-      style={{ "--grid-color": color } as React.CSSProperties}
-      className="pointer-events-none absolute inset-0 z-[4] h-full w-full bg-transparent bg-[linear-gradient(to_right,var(--grid-color)_1px,transparent_1px),linear-gradient(to_bottom,var(--grid-color)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_60%,transparent_100%)] bg-[size:20px_20px] bg-center opacity-70"
-    />
-  );
-};
 
 const Layer1: React.FC<LayerProps> = ({ hovered, color, secondaryColor }) => {
   const mainProgress = hovered ? 66 : 12.5;
@@ -196,35 +158,6 @@ const Layer2: React.FC<{ color: string; label?: React.ReactNode }> = ({
           </div>
         )}
       </div>
-    </div>
-  );
-};
-
-const Layer3: React.FC<{ color: string }> = ({ color }) => {
-  return (
-    <div className="absolute inset-0 z-[6] flex translate-y-full items-center justify-center opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.6,0.6,0,1)] motion-reduce:transition-none group-hover/animated-card:translate-y-0 group-hover/animated-card:opacity-100">
-      <svg
-        width="356"
-        height="180"
-        viewBox="0 0 356 180"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <rect width="356" height="180" fill="url(#paint0_linear_v2)" />
-        <defs>
-          <linearGradient
-            id="paint0_linear_v2"
-            x1="178"
-            y1="0"
-            x2="178"
-            y2="180"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop offset="0.35" stopColor={color} stopOpacity="0" />
-            <stop offset="1" stopColor={color} stopOpacity="0.3" />
-          </linearGradient>
-        </defs>
-      </svg>
     </div>
   );
 };

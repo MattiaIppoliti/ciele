@@ -3,8 +3,8 @@ title: Configuración
 description: Configura orígenes, secretos, cuentas, modelos, correo electrónico y workers opcionales.
 ---
 
-El script de bootstrap escribe `deploy/.env`. Usa `deploy/.env.example` como la
-referencia de variable actual.
+El script de bootstrap escribe `deploy/.env`. Utiliza `deploy/.env.example` como
+referencia a la variable actual.
 
 ## Orígenes públicos
 
@@ -42,12 +42,16 @@ falta alguno de los dos valores.
 ## Endpoints de modelos
 
 Configura las claves de los proveedores Anthropic, OpenAI o Google. También
-puedes configurar un endpoint de chat y de incrustación compatible con OpenAI.
+puedes configurar un endpoint de chat y de «embedding» compatible con OpenAI.
+Establece `OPENAI_COMPATIBLE_CONTEXT_WINDOW` en el tamaño de contexto
+configurado del servidor de chat, con un mínimo de 8192 tokens. Ciele comprueba
+toda la solicitud antes de llamar al modelo. Si el contenido necesario supera
+esta ventana, utiliza un modelo más grande o reduce la solicitud.
 
 La búsqueda de conocimiento utiliza la coincidencia léxica cuando no hay ningún
 modelo de incrustación disponible.
 
-## Capacidad de chat
+## Capacidad del chat
 
 Cada turno de chat que llama a un modelo ocupa un slot antes de su primera
 llamada al modelo. Los slots están en la base de datos, por lo que todas las
@@ -56,21 +60,22 @@ instancias de la aplicación comparten un único contador.
 | Variable | Valor predeterminado | Efecto |
 |---|---|---|
 | `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | El número máximo de turnos que se ejecutan al mismo tiempo para una sola organización. |
-| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | El número máximo de turnos que se ejecutan al mismo tiempo en una única clave de proveedor de plataforma. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | El número máximo de turnos que se ejecutan al mismo tiempo con una única clave de proveedor de plataforma. |
 | `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Tiempo que un turno espera a que haya un slot libre, en milisegundos. El máximo es `60000`. |
 
 Establece un límite en `0` o `off` para eliminarlo. Deja la variable vacía para
 usar el valor predeterminado.
 
-Un turno que no obtiene un slot durante el tiempo de espera no se ejecuta. El
-widget le indica al visitante que lo intente de nuevo en unos segundos.
+Un turno que no consigue una ranura durante el tiempo de espera no se ejecuta.
+El widget le indica al visitante que lo intente de nuevo dentro de unos
+segundos.
 
 Cuando un proveedor rechaza una solicitud debido a su límite de tasa, la
-aplicación vuelve a intentar la solicitud tras un retraso aleatorio. El widget
-muestra el mismo mensaje si todos los intentos fallan.
+aplicación vuelve a intentar la solicitud transcurrido un tiempo de espera
+aleatorio. El widget muestra el mismo mensaje si todos los intentos fallan.
 
 El widget también limita a cada Visitor a 12 mensajes por minuto. Una dirección
-de red puede enviar 300 mensajes por minuto a un Assistant. Muchos Visitantes
+de red puede enviar 300 mensajes por minuto a un asistente. Muchos Visitantes
 pueden compartir una misma dirección, por ejemplo, en una red de oficina.
 
 Los turnos de una suscripción personal no ocupan una plaza.

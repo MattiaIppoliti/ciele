@@ -1,95 +1,110 @@
 ---
-title: Menschliche Überprüfung
-description: Setzen Sie einen Flow auf Pause, bis ein Kollege per E-Mail oder Slack genehmigt, und fahren Sie mit dessen Antwort fort.
+title: Überprüfung durch Menschen
+description: Pausieren Sie einen Flow, bis ein Kollege ihn per E-Mail oder Slack genehmigt hat, und fahren Sie dann mit seiner Antwort fort.
 ---
 
 ## Was eine Human Review bewirkt
 
-Eine **Human review** ist eine Antwortaktion. Wenn der Flow diese erreicht, hält
-der Assistent an und bittet benannte Kollegen um eine Entscheidung. Der Besucher
-liest eine Wartemeldung. Der Flow wird erst fortgesetzt, nachdem der erste
-Kollege genehmigt hat. Wenn ein Kollege die Anfrage ablehnt oder niemand
-rechtzeitig antwortet, stoppt der Flow mit einer von Ihnen konfigurierten
-Nachricht.
+Ein **Human review** ist eine Antwortaktion. Wenn der Flow diesen Punkt
+erreicht, hält der Assistant an und bittet die benannten Kollegen um eine
+Entscheidung. Der Visitor liest eine Wartemeldung. Der Flow wird erst
+fortgesetzt, nachdem der erste Kollege ihn genehmigt hat. Wenn ein Kollege die
+Anfrage ablehnt oder niemand rechtzeitig antwortet, wird der Flow mit einer von
+Ihnen konfigurierten Nachricht beendet.
 
-Die Anfrage wird per **E-Mail** aus Ihrem eigenen Microsoft-365-Postfach oder
-per **Slack** über die Slack-Verbindung der Organisation versendet. Beide
-enthalten den Titel, Ihre Nachricht, eine Zusammenfassung der Konversation und
+Die Anfrage wird per **E-Mail** von Ihrem eigenen Microsoft 365-Postfach oder
+per **Slack** über die Slack-Verbindung der Organisation gesendet. Beide
+enthalten den Titel, Ihre Nachricht, eine Zusammenfassung der Konversation sowie
 einen signierten Link zu einer Entscheidungsseite in der Konsole.
 
-## Konfigurieren Sie die Aktion
+## Aktion konfigurieren
 
-1. Fügen Sie **Human review** aus der Palette oder der Aktionsauswahl hinzu.
-2. Geben Sie eine **Title** und eine **Message to the reviewer** ein.
-   Vorlagenvariablen funktionieren in beiden Fällen.
+1. Fügen Sie **Human review** aus der Palette oder dem Action Picker hinzu.
+2. Geben Sie ein **Title** und ein **Message to the reviewer** ein.
+   Vorlagenvariablen funktionieren in beiden.
 3. Geben Sie die Prüfer unter **Assigned to** als E-Mail-Adressen ein. Jede
    Adresse muss einem Mitglied der Organisation gehören.
-4. Wählen Sie den **Channel**.
-   - **Email**: Verbinden Sie Ihr Microsoft-365-Postfach mit **Connect** und
-     wählen Sie es dann unter **Sent from** aus. Die Anfrage wird von Ihrem
-     Konto gesendet.
-   - **Slack**: Geben Sie die Kanal-ID oder die Mitglieder-ID ein. Die
-     Slack-Verbindung der Organisation muss den Bereich `chat:write` haben.
-5. Fügen Sie mindestens ein **Input** hinzu, das der Prüfer ausfüllen kann:
-   Kurzer Text, langer Text, eine Dropdown-Liste oder Ja/Nein. Jede Eingabe hat
-   eine ID.
+4. Wählen Sie das **Channel** aus.
+   - **Email**: Verbinden Sie Ihr Microsoft 365-Postfach mit **Connect** und
+     wählen Sie es anschließend unter **Sent from** aus. Die Anfrage wird von
+     Ihrem Konto gesendet.
+   - **Slack**: Geben Sie die Channel-ID oder die Member-ID ein. Die
+     Slack-Verbindung der Organisation muss den Scope `chat:write` haben.
+5. Fügen Sie mindestens ein **Input** hinzu, das der Prüfer ausfüllen soll:
+   short text, long text, ein Dropdown-Feld oder yes / no. Jedes Input hat eine
+   ID.
 6. Legen Sie **Expires after** in Stunden fest. Der Standardwert ist 24.
-7. Geben Sie ein, was der Besucher **während des Wartens** und **bei Ablehnung
+7. Geben Sie ein, was der Besucher **während der Wartezeit** und **bei Ablehnung
    oder Ablauf** liest.
 
-Der Knoten zeigt **Needs setup** an, bis jedes Pflichtfeld festgelegt ist.
-**Publish** lehnt einen Flow ab, dessen Prüfer keine Mitglieder sind oder dessen
-Absender nicht verbunden ist.
+Der Knoten zeigt **Needs setup** an, bis alle Pflichtfelder ausgefüllt sind.
+**Publish** lehnt einen Flow ab, dessen Reviewer keine Members sind oder dessen
+Sender nicht verbunden ist.
 
 ## Vorschau der Anfrage anzeigen
 
-Wählen Sie auf der Canvas den Knoten aus und öffnen Sie **Run node**. Das Panel
-zeigt die E-Mail oder Slack-Nachricht so an, wie der Prüfer sie lesen wird. Von
-dort wird nichts gesendet.
+Wählen Sie auf dem Canvas den Knoten aus und öffnen Sie **Run node**. Der
+Bereich zeigt die E-Mail oder die Slack-Nachricht so an, wie sie der Reviewer
+lesen wird. Von dort aus wird nichts gesendet.
 
-## Entscheiden Sie über eine Anfrage
+## Über eine Anfrage entscheiden
 
 Der Link öffnet eine Seite in der Konsole. Sie müssen angemeldet sein. Die Seite
 zeigt die Nachricht, die bisherige Konversation, die Eingaben und **Approve** /
-**Reject**.
+**Reject** an.
 
-- Nur eine verantwortliche Person, ein Eigentümer oder ein Administrator kann
-  entscheiden.
+- Nur ein Assignee oder ein Owner bzw. ein Admin kann entscheiden.
 - Die erste Entscheidung schließt die Anfrage. Spätere Besucher sehen, wer
   entschieden hat.
-- Die Genehmigung wird abgelehnt, wenn eine erforderliche Eingabe leer ist.
+- Die Genehmigung bei leerem Pflichtfeld wird abgelehnt.
 
-Eine ausstehende Anfrage wird auch in der **Inbox** angezeigt. Öffnen Sie die
-Konversation, um ihren Status und die Eingaben des Prüfers zu sehen, oder
-filtern Sie den Posteingang nach **Human review → Pending reviews**.
+Eine ausstehende Anfrage wird auch im **Inbox** angezeigt. Öffnen Sie die
+Konversation, um ihren Status und die Eingaben des Reviewers anzuzeigen, oder
+filtern Sie den Inbox nach **Human review → Pending reviews**.
 
-## Was nach der Entscheidung passiert
+## Was geschieht nach der Entscheidung?
 
-- **Approved**: Die Aktionen, die nach der menschlichen Überprüfung ausgeführt
-  werden. Die Eingaben des Prüfers stehen als Vorlagenvariablen
-  `{{review.<id>}}` zur Verfügung, zusammen mit `{{review.decidedBy}}` und
-  `{{review.approved}}`. Die Antwort wird als nächste Nachricht des Assistenten
-  zur Konversation hinzugefügt.
-- **Rejected** oder **abgelaufen**: Stattdessen wird die Halt-Nachricht
+- **Approved**: die Aktionen nach der Ausführung der Human Review. Die Eingaben
+  des Prüfers stehen als Vorlagenvariablen, `{{review.<id>}}`, zusammen mit
+  `{{review.decidedBy}}` und `{{review.approved}}` zur Verfügung. Die Antwort
+  wird der Konversation als nächste Nachricht des Assistenten hinzugefügt.
+- **Rejected** oder **expired**: Stattdessen wird die Halt-Nachricht
   hinzugefügt.
 
-Der Besucher sieht das Ergebnis, wenn er das nächste Mal schreibt oder den Chat
+Die ausstehende Anfrage behält die Flow-Aktionen, Assistant-Einstellungen,
+Skills und extrahierten Variablen bei, die zum Zeitpunkt ihres Starts zugelassen
+waren. Gewöhnliche Änderungen gelten für neue Anfragen. Das Deaktivieren oder
+Löschen des Flows bzw. das Aufheben der Veröffentlichung des Assistants beendet
+ausstehende Arbeiten dauerhaft. Das erneute Aktivieren oder Veröffentlichen
+führt nicht dazu, dass diese Arbeit wieder aufgenommen wird. Die aktuellen
+Anmeldeinformationen und Berechtigungen gelten weiterhin, wenn der Flow
+fortgesetzt wird. Eingegebene Authentifizierungsdaten können rotiert werden,
+während eine Anfrage ansteht. Änderungen an Freitext-Request-Headern oder
+Query-Parametern unterbrechen die Verarbeitung sicher. Diese Felder können
+benutzerdefinierte Anmeldeinformationen enthalten, sodass Ciele bei der
+Fortsetzung keine Rohwerte speichert. Ursprüngliche Anhänge und gespeicherte
+Identitätsnachweise werden nicht aufbewahrt. Eine identitätsabhängige Aktion
+erfordert eine neue attended request. Ältere Anfragen ohne gespeicherte
+Fortsetzung werden mit einer Erklärung abgebrochen. Starten Sie eine neue
+Anfrage, um fortzufahren.
+
+Der Visitor sieht das Ergebnis, wenn er das nächste Mal schreibt oder den Chat
 erneut öffnet.
 
 ## Vorschau
 
 In der Vorschau wird die Anfrage **simuliert**. Es wird nichts gesendet. Das
-Transkript zeigt die Anfrage mit den Schaltflächen **Approve** und **Reject**
-an, und der Flow wird im selben Chat fortgesetzt. Ein Teammate-Chat hat keine
-Flows, sodass er niemals eine menschliche Überprüfung erreicht.
+Transkript zeigt die Anfrage mit den Schaltflächen **Approve** und **Reject**,
+und der Flow wird im selben Chat fortgesetzt. Ein Teammate-Chat hat keine Flows,
+daher gelangt er niemals zu einer Human Review.
 
 ## API, CLI und MCP
 
-| Vorgang | API | CLI | MCP (`read_inbox`) |
+| Operation | API | CLI | MCP (`read_inbox`) |
 | --- | --- | --- | --- |
 | Anfragen auflisten | `GET /api/v1/reviews?status=pending` | `ciele reviews list --status pending` | `review_list` |
-| Eine lesen | `GET /api/v1/reviews/{id}` | `ciele reviews get <id>` | `review_get` |
+| Einzelnes Element lesen | `GET /api/v1/reviews/{id}` | `ciele reviews get <id>` | `review_get` |
 | Entscheiden | `POST /api/v1/reviews/{id}/decide` | `ciele reviews decide <id> --decision approved --inputs amount=50` | `review_decide` |
 
-Ein API-Schlüssel hat keine E-Mail-Adresse, daher kann er nur dann
-Entscheidungen treffen, wenn seine Rolle Owner oder Admin lautet.
+Ein API-Schlüssel hat keine E-Mail-Adresse, daher kann er nur entscheiden, wenn
+seine Role Owner oder Admin ist.

@@ -18,7 +18,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import { SPRING_LAYOUT } from "@/lib/ease";
+import { TRANSITION_TABS } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { SlidingTabPanel, useSlidingDirection, type SlidingPanelDirection } from "./sliding-panel";
 import { startRouteSlide } from "./route-sliding-panel";
@@ -81,10 +81,8 @@ function onTabKeyDown(
   if (nextValue) setValue(nextValue);
 }
 
-// SPRING_LAYOUT is the console's shared-layout token and is the one this needs:
-// it settles without overshoot, and a scrollable tab list would turn even a
-// small overshoot into a transient scrollbar and a layout shift.
-const transition = SPRING_LAYOUT;
+// Transitions.dev tabs-sliding timing; keep the existing measured pill and keyboard navigation.
+const transition = TRANSITION_TABS;
 
 export function Tabs({
   defaultValue,

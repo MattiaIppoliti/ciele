@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Flow, ReviewRequest } from "@agent-hub/core";
 import { sealSecret } from "@agent-hub/core";
-import { DEMO_ORG, getMockDb, resetMockDb } from "@agent-hub/db";
+import { DEMO_MEMBER, DEMO_ORG, getMockDb, resetMockDb } from "@agent-hub/db";
+import { admitFlowContinuations } from "./flow-continuation";
 import { resetRuntimeHost } from "./host";
 import type { Db } from "@agent-hub/db";
 import type { ApplicationHttpClient, ApplicationHttpResponse } from "./application-provider-http";
@@ -52,7 +53,7 @@ async function seed(db: Db, over: Partial<ReviewRequest> = {}) {
     actionSettings: {
       human_review: {
         title: "Approve a refund",
-        assignees: ["ann@campus.edu"],
+        assignees: [DEMO_MEMBER.email],
         channel: "email",
         senderConnectionId: "mail-1",
         inputs: [{ id: "amount", label: "Amount", type: "short_text" }],
@@ -66,7 +67,7 @@ async function seed(db: Db, over: Partial<ReviewRequest> = {}) {
     title: "Refund",
     metadata: {},
   });
-  const review = await db.table("reviewRequests").insert({
+  const gateInput: import("@agent-hub/core").ReviewRequestInput = {
     organizationId: DEMO_ORG.id,
     assistantId: assistant.id,
     conversationId: conversation.id,
@@ -76,13 +77,21 @@ async function seed(db: Db, over: Partial<ReviewRequest> = {}) {
     message: "Please decide.",
     summary: "Visitor: refund please",
     channel: "email",
-    assignees: ["ann@campus.edu"],
+    assignees: [DEMO_MEMBER.email],
     inputs: [{ id: "amount", label: "Amount", type: "short_text" }],
     expiresAt: new Date(NOW.getTime() + 3_600_000).toISOString(),
     haltMessage: "",
     simulated: false,
     ...over,
-  });
+  };
+  const originRequestId = "admitted-review-origin";
+  const claim = await db.claimConversationTurn({ conversationId: conversation.id, requestId: originRequestId, workerId: "test", staleBefore: new Date(0).toISOString(), now: new Date().toISOString() });
+  if (claim.status !== "claimed" || !claim.leaseToken) throw new Error("Origin not claimed");
+  const factory = await admitFlowContinuations({ db, assistant, skills: [], conversationId: conversation.id, originRequestId });
+  const opened = await db.openFlowGate({ kind: "review", gate: gateInput, continuation: factory("review", { flow, message: "refund", variables: {} }) });
+  if (opened.kind !== "review") throw new Error("Wrong gate kind");
+  const review = await db.table("reviewRequests").update(opened.gate.id, over) ?? opened.gate;
+  await db.commitConversationTurn({ conversationId: conversation.id, requestId: originRequestId, leaseToken: claim.leaseToken, content: [], now: new Date().toISOString() });
   return { assistant, flow, conversation, review };
 }
 
@@ -149,7 +158,7 @@ describe("the human_review action", () => {
       flowId: flow.id,
       actionIndex: 0,
       title: "Approve a refund",
-      assignees: ["ann@campus.edu"],
+      assignees: [DEMO_MEMBER.email],
       summary: "Assistant: Hi\nVisitor: refund please",
     });
     expect(result.parts.map((part) => part.type)).toEqual(["text", "human_review"]);
@@ -178,7 +187,7 @@ describe("the human_review action", () => {
       message: "",
       summary: "",
       channel: "email",
-      assignees: ["ann@campus.edu"],
+      assignees: [DEMO_MEMBER.email],
       inputs: [],
       expiresAt: new Date(NOW.getTime() + 1000).toISOString(),
       haltMessage: "",
@@ -219,17 +228,49 @@ describe("the human_review action", () => {
 });
 
 describe("delivery", () => {
+  it("does not disclose a queued review to an assignee removed after admission", async () => {
+    const db = getMockDb();
+    const { review } = await seed(db);
+    vi.spyOn(db, "listMembers").mockResolvedValueOnce([]);
+    const client = vi.fn<ApplicationHttpClient>();
+    await expect(deliverReviewRequest(review, {}, { db, client })).rejects.toMatchObject({ retryable: false, message: /no longer a Member/ });
+    expect(client).not.toHaveBeenCalled();
+  });
+
+  for (const revoked of ["scope", "connection", "owner"] as const) {
+    it(`rechecks the sender's current ${revoked} before email delivery`, async () => {
+      const db = getMockDb();
+      const { review } = await seed(db);
+      const sender = await db.createApplicationConnection({
+        organizationId: DEMO_ORG.id,
+        ownerMemberId: DEMO_MEMBER.userId,
+        provider: "microsoft_mail",
+        name: "Review sender",
+        sealedCredentials: sealSecret(JSON.stringify({ accessToken: "tok", expiresAt: "2099-01-01T00:00:00Z" })),
+        scopes: ["Mail.Send"],
+      });
+      await db.updateApplicationConnection(sender.id, { status: "connected" });
+      if (revoked === "scope") await db.updateApplicationConnection(sender.id, { scopes: [] });
+      if (revoked === "connection") await db.updateApplicationConnection(sender.id, { status: "reauthorization_required" });
+      if (revoked === "owner") vi.spyOn(db, "getMemberRole").mockResolvedValueOnce(null);
+      const client = vi.fn<ApplicationHttpClient>();
+      await expect(deliverReviewRequest(review, { senderConnectionId: sender.id }, { db, client })).rejects.toMatchObject({ retryable: false });
+      expect(client).not.toHaveBeenCalled();
+    });
+  }
+
   it("sends the email through the sender mailbox with the signed link, and marks a revoked mailbox broken", async () => {
     const db = getMockDb();
     const { review } = await seed(db);
     const sender = await db.createApplicationConnection({
       organizationId: DEMO_ORG.id,
-      ownerMemberId: "u-ann",
+      ownerMemberId: DEMO_MEMBER.userId,
       provider: "microsoft_mail",
       name: "ann@campus.edu",
       sealedCredentials: sealSecret(JSON.stringify({ accessToken: "tok", expiresAt: "2099-01-01T00:00:00Z" })),
       scopes: ["Mail.Send"],
     });
+    await db.updateApplicationConnection(sender.id, { status: "connected" });
     const calls: { url: string; body: unknown }[] = [];
     const client: ApplicationHttpClient = async (url, options) => {
       calls.push({ url, body: JSON.parse(options.body ?? "{}") });
@@ -240,7 +281,7 @@ describe("delivery", () => {
     expect(calls[0]!.url).toBe("https://graph.microsoft.com/v1.0/me/sendMail");
     const body = calls[0]!.body as { message: { subject: string; body: { content: string }; toRecipients: { emailAddress: { address: string } }[] } };
     expect(body.message.subject).toBe("[Review] Approve a refund");
-    expect(body.message.toRecipients).toEqual([{ emailAddress: { address: "ann@campus.edu" } }]);
+    expect(body.message.toRecipients).toEqual([{ emailAddress: { address: DEMO_MEMBER.email } }]);
     expect(body.message.body.content).toContain(`/reviews/${review.id}?t=`);
     expect(body.message.body.content).toContain("Visitor: refund please");
 
@@ -444,7 +485,7 @@ describe("the clock and the continuation", () => {
     // A retried job replays the same message rather than writing a second one.
     const again = await resumeReviewedConversation({ db, now: () => NOW }, review.id);
     expect(again?.messageId).toBe(first?.messageId);
-    expect((await db.listMessages(conversation.id)).filter((m) => m.role === "assistant")).toHaveLength(1);
+    expect((await db.listMessages(conversation.id)).filter((m) => m.role === "assistant" && m.content.length)).toHaveLength(1);
   });
 
   it("an approval runs the rest of the Flow with the reviewer's inputs and no Visitor message", async () => {
@@ -465,7 +506,42 @@ describe("the clock and the continuation", () => {
     expect(resumed?.content[0]).toMatchObject({ type: "human_review", status: "approved" });
     const messages = await db.listMessages(conversation.id);
     expect(messages.filter((m) => m.role === "user")).toHaveLength(0);
-    expect(messages.filter((m) => m.role === "assistant")).toHaveLength(1);
+    expect(messages.filter((m) => m.role === "assistant" && m.content.length)).toHaveLength(1);
+  });
+
+  it("uses the admitted reply after ordinary Flow edits", async () => {
+    const db = getMockDb();
+    const { flow, review } = await seed(db);
+    await db.updateFlow(flow.id, { customMessage: "Edited behavior" });
+    await db.decideReviewRequest(review.id, { status: "approved", decision: { amount: "25" }, decidedBy: "u-ann", decidedByName: "Ann", decidedAt: NOW.toISOString() });
+    const reply = await resumeReviewedConversation({ db, now: () => NOW }, review.id);
+    expect(reply?.content).toContainEqual(expect.objectContaining({ type: "text", text: "Approved by Ann for 25." }));
+    expect(JSON.stringify(reply)).not.toContain("Edited behavior");
+  });
+
+  it("halts permanently after disable and re-enable, preserving the decision", async () => {
+    const db = getMockDb();
+    const { flow, review } = await seed(db);
+    await db.updateFlow(flow.id, { enabled: false });
+    await db.updateFlow(flow.id, { enabled: true });
+    await db.decideReviewRequest(review.id, { status: "approved", decision: { amount: "25" }, decidedBy: "u-ann", decidedByName: "Ann", decidedAt: NOW.toISOString() });
+    const reply = await resumeReviewedConversation({ db, now: () => NOW }, review.id);
+    expect(JSON.stringify(reply)).toContain("Flow disabled");
+    expect(JSON.stringify(reply)).not.toContain("Approved by Ann");
+    expect(await db.table("reviewRequests").get(review.id)).toMatchObject({ status: "approved", decision: { amount: "25" }, resumedAt: NOW.toISOString() });
+  });
+
+  it("recovers a settled legacy gate into a clear halt without executing its tail", async () => {
+    const db = getMockDb();
+    const { review, conversation } = await seed(db);
+    const legacy = await db.table("reviewRequests").insert({ ...review });
+    await db.decideReviewRequest(legacy.id, { status: "approved", decision: {}, decidedBy: null, decidedByName: null, decidedAt: NOW.toISOString() });
+    await db.recoverFlowContinuations();
+    const jobs = await db.claimBackgroundJobs({ kind: RESUME_REVIEW_KIND, workerId: "legacy", now: claimAt(), staleBefore: claimAt(), limit: 20 });
+    expect(jobs.some(job => job.payload.reviewId === legacy.id)).toBe(true);
+    const reply = await resumeReviewedConversation({ db, now: () => NOW }, legacy.id);
+    expect(JSON.stringify(reply)).toContain("predates saved Flow continuations");
+    expect((await db.listMessages(conversation.id)).filter(message => JSON.stringify(message.content).includes("Approved by"))).toHaveLength(0);
   });
 
   it("keeps a Member's name out of a Visitor-facing card", () => {

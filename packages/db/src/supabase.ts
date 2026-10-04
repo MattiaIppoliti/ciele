@@ -275,6 +275,7 @@ function toOrganization(row: OrganizationRow): Organization {
 }
 
 interface AssistantRow {
+  continuation_epoch?: number;
   id: string;
   organization_id: string;
   title: string;
@@ -992,6 +993,7 @@ function toApiIntegration(row: ApiIntegrationRow): ApiIntegration {
 }
 
 interface FlowRow {
+  continuation_epoch?: number;
   id: string;
   assistant_id: string;
   name: string;
@@ -1032,6 +1034,7 @@ interface OrgApiKeyRow {
 
 function toAssistant(row: AssistantRow): Assistant {
   return {
+    continuationEpoch: row.continuation_epoch,
     id: row.id,
     organizationId: row.organization_id,
     title: row.title,
@@ -1064,6 +1067,7 @@ function toAssistant(row: AssistantRow): Assistant {
 
 function toFlow(row: FlowRow): Flow {
   return {
+    continuationEpoch: row.continuation_epoch,
     id: row.id,
     assistantId: row.assistant_id,
     name: row.name,
@@ -2034,6 +2038,29 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async deleteFlow(id) {
       must(await client.from("flows").delete().eq("id", id));
+    },
+    async openFlowGate(input) {
+      const data = must(await client.rpc("open_flow_gate", {
+        p_kind: input.kind,
+        p_gate: domainToRow({ ...input.gate, id: input.continuation.gateId }),
+        p_continuation: domainToRow({ ...input.continuation }),
+      }));
+      if (input.kind === "review") return { kind: "review", gate: rowToDomain(data) as unknown as import("@agent-hub/core").ReviewRequest };
+      return { kind: "webhook", gate: rowToDomain(data) as unknown as import("@agent-hub/core").WebhookSubscription };
+    },
+    async closeFlowGateAdmission(target) {
+      must(await client.rpc("close_flow_gate_admission", { p_assistant_id: "assistantId" in target ? target.assistantId : null, p_conversation_id: "conversationId" in target ? target.conversationId : null }));
+    },
+    async recoverFlowContinuations(limit = 500) {
+      const result = await client.rpc("recover_flow_continuations", { p_limit: limit });
+      if (result.error && !["PGRST202", "42883"].includes(result.error.code)) must(result);
+    },
+    async readFlowContinuation(id) {
+      const { data, error } = await client.rpc("read_flow_continuation", { p_id: id });
+      if (error && ["PGRST202", "42883"].includes(error.code)) return { continuation: null, originStatus: null };
+      if (error) throw error;
+      const row = data?.continuation;
+      return { continuation: row ? rowToDomain(row) as unknown as import("@agent-hub/core").FlowContinuation : null, originStatus: data?.originStatus ?? null };
     },
 
     async reorderFlows(assistantId, orderedIds) {
@@ -6923,12 +6950,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async listPlatformEvalModels() {
       const data = must(await client.from("platform_eval_models")
-        .select("provider, model_id, label, input_eur_per_million, output_eur_per_million, added_by, created_at")
+        .select("*")
         .order("provider")
         .order("label"));
       return (data ?? []).map((row) => ({
         provider: row.provider,
         modelId: row.model_id,
+        ...(row.context_window ? { contextWindow: Number(row.context_window) } : {}),
         label: row.label,
         inputEurPerMillion: Number(row.input_eur_per_million),
         outputEurPerMillion: Number(row.output_eur_per_million),
@@ -6941,6 +6969,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       must(await client.from("platform_eval_models").insert({
         provider: model.provider,
         model_id: model.modelId,
+        ...(model.contextWindow !== undefined ? { context_window: model.contextWindow } : {}),
         label: model.label,
         input_eur_per_million: model.inputEurPerMillion,
         output_eur_per_million: model.outputEurPerMillion,

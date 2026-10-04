@@ -18348,6 +18348,9 @@
               {
                 "type": "object",
                 "properties": {
+                  "contextWindow": {
+                    "type": "number"
+                  },
                   "kind": {
                     "type": "string",
                     "const": "openai_compatible"
@@ -18582,6 +18585,9 @@
           {
             "type": "object",
             "properties": {
+              "contextWindow": {
+                "type": "number"
+              },
               "kind": {
                 "type": "string",
                 "const": "openai_compatible"
@@ -18796,6 +18802,9 @@
               {
                 "type": "object",
                 "properties": {
+                  "contextWindow": {
+                    "type": "number"
+                  },
                   "kind": {
                     "type": "string",
                     "const": "openai_compatible"
@@ -19017,6 +19026,9 @@
                 {
                   "type": "object",
                   "properties": {
+                    "contextWindow": {
+                      "type": "number"
+                    },
                     "kind": {
                       "type": "string",
                       "const": "openai_compatible"

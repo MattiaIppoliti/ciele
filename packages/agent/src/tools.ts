@@ -1,6 +1,7 @@
 import { studyExerciseTool } from "./study-exercise";
 import { tool, type Tool, type ToolSet } from "ai";
 import { z } from "zod";
+import { registerParallelRead } from "./tool-batch";
 import type {
   ApiIntegration,
   Assistant,
@@ -147,6 +148,8 @@ export interface ToolRuntimeContext {
    * the search tool, absent means no batch is in flight.
    */
   pendingSearchPasses?: { count: number };
+  /** Unknown external outcomes suppress another automatic attempt this turn. */
+  uncertainOperations?: Set<string>;
   /**
    * The agent loop's iteration budget (#558). Every tool result carries its
    * escalating note, so the model plans against the limit instead of being cut
@@ -195,6 +198,9 @@ export interface ToolRuntimeContext {
  */
 export interface RuntimeToolSpec {
   name: string;
+  /** Explicitly audited: no shared Sources, session, terminal or reply writes. */
+  execution?: "parallel-read";
+  mutation?: boolean;
   description: string;
   inputSchema: z.ZodObject<z.ZodRawShape>;
   label: (input: Record<string, unknown>) => string;
@@ -214,6 +220,7 @@ const EGRESS_BLOCKED_MESSAGE = "This host is not reachable from the assistant";
 
 const searchMemoriesSpec: RuntimeToolSpec = {
   name: "searchMemories",
+  execution: "parallel-read",
   description:
     "Search durable facts saved about this signed-in user from earlier conversations.",
   inputSchema: z.object({ query: z.string() }),
@@ -461,6 +468,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
 
 const fetchUrlSpec: RuntimeToolSpec = {
   name: "fetchUrl",
+  execution: "parallel-read",
   description:
     "Fetch a public web page or API by URL (GET) and return its text content. Use for live information the knowledge base cannot have.",
   inputSchema: z.object({
@@ -690,7 +698,7 @@ function renderTableTool(ctx: ToolRuntimeContext): Tool {
  * would attribute one call's result to another.
  */
 function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
-  return tool({
+  const instrumented = tool({
     description: spec.description,
     inputSchema: offeredSchema(spec.inputSchema, ctx),
     execute: async (rawInput: Record<string, unknown>, options) => {
@@ -702,12 +710,14 @@ function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool 
         // Only ever present on the PER-CALL context, which is what makes it a
         // usable idempotency slot: the turn-level `ctx` has no call to name.
         callId,
+        signal: options.abortSignal ?? ctx.signal,
         recordResult: (result, shown) => {
           recorded = result;
           recordedShown = shown;
         },
       };
       try {
+        if (spec.mutation && ctx.uncertainOperations?.has(spec.name)) throw new Error("An earlier operation has an unknown outcome. Check its result before trying again.");
         const output = await spec.execute(input, callCtx);
         const failed =
           typeof output === "object" &&
@@ -733,10 +743,26 @@ function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool 
           result: recorded,
           startedAt,
         });
-        return withBudgetNote({ error: message }, ctx.loop);
+        if (spec.mutation) ctx.uncertainOperations?.add(spec.name);
+        return withBudgetNote(spec.mutation ? { error: message, outcome: "unknown", retryable: false, note: "The operation may have completed. Check the affected system before trying again." } : { error: message }, ctx.loop);
       }
     },
   });
+  if (spec.execution === "parallel-read") {
+    registerParallelRead(instrumented, (input, options) => {
+      const effects: (() => void)[] = [];
+      const isolated = instrumentAction({ ...spec, execution: undefined }, {
+        ...ctx,
+        emit: (event) => effects.push(() => ctx.emit(event)),
+        narrate: ctx.narrate ? (text, name) => effects.push(() => ctx.narrate?.(text, name)) : undefined,
+      });
+      return {
+        run: async () => isolated.execute?.(input, options),
+        commit: () => { for (const effect of effects) effect(); },
+      };
+    });
+  }
+  return instrumented;
 }
 
 /**
@@ -788,6 +814,7 @@ function describeEntities(
 function teammateActionSpec(action: TeammateActionTool): RuntimeToolSpec {
   return {
     name: teammateActionToolName(action.operation),
+    mutation: true,
     description: action.description,
     inputSchema: action.inputSchema,
     label: () => action.label,
@@ -802,7 +829,8 @@ function teammateActionSpec(action: TeammateActionTool): RuntimeToolSpec {
         // request becomes four.
         return { pending: true, note: APPROVAL_PENDING_NOTE };
       }
-      const outcome = await action.run(input);
+      ctx.signal?.throwIfAborted();
+      const outcome = await action.run(input, { signal: ctx.signal });
       ctx.recordResult?.({
         operation: action.operation,
         domain: action.domain,
@@ -889,6 +917,7 @@ function referralSpec(candidates: readonly ReferralCandidate[]): RuntimeToolSpec
 
 /** Assembles the turn's ToolSet for the agent loop (see module docs above). */
 export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
+  ctx.uncertainOperations ??= new Set();
   const overrides = ctx.assistant.tools?.builtIns ?? {};
   const toolset: ToolSet = {};
   // Grounding tool: not disableable per assistant (ADR-0002), and wired

@@ -19,7 +19,8 @@ modèle.
 Un abonnement de membre ne prend en charge que les chats propres à ce membre :
 l'Assistant Preview et ses chats avec un AI Teammate. Il ne dessert pas un
 widget publié et n'exécute pas le chat d'un autre membre. Sélectionnez un
-forfait Platform ou une connexion par clé API pour le trafic publié.
+forfait Platform ou une connexion par clé API pour le trafic des éléments
+publiés.
 
 ## Ajouter une connexion par clé API
 
@@ -38,19 +39,20 @@ compte les prend en charge financièrement.
 
 Si l'Organisation ne dispose pas de clé AI Gateway, Ciele peut utiliser la clé
 AI Gateway de la plateforme lorsque le déploiement en possède une. L'abonnement
-à la plateforme prend en charge le coût de ces appels.
+de la plateforme prend en charge le coût de ces appels.
 
 AI Gateway ne prend pas en charge tous les modèles. Un modèle que l'AI Gateway
 ne prend pas en charge n'affiche pas l'AI Gateway comme source.
 
 ## Autres types de connexion
 
-- **OpenAI-compatible endpoints** connectez un serveur tel qu'Ollama, vLLM ou LM
-  Studio. Saisissez son URL de base et ses modèles. La clé API est facultative.
-  L'URL de base doit utiliser HTTPS et pointer vers un hôte public. Ciele refuse
-  les adresses sur un réseau privé, telles que `localhost`, `10.x.x.x` ou
-  `192.168.x.x`. Pour utiliser un endpoint sur un réseau privé, définissez-le
-  dans l'environnement de déploiement. Voir
+- **OpenAI-compatible endpoints** connecte un serveur tel qu'Ollama, vLLM ou LM
+  Studio. Saisissez son URL de base, ses modèles et **Context window** en
+  tokens. Utilisez la taille de contexte configurée sur ce serveur. La clé API
+  est facultative. L'URL de base doit utiliser HTTPS et pointer vers un hôte
+  public. Ciele refuse les adresses sur un réseau privé, telles que `localhost`,
+  `10.x.x.x` ou `192.168.x.x`. Pour utiliser un endpoint sur un réseau privé,
+  définissez-le dans l'environnement de déploiement. Voir
   [Configuration](/self-hosting/configuration).
 - **Keyless enterprise auth** connecte Google Vertex, Anthropic ou Azure OpenAI
   via la fédération d'identité des workloads. Ciele ne stocke aucune clé
@@ -63,8 +65,8 @@ Les connexions ElevenLabs fournissent des modèles vocaux. Sélectionnez ces
 modèles dans les paramètres **General** de l'Assistant, sous **Voice mode**. Les
 connexions Google et OpenAI peuvent également fournir des modèles vocaux. Les
 modèles disponibles dépendent du compte connecté et de ses autorisations API.
-ElevenLabs n'apparaît pas dans les sélecteurs de modèle de texte ni d'embedding
-de connaissances.
+ElevenLabs n'apparaît pas dans les sélecteurs de modèle de texte ni dans ceux
+d'embedding de connaissances.
 
 ## Sélectionnez un modèle d'Assistant
 
@@ -80,7 +82,7 @@ de connaissances.
 
 Un modèle peut être disponible auprès de plusieurs sources. Par exemple, Claude
 Sonnet 5 peut utiliser votre clé API Anthropic ainsi qu'AI Gateway. Le sélecteur
-de source s'affiche lorsqu'un modèle dispose de deux sources ou plus.
+de source indique lorsqu'un modèle dispose de deux sources ou plus.
 
 - **Automatic** utilise la première source disponible. L'ordre est le suivant :
   votre clé API, l'authentification d'entreprise sans clé, l'abonnement à la
@@ -102,12 +104,12 @@ utiliser une source chacun. La liste affiche un modèle une fois pour chaque
 source, le nom de la source figurant après le nom du modèle.
 
 L'abonnement propre d'un membre n'est pas une source que vous sélectionnez. Il
-gère les conversations propres à ce membre, quel que soit le modèle ou la source
-utilisé(e) par l'Assistant.
+gère les propres conversations de ce membre, quel que soit le modèle ou la
+source utilisé(e) par l'Assistant.
 
-Le widget publié utilise le fournisseur et le modèle figurant dans son
-instantané de publication. Les modifications générales ultérieures nécessitent
-une nouvelle publication.
+Le widget publié utilise le fournisseur et le modèle présents dans son
+instantané de publication. Les modifications générales apportées ultérieurement
+nécessitent une nouvelle publication.
 
 <Callout title="Provider accounts are separate">
 Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.

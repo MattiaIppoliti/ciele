@@ -1315,6 +1315,7 @@ export async function createAzureOpenAiFederatedConnectionAction(input: {
  * check.
  */
 export async function createOpenAiCompatibleConnectionAction(input: {
+  contextWindow: number;
   displayName?: string;
   baseUrl: string;
   apiKey?: string;

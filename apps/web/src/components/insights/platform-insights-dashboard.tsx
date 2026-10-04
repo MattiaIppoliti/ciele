@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { PlatformInsightsReport, PlatformOrganizationInsights } from "@agent-hub/core";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@agent-hub/ui";
+import { AnalyticsCard } from "./analytics-card";
 import { Table, type TableColumn } from "@/components/motion/table";
 import { DashboardStatCards } from "@/components/insights/dashboard/dashboard-stat-cards";
 import { DateRangeDropdown } from "@/components/insights/date-range-dropdown";
@@ -49,16 +49,10 @@ export function PlatformInsightsDashboard({ report }: { report: PlatformInsights
       }} />
     </div>
     <DashboardStatCards specs={specs} />
-    <Card>
-      <CardHeader>
-        <CardTitle>Organizations</CardTitle>
-        <CardDescription>Costs are estimates from model tokens and crawl pages, not provider invoices. Platform cost excludes customer API keys and personal subscriptions. Members, assistants, conversations and source errors show current totals.</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <AnalyticsCard title="Organizations" description="Costs are estimates from model tokens and crawl pages, not provider invoices. Platform cost excludes customer API keys and personal subscriptions. Members, assistants, conversations and source errors show current totals.">
         <Table data={report.organizations} columns={columns} getRowId={(row) => row.id}
           emptyState={<p className="text-muted-foreground text-sm">No organizations yet.</p>}
           footer={<p className="text-muted-foreground text-xs">{formatCount(report.organizations.length)} organizations · {formatCount(total((row) => row.inputTokens))} input tokens · {formatCount(total((row) => row.outputTokens))} output tokens</p>} />
-      </CardContent>
-    </Card>
+    </AnalyticsCard>
   </div>;
 }

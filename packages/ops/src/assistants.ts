@@ -221,6 +221,7 @@ export const deleteAssistantOp = defineOperation({
     // assistant↔source links, so deleting an Assistant only drops its links
     // (FK cascade), Collections and Concepts survive for every other linked
     // Assistant.
+    await ctx.ports?.unsubscribeAssistantWebhooks?.(id);
     await ctx.db.deleteAssistant(id);
   },
 });

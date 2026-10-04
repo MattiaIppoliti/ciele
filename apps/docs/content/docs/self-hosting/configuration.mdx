@@ -32,6 +32,8 @@ Runtime email actions use `RESEND_API_KEY` and `EMAIL_FROM`. They report an unco
 ## Model endpoints
 
 Configure Anthropic, OpenAI, or Google provider keys. You can also configure an OpenAI-compatible chat and embedding endpoint.
+Set `OPENAI_COMPATIBLE_CONTEXT_WINDOW` to the chat server’s configured context size, at least 8192 tokens.
+Ciele checks the whole request before calling the model. If required content exceeds this window, use a larger model or reduce the request.
 
 Knowledge search uses lexical matching when no embedding model is available.
 

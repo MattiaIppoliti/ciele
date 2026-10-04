@@ -15,7 +15,7 @@ const ctx = (db: Db, ports: OperationPorts, over: Partial<OperationContext> = {}
   ...over,
 });
 
-async function seedApproval(db: Db) {
+async function seedApproval(db: Db, channelId?: string) {
   const assistant = await createAssistantOp.run(ctx(db, {}, { role: "owner" }), { title: "Gate" });
   const conversation = await db.createConversation({
     assistantId: assistant.id,
@@ -25,7 +25,7 @@ async function seedApproval(db: Db) {
   });
   return db.table("actionApprovals").insert({
     organizationId: DEMO_ORG.id,
-    conversationId: conversation.id,
+    ...(channelId ? { conversationId: null, channelId } : { conversationId: conversation.id }),
     teammateId: "tm-ciele",
     requestedBy: DEMO_MEMBER.userId,
     operation: "platform.run",
@@ -176,4 +176,20 @@ describe("approvals.decide", () => {
     ).rejects.toMatchObject({ code: "conflict" });
     expect(run).not.toHaveBeenCalled();
   });
+  it("requires current Channel membership and preserves admin oversight", async () => {
+    const db = getMockDb();
+    const channel = await db.table("teammateChannels").insert({ organizationId: DEMO_ORG.id, name: "Approval access", createdBy: DEMO_MEMBER.userId });
+    const approval = await seedApproval(db, channel.id);
+    const requester = await db.table("teammateChannelParticipants").insert({ organizationId: DEMO_ORG.id, channelId: channel.id, userId: DEMO_MEMBER.userId });
+    await db.table("teammateChannelParticipants").insert({ organizationId: DEMO_ORG.id, channelId: channel.id, userId: "u-participant" });
+    const run = vi.fn(async () => {});
+    const ports = { runApprovedTeammateAction: run };
+    await expect(decideActionApprovalOp.run(ctx(db, ports, { userId: "u-participant" }), { id: approval.id, decision: "approved" })).rejects.toMatchObject({ code: "conflict" });
+    await db.table("teammateChannelParticipants").delete(requester.id);
+    await expect(decideActionApprovalOp.run(ctx(db, ports), { id: approval.id, decision: "approved" })).rejects.toMatchObject({ code: "not_found" });
+    expect(run).not.toHaveBeenCalled();
+    await expect(decideActionApprovalOp.run(ctx(db, ports, { userId: "u-admin", role: "admin" }), { id: approval.id, decision: "approved" })).resolves.toEqual({ status: "approved", ran: true });
+    expect(run).toHaveBeenCalledOnce();
+  });
+
 });

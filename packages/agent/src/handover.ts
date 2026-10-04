@@ -65,6 +65,8 @@ export interface HandoverContinuationInput {
   keyResolution?: KeyResolution;
   /** Durable originating-turn key; continuation effects derive below it. */
   effectKeyPrefix: string;
+  /** Caller-owned accounting survives an absorbed continuation failure. */
+  usageSink?: UsageEvent[];
 }
 
 export interface HandoverContinuation {
@@ -136,31 +138,38 @@ export async function runHandoverContinuation(
       collectionId: null,
       conversationId: input.conversationId,
     });
-    const continuation = await runAssistantChat({
-      assistant: target,
-      platformPrompt: input.platformPrompt,
-      flows: targetConfig.flows,
-      connections: input.connections,
-      message: input.message,
-      history: input.history,
-      searchKnowledge,
-      readKnowledgeDocument: input.readKnowledgeDocumentFor(target.id),
-      apiIntegration: await db
-        .getApiIntegration(target.id)
-        .then((found) =>
-          found && found.organizationId === target.organizationId ? found : null
-        )
-        .catch(() => null),
-      collectionId: null,
-      session: input.session,
-      alreadyClarified: input.alreadyClarified,
-      skills: targetConfig.skills ?? [],
-      routing: { url: input.launchUrl ?? undefined, now: new Date() },
-      emit: input.emit,
-      signal,
-      keyResolution: input.keyResolution,
-      effectKeyPrefix: `${input.effectKeyPrefix}:handover:${target.id}`,
-    });
+    const usageSink: UsageEvent[] = [];
+    let continuation: RunResult;
+    try {
+      continuation = await runAssistantChat({
+        assistant: target,
+        platformPrompt: input.platformPrompt,
+        flows: targetConfig.flows,
+        connections: input.connections,
+        message: input.message,
+        history: input.history,
+        searchKnowledge,
+        readKnowledgeDocument: input.readKnowledgeDocumentFor(target.id),
+        apiIntegration: await db
+          .getApiIntegration(target.id)
+          .then((found) =>
+            found && found.organizationId === target.organizationId ? found : null
+          )
+          .catch(() => null),
+        collectionId: null,
+        session: input.session,
+        alreadyClarified: input.alreadyClarified,
+        skills: targetConfig.skills ?? [],
+        routing: { url: input.launchUrl ?? undefined, now: new Date() },
+        emit: input.emit,
+        signal,
+        keyResolution: input.keyResolution,
+        effectKeyPrefix: `${input.effectKeyPrefix}:handover:${target.id}`,
+        usageSink,
+      });
+    } finally {
+      input.usageSink?.push(...usageSink);
+    }
     return {
       parts: continuation.parts,
       effects: continuation.effects,

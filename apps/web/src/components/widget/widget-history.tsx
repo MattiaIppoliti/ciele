@@ -72,9 +72,6 @@ export function WidgetHistory({
           <EmptyState size="sm" title="No previous conversations" description="Start a chat to see it here." />
         ) : (
           <AISidebar
-            // History has nowhere to persist a rename or a move, so the rows
-            // offer neither (they used to rename, then snap back).
-            editable={false}
             items={groups}
             activeId={activeId}
             defaultExpandedIds={groups.map((group) => group.id)}
@@ -88,9 +85,7 @@ export function WidgetHistory({
               ) : undefined
             }
             ariaLabel="My conversations"
-            // Conversations only: no per-row actions menu in the widget (the
-            // sidebar component has no prop to turn its rename menu off).
-            className='w-full [&_button[aria-label^="Actions for"]]:hidden'
+            className="w-full"
           />
         )}
         {memoryFolder && (

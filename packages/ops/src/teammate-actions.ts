@@ -401,6 +401,7 @@ export async function runTeammateAction(
     throw new OperationError("invalid_input", actionRefusal(domain));
   }
   const input = spec.operation.input.parse(rawInput);
+  ctx.signal?.throwIfAborted();
   const result = await spec.operation.run(ctx, input);
   return {
     operation: spec.operation.name,

@@ -79,7 +79,7 @@ export interface TeammateTool {
    */
   run(
     input: Record<string, unknown>,
-    options?: { confirmed?: boolean }
+    options?: { confirmed?: boolean; signal?: AbortSignal }
   ): Promise<TeammateToolRun>;
 }
 
@@ -124,8 +124,9 @@ function grantedTool(ctx: OperationContext, spec: TeammateActionSpec): TeammateT
     label: spec.label,
     description: spec.description,
     inputSchema: spec.operation.input as ZodObject<ZodRawShape>,
-    run: async (input) => {
-      const outcome = await runTeammateAction(ctx, spec.operation.name, input);
+    run: async (input, options) => {
+      options?.signal?.throwIfAborted();
+      const outcome = await runTeammateAction({ ...ctx, signal: options?.signal }, spec.operation.name, input);
       return {
         operation: outcome.operation,
         entities: outcome.entities,
@@ -214,7 +215,8 @@ function platformTools(member: TeammateToolsetMember, authorName: string): Teamm
             `"${input.name}" waits for your colleague to confirm it on a card, and they have not.`
           );
         }
-        return runPlatformOperation(ctx, input.name, input.input);
+        options?.signal?.throwIfAborted();
+        return runPlatformOperation({ ...ctx, signal: options?.signal }, input.name, input.input);
       },
     },
   ];

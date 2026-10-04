@@ -86,9 +86,7 @@
 }
 .arc-charts :focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 /* Metric cards do not assume that an increase is good (costs, errors). */
-.arc-charts article small[data-trend] { color: var(--muted-foreground); background: var(--muted); }
-.arc-stat-card > article { border: 0; border-radius: 0; padding: 1rem; background: transparent; }
-.arc-stat-card > article > div { margin-bottom: 1rem; }
+.arc-charts small[data-trend] { color: var(--muted-foreground); background: var(--muted); }
 
 .arc-charts [data-change-tone="success"] small[data-trend] { color: var(--success); background: color-mix(in oklab, var(--success) 10%, transparent); }
 .arc-charts [data-change-tone="danger"] small[data-trend] { color: var(--danger); background: color-mix(in oklab, var(--danger) 10%, transparent); }

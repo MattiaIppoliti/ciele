@@ -1,6 +1,7 @@
 "use client";
 
 import type { EvaluationRun } from "@agent-hub/core";
+import { AnalyticsCard } from "@/components/insights/analytics-card";
 import { ArcFrame } from "@/components/charts/arc/arc-frame";
 import { Ridgeline } from "@/components/charts/arc/ridgeline/ridgeline";
 import { evaluationLatencies } from "@/lib/insights/chart-comparisons";
@@ -18,13 +19,8 @@ export function EvaluationDistributions({
     0,
   );
   return (
-    <section className="rounded-xl border bg-card p-5">
-      <h2 className="text-lg font-medium">Latency distribution by model</h2>
-      <p className="mt-1 mb-4 text-xs text-muted-foreground">
-        Compare spread and long tails, beyond the average. Includes technical
-        failures; curves smooth the recorded observations and are exploratory
-        with fewer than 20 samples.
-      </p>
+    <AnalyticsCard title="Latency distribution by model"
+      description="Compare spread and long tails, beyond the average. Includes technical failures; curves smooth the recorded observations and are exploratory with fewer than 20 samples.">
       <p className="mb-4 text-xs text-muted-foreground">
         {series
           .map((row) => `${row.label}: ${row.values.length} observations`)
@@ -40,6 +36,6 @@ export function EvaluationDistributions({
           emptyLabel="No model has two latency observations yet. Inspect individual executions in Results by question."
         />
       </ArcFrame>
-    </section>
+    </AnalyticsCard>
   );
 }

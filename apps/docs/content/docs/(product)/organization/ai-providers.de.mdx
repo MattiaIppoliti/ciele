@@ -14,12 +14,12 @@ aus.
 | Platform plan | Verwendet Modelle, die vom verwalteten Ciele-Plan bereitgestellt werden. |
 | Subscription | Verwendet ein Mitgliedsabonnement für die eigenen Chats dieses Mitglieds. |
 | API key | Verwendet einen von der Organisation verwalteten Providerschlüssel. |
-| AI Gateway | Verwendet Anthropic-, OpenAI- und Google-Modelle über AI Gateway. |
+| AI Gateway | Verwendet Anthropic-, OpenAI- und Google-Modelle über das AI Gateway. |
 
 Ein Mitgliedsabonnement betreibt nur die eigenen Chats dieses Mitglieds: die
-Assistant Preview sowie dessen Chats mit einem AI Teammate. Es bedient kein
+Assistant Preview sowie dessen Chats mit einem KI-Teammate. Es bedient kein
 veröffentlichtes Widget und führt keinen Chat eines anderen Mitglieds aus.
-Wählen Sie einen Platform-Plan oder eine API-Schlüssel-Verbindung für den
+Wählen Sie ein Platform-Abonnement oder eine API-Schlüssel-Verbindung für den
 veröffentlichten Traffic aus.
 
 ## Eine API-Schlüssel-Verbindung hinzufügen
@@ -37,22 +37,24 @@ Ein AI Gateway-Schlüssel ist ein einziger Schlüssel für Modelle von Anthropic
 OpenAI und Google. Ciele leitet diese Aufrufe über Ihr eigenes Vercel AI
 Gateway-Konto weiter, und dieses Konto übernimmt die Kosten dafür.
 
-Wenn die Organisation keinen AI Gateway-Schlüssel hat, kann Ciele den AI
-Gateway-Schlüssel der Plattform verwenden, sofern die Bereitstellung über einen
-solchen verfügt. Der Plattform-Tarif übernimmt die Kosten für diese Aufrufe.
+Wenn die Organisation keinen AI-Gateway-Schlüssel hat, kann Ciele den
+AI-Gateway-Schlüssel der Plattform verwenden, sofern die Bereitstellung über
+einen solchen verfügt. Der Plattformplan übernimmt die Kosten für diese Aufrufe.
 
-AI Gateway bedient nicht jedes Modell. Ein Modell, das das AI Gateway nicht
+AI Gateway unterstützt nicht jedes Modell. Ein Modell, das das AI Gateway nicht
 bedient, zeigt das AI Gateway nicht als Quelle an.
 
 ## Andere Verbindungstypen
 
 - **OpenAI-compatible endpoints** Verbinden Sie einen Server wie Ollama, vLLM
-  oder LM Studio. Geben Sie die Base-URL und die Modelle ein. Der API-Schlüssel
-  ist optional. Die Base-URL muss HTTPS verwenden und auf einen öffentlichen
-  Host verweisen. Ciele akzeptiert keine Adressen in einem privaten Netzwerk,
-  wie z. B. `localhost`, `10.x.x.x` oder `192.168.x.x`. Um einen Endpoint in
-  einem privaten Netzwerk zu verwenden, legen Sie ihn in der Deployment-Umgebung
-  fest. Siehe [Configuration](/self-hosting/configuration).
+  oder LM Studio. Geben Sie die Basis-URL, die Modelle und **Context window** in
+  Form von Tokens ein. Verwenden Sie die auf diesem Server konfigurierte
+  Kontextgröße. Der API-Schlüssel ist optional. Die Base URL muss HTTPS
+  verwenden und auf einen öffentlichen Host verweisen. Ciele akzeptiert keine
+  Adressen in einem privaten Netzwerk, wie z. B. `localhost`, `10.x.x.x` oder
+  `192.168.x.x`. Um einen Endpoint in einem privaten Netzwerk zu verwenden,
+  konfigurieren Sie ihn in der Deployment-Umgebung. Siehe
+  [Configuration](/self-hosting/configuration).
 - **Keyless enterprise auth** verbindet Google Vertex, Anthropic oder Azure
   OpenAI über die Workload Identity Federation. Ciele speichert keinen
   statischen Schlüssel für diese Verbindungen.
@@ -62,9 +64,9 @@ Verwenden Sie keinen persönlichen Schlüssel erneut, der über nicht
 zusammenhängende Berechtigungen verfügt.
 
 ElevenLabs-Verbindungen stellen Sprachmodelle bereit. Wählen Sie diese Modelle
-in den **General**-Einstellungen des Assistenten unter **Voice mode** aus.
-Google- und OpenAI-Verbindungen können ebenfalls Sprachmodelle bereitstellen.
-Welche Modelle verfügbar sind, hängt vom verbundenen Konto und seinen
+in den **General**-Einstellungen des Assistenten unter **Voice mode** aus. Auch
+Verbindungen zu Google und OpenAI können Sprachmodelle bereitstellen. Welche
+Modelle verfügbar sind, hängt vom verbundenen Konto und dessen
 API-Berechtigungen ab. ElevenLabs wird weder im Textmodell noch in den
 Auswahlfeldern für Knowledge Embedding angezeigt.
 
@@ -75,18 +77,18 @@ Auswahlfeldern für Knowledge Embedding angezeigt.
 3. Wählen Sie die Provider-Verbindung aus.
 4. Wählen Sie ein verfügbares Modell aus.
 5. Wählen Sie optional die Modellquelle aus.
-6. Testen Sie den Assistant im Preview-Modus.
+6. Testen Sie den Assistenten in der Vorschau.
 7. Veröffentlichen Sie den Assistant.
 
 ## Modellquellen
 
 Ein Modell kann über mehr als eine Quelle verfügbar sein. Beispielsweise kann
 Claude Sonnet 5 sowohl Ihren Anthropic-API-Schlüssel als auch AI Gateway
-verwenden. Der Source Selector zeigt an, wenn ein Modell zwei oder mehr Quellen
-hat.
+verwenden. Der Quellenauswahlbereich zeigt an, wenn ein Modell zwei oder mehr
+Quellen hat.
 
-- **Automatic** verwendet die erste verfügbare Quelle. Die Reihenfolge ist Ihr
-  API-Schlüssel, die schlüssellose Enterprise-Authentifizierung, der
+- **Automatic** verwendet die erste verfügbare Quelle. Die Reihenfolge ist wie
+  folgt: Ihr API-Schlüssel, die schlüssellose Enterprise-Authentifizierung, der
   Plattformplan, Ihr AI-Gateway-Schlüssel und der AI-Gateway-Schlüssel der
   Plattform.
 - **Platform plan**, **API key**, **Keyless**, **AI Gateway · your key** und
@@ -98,12 +100,12 @@ den AI-Gateway-Schlüssel der Plattform, und der Plattformplan übernimmt die
 Kosten.
 
 Wenn die ausgewählte Quelle das Modell nicht bedienen kann, antwortet Ciele mit
-einem anderen verfügbaren Modell – genau wie in dem Fall, dass ein Provider
-keine Anmeldeinformationen hat.
+einem anderen verfügbaren Modell – genau wie in dem Fall, dass ein Provider über
+keine Anmeldeinformationen verfügt.
 
 Die Modelle, die Besucher oder Kollegen auswählen können, können ebenfalls
 jeweils eine Quelle verwenden. Die Liste zeigt ein Modell einmal für jede Quelle
-an, wobei der Quellname nach dem Modellnamen steht.
+an, wobei der Name der Quelle nach dem Namen des Modells steht.
 
 Das eigene Abonnement eines Mitglieds ist keine Quelle, die Sie auswählen
 können. Es führt die eigenen Chats dieses Mitglieds aus, unabhängig davon,

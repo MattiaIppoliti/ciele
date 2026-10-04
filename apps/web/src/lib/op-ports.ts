@@ -274,6 +274,11 @@ export function webOperationPorts(
     // member write policy, so the settle-and-unsubscribe runs on the system
     // Db. The operation already checked the Conversation's Organization; the
     // read here checks it again before anything leaves.
+    unsubscribeAssistantWebhooks: async (assistantId) => {
+      const system = getWidgetDb();
+      if ((await system.getAssistant(assistantId))?.organizationId !== opts.organizationId) return;
+      await unsubscribePendingWebhooks({ db: system }, { assistantId });
+    },
     unsubscribeWebhooks: async (conversationId) => {
       const system = getWidgetDb();
       const conversation = await system.getConversation(conversationId);

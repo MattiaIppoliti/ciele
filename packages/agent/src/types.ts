@@ -586,7 +586,7 @@ export interface TeammateActionTool {
    */
   run(
     input: Record<string, unknown>,
-    options?: { confirmed?: boolean }
+    options?: { confirmed?: boolean; signal?: AbortSignal }
   ): Promise<TeammateActionOutcome>;
 }
 
@@ -620,7 +620,8 @@ export interface ReviewRuntime {
     input: Omit<
       ReviewRequestInput,
       "organizationId" | "assistantId" | "conversationId" | "simulated"
-    >
+    >,
+    checkpoint?: import("./flow-continuation").GateCheckpointInput
   ): Promise<ReviewRequest>;
 }
 
@@ -639,7 +640,8 @@ export interface WebhookRuntime {
     input: Omit<
       WebhookSubscriptionInput,
       "organizationId" | "assistantId" | "conversationId" | "simulated"
-    >
+    >,
+    checkpoint?: import("./flow-continuation").GateCheckpointInput
   ): Promise<WebhookSubscription>;
   /**
    * Store the unsubscribe call once the subscribe reply is in hand: the id the
@@ -656,6 +658,7 @@ export interface WebhookRuntime {
 }
 
 export interface ActionContext {
+  checkContinuation?: () => Promise<void>;
   chooseStudyFormat?: (formats: import("@agent-hub/core").StudyFormat[], topic: string) => Promise<import("@agent-hub/core").StudyFormat>;
   /** Stable key rooted in the durable turn claim, unique to this action slot. */
   idempotencyKey?: string;

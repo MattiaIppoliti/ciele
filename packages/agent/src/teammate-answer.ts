@@ -131,6 +131,7 @@ export type TeammateAnswerOutcome =
       ok: false;
       error: unknown;
       toolCalls: number;
+      usageRows: (messageId: string | null) => AiUsageInput[];
       recordFailed: () => Promise<void>;
     };
 
@@ -190,8 +191,22 @@ export async function executeTeammateAnswer(options: {
   forward: (event: RuntimeEvent) => void;
   telemetry: TeammateAnswerTelemetry;
   attribution: TeammateAnswerAttribution;
+  /** Container-owned auxiliary decisions, metered on failure too. */
+  additionalUsage?: TeammateEngineResult["usage"];
 }): Promise<TeammateAnswerOutcome> {
   const observer = createTurnObserver(options.forward);
+  // Keep completed calls outside the success result: later model requests or
+  // persistence may fail after these tokens were already spent.
+  const spent: TeammateEngineResult["usage"] = [];
+  const usageRows = (messageId: string | null): AiUsageInput[] =>
+    projectTeammateUsage({
+      usage: [...spent, ...(options.additionalUsage ?? [])],
+      organizationId: options.organizationId,
+      teammateId: options.teammate.id,
+      telemetry: options.telemetry,
+      attribution: options.attribution,
+      messageId,
+    });
   try {
     const result = await runTeammateAnswer({
       db: options.db,
@@ -200,7 +215,7 @@ export async function executeTeammateAnswer(options: {
       connections: options.connections,
       conversationId: options.conversationId,
       personaContext: options.personaContext,
-      turn: { ...options.turn, emit: observer.emit },
+      turn: { ...options.turn, emit: observer.emit, usageSink: spent },
       usage: {
         spenders: {
           teammateId: options.teammate.id,
@@ -210,16 +225,8 @@ export async function executeTeammateAnswer(options: {
         surface: options.attribution.surface,
       },
     });
-    const usage = summarizeTurnUsage(result.usage);
-    const usageRows = (messageId: string | null): AiUsageInput[] =>
-      projectTeammateUsage({
-        usage: result.usage,
-        organizationId: options.organizationId,
-        teammateId: options.teammate.id,
-        telemetry: options.telemetry,
-        attribution: options.attribution,
-        messageId,
-      });
+    options.turn.signal?.throwIfAborted();
+    const usage = summarizeTurnUsage([...spent, ...(options.additionalUsage ?? [])]);
     return {
       ok: true,
       result,
@@ -251,6 +258,7 @@ export async function executeTeammateAnswer(options: {
       ok: false,
       error,
       toolCalls: observer.toolCalls,
+      usageRows,
       recordFailed: () =>
         recordRuntimeEvent(options.db, {
           organizationId: options.organizationId,
@@ -261,9 +269,8 @@ export async function executeTeammateAnswer(options: {
           surface: options.telemetry.surface,
           durationMs: Date.now() - options.telemetry.startedAt,
           toolCalls: observer.toolCalls,
+          ...summarizeTurnUsage([...spent, ...(options.additionalUsage ?? [])]),
           errorClass: errorClassOf(error),
-          errorMessage:
-            error instanceof Error ? error.message : "Unknown error",
         }),
     };
   }

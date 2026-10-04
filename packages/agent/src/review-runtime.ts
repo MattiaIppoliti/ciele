@@ -6,6 +6,8 @@ import type {
 } from "@agent-hub/core";
 import {
   expireReview,
+  normalizeAssignees,
+  REVIEW_MAIL_SCOPE,
   reviewHaltMessage,
   reviewRequestText,
   sealSecret,
@@ -28,6 +30,7 @@ import { nonRetryable } from "./job-errors";
 import type { JobHandler } from "./jobs";
 import { platformAppOrigin } from "./template";
 import type { ChatReplyPart, ReviewRuntime } from "./types";
+import type { GateCheckpointFactory } from "./flow-continuation";
 
 /**
  * The Human review gate's runtime (spec #836, #841): what happens after the
@@ -71,19 +74,26 @@ export function dbReviewRuntime(
     conversation: Pick<Conversation, "id" | "metadata">;
     assistant: Pick<Assistant, "id" | "organizationId">;
     simulated: boolean;
+    checkpoint?: GateCheckpointFactory;
   }
 ): ReviewRuntime {
   return {
     simulated: args.simulated,
     conversationId: args.conversation.id,
-    async create(input) {
-      const review = await db.table("reviewRequests").insert({
+    async create(input, checkpoint) {
+      const values = {
         ...input,
         organizationId: args.assistant.organizationId,
         assistantId: args.assistant.id,
         conversationId: args.conversation.id,
         simulated: args.simulated,
-      });
+      };
+      const opened = args.checkpoint && checkpoint
+        ? await db.openFlowGate({ kind: "review", gate: values, continuation: args.checkpoint("review", checkpoint) })
+        : null;
+      if (opened && opened.kind !== "review") throw new Error("Unexpected gate kind");
+      const review = opened?.gate ?? await db.table("reviewRequests").insert(values);
+      if (opened && (await db.readFlowContinuation(`review:${review.id}`)).continuation?.stoppedAt) throw new Error("This Flow was stopped before the pause.");
       await db.updateConversationMetadata(args.conversation.id, {
         ...args.conversation.metadata,
         pendingReviewId: review.id,
@@ -207,6 +217,12 @@ export async function deliverReviewRequest(
 ): Promise<void> {
   const { db } = deps;
   const client = deps.client ?? defaultApplicationHttpClient;
+  const members = await db.listMembers(review.organizationId);
+  const memberEmails = new Set(members.map(member => member.email.trim().toLowerCase()));
+  const assignees = normalizeAssignees(review.assignees);
+  if (!assignees.length || assignees.some(email => !memberEmails.has(email))) {
+    throw nonRetryable("A review assignee is no longer a Member of this Organization");
+  }
   const assistant = await db.getAssistant(review.assistantId);
   const text = reviewRequestText({
     title: review.title,
@@ -227,6 +243,12 @@ export async function deliverReviewRequest(
     if (connection.provider !== "microsoft_mail") {
       throw nonRetryable("The sender connection is not a Microsoft 365 mailbox");
     }
+    if (connection.status !== "connected" || !connection.scopes.includes(REVIEW_MAIL_SCOPE)) {
+      throw nonRetryable("The sender mailbox no longer grants permission to send review requests");
+    }
+    if (connection.ownerType === "member" && (!connection.ownerMemberId || !await db.getMemberRole(review.organizationId, connection.ownerMemberId))) {
+      throw nonRetryable("The sender mailbox owner is no longer a Member of this Organization");
+    }
     try {
       const credentials = await openCredentials(db, connection, client);
       const response = await client(trustedUrl("https://graph.microsoft.com/v1.0/me/sendMail", GRAPH_HOSTS), {
@@ -239,7 +261,7 @@ export async function deliverReviewRequest(
           message: {
             subject: text.subject,
             body: { contentType: "Text", content: text.body },
-            toRecipients: review.assignees.map((address) => ({ emailAddress: { address } })),
+            toRecipients: assignees.map((address) => ({ emailAddress: { address } })),
           },
           saveToSentItems: true,
         }),
@@ -277,7 +299,7 @@ export async function deliverReviewRequest(
       connection.scopes.includes("chat:write")
   );
   const slack = candidate ? await db.getApplicationConnection(candidate.id) : null;
-  if (!slack) {
+  if (!slack || slack.organizationId !== review.organizationId || slack.provider !== "slack" || slack.ownerType !== "organization" || slack.status !== "connected" || !slack.scopes.includes("chat:write")) {
     throw nonRetryable(
       "No Slack connection with the chat:write scope is available to post the request"
     );
@@ -347,6 +369,7 @@ export async function enqueueReviewResumptionJob(
   deps: { db: Db },
   review: Pick<ReviewRequest, "id" | "organizationId">
 ): Promise<void> {
+  if ((await deps.db.readFlowContinuation(`review:${review.id}`)).originStatus === "running") return;
   await enqueueReviewJob(deps.db, RESUME_REVIEW_KIND, review, 3);
 }
 
@@ -389,7 +412,9 @@ export const deliverReviewRequestHandler: JobHandler = {
       });
       return;
     }
-    const flow = await deps.db.getFlow(review.flowId);
+    const { continuation } = await deps.db.readFlowContinuation(`review:${review.id}`);
+    if (continuation?.stoppedAt) return;
+    const flow = continuation?.snapshot.flow ?? await deps.db.getFlow(review.flowId);
     const settings = flow?.actionSettings?.human_review;
     await stampDelivery(deps.db, review.id, {
       deliveryAttemptedAt: new Date().toISOString(),
@@ -445,12 +470,14 @@ export async function resumeReviewedConversation(
 ): Promise<{ messageId: string; content: ChatReplyPart[] } | null> {
   const { db } = deps;
   const review = await db.table("reviewRequests").get(reviewId);
-  if (!review || review.status === "pending") return null;
+  if (!review) return null;
+  const { continuation } = await db.readFlowContinuation(`review:${review.id}`);
+  if (review.status === "pending" && !continuation?.stoppedAt) return null;
   const conversation = await db.getConversation(review.conversationId);
   if (!conversation) return null;
   if (review.resumedAt) return lastAssistantMessage(db, conversation.id);
 
-  if (review.status === "approved") {
+  if (review.status === "approved" || continuation?.stoppedAt) {
     const resumed = await resumeGateTurn({
       db, conversation, gate: { kind: "review", request: review },
     });
@@ -556,6 +583,7 @@ export async function runDueReviewJobs(deps: ReviewJobDeps): Promise<{
   succeeded: number;
   failed: number;
 }> {
+  await deps.db.recoverFlowContinuations(deps.limit);
   const { expired } = await expireDueReviews(deps);
   // The approval gate's own clock rides the same tick (#958): both are
   // "somebody was asked and never answered", both close by compare-and-set,

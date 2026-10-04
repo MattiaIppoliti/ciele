@@ -7,13 +7,14 @@ describe("platform model discovery", () => {
   it("uses an exact catalog match, verified name, and ECB conversion", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) =>
       url.includes("ai-gateway")
-        ? Response.json({ data: [{ id: "anthropic/claude-new", name: "Claude New", type: "language", modalities: { output: ["text"] }, pricing: { input: "0.000002", output: "0.00001" } }] })
+        ? Response.json({ data: [{ id: "anthropic/claude-new", name: "Claude New", type: "language", context_window: 200000, modalities: { output: ["text"] }, pricing: { input: "0.000002", output: "0.00001" } }] })
         : new Response("<Cube currency='USD' rate='1.25'/>", { status: 200 }),
     ));
     expect(await discoverPlatformModel("anthropic", "claude-new")).toEqual({
       provider: "anthropic",
       modelId: "claude-new",
       label: "Claude New",
+      contextWindow: 200000,
       inputEurPerMillion: 1.6,
       outputEurPerMillion: 8,
     });
@@ -25,6 +26,7 @@ describe("platform model discovery", () => {
       id,
       name: id,
       type: "language",
+      context_window: 200000,
       modalities: { output: ["text"] },
       pricing: { input: "0.000001", output: "0.000002" },
       ...overrides,

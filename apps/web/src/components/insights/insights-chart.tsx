@@ -7,13 +7,7 @@ import { LineChart } from "@/components/charts/arc/line-chart/line-chart";
 import { Streamgraph } from "@/components/charts/arc/streamgraph/streamgraph";
 import { BrushChart } from "@/components/charts/arc/brush-chart/brush-chart";
 import { Button } from "@agent-hub/ui";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@agent-hub/ui";
+import { AnalyticsCard } from "./analytics-card";
 import {
   Table,
   TableBody,
@@ -209,19 +203,9 @@ export function UsageCard({
 
   const slideDirection = useSlidingDirection(tab, TABS.map((tab) => tab.id));
   return (
-    <Card>
-      <CardHeader className="border-b [.border-b]:pb-4">
-        <CardTitle className="text-lg font-semibold">
-          <h2>Usage</h2>
-        </CardTitle>
-        <CardDescription>
-          {tab === "metrics"
-            ? "Conversation activity over time, click a metric to toggle it."
-            : `Conversations split by ${tab === "assistants" ? "assistant" : "channel"}.`}
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent>
+    <AnalyticsCard title="Usage" description={tab === "metrics"
+      ? "Conversation activity over time, click a metric to toggle it."
+      : `Conversations split by ${tab === "assistants" ? "assistant" : "channel"}.`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Tabs value={tab} onValueChange={(value) => { if (value === "metrics" || value === "assistants" || value === "channels") selectTab(value); }}>
             {/* Library's pill rail: every section switcher in the console is
@@ -291,6 +275,7 @@ export function UsageCard({
           })}
         </div>
 
+        <div className="t-acc" data-open={showTable}>
         <Button
           type="button"
           variant="ghost"
@@ -301,11 +286,11 @@ export function UsageCard({
         >
           <Table2 className="size-4" />
           {showTable ? "Hide data table" : "View data as table"}
-          <ChevronDown className={`size-4 transition-transform ${showTable ? "rotate-180" : ""}`} />
+          <span className="t-acc-chevron"><ChevronDown className="size-4" /></span>
         </Button>
 
-        <div id={dataTableId} hidden={!showTable}>
-          {showTable && (
+        <div id={dataTableId} className="t-acc-panel" aria-hidden={!showTable} inert={!showTable}>
+          <div className="t-acc-panel-inner">
           <TableCard
             className="mt-2"
             footer={
@@ -345,9 +330,9 @@ export function UsageCard({
               </TableBody>
             </Table>
           </TableCard>
-          )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+        </div>
+    </AnalyticsCard>
   );
 }

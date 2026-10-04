@@ -100,6 +100,7 @@ function requireIntegration(
 
 const getApiDetailsSpec: RuntimeToolSpec = {
   name: "getApiDetails",
+  execution: "parallel-read",
   description:
     "List the API endpoints this assistant can query: the base URL plus every endpoint with its purpose, parameters and response keys. Call this first when a question needs live data from the connected API.",
   inputSchema: z.object({}),
@@ -123,6 +124,7 @@ const getApiDetailsSpec: RuntimeToolSpec = {
 
 const viewEndpointDetailsSpec: RuntimeToolSpec = {
   name: "viewEndpointDetails",
+  execution: "parallel-read",
   description:
     "Read one endpoint's full contract: every parameter with its type and whether it is required, and the keys the response carries. Request the details of every endpoint you expect to need; you may call this in parallel for several of them.",
   inputSchema: z.object({
@@ -220,6 +222,10 @@ const queryApiSpec: RuntimeToolSpec = {
   async execute(input, ctx) {
     const integration = requireIntegration(ctx);
     if ("error" in integration) return integration;
+    const requestedMethod = String(input.method ?? "GET").toUpperCase();
+    const mutation = !["GET", "HEAD", "OPTIONS"].includes(requestedMethod);
+    const uncertaintyKey = `api:${String(input.path ?? "")}`;
+    if (ctx.uncertainOperations?.has(uncertaintyKey)) return { error: "The previous call has an unknown outcome. Check the external system before trying again.", outcome: "unknown", retryable: false };
     const outcome = await queryApiEndpoint(
       integration,
       {
@@ -256,7 +262,9 @@ const queryApiSpec: RuntimeToolSpec = {
     // A refusal or a transport failure: no status to report, so the model gets
     // the reason and the card shows the call that never completed.
     if (outcome.errorCode) {
-      const error = API_QUERY_ERROR_MESSAGES[outcome.errorCode];
+      const unknownOutcome = outcome.errorCode === "network" && (mutation || !["GET", "HEAD", "OPTIONS"].includes(outcome.endpoint?.method ?? "GET"));
+      if (unknownOutcome) ctx.uncertainOperations?.add(uncertaintyKey);
+      const error = unknownOutcome ? "The operation may have completed. Its outcome could not be confirmed; check the external system before trying again." : API_QUERY_ERROR_MESSAGES[outcome.errorCode];
       ctx.recordResult?.({
         endpoint: outcome.endpoint?.name ?? String(input.path ?? ""),
         method: outcome.endpoint?.method ?? "GET",
@@ -264,7 +272,7 @@ const queryApiSpec: RuntimeToolSpec = {
         status: "failed",
         response: error,
       });
-      return { error, path: String(input.path ?? "") };
+      return { error, path: String(input.path ?? ""), ...(unknownOutcome ? { outcome: "unknown", retryable: false } : {}) };
     }
 
     const body = outcome.bodyText ?? "";
@@ -373,6 +381,7 @@ const summarizeWindow: RuntimeToolSpec["summarize"] = (output) => {
 
 const readApiResponseSpec: RuntimeToolSpec = {
   name: "readApiResponse",
+  execution: "parallel-read",
   description:
     "Read more of a large API response, by the handle a previous queryApi returned. Returns the requested character window plus the response's total length.",
   inputSchema: z.object({

@@ -417,9 +417,7 @@ export function ChatSidebarPanel({
               })
             )}
             defaultExpandedIds={dayGroups.map((group) => group.id)}
-            // "" rather than null: the list reads null as "keep your own
-            // selection", which left the last thread lit after New chat.
-            activeId={openConversationId ?? ""}
+            activeId={openConversationId}
             onActiveChange={(id) => {
               // Day folders toggle; only conversation rows navigate.
               if (id.startsWith(DAY_GROUP_PREFIX)) return;
@@ -443,9 +441,6 @@ export function ChatSidebarPanel({
                 <MessageSquareText className="size-4" />
               );
             }}
-            // No rename or reorder behind this list: an edit would show and
-            // then revert on the next refresh.
-            editable={false}
             ariaLabel="Your conversations with teammates"
           />
         )}

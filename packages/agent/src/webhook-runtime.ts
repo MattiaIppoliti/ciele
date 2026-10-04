@@ -15,6 +15,7 @@ import type { Db } from "@agent-hub/db";
 import { reportError } from "@agent-hub/diagnostics";
 import { executeApiRequest, extractApiJsonPaths } from "./api-request";
 import { resumeGateTurn } from "./resume-gate-turn";
+import type { GateCheckpointFactory } from "./flow-continuation";
 import { gateTokens } from "./gate-token";
 import { getRuntimeHost } from "./host";
 import { nonRetryable } from "./job-errors";
@@ -115,20 +116,27 @@ export function dbWebhookRuntime(
     conversation: Pick<Conversation, "id" | "metadata">;
     assistant: Pick<Assistant, "id" | "organizationId">;
     simulated: boolean;
+    checkpoint?: GateCheckpointFactory;
   }
 ): WebhookRuntime {
   return {
     simulated: args.simulated,
     conversationId: args.conversation.id,
     callbackUrl: webhookCallbackUrl,
-    async create(input) {
-      const subscription = await db.table("webhookSubscriptions").insert({
+    async create(input, checkpoint) {
+      const values = {
         ...input,
         organizationId: args.assistant.organizationId,
         assistantId: args.assistant.id,
         conversationId: args.conversation.id,
         simulated: args.simulated,
-      });
+      };
+      const opened = args.checkpoint && checkpoint
+        ? await db.openFlowGate({ kind: "webhook", gate: values, continuation: args.checkpoint("webhook", checkpoint) })
+        : null;
+      if (opened && opened.kind !== "webhook") throw new Error("Unexpected gate kind");
+      const subscription = opened?.gate ?? await db.table("webhookSubscriptions").insert(values);
+      if (opened && (await db.readFlowContinuation(`webhook:${subscription.id}`)).continuation?.stoppedAt) throw new Error("This Flow was stopped before the pause.");
       await db.updateConversationMetadata(args.conversation.id, {
         ...args.conversation.metadata,
         pendingWebhookId: subscription.id,
@@ -202,19 +210,29 @@ async function unsubscribe(db: Db, subscription: WebhookSubscription): Promise<v
  */
 export async function unsubscribePendingWebhooks(
   deps: { db: Db },
-  conversationId: string
+  target: string | { assistantId: string }
 ): Promise<{ cancelled: number }> {
-  const pending = await deps.db
-    .table("webhookSubscriptions")
-    .list({ conversationId, status: "pending" }, { limit: 100 });
+  const filter = typeof target === "string" ? { conversationId: target } : target;
+  // The authoritative opener checks this fence under the same row locks.
+  // A turn that has not reached its gate cannot subscribe after our scan.
+  await deps.db.closeFlowGateAdmission(filter);
   let cancelled = 0;
-  for (const subscription of pending) {
-    const closed = await deps.db.settleWebhookSubscription(subscription.id, {
-      status: "expired",
-    });
-    if (!closed) continue;
-    await unsubscribe(deps.db, closed);
-    cancelled += 1;
+  // Advance by stamping each row. Include settled callbacks whose cleanup did
+  // not finish; their payload/decision is never overwritten.
+  for (;;) {
+    const subscriptions = await deps.db.table("webhookSubscriptions").list({ ...filter, unsubscribedAt: null }, { limit: 100 });
+    if (!subscriptions.length) break;
+    for (const subscription of subscriptions) {
+      if ((await deps.db.readFlowContinuation(`webhook:${subscription.id}`)).originStatus === "running") throw new Error("A webhook subscription is still being opened. Try deletion after its turn finishes.");
+    }
+    for (const subscription of subscriptions) {
+      const closed = subscription.status === "pending"
+        ? await deps.db.settleWebhookSubscription(subscription.id, { status: "expired" })
+        : subscription;
+      await unsubscribe(deps.db, closed ?? subscription);
+      if (!subscription.unsubscribeUrl) await deps.db.table("webhookSubscriptions").update(subscription.id, { unsubscribedAt: new Date().toISOString() });
+      if (closed && subscription.status === "pending") cancelled += 1;
+    }
   }
   return { cancelled };
 }
@@ -343,6 +361,7 @@ export async function enqueueWebhookResumptionJob(
   deps: { db: Db },
   subscription: Pick<WebhookSubscription, "id" | "organizationId">
 ): Promise<void> {
+  if ((await deps.db.readFlowContinuation(`webhook:${subscription.id}`)).originStatus === "running") return;
   await deps.db.createBackgroundJob({
     id: `${RESUME_WEBHOOK_KIND}:${subscription.id}`,
     organizationId: subscription.organizationId,
@@ -382,7 +401,9 @@ export async function resumeWebhookConversation(
 ): Promise<void> {
   const { db } = deps;
   const subscription = await db.table("webhookSubscriptions").get(subscriptionId);
-  if (!subscription || subscription.status === "pending") return;
+  if (!subscription) return;
+  const { continuation } = await db.readFlowContinuation(`webhook:${subscription.id}`);
+  if (subscription.status === "pending" && !continuation?.stoppedAt) return;
   const conversation = await db.getConversation(subscription.conversationId);
   if (!conversation) return;
   if (subscription.resumedAt) return;
@@ -391,7 +412,7 @@ export async function resumeWebhookConversation(
   // while, and the other system has nothing left to tell us either way.
   await unsubscribe(db, subscription);
 
-  if (subscription.status === "received") {
+  if (subscription.status === "received" || continuation?.stoppedAt) {
     const resumed = await resumeGateTurn({
       db, conversation, gate: { kind: "webhook", request: subscription },
     });
@@ -483,6 +504,7 @@ export async function runDueWebhookJobs(deps: WebhookJobDeps): Promise<{
   succeeded: number;
   failed: number;
 }> {
+  await deps.db.recoverFlowContinuations(deps.limit);
   const { expired } = await expireDueWebhooks(deps);
   const { runDueJobs } = await import("./jobs");
   const result = await runDueJobs(

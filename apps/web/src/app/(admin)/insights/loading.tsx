@@ -1,3 +1,4 @@
+import { AnalyticsCard } from "@/components/insights/analytics-card";
 import { Skeleton } from "@agent-hub/ui";
 
 /**
@@ -36,7 +37,7 @@ export default function InsightsLoading() {
       <div className="grid grid-cols-12 gap-3 px-4 pt-5 pb-6 sm:gap-4 sm:px-6">
         {/* Six headline cards, two per row until xl */}
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={`r1-${i}`} className="col-span-6 h-40 rounded-xl xl:col-span-3" />
+          <AnalyticsCard key={`r1-${i}`} className="col-span-6 @5xl:col-span-3" title={<Skeleton className="h-4 w-24" />} description={<Skeleton className="h-3 w-20" />}><Skeleton className="h-20 w-full" /></AnalyticsCard>
         ))}
         {/* Four third-width cards (languages, answers, users, ...) */}
         {Array.from({ length: 4 }).map((_, i) => (

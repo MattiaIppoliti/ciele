@@ -312,6 +312,7 @@ async function dispatchActions(options: {
   for (const [actionIndex, action] of actions.entries()) {
     if (actionIndex < startIndex) continue;
     if (signal?.aborted) break;
+    await ctx.checkContinuation?.();
     ctx.actionIndex = actionIndex;
     ctx.idempotencyKey = effectKeyPrefix
       ? `${effectKeyPrefix}/action-${actionIndex}`
@@ -514,7 +515,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
   /**
    * Receives each model call's usage as it completes. The turn owns the array
    * so a run that throws or is aborted still settles what it already spent;
-   * `RunResult.usage` is this same array on success.
+   * `RunResult.usage` snapshots these completed calls on success.
    */
   usageSink?: UsageEvent[];
   /**
@@ -566,6 +567,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
    * `action` names the gate being resumed, and is checked against the live
    * Flow below. Two gates share this seam rather than each adding a branch.
    */
+  checkContinuation?: () => Promise<void>;
   resumeFrom?: {
     flowId: string;
     actionIndex: number;
@@ -725,6 +727,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
     parts: ChatReplyPart[]
   ): Omit<ActionContext, "chatModel"> => ({
     idempotencyKey: effectKeyPrefix,
+    checkContinuation: options.checkContinuation,
     assistant,
     platformPrompt,
     persona,
@@ -937,7 +940,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
         effects: [],
         flowId: null,
         flowName: "FAQ",
-        usage: usageEvents,
+        usage: [...usageEvents],
         ...(preflight ? { preflight } : {}),
       };
     }
@@ -966,7 +969,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
       effects: [],
       flowId: null,
       flowName: "Escalation",
-      usage: usageEvents,
+      usage: [...usageEvents],
       ...(preflight ? { preflight } : {}),
     };
   }
@@ -1091,6 +1094,9 @@ export async function runAssistantChat(options: Pick<ActionContext,
           detail: errorMessageOf(error),
         });
       }
+      // A failed generative request cannot commit a successful answer. The
+      // owning turn settles completed calls and records metadata-only failure.
+      if (providerBacked) throw error;
       // Provider errors (quota, model ids, key hints) are admin diagnostics:
       // show them in Preview, never to widget visitors.
       const diagnostic = isOperatorSurface(keyResolution);
@@ -1125,7 +1131,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
     effects,
     flowId: storedFlowId(flow),
     flowName: flow.name,
-    usage: usageEvents,
+    usage: [...usageEvents],
     ...(preflight ? { preflight } : {}),
     handoverTo,
   };

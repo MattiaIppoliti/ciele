@@ -291,6 +291,8 @@ interface MockStore {
   evaluationDatasets: Map<string, import("@agent-hub/core").EvaluationDataset>;
   evaluationRuns: Map<string, import("@agent-hub/core").EvaluationRun>;
   actionApprovals: Map<string, ActionApproval>;
+  gateAdmissionClosed: Set<string>;
+  flowContinuations: Map<string, import("@agent-hub/core").FlowContinuation>;
   /** When each approval's run was claimed; the mock's `run_claimed_at`. */
   actionApprovalRunClaims: Map<string, string>;
   reviewRequests: Map<string, ReviewRequest>;
@@ -634,6 +636,8 @@ function emptyStore(): MockStore {
     evaluationDatasets: new Map(),
     evaluationRuns: new Map(),
     actionApprovals: new Map(),
+    gateAdmissionClosed: new Set(),
+    flowContinuations: new Map(),
     actionApprovalRunClaims: new Map(),
     reviewRequests: new Map(),
     knowledgeMemories: new Map(),
@@ -2022,6 +2026,40 @@ function getStore(): MockStore {
   return store;
 }
 
+function queueMockContinuation(row: import("@agent-hub/core").FlowContinuation): void {
+  const store = getStore();
+  if (!row.originStatus) return;
+  const gate = row.gateKind === "review" ? store.reviewRequests.get(row.gateId) : store.webhookSubscriptions.get(row.gateId);
+  if (!gate || gate.resumedAt || (!row.stoppedAt && gate.status === "pending")) return;
+  const kind = row.gateKind === "review" ? "resume_reviewed_conversation" : "resume_webhook_conversation";
+  const id = `${kind}:${row.gateId}`;
+  if (store.backgroundJobs.has(id)) return;
+  const now = new Date().toISOString();
+  store.backgroundJobs.set(id, { id, organizationId: row.organizationId, kind, sourceId: null, status: "queued",
+    payload: row.gateKind === "review" ? { reviewId: row.gateId, organizationId: row.organizationId } : { subscriptionId: row.gateId, organizationId: row.organizationId },
+    attempts: 0, maxAttempts: 3, nextRunAt: now, lockedAt: null, lockedBy: null, leaseToken: null, error: "", createdAt: now, updatedAt: now });
+}
+
+function stampMockOrigin(conversationId: string, requestId: string, status: "completed" | "failed"): void {
+  for (const [id, row] of getStore().flowContinuations) {
+    if (row.conversationId !== conversationId || row.originRequestId !== requestId) continue;
+    const next = { ...row, originStatus: status,
+      ...(status === "failed" ? { stoppedAt: row.stoppedAt ?? new Date().toISOString(), stopReason: row.stopReason ?? "Original turn failed" } : {}) };
+    getStore().flowContinuations.set(id, next); queueMockContinuation(next);
+  }
+}
+
+function stopMockContinuations(assistantId: string, flowId: string | null, reason: string): void {
+  const now = new Date().toISOString();
+  for (const [id, row] of getStore().flowContinuations) {
+    if (row.assistantId === assistantId && (!flowId || row.flowId === flowId) && !row.stoppedAt) {
+      const next = { ...row, stoppedAt: now, stopReason: reason, updatedAt: now };
+      getStore().flowContinuations.set(id, next);
+      queueMockContinuation(next);
+    }
+  }
+}
+
 /**
  * The Assistant behind a Conversation, or undefined when there is none: a
  * Teammate Conversation is owned by a Teammate, so every read that reaches for
@@ -2035,6 +2073,9 @@ function getStore(): MockStore {
  */
 function dropConversation(store: MockStore, id: string): void {
   store.conversations.delete(id);
+  for (const [key, row] of store.flowContinuations) if (row.conversationId === id) store.flowContinuations.delete(key);
+  for (const [key, row] of store.reviewRequests) if (row.conversationId === id) store.reviewRequests.delete(key);
+  for (const [key, row] of store.webhookSubscriptions) if (row.conversationId === id) store.webhookSubscriptions.delete(key);
   for (const [messageId, message] of store.messages) {
     if (message.conversationId !== id) continue;
     store.messages.delete(messageId);
@@ -2092,6 +2133,7 @@ const MOCK_TABLE_STORES: {
   localInferenceJobs: () => getStore().localInferenceJobs,
   assistantGoals: () => getStore().goals,
   actionApprovals: () => getStore().actionApprovals,
+  flowContinuations: () => getStore().flowContinuations,
   reviewRequests: () => getStore().reviewRequests,
   knowledgeMemories: () => getStore().knowledgeMemories,
   webhookSubscriptions: () => getStore().webhookSubscriptions,
@@ -3040,6 +3082,7 @@ export const mockDb: Db = {
     for (const conversation of store.conversations.values()) {
       if (conversation.assistantId === id) refuseHeldConversationDelete(conversation);
     }
+    for (const conversation of [...store.conversations.values()]) if (conversation.assistantId === id) dropConversation(store, conversation.id);
     store.assistants.delete(id);
     for (const [fid, f] of store.flows) {
       if (f.assistantId === id) store.flows.delete(fid);
@@ -3090,11 +3133,17 @@ export const mockDb: Db = {
     const current = store.flows.get(id);
     if (!current) throw new Error(`Flow ${id} not found`);
     const updated: Flow = { ...current, ...patch };
+    if (patch.enabled === false) {
+      updated.continuationEpoch = (current.continuationEpoch ?? 0) + 1;
+      stopMockContinuations(current.assistantId, id, "Flow disabled");
+    }
     store.flows.set(id, updated);
     return updated;
   },
 
   async deleteFlow(id) {
+    const flow = getStore().flows.get(id);
+    if (flow) stopMockContinuations(flow.assistantId, id, "Flow deleted");
     getStore().flows.delete(id);
   },
 
@@ -5249,6 +5298,9 @@ export const mockDb: Db = {
 
   async deletePublications(assistantId) {
     const store = getStore();
+    const assistant = store.assistants.get(assistantId);
+    if (assistant) store.assistants.set(assistantId, { ...assistant, continuationEpoch: (assistant.continuationEpoch ?? 0) + 1 });
+    stopMockContinuations(assistantId, null, "Assistant unpublished");
     for (const publication of [...store.publications.values()]) {
       if (publication.assistantId === assistantId) {
         store.publications.delete(publication.id);
@@ -5411,7 +5463,72 @@ export const mockDb: Db = {
     if (!current || current.status !== "pending") return null;
     const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
     store.reviewRequests.set(id, next);
+    const continuation = store.flowContinuations.get(`review:${id}`);
+    if (continuation) queueMockContinuation(continuation);
     return next;
+  },
+  async openFlowGate(input) {
+    const store = getStore();
+    const continuation = structuredClone(input.continuation);
+    const assistant = store.assistants.get(input.gate.assistantId);
+    const flow = store.flows.get(input.gate.flowId);
+    if (!assistant || !flow || flow.assistantId !== assistant.id || assistant.organizationId !== input.gate.organizationId) throw new Error("Flow continuation target is unavailable");
+    const conversation = store.conversations.get(input.gate.conversationId);
+    if (!conversation || conversation.assistantId !== assistant.id) throw new Error("Flow continuation Conversation does not belong to Assistant");
+    if (!flow.enabled || (assistant.continuationEpoch ?? 0) !== continuation.snapshot.assistantEpoch || (flow.continuationEpoch ?? 0) !== continuation.snapshot.flowEpoch || (continuation.snapshot.publicationId && !store.publications.has(continuation.snapshot.publicationId))) {
+      continuation.stoppedAt = new Date().toISOString();
+      continuation.stopReason = "Execution stopped before pause";
+    }
+    if (store.gateAdmissionClosed.has(`assistant:${assistant.id}`) || store.gateAdmissionClosed.has(`conversation:${continuation.conversationId}`)) throw new Error("Flow gate admission is closed for deletion");
+    store.flowContinuations.set(continuation.id, continuation);
+    const now = new Date().toISOString();
+    if (input.kind === "review") {
+      const gate: ReviewRequest = {
+        ...input.gate, id: continuation.gateId, status: "pending", message: input.gate.message ?? "",
+        summary: input.gate.summary ?? "", decision: null, decidedBy: null, decidedByName: null,
+        decidedAt: null, resumedAt: null, createdAt: now, updatedAt: now,
+      };
+      store.reviewRequests.set(gate.id, gate);
+      return { kind: "review", gate };
+    }
+    const gate: WebhookSubscription = {
+      ...input.gate, id: continuation.gateId, status: "pending", payload: null, receivedAt: null,
+      unsubscribedAt: null, resumedAt: null, createdAt: now, updatedAt: now,
+    };
+    store.webhookSubscriptions.set(gate.id, gate);
+    return { kind: "webhook", gate };
+  },
+  async closeFlowGateAdmission(target) {
+    getStore().gateAdmissionClosed.add("assistantId" in target ? `assistant:${target.assistantId}` : `conversation:${target.conversationId}`);
+    for (const [id, row] of getStore().flowContinuations) {
+      const matches = "assistantId" in target ? row.assistantId === target.assistantId : row.conversationId === target.conversationId;
+      if (matches && !row.stoppedAt) {
+        const next = { ...row, stoppedAt: new Date().toISOString(), stopReason: "Deletion requested" };
+        getStore().flowContinuations.set(id, next); queueMockContinuation(next);
+      }
+    }
+  },
+  async recoverFlowContinuations(limit = 500) {
+    const store = getStore();
+    const candidates = [
+      ...[...store.reviewRequests.values()].map(gate => ({ gate, kind: "review" as const })),
+      ...[...store.webhookSubscriptions.values()].map(gate => ({ gate, kind: "webhook" as const })),
+    ].sort((a, b) => a.gate.createdAt.localeCompare(b.gate.createdAt));
+    let recovered = 0;
+    for (const { gate, kind } of candidates) {
+      if (recovered >= Math.max(1, Math.min(limit, 500))) break;
+      const c = store.flowContinuations.get(`${kind}:${gate.id}`);
+      const jobKind = kind === "review" ? "resume_reviewed_conversation" : "resume_webhook_conversation";
+      if (gate.resumedAt || (gate.status === "pending" && !c?.stoppedAt) || (c && !c.originStatus) || store.backgroundJobs.has(`${jobKind}:${gate.id}`)) continue;
+      await mockDb.createBackgroundJob({ id: `${jobKind}:${gate.id}`, organizationId: gate.organizationId, kind: jobKind,
+        payload: kind === "review" ? { reviewId: gate.id, organizationId: gate.organizationId } : { subscriptionId: gate.id, organizationId: gate.organizationId } });
+      recovered += 1;
+    }
+  },
+  async readFlowContinuation(id) {
+    const continuation = getStore().flowContinuations.get(id) ?? null;
+    const origin = continuation ? getStore().conversationTurns.get(`${continuation.conversationId}:${continuation.originRequestId}`) : undefined;
+    return { continuation, originStatus: continuation?.originStatus ?? origin?.status ?? null };
   },
 
   async decideActionApproval(id, patch) {
@@ -5453,6 +5570,8 @@ export const mockDb: Db = {
     if (!current || current.status !== "pending") return null;
     const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
     store.webhookSubscriptions.set(id, next);
+    const continuation = store.flowContinuations.get(`webhook:${id}`);
+    if (continuation) queueMockContinuation(continuation);
     return next;
   },
 
@@ -5572,6 +5691,7 @@ export const mockDb: Db = {
       assistantMessageId: message.id,
       lockedAt: input.now,
     });
+    stampMockOrigin(input.conversationId, input.requestId, "completed");
     return message;
   },
 
@@ -5593,6 +5713,7 @@ export const mockDb: Db = {
       lockedAt: input.now,
       updatedAt: input.now,
     });
+    stampMockOrigin(input.conversationId, input.requestId, "failed");
     return true;
   },
 

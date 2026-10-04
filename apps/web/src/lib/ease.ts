@@ -115,3 +115,8 @@ export const SPRING_MOUSE = {
   damping: 15,
   mass: 0.3,
 } as const;
+
+/** Transitions.dev recipe timings, adapted to Motion's existing React lifecycle. */
+export const TRANSITION_TEXT_SWAP = { duration: 0.15, ease: "easeInOut" } as const;
+export const TRANSITION_RESIZE = { duration: 0.3, ease: [0.22, 1, 0.36, 1] } as const;
+export const TRANSITION_TABS = { duration: 0.25, ease: [0.22, 1, 0.36, 1] } as const;

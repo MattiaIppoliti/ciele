@@ -2,6 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { AnalyticsCard } from "./analytics-card";
+import { LoadingReveal } from "@/components/motion/loading-reveal";
+import { Skeleton } from "@agent-hub/ui";
 import type { ChartSeries } from "./insights-chart";
 
 const UsageCard = dynamic(() =>
@@ -46,16 +49,13 @@ export function DeferredUsageCard(props: {
 
   return (
     <div ref={root} className="min-h-[28rem]">
-      {visible ? (
-        <UsageCard {...props} />
-      ) : (
-        <div
-          role="status"
-          className="bg-muted/40 h-[28rem] rounded-xl border motion-safe:animate-pulse"
-        >
-          <span className="sr-only">Loading usage chart…</span>
-        </div>
-      )}
+      <LoadingReveal loading={!visible} placeholder={
+        <AnalyticsCard title="Usage" description="Conversation activity over time.">
+          <Skeleton className="h-96 w-full" />
+        </AnalyticsCard>
+      }>
+        {visible && <UsageCard {...props} />}
+      </LoadingReveal>
     </div>
   );
 }

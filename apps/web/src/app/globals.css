@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../components/motion/transitions.css";
 
 @keyframes skeleton-reveal-pulse {
   0%, 100% { opacity: 0.58; }
@@ -900,35 +901,7 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
   }
 }
 
-/* A moving contrast band makes the active Thinking label feel alive while the
-   answer is generated. It is text-clipped rather than an overlay, so the
-   effect follows the exact shape of each translated phase label. */
-.thinking-label-glow {
-  background-image: linear-gradient(
-    90deg,
-    var(--muted-foreground) 0%,
-    var(--muted-foreground) 42%,
-    var(--foreground) 50%,
-    var(--muted-foreground) 58%,
-    var(--muted-foreground) 100%
-  );
-  background-position: 100% 50%;
-  background-size: 250% 100%;
-  color: var(--muted-foreground);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: thinking-label-glow 1.8s ease-in-out infinite;
-}
-
-@keyframes thinking-label-glow {
-  to {
-    background-position: -100% 50%;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .thinking-label-glow,
   .auth-grid-layer,
   .auth-composer-pulse-left,
   .auth-composer-pulse-right {
@@ -1611,18 +1584,6 @@ scritto-text:not(:defined) {
 
 .eyt-eye { fill: var(--foreground); }
 
-.eyt.eyt-mark { width: auto; height: auto; }
-
-.eyt-mark .eyt-body { fill: var(--foreground); }
-
-.eyt-mark .eyt-eye { fill: var(--background); }
-
-/* the circle and pill in dark mode match the hexagon: a lifted
-   dark body with the eyes kept white */
-.dark .eyt-mark .eyt-body { fill: var(--muted); }
-
-.dark .eyt-mark .eyt-eye { fill: var(--foreground); }
-
 /* The chat welcome retains its 64px ghost and the shared logo's theme tokens. */
 .eyt.eyt-ciele { width: var(--eyt-size); height: var(--eyt-size); }
 .eyt-ciele .eyt-ball { overflow: hidden; }
@@ -1837,18 +1798,6 @@ scritto-text:not(:defined) {
 [data-surface="flat"] .command-bar .cmd {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;}
-
-/* ── a flat rim, for comparison ──────────────────────────────
-   Reverts the graded rim to one colour all the way round —
-   which is what almost every published glass snippet does,
-   Apple's own included. It is here so the two can be judged
-   against each other on the same ground rather than taken on
-   trust, and it applies only inside a test board. */
-.gtry[data-rim="flat"] .command-bar .cmd::before {
-  border-color: var(--border);
-  background: none;
-  -webkit-mask: none;
-  mask: none;}
 
 /* Local fallbacks for Bencho glass controls, never global design tokens. */
 .command-bar {
@@ -2071,7 +2020,7 @@ scritto-text:not(:defined) {
 
 /* Overview: a gray frame, black inset and a caption beneath the content.
    Paint stays separate from text so the squircle filter cannot soften it. */
-.assistant-overview {
+.assistant-overview, .analytics-card {
   --overview-frame: #e4e4e7;
   --overview-frame-hover: #d9d9dd;
   --overview-border: #c6c6cc;
@@ -2081,7 +2030,7 @@ scritto-text:not(:defined) {
   --overview-inset-border: #d5d5db;
   --overview-icon: #f4f4f5;
 }
-.dark .assistant-overview {
+.dark .assistant-overview, .dark .analytics-card {
   --overview-frame: #202023;
   --overview-frame-hover: #29292d;
   --overview-border: #343439;

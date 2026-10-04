@@ -359,6 +359,7 @@ export type TableExposureMap = {
 };
 
 export const TABLE_EXPOSURE: TableExposureMap = {
+  flowContinuations: { hidden: "Protected admitted execution state. Only the runtime system Db may read or write it." },
   evaluationDatasets: {
     hidden: "Console-only uploads. The API-key surface has no evaluation dataset operation.",
   },

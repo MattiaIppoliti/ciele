@@ -873,7 +873,6 @@ export function PreviewPanel({
                 <EmptyState size="sm" title="No previous conversations" description="Start a preview conversation to see it here." />
               ) : (
                 <AISidebar
-                  editable={false}
                   items={historyGroups.map(
                     (group): SidebarResource => ({
                       id: group.id,
@@ -949,9 +948,7 @@ export function PreviewPanel({
                     );
                   }}
                   ariaLabel="My conversations"
-                  // Day-group folders take no actions; conversation rows get
-                  // the Pin/Delete menu from renderMenu above.
-                  className='w-full [&_[role=treeitem][aria-expanded]_button[aria-label^="Actions for"]]:hidden'
+                  className="w-full"
                 />
               )}
             </div>

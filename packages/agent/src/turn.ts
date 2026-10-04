@@ -1,4 +1,5 @@
 import { componentPartText } from "./component-text";
+import { admitFlowContinuations } from "./flow-continuation";
 import { gradeStudyAnswer, studySubmissionSchema } from "./study-exercise";
 import type {
   Assistant,
@@ -52,10 +53,7 @@ import type {
   UsageEvent,
 } from "./types";
 import {
-  APPROVAL_EXPIRY_MS,
-  approvalCardPart,
-  confirmationGateResult,
-  runApprovalGate,
+  gateTeammateActions,
 } from "./approval-gate";
 import { resolveDecisionModel } from "./decision-model";
 import { runInputGuardrails, suppressPart, suppressingEmit } from "./guardrails";
@@ -264,6 +262,10 @@ interface ConversationTurnBaseInput {
 
 /** A turn answered by an Assistant: a Publication snapshot or live rows. */
 export interface AssistantTurnInput extends ConversationTurnBaseInput {
+  /** Server-resolved Publication identity, never supplied by the client. */
+  publicationId?: string;
+  /** Protected checkpoint supplied only by gate resumption. */
+  continuation?: import("@agent-hub/core").FlowContinuation;
   /** Config the turn runs on. */
   assistant: Assistant;
   teammate?: undefined;
@@ -647,7 +649,6 @@ async function streamProactiveTurn(
           surface,
           durationMs: Date.now() - turnStart,
           errorClass: errorClassOf(error),
-          errorMessage: message,
         });
       } finally {
         controller.close();
@@ -1334,6 +1335,7 @@ export async function streamConversationTurn(
       });
       try {
         if (input.studyAnswer !== undefined) {
+          // Study answers do not start a Flow continuation.
           if (!subject.offersStudyMode) throw new Error("Study mode is disabled.");
           const exercise = gradeStudyAnswer(session, input.studyAnswer, await db.listMessages(conversationId));
           emit({ type: "part", part: exercise });
@@ -1474,6 +1476,9 @@ export async function streamConversationTurn(
             }
           }
         }
+        const gateCheckpoint = subject.runsFlowGates && input.assistant
+          ? await admitFlowContinuations({ db: systemDb, assistant, skills: input.skills ?? [], publicationId: input.publicationId, originRequestId: requestId, conversationId })
+          : undefined;
         // What the gate's own decisions cost. Collected here rather than in
         // the engine's `usageEvents` because the gate runs inside a tool call,
         // which is past the point the engine hands that array out.
@@ -1487,77 +1492,16 @@ export async function streamConversationTurn(
         // the bypass skips a colleague's approval, never the safety check,
         // which is what "chooses a path and never destroys information" means
         // for an actor that can act.
-        const gatedTeammateActions = input.teammateActions?.map((action) => ({
-          ...action,
-          // The two memory writes (#771) are not gated. They are the only
-          // tools with no grant row, because they take no target: the profile
-          // is always the invoking Member's own. There is nothing here for a
-          // gate to protect, and asking a colleague to authorise somebody
-          // writing to their own profile would be absurd.
-          guard: action.domain === "memory" ? undefined : async (actionInput: Record<string, unknown>) => {
-            // A call the host marks as always confirmed skips the judgement
-            // and goes straight in front of the Member, gate or no gate.
-            const confirmed = action.alwaysConfirm?.(actionInput) ?? false;
-            const callLabel = action.labelFor?.(actionInput) ?? action.label;
-            const gate = confirmed
-              ? confirmationGateResult()
-              : await runApprovalGate({
-              subject: {
-                label: callLabel,
-                description: action.description,
-                arguments: JSON.stringify(actionInput),
-                ...(teammate?.roleDescription
-                  ? { roleDescription: teammate.roleDescription }
-                  : {}),
-              },
-              resolved: resolveDecisionModel(
-                assistant?.modelProvider ?? "anthropic",
-                input.connections,
-                input.keyResolution ?? {}
-              ),
-              signal,
-              recordUsage: (event) => gateUsage.push(event),
-            });
-            // No decision backend configured means no gate: a deployment
-            // that never had a key has not opted into this and runs exactly as
-            // it did before (user story 24). A backend that *failed* is a
-            // different thing and does stop the action, because an outage must
-            // not become an approval. A confirmation always stops: it has a
-            // null backend too, but it is a promise the product made rather
-            // than a judgement the deployment opted into.
-            //
-            // The `allow` clause never changes the answer (a stopped call is
-            // never `allow`: a confirmation carries `review`). It is there to
-            // narrow `gate.verdict` for the approval row below.
-            if (gate.verdict.kind === "allow" || (!confirmed && gate.backend === null)) {
-              return null;
-            }
-
-            const approval = await systemDb.table("actionApprovals").insert({
-              organizationId: input.organizationId,
-              conversationId,
-              teammateId: teammate?.id ?? null,
-              requestedBy: input.keyResolution?.memberId ?? null,
-              operation: action.operation,
-              input: actionInput,
-              label: callLabel,
-              reversibility: gate.verdict.reversibility,
-              reason: gate.verdict.reason,
-              backend: gate.backend,
-              calibrated: gate.calibrated,
-              confidence: gate.confidence,
-              mapVersion: gate.mapVersion,
-              expiresAt: new Date(Date.now() + APPROVAL_EXPIRY_MS).toISOString(),
-            });
-            return approvalCardPart({
-              approvalId: approval.id,
-              label: callLabel,
-              verdict: gate.verdict,
-            });
-          },
-        }));
+        const gatedTeammateActions = gateTeammateActions({
+          db: systemDb, organizationId: input.organizationId,
+          actions: input.teammateActions ?? [], teammate,
+          target: { conversationId }, requestedBy: input.keyResolution?.memberId ?? null,
+          resolved: resolveDecisionModel(assistant.modelProvider, input.connections, input.keyResolution ?? {}),
+          signal, recordUsage: event => gateUsage.push(event),
+        });
 
         const turnOperationKey = `conversation-turn/${conversationId}/${requestId}`;
+        const admittedContinuation = "continuation" in input ? input.continuation : undefined;
         const answerTurn = {
           effectKeyPrefix: turnOperationKey,
           platformPrompt,
@@ -1631,6 +1575,7 @@ export async function streamConversationTurn(
                 conversation,
                 assistant,
                 simulated: isOperatorSurface(input.keyResolution ?? {}),
+                checkpoint: gateCheckpoint,
               }),
           webhookRuntime: !subject.runsFlowGates
             ? undefined
@@ -1638,12 +1583,17 @@ export async function streamConversationTurn(
                 conversation,
                 assistant,
                 simulated: isOperatorSurface(input.keyResolution ?? {}),
+                checkpoint: gateCheckpoint,
               }),
           // Non-model operations (#854): collected here and written with the
           // rest of the turn's accounting, so one insert covers the turn rather
           // than one per outbound call.
           countOperation: (event) => operationCounts.push(event),
           resumeFrom: resumeCursor(input, input.flows ?? []),
+          checkContinuation: admittedContinuation ? async () => {
+            const admitted = await systemDb.readFlowContinuation(admittedContinuation.id);
+            if (!admitted.continuation || admitted.continuation.stoppedAt) throw new Error("This Flow continuation was stopped.");
+          } : undefined,
           // Tool policy input (#667): the verified subject type and
           // claim decide which tool variants exist, never the model.
           toolSubject: {
@@ -1713,13 +1663,13 @@ export async function streamConversationTurn(
                 routineId: usageSpenders.routineId,
               },
             });
+          spentTeammateRows = outcome.usageRows;
           if (!outcome.ok) {
             await outcome.recordFailed();
             teammateFailureRecorded = true;
             throw outcome.error;
           }
           teammateExecution = outcome;
-          spentTeammateRows = outcome.usageRows;
           result = outcome.result;
         } else {
           result = await runAssistantChat({
@@ -1766,6 +1716,7 @@ export async function streamConversationTurn(
             signal,
             keyResolution: input.keyResolution,
             effectKeyPrefix: turnOperationKey,
+            usageSink: spentUsage,
           });
           if (continuation) {
             result = mergeHandoverContinuation(result, continuation);
@@ -1805,7 +1756,7 @@ export async function streamConversationTurn(
             const gateUsageRows = gateUsage.map(toRow);
             const usageRows = teammateExecution
               ? [...teammateExecution.usageRows(messageId), ...gateUsageRows]
-              : result.usage.map(toRow).concat(gateUsageRows);
+              : spentUsage.map(toRow).concat(gateUsageRows);
             usageSettled = true;
             await spendAdmission.settle(usageRows);
             // Counted, never priced, and isolated like every other accounting
@@ -1889,7 +1840,7 @@ export async function streamConversationTurn(
           // A capacity failure says so, with a wait, so the client can tell
           // "busy, try again" from "broken" (`TurnOverloadCode`).
           const overload = turnOverloadOf(error, capacityRefusalOf);
-          emit({ type: "error", message, ...(overload ?? {}) });
+          emit({ type: "error", message: isOperatorSurface(input.keyResolution ?? {}) ? message : "I could not finish this answer. Please try again.", ...(overload ?? {}) });
         }
         if (turnLeaseToken) {
           await systemDb
@@ -1897,7 +1848,7 @@ export async function streamConversationTurn(
               conversationId,
               requestId,
               leaseToken: turnLeaseToken,
-              error: message,
+              error: errorClassOf(error),
               now: new Date().toISOString(),
             })
             .catch(() => false);
@@ -1914,8 +1865,8 @@ export async function streamConversationTurn(
             surface,
             durationMs: Date.now() - turnStart,
             toolCalls: observer.toolCalls,
+            ...summarizeTurnUsage(spentUsage),
             errorClass: errorClassOf(error),
-            errorMessage: message,
           });
         }
         if (!usageSettled) {
@@ -1956,7 +1907,7 @@ export async function streamConversationTurn(
  * sits in that slot.
  */
 function resumeCursor(
-  input: { resumeReview?: ReviewRequest; resumeWebhook?: WebhookSubscription },
+  input: { resumeReview?: ReviewRequest; resumeWebhook?: WebhookSubscription; continuation?: import("@agent-hub/core").FlowContinuation },
   flows: Flow[]
 ): { flowId: string; actionIndex: number; action: FlowAction; templatePatch: Record<string, string> } | undefined {
   if (input.resumeReview) {
@@ -1964,7 +1915,7 @@ function resumeCursor(
       flowId: input.resumeReview.flowId,
       actionIndex: input.resumeReview.actionIndex,
       action: "human_review",
-      templatePatch: reviewTemplateVariables(input.resumeReview),
+      templatePatch: { ...input.continuation?.snapshot.variables, ...reviewTemplateVariables(input.resumeReview) },
     };
   }
   if (input.resumeWebhook) {
@@ -1974,7 +1925,7 @@ function resumeCursor(
       flowId: input.resumeWebhook.flowId,
       actionIndex: input.resumeWebhook.actionIndex,
       action: "http_webhook",
-      templatePatch: webhookResumeVariables(input.resumeWebhook, settings),
+      templatePatch: { ...input.continuation?.snapshot.variables, ...webhookResumeVariables(input.resumeWebhook, settings) },
     };
   }
   return undefined;

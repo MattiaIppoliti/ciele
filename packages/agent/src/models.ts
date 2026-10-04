@@ -22,6 +22,8 @@ import {
 import type { LocalSubscriptionProvider } from "./local-subscriptions";
 import { createGoogleVertexProvider } from "./google-vertex";
 import { currentModelId, gatewayModelId } from "./catalog";
+import { bindModelCapacity, contextBudgetMiddleware } from "./context-budget";
+import { getRuntimeHost } from "./host";
 import { capacityRetryMiddleware } from "./rate-limit-retry";
 
 export { MODEL_CATALOG } from "./catalog";
@@ -113,6 +115,7 @@ export interface OpenAiCompatibleEndpoint {
   baseUrl: string;
   chatModel: string;
   embeddingModel: string | null;
+  contextWindow?: number;
 }
 
 export type ProviderCredential =
@@ -167,7 +170,7 @@ function configuredModelId(
   if (credential.provider === "openai_compatible" && "config" in credential) {
     return credential.config.chatModel;
   }
-  return table[credential.provider as CatalogProvider];
+  return credential.kind === "local_subscription" && credential.modelId ? credential.modelId : table[credential.provider as CatalogProvider];
 }
 
 /**
@@ -191,6 +194,7 @@ function compatibleEnvEndpoint(): OpenAiCompatibleEndpoint | null {
     baseUrl,
     chatModel,
     embeddingModel: process.env.OPENAI_COMPATIBLE_EMBEDDING_MODEL || null,
+    contextWindow: Number(process.env.OPENAI_COMPATIBLE_CONTEXT_WINDOW) || undefined,
   };
 }
 
@@ -226,6 +230,7 @@ function resolveOpenAiCompatibleCredential(
         baseUrl: connection.config.baseUrl,
         chatModel: connection.config.chatModel,
         embeddingModel: connection.config.embeddingModel ?? null,
+        contextWindow: connection.config.contextWindow,
       },
     };
   }
@@ -461,23 +466,44 @@ export function providerAvailability(
  * SDK's fixed schedule, so a crowd refused together does not return together.
  * A local CLI subscription has no HTTP status and is left as it is.
  */
-function buildModel(
+export function buildModel(
   provider: Provider,
   modelId: string,
   credential: ProviderCredential
-): LanguageModel {
-  if (credential.kind === "local_subscription") {
-    return createLocalSubscriptionModel({
-      provider: credential.provider,
-      modelId,
-      cliModelId: credential.modelId ?? null,
-      run: credential.run,
-    });
-  }
-  return wrapLanguageModel({
-    model: buildHostedModel(provider, modelId, credential),
-    middleware: capacityRetryMiddleware(),
+): ReturnType<typeof wrapLanguageModel> {
+  // Verified 2026-10-02: Gateway catalog, plus the official GPT-5.1 model page.
+  // Bind the ACTUAL resolved model, including provider fallback and retired IDs.
+  const known: Record<string, number> = {
+    "google/gemini-3.5-flash": 1_000_000,
+    "google/gemini-3.5-flash-lite": 1_000_000,
+    "google/gemini-2.5-flash-lite": 1_048_576,
+    "anthropic/claude-opus-4-8": 1_000_000,
+    "anthropic/claude-sonnet-5": 1_000_000,
+    "openai/gpt-5.1": 400_000,
+    "openai/gpt-5.4-mini": 400_000,
+  };
+  const verifiedCapacity = async () => credential.provider === "openai_compatible" && "config" in credential
+    ? credential.config.contextWindow ?? null
+    : known[`${provider}/${modelId}`] ?? (await getRuntimeHost().getSystemDb()?.listPlatformEvalModels())?.find(row => row.provider === provider && row.modelId === modelId)?.contextWindow ?? null;
+  const capacity = async () => {
+    if (credential.kind === "local_subscription" && !known[`${provider}/${modelId}`]) {
+      throw new Error("This local model has no verified maximum output capacity. Select an offered model with a verified context window.");
+    }
+    const verified = await verifiedCapacity();
+    // CLI adapters cannot cap remote output. Reserve the provider maximum
+    // (128k for the offered Claude/OpenAI models) plus CLI-owned framing.
+    return verified ? verified - (credential.kind === "local_subscription" ? 128000 + 65536 : 0) : null;
+  };
+  const model = wrapLanguageModel({
+    model: credential.kind === "local_subscription"
+      ? createLocalSubscriptionModel({ provider: credential.provider, modelId, cliModelId: modelId, run: credential.run })
+      : buildHostedModel(provider, modelId, credential),
+    middleware: credential.kind === "local_subscription"
+      ? contextBudgetMiddleware(capacity)
+      : [contextBudgetMiddleware(capacity), capacityRetryMiddleware()],
   });
+  bindModelCapacity(model, capacity);
+  return model;
 }
 
 function buildHostedModel(
@@ -629,7 +655,9 @@ export function resolveChatModel(
     // (or hold another provider's default): the connection's chat model is
     // the source of truth for what the endpoint serves.
     const modelId =
-      preferredProvider === "openai_compatible"
+      preferredCredential.kind === "local_subscription" && preferredCredential.modelId
+        ? currentModelId(preferredProvider, preferredCredential.modelId)
+        : preferredProvider === "openai_compatible"
         ? configuredModelId(preferredCredential, FALLBACK_MODEL)
         : currentModelId(preferredProvider, preferredModelId);
     return {

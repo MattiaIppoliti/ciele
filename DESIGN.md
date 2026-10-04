@@ -628,7 +628,7 @@ charts for type. When the next row reaches zero, add its pattern there.
       the edge it resizes (`gap`, `span`, `cornered`).
 - [ ] A lazily loaded panel is prefetched and rendered directly once loaded, not through
       `next/dynamic` (its first render suspends and React's 300ms reveal throttle delays the open).
-      `lazyModule` in `apps/web/src/lib/lazy-module.ts` does both.
+      `createPreloader` in `apps/web/src/lib/preloader.ts` does both.
 - [ ] Copy is industry-agnostic.
 - [ ] A new primitive is in the right place (one app: that app; two apps: `packages/ui` + barrel).
 - [ ] If a user can see the change, the docs.ciele.app page that describes it is updated.

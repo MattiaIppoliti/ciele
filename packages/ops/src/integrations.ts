@@ -304,6 +304,7 @@ export const createProviderApiKeyOp = defineOperation({
 });
 
 export const openAiCompatibleInputSchema = z.object({
+  contextWindow: z.number().int().min(8192).max(10_000_000),
   displayName: z.string().trim().max(200).optional(),
   baseUrl: z.string().trim().min(1),
   apiKey: z.string().trim().optional(),
@@ -336,6 +337,7 @@ export const createOpenAiCompatibleConnectionOp = defineOperation({
     if (refusal) return { error: refusal };
     const config: OpenAiCompatibleConfig = {
       kind: "openai_compatible",
+      contextWindow: input.contextWindow,
       baseUrl: input.baseUrl,
       chatModel: input.chatModel,
       ...(input.embeddingModel ? { embeddingModel: input.embeddingModel } : {}),

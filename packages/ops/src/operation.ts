@@ -45,6 +45,8 @@ import type { MutatedEntity } from "./entities";
 
 /** Who an operation runs as, resolved by the calling surface. */
 export interface OperationContext {
+  /** Cooperative cancellation before admission; started mutations must drain. */
+  signal?: AbortSignal;
   organizationId: string;
   /**
    * The acting Member's user id.
@@ -353,6 +355,7 @@ export interface OperationPorts {
    * runtime's egress; absent, the delete proceeds without them.
    */
   unsubscribeWebhooks?(conversationId: string): Promise<void>;
+  unsubscribeAssistantWebhooks?(assistantId: string): Promise<void>;
   /**
    * The organization's plan meters (#853), from whichever edition can answer.
    * A port rather than a Db read: caps are an enterprise concept and this

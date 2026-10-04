@@ -9847,6 +9847,105 @@ export function describeDbContract(
       });
     });
 
+    describe("protected Flow continuations", () => {
+      const queued = async (id: string) => (await systemDb.claimBackgroundJobs({ kind: "resume_reviewed_conversation", workerId: "contract", now: new Date(Date.now() + 1000).toISOString(), staleBefore: new Date(0).toISOString(), limit: 100 })).find(job => job.id === id) ?? null;
+      async function admit() {
+        const assistant = await newAssistant();
+        const flow = await db.createFlow(assistant.id, { name: "Admitted", actions: ["human_review", "custom_message"], customMessage: "Original {{value}}" });
+        const conversation = await db.createConversation({ assistantId: assistant.id, subjectType: "visitor", subjectId: shortId() });
+        const requestId = crypto.randomUUID();
+        const now = new Date().toISOString();
+        const claim = await systemDb.claimConversationTurn({ conversationId: conversation.id, requestId, workerId: "continuation-contract", now, staleBefore: new Date(0).toISOString() });
+        if (claim.status !== "claimed" || !claim.leaseToken) throw new Error("Missing origin lease");
+        const gateId = shortId();
+        const continuation: import("@agent-hub/core").FlowContinuation = {
+          id: `review:${gateId}`, organizationId: ctx.organizationId, assistantId: assistant.id, conversationId: conversation.id, flowId: flow.id,
+          gateKind: "review", gateId, originRequestId: requestId,
+          snapshot: { assistant, flow, skills: [], variables: { value: "extracted" }, message: "Original request", publicationId: null, assistantEpoch: assistant.continuationEpoch ?? 0, flowEpoch: flow.continuationEpoch ?? 0 },
+          stoppedAt: null, stopReason: null, createdAt: now, updatedAt: now,
+        };
+        const opened = await systemDb.openFlowGate({ kind: "review", continuation, gate: {
+          organizationId: ctx.organizationId, assistantId: assistant.id, conversationId: conversation.id, flowId: flow.id, actionIndex: 0,
+          title: "Approve", message: "", summary: "", channel: "email", assignees: ["owner@test"], inputs: [], expiresAt: new Date(Date.now() + 14 * 86400000).toISOString(), haltMessage: "", simulated: true,
+        } });
+        if (opened.kind !== "review") throw new Error("Wrong gate");
+        return { assistant, flow, conversation, continuation, opened, requestId, claim, now };
+      }
+      it("freezes admitted configuration and queues settlement only after the origin commits", async () => {
+        const f = await admit();
+        await db.updateFlow(f.flow.id, { customMessage: "Edited" });
+        await systemDb.decideReviewRequest(f.continuation.gateId, { status: "approved", decision: {}, decidedBy: null, decidedByName: null, decidedAt: f.now });
+        const jobId = `resume_reviewed_conversation:${f.continuation.gateId}`;
+        expect(await queued(jobId)).toBeNull();
+        expect((await systemDb.readFlowContinuation(f.continuation.id)).continuation?.snapshot.flow.customMessage).toBe("Original {{value}}");
+        await systemDb.commitConversationTurn({ conversationId: f.conversation.id, requestId: f.requestId, leaseToken: f.claim.leaseToken!, content: [], now: f.now });
+        const saved = await systemDb.readFlowContinuation(f.continuation.id);
+        expect(saved.originStatus).toBe("completed");
+        expect(saved.continuation?.originStatus).toBe("completed");
+        expect(await queued(jobId)).toMatchObject({ status: "running" });
+        expect(() => createOrgPinnedDb(systemDb, ctx.organizationId).readFlowContinuation(f.continuation.id)).toThrow();
+      });
+      it("keeps a disable permanent after re-enable and queues pending cleanup", async () => {
+        const f = await admit();
+        await systemDb.commitConversationTurn({ conversationId: f.conversation.id, requestId: f.requestId, leaseToken: f.claim.leaseToken!, content: [], now: f.now });
+        await db.updateFlow(f.flow.id, { enabled: false });
+        await db.updateFlow(f.flow.id, { enabled: true });
+        expect((await systemDb.readFlowContinuation(f.continuation.id)).continuation?.stopReason).toBe("Flow disabled");
+        expect((await db.getFlow(f.flow.id))?.continuationEpoch).toBeGreaterThan(f.continuation.snapshot.flowEpoch);
+        expect(await queued(`resume_reviewed_conversation:${f.continuation.gateId}`)).toMatchObject({ status: "running" });
+      });
+      it("keeps unpublish permanent after publishing again", async () => {
+        const f = await admit();
+        await db.createPublication(f.assistant.id, { assistant: f.assistant, flows: [f.flow], skills: [], collections: [] });
+        await db.deletePublications(f.assistant.id);
+        await db.createPublication(f.assistant.id, { assistant: f.assistant, flows: [f.flow], skills: [], collections: [] });
+        expect((await systemDb.readFlowContinuation(f.continuation.id)).continuation?.stopReason).toBe("Assistant unpublished");
+        expect((await db.getAssistant(f.assistant.id))?.continuationEpoch).toBeGreaterThan(f.continuation.snapshot.assistantEpoch);
+      });
+      it("preserves the failed-origin receipt and permanently stops the pending gate", async () => {
+        const f = await admit();
+        await systemDb.failConversationTurn({ conversationId: f.conversation.id, requestId: f.requestId, leaseToken: f.claim.leaseToken!, error: "AbortError", now: f.now });
+        const saved = await systemDb.readFlowContinuation(f.continuation.id);
+        expect(saved.originStatus).toBe("failed");
+        expect(saved.continuation?.stoppedAt).toBeTruthy();
+        expect(await queued(`resume_reviewed_conversation:${f.continuation.gateId}`)).toMatchObject({ status: "running" });
+      });
+      it("recovers settled legacy gates without exposing checkpoint access", async () => {
+        const f = await admit();
+        const legacy = await systemDb.table("reviewRequests").insert({ ...f.opened.gate, id: shortId() });
+        await systemDb.decideReviewRequest(legacy.id, { status: "approved", decision: {}, decidedBy: null, decidedByName: null, decidedAt: f.now });
+        await systemDb.recoverFlowContinuations();
+        expect(await queued(`resume_reviewed_conversation:${legacy.id}`)).toMatchObject({ status: "running" });
+        expect(() => createOrgPinnedDb(systemDb, ctx.organizationId).recoverFlowContinuations()).toThrow();
+      });
+      for (const target of ["assistant", "conversation"] as const) {
+        it(`fences new gate opening before ${target} deletion cleanup`, async () => {
+          const f = await admit();
+          await systemDb.closeFlowGateAdmission(target === "assistant" ? { assistantId: f.assistant.id } : { conversationId: f.conversation.id });
+          const gateId = shortId();
+          await expect(systemDb.openFlowGate({ kind: "review", gate: f.opened.gate, continuation: { ...f.continuation, id: `review:${gateId}`, gateId } })).rejects.toThrow(/admission is closed/);
+          expect(() => createOrgPinnedDb(systemDb, ctx.organizationId).closeFlowGateAdmission({ assistantId: f.assistant.id })).toThrow();
+        });
+      }
+      it("detects stop-before-pause even after re-enable", async () => {
+        const f = await admit();
+        await db.updateFlow(f.flow.id, { enabled: false });
+        await db.updateFlow(f.flow.id, { enabled: true });
+        const gateId = shortId();
+        await systemDb.openFlowGate({ kind: "review", gate: { ...f.opened.gate }, continuation: { ...f.continuation, id: `review:${gateId}`, gateId } });
+        expect((await systemDb.readFlowContinuation(`review:${gateId}`)).continuation?.stoppedAt).toBeTruthy();
+      });
+      it("refuses a gate on another Assistant's Conversation before creating its checkpoint", async () => {
+        const f = await admit();
+        const other = await newAssistant();
+        const conversation = await db.createConversation({ assistantId: other.id, subjectType: "visitor", subjectId: shortId() });
+        const gateId = shortId();
+        const id = `review:${gateId}`;
+        await expect(systemDb.openFlowGate({ kind: "review", gate: { ...f.opened.gate, conversationId: conversation.id }, continuation: { ...f.continuation, id, gateId, conversationId: conversation.id } })).rejects.toThrow(/does not belong to Assistant/);
+        expect((await systemDb.readFlowContinuation(id)).continuation).toBeNull();
+      });
+    });
+
     describe("human review requests (#841)", () => {
       it("closes a pending request exactly once", async () => {
         const assistant = await db.createAssistant(ctx.organizationId, { title: "Gate" });
@@ -9910,6 +10009,7 @@ export function describeDbContract(
           provider: "google" as const,
           modelId: `eval-test-${crypto.randomUUID()}`,
           label: "Eval test model",
+          contextWindow: 200000,
           inputEurPerMillion: 0.12,
           outputEurPerMillion: 0.48,
           addedBy: "owner@test",

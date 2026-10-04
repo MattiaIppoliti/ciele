@@ -1,9 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useInView, useReducedMotion } from "motion/react";
-import type { ChromaticTextRevealProps } from "@/components/motion/text-animation";
+import { useInView, useReducedMotion, type UseInViewOptions } from "motion/react";
 import { RollInText } from "@/components/motion/roll-in-text";
+
+export interface HeroRollingWordProps {
+  prefix?: string;
+  words: string[];
+  suffix?: string;
+  foregroundColor?: string;
+  duration?: number;
+  delay?: number;
+  pauseDuration?: number;
+  loop?: boolean;
+  startOnView?: boolean;
+  once?: boolean;
+  inViewMargin?: UseInViewOptions["margin"];
+  className?: string;
+}
 
 /** Reserve the longest word's width while Scritto rolls only the changing noun. */
 export function HeroRollingWord({
@@ -19,7 +33,7 @@ export function HeroRollingWord({
   once = true,
   inViewMargin,
   className,
-}: ChromaticTextRevealProps) {
+}: HeroRollingWordProps) {
   const host = useRef<HTMLSpanElement>(null);
   const [index, setIndex] = useState(0);
   const reduced = useReducedMotion();

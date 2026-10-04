@@ -8,6 +8,7 @@ vi.mock("./egress", async (importOriginal) => ({
 import type { WebhookSubscription } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { DEMO_ORG, getMockDb, resetMockDb } from "@agent-hub/db";
+import { admitFlowContinuations } from "./flow-continuation";
 import { resetRuntimeHost } from "./host";
 import { egressFetch } from "./egress";
 import {
@@ -66,6 +67,8 @@ function fakeDb(rows: WebhookSubscription[], options: { flow?: unknown } = {}) {
   const jobs: { id: string; kind: string }[] = [];
   const settled: string[] = [];
   const db = {
+    closeFlowGateAdmission: async () => {},
+    readFlowContinuation: async () => ({ continuation: null, originStatus: null }),
     table: (name: string) => {
       if (name !== "webhookSubscriptions") throw new Error(`unexpected table ${name}`);
       return {
@@ -338,6 +341,20 @@ describe("the clock", () => {
     expect(jobs).toEqual([]);
   });
 
+  it("cleans more than one window without overwriting a received callback", async () => {
+    const { db, store } = fakeDb(Array.from({ length: 105 }, (_, index) => subscription({ id: `cleanup-${index}`, ...(index === 0 ? { status: "received", payload: "recorded callback" } : {}) })));
+    expect(await unsubscribePendingWebhooks({ db }, "c1")).toEqual({ cancelled: 104 });
+    expect([...store.values()].every(row => row.unsubscribedAt)).toBe(true);
+    expect(store.get("cleanup-0")).toMatchObject({ status: "received", payload: "recorded callback" });
+  });
+
+  it("refuses deletion while a subscription is opening", async () => {
+    const { db, store } = fakeDb([subscription({ id: "opening" })]);
+    db.readFlowContinuation = async () => ({ continuation: null, originStatus: "running" });
+    await expect(unsubscribePendingWebhooks({ db }, "c1")).rejects.toThrow("still being opened");
+    expect(store.get("opening")).toMatchObject({ status: "pending", unsubscribedAt: null });
+  });
+
   it("closes pending gates and unsubscribes when a Conversation is deleted under them", async () => {
     // The migration cascades the row with the Conversation; this is the call
     // the ops layer makes first, so the other system is told to stop and a
@@ -424,7 +441,7 @@ describe("callback continuation", () => {
       title: "Callback",
       metadata: {},
     });
-    const gate = await db.table("webhookSubscriptions").insert(subscription({
+    const gateValues = subscription({
       organizationId: DEMO_ORG.id,
       assistantId: assistant.id,
       conversationId: conversation.id,
@@ -433,13 +450,21 @@ describe("callback continuation", () => {
       status: "received",
       payload: "done",
       simulated,
-    }));
+    });
+    const originRequestId = "webhook-origin";
+    const claim = await db.claimConversationTurn({ conversationId: conversation.id, requestId: originRequestId, workerId: "test", staleBefore: new Date(0).toISOString(), now: new Date().toISOString() });
+    if (claim.status !== "claimed" || !claim.leaseToken) throw new Error("Origin not claimed");
+    const factory = await admitFlowContinuations({ db, assistant, skills: [], conversationId: conversation.id, originRequestId });
+    const opened = await db.openFlowGate({ kind: "webhook", gate: gateValues, continuation: factory("webhook", { flow, message: "callback", variables: {} }) });
+    if (opened.kind !== "webhook") throw new Error("Wrong gate kind");
+    const gate = await db.table("webhookSubscriptions").update(opened.gate.id, { status: gateValues.status, payload: gateValues.payload, receivedAt: gateValues.receivedAt }) ?? opened.gate;
+    await db.commitConversationTurn({ conversationId: conversation.id, requestId: originRequestId, leaseToken: claim.leaseToken, content: [], now: new Date().toISOString() });
     await db.updateConversationMetadata(conversation.id, { pendingWebhookId: gate.id });
 
     await resumeWebhookConversation({ db, now: () => NOW }, gate.id);
     await resumeWebhookConversation({ db, now: () => NOW }, gate.id);
 
-    const messages = await db.listMessages(conversation.id);
+    const messages = (await db.listMessages(conversation.id)).filter(message => message.content.length);
     expect(messages).toHaveLength(1);
     expect(messages[0]).toMatchObject({
       role: "assistant",
