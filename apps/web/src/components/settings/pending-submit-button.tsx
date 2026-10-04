@@ -2,7 +2,7 @@
 
 import { useFormStatus } from "react-dom";
 import { Button } from "@agent-hub/ui";
-import { RollInText } from "@/components/motion/roll-in-text";
+import { MorphText } from "@/components/motion/morph-text";
 
 /**
  * The submit button of a server-action form that leaves for Stripe. The
@@ -26,7 +26,7 @@ export function PendingSubmitButton({
       disabled={pending || props.disabled}
       aria-busy={pending || undefined}
     >
-      <RollInText text={pending ? pendingLabel : children} />
+      <MorphText text={pending ? pendingLabel : children} />
     </Button>
   );
 }

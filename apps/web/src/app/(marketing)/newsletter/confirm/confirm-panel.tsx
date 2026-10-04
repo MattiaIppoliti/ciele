@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { Button } from "@agent-hub/ui";
+import { ConfettiButton } from "@/components/confetti-button";
+import { celebrate } from "@/lib/celebration";
 import { confirmNewsletterAction, type ConfirmResult } from "../actions";
 
 /**
@@ -38,14 +39,19 @@ export function ConfirmPanel({ token, email }: { token: string; email: string })
         Press confirm and we will start sending the Ciele newsletter to {email}.
       </p>
       <div>
-        <Button
+        <ConfettiButton
+          celebrateOnClick={false}
           disabled={pending}
           onClick={() =>
-            startTransition(async () => setResult(await confirmNewsletterAction(token)))
+            startTransition(async () => {
+              const response = await confirmNewsletterAction(token);
+              setResult(response);
+              if (response.status === "subscribed") void celebrate();
+            })
           }
         >
           {pending ? "Confirming…" : "Confirm subscription"}
-        </Button>
+        </ConfettiButton>
       </div>
       {result ? (
         <p role="alert" className="text-destructive text-sm">

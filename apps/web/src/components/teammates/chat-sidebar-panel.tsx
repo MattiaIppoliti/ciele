@@ -1,5 +1,7 @@
 "use client";
 
+import { ThreadSwipeRow } from "@/components/thread-swipe-row";
+import { ThreadListControls, useThreadListView, useThreadPreferences } from "@/components/thread-preferences";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { useMemo, useTransition, type ReactNode } from "react";
@@ -41,6 +43,7 @@ export type { SidebarConversation };
 
 /** The group rows the panel draws; the rail's `ChannelRow` satisfies it. */
 interface PanelChannel {
+  canDelete: boolean;
   id: string;
   name: string;
   memberCount: number;
@@ -73,7 +76,7 @@ function useRosterHiding() {
 
 function SectionLabel({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="text-muted-foreground flex h-7 items-center gap-1 px-1 text-xs font-medium">
+    <div className="text-muted-foreground flex min-h-7 items-center gap-1 px-1 text-xs font-medium">
       <span className="flex-1 truncate">{children}</span>
       {action}
     </div>
@@ -238,6 +241,10 @@ export function ChatSidebarPanel({
   const guardedClick = useGuardedLinkClick();
   const navigate = useGuardedNavigate();
   const { setHidden, isPending } = useRosterHiding();
+  const preferences = useThreadPreferences();
+  const [view, setView] = useThreadListView();
+  const visibleConversations = conversations.filter(row => preferences.visible({ kind: "conversation", id: row.id }, view));
+  const visibleChannels = channels.filter(row => preferences.visible({ kind: "channel", id: row.id }, view));
 
   const teammateById = useMemo(
     () => new Map([cieleAi, ...teammates].map((teammate) => [teammate.id, teammate])),
@@ -248,7 +255,7 @@ export function ChatSidebarPanel({
     [conversations]
   );
 
-  const dayGroups = useMemo(() => groupByDay(conversations), [conversations]);
+  const dayGroups = useMemo(() => groupByDay(visibleConversations), [visibleConversations]);
 
   const activeTeammateId = pathname.match(/^\/teammates\/([^/]+)/)?.[1];
 
@@ -302,7 +309,7 @@ export function ChatSidebarPanel({
     </div>
   ) : null;
 
-  const groupRows = channels.map((channel) => {
+  const groupRows = visibleChannels.map((channel) => {
     const href = `/teammates/channels/${channel.id}`;
     const active = pathname === href;
     const unread = channel.unread.mentionsYou ? (
@@ -346,7 +353,7 @@ export function ChatSidebarPanel({
         {row}
       </Hint>
     ) : (
-      row
+      <ThreadSwipeRow key={channel.id} target={{ kind: "channel", id: channel.id }} label={channel.name} height={40} canDelete={channel.canDelete}>{row}</ThreadSwipeRow>
     );
   });
 
@@ -371,6 +378,7 @@ export function ChatSidebarPanel({
         </div>
       </section>
 
+      <ThreadListControls value={view} onChange={setView} />
       <section aria-label="Groups">
         <SectionLabel
           action={
@@ -388,7 +396,7 @@ export function ChatSidebarPanel({
         >
           Groups
         </SectionLabel>
-        {channels.length === 0 ? (
+        {visibleChannels.length === 0 ? (
           <EmptyState size="sm" title="No groups yet" description="Start a shared conversation with your team." action={<button type="button" className="press-text text-sm underline underline-offset-4" onClick={onNewGroup}>New group</button>} />
         ) : (
           <div className="flex flex-col gap-0.5">{groupRows}</div>
@@ -397,7 +405,7 @@ export function ChatSidebarPanel({
 
       <section aria-label="Conversations">
         <SectionLabel>Conversations</SectionLabel>
-        {conversations.length === 0 ? (
+        {visibleConversations.length === 0 ? (
           <EmptyState size="sm" title="No conversations yet" description="Pick a teammate to start a conversation." />
         ) : (
           <AISidebar
@@ -441,6 +449,9 @@ export function ChatSidebarPanel({
                 <MessageSquareText className="size-4" />
               );
             }}
+            wrapRow={(item, row) => item.kind === "file" ? (
+              <ThreadSwipeRow target={{ kind: "conversation", id: item.id }} label={item.label} height={36}>{row}</ThreadSwipeRow>
+            ) : row}
             ariaLabel="Your conversations with teammates"
           />
         )}

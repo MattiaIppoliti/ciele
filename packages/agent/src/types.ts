@@ -281,7 +281,7 @@ export type ChatReplyPart =
  * component the chat clients ship. Adding one is a component, a zod schema and
  * a spec in `render-tools.ts`, never a free-text string the model made up.
  */
-export type ReplyComponentName = "table" | "study_exercise";
+export type ReplyComponentName = "table" | "records_table" | "filter_table" | "study_exercise";
 
 /**
  * Which knowledge-scope tier a search pass targets (Agentic Search #155).
@@ -510,6 +510,8 @@ export interface ToolSubject {
 export type MemorySearcher = (query: string) => Promise<Array<{ text: string }>>;
 
 export interface HistoryMessage {
+  /** Persisted identity for transports that reconcile message snapshots. */
+  id?: string;
   role: "user" | "assistant";
   text: string;
   /**

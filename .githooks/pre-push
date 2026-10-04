@@ -14,6 +14,12 @@
 # Bypass a single push with `git push --no-verify`.
 set -e
 
+# Validation creates temporary repositories. Keep Git's hook-local paths out
+# of those commands so they cannot modify this repository instead.
+for task_git_env in $(git rev-parse --local-env-vars); do
+  unset "$task_git_env"
+done
+
 # Install first, exactly as CI does. Without this the gate is actively
 # misleading: rebase onto a commit that moved the dependency graph, and every
 # workspace fails against the node_modules you already had. `--frozen-lockfile`

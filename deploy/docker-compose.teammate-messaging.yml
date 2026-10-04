@@ -1,0 +1,28 @@
+# Opt-in Redis transport state. Private credentials and the two connection
+# registries live in deploy/.env.teammates, loaded only into the app.
+services:
+  app:
+    env_file: ["${CIELE_TEAMMATE_ENV_FILE:-.env.teammates}"]
+    environment:
+      CIELE_CHAT_REDIS_URL: redis://teammate-chat-state:6379
+    networks: [teammate-messaging]
+    depends_on:
+      teammate-chat-state:
+        condition: service_healthy
+  teammate-chat-state:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes", --appendfsync, everysec]
+    networks: [teammate-messaging]
+    volumes: [teammate-chat-state:/data]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+networks:
+  teammate-messaging:
+    internal: true
+volumes:
+  teammate-chat-state:

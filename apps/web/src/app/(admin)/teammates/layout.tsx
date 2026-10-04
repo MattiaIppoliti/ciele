@@ -1,4 +1,4 @@
-import { rosterTeammates, visibleTeammates, memberDisplayName } from "@agent-hub/core";
+import { canManageChannel, rosterTeammates, visibleTeammates, memberDisplayName } from "@agent-hub/core";
 import { listChannelsOp } from "@ciele/ops";
 import { TeammatesShell, type TeammatesShellData } from "@/components/teammates/teammates-client";
 import { requirePageMember } from "@/lib/authz";
@@ -104,6 +104,7 @@ async function loadShellData(): Promise<TeammatesShellData> {
       ),
     channels: channels.map((summary) => ({
         id: summary.channel.id,
+        canDelete: canManageChannel(summary.channel, viewer),
         name: summary.channel.name,
         memberCount: summary.memberIds.length,
         teammateCount: summary.teammateIds.length,

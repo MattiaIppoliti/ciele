@@ -119,3 +119,13 @@ describe("a chat that closes", () => {
     expect(session.conversations([]).map((entry) => entry.id)).toEqual(["c1"]);
   });
 });
+
+describe("deleted conversation history", () => {
+  it("does not resurrect a locally reported thread after server history refreshes", () => {
+    const session = createChatSession();
+    session.started(row("deleted", "2026-10-03T10:00:00Z"));
+    session.forget("deleted");
+    expect(session.conversations([])).toEqual([]);
+    expect(session.getSnapshot().conversationId).toBeNull();
+  });
+});

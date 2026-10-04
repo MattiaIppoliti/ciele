@@ -29,7 +29,7 @@ export default async function SetupSectionPage({
   const Icon = config.icon;
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="touch-scroll-clearance h-full overflow-y-auto">
       <div className="mx-auto flex max-w-md flex-col items-center px-6 py-20">
         <span className="bg-muted flex size-14 items-center justify-center rounded-xl border">
           <Icon className="text-muted-foreground size-6" />

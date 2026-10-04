@@ -280,3 +280,7 @@ export type {
   UsageOutcome,
   SubscriptionState,
 } from "./ee";
+// Teammate execution transports: retain the same turn, permissions and persistence.
+export { agUiResponse, agUiThreadKey, parseAgUiTurn } from "./ag-ui";
+export { teammateExecutionOptions } from "./teammate-execution-config";
+export { teammateComputer } from "./teammate-computer";

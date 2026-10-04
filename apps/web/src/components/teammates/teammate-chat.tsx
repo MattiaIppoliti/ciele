@@ -82,7 +82,7 @@ export async function TeammateChat({
   // Capability, resolved server-side: this page is already dynamic and
   // authenticated, so unlike the widget there is nothing to fetch later.
   const modelCandidates = isCieleAi(teammate) ? chatModelCandidates : chatModelOptions;
-  const models = modelCandidates(
+  const models = teammate.runtimeConfig?.harness.kind === "ag_ui" ? [] : modelCandidates(
     { provider: teammate.modelProvider, modelId: teammate.modelId, source: teammate.modelSource ?? undefined },
     chatAllowedModels(teammate),
     connections,

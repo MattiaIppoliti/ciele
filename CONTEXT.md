@@ -232,8 +232,19 @@ _Avoid_: suggestion, recommendation, auto-fix
 An org-level AI colleague Members chat with inside the console: a persona (name, title, standing
 role) rendered as a system-prompt layer over the same chat runtime the Assistant uses, plus a
 Knowledge Scope, an owner, and a visibility. The Assistant is the public widget; the Teammate is its
-internal sibling, it is never published, never embeddable, and never speaks to a Visitor.
+internal sibling, it has no Publication or public widget, and never speaks to a Visitor.
 _Avoid_: bot, coworker, internal assistant, agent (all ambiguous with Assistant)
+
+**Execution Configuration**:
+An admin-controlled choice of the native Ciele or registered AG-UI **Harness**, public internet
+access, and **Teammate Computer** capabilities. It does not grant Ciele operations or credentials.
+An external harness executes its own tools; AG-UI carries messages, tool receipts and state,
+without transferring Ciele Action Grants.
+
+**Teammate Computer**:
+An isolated persistent browser profile and workspace belonging to one Organization and Teammate.
+Browser, files and terminal are separate opt-in capabilities. Members allowed to use that Teammate
+share its computer. It is not the Member's desktop or the web server's shell.
 
 **Standing Role**:
 A Teammate's job description in the Member's own words ("you draft release notes from our changelog

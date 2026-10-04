@@ -3,9 +3,9 @@ import { SNIPPET_TABS, type SnippetTab } from "@/lib/developer-panel/types";
 /**
  * The workspace's right rail: who is *in* it (#754).
  *
- * There is **one** rail and two things that want it: the Assistant editor's live
- * Preview and the Developer Panel. Modelling that as a single occupant rather
- * than two booleans is what makes them mutually exclusive by construction, two
+ * There is **one** rail, shared by the Preview, Developer panel, Flows Agent
+ * and Teammate workspace. Modelling that as a single occupant rather
+ * than independent booleans makes them mutually exclusive by construction: two
  * independent flags can both be true, and on an editor already squeezed between
  * a sidebar and a form, both being true leaves the form ~400px.
  *
@@ -31,8 +31,10 @@ import { SNIPPET_TABS, type SnippetTab } from "@/lib/developer-panel/types";
  * the Preview or the Flows Agent and put nothing in the rail; the builder keeps
  * its open state as a plain flag. It did hold a seat while it carried the Add
  * palette, and `right-rail-occupant.test.ts` pins that it no longer can.
+ * `workspace` is the Teammate's computer viewer and releases the rail when
+ * its chat page unmounts.
  */
-export type RightRailOccupant = "preview" | "developer" | "agent";
+export type RightRailOccupant = "preview" | "developer" | "agent" | "workspace";
 
 export interface RightRailState {
   occupant: RightRailOccupant | null;

@@ -1,3 +1,4 @@
+import { INTERACTIVE_TABLE_TOOLS } from "./interactive-table-tools";
 import { studyExerciseTool } from "./study-exercise";
 import { tool, type Tool, type ToolSet } from "ai";
 import { z } from "zod";
@@ -632,14 +633,15 @@ function offeredSchema(
  * already accepted; that should not be reachable, and it reaches the model as a
  * tool error it recovers from by answering in prose rather than as a throw.
  */
-function renderTableTool(ctx: ToolRuntimeContext): Tool {
+function renderTableTool(ctx: ToolRuntimeContext, spec?: (typeof INTERACTIVE_TABLE_TOOLS)[number]): Tool {
+  const name = spec?.name ?? RENDER_TABLE_TOOL_NAME;
   const lifecycle = {
-    name: RENDER_TABLE_TOOL_NAME,
+    name,
     label: renderTableLabel,
   };
   return tool({
-    description: RENDER_TABLE_DESCRIPTION,
-    inputSchema: offeredSchema(RENDER_TABLE_INPUT_SCHEMA, ctx),
+    description: spec?.description ?? RENDER_TABLE_DESCRIPTION,
+    inputSchema: offeredSchema(spec?.schema ?? RENDER_TABLE_INPUT_SCHEMA, ctx),
     execute: async (rawInput: Record<string, unknown>, options) => {
       const { callId, startedAt, input } = openToolCall(
         lifecycle,
@@ -648,14 +650,14 @@ function renderTableTool(ctx: ToolRuntimeContext): Tool {
         options
       );
       try {
-        const part = renderTablePart(input, callId);
+        const part = spec ? spec.build(input, callId) : renderTablePart(input, callId);
         if (part) {
           // The collector belongs to the turn (agentic-search/run.ts owns the
           // reply parts), so the component persists with the answer.
           ctx.showPart?.(part);
           ctx.emit({ type: "part", part });
         }
-        emitToolEnd(ctx, RENDER_TABLE_TOOL_NAME, callId, {
+        emitToolEnd(ctx, name, callId, {
           ok: Boolean(part),
           summary: part ? "Shown to the user" : "Nothing renderable",
           startedAt,
@@ -672,7 +674,7 @@ function renderTableTool(ctx: ToolRuntimeContext): Tool {
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Tool call failed";
-        emitToolEnd(ctx, RENDER_TABLE_TOOL_NAME, callId, {
+        emitToolEnd(ctx, name, callId, {
           ok: false,
           summary: message,
           startedAt,
@@ -831,13 +833,17 @@ function teammateActionSpec(action: TeammateActionTool): RuntimeToolSpec {
       }
       ctx.signal?.throwIfAborted();
       const outcome = await action.run(input, { signal: ctx.signal });
+      const result = actionResultForModel(outcome.result);
       ctx.recordResult?.({
         operation: action.operation,
         domain: action.domain,
         entity: describeEntities(outcome.entities),
         ...(outcome.payload ? { payload: outcome.payload } : {}),
+        ...(action.domain === "computer" ? { output: result } : {}),
       });
-      return actionResultForModel(outcome.result);
+      return action.domain === "computer"
+        ? { content: fencedForTurn(ctx, JSON.stringify(result ?? null), action.label) }
+        : result;
     },
   };
 }
@@ -944,6 +950,7 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
     overrides.renderTable ?? BUILT_IN_DEFAULTS.renderTable;
   if (ctx.showPart && renderTableEnabled) {
     toolset[RENDER_TABLE_TOOL_NAME] = renderTableTool(ctx);
+    for (const spec of INTERACTIVE_TABLE_TOOLS) toolset[spec.name] = renderTableTool(ctx, spec);
   }
   if (ctx.showPart && ctx.assistant.tools?.studyMode?.enabled && ctx.assistant.tools.studyMode.formats?.length) {
     toolset.createStudyExercise = studyExerciseTool(ctx);

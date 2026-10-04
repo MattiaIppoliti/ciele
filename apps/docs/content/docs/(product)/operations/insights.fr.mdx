@@ -1,6 +1,6 @@
 ---
 title: Insights
-description: Consultez les métriques actuelles relatives aux conversations, aux réponses, aux remontées, aux retours et aux notifications.
+description: Consultez les métriques actuelles relatives aux Conversations, aux réponses, aux remontées, aux retours et aux Notifications.
 ---
 
 Insights calcule les métriques de l'organisation à partir des événements
@@ -11,13 +11,27 @@ Les graphiques dans Insights, Eval, Assistant Overview et Usage utilisent une
 palette de gris qui s'adapte aux thèmes clairs et sombres. Les résultats
 positifs et négatifs restent en vert et en rouge. Les évolutions reflètent la
 direction de chaque indicateur : une baisse des coûts, de la latence et des
-échecs est considérée comme positive. Les labels, les légendes et les valeurs
-exactes identifient chaque mesure. La chronologie de la latence utilise une
-ligne pointillée pour le p95.
+échecs est considérée comme positive. Les libellés, les légendes et les valeurs
+exactes identifient chaque indicateur. La chronologie de la latence utilise une
+ligne en pointillés pour le p95.
 
-## Aperçu actuel
+Les graphiques et les cartes de statistiques placent leur visualisation dans un
+encadré aux coins arrondis. Le titre et la description se trouvent en dessous,
+avec les changements de période et les actions disponibles sur la droite. Costs,
+Observability, Platform Admin et les exécutions d'Eval individuelles utilisent
+la même mise en page de carte.
 
-L'aperçu peut inclure les mesures suivantes :
+Les animations suivent les recettes de Transitions.dev. Les chiffres mis à jour
+apparaissent avec un bref décalage des chiffres, et les légendes s'échangent
+avec un léger flou. Les cartes en cours de chargement se fondent progressivement
+dans leur contenu, et les tableaux de données se déploient de manière fluide.
+L'indicateur d'onglet actif glisse d'une sélection à l'autre. Les paramètres de
+réduction des animations suppriment le mouvement des chiffres et l'effet de flou
+de ces transitions.
+
+## Vue d'ensemble actuelle
+
+L'aperçu peut inclure les indicateurs suivants :
 
 - Conversations et visiteurs uniques
 - Réponses de l'IA
@@ -25,7 +39,7 @@ L'aperçu peut inclure les mesures suivantes :
 - évaluations des réponses et données de satisfaction client
 - remontées (escalations)
 - réponses par Conversation
-- questions par Conversation : le nombre de messages envoyés par le Visiteur
+- questions per Conversation : le nombre de messages envoyés par le Visiteur
 - durée moyenne d'une Conversation : le temps écoulé entre le début d'une
   Conversation et son dernier message
 - langues et taux d'engagement
@@ -44,17 +58,17 @@ période conserve sa durée totale.
 Le graphique **Usage** sépare les nombres, les pourcentages, les ratios et les
 secondes afin que des unités différentes ne partagent pas le même axe.
 Sélectionnez une métrique pour l'afficher ou la masquer. Les onglets
-**Assistants** et **Channels** affichent les décompositions des Conversations.
+**Assistants** et **Channels** affichent les répartitions des Conversations.
 
 Utilisez la fenêtre **Explore conversations over time** pour zoomer sur les
 graphiques dans la plage de dates sélectionnée. Faites glisser la fenêtre ou ses
 poignées, ou utilisez les touches fléchées après avoir sélectionné une poignée.
 Les cartes de synthèse, le tableau de données et les exportations couvrent
-toujours l'intégralité de la plage de dates.
+toujours l'ensemble de la plage de dates.
 
 ## Coûts et observabilité
 
-Deux tableaux de bord indiquent les coûts de l'IA de votre organisation et ses
+Deux tableaux de bord indiquent le coût de l'IA de votre organisation et ses
 performances. **Costs** présente les dépenses et l'utilisation.
 **Observability** présente la fiabilité, la vitesse et la qualité des réponses.
 
@@ -72,10 +86,10 @@ Lorsque **All** ou **Assistants** est sélectionné, vous pouvez également
 sélectionner un Assistant.
 
 Chaque tableau de bord commence par des cartes de statistiques. Une carte
-affiche une valeur pour la période, une courbe de ses valeurs quotidiennes et
+affiche une valeur pour la plage, une courbe de ses valeurs quotidiennes et
 l'évolution par rapport à la période précédente. La période précédente a la même
-durée et se termine la veille du début de la plage. Déplacez le pointeur le long
-de la courbe pour lire la valeur de chaque jour.
+durée et se termine le jour précédant le début de la plage. Déplacez le pointeur
+le long de la courbe pour lire la valeur de chaque jour.
 
 ### Coûts
 
@@ -84,13 +98,16 @@ de la courbe pour lire la valeur de chaque jour.
 - un streamgraph des dépenses quotidiennes estimées par surface. L'épaisseur de
   la bande représente un montant, et non un pourcentage
 - un calendrier de l'utilisation des tokens par jour
+- une jauge monochrome représentant la part des tokens d'entrée par rapport au
+  total des tokens, avec les nombres exacts de tokens d'entrée et de tokens de
+  sortie
 - dépenses par modèle et par étape du pipeline
 - un treemap des dépenses par fournisseur et par modèle. Sélectionnez un
   fournisseur pour inspecter ses modèles
 
-Le filtre Surface s'applique aux graphiques quotidiens et à la répartition par
-modèle. Les totaux des surfaces situés sous le streamgraph comparent toujours
-toutes les surfaces.
+Le filtre **Surface** s'applique aux graphiques quotidiens et à la répartition
+par modèle. Les totaux des surfaces situés sous le streamgraph comparent
+toujours toutes les surfaces.
 
 Les dépenses sont une estimation en euros. Ciele le calcule à partir du nombre
 de tokens et des prix catalogue. Il ne s'agit pas d'une facture.
@@ -100,12 +117,12 @@ de tokens et des prix catalogue. Il ne s'agit pas d'une facture.
 - turns terminés, taux de réussite, turns échoués et appels d'outils par turn
 - latence par tour : médiane, 95e percentile, histogramme et tendance
   quotidienne
-- **Answer accuracy** : la part des réponses de l'Assistant que le vérificateur
-  a validées
+- **Answer accuracy** : la part des réponses de l'Assistant validées par le
+  vérificateur
 - **Autonomy** : la part des conversations de visiteurs qui n'ont pas été
   transférées à un service d'assistance
-- une jauge de fiabilité et une grille d'autonomie, avec les nombres exacts
-  indiqués à côté des graphiques
+- Jauges monochromes pour la fiabilité, la précision et l'autonomie, avec les
+  nombres exacts indiqués à côté des graphiques
 - une comparaison de la fiabilité, de la précision et de l'autonomie par rapport
   à la période précédente, en points de pourcentage
 - les classes d'erreurs les plus fréquentes
@@ -113,7 +130,7 @@ de tokens et des prix catalogue. Il ne s'agit pas d'une facture.
   jour ou par semaine
 
 **Answer accuracy** et **Autonomy** s'appliquent uniquement aux Assistants. Pour
-**Teammates** et **Internal**, ces indicateurs ne s'affichent pas.
+**Teammates** et **Internal**, ces mesures ne s'affichent pas.
 
 ### Remarques
 
@@ -130,7 +147,7 @@ Pour un fichier de rapport offrant davantage d'options, utilisez
 Dans les déploiements gérés, les Owners et Admins autorisés de l'Organisation de
 la plateforme désignée voient **Admin** comme le dernier onglet Insights. Cet
 onglet affiche l'utilisation et les coûts estimés pour l'ensemble des
-Organisations, y compris l'Organisation de la plateforme. Sélectionnez une plage
+organisations, y compris l'organisation de la plateforme. Sélectionnez une plage
 de dates pour consulter les appels de modèles, les tokens, les pages explorées
 et les coûts estimés pour chaque Organisation. Les coûts financés par la
 plateforme n'incluent pas les clés API des clients ni les abonnements
@@ -142,8 +159,8 @@ Insights conserve l'aperçu calculé et les tableaux de bord pendant un maximum 
 cinq minutes pour chaque Organisation et chaque ensemble de filtres. Chaque
 membre de l'organisation lit les mêmes données stockées.
 
-Toute modification apportée par un membre dans la console (à un Assistant, à une
-Conversation ou à une Improvement) efface immédiatement l'aperçu stocké. Le
+Toute modification apportée par un Member dans la console (à un Assistant, à une
+Conversation ou à une Improvement) efface immédiatement l'overview stockée. Le
 trafic des widgets (nouvelles Conversations, évaluations des réponses, scores de
 satisfaction, remontées) atteint les chiffres dans un délai de cinq minutes.
 
@@ -155,16 +172,16 @@ l'Organization peut envoyer cette requête.
 ## Comptage des notifications
 
 Une Notification n'est pas une réponse de l'IA. Une session Notification-only
-n'augmente pas les KPI Conversation ni Answer.
+n'augmente pas les KPI Conversation ni ceux des réponses.
 
 La mesure **Notifications Sent** et ses séries de graphiques enregistrent la
 livraison proactive séparément.
 
 ## Examiner un changement
 
-1. Sélectionnez la plage de dates requise et l'Assistant.
+1. Sélectionnez la plage de dates souhaitée et l'Assistant.
 2. Identifiez l'indicateur qui a changé.
-3. Ouvrez l'Inbox avec le même scope.
+3. Ouvrez l'Inbox avec le même périmètre.
 4. Lisez des Conversations représentatives.
 5. Créez des Improvements pour les problèmes de réponses exploitables.
 

@@ -90,6 +90,7 @@ const READ_ACTIONS = new Set([
   "conversations",
   "conversation",
   "grants",
+  "runtime",
   "routines",
   "memory",
   // The Flow catalogue: a read, and the one action that needs no ids at all.
@@ -109,6 +110,12 @@ const READ_ACTIONS = new Set([
 
 const byAction = (args: Record<string, unknown>) =>
   !READ_ACTIONS.has(String(args.action));
+
+const teammateRuntimeInput = z.object({
+  harness: z.discriminatedUnion("kind", [z.object({ kind: z.literal("ciele") }).strict(), z.object({ kind: z.literal("ag_ui"), connectionId: z.string() }).strict()]),
+  internet: z.boolean(),
+  computer: z.object({ browser: z.boolean(), files: z.boolean(), terminal: z.boolean() }).strict(),
+}).strict();
 
 /** A write-guard for a tool with its own read set: mutates unless the action is listed. */
 const mutatesUnless =
@@ -679,10 +686,14 @@ export function buildTools(client: CieleClient): CieleTool[] {
           "memory",
           "set_memory",
           "provision",
+          "runtime",
+          "set_runtime",
+          "ag_ui",
         ]),
         id: z.string().optional().describe("Teammate id"),
         conversationId: z.string().optional(),
         routineId: z.string().optional().describe("Routine id (update_routine/delete_routine)"),
+        config: z.record(z.string(), z.unknown()).optional().describe("Execution configuration (set_runtime): harness, internet, computer; requires an admin key"),
         input: z.record(z.string(), z.unknown()).optional(),
         patch: z.record(z.string(), z.unknown()).optional(),
         domains: z
@@ -744,6 +755,12 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "conversations": return client.teammates.conversations(id());
           case "conversation": return client.teammates.conversation(id(), need(args, "conversationId"));
           case "grants": return client.teammates.grants(id());
+          case "runtime": return client.teammates.runtime(id());
+          case "set_runtime": return client.teammates.setRuntime(id(), teammateRuntimeInput.parse(needObject(args, "config")));
+          case "ag_ui": {
+            const response = await client.teammates.agUi(id(), needObject(args, "input"));
+            return { contentType: response.headers.get("content-type"), events: await response.text() };
+          }
           case "set_grants":
             if (!Array.isArray(args.domains)) {
               throw new ToolInputError(

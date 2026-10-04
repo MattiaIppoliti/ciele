@@ -40,7 +40,7 @@ export default async function AssistantLayout({
         canDelete={canPublish(role)}
       />
       <div className="flex min-h-0 flex-1">
-        <section className="@container min-w-0 flex-1 overflow-y-auto">{children}</section>
+        <section className="touch-scroll-clearance @container min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</section>
         <PreviewPanelLauncher
           assistant={assistant}
           connectorScope={connectorScope}

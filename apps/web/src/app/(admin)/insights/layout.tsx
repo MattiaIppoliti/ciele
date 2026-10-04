@@ -22,7 +22,7 @@ export default async function InsightsLayout({
         {/* The active page's date-range chip lands here; see `SlotPortal`. */}
         <PortalSlot id={INSIGHTS_RANGE_SLOT} className="flex h-9 min-w-0 items-start @4xl:justify-end" />
       </header>
-      <RouteSlidingPanel className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</RouteSlidingPanel>
+      <RouteSlidingPanel className="touch-scroll-clearance min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</RouteSlidingPanel>
     </div>
   );
 }

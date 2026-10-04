@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowUpRight, Check, ChevronDown, X } from "lucide-react";
 import { IntentLink } from "@/components/ui/intent-link";
+import { MobileDock } from "@/components/shell/mobile-navigation";
 import { Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
 import { AnimateIcons, AnimatedIcon } from "@/components/ui/animated-icon";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
@@ -22,6 +23,8 @@ import {
   settingsTabFromPath,
   tabsForScope,
   type SettingsTab,
+  SETTINGS_HOME,
+  PERSONAL_SETTINGS_HOME,
 } from "@/components/settings/settings-nav";
 import {
   SettingsDirtyContext,
@@ -154,6 +157,7 @@ export function SettingsDialog({
       >
         <DialogContent
           showCloseButton={false}
+          data-mobile-settings
           overlayClassName="bg-black/50 backdrop-blur-[1px]"
           className={`flex h-dvh w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden border bg-background p-0 shadow-strong outline-none duration-150 sm:h-[calc(100dvh-4rem)] sm:w-[calc(100vw-4rem)] sm:max-h-[46rem] sm:max-w-5xl sm:flex-row sm:rounded-xl ${
             exiting
@@ -161,6 +165,7 @@ export function SettingsDialog({
               : "animate-in fade-in zoom-in-95"
           }`}
         >
+          <MobileDock settingsHref={scope === "organization" ? SETTINGS_HOME : PERSONAL_SETTINGS_HOME} onNavigate={onRailClick} />
           <DialogTitle className="sr-only">{dialogTitle}</DialogTitle>
           {/* The rail is chrome, not page content: re-enable the shell's animated
             icons, which `(admin)/layout.tsx` switches off for pages. */}
@@ -215,12 +220,12 @@ export function SettingsDialog({
             type="button"
             aria-label="Close settings"
             onClick={close}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-2.5 right-3 z-10 flex size-11 items-center justify-center rounded-lg transition-colors sm:top-3 lg:size-8"
+            className="press-control text-muted-foreground hover:bg-muted hover:text-foreground absolute top-2.5 right-3 z-10 flex size-11 items-center justify-center rounded-lg transition-colors sm:top-3 lg:size-8"
           >
             <X className="size-4" />
           </button>
-          <div className="relative flex min-w-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8 sm:py-7">
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="settings-scroll min-h-0 flex-1 overflow-y-auto px-5 py-6 pb-24 sm:px-8 sm:py-7">
               {children}
             </div>
           </div>

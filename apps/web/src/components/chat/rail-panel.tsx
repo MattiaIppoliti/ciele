@@ -467,6 +467,7 @@ export function ChatSurface({
       {animating && <div ref={spacerRef} className="min-h-0 flex-1" />}
       <div
         ref={surfaceRef}
+        data-chat-fullscreen={fullscreen ? "true" : undefined}
         className={cn(
           "flex min-h-0 flex-col overflow-hidden",
           fullscreen ? "bg-card fixed inset-0 z-50" : "flex-1",

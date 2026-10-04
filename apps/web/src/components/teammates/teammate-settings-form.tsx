@@ -12,8 +12,9 @@ import type {
   Provider,
   Teammate,
   TeammateRoutine,
+  TeammateRuntimeConfig,
 } from "@agent-hub/core";
-import { isCieleAi, modelSelector } from "@agent-hub/core";
+import { isCieleAi, modelSelector, teammateRuntimeConfig } from "@agent-hub/core";
 import { PROVIDER_NAMES, currentModelId } from "@agent-hub/agent/client";
 import { teammateModelPatch } from "@/lib/teammates/model-settings";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,6 +33,7 @@ import {
   readTeammateMemoryAction,
   setTeammateGrantsAction,
   updateTeammateAction,
+  configureTeammateRuntimeAction,
   writeTeammateMemoryAction,
 } from "@/app/(admin)/teammates/actions";
 import { KnowledgeScopePicker } from "@/components/teammates/knowledge-scope-picker";
@@ -57,6 +59,7 @@ import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { useGuardedLinkClick, useLeaveGuard } from "@/components/teammates/leave-guard";
 import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 import { useTopBarFormActions } from "@/components/settings/form-actions";
+import { TeammateExecutionSettings } from "./teammate-execution-settings";
 
 /**
  * The Teammate's configuration. Everything here takes effect on the next
@@ -91,6 +94,7 @@ export function TeammateSettingsForm({
   modelSources,
   headerActions,
   onDone,
+  executionOptions = { computerConfigured: false, harnesses: [] },
 }: {
   teammate: Teammate;
   collections: CollectionOption[];
@@ -123,8 +127,11 @@ export function TeammateSettingsForm({
   headerActions?: ReactNode;
   /** Saved, cancelled or done: close the drawer, or leave the page. */
   onDone: () => void;
+  executionOptions?: { computerConfigured: boolean; harnesses: { id: string; name: string }[] };
 }) {
   const router = useRouter();
+  const [runtime, setRuntime] = useState<TeammateRuntimeConfig>(() => teammateRuntimeConfig(teammate));
+  const runtimeDirty = JSON.stringify(runtime) !== JSON.stringify(teammateRuntimeConfig(teammate));
   const [name, setName] = useState(teammate.name);
   const [title, setTitle] = useState(teammate.title);
   const [roleDescription, setRoleDescription] = useState(
@@ -227,6 +234,7 @@ export function TeammateSettingsForm({
         if (canGrant && changedGrants) {
           await setTeammateGrantsAction(teammate.id, grants);
         }
+        if (canGrant && runtimeDirty) await configureTeammateRuntimeAction(teammate.id, runtime);
         toast.success("Saved, it applies to the next message");
         onDone();
       } catch (error) {
@@ -260,7 +268,7 @@ export function TeammateSettingsForm({
     modelDirty ||
     modelSourceDirty ||
     (loadedMemory !== null && agentMemory !== loadedMemory) ||
-    changedGrants;
+    changedGrants || runtimeDirty;
 
   /** Leave now, or after a Discard confirm when there are unsaved edits. */
   const { leave } = useUnsavedChanges({
@@ -427,7 +435,7 @@ export function TeammateSettingsForm({
       )}
       </TimelineSection>
 
-      <TimelineSection title="Models" boxed>
+      {runtime.harness.kind === "ciele" && <TimelineSection title="Models" boxed>
       <div className="space-y-2">
         <Label>Default model</Label>
         <div className="flex flex-col gap-2 @lg:flex-row">
@@ -489,6 +497,7 @@ export function TeammateSettingsForm({
 
       </TimelineSection>
 
+      }
       <TimelineSection title="Project" boxed>
       <ProjectSection
         projects={projects}
@@ -537,6 +546,9 @@ export function TeammateSettingsForm({
 
           <TimelineSection title="Routines" boxed>
             <RoutinesPanel routines={routines} teammateId={teammate.id} canEdit />
+          </TimelineSection>
+          <TimelineSection title="Execution" boxed>
+            <TeammateExecutionSettings teammateId={teammate.id} value={runtime} onChange={setRuntime} canGrant={canGrant} options={executionOptions} />
           </TimelineSection>
         </>
       )}

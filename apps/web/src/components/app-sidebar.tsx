@@ -22,7 +22,6 @@ import { HoverHighlight } from "@/components/ui/hover-highlight";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ResizeHandle, SHELL_GAP } from "@/components/ui/resizable-panel";
-import { useModalFocus } from "@/components/motion/use-modal-focus";
 import {
   DEFAULT_WIDTH,
   ICON_ONLY_AT,
@@ -66,6 +65,7 @@ import {
   isChatPath,
   QuickLinks,
 } from "@/components/shell/sidebar-chat-controls";
+import { MobileNavigation } from "@/components/shell/mobile-navigation";
 import { ROW_IDLE } from "@/components/shell/sidebar-row";
 
 
@@ -306,7 +306,7 @@ function OrgAvatarSwitcher({
       ) : (
         trigger
       )}
-      <PopoverContent align="start" className="w-72 p-0">
+      <PopoverContent align="start" className="organization-switcher-popover w-72 p-0">
         <div className="has-[:focus-visible]:ring-ring/50 flex items-center gap-2 border-b px-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset">
           <Search aria-hidden className="text-muted-foreground size-4 shrink-0" />
           <input
@@ -320,7 +320,7 @@ function OrgAvatarSwitcher({
             className="placeholder:text-muted-foreground h-10 w-full bg-transparent text-sm outline-none"
           />
         </div>
-        <HoverHighlight className="max-h-72 overflow-y-auto overscroll-contain p-1.5">
+        <HoverHighlight data-foley-scroll="" className="max-h-72 overflow-y-auto overscroll-contain p-1.5">
           {filtered.map((org) => {
             const active = org.id === orgId;
             return (
@@ -543,6 +543,7 @@ function SidebarContent({
       ) : (
       <nav
         aria-label="Main navigation"
+        data-foley-scroll=""
         className={`no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3 ${
           collapsed ? "px-2" : "px-3 pt-3"
         }`}
@@ -724,89 +725,13 @@ function SidebarContent({
 }
 
 /**
- * Off-canvas navigation for phones and portrait tablets, where a 240px
- * permanent sidebar would leave the page barely a third of the screen.
- *
- * It is the *same* `SidebarContent`, always in its full (labelled) form, a
- * collapsed icon rail is a pointing device's affordance, and there is no
- * hover to reveal what an icon means on touch. Opened from the top bar's
- * hamburger; closed by the backdrop, the toggle, Escape, or navigating
- * (`ShellProvider` closes it on every pathname change).
- */
-function NavDrawer(props: AppSidebarProps) {
-  const { navDrawerOpen, setNavDrawerOpen } = useShell();
-  const reduceMotion = useReducedMotion();
-  const drawerRef = useRef<HTMLDivElement>(null);
-
-  useModalFocus(navDrawerOpen, drawerRef);
-
-  useEffect(() => {
-    if (!navDrawerOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented) {
-        setNavDrawerOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [navDrawerOpen, setNavDrawerOpen]);
-
-  return (
-    // Leaves toward the edge it arrived from. Unmounting on `!navDrawerOpen`
-    // took the drawer off screen in a single frame after a 200ms entrance, so
-    // the mobile nav contradicted its own spatial story on every close.
-    <AnimatePresence>
-      {navDrawerOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <motion.button
-            type="button"
-            aria-label="Close navigation"
-            onClick={() => setNavDrawerOpen(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="absolute inset-0 bg-black/50"
-          />
-          <motion.div
-            ref={drawerRef}
-            data-nav-drawer
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation"
-            tabIndex={-1}
-            // Past its own width plus the inset, or the last 8px and the
-            // shadow would still show at the edge.
-            initial={reduceMotion ? { opacity: 0 } : { x: "calc(-100% - 1rem)" }}
-            animate={reduceMotion ? { opacity: 1 } : { x: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { x: "calc(-100% - 1rem)" }}
-            transition={SPRING_PANEL}
-            // A floating rounded panel, inset like the workspace panel it
-            // covers. viewport-fit=cover: the insets grow to keep the account
-            // row off the home indicator and the rows out from under a notch.
-            className="bg-background absolute top-[max(0.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-[max(0.5rem,env(safe-area-inset-left))] flex w-[17rem] max-w-[85vw] flex-col overflow-hidden rounded-xl border shadow-strong"
-          >
-            <SidebarContent
-              {...props}
-              collapsed={false}
-              toggleLabel="Close navigation"
-              onToggle={() => setNavDrawerOpen(false)}
-            />
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-/**
  * Vercel-style shell sidebar with the previous rail's mechanics: drag the
  * right edge to resize, below ICON_ONLY_AT it collapses to an icon rail,
  * past HIDE_AT it hides entirely. While hidden, hovering the left screen
  * edge peeks a floating panel; the top bar shows a reopen button.
  *
  * All of that is desktop behaviour (`lg` and up). Below it the sidebar leaves
- * the layout entirely and navigation moves into `NavDrawer`, dragging a
+ * the layout entirely and navigation moves into the fullscreen Home picker, dragging a
  * resize handle and hovering a 6px screen edge are both mouse affordances,
  * and the space simply isn't there.
  */
@@ -947,7 +872,7 @@ export function AppSidebar(props: AppSidebarProps) {
             // sitting there: the in-between frames should point at what
             // release will do, so "let go now and it closes" is legible
             // before it does.
-            className={`relative hidden h-full shrink-0 flex-col md:flex ${
+            className={`desktop-sidebar relative hidden h-full shrink-0 flex-col md:flex ${
               armedToHide ? "opacity-45" : "opacity-100"
             }`}
           >
@@ -1010,7 +935,7 @@ export function AppSidebar(props: AppSidebarProps) {
           onDock={() => setSidebarDocked(true)}
         />
       )}
-      <NavDrawer {...props} />
+      <MobileNavigation {...props} />
     </>
   );
 }
@@ -1042,7 +967,7 @@ function UndockedSidebar({
     <>
       {/* Hover zone along the screen edge that reveals the floating panel. */}
       <div
-        className="fixed inset-y-0 left-0 z-40 hidden w-1.5 md:block"
+        className="desktop-sidebar fixed inset-y-0 left-0 z-40 hidden w-1.5 md:block"
         onMouseEnter={() => setPeek(true)}
       />
       {/* Enter and exit along the same path. This used to slide in from the
@@ -1062,7 +987,7 @@ function UndockedSidebar({
             // layout's `md:p-2`, `rounded-xl`), so its top, left and bottom
             // edges and its corners land on the panel's: one box, not a
             // second one offset a few pixels inside the first.
-            className="bg-background fixed top-2 bottom-2 left-2 z-50 hidden w-64 flex-col overflow-hidden rounded-xl border shadow-strong md:flex"
+            className="desktop-sidebar bg-background fixed top-2 bottom-2 left-2 z-50 hidden w-64 flex-col overflow-hidden rounded-xl border shadow-strong md:flex"
           >
             <SidebarContent
               {...props}

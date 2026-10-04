@@ -128,11 +128,11 @@ export function BudgetCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap items-end gap-4">
-        <div className="grid gap-1.5">
+        <div className="grid min-w-0 flex-[1_1_12rem] gap-1.5">
           <Label htmlFor="budget-limit">Daily token limit</Label>
           <Input
             id="budget-limit"
-            className="w-44"
+            className="w-full"
             inputMode="numeric"
             placeholder="Unmetered"
             autoComplete="off"
@@ -141,11 +141,11 @@ export function BudgetCard({
             disabled={!canManage || isPending}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid min-w-0 flex-[1_1_12rem] gap-1.5">
           <Label htmlFor="budget-euro-limit">Daily euro limit</Label>
           <Input
             id="budget-euro-limit"
-            className="w-44"
+            className="w-full"
             inputMode="decimal"
             placeholder="Unmetered"
             autoComplete="off"
@@ -154,14 +154,14 @@ export function BudgetCard({
             disabled={!canManage || isPending}
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid min-w-0 flex-[1_1_12rem] gap-1.5">
           <Label>At the limit</Label>
           <Select
             value={mode}
             onValueChange={(v) => setMode(v === "block" ? "block" : "notify")}
             disabled={!canManage || isPending}
           >
-            <SelectTrigger className="w-56" aria-label="At the limit">
+            <SelectTrigger className="w-full" aria-label="At the limit">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

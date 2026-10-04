@@ -9,6 +9,20 @@ Ciele helps an Organization build AI Assistants for websites and applications. E
 
 The administrator console contains a Preview. Use Preview to test changes before you create a Publication.
 
+## Phone and tablet navigation
+
+On phones and tablets, the console hides the sidebar. Three icons stay at the bottom left: **Home**, **Chat**, and **Settings**.
+
+**Home** opens a full-screen navigation picker. Drag vertically, scroll, or use the arrow keys to select a destination. Tap a destination or select **Open** to go there. Scrolling does not open pages.
+
+The picker contains the workspace pages and Assistant sections available to your role. It also includes Organization settings for administrators and Personal settings.
+
+The Search icon at the top left opens **Find** on phones and tablets. It remains available when **Home** is open.
+
+Select the Organization name at the top of **Home** to see the Organizations you can switch to.
+
+**Chat** opens the chat workspace. **Settings** opens a full-screen view on phones and touch tablets, with larger controls. The three icons remain available in Settings. Settings still asks before you leave unsaved changes. In an Assistant editor, the top-right preview icon opens the chatbot full-screen. Close the preview to return to the editor.
+
 ## Responsive tables
 
 Console tables keep one column for each heading at every panel width. Column borders continue through the full row.
@@ -19,11 +33,19 @@ If the columns do not fit the panel, use the horizontal scrollbar to reach them.
 
 All data columns have the same minimum width of 120 pixels. The console keeps the width you select after you release the resize handle and reload the page. Selection checkboxes use the same position in the heading and every row.
 
+## Text changes
+
+Dashboard counters and changing action labels use Torph to keep text continuous when values change. Text remains readable before the animation library loads. The operating system's reduced-motion setting turns off these transitions.
+
+A successful Publication and a successful newsletter confirmation request show confetti. Completing the newsletter email confirmation shows the same effect. Failed requests show no confetti. Reduced motion turns the effect off.
+
 ## Interface sounds
 
 The console, the public site, and Ciele Desktop play short sounds on buttons, switches, menus, and outcomes. Chat surfaces in the console also sound when you send a message and when a reply arrives. On a phone, the same moments give a short haptic.
 
 To turn sounds off, open the account menu and set **Sounds** off. The choice is stored on this device. In Ciele Desktop, use **Interface sounds** in **Settings**. Haptics follow the reduced-motion setting of the operating system.
+
+WebHaptics supplies touch feedback for supported devices. Selecting a destination in the Home picker gives a short tick. Rapid scrolling limits ticks, and reduced motion turns them off.
 
 The published widget plays two sounds only. A Visitor hears one sound when the message goes, and one sound when the answer arrives. Nothing in an Assistant or an Organization configures them.
 

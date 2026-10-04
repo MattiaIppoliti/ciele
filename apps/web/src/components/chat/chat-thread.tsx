@@ -486,6 +486,7 @@ export function ChatThread({
   renderUserText,
   speechPlayback,
   renderCitation,
+  renderComputerActivity,
   showTimestamps = false,
   reactionChannelId,
   recordedReactions = [],
@@ -509,6 +510,8 @@ export function ChatThread({
   speechPlayback?: VoiceEndpoint;
   /** Preview can inspect Sources directly from the answer text. */
   renderCitation?: InlineCitationRenderer;
+  /** An authenticated Teammate host supplies the live computer card for its tool receipts. */
+  renderComputerActivity?: (message: ChatBotMsg, live: boolean) => ReactNode;
 }) {
   return (
     <>
@@ -583,6 +586,7 @@ export function ChatThread({
                         searchCount={msg.searchCount}
                         active={live}
                       />
+                      {renderComputerActivity?.(msg, live)}
                       {parts.map((part, j) => {
                         if (part.type === "text") {
                           const isLast = j === lastTextIndex;

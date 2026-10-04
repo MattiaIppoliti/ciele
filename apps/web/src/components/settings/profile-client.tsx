@@ -168,7 +168,7 @@ export function ProfileClient({
         </TimelineSection>
         <TimelineSection title="Details" boxed>
           <div className="space-y-8">
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-6 @md/settings:grid-cols-2">
         <div className="space-y-3">
           <FieldHeader title="First name" hint="Optional." />
           <Input

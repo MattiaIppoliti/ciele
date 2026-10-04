@@ -4,8 +4,8 @@ description: Konfigurieren Sie die Identität, das Modell, das Verhalten, die To
 ---
 
 Ein Assistant ist die zentrale Konfigurationseinheit in Ciele. Jeder Assistant
-verfügt über sein eigenes Knowledge, seine eigenen Flows, Entwurfseinstellungen
-und seinen eigenen Veröffentlichungsverlauf.
+verfügt über eigenes Knowledge, eigene Flows, eigene Entwurfseinstellungen und
+eine eigene Veröffentlichungsverlauf.
 
 ## Setup-Abschnitte
 
@@ -13,17 +13,38 @@ und seinen eigenen Veröffentlichungsverlauf.
 | --- | --- |
 | General | Legen Sie die Standardeinstellungen für Identität, Modell und Konversation fest. |
 | Knowledge | Quellen und FAQs hinzufügen. |
-| Flows | Definieren Sie Routing und Antworten. |
+| Flows | Routing und Antworten definieren. |
 | Tools & Skills | Steuerung von Runtime-Tools, API-Integration und wiederverwendbaren Anweisungen. |
 | Goals | Planen Sie deterministische Antwortprüfungen. |
 | Guardrails | Überprüfen Sie Visitor-Nachrichten und blenden Sie markierten Antworttext aus. |
 | Assistant Help Desks | Wählen Sie Help Desks für die Eskalation aus. |
 | Style | Legen Sie die Markenfarbe und die Position des Launchers fest. |
-| Authentication | Für Besucher ist die Anmeldung über Microsoft Entra erforderlich. |
+| Authentication | Für Visitors ist die Anmeldung über Microsoft Entra erforderlich. |
 | Publish | Den Live-Snapshot erstellen und verwalten. |
 
 Änderungen wirken sich sofort auf die Vorschau aus. Das Live-Widget ändert sich
 erst nach der Veröffentlichung.
+
+Preview kann Ihr verbundenes lokales Claude- oder ChatGPT-Abonnement von
+**Settings → AI** verwenden. Das Progress Panel zeigt Suchvorgänge und deren
+Ergebnisse an. Es fordert nicht das private Reasoning des Modells an. Ein
+verbundenes Modell benötigt nach wie vor Knowledge Sources, um
+organisationsspezifische Fragen zuverlässig zu beantworten.
+
+## Quellen in der Vorschau prüfen
+
+In der Vorschau werden innerhalb der Antwort des Assistenten nummerierte
+Quellenangaben angezeigt. Bewegen Sie den Mauszeiger über eine Quellenangabe
+oder fokussieren Sie sie mit der Tastatur, um ihren Titel und die Details der
+Quelle anzuzeigen. Drücken Sie die Escape-Taste, um die Karte zu schließen.
+Klicken Sie auf eine Citation mit einer öffentlichen URL, um die Originalseite
+in einem neuen Tab zu öffnen.
+
+Jeder Satz oder Schritt mit Quellenangabe trägt seine Citation neben dem Text,
+den er belegt. Eine Quelle kann in derselben Antwort mehrfach zitiert werden.
+Private Dokumente werden mit einer Vorschau angezeigt, jedoch ohne externen
+Link. Quellen ohne Inline-Referenz bleiben in der Liste „Sources“ unter der
+Antwort verfügbar.
 
 ## Einen Assistenten duplizieren
 

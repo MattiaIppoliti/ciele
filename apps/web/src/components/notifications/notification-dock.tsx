@@ -50,6 +50,7 @@ export function NotificationDock({
   return (
     <div
       style={{ transition: `var(${RIGHT_RAIL_TRANSITION_VAR})` }}
+      data-slot="notification-dock"
       className="pointer-events-none fixed right-3 bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] z-40 flex w-[22rem] max-w-[calc(100vw-1.5rem)] flex-col items-end gap-3 sm:right-6 sm:bottom-[calc(1rem_+_env(safe-area-inset-bottom))] sm:max-w-[calc(100vw-3rem)] md:[transform:translateX(calc(var(--right-rail-width)*-1))] md:max-w-[calc(100vw_-_var(--right-rail-width)_-_3rem)]"
     >
       <NotificationCenter

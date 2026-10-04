@@ -2238,3 +2238,260 @@ html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::b
   }
   html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::before { inset: 0; filter: none; }
 }
+
+/* Shared touch controls cover every console route and portal, including
+   Personal/Organization Settings and Assistant configuration. Keep variants,
+   focus rings and grouped-button seams; only geometry changes. */
+@media (max-width: 1023px), (hover: none) and (pointer: coarse) {
+  /* The shared chat widget and authentication forms also accept touch. */
+  :is([data-slot="button"], button.press-control, a.press-control, [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]) {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+  :is([data-slot="input"], [data-slot="textarea"]) { min-height: 44px; font-size: 16px; }
+  html[data-app-surface="admin"] :is(button:not([role="switch"], [role="checkbox"]), a.press-control, [role="button"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="treeitem"]) {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+  html[data-app-surface="admin"] :is([data-slot="button"], [data-slot="select-trigger"], [data-slot="animated-select-trigger"], [data-slot="select-item"], [data-slot="animated-select-item"], [role="tab"], [data-tabs-value], button.press-control) {
+    min-height: 44px;
+  }
+  html[data-app-surface="admin"] [data-slot="button"] {
+    max-width: 100%;
+    height: auto;
+    padding-block: 8px;
+    white-space: normal;
+  }
+  html[data-app-surface="admin"] [data-slot="button"]:not([data-slot="button-group"] *) {
+    border-radius: 9999px;
+  }
+  html[data-app-surface="admin"] [data-slot="button"]:not([data-size^="icon"]) {
+    padding-inline: 16px;
+  }
+  html[data-app-surface="admin"] :is([data-slot="button"][data-size^="icon"], button.press-control) {
+    min-width: 44px;
+  }
+  html[data-app-surface="admin"] :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), textarea, select) {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .prompt-text-layer { font-size: 16px; }
+  html[data-app-surface="admin"] [data-slot="sortable-handle"] { flex-shrink: 0; }
+  html[data-app-surface="admin"] [data-slot="resize-handle"][role="separator"] { min-width: 28px; touch-action: none; }
+  html[data-app-surface="admin"] .canvas-toolbar { --bar-slot: 44px; }
+  html[data-app-surface="admin"] .canvas-toolbar .bar-rail {
+    max-height: max(52px, calc(100dvh - 11rem));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  html[data-app-surface="admin"] [data-slot="switch"]::after {
+    content: "";
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  html[data-app-surface="admin"] [data-slot="table-open-cell"] {
+    display: flex;
+    flex-direction: column;
+    min-height: 44px;
+    justify-content: center;
+    padding-right: 4.5rem;
+  }
+  html[data-app-surface="admin"] [data-slot="table-open-cell"] > :first-child { min-width: 0; }
+  html[data-app-surface="admin"] :is([data-slot="table-open-action"], [data-slot="table-open-fade"], [data-resource-actions], [data-flow-step-action]) { opacity: 1; }
+  html[data-app-surface="admin"] [data-slot="table-actions"] button { flex-shrink: 0; }
+  html[data-app-surface="admin"] [data-slot="calendar"] {
+    --cell-size: min(44px, calc((100vw - 4rem) / 7));
+  }
+  html[data-app-surface="admin"] [data-slot="calendar"] .rdp-months { flex-direction: column; }
+  html[data-app-surface="admin"] [data-slot="calendar"] button[data-day] {
+    min-width: var(--cell-size);
+    min-height: var(--cell-size);
+    padding: 0;
+    border-radius: var(--cell-radius);
+  }
+  html[data-app-surface="admin"] [data-slot="calendar"] button[data-range-middle="true"] { border-radius: 0; }
+  html[data-app-surface="admin"] .touch-scroll-clearance {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+  html[data-app-surface="admin"] [data-slot="notification-dock"] {
+    bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+  body:has([data-touch-rail], [data-chat-fullscreen="true"]) .mobile-dock { display: none; }
+  html[data-app-surface="admin"] [data-top-bar-controls] {
+    max-width: 48%;
+    min-width: 44px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  html[data-app-surface="admin"] [data-top-bar-controls] > * { flex-shrink: 0; }
+  [data-mobile-settings] .settings-save-bar {
+    bottom: 0;
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+  [data-mobile-settings] .settings-scroll:has(.settings-save-bar) { padding-bottom: 0; }
+}
+/* Native card surfaces avoid the expanded SVG frame on phones and tablets.
+   Forced colors keeps the explicit boundary defined above. */
+@media (max-width: 1023px) and (forced-colors: none), (hover: none) and (pointer: coarse) and (forced-colors: none) {
+  html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card) {
+    background-color: var(--card);
+    background-image: none;
+  }
+  html[data-app-surface="admin"] :is(.bg-card.rounded-xl, .bg-card.rounded-2xl) {
+    background-image: none;
+  }
+  html[data-app-surface="admin"] :is([data-slot="card"].bg-card, .squircle-card):not(:focus-visible) {
+    border: 0;
+    box-shadow: none;
+  }
+  html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::before,
+  html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::after {
+    content: none;
+  }
+}
+
+/* Touch workspaces use the same compact navigation on phones and tablets. */
+.touch-navigation { display: none; }
+.mobile-dock {
+  pointer-events: auto;
+  left: calc(1.25rem + env(safe-area-inset-left));
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  background: rgb(32 32 35 / 72%);
+  border: 1px solid rgb(255 255 255 / 14%);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 24%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+@media (max-width: 1023px), (hover: none) and (pointer: coarse) {
+  .desktop-sidebar, [data-desktop-nav-toggle] { display: none !important; }
+  .touch-navigation { display: flex; }
+  .shell-find-trigger { display: flex; width: 44px; height: 44px; }
+  .mobile-home [aria-label="Switch organization"] { min-height: 44px; }
+  .organization-switcher-popover input { min-height: 44px; font-size: 16px; }
+  .organization-switcher-popover [data-highlight-row] > button { min-height: 44px; }
+  .organization-switcher-popover [aria-label="Manage members"] { width: 44px; height: 44px; }
+}
+@media (max-width: 1023px), (hover: none) and (pointer: coarse) {
+  [data-mobile-settings] {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    overflow: hidden;
+    padding-top: env(safe-area-inset-top);
+  }
+  [data-mobile-settings] :is([data-slot="button"], [data-slot="select-trigger"], [role="combobox"], aside a, button[aria-label="Close settings"]) { min-height: 44px; }
+  [data-mobile-settings] button[aria-label="Close settings"] { min-width: 44px; }
+  [data-mobile-settings] :is(input:not([type="checkbox"], [type="radio"]), textarea) { font-size: 16px; min-height: 44px; }
+  [data-mobile-settings] .settings-scroll { padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }
+  .provider-connections > [data-slot="card"] > div:first-child { align-items: flex-start; gap: 12px; }
+  .provider-connect-actions { width: 100%; }
+  .provider-connect-actions [data-slot="button"] { flex: 1 1 140px; }
+}
+/* The popup follows the page content bounds. Its backdrop catches outside
+   taps without activating a control on the page underneath. */
+.mobile-home {
+  /* Fallback until the page bounds are measured before paint. */
+  --mobile-home-top: calc(4rem + 1px);
+  top: var(--mobile-home-top);
+  height: calc(100dvh - var(--mobile-home-top));
+  width: 100vw;
+  border-radius: 0 0 calc(var(--radius) + 3px) calc(var(--radius) + 3px);
+  translate: none;
+  transform: none;
+  pointer-events: none;
+  isolation: isolate;
+  /* Motion animates the wheel only, leaving fixed dock/Open controls stable. */
+  animation: none;
+}
+.mobile-home-rail {
+  --mobile-home-surface: #0f1011;
+  --mobile-home-border: #34343a;
+  --mobile-home-radius: max(35.75rem, 64dvh);
+  --mobile-home-extent: min(calc(100% + 4.5rem), calc(100vw - 2rem));
+  --mobile-home-center-x: calc(var(--mobile-home-extent) - var(--mobile-home-radius));
+  --primary: #f7f8f8;
+  --muted-foreground: #8a8f98;
+  width: min(28rem, 88vw);
+  pointer-events: auto;
+  isolation: isolate;
+  transform-origin: var(--mobile-home-center-x) calc(50% - 3rem);
+  /* Use the visible circle for hit testing, including its upper corners. */
+  clip-path: circle(var(--mobile-home-radius) at var(--mobile-home-center-x) calc(50% - 3rem));
+}
+.mobile-home-rail::before {
+  content: "";
+  position: absolute;
+  /* Match the picker center above the dock clearance. The extra width covers
+     long labels as they rotate; the popup clips the circle above the navbar. */
+  top: calc(50% - 3rem);
+  left: calc(var(--mobile-home-center-x) - var(--mobile-home-radius));
+  width: calc(var(--mobile-home-radius) * 2);
+  height: calc(var(--mobile-home-radius) * 2);
+  transform: translateY(-50%);
+  z-index: -1;
+  border: 1px solid var(--mobile-home-border);
+  border-radius: 50%;
+  background: var(--mobile-home-surface);
+  pointer-events: auto;
+}
+.mobile-home-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  border: 0;
+  padding: 0;
+  cursor: default;
+  background: color-mix(in srgb, var(--background) 18%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+.mobile-home-open {
+  position: fixed;
+  pointer-events: auto;
+  right: calc(1.25rem + env(safe-area-inset-right));
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  min-height: calc(44px + 0.5rem);
+  max-width: calc(100vw - 12.5rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mobile-home-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (forced-colors: active) {
+  .mobile-home-rail { --primary: CanvasText; --muted-foreground: GrayText; }
+  .mobile-home-rail::before { background: Canvas; border-color: CanvasText; }
+  .mobile-home-backdrop { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+html[data-app-surface="admin"] [data-foley-scroll] {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.mobile-chatbot-preview[hidden] { display: none; }
+
+/* Phone search leaves room for the thumb and uses readable, separate targets. */
+@media (max-width: 639px) {
+  .find-dialog {
+    width: calc(100% - 2rem);
+    max-width: calc(100% - 2rem);
+    top: max(1rem, env(safe-area-inset-top));
+    height: min(640px, calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  }
+  .find-search-header { padding-inline: 12px; }
+  .find-search-header input { min-width: 0; height: 56px; font-size: 16px; }
+  .find-search-filters { gap: 4px; padding-inline: 12px; padding-bottom: 8px; }
+  .find-search-filters button { min-height: 44px; font-size: 14px; }
+  .find-dialog [role="option"] { min-height: 56px; padding-block: 12px; font-size: 16px; }
+  .find-dialog [role="option"] > span { white-space: normal; overflow-wrap: anywhere; }
+  .find-dialog [role="option"] > span > .text-xs { display: block; font-size: 13px; }
+}

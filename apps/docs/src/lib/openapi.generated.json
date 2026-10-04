@@ -32954,6 +32954,62 @@
                           "organizationId": {
                             "type": "string"
                           },
+                          "runtimeConfig": {
+                            "type": "object",
+                            "properties": {
+                              "harness": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {}
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {},
+                                      "connectionId": {}
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "connectionId"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "internet": {
+                                "type": "boolean"
+                              },
+                              "computer": {
+                                "type": "object",
+                                "properties": {
+                                  "browser": {
+                                    "type": "boolean"
+                                  },
+                                  "files": {
+                                    "type": "boolean"
+                                  },
+                                  "terminal": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "browser",
+                                  "files",
+                                  "terminal"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "harness",
+                              "internet",
+                              "computer"
+                            ]
+                          },
                           "name": {
                             "type": "string"
                           },
@@ -33359,6 +33415,70 @@
                     },
                     "organizationId": {
                       "type": "string"
+                    },
+                    "runtimeConfig": {
+                      "type": "object",
+                      "properties": {
+                        "harness": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ciele"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ag_ui"
+                                },
+                                "connectionId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "connectionId"
+                              ]
+                            }
+                          ]
+                        },
+                        "internet": {
+                          "type": "boolean"
+                        },
+                        "computer": {
+                          "type": "object",
+                          "properties": {
+                            "browser": {
+                              "type": "boolean"
+                            },
+                            "files": {
+                              "type": "boolean"
+                            },
+                            "terminal": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "browser",
+                            "files",
+                            "terminal"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "harness",
+                        "internet",
+                        "computer"
+                      ]
                     },
                     "name": {
                       "type": "string"
@@ -33887,6 +34007,70 @@
                         },
                         "organizationId": {
                           "type": "string"
+                        },
+                        "runtimeConfig": {
+                          "type": "object",
+                          "properties": {
+                            "harness": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "ciele"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "ag_ui"
+                                    },
+                                    "connectionId": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "connectionId"
+                                  ]
+                                }
+                              ]
+                            },
+                            "internet": {
+                              "type": "boolean"
+                            },
+                            "computer": {
+                              "type": "object",
+                              "properties": {
+                                "browser": {
+                                  "type": "boolean"
+                                },
+                                "files": {
+                                  "type": "boolean"
+                                },
+                                "terminal": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "browser",
+                                "files",
+                                "terminal"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "harness",
+                            "internet",
+                            "computer"
+                          ]
                         },
                         "name": {
                           "type": "string"
@@ -34729,6 +34913,70 @@
                     "organizationId": {
                       "type": "string"
                     },
+                    "runtimeConfig": {
+                      "type": "object",
+                      "properties": {
+                        "harness": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ciele"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ag_ui"
+                                },
+                                "connectionId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "connectionId"
+                              ]
+                            }
+                          ]
+                        },
+                        "internet": {
+                          "type": "boolean"
+                        },
+                        "computer": {
+                          "type": "object",
+                          "properties": {
+                            "browser": {
+                              "type": "boolean"
+                            },
+                            "files": {
+                              "type": "boolean"
+                            },
+                            "terminal": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "browser",
+                            "files",
+                            "terminal"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "harness",
+                        "internet",
+                        "computer"
+                      ]
+                    },
                     "name": {
                       "type": "string"
                     },
@@ -35164,6 +35412,70 @@
                     },
                     "organizationId": {
                       "type": "string"
+                    },
+                    "runtimeConfig": {
+                      "type": "object",
+                      "properties": {
+                        "harness": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ciele"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ag_ui"
+                                },
+                                "connectionId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "connectionId"
+                              ]
+                            }
+                          ]
+                        },
+                        "internet": {
+                          "type": "boolean"
+                        },
+                        "computer": {
+                          "type": "object",
+                          "properties": {
+                            "browser": {
+                              "type": "boolean"
+                            },
+                            "files": {
+                              "type": "boolean"
+                            },
+                            "terminal": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "browser",
+                            "files",
+                            "terminal"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "harness",
+                        "internet",
+                        "computer"
+                      ]
                     },
                     "name": {
                       "type": "string"
@@ -37698,6 +38010,1201 @@
         }
       }
     },
+    "/api/v1/teammates/{id}/runtime": {
+      "get": {
+        "operationId": "getTeammatesByIdRuntime",
+        "summary": "Read a Teammate's execution permissions and available harnesses",
+        "description": "Requires an Organization API key with the member capability.",
+        "tags": [
+          "teammates"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "computerConfigured": {
+                      "type": "boolean"
+                    },
+                    "harnesses": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      }
+                    },
+                    "config": {
+                      "type": "object",
+                      "properties": {
+                        "harness": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ciele"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ag_ui"
+                                },
+                                "connectionId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "connectionId"
+                              ]
+                            }
+                          ]
+                        },
+                        "internet": {
+                          "type": "boolean"
+                        },
+                        "computer": {
+                          "type": "object",
+                          "properties": {
+                            "browser": {
+                              "type": "boolean"
+                            },
+                            "files": {
+                              "type": "boolean"
+                            },
+                            "terminal": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "browser",
+                            "files",
+                            "terminal"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "harness",
+                        "internet",
+                        "computer"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "computerConfigured",
+                    "harnesses",
+                    "config"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or revoked API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current resource state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putTeammatesByIdRuntime",
+        "summary": "Configure a Teammate's harness, internet and isolated computer",
+        "description": "Requires an Organization API key with the manageMembers capability.",
+        "tags": [
+          "teammates"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "organizationId": {
+                      "type": "string"
+                    },
+                    "runtimeConfig": {
+                      "type": "object",
+                      "properties": {
+                        "harness": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ciele"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "ag_ui"
+                                },
+                                "connectionId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "connectionId"
+                              ]
+                            }
+                          ]
+                        },
+                        "internet": {
+                          "type": "boolean"
+                        },
+                        "computer": {
+                          "type": "object",
+                          "properties": {
+                            "browser": {
+                              "type": "boolean"
+                            },
+                            "files": {
+                              "type": "boolean"
+                            },
+                            "terminal": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "browser",
+                            "files",
+                            "terminal"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "harness",
+                        "internet",
+                        "computer"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "roleDescription": {
+                      "type": "string"
+                    },
+                    "avatarSeed": {
+                      "type": "string"
+                    },
+                    "ownerId": {
+                      "type": "string"
+                    },
+                    "editorIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "visibility": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "const": "org"
+                        },
+                        {
+                          "type": "string",
+                          "const": "private"
+                        }
+                      ]
+                    },
+                    "collectionIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sourceIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "modelProvider": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "const": "anthropic"
+                        },
+                        {
+                          "type": "string",
+                          "const": "openai"
+                        },
+                        {
+                          "type": "string",
+                          "const": "google"
+                        },
+                        {
+                          "type": "string",
+                          "const": "openai_compatible"
+                        }
+                      ]
+                    },
+                    "modelId": {
+                      "type": "string"
+                    },
+                    "modelSource": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "const": "api_key"
+                        },
+                        {
+                          "type": "string",
+                          "const": "platform"
+                        },
+                        {
+                          "type": "string",
+                          "const": "federated"
+                        },
+                        {
+                          "type": "string",
+                          "const": "ai_gateway"
+                        },
+                        {
+                          "type": "string",
+                          "const": "platform_gateway"
+                        }
+                      ]
+                    },
+                    "allowedModels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "oneOf": [
+                              {
+                                "type": "string",
+                                "const": "anthropic"
+                              },
+                              {
+                                "type": "string",
+                                "const": "openai"
+                              },
+                              {
+                                "type": "string",
+                                "const": "google"
+                              },
+                              {
+                                "type": "string",
+                                "const": "openai_compatible"
+                              }
+                            ]
+                          },
+                          "modelId": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "oneOf": [
+                              {
+                                "type": "string",
+                                "const": "api_key"
+                              },
+                              {
+                                "type": "string",
+                                "const": "platform"
+                              },
+                              {
+                                "type": "string",
+                                "const": "federated"
+                              },
+                              {
+                                "type": "string",
+                                "const": "ai_gateway"
+                              },
+                              {
+                                "type": "string",
+                                "const": "platform_gateway"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "provider",
+                          "modelId"
+                        ]
+                      }
+                    },
+                    "systemKind": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "const": "flows_agent"
+                        },
+                        {
+                          "type": "string",
+                          "const": "ciele_ai"
+                        }
+                      ]
+                    },
+                    "assistantId": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "capabilityCeiling": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "const": "edit"
+                        },
+                        {
+                          "type": "string",
+                          "const": "member"
+                        }
+                      ]
+                    },
+                    "approvalBypass": {
+                      "type": "boolean"
+                    },
+                    "projectId": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "deletedAt": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "organizationId",
+                    "name",
+                    "title",
+                    "roleDescription",
+                    "avatarSeed",
+                    "ownerId",
+                    "editorIds",
+                    "visibility",
+                    "collectionIds",
+                    "sourceIds",
+                    "modelProvider",
+                    "modelId",
+                    "systemKind",
+                    "assistantId",
+                    "capabilityCeiling",
+                    "approvalBypass",
+                    "projectId",
+                    "deletedAt",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or revoked API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The API key does not have the required capability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current resource state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                  "harness": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "ciele"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "ag_ui"
+                          },
+                          "connectionId": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_-]{1,80}$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "connectionId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "internet": {
+                    "type": "boolean"
+                  },
+                  "computer": {
+                    "type": "object",
+                    "properties": {
+                      "browser": {
+                        "type": "boolean"
+                      },
+                      "files": {
+                        "type": "boolean"
+                      },
+                      "terminal": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "browser",
+                      "files",
+                      "terminal"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "harness",
+                  "internet",
+                  "computer"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teammates/{id}/ag-ui": {
+      "post": {
+        "operationId": "postTeammatesByIdAgUi",
+        "summary": "Run a persisted Teammate turn over AG-UI; server owns tools and history",
+        "description": "Requires an Organization API key with the member capability.",
+        "tags": [
+          "teammates"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "AG-UI server-sent events"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or revoked API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current resource state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The assistant-ask rate limit was exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another assistant-ask request is allowed.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                  "threadId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  },
+                  "runId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,100}$"
+                  },
+                  "state": {},
+                  "messages": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "assistant",
+                            "system",
+                            "developer",
+                            "tool"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "role",
+                        "content"
+                      ]
+                    }
+                  },
+                  "tools": {
+                    "maxItems": 0,
+                    "type": "array",
+                    "items": {
+                      "not": {}
+                    }
+                  },
+                  "context": {
+                    "maxItems": 0,
+                    "type": "array",
+                    "items": {
+                      "not": {}
+                    }
+                  },
+                  "forwardedProps": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "threadId",
+                  "runId",
+                  "state",
+                  "messages",
+                  "tools",
+                  "context"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teammates/{id}/memory": {
       "get": {
         "operationId": "getTeammatesByIdMemory",
@@ -39663,6 +41170,10 @@
                                   }
                                 ]
                               },
+                              "runtimeState": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
                               "createdBy": {
                                 "oneOf": [
                                   {
@@ -39940,6 +41451,10 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "runtimeState": {
+                      "type": "object",
+                      "additionalProperties": {}
                     },
                     "createdBy": {
                       "oneOf": [
@@ -40220,6 +41735,10 @@
                                     "type": "string"
                                   }
                                 ]
+                              },
+                              "runtimeState": {
+                                "type": "object",
+                                "additionalProperties": {}
                               },
                               "createdBy": {
                                 "oneOf": [
@@ -40543,6 +42062,10 @@
                             }
                           ]
                         },
+                        "runtimeState": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
                         "createdBy": {
                           "oneOf": [
                             {
@@ -40816,6 +42339,62 @@
                           },
                           "organizationId": {
                             "type": "string"
+                          },
+                          "runtimeConfig": {
+                            "type": "object",
+                            "properties": {
+                              "harness": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {}
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {},
+                                      "connectionId": {}
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "connectionId"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "internet": {
+                                "type": "boolean"
+                              },
+                              "computer": {
+                                "type": "object",
+                                "properties": {
+                                  "browser": {
+                                    "type": "boolean"
+                                  },
+                                  "files": {
+                                    "type": "boolean"
+                                  },
+                                  "terminal": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "browser",
+                                  "files",
+                                  "terminal"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "harness",
+                              "internet",
+                              "computer"
+                            ]
                           },
                           "name": {
                             "type": "string"
@@ -41316,6 +42895,10 @@
                             }
                           ]
                         },
+                        "runtimeState": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
                         "createdBy": {
                           "oneOf": [
                             {
@@ -41589,6 +43172,62 @@
                           },
                           "organizationId": {
                             "type": "string"
+                          },
+                          "runtimeConfig": {
+                            "type": "object",
+                            "properties": {
+                              "harness": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {}
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {},
+                                      "connectionId": {}
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "connectionId"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "internet": {
+                                "type": "boolean"
+                              },
+                              "computer": {
+                                "type": "object",
+                                "properties": {
+                                  "browser": {
+                                    "type": "boolean"
+                                  },
+                                  "files": {
+                                    "type": "boolean"
+                                  },
+                                  "terminal": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "browser",
+                                  "files",
+                                  "terminal"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "harness",
+                              "internet",
+                              "computer"
+                            ]
                           },
                           "name": {
                             "type": "string"
@@ -42053,6 +43692,10 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "runtimeState": {
+                      "type": "object",
+                      "additionalProperties": {}
                     },
                     "createdBy": {
                       "oneOf": [

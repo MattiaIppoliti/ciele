@@ -566,3 +566,4 @@ export {
   attachmentContextSection,
 } from "./attachments";
 export type { ChatAttachment } from "./attachments";
+export { teammateRuntimeConfig } from "./teammate-runtime";

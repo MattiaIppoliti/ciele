@@ -208,3 +208,17 @@ it("announces study generation without streaming its private answer arguments", 
   expect(JSON.stringify(events)).not.toContain("private answer key");
   expect(events.some(event => event.type === "tool-input-delta")).toBe(false);
 });
+
+it.each([["renderRecordsTable", "records_table"], ["renderFilterTable", "filter_table"]] as const)("streams %s props through the existing component lifecycle", async (toolName, name) => {
+  const events: RuntimeEvent[] = [];
+  const model = new MockLanguageModelV3({ doStream: async () => ({ stream: simulateReadableStream({ chunks: [
+    { type: "stream-start" as const, warnings: [] },
+    { type: "tool-input-start" as const, id: "table", toolName },
+    { type: "tool-input-delta" as const, id: "table", delta: '{"rows":[]}' },
+    { type: "tool-input-end" as const, id: "table" },
+    { type: "finish" as const, finishReason: { unified: "stop" as const, raw: "stop" }, usage: usage() },
+  ] }) }) });
+  await runGatherPhase(gatherInput(model, event => events.push(event)));
+  expect(events).toContainEqual({ type: "tool-input-start", callId: "table", tool: toolName, name });
+  expect(events).toContainEqual({ type: "tool-input-delta", callId: "table", delta: '{"rows":[]}' });
+});

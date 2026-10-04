@@ -256,3 +256,21 @@ describe("renderTable", () => {
     );
   });
 });
+
+describe("Beautiful UI table tools", () => {
+  it.each([
+    ["renderRecordsTable", "records_table", { rows: [{ id: "one", name: "Acme", tags: ["B2B"], last: "Today", strength: "strong" }] }],
+    ["renderFilterTable", "filter_table", { rows: [{ task: "Review", date: "Today", status: "todo", owner: "Alex" }] }],
+  ])("streams and persists %s under the same opt-in capability", async (tool, name, input) => {
+    const { ctx, events, collected } = makeContext();
+    const result = await run(buildToolset(ctx), String(tool), input);
+    expect(result).toMatchObject({ shown: true });
+    expect(collected).toHaveLength(1);
+    expect(collected[0]).toMatchObject({ name, callId: "call-1", props: input });
+    expect(events.find(event => event.type === "part")).toMatchObject({ part: collected[0] });
+    expect(events.at(-1)).toMatchObject({ type: "tool-end", tool, ok: true });
+    const disabled = makeContext({ assistant: makeAssistant({ tools: {} }) });
+    expect(buildToolset(disabled.ctx)[String(tool)]).toBeUndefined();
+    expect(buildToolset({ ...ctx, showPart: undefined })[String(tool)]).toBeUndefined();
+  });
+});

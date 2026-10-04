@@ -41,7 +41,7 @@ export function BillingAccountCard({
         <CardHeader>
           <CardTitle>Next invoice</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 text-sm sm:grid-cols-3">
+        <CardContent className="grid gap-4 text-sm @xl/settings:grid-cols-3">
           <Field label="Renews">{formatBillingDate(account.renewsAt)}</Field>
           <Field label="Projected total">
             {formatBillingMoney(account.nextAmountMinor, account.currency)}

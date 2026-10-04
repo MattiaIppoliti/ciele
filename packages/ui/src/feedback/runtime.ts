@@ -3,6 +3,7 @@ import type { AudioPatch } from "@web-kits/audio";
 import type { BenchoPlayer } from "./sounds/bencho";
 
 import { HAPTIC_PATTERNS, haptic, setHapticTransport } from "./haptics";
+import { createScrollDetents } from "./scroll-detents";
 import { minimal } from "./sounds";
 import {
   FOLEY_SETTINGS,
@@ -41,6 +42,8 @@ export const TOGGLE_ATTR = "data-foley-toggle";
 export const TYPE_ATTR = "data-foley-type";
 /** Any ancestor carrying this silences the subtree: decorative mocks, demos. */
 export const SILENT_ATTR = "data-foley-silent";
+/** Opt-in menu scrollers; ordinary page scrolling stays silent. */
+export const SCROLL_ATTR = "data-foley-scroll";
 
 /**
  * What counts as clickable for the fallback tick.
@@ -228,7 +231,43 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   let destroyed = false;
   let pendingCue: CueRequest | null = null;
   let hapticsReady = false;
+  let hapticsInstance: { destroy(): void } | null = null;
   const successCoalescer = createCoalescer(SUCCESS_COALESCE_MS);
+  let scrollGesture: {
+    element: Element;
+    detents: ReturnType<typeof createScrollDetents>;
+    expiresAt: number;
+  } | null = null;
+
+  function beginScroll(target: EventTarget | null, renew: boolean) {
+    const element = closest(target, `[${SCROLL_ATTR}]`);
+    if (!element || silenced(element)) {
+      scrollGesture = null;
+      return;
+    }
+    const now = Date.now();
+    if (!renew || scrollGesture?.element !== element || now > scrollGesture.expiresAt) {
+      scrollGesture = { element, detents: createScrollDetents(element.scrollTop), expiresAt: now + 1500 };
+    } else {
+      scrollGesture.expiresAt = now + 1500;
+    }
+  }
+
+  const onWheel = (event: Event) => beginScroll(event.target, true);
+  // Native touch scrolling cancels pointer events, but touchmove continues.
+  const onTouchMove = (event: Event) => beginScroll(event.target, true);
+  const onPointerMove = (event: Event) => {
+    if ((event as PointerEvent).buttons === 0) return;
+    if (scrollGesture) scrollGesture.expiresAt = Date.now() + 1500;
+  };
+  const onScroll = (event: Event) => {
+    if (!scrollGesture || event.target !== scrollGesture.element) return;
+    const now = Date.now();
+    if (now > scrollGesture.expiresAt || doc.hidden || silenced(scrollGesture.element)) return;
+    if (scrollGesture.detents.next(scrollGesture.element.scrollTop, now)) {
+      haptic("detent");
+    }
+  };
 
   function environment(): FeedbackEnvironment {
     return {
@@ -345,8 +384,9 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
       .then((mod) => {
         // `showSwitch: false` keeps the iOS `<input switch>` WebHaptics clicks
         // for the Taptic Engine out of sight; it is still there and still works.
-        const instance = new mod.WebHaptics({ showSwitch: false });
         if (destroyed) return;
+        const instance = new mod.WebHaptics({ showSwitch: false });
+        hapticsInstance = instance;
         hapticsReady = true;
         setHapticTransport((kind) => {
           void instance.trigger(HAPTIC_PATTERNS[kind]);
@@ -361,6 +401,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   let toggleBefore: boolean | null = null;
 
   const onCaptureClick = (e: Event) => {
+    scrollGesture = null;
     const el = closest(e.target, `[${TOGGLE_ATTR}]`);
     toggleBefore = el ? readToggleState(el) : null;
   };
@@ -371,6 +412,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
     // The menu itself emits the shared `open` cue when it actually appears.
     const pointer = e as PointerEvent;
     if (pointer.pointerType === "mouse" && pointer.button !== 0) return;
+    beginScroll(e.target, false);
     const el = closest(e.target, `[${PRESS_ATTR}]`);
     if (!el || silenced(el) || disabled(el)) return;
     play("press");
@@ -441,6 +483,7 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
   };
 
   const onKeyDown = (e: Event) => {
+    scrollGesture = null;
     unlock();
     if ((e as KeyboardEvent).key !== "Enter") return;
     const el = closest(e.target, `[${TYPE_ATTR}]`);
@@ -449,6 +492,10 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
 
   doc.addEventListener("pointerdown", onPointerDown, { capture: true });
   doc.addEventListener("pointerup", onPointerUp, { capture: true });
+  doc.addEventListener("pointermove", onPointerMove, { capture: true, passive: true });
+  doc.addEventListener("wheel", onWheel, { capture: true, passive: true });
+  doc.addEventListener("touchmove", onTouchMove, { capture: true, passive: true });
+  doc.addEventListener("scroll", onScroll, { capture: true, passive: true });
   doc.addEventListener("click", onCaptureClick, { capture: true });
   doc.addEventListener("click", onClick);
   doc.addEventListener("keydown", onKeyDown, { capture: true });
@@ -457,9 +504,16 @@ export function attachFeedback(doc: Document, options: AttachOptions): FeedbackR
     play,
     destroy() {
       destroyed = true;
+      scrollGesture = null;
       bencho?.destroy();
+      hapticsInstance?.destroy();
+      hapticsInstance = null;
       doc.removeEventListener("pointerdown", onPointerDown, { capture: true });
       doc.removeEventListener("pointerup", onPointerUp, { capture: true });
+      doc.removeEventListener("pointermove", onPointerMove, { capture: true });
+      doc.removeEventListener("wheel", onWheel, { capture: true });
+      doc.removeEventListener("touchmove", onTouchMove, { capture: true });
+      doc.removeEventListener("scroll", onScroll, { capture: true });
       doc.removeEventListener("click", onCaptureClick, { capture: true });
       doc.removeEventListener("click", onClick);
       doc.removeEventListener("keydown", onKeyDown, { capture: true });

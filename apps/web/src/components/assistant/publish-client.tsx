@@ -17,6 +17,7 @@ import {
   SectionTimeline,
   TimelineSection,
 } from "@/components/settings/section-timeline";
+import { celebrate } from "@/lib/celebration";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import {
   Badge,
@@ -130,6 +131,7 @@ export function PublishClient({
           return;
         }
         toast.success(`Published v${result}, the widget now serves this snapshot`);
+        void celebrate();
       } catch (error) {
         if (isRedirectError(error)) throw error;
         toast.error(error instanceof Error ? error.message : "Could not publish");

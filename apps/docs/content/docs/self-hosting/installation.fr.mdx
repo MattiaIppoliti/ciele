@@ -35,16 +35,15 @@ une balise de version :
 curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 ```
 
-Le programme d'installation ne supprime jamais rien : si le répertoire cible
-existe et n'est pas un répertoire de clonage Ciele, il s'arrête et vous en
-informe.
+L'installateur ne supprime jamais rien : si le répertoire cible existe et n'est
+pas un checkout Ciele, il s'arrête et vous en informe.
 
-Sur un Mac sans Docker, l'installateur ne s'arrête pas en cas d'erreur. Il ouvre
-[Ciele Desktop](/self-hosting/desktop), en téléchargeant d'abord la version
-publiée si l'application est absente. La configuration guidée qui s'y trouve
-associe Docker Desktop et démarre la même pile que celle décrite sur cette page.
-Sous Linux, l'installateur refuse, car il n'existe pas d'application de bureau à
-laquelle confier la tâche.
+Sur un Mac sans Docker, l'installeur ne s'arrête pas en cas d'erreur. Il ouvre
+[Ciele Desktop](/self-hosting/desktop) et, si l'application n'est pas présente,
+télécharge d'abord la version correspondante. La configuration guidée qui s'y
+trouve associe Docker Desktop et démarre la même pile que celle décrite sur
+cette page. Sous Linux, l'installateur refuse, car il n'existe pas d'application
+de bureau à laquelle confier la tâche.
 
 ## Initialiser la pile
 
@@ -60,10 +59,11 @@ Le script génère les secrets requis dans `deploy/.env`. Il construit ensuite l
 profils par défaut et les démarre.
 
 Ouvrez [http://localhost:3000](http://localhost:3000) une fois que les services
-sont opérationnels. Le premier compte devient le propriétaire de l'organisation.
+sont passés à l'état « healthy ». Le premier compte devient le propriétaire de
+l'organisation.
 
 Utilisez `./deploy/bootstrap.sh --seed` pour ajouter du contenu de démonstration
-nettoyé.
+assaini.
 
 ## Exécuter les images publiées au lieu de les générer
 
@@ -76,7 +76,7 @@ trois éléments sous forme d'images de conteneur :
 ```
 
 La commande écrit deux paramètres dans `deploy/.env` et effectue un pull au lieu
-d'une compilation :
+de procéder à la compilation :
 
 ```bash
 COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
@@ -112,6 +112,15 @@ restart alone keeps the previous value.
 
 ## Inspecter la pile
 
+La passerelle actualise les adresses des services via Docker DNS. Après la
+recréation d'un service, les requêtes peuvent échouer brièvement pendant la
+résolution de sa nouvelle adresse. La passerelle se rétablit sans redémarrage.
+La détection de l'état de disponibilité de PostgreSQL utilise TCP ; ainsi, les
+services attendent que l'initialisation de la base de données soit terminée sur
+une nouvelle installation. Le migration runner attend également que
+l'authentification et le stockage aient terminé leurs propres migrations avant
+d'appliquer le schéma Ciele.
+
 ```bash
 docker compose -f deploy/docker-compose.yml ps
 docker compose -f deploy/docker-compose.yml logs -f app
@@ -134,7 +143,7 @@ L'application vérifie cela au démarrage. Il lit `PUBLIC_URL`,
 commence par `http://` et ne pointe pas vers la machine locale, l'application ne
 démarre pas. Le journal du conteneur indique le nom de la variable. La valeur
 par défaut `PUBLIC_URL=http://localhost:3000` réussit la vérification. Pour
-fonctionner délibérément sur HTTP non chiffré, par exemple sur un réseau privé,
+exécuter délibérément sur HTTP non chiffré, par exemple sur un réseau privé,
 définissez `CIELE_ALLOW_INSECURE_HTTP=1` dans `deploy/.env`.
 
 Une fois qu'une origine publique existe, définissez `CIELE_PUBLIC_ORIGIN` dans

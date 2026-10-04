@@ -13,6 +13,7 @@ import {
   teammatePersonaPrompt,
   teammateRuntimeAssistant,
   teammateSearchesKnowledge,
+  teammateRuntimeConfig,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
@@ -23,6 +24,8 @@ import { prepareTraceForStorage } from "./trace";
 import { createTurnObserver } from "./turn-observer";
 import type { ChatReplyPart, RuntimeEvent } from "./types";
 import { summarizeTurnUsage } from "./usage";
+import { runExternalTeammateHarness } from "./ag-ui";
+import { teammateComputerTools } from "./teammate-computer";
 
 type AssistantChatOptions = Parameters<typeof runAssistantChat>[0];
 
@@ -33,7 +36,7 @@ export type TeammateAnswerTurn = Omit<
   | "flows"
   | "connections"
   | "searchKnowledge"
->;
+> & { userMessageId?: string };
 
 /**
  * One AI Teammate answer, independent of the container that asked for it.
@@ -45,6 +48,7 @@ export type TeammateAnswerTurn = Omit<
  */
 export function runTeammateAnswer(options: {
   db: Db;
+  systemDb?: Db;
   organizationId: string;
   teammate: Teammate;
   connections: ProviderConnection[];
@@ -69,8 +73,13 @@ export function runTeammateAnswer(options: {
     .filter((section): section is string => Boolean(section?.trim()))
     .join("\n\n");
 
+  if (teammateRuntimeConfig(teammate).harness.kind === "ag_ui") {
+    return runExternalTeammateHarness({ teammate, turn, persona });
+  }
+
   return runAssistantChat({
     ...turn,
+    teammateActions: [...(turn.teammateActions ?? []), ...teammateComputerTools(db, teammate)],
     assistant: teammateRuntimeAssistant(teammate),
     persona,
     flows: [teammateDefaultFlow(teammate)],
@@ -78,6 +87,7 @@ export function runTeammateAnswer(options: {
     searchKnowledge: teammateSearchesKnowledge(teammate)
       ? buildCollectionSearcher({
           db,
+          systemDb: options.systemDb,
           connections,
           organizationId,
           collectionIds: teammate.collectionIds,
@@ -182,6 +192,8 @@ export function projectTeammateUsage(input: {
  */
 export async function executeTeammateAnswer(options: {
   db: Db;
+  /** Internal accounting and audit writes; data access remains on `db`. */
+  systemDb?: Db;
   organizationId: string;
   teammate: Teammate;
   connections: ProviderConnection[];
@@ -210,6 +222,7 @@ export async function executeTeammateAnswer(options: {
   try {
     const result = await runTeammateAnswer({
       db: options.db,
+      systemDb: options.systemDb,
       organizationId: options.organizationId,
       teammate: options.teammate,
       connections: options.connections,
@@ -235,7 +248,7 @@ export async function executeTeammateAnswer(options: {
       toolCalls: observer.toolCalls,
       usageRows,
       recordSucceeded: (messageId) =>
-        recordRuntimeEvent(options.db, {
+        recordRuntimeEvent(options.systemDb ?? options.db, {
           organizationId: options.organizationId,
           assistantId: options.telemetry.assistantId,
           conversationId: options.telemetry.conversationId,
@@ -260,7 +273,7 @@ export async function executeTeammateAnswer(options: {
       toolCalls: observer.toolCalls,
       usageRows,
       recordFailed: () =>
-        recordRuntimeEvent(options.db, {
+        recordRuntimeEvent(options.systemDb ?? options.db, {
           organizationId: options.organizationId,
           assistantId: options.telemetry.assistantId,
           conversationId: options.telemetry.conversationId,

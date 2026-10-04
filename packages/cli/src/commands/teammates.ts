@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import type { TeammatePatch } from "@agent-hub/core";
+import type { TeammatePatch, TeammateRuntimeConfig } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { bool, str, strList, usage, type CommandContext, emitJson, confirmed } from "./shared.ts";
+import { bool, str, strList, usage, type CommandContext, emitJson, confirmed, jsonFile } from "./shared.ts";
 
 /**
  * AI Teammates (#768): the Organization's internal agents.
@@ -14,6 +14,26 @@ import { bool, str, strList, usage, type CommandContext, emitJson, confirmed } f
 export async function teammates(verb: string | undefined, ctx: CommandContext) {
   const { client, flags, rest, emit, deps } = ctx;
   switch (verb) {
+    case "runtime": {
+      if (!rest[0]) return usage(deps, "teammates runtime <id>");
+      emitJson(emit, await client.teammates.runtime(rest[0]));
+      return EXIT.ok;
+    }
+    case "set-runtime": {
+      if (!rest[0]) return usage(deps, "teammates set-runtime <id> --file config.json");
+      const config = jsonFile<TeammateRuntimeConfig>(ctx, "teammates set-runtime <id> --file config.json");
+      if (config === undefined) return EXIT.usage;
+      emitJson(emit, await client.teammates.setRuntime(rest[0], config));
+      return EXIT.ok;
+    }
+    case "ag-ui": {
+      if (!rest[0]) return usage(deps, "teammates ag-ui <id> --file run.json");
+      const input = jsonFile<unknown>(ctx, "teammates ag-ui <id> --file run.json");
+      if (input === undefined) return EXIT.usage;
+      const response = await client.teammates.agUi(rest[0], input);
+      deps.stdout(await response.text());
+      return EXIT.ok;
+    }
     case "list": {
       const result = await client.teammates.list();
       emit(

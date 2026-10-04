@@ -4,6 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "passThroughEnv": ["NODE_OPTIONS"],
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
       "env": [
         "APP_ENCRYPTION_KEY",

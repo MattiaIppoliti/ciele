@@ -128,7 +128,7 @@ export function AlertsList({
         </TabsList>
       </Tabs>
 
-      <SlidingPanel activeKey={tab} direction={slideDirection} className="min-h-0 flex-1" panelClassName="overflow-y-auto px-4 py-4 sm:px-6">
+      <SlidingPanel activeKey={tab} direction={slideDirection} className="min-h-0 flex-1" panelClassName="touch-scroll-clearance overflow-y-auto px-4 py-4 sm:px-6">
           <TableCard>
             <Table fixed empty={visible.length === 0} aria-label="Alerts">
               {columns.colGroup}

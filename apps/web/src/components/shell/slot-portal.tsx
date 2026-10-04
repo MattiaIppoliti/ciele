@@ -7,8 +7,10 @@ import { createPortal } from "react-dom";
 export const TOP_BAR_SLOT = "top-bar";
 /** The Insights date-range chip, on the tab rail's row. */
 export const INSIGHTS_RANGE_SLOT = "insights-range";
+/** A page-owned viewer can dock beside the workspace, on the shell frame. */
+export const RIGHT_RAIL_SLOT = "shell-right-rail";
 
-type SlotId = typeof TOP_BAR_SLOT | typeof INSIGHTS_RANGE_SLOT;
+type SlotId = typeof TOP_BAR_SLOT | typeof INSIGHTS_RANGE_SLOT | typeof RIGHT_RAIL_SLOT;
 
 const slots = new Map<SlotId, HTMLElement>();
 const listeners = new Set<() => void>();

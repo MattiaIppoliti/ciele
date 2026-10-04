@@ -1,0 +1,54 @@
+# OpenBot services pinned to the source revision reviewed for this template.
+# Build both images; only the supervisor is started directly. It creates one
+# computer per Teammate, with separate named volumes for files and browser profiles.
+services:
+  computer-image:
+    profiles: [build-computers]
+    image: ciele-computer:b6932d3
+    build:
+      context: https://github.com/CopilotKit/OpenBot.git#b6932d31a8d6e7896c15139dfc27a6c6911deb27
+      dockerfile: agent-computer/Dockerfile
+    command: ["true"]
+  computer-supervisor:
+    image: ciele-supervisor:b6932d3-teammate-auth
+    build:
+      context: ..
+      dockerfile: deploy/computers/supervisor.Dockerfile
+      additional_contexts:
+        openbot: https://github.com/CopilotKit/OpenBot.git#b6932d31a8d6e7896c15139dfc27a6c6911deb27
+    ports:
+      - "127.0.0.1:4312:4300"
+    environment:
+      PORT: "4300"
+      SUPERVISOR_TOKEN: ${CIELE_COMPUTER_SUPERVISOR_TOKEN:?Set CIELE_COMPUTER_SUPERVISOR_TOKEN in .env}
+      COMPUTER_TOKEN: ${CIELE_COMPUTER_TOKEN:?Set CIELE_COMPUTER_TOKEN in .env}
+      COMPUTER_NAMESPACE: ${CIELE_COMPUTER_NAMESPACE:-ciele}
+      COMPUTER_IMAGE: ciele-computer:b6932d3
+      COMPUTER_BROWSER_MODE: headless
+      COMPUTER_NETWORK: ""
+      COMPUTER_MEMORY_BYTES: ${COMPUTER_MEMORY_BYTES:-2147483648}
+      COMPUTER_RUNTIME: ${COMPUTER_RUNTIME:-}
+    volumes:
+      - ${ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+    networks:
+      - computer-control
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://localhost:4300/health'); const j = await r.json(); process.exit(r.ok && j.docker ? 0 : 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+networks:
+  computer-control:
+    # Host-run apps reach the supervisor through its loopback-only published port.
+    driver: bridge

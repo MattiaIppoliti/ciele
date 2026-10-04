@@ -1,34 +1,95 @@
 ---
 title: Ciele-Dokumentation
-description: Entwickeln, testen, veröffentlichen und betreiben Sie fundierte KI-Assistenten.
+description: Erstellen, testen, veröffentlichen und betreiben Sie fundierte KI-Assistenten.
 ---
 
 import { BookOpen, Boxes, Cloud, Terminal } from 'lucide-react';
 
 Ciele unterstützt Unternehmen dabei, KI-Assistenten für Websites und Anwendungen
-zu erstellen. Jeder Assistent verwendet konfiguriertes Knowledge, Flows, Tools
+zu erstellen. Jeder Assistent verwendet konfigurierte Knowledge, Flows, Tools
 und Help Desks.
 
 Die Administratorkonsole enthält eine Preview. Verwenden Sie Preview, um
 Änderungen zu testen, bevor Sie eine Publication erstellen.
 
+## Navigation auf Smartphones und Tablets
+
+Auf Smartphones und Tablets blendet die Konsole die Seitenleiste aus. Unten
+links bleiben drei Symbole sichtbar: **Home**, **Chat** und **Settings**.
+
+**Home** öffnet einen Vollbild-Navigationsauswahl. Ziehen Sie vertikal, scrollen
+Sie oder verwenden Sie die Pfeiltasten, um ein Ziel auszuwählen. Tippen Sie auf
+ein Ziel oder wählen Sie **Open**, um dorthin zu gelangen. Durch Scrollen werden
+keine Seiten geöffnet.
+
+Der Picker enthält die Workspace-Seiten und die Assistant-Bereiche, die für Ihre
+Rolle verfügbar sind. Es umfasst außerdem Organization settings für
+Administratoren sowie Personal settings.
+
+Das Suchsymbol oben links öffnet **Find** auf Smartphones und Tablets. Es bleibt
+verfügbar, wenn **Home** geöffnet ist.
+
+Wählen Sie den Namen der Organisation oben in **Home** aus, um die
+Organisationen anzuzeigen, zu denen Sie wechseln können.
+
+**Chat** öffnet den Chat-Arbeitsbereich. **Settings** öffnet auf Smartphones und
+Touch-Tablets eine Vollbildansicht mit vergrößerten Bedienelementen. Die drei
+Symbole bleiben in Settings verfügbar. Settings fragt Sie weiterhin, bevor Sie
+nicht gespeicherte Änderungen verwerfen. Im Assistant Editor öffnet das
+Vorschausymbol oben rechts den Chatbot im Vollbildmodus. Schließen Sie die
+Vorschau, um zum Editor zurückzukehren.
+
+## Responsive Tabellen
+
+Konsolentabellen behalten bei jeder Breite des Bereichs für jede Überschrift
+eine Spalte bei. Spaltenränder erstrecken sich über die gesamte Zeile.
+
+Ziehen Sie einen Spaltenrand, um die Breite zu ändern. Die Steuerelemente zum
+Ändern der Größe bleiben auch in schmalen Panels verfügbar. Headings behalten
+ihre Sortier- und Filtersteuerungen bei.
+
+Wenn die Spalten nicht in den Bereich passen, verwenden Sie die horizontale
+Bildlaufleiste, um sie zu erreichen. Werte bleiben in ihren eigenen Spalten.
+
+Alle Datenspalten haben die gleiche Mindestbreite von 120 Pixeln. Die Konsole
+behält die von Ihnen gewählte Breite bei, nachdem Sie den Ziehpunkt zum Ändern
+der Größe loslassen und die Seite neu laden. Die Auswahl-Checkboxen befinden
+sich in der Überschrift und in jeder Zeile an derselben Position.
+
+## Textänderungen
+
+Dashboard-Zähler und sich ändernde Aktionstextbeschriftungen verwenden Torph, um
+den Text bei sich ändernden Werten fließend zu halten. Der Text bleibt lesbar,
+bevor die Animationsbibliothek geladen wird. Die Einstellung „Reduced Motion“
+des Betriebssystems deaktiviert diese Übergänge.
+
+Bei einer erfolgreichen Veröffentlichung und einer erfolgreichen
+Bestätigungsanfrage für den Newsletter werden Konfetti angezeigt. Wenn Sie die
+E-Mail-Bestätigung für den Newsletter abschließen, wird derselbe Effekt
+angezeigt. Bei fehlgeschlagenen Anfragen werden keine Konfetti angezeigt.
+Reduced motion deaktiviert den Effekt.
+
 ## Interface-Sounds
 
 Die Konsole, die öffentliche Website und Ciele Desktop geben kurze Sounds bei
-der Bedienung von Buttons, Switches, Menüs und bei Ergebnissen aus.
+der Interaktion mit Schaltflächen, Schaltern, Menüs und bei Ergebnissen aus.
 Chat-Oberflächen in der Konsole geben ebenfalls einen Ton aus, wenn Sie eine
 Nachricht senden und wenn eine Antwort eingeht. Auf einem Smartphone werden zu
-denselben Zeitpunkten kurze haptische Impulse ausgelöst.
+denselben Anlässen kurze haptische Impulse ausgelöst.
 
 Um die Sounds auszuschalten, öffnen Sie das Account-Menü und setzen Sie
 **Sounds** auf off. Die Auswahl wird auf diesem Gerät gespeichert. Verwenden Sie
 in Ciele Desktop **Interface sounds** in **Settings**. Die Haptik richtet sich
 nach der Einstellung für reduzierte Bewegungen des Betriebssystems.
 
+WebHaptics stellt auf unterstützten Geräten haptisches Feedback bereit. Wenn Sie
+im Home-Auswahlfeld ein Ziel auswählen, ertönt ein kurzes Klicken. Schnelles
+Scrollen begrenzt die Anzahl der Ticks, und die Einstellung „Reduzierte
+Bewegung“ schaltet sie aus.
+
 Das veröffentlichte Widget gibt nur zwei Sounds wieder. Ein Visitor hört einen
 Ton, wenn die Nachricht gesendet wird, und einen weiteren Ton, wenn die Antwort
-eintrifft. Weder in einem Assistant noch in einer Organization gibt es
-Einstellungen, die sie konfigurieren.
+eintrifft. Nichts in einem Assistant oder einer Organization konfiguriert sie.
 
 ## Abschnitte der Dokumentation
 
@@ -41,18 +102,18 @@ Einstellungen, die sie konfigurieren.
 
 ## Hauptaufgaben
 
-- Erstellen Sie einen Assistant und wählen Sie sein Modell aus.
+- Erstellen Sie einen Assistenten und wählen Sie dessen Modell aus.
 - Fügen Sie Websites, Dateien, Text und FAQs zu Knowledge hinzu.
 - Importieren Sie strukturierte Records und verbinden Sie sie mit einem
   Assistant.
 - Speichern Sie bei Bedarf dauerhafte Fakten für angemeldete Besucher.
-- Leiten Sie Nachrichten über geordnete Flows weiter.
-- Senden Sie proaktive Notifications aus Page- und Chat-Events.
+- Leiten Sie Nachrichten durch geordnete Flows weiter.
+- Senden Sie proaktive Notifications aus Seiten- und Chat-Ereignissen.
 - Verbinden Sie Besucher mit einem Help Desk.
 - Veröffentlichen Sie einen unveränderlichen Konfigurations-Snapshot.
 - Überprüfen Sie Conversations, Improvements, Insights, Exports, Goals und
   Alerts.
 
 Beginnen Sie mit [Getting started](/getting-started). Lesen Sie
-[Editions](/editions), bevor Sie sich für eine gehostete oder eine selbst
-gehostete Installation entscheiden.
+[Editions](/editions), bevor Sie sich für eine gehostete oder eine
+selbstgehostete Installation entscheiden.

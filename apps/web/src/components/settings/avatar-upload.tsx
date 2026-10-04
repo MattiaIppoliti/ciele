@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useRef } from "react";
+import { Button } from "@agent-hub/ui";
 import { Pencil } from "lucide-react";
 import { toast } from "@/lib/toast";
 
@@ -72,7 +73,7 @@ export function AvatarUpload({
         aria-busy={busy || undefined}
         disabled={busy}
         onClick={() => inputRef.current?.click()}
-        className={`group focus-visible:ring-ring focus-visible:ring-offset-background relative ${size} shrink-0 overflow-hidden rounded-full outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-70`}
+        className={`press-control group focus-visible:ring-ring focus-visible:ring-offset-background relative ${size} shrink-0 overflow-hidden rounded-full outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-70`}
       >
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -86,14 +87,9 @@ export function AvatarUpload({
         </span>
       </button>
       {onRemove && value && (
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={busy}
-          className="press-text text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm text-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-2 disabled:opacity-50"
-        >
+        <Button type="button" variant="ghost" onClick={onRemove} disabled={busy}>
           Remove
-        </button>
+        </Button>
       )}
     </div>
   );

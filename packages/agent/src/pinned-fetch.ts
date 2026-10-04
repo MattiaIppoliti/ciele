@@ -130,3 +130,71 @@ export async function pinnedRequest(
     request.end();
   });
 }
+
+/** AG-UI needs a live response body, with the same DNS pin and redirect refusal. */
+export async function pinnedStreamingRequest(
+  target: ValidatedEgressTarget,
+  options: PinnedRequestOptions
+): Promise<Response> {
+  const first = target.addresses[0];
+  if (!first) throw new Error("Egress target has no validated address");
+  const transport = target.url.protocol === "https:" ? https : http;
+  return new Promise((resolve, reject) => {
+    const request = transport.request(target.url, {
+      method: options.method ?? "POST", headers: options.headers,
+      // Pin one address, retaining the hostname for Host/SNI and certificate checks.
+      lookup: (_host, lookupOptions, callback) => {
+        if (typeof lookupOptions === "object" && lookupOptions.all) {
+          callback(null, [{ address: first, family: isIP(first) }]);
+        } else callback(null, first, isIP(first));
+      },
+      ...(target.url.protocol === "https:" ? { servername: target.url.hostname } : {}),
+    }, response => {
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(response.headers)) {
+        if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+      }
+      const status = response.statusCode ?? 502;
+      if ([204, 205, 304].includes(status)) {
+        response.resume();
+        resolve(new Response(null, { status, headers }));
+        return;
+      }
+      let bytes = 0;
+      let closed = false;
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const fail = (error: Error) => {
+            if (closed) return;
+            closed = true;
+            controller.error(error);
+          };
+          response.on("data", (chunk: Buffer) => {
+            if (closed) return;
+            bytes += chunk.byteLength;
+            if (bytes > (options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES)) {
+              const error = new Error("Response exceeded the size limit");
+              fail(error);
+              response.destroy(error);
+              return;
+            }
+            controller.enqueue(new Uint8Array(chunk));
+          });
+          response.on("end", () => { if (!closed) { closed = true; controller.close(); } });
+          response.on("error", fail);
+          response.on("aborted", () => fail(new Error("Harness response aborted")));
+        },
+        cancel() { closed = true; request.destroy(); response.destroy(); },
+      });
+      resolve(new Response(body, { status, headers }));
+    });
+    request.on("error", reject);
+    request.setTimeout(options.timeoutMs, () => request.destroy(new Error("Harness response timed out")));
+    const abort = () => request.destroy(new Error("Harness request cancelled"));
+    if (options.signal?.aborted) { abort(); return; }
+    options.signal?.addEventListener("abort", abort, { once: true });
+    request.on("close", () => options.signal?.removeEventListener("abort", abort));
+    if (options.body !== undefined) request.write(options.body);
+    request.end();
+  });
+}

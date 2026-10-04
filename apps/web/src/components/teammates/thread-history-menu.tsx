@@ -1,5 +1,7 @@
 "use client";
 
+import { ThreadSwipeRow } from "@/components/thread-swipe-row";
+import { ThreadListControls, useThreadListView, useThreadPreferences } from "@/components/thread-preferences";
 import { RollInText } from "@/components/motion/roll-in-text";
 
 import { EmptyState } from "@/components/ui/empty-state";
@@ -39,17 +41,21 @@ export function ThreadHistoryMenu({
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
 
+  const preferences = useThreadPreferences();
+  const [view, setView] = useThreadListView();
+  const visibleEntries = entries.filter(entry => preferences.visible({ kind: "conversation", id: entry.id }, view));
   const needle = query.trim().toLowerCase();
   const groups = useMemo(
     () =>
       groupByDay(
-        needle ? entries.filter((entry) => entry.label.toLowerCase().includes(needle)) : entries
+        needle ? visibleEntries.filter((entry) => entry.label.toLowerCase().includes(needle)) : visibleEntries
       ),
-    [entries, needle]
+    [visibleEntries, needle]
   );
 
   return (
     <>
+      <ThreadListControls value={view} onChange={setView} />
       {searching && (
         <div className="relative border-b p-2">
           <Search className="text-muted-foreground absolute top-1/2 left-4 size-3.5 -translate-y-1/2" />
@@ -85,8 +91,8 @@ export function ThreadHistoryMenu({
                 )}
               </div>
               {group.entries.map((entry) => (
+                <ThreadSwipeRow key={entry.id} target={{ kind: "conversation", id: entry.id }} label={entry.label} height={40} disabled={disabled}>
                 <button
-                  key={entry.id}
                   type="button"
                   disabled={disabled}
                   aria-current={entry.id === activeId ? "true" : undefined}
@@ -101,6 +107,7 @@ export function ThreadHistoryMenu({
                     {relativeShort(entry.updatedAt)}
                   </span>
                 </button>
+                </ThreadSwipeRow>
               ))}
             </div>
           ))

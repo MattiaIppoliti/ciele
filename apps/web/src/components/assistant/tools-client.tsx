@@ -60,9 +60,9 @@ const BUILT_INS: Array<{
   },
   {
     name: "renderTable",
-    title: "Show a table",
+    title: "Interactive tables",
     description:
-      "Lets the assistant lay retrieved facts out as a table when the answer compares things across the same few attributes, and give a row a follow-up question the visitor can tap. It arranges what it found; it never computes values. Off by default.",
+      "Shows retrieved facts as a table, a CRM records grid or a task table with status filters. Rows, links and counts come from actual data. New-property requests use the normal chat. Off by default.",
     defaultOn: false,
   },
   {

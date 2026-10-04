@@ -5,25 +5,89 @@ description: Créez, testez, publiez et exploitez des assistants IA « grounded
 
 import { BookOpen, Boxes, Cloud, Terminal } from 'lucide-react';
 
-Ciele aide une organisation à créer des assistants IA pour des sites web et des
+Ciele aide une organisation à créer des assistants IA pour ses sites web et ses
 applications. Chaque Assistant utilise des Knowledge, des Flows, des outils et
 des Help Desks configurés.
 
-La console d'administration contient un **Preview**. Utilisez Preview pour
+La console d'administration contient un élément Preview. Utilisez Preview pour
 tester les modifications avant de créer une Publication.
+
+## Navigation sur téléphone et tablette
+
+Sur les téléphones et les tablettes, la console masque la barre latérale. Trois
+icônes restent affichées en bas à gauche : **Home**, **Chat** et **Settings**.
+
+**Home** ouvre un sélecteur de navigation en plein écran. Faites glisser
+verticalement, faites défiler ou utilisez les touches fléchées pour sélectionner
+une destination. Appuyez sur une destination ou sélectionnez **Open** pour y
+accéder. Le défilement n'ouvre pas les pages.
+
+Le sélecteur contient les pages de l'espace de travail et les sections de
+l'Assistant accessibles à votre rôle. Il comprend également les paramètres de
+l'organisation pour les administrateurs et les paramètres personnels.
+
+L'icône Search en haut à gauche ouvre **Find** sur les téléphones et les
+tablettes. Il reste disponible lorsque **Home** est ouvert.
+
+Sélectionnez le nom de l'organisation en haut de **Home** pour afficher les
+organisations vers lesquelles vous pouvez basculer.
+
+**Chat** ouvre l'espace de travail de discussion. **Settings** ouvre un
+affichage plein écran sur les téléphones et les tablettes tactiles, avec des
+commandes plus grandes. Les trois icônes restent disponibles dans Settings.
+Settings vous demande toujours confirmation avant de quitter en cas de
+modifications non enregistrées. Dans un éditeur d'assistant, l'icône d'aperçu
+située en haut à droite ouvre le chatbot en plein écran. Fermez l'aperçu pour
+revenir à l'éditeur.
+
+## Tableaux responsifs
+
+Les tableaux de la console conservent une colonne pour chaque en-tête, quelle
+que soit la largeur du panneau. Les bordures des colonnes se prolongent sur
+toute la ligne.
+
+Faites glisser la bordure d'une colonne pour modifier sa largeur. Les commandes
+de redimensionnement restent disponibles dans les panneaux étroits. Les en-têtes
+conservent leurs commandes de tri et de filtrage.
+
+Si les colonnes ne tiennent pas dans le panneau, utilisez la barre de défilement
+horizontale pour y accéder. Les valeurs restent dans leurs propres colonnes.
+
+Toutes les colonnes de données ont la même largeur minimale de 120 pixels. La
+console conserve la largeur que vous sélectionnez après avoir relâché la poignée
+de redimensionnement et rechargé la page. Les cases à cocher de sélection
+occupent la même position dans l'en-tête et dans chaque ligne.
+
+## Modifications du texte
+
+Les compteurs du tableau de bord et les libellés d'actions qui changent
+utilisent Torph pour maintenir la continuité du texte lorsque les valeurs
+évoluent. Le texte reste lisible avant le chargement de la bibliothèque
+d'animations. Le paramètre de réduction des animations du système d'exploitation
+désactive ces transitions.
+
+Une Publication réussie et une demande de confirmation de newsletter réussie
+affichent des confettis. La finalisation de la confirmation par e-mail de
+l'inscription à la newsletter produit le même effet. Les requêtes ayant échoué
+n'affichent pas de confettis. L'option Reduced motion désactive cet effet.
 
 ## Sons de l'interface
 
-La console, le site public et Ciele Desktop émettent de courts sons lors de
-l'utilisation des boutons, des commutateurs, des menus et des résultats. Les
-surfaces de chat de la console émettent également un son lorsque vous envoyez un
-message et lorsqu'une réponse arrive. Sur un téléphone, ces mêmes moments
-déclenchent une brève vibration haptique.
+La console, le site public et Ciele Desktop émettent de brefs sons lors de
+l'utilisation des boutons, des commutateurs, des menus et en cas de résultat.
+Les surfaces de chat dans la console émettent également un son lorsque vous
+envoyez un message et lorsqu'une réponse arrive. Sur un téléphone, les mêmes
+événements déclenchent une brève vibration haptique.
 
 Pour désactiver les sons, ouvrez le menu Account et réglez **Sounds** sur off.
 Le choix est enregistré sur cet appareil. Dans Ciele Desktop, utilisez
 **Interface sounds** dans **Settings**. Les retours haptiques suivent le
 paramètre de réduction des animations du système d'exploitation.
+
+WebHaptics fournit un retour haptique pour les appareils pris en charge. Lorsque
+vous sélectionnez une destination dans le sélecteur Home, un bref clic retentit.
+Le défilement rapide limite les vibrations, et l'option de réduction des
+animations les désactive.
 
 Le widget publié ne joue que deux sons. Un Visitor entend un son lorsque le
 message est envoyé, et un autre son lorsque la réponse arrive. Aucun élément

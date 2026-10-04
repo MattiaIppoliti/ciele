@@ -519,6 +519,12 @@ The [harness implementation map](harness-implementation.md) describes ordered to
 whole-request context admission, durable Flow continuations, Channel approvals, failure settlement,
 and production-path replay tests. It also records the DeepSeek study and the remaining limits.
 
+The [Teammate execution design](teammate-execution.md) adds persistent OpenBot computers,
+admin-governed internet/terminal access, inbound and outbound AG-UI adapters, and Chat SDK
+transports for Slack, Telegram and Microsoft Teams. It records the OpenDots research, protocol
+boundaries, tenancy rules and deployment limits. Setup is in the
+[Teammate execution runbook](runbooks/teammate-execution.md).
+
 ### 5.5 The scheduled quality loop (nothing grades its own homework)
 
 Generation is the fast path; grading is out-of-band, on one nightly tick

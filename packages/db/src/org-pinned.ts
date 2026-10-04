@@ -66,6 +66,9 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "createApiKey",
   "listOrgKnowledgeSources",
   "listOrgKnowledgeSourceOptions",
+  "listOrgCollections",
+  "searchCollectionChunks",
+  "searchSourceChunks",
   "listOrgFaqs",
   "getOrCreateOrgLibraryCollection",
   "clearSsoConnection",
@@ -112,6 +115,11 @@ const sourceOwner: OwnerResolver = async (inner, id, organizationId) => {
   return source
     ? collectionOwner(inner, source.collectionId, organizationId)
     : null;
+};
+
+const conceptOwner: OwnerResolver = async (inner, id, organizationId) => {
+  const concept = await inner.getConcept(id);
+  return concept ? collectionOwner(inner, concept.collectionId, organizationId) : null;
 };
 
 /**
@@ -275,6 +283,7 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   listChannelChainMessages: channelOwner,
   // conversation → assistant → organization (#624)
   listMessages: conversationOwner,
+  listRecentMessages: conversationOwner,
   getInboxConversationReview: conversationOwner,
   // The feedback-triage template's dedup walk (#772).
   listConversationImprovementLinks: conversationOwner,
@@ -325,7 +334,9 @@ const NULL_READ_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   getFlow: flowOwner,
   getCollection: collectionOwner,
   getSource: sourceOwner,
+  getConcept: conceptOwner,
   getConversation: conversationOwner,
+  getMessage: messageOwner,
   getConversationForMessage: messageOwner,
   getPublication: publicationOwner,
   getHelpDesk: helpDeskOwner,
@@ -376,6 +387,7 @@ export const TABLE_EXPOSURE: TableExposureMap = {
   teammateRoutines: "pinned",
   teammateChannels: "pinned",
   teammateChannelParticipants: "pinned",
+  threadPreferences: { hidden: "Member-only console triage preferences; no API-key surface." },
   teammateRosterHidden: {
     hidden: "No /api/v1 route reaches it: a Member's own roster preference, adjacent to the Teammates routes but not part of them.",
   },
@@ -614,6 +626,44 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
           const input = args[0] as { collectionId?: unknown };
           await assertOwner(String(prop), collectionOwner, input?.collectionId);
           return call(...args);
+        };
+      }
+
+      if (method === "createConversation") {
+        return async (...args: unknown[]) => {
+          const input = args[0];
+          if (!input || typeof input !== "object" || !("teammateId" in input) || !("subjectType" in input) || input.subjectType !== "member" || ("assistantId" in input && input.assistantId)) {
+            throw new OrgPinnedDbError(String(prop), "cross_org");
+          }
+          await assertOwner(String(prop), teammateOwner, input.teammateId);
+          return call(input);
+        };
+      }
+
+      if (method === "searchMemories") {
+        return async (...args: unknown[]) => {
+          const subject = args[0];
+          if (!subject || typeof subject !== "object") throw new OrgPinnedDbError(String(prop), "cross_org");
+          return call({ ...subject, organizationId }, ...args.slice(1));
+        };
+      }
+
+      if (method === "appendMessage" || method === "mergeConversationSessionState") {
+        return async (...args: unknown[]) => {
+          const input = args[0];
+          if (!input || typeof input !== "object") throw new OrgPinnedDbError(String(prop), "cross_org");
+          const id = method === "appendMessage" && "conversationId" in input ? input.conversationId : "id" in input ? input.id : undefined;
+          await assertOwner(String(prop), conversationOwner, id);
+          return call(input);
+        };
+      }
+
+      if (method === "mergeChannelRuntimeState") {
+        return async (...args: unknown[]) => {
+          const input = args[0];
+          if (!input || typeof input !== "object" || !("channelId" in input)) throw new OrgPinnedDbError(String(prop), "cross_org");
+          await assertOwner(String(prop), channelOwner, input.channelId);
+          return call({ ...input, organizationId });
         };
       }
 

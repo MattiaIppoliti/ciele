@@ -93,3 +93,6 @@ export type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,
 } from "./local-subscriptions";
+
+export { normalizeRecordsTable, normalizeFilterTable, filterTableCounts } from "./interactive-tables";
+export type { RecordRow, RecordStrength, FilterRow, FilterLabels } from "./interactive-tables";

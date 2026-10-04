@@ -1142,6 +1142,12 @@ export interface Db {
     teammateIds: string[],
     subjectId: string
   ): Promise<Conversation[]>;
+  /** Atomically merge independent Teammates' harness snapshots in one Channel. */
+  mergeChannelRuntimeState(input: {
+    organizationId: string;
+    channelId: string;
+    patch: Record<string, unknown>;
+  }): Promise<boolean>;
   /**
    * Append one message to a Teammate channel's transcript (#778).
    *

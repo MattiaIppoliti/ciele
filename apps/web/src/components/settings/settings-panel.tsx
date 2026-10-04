@@ -24,7 +24,7 @@ export function SettingsPanel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-2xl pr-6">
+    <div className="@container/settings mx-auto min-w-0 max-w-2xl">
       <SectionHeading icon={icon} title={title} description={description} />
       {children}
     </div>

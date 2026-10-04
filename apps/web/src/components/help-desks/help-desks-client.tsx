@@ -264,7 +264,7 @@ export function HelpDesksClient({
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
+    <div className="touch-scroll-clearance flex h-full flex-col overflow-y-auto">
       <h1 className="sr-only">Help Desks</h1>
       {canEdit && (
         <SlotPortal id={TOP_BAR_SLOT}>

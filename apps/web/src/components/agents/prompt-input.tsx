@@ -113,7 +113,7 @@ export interface PromptInputProps extends Omit<
  * short on the surface where the composer matters most.
  */
 const TEXT_LAYER =
-  "px-2 pt-1.5 text-base leading-6 whitespace-pre-wrap [overflow-wrap:break-word] md:text-sm";
+  "prompt-text-layer px-2 pt-1.5 text-base leading-6 whitespace-pre-wrap [overflow-wrap:break-word] lg:text-sm";
 
 export function PromptInput({
   value,
@@ -240,6 +240,7 @@ export function PromptInput({
 
   const form = (
     <form
+      data-slot="prompt-input"
       onSubmit={submit}
       className={cn(
         "relative w-full rounded-2xl border border-border/80 bg-background p-2 transition-colors focus-within:border-foreground/25",
@@ -364,9 +365,9 @@ export function PromptInput({
             value={currentModelValue}
             onValueChange={setModel}
             disabled={disabled || inputBusy}
-            className="min-w-0"
+            className="min-w-0 flex-1"
           >
-            <SelectTrigger className="h-8 w-auto max-w-52 rounded-xl border-0 bg-transparent px-2 py-0 text-xs hover:bg-muted focus-visible:ring-2">
+            <SelectTrigger className="h-8 max-w-52 rounded-xl border-0 bg-transparent px-2 py-0 text-xs hover:bg-muted focus-visible:ring-2">
               <span className="flex min-w-0 items-center gap-1.5">
                 {currentModel?.icon ? (
                   <span className="grid size-4 shrink-0 place-items-center text-muted-foreground [&_svg]:size-3.5">
@@ -411,7 +412,7 @@ export function PromptInput({
           </Select>
         ) : null}
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
         {voiceInput ? (
           <VoiceInputButton
             {...voiceInput}

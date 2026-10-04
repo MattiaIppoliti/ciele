@@ -43,7 +43,7 @@ export function PlatformPromptCard({
 
   return (
     <Card size="sm" className="mt-10 gap-0 p-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <AnimatedIcon icon={ShieldCheck} size={16} />
@@ -65,7 +65,7 @@ export function PlatformPromptCard({
         rows={12}
         className="mt-4 resize-y font-mono text-xs"
       />
-      <div className="mt-3 flex items-center justify-end gap-3">
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
         <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
           {dirty && <RollInText text="Unsaved changes" />}
         </span>

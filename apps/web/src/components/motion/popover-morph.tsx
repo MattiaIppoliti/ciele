@@ -19,6 +19,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePopoverPortalPosition } from "@/components/motion/popover-position";
+import { selectPopupGeometry } from "./select-geometry";
 import { EASE_OUT, SPRING_PANEL } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 
@@ -224,15 +225,21 @@ export function MorphPopoverContent({
       }
     };
   }, [contentRef, open, portalReady, triggerRef]);
-  const left = layout
+  const proposedLeft = layout
     ? align === "end"
       ? layout.trigger.left + layout.trigger.width - layout.content.width
       : layout.trigger.left
     : 0;
+  const geometry = layout ? selectPopupGeometry({
+    left: proposedLeft, right: proposedLeft + layout.content.width,
+    top: layout.trigger.top, bottom: layout.trigger.top + layout.trigger.height,
+  }, layout.viewport, { width: layout.content.width, height: layout.content.naturalHeight }, side, Infinity) : null;
+  const placement = geometry?.side ?? side;
+  const left = proposedLeft + (geometry?.leftOffset ?? 0);
   const top = layout
-    ? side === "bottom"
+    ? placement === "bottom"
       ? layout.trigger.top + layout.trigger.height + SIDE_OFFSET
-      : layout.trigger.top - layout.content.height - SIDE_OFFSET
+      : layout.trigger.top - Math.min(layout.content.height, geometry?.maxHeight ?? Infinity) - SIDE_OFFSET
     : 0;
 
   // Both directions travel between the exact same hidden/show states. Exit
@@ -247,7 +254,7 @@ export function MorphPopoverContent({
     ? undefined
     : {
         hidden: {
-          clipPath: clipHidden(side, align, RADIUS),
+          clipPath: clipHidden(placement, align, RADIUS),
           transition: MORPH_CLIP_TRANSITION,
         },
         show: {
@@ -275,7 +282,7 @@ export function MorphPopoverContent({
             left,
             top,
             visibility: layout ? "visible" : "hidden",
-            transformOrigin: originFor(side, align),
+            transformOrigin: originFor(placement, align),
           }}
           className="fixed z-[9999] [filter:drop-shadow(0_10px_18px_rgba(0,0,0,0.14))]"
         >
@@ -286,9 +293,9 @@ export function MorphPopoverContent({
             aria-labelledby={triggerId}
             tabIndex={-1}
             variants={clip}
-            style={{ borderRadius: RADIUS }}
+            style={{ borderRadius: RADIUS, maxHeight: geometry?.maxHeight, maxWidth: geometry?.maxWidth }}
             className={cn(
-              "overflow-hidden border border-border bg-background",
+              "overflow-y-auto overscroll-contain border border-border bg-background",
               className,
             )}
           >

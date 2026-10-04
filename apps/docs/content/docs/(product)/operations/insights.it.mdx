@@ -4,19 +4,34 @@ description: Esamina le metriche attuali relative a Conversation, answer, escala
 ---
 
 Insights calcola le metriche dell'organizzazione a partire dagli eventi di
-runtime memorizzati. Utilizza l'intervallo di date disponibile e i filtri
+runtime archiviati. Utilizza l'intervallo di date disponibile e i filtri
 Assistant per modificare il set di dati.
 
 I grafici in Insights, Eval, Assistant Overview e Usage utilizzano una tavolozza
-in scala di grigi che si adatta ai temi chiaro e scuro. I risultati positivi e
-negativi restano rispettivamente in verde e in rosso. Le variazioni seguono la
+in scala di grigi che si adatta ai temi chiari e scuri. Gli esiti positivi e
+negativi restano rispettivamente verdi e rossi. Le variazioni seguono la
 direzione di ciascuna metrica: costi, latenza e numero di errori inferiori sono
-considerati positivi. Labels, legende e valori esatti identificano ciascuna
-metrica. La timeline della latenza utilizza una linea tratteggiata per p95.
+considerati positivi. Le etichette, le legende e i valori esatti identificano
+ciascuna misura. La timeline della latenza utilizza una linea tratteggiata per
+p95.
+
+I grafici e le schede delle statistiche collocano la loro visualizzazione in un
+riquadro inserito con angoli arrotondati. Il titolo e la descrizione si trovano
+al di sotto, con le modifiche ai periodi e le azioni disponibili sulla destra.
+Costs, Observability, platform Admin e le singole esecuzioni di Eval utilizzano
+lo stesso layout delle schede.
+
+Le animazioni seguono le *recipe* di Transitions.dev. I numeri aggiornati
+compaiono con una breve animazione sfalsata delle cifre, mentre le didascalie si
+alternano con un leggero effetto di sfocatura. Le schede in caricamento sfumano
+nel loro contenuto e le tabelle dei dati si espandono in modo fluido.
+L'indicatore della scheda attiva scorre tra le selezioni. Le impostazioni di
+movimento ridotto eliminano l'animazione delle cifre e l'effetto sfocatura da
+queste transizioni.
 
 ## Panoramica attuale
 
-La panoramica può includere le seguenti misure:
+La panoramica può includere le seguenti metriche:
 
 - Conversazioni e Visitatori univoci
 - Risposte dell'IA
@@ -24,7 +39,7 @@ La panoramica può includere le seguenti misure:
 - valutazioni delle risposte e dati sulla soddisfazione dei clienti
 - escalation
 - risposte per Conversation
-- domande per Conversation: il numero di messaggi inviati dal Visitor
+- questions per Conversation: il numero di messaggi inviati dal Visitor
 - durata media della conversazione: il tempo che intercorre dall'inizio di una
   conversazione fino al suo ultimo messaggio
 - lingue e tassi di engagement
@@ -41,12 +56,13 @@ prosegue oltre la fine dell'intervallo mantiene la sua durata complessiva.
 Il grafico **Usage** separa conteggi, percentuali, rapporti e secondi in modo
 che unità di misura diverse non condividano lo stesso asse. Seleziona una
 metrica per mostrarla o nasconderla. Le schede **Assistants** e **Channels**
-mostrano le ripartizioni delle Conversazioni.
+mostrano le ripartizioni delle conversazioni.
 
 Usa la finestra **Explore conversations over time** per ingrandire i grafici
 nell'intervallo di date selezionato. Trascina la finestra o i suoi handle,
-oppure usa i tasti freccia dopo aver messo a fuoco un handle. Le summary cards,
-la data table e gli export continuano a coprire l'intero intervallo di date.
+oppure usa i tasti freccia dopo aver messo a fuoco un handle. Le Summary cards,
+la tabella dei dati e le esportazioni coprono comunque l'intero intervallo di
+date.
 
 ## Costi e osservabilità
 
@@ -61,12 +77,12 @@ date, quindi seleziona **All**, **Assistants**, **Teammates** o **Internal**.
   Flow in entrata.
 - **Teammates** mostra le chat degli AI Teammate, i turni dei canali e le
   Routine.
-- **Internal** mostra le attività della piattaforma: indicizzazione, processi
+- **Internal** mostra le attività della piattaforma: indicizzazione, job
   pianificati e chiamate provenienti da chiavi API e MCP.
 
 Con **All** o **Assistants** selezionati, puoi anche selezionare un Assistant.
 
-Ogni dashboard inizia con le stat cards. Una card mostra un valore per
+Ogni dashboard inizia con le stat cards. Una scheda mostra un valore per
 l'intervallo, una linea dei suoi valori giornalieri e la variazione rispetto al
 periodo precedente. Il periodo precedente ha la stessa durata e termina il
 giorno prima dell'inizio dell'intervallo. Sposta il puntatore lungo la linea per
@@ -75,15 +91,17 @@ leggere il valore di ogni giorno.
 ### Costi
 
 - spesa stimata, costo per turno, chiamate al modello e token
-- spesa totale stimata giornaliera
-- un streamgraph della spesa giornaliera stimata per surface. Lo spessore della
-  banda rappresenta un importo, non una percentuale
+- spesa totale stimata al giorno
+- un grafico a flusso della spesa giornaliera stimata per superficie. Lo
+  spessore della banda rappresenta un importo, non una percentuale
 - un calendario dell'utilizzo dei token per giorno
+- un indicatore monocromatico che mostra i token di input come percentuale di
+  tutti i token, con i conteggi esatti di input e output
 - spesa per modello e per fase della pipeline
 - un treemap della spesa per provider e modello. Seleziona un provider per
   esaminare i suoi modelli
 
-Il filtro Surface si applica ai grafici giornalieri e alla ripartizione per
+Il filtro **surface** si applica ai grafici giornalieri e alla scomposizione per
 modello. I totali delle superfici sotto lo streamgraph confrontano sempre tutte
 le superfici.
 
@@ -96,33 +114,32 @@ token e ai prezzi di listino. Non si tratta di una fattura.
   strumenti per turno
 - latenza per turno: mediana, 95° percentile, istogramma e trend giornaliero
 - **Answer accuracy**: la percentuale di risposte dell'Assistente che il
-  verifier ha approvato
+  verificatore ha approvato
 - **Autonomy**: la percentuale di Visitor Conversations che non sono state
   inoltrate a un help desk
-- un indicatore di affidabilità e una griglia di autonomia, con i conteggi
+- indicatori monocromatici per reliability, accuracy e autonomy, con i conteggi
   esatti accanto ai grafici
-- un confronto tra affidabilità, accuratezza e autonomia rispetto al periodo
+- un confronto di reliability, accuracy e autonomy rispetto al periodo
   precedente, in punti percentuali
 - le classi di errore più frequenti
-- i cinque Flows più utilizzati, confrontati tra loro su base giornaliera o
-  settimanale
+- i cinque Flow più utilizzati, confrontati tra loro per giorno o per settimana
 
 **Answer accuracy** e **Autonomy** si applicano solo agli Assistenti. Per
-**Teammates** e **Internal**, queste misure non vengono visualizzate.
+**Teammates** e **Internal**, queste metriche non vengono visualizzate.
 
 ### Note
 
 I giorni sono giorni UTC. Una chiamata al modello registrata prima
 dell'attribuzione della surface non ha alcuna surface. Viene conteggiato in
-**All** come **Unattributed**, e in nessuna altra surface.
+**All** come **Unattributed** e in nessun'altra surface.
 
 Usa **Export CSV** per scaricare una riga per ogni giorno dell'intervallo. Per
 un file di report con più opzioni, utilizza [Exports](/operations/exports).
 
 ## Reportistica della piattaforma
 
-Nelle implementazioni gestite, gli Owner e gli Admin autorizzati
-dell'Organization della piattaforma designata vedono **Admin** come ultima
+Nelle implementazioni gestite, gli Owners e gli Admins autorizzati
+dell'Organization della piattaforma designata vedono **Admin** come l'ultima
 scheda Insights. Questa scheda mostra l'utilizzo e i costi stimati per tutte le
 Organizzazioni, inclusa l'Organizzazione della piattaforma. Seleziona un
 intervallo di date per esaminare le chiamate ai modelli, i token, le pagine
@@ -134,33 +151,34 @@ questa scheda.
 ## Aggiornamento dei dati
 
 Insights memorizza la panoramica calcolata e le dashboard per un massimo di
-cinque minuti per ciascuna Organization e per ciascun insieme di filtri. Ogni
-Member dell'Organization legge gli stessi dati memorizzati.
+cinque minuti per ogni Organization e per ogni set di filtri. Ogni Member
+dell'Organization legge gli stessi dati memorizzati.
 
 Una modifica apportata da un Member nella console (a un Assistant, a una
 Conversation o a un Improvement) azzera immediatamente l'overview memorizzata.
 Il traffico dei widget (nuove Conversations, valutazioni delle risposte,
-punteggi di soddisfazione, escalation) raggiunge i valori entro cinque minuti.
+punteggi di soddisfazione, escalation) raggiunge i valori indicati entro cinque
+minuti.
 
 Per forzare un nuovo calcolo prima che siano trascorsi i cinque minuti, invia
 `DELETE /api/insights` da una sessione del browser in cui hai effettuato
-l'accesso. La risposta è `204` e la lettura successiva ricalcola nuovamente la
+l'accesso. La risposta è `204` e la successiva lettura ricalcola nuovamente la
 panoramica. Qualsiasi Member dell'Organization può inviare questa richiesta.
 
 ## Conteggio delle notifiche
 
-Una notifica non è una risposta dell'IA. Una sessione di solo Notification non
-incrementa i KPI di Conversation né quelli delle risposte.
+Una Notification non è una risposta dell'IA. Una sessione di sola notifica non
+incrementa i KPI relativi a Conversation o alle risposte.
 
 La misura **Notifications Sent** e le relative serie di grafici registrano
 separatamente la consegna proattiva.
 
 ## Indaga su una modifica
 
-1. Seleziona l'intervallo di date desiderato e l'Assistente.
+1. Seleziona l'intervallo di date richiesto e l'Assistant.
 2. Identifica la metrica che è cambiata.
 3. Apri l'Inbox con lo stesso ambito.
-4. Leggi Conversations rappresentative.
+4. Leggi Conversazioni rappresentative.
 5. Crea Improvements per i problemi relativi alle risposte su cui è possibile
    intervenire.
 

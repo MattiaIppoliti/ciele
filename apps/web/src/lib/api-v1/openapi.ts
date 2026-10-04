@@ -29,6 +29,7 @@ import {
   channelTeammatesSchema,
   teammateInputSchema,
   teammatePatchSchema,
+  teammateRuntimeSchema,
   supportChannelInputSchema,
   supportChannelPatchSchema,
   goalExpectationsSchema,
@@ -102,6 +103,8 @@ export interface EndpointSpec {
   idempotent?: boolean;
   /** May be answered 429 under this named budget (`lib/api-v1/throttle.ts`). */
   rateLimited?: ApiRateLimitName;
+  /** Successful runs stream standard protocol events instead of a JSON envelope. */
+  stream?: "text/event-stream";
 }
 
 const reorderBody = z.object({ orderedIds: z.array(z.string()) });
@@ -952,6 +955,43 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
   },
   {
     method: "get",
+    path: "/teammates/{id}/runtime",
+    domain: "teammates",
+    capability: "member",
+    summary: "Read a Teammate's execution permissions and available harnesses",
+    cli: "ciele teammates runtime {id}",
+    mcp: '{"action":"runtime","id":"{id}"}',
+  },
+  {
+    method: "put",
+    path: "/teammates/{id}/runtime",
+    domain: "teammates",
+    capability: "manageMembers",
+    summary: "Configure a Teammate's harness, internet and isolated computer",
+    cli: "ciele teammates set-runtime {id} --file config.json",
+    mcp: '{"action":"set_runtime","id":"{id}","config":{"harness":{"kind":"ciele"},"internet":false,"computer":{"browser":false,"files":false,"terminal":false}}}',
+    body: teammateRuntimeSchema,
+  },
+  {
+    method: "post",
+    path: "/teammates/{id}/ag-ui",
+    domain: "teammates",
+    capability: "member",
+    summary: "Run a persisted Teammate turn over AG-UI; server owns tools and history",
+    cli: "ciele teammates ag-ui {id} --file run.json",
+    mcp: '{"action":"ag_ui","id":"{id}","input":{"threadId":"my-thread","runId":"run-1","state":{},"messages":[{"id":"user-1","role":"user","content":"Hello"}],"tools":[],"context":[],"forwardedProps":{}}}',
+    stream: "text/event-stream",
+    rateLimited: "assistant-ask",
+    body: z.object({
+      threadId: z.string().min(1).max(512), runId: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/),
+      state: z.unknown(),
+      messages: z.array(z.object({ id: z.string(), role: z.enum(["user", "assistant", "system", "developer", "tool"]), content: z.string() })).min(1).max(100),
+      tools: z.array(z.never()).max(0), context: z.array(z.never()).max(0),
+      forwardedProps: z.record(z.string(), z.unknown()).optional(),
+    }),
+  },
+  {
+    method: "get",
     path: "/teammates/{id}/memory",
     domain: "teammates",
     capability: "member",
@@ -1766,7 +1806,7 @@ export function buildOpenApiDocument() {
     const successStatus = CREATED_RESPONSES.has(operationKey) ? "201" : "200";
     const jsonSuccess = {
       description: successStatus === "201" ? "Created" : "Successful response",
-      content: {
+      content: endpoint.stream ? { [endpoint.stream]: { schema: { type: "string", description: "AG-UI server-sent events" } } } : {
         "application/json": {
           schema: (responseSchemas as Record<string, Record<string, unknown>>)[operationKey] ?? jsonObject,
         },

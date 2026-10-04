@@ -288,6 +288,44 @@ export function describeDbContract(
         expect((await db.getFlow(flow.id))?.enabled).toBe(false);
       });
 
+      it("pins external member conversations, messages and session state to the owning Teammate", async () => {
+        const teammate = await db.table("teammates").insert({ organizationId: ctx.organizationId, ownerId: ctx.userId, name: "Transport coworker" });
+        const pinned = createOrgPinnedDb(db, ctx.organizationId);
+        const foreign = createOrgPinnedDb(db, ctx.foreignOrganizationId);
+        const input = { teammateId: teammate.id, subjectType: "member" as const, subjectId: ctx.userId };
+        const conversation = await pinned.createConversation(input);
+        await expect(foreign.createConversation(input)).rejects.toThrowError(OrgPinnedDbError);
+        const assistant = await newAssistant();
+        await expect(pinned.createConversation({ assistantId: assistant.id, subjectType: "visitor", subjectId: ctx.userId })).rejects.toThrowError(OrgPinnedDbError);
+        const messageInput = { conversationId: conversation.id, role: "user" as const, content: [{ type: "text", text: "Hello" }] };
+        const message = await pinned.appendMessage(messageInput);
+        expect((await pinned.listRecentMessages(conversation.id, 10)).map(row => row.id)).toContain(message.id);
+        expect((await pinned.getMessage(message.id))?.id).toBe(message.id);
+        expect(await foreign.getMessage(message.id)).toBeNull();
+        await expect(foreign.appendMessage(messageInput)).rejects.toThrowError(OrgPinnedDbError);
+        const patch = { id: conversation.id, expectedVersion: conversation.sessionVersion, patch: { harness: { phase: "ready" } } };
+        await pinned.mergeConversationSessionState(patch);
+        await expect(foreign.mergeConversationSessionState(patch)).rejects.toThrowError(OrgPinnedDbError);
+        expect((await db.getConversation(conversation.id))?.sessionState).toMatchObject({ harness: { phase: "ready" } });
+      });
+
+      it("pins external-turn knowledge search and document reads to the Organization", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name: "Transport evidence" });
+        const source = await db.createSource({ collectionId: collection.id, name: "Transport evidence", kind: "text" });
+        const concept = await db.createConcept({ collectionId: collection.id, sourceId: source.id, path: "transport.md", frontmatter: { type: "Concept", title: "Transport evidence" }, body: "Transport evidence for scoped retrieval." });
+        await db.saveChunks([{ conceptId: concept.id, collectionId: collection.id, sourceId: source.id, content: concept.body, embedding: new Array<number>(1536).fill(0) }]);
+        const pinned = createOrgPinnedDb(db, ctx.organizationId);
+        const foreign = createOrgPinnedDb(db, ctx.foreignOrganizationId);
+        const query = { embedding: null, text: "transport evidence", limit: 10 };
+        expect((await pinned.searchCollectionChunks(ctx.foreignOrganizationId, [collection.id], query)).map(hit => hit.conceptId)).toContain(concept.id);
+        expect((await pinned.searchSourceChunks(ctx.foreignOrganizationId, [source.id], query)).map(hit => hit.conceptId)).toContain(concept.id);
+        expect(await foreign.searchCollectionChunks(ctx.organizationId, [collection.id], query)).toEqual([]);
+        expect(await foreign.searchSourceChunks(ctx.organizationId, [source.id], query)).toEqual([]);
+        expect((await pinned.getConcept(concept.id))?.id).toBe(concept.id);
+        expect(await foreign.getConcept(concept.id)).toBeNull();
+      });
+
       it("org-pins assistant-source link mutations (PRD #726)", async () => {
         const assistant = await newAssistant();
         const collection = await db.createCollection(assistant.id, {
@@ -8370,6 +8408,17 @@ export function describeDbContract(
         ).toEqual(["inbox"]);
       });
 
+      it("thread preferences persist triage and cascade with the target", async () => {
+        const teammate = await newTeammate();
+        const conversation = await db.createConversation({ teammateId: teammate.id, subjectType: "member", subjectId: ctx.userId });
+        const table = db.table("threadPreferences");
+        const row = await table.insert({ organizationId: ctx.organizationId, userId: ctx.userId, conversationId: conversation.id, channelId: null, action: "archive" });
+        expect(await table.get(row.id)).toMatchObject({ conversationId: conversation.id, action: "archive" });
+        expect((await table.list({ userId: ctx.userId, conversationId: conversation.id })).map(item => item.id)).toEqual([row.id]);
+        await db.deleteConversation(conversation.id);
+        expect(await table.get(row.id)).toBeNull();
+      });
+
       it("hiding: one Member's roster, and nobody else's", async () => {
         const hidden = () => db.table("teammateRosterHidden");
         const teammate = await newTeammate();
@@ -8724,6 +8773,14 @@ export function describeDbContract(
         // The roster sorts by activity, so the channel row moved with it.
         const moved = await channels().get(channel.id);
         expect(moved!.updatedAt >= channel.updatedAt).toBe(true);
+      });
+
+      it("merges independent harness states without losing another Teammate's snapshot", async () => {
+        const channel = await newChannel({ name: "Harness state" });
+        expect(await systemDb.mergeChannelRuntimeState({ organizationId: ctx.organizationId, channelId: channel.id, patch: { "agui:one": { count: 1 } } })).toBe(true);
+        expect(await systemDb.mergeChannelRuntimeState({ organizationId: ctx.organizationId, channelId: channel.id, patch: { "agui:two": { count: 2 } } })).toBe(true);
+        expect(await systemDb.mergeChannelRuntimeState({ organizationId: ctx.foreignOrganizationId, channelId: channel.id, patch: { "agui:one": "stolen" } })).toBe(false);
+        expect((await channels().get(channel.id))?.runtimeState).toEqual({ "agui:one": { count: 1 }, "agui:two": { count: 2 } });
       });
 
       it("reads one bounded transcript tail for each requested Channel", async () => {

@@ -1,5 +1,5 @@
 ---
-title: Inbox
+title: Boîte de réception
 description: Inspectez les Conversations, les Sources, les traces d'exécution et les métadonnées de session.
 ---
 
@@ -15,6 +15,14 @@ Une session qui ne contient que des Notifications proactives porte le marqueur
 **Notification only**. Elle devient une Conversation normale dès qu'un Visiteur
 répond.
 
+Faites glisser une ligne vers la gauche, ou sélectionnez son bouton **Actions**,
+pour afficher **Archive**, **Flag** et **Delete**. Un balayage complet archive
+la Conversation. Sélectionnez **Archived** pour la restaurer ou **Flagged** pour
+retrouver vos Conversations marquées. Les actions Archive et Flag n'affectent
+que votre propre liste. Elles ne modifient ni la transcription ni ses analyses.
+Delete demande une confirmation et supprime la transcription. Une Conversation
+soumise à une mise en suspens légale ne peut pas être supprimée.
+
 ## Détail de la conversation
 
 La vue détaillée peut afficher :
@@ -23,7 +31,7 @@ La vue détaillée peut afficher :
 - le Flow qui a géré un tour
 - citations de sources nommées
 - Commentaires du visiteur
-- état de l'escalade
+- état de remontée (escalation)
 - métadonnées de lancement et de l'appareil
 - le sujet SSO vérifié et la revendication d'identité configurée
 - informations de Thinking stockées lorsque le rôle du membre autorise l'accès
@@ -38,7 +46,7 @@ Les appels d'intégration d'API apparaissent également dans la trace. Leurs
 ## Produire un travail de qualité
 
 Utilisez l'action Improvement disponible lorsqu'une réponse doit être corrigée.
-Le nouvel élément renvoie au message de Conversation concerné.
+Le nouvel élément renvoie au message de la Conversation concernée.
 
 Utilisez [Exports](/operations/exports) lorsque vous avez besoin
 d'enregistrements structurés en dehors de l'Inbox.

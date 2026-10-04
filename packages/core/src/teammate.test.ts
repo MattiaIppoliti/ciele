@@ -5,6 +5,7 @@ import {
   isCieleAi,
   isTeammateRetired,
   teammatePersonaPrompt,
+  teammateRuntimeAssistant,
   teammateSearchesKnowledge,
   rosterTeammates,
   visibleTeammates,
@@ -256,4 +257,8 @@ describe("rosterTeammates", () => {
       rosterTeammates([secret], { userId: "nobody", role: "viewer" }, [])
     ).toEqual([]);
   });
+});
+
+it("offers non-mutating reply tables to native Teammates independently of computer grants", () => {
+  expect(teammateRuntimeAssistant(makeTeammate()).tools?.builtIns?.renderTable).toBe(true);
 });

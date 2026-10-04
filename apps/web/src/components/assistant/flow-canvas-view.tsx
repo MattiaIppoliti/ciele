@@ -1203,11 +1203,12 @@ function AddStepControl({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    // Shown on hover of the card (this is its descendant, so hovering the
+    // Shown on touch, hover of the card (this is its descendant, so hovering the
     // control keeps the card hovered), on keyboard focus, and while the menu is
     // open. `nodrag`/`nopan` keep React Flow from reading the press as a drag;
     // this wrapper is what the drag listener sees, so they go here.
     <div
+      data-flow-step-action
       className={cn(
         "nodrag nopan pointer-events-auto absolute z-10 flex items-center transition-opacity duration-150 motion-reduce:transition-none",
         direction === "vertical"

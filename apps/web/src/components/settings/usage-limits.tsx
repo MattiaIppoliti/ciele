@@ -1,4 +1,3 @@
-import { RadialGauge, type RadialGaugeRing } from "@agent-hub/charts";
 import {
   Card,
   CardContent,
@@ -7,10 +6,8 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { UsageGauge, type UsageGaugeRing } from "@/components/usage-gauge";
 import {
-  TONE_STROKE,
-  TONE_TEXT,
   type MeterCardView,
   type MeterRingView,
   type MeterTone,
@@ -26,32 +23,11 @@ import {
  * percentage of whichever window is closest to its cap in the middle.
  */
 
-const ringsOf = (rings: readonly MeterRingView[]): RadialGaugeRing[] =>
+const ringsOf = (rings: readonly MeterRingView[]): UsageGaugeRing[] =>
   rings.map((ring) => ({
-    fraction: ring.fraction,
-    toneClass: TONE_STROKE[ring.tone],
-    label: `${ring.label}: ${ring.percentLabel} used`,
+    fraction: ring.uncapped ? null : ring.fraction,
+    label: `${ring.label}: ${ring.usedLabel} / ${ring.capLabel}${ring.uncapped ? "" : `, ${ring.percentLabel} used`}`,
   }));
-
-function Gauge({
-  rings,
-  lead,
-  tone,
-}: {
-  rings: RadialGaugeRing[];
-  lead: string;
-  tone: MeterTone;
-}) {
-  return (
-    <RadialGauge size={88} strokeWidth={7} gap={3} rings={rings}>
-      <span
-        className={cn("text-lg font-semibold tabular-nums", TONE_TEXT[tone])}
-      >
-        {lead}
-      </span>
-    </RadialGauge>
-  );
-}
 
 function RingLines({ rings }: { rings: MeterRingView[] }) {
   return (
@@ -60,13 +36,16 @@ function RingLines({ rings }: { rings: MeterRingView[] }) {
         <div key={ring.label}>
           <p>
             <span className="text-muted-foreground">{ring.label}:</span>{" "}
-            <span
-              className={cn("font-medium tabular-nums", TONE_TEXT[ring.tone])}
-            >
+            <span className="font-medium tabular-nums">
               {ring.usedLabel}
             </span>
             <span className="text-muted-foreground"> / {ring.capLabel}</span>
           </p>
+          {ring.tone !== "ok" && (
+            <p className="text-xs font-medium">
+              {ring.percentLabel} used · {ring.tone === "over" ? "Limit reached" : "Near limit"}
+            </p>
+          )}
           <p className="text-muted-foreground text-xs">{ring.resetLabel}</p>
         </div>
       ))}
@@ -84,10 +63,9 @@ function MeterCard({ card }: { card: MeterCardView }) {
       <CardContent className="flex items-center gap-4">
         {card.rings.length > 0 ? (
           <>
-            <Gauge
+            <UsageGauge
               rings={ringsOf(card.rings)}
-              lead={card.leadPercent}
-              tone={card.tone}
+              valueLabel={card.leadPercent}
             />
             <RingLines rings={card.rings} />
           </>
@@ -120,10 +98,9 @@ export function DailyBudgetCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex items-center gap-4">
-        <Gauge
+        <UsageGauge
           rings={ringsOf(budget.rings)}
-          lead={budget.rings[0].percentLabel}
-          tone={budget.tone}
+          valueLabel={budget.rings[0].percentLabel}
         />
         <RingLines rings={budget.rings} />
       </CardContent>
@@ -169,13 +146,13 @@ export function UsageLimitsBlock({
         </p>
       ) : null}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 @xl/settings:grid-cols-3">
         {view.cards.map((card) => (
           <MeterCard key={card.resource} card={card} />
         ))}
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid gap-4 @md/settings:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Credits this period</CardTitle>
@@ -186,18 +163,14 @@ export function UsageLimitsBlock({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center gap-4">
-            {/* No tone: nothing caps the SUM of the three meters, so colouring
-                this amber would warn about a limit that cannot be reached. */}
-            <Gauge
+            <UsageGauge
               rings={[
                 {
-                  fraction: view.total.fraction,
-                  toneClass: TONE_STROKE.ok,
-                  label: `This billing period: ${view.total.percentLabel} used`,
+                  fraction: view.total.uncapped ? null : view.total.fraction,
+                  label: `This billing period: ${view.total.usedLabel} / ${view.total.capLabel} credits${view.total.uncapped ? "" : `, ${view.total.percentLabel} used`}`,
                 },
               ]}
-              lead={view.total.percentLabel}
-              tone="ok"
+              valueLabel={view.total.percentLabel}
             />
             <div className="text-sm">
               <p>

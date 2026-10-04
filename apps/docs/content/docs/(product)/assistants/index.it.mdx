@@ -4,45 +4,51 @@ description: Configura l'identità, il modello, il comportamento, gli strumenti 
 ---
 
 Un Assistant è l'unità di configurazione principale in Ciele. Ogni Assistente
-dispone della propria Knowledge, dei propri Flows, delle proprie impostazioni
+dispone delle proprie Knowledge, dei propri Flows, delle proprie impostazioni
 delle bozze e della propria cronologia delle pubblicazioni.
 
 ## Sezioni di configurazione
 
-| Section | Purpose |
+| Section | Scopo |
 | --- | --- |
-| General | Imposta i valori predefiniti per identità, modello e conversazione. |
+| General | Imposta i valori predefiniti per l'identità, il modello e la conversazione. |
 | Knowledge | Aggiungi Sources e FAQ. |
 | Flows | Definisci il routing e le risposte. |
-| Tools & Skills | Gestisci gli strumenti di runtime, l'integrazione delle API e le istruzioni riutilizzabili. |
+| Tools & Skills | Controlla gli strumenti di runtime, l'integrazione delle API e le istruzioni riutilizzabili. |
 | Goals | Pianifica i controlli delle risposte deterministiche. |
 | Guardrails | Controlla i messaggi dei visitatori e nascondi il testo delle risposte contrassegnate. |
 | Assistant Help Desks | Seleziona gli Help Desk per l'escalation. |
 | Style | Imposta il colore del brand e la posizione del launcher. |
 | Authentication | Richiedi l'accesso con Microsoft Entra per i Visitor. |
-| Publish | Crea e gestisci la snapshot live. |
+| Publish | Crea e gestisci la live snapshot. |
 
 Le modifiche si riflettono immediatamente in Preview. Il widget live cambia solo
 dopo la pubblicazione.
 
-La Preview può usare il tuo abbonamento locale Claude o ChatGPT collegato in **Impostazioni → AI**.
-Il pannello di avanzamento mostra le ricerche e i risultati, senza richiedere il ragionamento privato del modello.
-Per rispondere in modo affidabile a domande sull’organizzazione servono comunque fonti di conoscenza.
+Preview può utilizzare il tuo abbonamento locale collegato a Claude o ChatGPT da
+**Settings → AI**. Il pannello di avanzamento riporta le ricerche e i relativi
+risultati. Non richiede il ragionamento privato del modello. Un modello connesso
+ha comunque bisogno di Knowledge Sources per rispondere in modo affidabile a
+domande specifiche dell'organizzazione.
 
-## Consulta le fonti in Preview
+## Esamina le fonti in Preview
 
-Preview mostra citazioni numerate dentro la risposta dell'Assistente. Passa il puntatore su una
-citazione o selezionala con la tastiera per vedere il titolo e i dettagli della fonte. Premi Escape
-per chiudere la scheda. Una citazione con URL pubblico apre la pagina originale in una nuova scheda.
+La modalità Preview mostra le citazioni delle fonti numerate all'interno della
+risposta dell'Assistente. Passa il puntatore del mouse su una citazione o
+spostati su di essa con la tastiera per visualizzare il titolo e i dettagli
+della Source. Premi Escape per chiudere la scheda. Fai clic su una citazione con
+un URL pubblico per aprire la pagina originale in una nuova scheda.
 
-Ogni frase o passo basato su una fonte mostra la citazione accanto al testo che supporta. La stessa
-fonte può essere citata più volte nella risposta. I documenti privati mostrano una scheda senza
-link esterno. Le fonti senza un riferimento inline restano disponibili nell’elenco Sources sotto la risposta.
+Ogni frase o passaggio con fonte riporta la relativa citazione accanto al testo
+che supporta. Una Source può essere citata più di una volta nella stessa
+risposta. I documenti privati mostrano un'anteprima senza link esterno. Le fonti
+senza un riferimento in linea rimangono disponibili nell'elenco Sources sotto la
+risposta.
 
 ## Duplica un Assistente
 
 La duplicazione copia la configurazione e i Flow. Non copia il contenuto di
 Knowledge.
 
-Rivedi il nuovo Assistente prima della pubblicazione. In particolare, aggiungi
-le Sources richieste e conferma le connessioni all'Help Desk.
+Rivedi il nuovo Assistant prima della pubblicazione. In particolare, aggiungi le
+Sources richieste e conferma le connessioni al Help Desk.

@@ -5,12 +5,70 @@ description: Crea, testa, pubblica e gestisci Assistenti AI basati su fonti affi
 
 import { BookOpen, Boxes, Cloud, Terminal } from 'lucide-react';
 
-Ciele aiuta un'organizzazione a creare Assistenti AI per siti web e
+Ciele aiuta un'organizzazione a creare assistenti AI per siti web e
 applicazioni. Ogni Assistente utilizza Knowledge, Flows, strumenti e Help Desk
 configurati.
 
 La console di amministrazione contiene una Preview. Usa Preview per testare le
 modifiche prima di creare una Publication.
+
+## Navigazione su smartphone e tablet
+
+Su telefoni e tablet, la console nasconde la sidebar. Tre icone rimangono in
+basso a sinistra: **Home**, **Chat** e **Settings**.
+
+**Home** apre un selettore di navigazione a schermo intero. Trascina
+verticalmente, scorri o usa i tasti freccia per selezionare una destinazione.
+Tocca una destinazione oppure seleziona **Open** per accedervi. Scorrere non
+apre le pagine.
+
+Il selettore contiene le pagine dell'area di lavoro e le sezioni di Assistant
+disponibili per il tuo ruolo. Include anche le impostazioni dell'organizzazione
+per gli amministratori e le impostazioni personali.
+
+L'icona Search in alto a sinistra apre **Find** su telefoni e tablet. Rimane
+disponibile quando **Home** è aperto.
+
+Seleziona il nome dell'organizzazione nella parte superiore di **Home** per
+visualizzare le organizzazioni a cui puoi passare.
+
+**Chat** apre l'area di lavoro della chat. **Settings** apre una visualizzazione
+a schermo intero su telefoni e tablet touch, con controlli più grandi. Le tre
+icone rimangono disponibili in Settings. Settings ti chiede comunque conferma
+prima di uscire con modifiche non salvate. Nell'editor dell'Assistente, l'icona
+di anteprima in alto a destra apre il chatbot a schermo intero. Chiudi
+l'anteprima per tornare all'editor.
+
+## Tabelle responsive
+
+Le tabelle della console mantengono una colonna per ogni intestazione a ogni
+larghezza del pannello. I bordi delle colonne si estendono per tutta la riga.
+
+Trascina il bordo di una colonna per modificarne la larghezza. I controlli di
+ridimensionamento rimangono disponibili anche nei pannelli stretti. Le
+intestazioni mantengono i relativi controlli di ordinamento e filtro.
+
+Se le colonne non rientrano nel pannello, usa la barra di scorrimento
+orizzontale per raggiungerle. I valori rimangono nelle rispettive colonne.
+
+Tutte le colonne di dati hanno la stessa larghezza minima di 120 pixel. La
+console mantiene la larghezza che hai selezionato dopo aver rilasciato il
+quadratino di ridimensionamento e aver ricaricato la pagina. Le caselle di
+spunta per la selezione occupano la stessa posizione nell'intestazione e in ogni
+riga.
+
+## Modifiche al testo
+
+I contatori della dashboard e le etichette delle azioni che cambiano utilizzano
+Torph per mantenere il testo continuo quando i valori variano. Il testo rimane
+leggibile prima del caricamento della libreria di animazioni. L'impostazione di
+riduzione dei movimenti del sistema operativo disattiva queste transizioni.
+
+Una Publication andata a buon fine e una richiesta di conferma della newsletter
+andata a buon fine mostrano coriandoli. Quando completi la conferma via email
+per la newsletter, viene visualizzato lo stesso effetto. Le richieste non andate
+a buon fine non mostrano coriandoli. L'impostazione Reduced motion disattiva
+l'effetto.
 
 ## Suoni dell'interfaccia
 
@@ -24,9 +82,13 @@ scelta viene memorizzata su questo dispositivo. In Ciele Desktop, usa
 **Interface sounds** in **Settings**. Il feedback tattile segue l'impostazione
 di riduzione dei movimenti del sistema operativo.
 
+WebHaptics fornisce feedback tattile per i dispositivi supportati. Quando
+selezioni una destinazione nel Home picker, senti un breve clic. Lo scorrimento
+rapido limita i tick, mentre l'impostazione di movimento ridotto li disattiva.
+
 Il widget pubblicato riproduce solo due suoni. Un Visitor sente un suono quando
 il messaggio viene inviato e un altro quando arriva la risposta. Nessun elemento
-all'interno di un Assistant o di un'Organization li configura.
+in un Assistant o in un'Organization li configura.
 
 ## Sezioni della documentazione
 
@@ -39,13 +101,13 @@ all'interno di un Assistant o di un'Organization li configura.
 
 ## Attività principali
 
-- Crea un Assistant e seleziona il suo modello.
+- Crea un Assistente e seleziona il suo modello.
 - Aggiungi siti web, file, testo e FAQ a Knowledge.
 - Importa Records strutturati e collegali a un Assistant.
 - Quando necessario, ricorda i fatti permanenti per i Visitor connessi.
 - Instrada i messaggi attraverso Flows ordinati.
-- Invia Notifications proattive da eventi di pagina e di chat.
-- Collega i Visitatori a un Help Desk.
+- Invia notifiche proattive dagli eventi di pagina e di chat.
+- Collega i Visitor a un Help Desk.
 - Pubblica uno snapshot di configurazione immutabile.
 - Rivedi Conversations, Improvements, Insights, Exports, Goals e Alerts.
 

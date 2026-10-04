@@ -40,7 +40,7 @@ const INBOX_TRANSCRIPT_BATCH_SIZE = 20;
  * row shaping stays with the caller.
  */
 
-async function requireConversation(
+export async function requireConversation(
   ctx: OperationContext,
   id: string
 ): Promise<Conversation> {

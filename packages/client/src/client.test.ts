@@ -42,6 +42,18 @@ const client = (fetchImpl: typeof fetch, baseUrl = "https://self.host/") =>
   new CieleClient({ apiKey: "ciele_sk_test", baseUrl, fetch: fetchImpl });
 
 describe("CieleClient", () => {
+  it("returns the AG-UI event stream unchanged with bearer auth and cancellation", async () => {
+    const controller = new AbortController();
+    const expected = new Response('data: {"type":"RUN_FINISHED"}\n\n', { headers: { "content-type": "text/event-stream" } });
+    const fetchImpl: typeof fetch = async (url, init) => {
+      expect(String(url)).toBe("https://self.host/api/v1/teammates/coworker/ag-ui");
+      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer ciele_sk_test");
+      expect(new Headers(init?.headers).get("accept")).toBe("text/event-stream");
+      expect(init?.signal).toBe(controller.signal);
+      return expected;
+    };
+    expect(await client(fetchImpl).teammates.agUi("coworker", { threadId: "thread" }, { signal: controller.signal })).toBe(expected);
+  });
   it("builds requests: base URL, bearer auth, JSON body, idempotency key", async () => {
     const { calls, fetchImpl } = stub(() => ({ json: { id: "a1" } }));
     await client(fetchImpl).assistants.create(

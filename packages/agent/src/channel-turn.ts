@@ -402,7 +402,7 @@ function channelConnectionKinds(
         // No model resolves: nothing is funded, so there is nothing to gate.
         .flatMap((teammate) =>
           spendConnectionKinds(
-            teammate
+            teammate && teammate.runtimeConfig?.harness.kind !== "ag_ui"
               ? resolveChatModel(teammate.modelProvider, teammate.modelId, input.connections, {
                   source: teammate.modelSource ?? undefined,
                 })
@@ -454,7 +454,7 @@ function appendMarker(
  *
  * What differs from `streamConversationTurn` is the container, not the runtime:
  * the transcript is the channel's, so there is no Conversation to own the
- * messages, no session state to persist across turns and no Agent-memory
+ * messages and no Agent-memory
  * distillation (that reads a Conversation). What is identical is everything the
  * answer is made of: the persona layer, the Knowledge Scope search with its
  * Concept → Source citations, the granted action tools, and the memory layers.
@@ -468,6 +468,9 @@ async function modelChannelTurn(
   const turnStart = Date.now();
   const nameOf = nameResolver(input.roster);
   const gateUsage: UsageEvent[] = [];
+  const external = teammate.runtimeConfig?.harness.kind === "ag_ui";
+  const freshChannel = external ? await db.table("teammateChannels").get(channel.id) : null;
+  const session = createTurnSession(channel.id, freshChannel?.runtimeState ?? {});
 
   const [platformPrompt, actions, memoryDocuments] = await Promise.all([
     getRuntimeHost().getPlatformSystemPrompt(),
@@ -500,6 +503,7 @@ async function modelChannelTurn(
         platformPrompt,
         hasAttachments: (input.attachments?.length ?? 0) > 0,
         message: speakerLine(request.trigger, nameOf),
+        userMessageId: request.trigger.id,
         // The transcript is read after the triggering message was persisted, so
         // the message this turn is answering is also the last thing in it.
         // Handing the model both would show it the same line twice, once as
@@ -530,7 +534,7 @@ async function modelChannelTurn(
         memoryDocuments: [attachmentContextSection(input.attachments ?? []), ...memoryDocuments].filter((section): section is string => section !== null),
         // No referral tool: in a channel, mentioning IS the referral, and it
         // reaches somebody who is already here (#773 was the 1:1 answer).
-        session: createTurnSession(channel.id, {}),
+        session,
         emit: request.emit,
         signal: request.signal,
       },
@@ -559,6 +563,10 @@ async function modelChannelTurn(
       usage: outcome.usageRows(null),
       failed: { error: outcome.error },
     };
+  }
+  if (external && session.dirty) {
+    const saved = await db.mergeChannelRuntimeState({ organizationId, channelId: channel.id, patch: session.patch() });
+    if (!saved) throw new Error("Channel is no longer available");
   }
   return {
     parts: outcome.parts,
@@ -604,7 +612,7 @@ function channelHistory(
 ): HistoryMessage[] {
   return messages.map((message) =>
     message.authorTeammateId === selfId
-      ? { role: "assistant" as const, text: messageText(message.content) }
-      : { role: "user" as const, text: speakerLine(message, nameOf) },
+      ? { id: message.id, role: "assistant" as const, text: messageText(message.content) }
+      : { id: message.id, role: "user" as const, text: speakerLine(message, nameOf) },
   );
 }

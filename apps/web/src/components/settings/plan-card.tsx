@@ -1,4 +1,3 @@
-import { RadialGauge } from "@agent-hub/charts";
 import {
   Button,
   Card,
@@ -8,6 +7,7 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import Link from "next/link";
+import { UsageGauge } from "@/components/usage-gauge";
 import { cn } from "@/lib/utils";
 import type { PlanCatalogEntry } from "@agent-hub/agent";
 import {
@@ -17,8 +17,6 @@ import {
   type PlanTierView,
 } from "@/lib/plan-pricing";
 import {
-  TONE_STROKE,
-  TONE_TEXT,
   planGlanceRows,
   type MeterGlanceRow,
   type UsageLimitsView,
@@ -62,28 +60,25 @@ function TierPrice({ tier }: { tier: PlanTierView }) {
 function GlanceMeter({ row }: { row: MeterGlanceRow }) {
   return (
     <div className="flex items-center gap-3">
-      <RadialGauge
-        size={56}
-        strokeWidth={5}
-        gap={2}
+      <UsageGauge
+        size={64}
         rings={[
           {
-            fraction: row.fraction,
-            toneClass: TONE_STROKE[row.tone],
-            label: `${row.title}, ${row.windowLabel.toLowerCase()}: ${row.percentLabel} used`,
+            fraction: row.uncapped ? null : row.fraction,
+            label: `${row.title}, ${row.windowLabel.toLowerCase()}: ${row.detail}${row.uncapped ? "" : `, ${row.percentLabel} used`}`,
           },
         ]}
-      >
-        <span
-          className={cn("text-xs font-semibold tabular-nums", TONE_TEXT[row.tone])}
-        >
-          {row.percentLabel}
-        </span>
-      </RadialGauge>
+        valueLabel={row.percentLabel}
+      />
       <div className="text-sm">
         <p className="font-medium">{row.title}</p>
         <p className="text-muted-foreground text-xs">{row.detail}</p>
         <p className="text-muted-foreground text-xs">{row.windowLabel}</p>
+        {row.tone !== "ok" && (
+          <p className="text-xs font-medium">
+            {row.tone === "over" ? "Limit reached" : "Near limit"}
+          </p>
+        )}
       </div>
     </div>
   );

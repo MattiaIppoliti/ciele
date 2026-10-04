@@ -34,6 +34,7 @@ interface AISidebarProps {
   onActiveChange: (id: string) => void;
   defaultExpandedIds?: string[];
   renderIcon?: (item: SidebarResource) => ReactNode;
+  wrapRow?: (item: SidebarResource, row: ReactNode) => ReactNode;
   renderMenu?: (item: SidebarResource, controls: { close: () => void }) => ReactNode;
   ariaLabel?: string;
   className?: string;
@@ -122,6 +123,7 @@ interface ResourceRowProps {
   onSelect: () => void;
   onToggle: () => void;
   renderIcon?: AISidebarProps["renderIcon"];
+  wrapRow?: AISidebarProps["wrapRow"];
   renderMenu?: AISidebarProps["renderMenu"];
   setRef: (node: HTMLDivElement | null) => void;
 }
@@ -139,6 +141,7 @@ function ResourceRow({
   onToggle,
   renderIcon,
   renderMenu,
+  wrapRow,
   setRef,
 }: ResourceRowProps) {
   const reduce = useReducedMotion() ?? false;
@@ -146,7 +149,7 @@ function ResourceRow({
   const folder = row.item.kind === "folder";
   const menu = renderMenu?.(row.item, { close: () => onMenuOpenChange(false) });
 
-  return (
+  const content = (
     <motion.div
       ref={setRef}
       layout="position"
@@ -185,6 +188,7 @@ function ResourceRow({
         <MorphPopover open={menuOpen} onOpenChange={onMenuOpenChange}>
           <MorphPopoverTrigger>
             <button
+              data-resource-actions
               type="button"
               tabIndex={-1}
               aria-label={`Actions for ${row.item.label}`}
@@ -201,6 +205,7 @@ function ResourceRow({
       ) : null}
     </motion.div>
   );
+  return wrapRow ? wrapRow(row.item, content) : content;
 }
 
 export function AISidebar({
@@ -210,6 +215,7 @@ export function AISidebar({
   defaultExpandedIds = [],
   renderIcon,
   renderMenu,
+  wrapRow,
   ariaLabel = "Resources",
   className,
 }: AISidebarProps) {
@@ -349,6 +355,7 @@ export function AISidebar({
             }}
             renderIcon={renderIcon}
             renderMenu={renderMenu}
+            wrapRow={wrapRow}
             setRef={(node) => {
               if (node) rowRefs.current.set(row.item.id, node);
               else rowRefs.current.delete(row.item.id);

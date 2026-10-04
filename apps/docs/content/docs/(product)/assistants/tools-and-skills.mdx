@@ -12,11 +12,23 @@ Open an Assistant and select **Tools & Skills**. This section controls runtime c
 | Search knowledge | On | Searches connected Knowledge and returns cited answers. |
 | Session memory | On | Uses information from the current conversation session. |
 | Fetch URL | Off | Reads a URL when the runtime selects the tool. |
-| Show a table | Off | Shows facts in a table when the runtime selects the tool. |
+| Interactive tables | Off | Shows facts as a plain table, CRM records grid, or task table with status filters. |
 
 Search knowledge is always available. You can enable or disable the other built-in tools.
 
-Show a table arranges facts that the Assistant found in this answer. It does not calculate values. The table appears above the written answer, and the Inbox transcript shows the same table.
+**Interactive tables** arranges facts that the Assistant found in this answer. The runtime selects the table from your request and available data.
+
+- A plain table compares facts and can include row follow-up questions.
+- A CRM records grid shows companies, categories, last interaction, relationship status, and website links. Select rows, sort, resize, or pin columns.
+- A task table shows dates, status, and owners. Select **All**, **To do**, **In Progress**, or **Completed** to filter its rows.
+
+Filter counts come from the displayed data. Missing data remains empty. Table settings affect the current view and do not modify CRM records.
+
+Use **New property** or **Add calculation** in the CRM grid to prepare a property request. Review its prompt, then select **Go calculate**.
+This sends a normal chat request. The current harness, connected sources, and permissions still apply. The UI does not simulate generated values.
+
+The same tables appear in Preview, the published Widget, and the Inbox transcript. Publish the Assistant after enabling this tool.
+The Inbox supports viewing, selection, filtering, and column layout. It does not send property requests.
 
 The Assistant can add a follow-up question to a row. The Visitor selects the row to ask that question. The Inbox transcript shows these rows, but a Member cannot select them.
 

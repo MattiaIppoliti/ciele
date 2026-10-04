@@ -80,7 +80,7 @@ export function ThemeSettingsClient() {
           Choose light, dark, or follow your device&apos;s appearance setting.
           </p>
           <div
-            className="grid gap-2 sm:grid-cols-3"
+            className="grid gap-2 @xl/settings:grid-cols-3"
             role="radiogroup"
             aria-label="Theme mode"
             onKeyDown={(event) =>
@@ -129,7 +129,7 @@ export function ThemeSettingsClient() {
             Mist Blue keeps Midnight text and action contrast over blue-grey dark surfaces.
           </p>
           <div
-            className="grid gap-2 sm:grid-cols-2"
+            className="grid gap-2 @md/settings:grid-cols-2"
             role="radiogroup"
             aria-label="Color palette"
             onKeyDown={(event) =>

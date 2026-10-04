@@ -3,6 +3,7 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 import { Eye, EyeOff } from "lucide-react"
 
 import { cn } from "./cn"
+import { Button } from "./button"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
@@ -29,15 +30,19 @@ function PasswordInput({
   const [visible, setVisible] = React.useState(false)
   return (
     <div className="relative">
-      <Input data-text-completion="off" type={visible ? "text" : "password"} className={cn("pr-9", className)} {...props} />
-      <button
-        type="button"
-        onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Hide value" : "Show value"}
-        className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
-      >
-        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-      </button>
+      <Input data-text-completion="off" type={visible ? "text" : "password"} className={cn("pr-14", className)} {...props} />
+      <span className="absolute top-1/2 right-1 -translate-y-1/2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? "Hide value" : "Show value"}
+          className="text-muted-foreground"
+        >
+          {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </Button>
+      </span>
     </div>
   )
 }

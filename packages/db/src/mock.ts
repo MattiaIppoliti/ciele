@@ -211,6 +211,7 @@ interface MockStore {
   teammates: Map<string, Teammate>;
   teammateGrants: Map<string, TeammateGrant>;
   teammateRosterHidden: Map<string, TeammateRosterHidden>;
+  threadPreferences: Map<string, import("@agent-hub/core").ThreadPreference>;
   teammateRoutines: Map<string, TeammateRoutine>;
   teammateChannels: Map<string, TeammateChannel>;
   teammateChannelParticipants: Map<string, TeammateChannelParticipant>;
@@ -567,6 +568,7 @@ function emptyStore(): MockStore {
     teammates: new Map(),
     teammateGrants: new Map(),
     teammateRosterHidden: new Map(),
+    threadPreferences: new Map(),
     teammateRoutines: new Map(),
     teammateChannels: new Map(),
     teammateChannelParticipants: new Map(),
@@ -2072,6 +2074,7 @@ function stopMockContinuations(assistantId: string, flowId: string | null, reaso
  * so the retention sweep and the Inbox delete button agree.
  */
 function dropConversation(store: MockStore, id: string): void {
+  for (const [key, row] of store.threadPreferences) if (row.conversationId === id) store.threadPreferences.delete(key);
   store.conversations.delete(id);
   for (const [key, row] of store.flowContinuations) if (row.conversationId === id) store.flowContinuations.delete(key);
   for (const [key, row] of store.reviewRequests) if (row.conversationId === id) store.reviewRequests.delete(key);
@@ -2123,6 +2126,7 @@ const MOCK_TABLE_STORES: {
   teammates: () => getStore().teammates,
   teammateGrants: () => getStore().teammateGrants,
   teammateRosterHidden: () => getStore().teammateRosterHidden,
+  threadPreferences: () => getStore().threadPreferences,
   teammateRoutines: () => getStore().teammateRoutines,
   teammateChannels: () => getStore().teammateChannels,
   teammateChannelParticipants: () =>
@@ -2191,6 +2195,7 @@ const MOCK_CASCADES: Partial<
     },
   ],
   teammateChannels: [
+    { rows: () => getStore().threadPreferences as Map<string, unknown>, column: "channelId" },
     {
       rows: () => getStore().teammateChannelParticipants as Map<string, unknown>,
       column: "channelId",
@@ -5875,6 +5880,14 @@ export const mockDb: Db = {
       error: input.succeeded ? "" : input.error ?? "",
       updatedAt: input.now,
     });
+    return true;
+  },
+
+  async mergeChannelRuntimeState(input) {
+    const channels = getStore().teammateChannels;
+    const channel = channels.get(input.channelId);
+    if (!channel || channel.organizationId !== input.organizationId) return false;
+    channels.set(channel.id, { ...channel, runtimeState: { ...(channel.runtimeState ?? {}), ...structuredClone(input.patch) } });
     return true;
   },
 

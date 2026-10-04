@@ -13,11 +13,78 @@ const engines = vi.hoisted(() => ({
   play: vi.fn(),
   destroy: vi.fn(),
   oldPlay: vi.fn(),
+  hapticsCreated: vi.fn(),
+  hapticsDestroyed: vi.fn(),
+  hapticsTriggered: vi.fn(),
 }));
 vi.mock("./sounds/bencho", () => ({ createBenchoPlayer: engines.createBenchoPlayer }));
 vi.mock("@foleyjs/core", () => ({ play: engines.oldPlay, set: vi.fn() }));
 vi.mock("@web-kits/audio", () => ({ createPatchInstance: () => ({ play: engines.oldPlay }) }));
-vi.mock("web-haptics", () => ({ WebHaptics: class { trigger() {} } }));
+vi.mock("web-haptics", () => ({ WebHaptics: class { constructor() { engines.hapticsCreated(); } trigger(input: unknown) { engines.hapticsTriggered(input); } destroy() { engines.hapticsDestroyed(); } } }));
+
+describe("delegated menu scroll haptics", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.clearAllMocks(); });
+
+  it("requires a user scroll gesture and suppresses hidden, reduced-motion and expired gestures", async () => {
+    class MenuElement {
+      scrollTop = 0;
+      closest(selector: string) { return selector === "[data-foley-scroll]" ? this : null; }
+      getAttribute() { return null; }
+      hasAttribute() { return false; }
+    }
+    let reducedMotion = false;
+    const win = { matchMedia: (query: string) => ({ matches: query === "(pointer: coarse)" || reducedMotion }) };
+    vi.stubGlobal("Element", MenuElement);
+    vi.stubGlobal("window", win);
+    vi.stubGlobal("navigator", {});
+    let now = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const doc = Object.assign(new EventTarget(), { defaultView: win, hidden: false });
+    const element = new MenuElement();
+    const emit = (name: string) => {
+      const event = new Event(name);
+      Object.defineProperty(event, "target", { value: element });
+      doc.dispatchEvent(event);
+    };
+    const runtime = attachFeedback(doc as unknown as Document, { isMuted: () => true });
+    try {
+      element.scrollTop = 100;
+      emit("scroll");
+      expect(engines.hapticsTriggered).not.toHaveBeenCalled();
+      emit("pointerdown");
+      await vi.waitFor(() => expect(engines.hapticsCreated).toHaveBeenCalledOnce());
+      element.scrollTop = 144;
+      emit("scroll");
+      expect(engines.hapticsTriggered).toHaveBeenCalledOnce();
+      doc.hidden = true;
+      element.scrollTop = 188;
+      now = 100;
+      emit("scroll");
+      doc.hidden = false;
+      reducedMotion = true;
+      now = 200;
+      emit("scroll");
+      reducedMotion = false;
+      now = 2000;
+      element.scrollTop = 232;
+      emit("scroll");
+      expect(engines.hapticsTriggered).toHaveBeenCalledOnce();
+      emit("touchmove");
+      element.scrollTop = 276;
+      emit("scroll");
+      expect(engines.hapticsTriggered).toHaveBeenCalledTimes(2);
+      emit("keydown");
+      element.scrollTop = 320;
+      now = 2100;
+      emit("scroll");
+      expect(engines.hapticsTriggered).toHaveBeenCalledTimes(2);
+    } finally { runtime.destroy(); }
+    emit("touchmove");
+    element.scrollTop = 364;
+    emit("scroll");
+    expect(engines.hapticsTriggered).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe("admin sound identity", () => {
   afterEach(() => vi.clearAllMocks());
@@ -45,6 +112,7 @@ describe("admin sound identity", () => {
     expect(engines.play).not.toHaveBeenCalled();
     runtime.destroy();
     expect(engines.destroy).toHaveBeenCalledOnce();
+    expect(engines.hapticsDestroyed).toHaveBeenCalledOnce();
   });
 
   it("does not construct an audio player after unmount during lazy loading", async () => {
@@ -54,6 +122,7 @@ describe("admin sound identity", () => {
     runtime.destroy();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(engines.createBenchoPlayer).not.toHaveBeenCalled();
+    expect(engines.hapticsCreated).not.toHaveBeenCalled();
   });
 });
 

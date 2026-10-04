@@ -10,12 +10,12 @@ import {
   type ReactNode,
 } from "react";
 import { useSetTopBarSlot } from "@/components/shell/top-bar-slots";
-import { Settings2 } from "lucide-react";
+import { MessagesSquare, Settings2 } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useTopBarFormActions } from "@/components/settings/form-actions";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ChannelUnread, Teammate, TeammateVisibility } from "@agent-hub/core";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Skeleton } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,8 @@ import {
 } from "@/components/teammates/chat-sidebar-panel";
 import { chatSession } from "@/lib/chat-session";
 import { useShell } from "@/components/shell/shell-provider";
+import { useTouchNavigation } from "@/components/shell/mobile-navigation";
+import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 
 /** Past this many people, the channel dialog's picker gets a filter. */
 const PEOPLE_FILTER_AT = 12;
@@ -46,6 +48,7 @@ export interface CollectionOption {
 
 /** One group ("channel" in the code) row on the roster (#778). */
 export interface ChannelRow {
+  canDelete: boolean;
   id: string;
   name: string;
   memberCount: number;
@@ -528,12 +531,44 @@ export function TeammatesShell({
 }) {
   const router = useRouter();
   const [channelOpen, setChannelOpen] = useState(false);
+  const touch = useTouchNavigation();
+  const pathname = usePathname();
+  const conversation = useSearchParams().get("c");
+  const location = `${pathname}?c=${conversation ?? ""}`;
+  const [roster, setRoster] = useState({ location, open: false });
+  // A completed navigation closes the roster. A cancelled leave keeps it open.
+  if (roster.location !== location) setRoster({ location, open: false });
+  const rosterOpen = roster.location === location && roster.open;
+  const setRosterOpen = (open: boolean) => setRoster({ location, open });
   const { chatSidebarSlot } = useShell();
   // The rows the chat reported belong to this visit to the chat area.
   useEffect(() => () => chatSession.leave(), []);
 
   return (
     <LeaveGuardProvider>
+    {touch && <>
+      <SlotPortal id={TOP_BAR_SLOT}>
+        <Button variant="ghost" size="icon" aria-label="Teammates, groups and chat history" onClick={() => setRosterOpen(true)}>
+          <MessagesSquare className="size-5" />
+        </Button>
+      </SlotPortal>
+      <Dialog open={rosterOpen} onOpenChange={setRosterOpen}>
+        <DialogContent data-touch-rail showCloseButton={false} className="inset-0 flex h-dvh max-h-none w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none bg-background p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-none">
+          <DialogHeader className="mb-3 flex-row items-center justify-between">
+            <DialogTitle>Chats</DialogTitle>
+            <Button variant="ghost" onClick={() => setRosterOpen(false)}>Done</Button>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <Suspense fallback={<PanelSkeleton collapsed={false} />}>
+              <SidebarPanel data={data} collapsed={false}
+                onNewTeammate={() => { setRosterOpen(false); router.push("/teammates/new"); }}
+                onNewGroup={() => { setRosterOpen(false); setChannelOpen(true); }}
+              />
+            </Suspense>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>}
     {/* A portal rather than a prop: the panel keeps this tree's context, the
         leave guard above all, while it draws inside the shell's sidebar. */}
     {chatSidebarSlot &&
@@ -551,7 +586,7 @@ export function TeammatesShell({
     {/* The whole page is the open thread: the roster, the history and both
         New buttons live in the sidebar's Chat panel, on every screen size
         (the phone drawer mounts the same panel). */}
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="touch-scroll-clearance flex h-full min-h-0 flex-col overflow-hidden">
       {/* The top bar's breadcrumb is the visible title. */}
       <h1 className="sr-only">Teammates</h1>
       <section className="min-h-0 min-w-0 flex-1 overflow-hidden">

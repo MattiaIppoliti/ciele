@@ -7,6 +7,7 @@
   border: 1px solid var(--overview-border);
   border-radius: 24px;
   background: var(--overview-frame);
+  transition: background-color 220ms cubic-bezier(.23,1,.32,1), border-color 220ms cubic-bezier(.23,1,.32,1);
 }
 .content {
   flex: 1;
@@ -15,6 +16,7 @@
   border: 1px solid var(--overview-inset-border);
   border-radius: 17px;
   background: var(--overview-inset);
+  transition: background-color 220ms cubic-bezier(.23,1,.32,1);
 }
 .caption {
   display: flex;
@@ -32,6 +34,21 @@
   max-width: 50%;
 }
 .bare { padding: 0; border: 0; background: transparent; }
+.card:not(.bare):focus-within {
+  background-color: var(--overview-frame-hover);
+  border-color: var(--overview-border-hover);
+}
+.card:not(.bare):focus-within > .content { background-color: var(--overview-inset-hover); }
+@media (hover: hover) {
+  .card:not(.bare):hover {
+    background-color: var(--overview-frame-hover);
+    border-color: var(--overview-border-hover);
+  }
+  .card:not(.bare):hover > .content { background-color: var(--overview-inset-hover); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .content { transition: none; }
+}
 @media (forced-colors: active) {
   .card, .content { background: Canvas; border-color: CanvasText; }
 }

@@ -52,6 +52,8 @@ describe("runtime public interface", () => {
       "USAGE_WARN_FRACTION",
       // Alert sourceKey registry: a deliberate widening so EE capability
       // implementations mint keys through the one namespace registry (#442).
+      "agUiResponse",
+      "agUiThreadKey",
       "alertKeys",
       // A turn read back whole, for callers that cannot read a stream.
       "answerConversationTurn",
@@ -98,6 +100,7 @@ describe("runtime public interface", () => {
       "finalizeWebsiteCrawl",
       "getEnterpriseCapabilities",
       "loadConnectorOptions",
+      "parseAgUiTurn",
       "persistConcept",
       "providerAvailability",
       "refuseHttpFlow",
@@ -144,6 +147,8 @@ describe("runtime public interface", () => {
       "sweepExpiredObjectAccess",
       "sweepExpiredTraces",
       "sweepExpiredTranscripts",
+      "teammateComputer",
+      "teammateExecutionOptions",
       "testApiRequest",
       // The Connector action's shared core (#839): Run node, option loaders,
       // connection test and the Db-bound runtime the hosts pass in.
@@ -186,6 +191,9 @@ describe("runtime public interface", () => {
       "currentModelId",
       "decodeRuntimeEvents",
       // The Reply Component shape rules, shared with the chat clients.
+      "filterTableCounts",
+      "normalizeFilterTable",
+      "normalizeRecordsTable",
       "normalizeTable",
       // The "busy, try again" copy, for the stream's `code` and the route's 429.
       "overloadErrorText",

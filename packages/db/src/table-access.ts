@@ -55,6 +55,11 @@ import { shortId } from "@agent-hub/core";
  * (plus a store binding in the mock), not three hand-written methods.
  */
 export interface DbTableMap {
+  threadPreferences: {
+    row: import("@agent-hub/core").ThreadPreference;
+    insert: Omit<import("@agent-hub/core").ThreadPreference, "id" | "createdAt">;
+    update: never;
+  };
   flowContinuations: {
     row: import("@agent-hub/core").FlowContinuation;
     insert: Omit<import("@agent-hub/core").FlowContinuation, "createdAt" | "updatedAt" | "stoppedAt" | "stopReason">;
@@ -369,6 +374,10 @@ export interface DbTableSpec<K extends DbTableName> {
 }
 
 export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
+  threadPreferences: {
+    table: "thread_preferences", id: "shortId", defaults: {},
+    ascending: true, touchesUpdatedAt: false,
+  },
   evaluationDatasets: {
     table: "evaluation_datasets",
     id: "shortId",

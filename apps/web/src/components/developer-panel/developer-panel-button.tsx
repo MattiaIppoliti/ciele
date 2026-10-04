@@ -1,10 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Code2 } from "lucide-react";
+import { Code2, PanelTop } from "lucide-react";
 import { Hint } from "@agent-hub/ui";
 import { useShell } from "@/components/shell/shell-provider";
-import { panelDomainsForPath } from "@/components/shell/nav";
+import { assistantIdFromPath, panelDomainsForPath } from "@/components/shell/nav";
+import { useTouchNavigation } from "@/components/shell/mobile-navigation";
 import { DOMAIN_PRESENTATION } from "@/lib/developer-panel/domains";
 
 /**
@@ -27,6 +28,10 @@ import { DOMAIN_PRESENTATION } from "@/lib/developer-panel/domains";
 export function DeveloperPanelButton() {
   const pathname = usePathname();
   const { rightRail, toggleRightRail } = useShell();
+  const touch = useTouchNavigation();
+  const assistantId = assistantIdFromPath(pathname);
+  if (touch && assistantId && pathname.endsWith("/preview")) return null;
+  if (touch && assistantId) return <button type="button" aria-label="Open chatbot preview" aria-pressed={rightRail === "preview"} onClick={() => toggleRightRail("preview")} className="flex size-[44px] shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"><PanelTop className="size-5" /></button>;
   const domains = panelDomainsForPath(pathname);
   const first = domains[0] ? DOMAIN_PRESENTATION[domains[0]] : undefined;
   if (!first) return null;
@@ -45,7 +50,7 @@ export function DeveloperPanelButton() {
         aria-pressed={open}
         aria-label={`${label} developer panel`}
         onClick={() => toggleRightRail("developer")}
-        className={`z-10 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+        className={`press-control z-10 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
           open
             ? "bg-muted text-foreground"
             : "text-muted-foreground hover:bg-muted hover:text-foreground"

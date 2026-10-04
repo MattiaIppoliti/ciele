@@ -163,7 +163,7 @@ export function MemorySubjectsCard({
                     onClick={() =>
                       openSubject === s.subjectId ? close() : open(s.subjectId)
                     }
-                    className="hover:bg-muted/50 flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                    className="press-control hover:bg-muted/50 flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium">
@@ -199,15 +199,16 @@ export function MemorySubjectsCard({
                             >
                               <span className="min-w-0 [overflow-wrap:anywhere]">{m.text}</span>
                               {canEdit && (
-                                <button
+                                <Button
                                   type="button"
+                                  variant="destructive"
+                                  size="icon-sm"
                                   onClick={() => deleteOne(s.subjectId, m.id)}
                                   disabled={isPending}
                                   aria-label="Delete memory"
-                                  className="text-muted-foreground hover:text-destructive shrink-0"
                                 >
                                   <Trash2 className="size-4" />
-                                </button>
+                                </Button>
                               )}
                             </li>
                           ))}

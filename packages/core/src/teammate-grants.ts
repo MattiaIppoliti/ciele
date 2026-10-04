@@ -105,7 +105,7 @@ export function roleAllowsCapability(
  * which invented a fourth grant domain that typecheck could not see and handed
  * it to the card anyway.
  */
-export type TeammateActionDomain = TeammateGrantDomain | "memory" | "platform";
+export type TeammateActionDomain = TeammateGrantDomain | "memory" | "platform" | "computer";
 
 /**
  * Whether an operation's declared capability fits under this ceiling.

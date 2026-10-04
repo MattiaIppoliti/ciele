@@ -32,6 +32,7 @@ import {
 } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { RollInText } from "./roll-in-text";
+import { optionScrollDelta, selectPopupGeometry } from "./select-geometry";
 
 const INSTANT_TRANSITION: Transition = { duration: 0 };
 
@@ -181,7 +182,8 @@ export function Select({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !e.defaultPrevented) {
+        e.preventDefault();
         setOpen(false);
         focusTrigger();
       }
@@ -375,7 +377,7 @@ export function SelectValue({
       : children ?? label ?? placeholder ?? "Select";
   return (
     <span
-      className={cn(label ? "text-foreground" : "text-muted-foreground", className)}
+      className={cn("min-w-0 truncate", label ? "text-foreground" : "text-muted-foreground", className)}
     >
       {typeof content === "string" || typeof content === "number" ? (
         <RollInText text={String(content)} entrance={false} duration={380} />
@@ -393,11 +395,13 @@ export interface SelectContentProps {
 export function SelectContent({ className, children, side }: SelectContentProps) {
   const ctx = useSelectContext("SelectContent");
   const innerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
+  const [geometry, setGeometry] = useState<{ maxHeight: number; maxWidth: number; leftOffset: number } | null>(null);
   const typeaheadRef = useRef("");
   const typeaheadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const open = ctx.open;
-  const { setPlacement } = ctx;
+  const { setPlacement, setOpen } = ctx;
 
   useLayoutEffect(() => {
     const node = innerRef.current;
@@ -409,18 +413,70 @@ export function SelectContent({ className, children, side }: SelectContentProps)
     return () => observer.disconnect();
   });
 
-  // On open, flip upward when there isn't room below and there's more above.
+  // An inline popup can be clipped by a form's scroller before it reaches
+  // the screen edge. Recalculate on outer scrolling, rotation and keyboard.
   useLayoutEffect(() => {
     if (!open) return;
     const trigger = document.getElementById(ctx.triggerId);
     const node = innerRef.current;
     if (!trigger || !node) return;
-    const rect = trigger.getBoundingClientRect();
-    const h = node.offsetHeight;
-    const below = window.innerHeight - rect.bottom;
-    const above = rect.top;
-    setPlacement(side ?? (below < h + 16 && above > below ? "top" : "bottom"));
-  }, [open, ctx.triggerId, setPlacement, side]);
+    const update = () => {
+      const viewport = window.visualViewport;
+      const boundary = {
+        top: viewport?.offsetTop ?? 0,
+        bottom: (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight),
+        left: viewport?.offsetLeft ?? 0,
+        right: (viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth),
+      };
+      for (let parent = trigger.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent);
+        const bounds = parent.getBoundingClientRect();
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) {
+          boundary.top = Math.max(boundary.top, bounds.top + parent.clientTop);
+          boundary.bottom = Math.min(boundary.bottom, bounds.top + parent.clientTop + parent.clientHeight);
+        }
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) {
+          boundary.left = Math.max(boundary.left, bounds.left + parent.clientLeft);
+          boundary.right = Math.min(boundary.right, bounds.left + parent.clientLeft + parent.clientWidth);
+        }
+      }
+      const anchor = trigger.getBoundingClientRect();
+      if (anchor.bottom < boundary.top || anchor.top > boundary.bottom) {
+        setOpen(false);
+        return;
+      }
+      const next = selectPopupGeometry(anchor, boundary, {
+        height: node.scrollHeight,
+        width: popupRef.current?.offsetWidth ?? trigger.offsetWidth,
+      }, side);
+      setPlacement(next.side);
+      setGeometry(previous => previous && previous.maxHeight === next.maxHeight && previous.maxWidth === next.maxWidth && previous.leftOffset === next.leftOffset ? previous : next);
+    };
+    const onScroll = (event: Event) => {
+      if (!(event.target instanceof Node) || !node.contains(event.target)) update();
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", onScroll, true);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+    const observer = new ResizeObserver(update);
+    observer.observe(trigger);
+    observer.observe(node);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", onScroll, true);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [open, ctx.triggerId, setPlacement, setOpen, side]);
+
+  const revealOption = (option: HTMLElement) => {
+    const node = innerRef.current;
+    if (!node) return;
+    node.scrollTop += optionScrollDelta(option.getBoundingClientRect(), node.getBoundingClientRect());
+  };
 
   // Specify EVERY corner + both margins each render. The near edge (facing the
   // trigger) animates flat->round and the gap opens on that side; the far edge
@@ -431,6 +487,13 @@ export function SelectContent({ className, children, side }: SelectContentProps)
   const nearRadius = open ? 12 : 0;
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      ctx.setOpen(false);
+      ctx.focusTrigger();
+      return;
+    }
     if (event.key === "Tab") {
       requestAnimationFrame(() => ctx.setOpen(false));
       return;
@@ -453,8 +516,7 @@ export function SelectContent({ className, children, side }: SelectContentProps)
               ? 0
               : (activeIndex + (event.key === "ArrowDown" ? 1 : -1) + options.length) %
                 options.length;
-      options[nextIndex]?.focus();
-      options[nextIndex]?.scrollIntoView({ block: "nearest" });
+      options[nextIndex]?.focus({ preventScroll: true });
       return;
     }
 
@@ -476,8 +538,7 @@ export function SelectContent({ className, children, side }: SelectContentProps)
       );
       if (match) {
         event.preventDefault();
-        match.focus();
-        match.scrollIntoView({ block: "nearest" });
+        match.focus({ preventScroll: true });
       }
     }
   };
@@ -504,10 +565,12 @@ export function SelectContent({ className, children, side }: SelectContentProps)
   // placeholder the moment the panel closes.
   return (
     <motion.div
+      ref={popupRef}
       id={ctx.listId}
       role="listbox"
       aria-multiselectable={ctx.multiple || undefined}
       onKeyDown={onKeyDown}
+      onFocusCapture={event => revealOption(event.target)}
       aria-labelledby={ctx.triggerId}
       aria-hidden={!open}
       inert={!open}
@@ -550,21 +613,25 @@ export function SelectContent({ className, children, side }: SelectContentProps)
         transformOrigin: isTop ? "bottom" : "top",
         overflow: "hidden",
         pointerEvents: open ? "auto" : "none",
+        maxWidth: geometry?.maxWidth,
+        left: geometry?.leftOffset,
       }}
       // flush against the trigger, then separates into its own rounded pill;
       // sits above or below depending on available space
       className={cn(
-        "absolute left-0 right-0 z-20 rounded-xl border border-border bg-background shadow-strong",
+        "absolute left-0 z-20 w-full rounded-xl border border-border bg-background shadow-strong",
         isTop ? "bottom-full" : "top-full",
         className,
       )}
     >
       <motion.div
         ref={innerRef}
+        data-foley-scroll=""
         variants={ctx.reduce ? undefined : LIST_VARIANTS}
         initial={false}
         animate={open ? "show" : "hidden"}
-        className="max-h-[min(20rem,calc(100vh-2rem))] overflow-y-auto p-1"
+        style={{ maxHeight: geometry?.maxHeight }}
+        className="max-h-[min(20rem,calc(100dvh-2rem))] overflow-y-auto overscroll-contain p-1"
       >
         {children}
       </motion.div>
@@ -602,6 +669,7 @@ export function SelectItem({
         ref={optionRef}
         type="button"
         role="option"
+        data-slot="select-item"
         aria-selected={selected}
         tabIndex={-1}
         disabled={disabled}

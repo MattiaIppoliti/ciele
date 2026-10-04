@@ -1,0 +1,20 @@
+# Use after docker-compose.yml and docker-compose.computers.yml.
+# Control traffic is private. Computers have internet egress and can reach the
+# app on their shared network, but cannot resolve the database or gateway.
+services:
+  app:
+    environment:
+      CIELE_COMPUTER_SUPERVISOR_URL: http://computer-supervisor:4300
+      CIELE_COMPUTER_SUPERVISOR_TOKEN: ${CIELE_COMPUTER_SUPERVISOR_TOKEN:?Set CIELE_COMPUTER_SUPERVISOR_TOKEN}
+      CIELE_COMPUTER_TOKEN: ${CIELE_COMPUTER_TOKEN:?Set CIELE_COMPUTER_TOKEN}
+      CIELE_COMPUTER_NAMESPACE: ${CIELE_COMPUTER_NAMESPACE:-ciele}
+    networks: [computer-control, computers]
+  computer-supervisor:
+    ports: !reset []
+    environment:
+      COMPUTER_NETWORK: ${CIELE_COMPUTER_NAMESPACE:-ciele}-computers
+networks:
+  computer-control:
+    internal: true
+  computers:
+    name: ${CIELE_COMPUTER_NAMESPACE:-ciele}-computers

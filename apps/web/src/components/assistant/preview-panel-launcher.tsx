@@ -2,7 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import type { Assistant } from "@agent-hub/core";
-import { createElement, useEffect, useReducer, useState } from "react";
+import { createElement, useEffect, useReducer, useState, useRef } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import { useTouchNavigation } from "@/components/shell/mobile-navigation";
+import { useModalFocus } from "@/components/motion/use-modal-focus";
 import { RailCollapsed } from "@/components/chat/rail-panel";
 import { PreviewPeek } from "./preview-peek";
 import { useShell } from "@/components/shell/shell-provider";
@@ -39,6 +43,9 @@ export function PreviewPanelLauncher({
 }) {
   const pathname = usePathname();
   const { rightRail, openRightRail, claimRightRail, closeRightRail } = useShell();
+  const touch = useTouchNavigation();
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalFocus(touch && rightRail === "preview" && !pathname.endsWith("/preview") && !!previewPanelCode.loaded(), modalRef);
   const [mounted, setMounted] = useState(false);
   const [viaDrag, setViaDrag] = useState(false);
   // Opened by the Member, here or from elsewhere on the page (the Overview's
@@ -61,7 +68,7 @@ export function PreviewPanelLauncher({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const stored = window.localStorage.getItem(COLLAPSED_KEY);
-      const wanted = stored !== null ? stored === "0" : window.innerWidth >= 1280;
+      const wanted = !window.matchMedia("(max-width: 1023px), (hover: none) and (pointer: coarse)").matches && (stored !== null ? stored === "0" : window.innerWidth >= 1280);
       if (wanted) {
         setMounted(true);
         // Claim, not open: this fires on every navigation into an Assistant
@@ -124,6 +131,13 @@ export function PreviewPanelLauncher({
   // reference on every render, which the compiler's lint cannot see through a
   // function call and would otherwise flag as a component made in render.
   const previewPanel = previewPanelCode.loaded()?.PreviewPanel ?? null;
+  if (touch) {
+    if (!mounted || !previewPanel) return null;
+    return createPortal(<div ref={modalRef} hidden={!open} role="dialog" aria-modal="true" aria-label="Chatbot preview" tabIndex={-1} className="mobile-chatbot-preview fixed inset-0 z-[80] flex flex-col bg-background outline-none" onKeyDown={event => { if (event.key === "Escape") closeRightRail("preview"); }}>
+      <header className="flex shrink-0 items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)]"><h2 className="text-base font-medium">Chatbot preview</h2><button type="button" aria-label="Close chatbot preview" className="flex size-[44px] items-center justify-center rounded-lg hover:bg-muted" onClick={() => closeRightRail("preview")}><X size={20} /></button></header>
+      <div className="flex min-h-0 flex-1 flex-col pb-[env(safe-area-inset-bottom)]">{createElement(previewPanel, { assistant, connectorScope, variant: "page" })}</div>
+    </div>, document.body);
+  }
   if (mounted && previewPanel) {
     return createElement(previewPanel, {
       assistant,

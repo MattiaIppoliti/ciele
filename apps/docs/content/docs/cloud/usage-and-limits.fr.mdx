@@ -11,7 +11,7 @@ disponibles des 30 derniers jours.
 Ciele mesure ces groupes de ressources séparément :
 
 - Utilisation du modèle d'IA
-- utilisation de l'embedding
+- utilisation des embeddings
 - utilisation du scraping
 
 La page indique si l'opération a été financée par le crédit de la plateforme
@@ -22,11 +22,16 @@ décompte des réponses de l'Assistant.
 
 ## Limites
 
-La page compare l'utilisation actuelle aux limites prévues par le forfait. Elle
+La page compare l'utilisation actuelle aux limites du forfait disponible. Elle
 peut également afficher le budget quotidien de l'organisation.
 
-Les lignes quotidiennes utilisent le temps universel coordonné (UTC). Utilisez
-cette limite lorsque vous comparez les données Ciele avec une facture de
+Les jauges monochromes indiquent l'utilisation de chaque fenêtre. **Near limit**
+et **Limit reached** identifient l'état de la limite sous forme de texte. Le
+pourcentage peut dépasser 100 %, même lorsque la jauge est pleine. Une fenêtre
+sans plafond affiche **N/A**.
+
+Les lignes quotidiennes utilisent l'heure universelle coordonnée (UTC). Utilisez
+cette limite lorsque vous comparez les données de Ciele avec une facture de
 fournisseur.
 
 ## Où les crédits ont été dépensés
@@ -40,7 +45,7 @@ crédit figure donc sur deux cartes. N'additionnez pas les cartes entre elles.
 
 ## Crédits de recharge
 
-L'allocation d'un plan est réinitialisée à chaque nouvelle période (window). Les
+L'allocation d'un plan est réinitialisée en même temps que sa période. Les
 crédits de recharge constituent un pool que votre organisation conserve jusqu'à
 ce qu'elle les utilise.
 
@@ -48,9 +53,9 @@ Ciele ne puise dans le pool qu'une fois l'allocation d'une fenêtre entièrement
 utilisée. Les réponses se poursuivent ensuite au lieu de s'interrompre. Lorsque
 le pool est également vide, le message de limite habituel s'applique à nouveau.
 
-Achetez un pack dans **Settings > Billing**. Un pack coûte toujours plus cher
-par crédit que votre plan. Si vous achetez un pack chaque mois, un passage à un
-abonnement supérieur est moins coûteux.
+Achetez un pack dans **Settings > Billing**. Le coût par crédit d'un pack est
+toujours supérieur à celui de votre plan. Si vous achetez un pack chaque mois,
+un passage à un abonnement supérieur est moins coûteux.
 
 ## Autres tâches
 

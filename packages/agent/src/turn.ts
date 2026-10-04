@@ -866,7 +866,7 @@ export async function streamConversationTurn(
     ? `study_${studySubmission.data.exerciseId}_${studySubmission.data.questionId}`
     : suppliedTurnId || crypto.randomUUID();
 
-  const turnModel = turnModelIdentity(
+  const turnModel = teammate?.runtimeConfig?.harness.kind === "ag_ui" ? null : turnModelIdentity(
     assistant,
     input.connections,
     input.keyResolution
@@ -1001,7 +1001,7 @@ export async function streamConversationTurn(
   if (memoryEnabled && memorySubjectId) {
     searchMemories = async (query: string) => {
       const embedding = await embedText(query, input.connections, {
-        db,
+        db: systemDb,
         organizationId: input.organizationId,
         assistantId: attributedAssistantId,
         conversationId: conversation!.id,
@@ -1084,11 +1084,11 @@ export async function streamConversationTurn(
       part.type === "component" && part.name === "study_exercise" ? [componentPartText(part)] : []
     );
     const text = [messageText(m.content), ...exercises].filter(Boolean).join("\n\n");
-    if (text || m.role !== "assistant") return { role: m.role, text };
+    if (text || m.role !== "assistant") return { id: m.id, role: m.role, text };
     const question = clarifyQuestion(m.content);
     return question === null
-      ? { role: m.role, text }
-      : { role: m.role, text: question, askedQuestion: true };
+      ? { id: m.id, role: m.role, text }
+      : { id: m.id, role: m.role, text: question, askedQuestion: true };
   });
   // The anti-loop guarantee (#558): a clarify part is persisted in a prior
   // assistant message's content parts, so no schema is needed to know this
@@ -1105,7 +1105,7 @@ export async function streamConversationTurn(
   // memories relevant to the opening message become the "Long-term memory"
   // prompt block; later turns rely on the searchMemories tool) are
   // independent, one wave, not two awaits.
-  await Promise.all([
+  const [savedUserMessage] = await Promise.all([
     // A resumed turn has no Visitor words to persist (#841, #842).
     input.resumeReview || input.resumeWebhook
       ? Promise.resolve()
@@ -1127,7 +1127,7 @@ export async function streamConversationTurn(
   ]);
 
   const spendAdmission = await admitAiSpend({
-    db,
+    db: systemDb,
     organizationId: input.organizationId,
     connectionKinds: connectionKind ? [connectionKind] : [],
     capacity: CONVERSATION_SPEND_CAPACITY,
@@ -1275,7 +1275,7 @@ export async function streamConversationTurn(
         if (turn.recordTelemetry) {
           await turn.recordTelemetry(saved.id);
         } else {
-          await recordRuntimeEvent(db, {
+          await recordRuntimeEvent(systemDb, {
             organizationId: input.organizationId,
             assistantId: attributedAssistantId,
             conversationId,
@@ -1506,6 +1506,7 @@ export async function streamConversationTurn(
           effectKeyPrefix: turnOperationKey,
           platformPrompt,
           message,
+          userMessageId: savedUserMessage?.id,
           history,
           templateContext: buildTemplateContext({
             user: {
@@ -1645,6 +1646,7 @@ export async function streamConversationTurn(
         if (teammate) {
           const outcome = await executeTeammateAnswer({
               db,
+              systemDb,
               organizationId: input.organizationId,
               teammate,
               connections: input.connections,
@@ -1763,7 +1765,7 @@ export async function streamConversationTurn(
             // write: losing the count must not lose the work.
             if (operationCounts.length > 0) {
               try {
-                await db.recordUsageEvents(
+                await systemDb.recordUsageEvents(
                   operationCounts.map((event) => ({
                     ...event,
                     organizationId: input.organizationId,
@@ -1806,7 +1808,7 @@ export async function streamConversationTurn(
                     conversationId,
                     organizationId: input.organizationId,
                   },
-                  { db }
+                  { db: systemDb }
                 );
               } catch (error) {
                 console.error("[runtime] memory-promotion enqueue failed:", error);
@@ -1825,7 +1827,7 @@ export async function streamConversationTurn(
                     teammateId: teammate.id,
                     conversationId,
                   },
-                  { db }
+                  { db: systemDb }
                 );
               } catch (error) {
                 console.error("[runtime] agent-memory enqueue failed:", error);
@@ -1856,7 +1858,7 @@ export async function streamConversationTurn(
         // Failures are never silent: the error outcome is recorded even when a
         // client-aborted turn suppresses the wire error event.
         if (!teammateFailureRecorded) {
-          await recordRuntimeEvent(db, {
+          await recordRuntimeEvent(systemDb, {
             organizationId: input.organizationId,
             assistantId: attributedAssistantId,
             conversationId,

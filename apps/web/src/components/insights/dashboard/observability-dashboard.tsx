@@ -131,6 +131,7 @@ export function ObservabilityDashboard({
           </RateCard>
           <RateCard
             title="Answer accuracy"
+            variant="gauge"
             description="Verifier verdicts on Assistant answers"
             good={totals.passes}
             bad={totals.fails}
@@ -148,7 +149,7 @@ export function ObservabilityDashboard({
           </RateCard>
           <RateCard
             title="Autonomy"
-            variant="waffle"
+            variant="gauge"
             description="Visitor conversations resolved without a human"
             good={totals.conversations - totals.escalated}
             bad={totals.escalated}

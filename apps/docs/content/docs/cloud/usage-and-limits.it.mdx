@@ -22,30 +22,34 @@ conteggio delle risposte dell'Assistente.
 
 ## Limiti
 
-La pagina confronta l'utilizzo corrente con i limiti del piano disponibile. Può
+La pagina confronta l'utilizzo corrente con i limiti del piano disponibili. Può
 anche mostrare il budget giornaliero dell'organizzazione.
 
+Gli indicatori monocromatici mostrano l'utilizzo di ciascuna finestra. **Near
+limit** e **Limit reached** indicano lo stato del limite nel testo. La
+percentuale può superare il 100%, anche quando l'indicatore è pieno. Una
+finestra senza limiti mostra **N/A**.
+
 Le righe giornaliere utilizzano il Coordinated Universal Time (UTC). Utilizza
-questo limite quando confronti i dati di Ciele con la fattura di un provider.
+questo limite quando confronti i dati di Ciele con una fattura del provider.
 
 ## Dove sono finiti i crediti
 
 La pagina elenca i soggetti che hanno utilizzato i crediti della finestra:
 Assistants, Teammates, Members, API keys, Routines e Flows.
 
-Ogni scheda riporta il totale per un tipo di spender. Una risposta di un
-Teammate indica il nome del Teammate e anche quello del collega che ha posto la
-domanda. Lo stesso credito risulta quindi presente su due schede. Non sommare le
-schede.
+Ogni scheda riporta il totale di un tipo di spender. Una risposta di un Teammate
+indica il nome del Teammate e anche quello del collega che ha posto la domanda.
+Lo stesso credito risulta quindi presente su due schede. Non sommare le schede.
 
 ## Crediti di ricarica
 
-Il budget di un piano viene azzerato al termine della relativa finestra
-temporale. I crediti di ricarica costituiscono un pool che la tua Organizzazione
-conserva fino a quando non li spende.
+Il budget di un piano viene azzerato insieme al relativo periodo di validità. I
+crediti di ricarica costituiscono un pool che la tua Organizzazione conserva
+fino a quando non li spende.
 
-Ciele attinge al pool solo dopo che il plafond di una finestra è stato
-completamente utilizzato. A quel punto le risposte proseguono invece di
+Ciele attinge al pool solo dopo che l'allowance di una finestra è stata
+completamente utilizzata. A quel punto le risposte proseguono invece di
 interrompersi. Quando anche il pool è vuoto, viene nuovamente visualizzato il
 consueto messaggio di superamento del limite.
 
@@ -56,8 +60,8 @@ piano superiore è meno costoso.
 ## Altre attività
 
 Alcune operazioni non comportano alcun costo in crediti: una richiesta API in
-uscita da un Flow, un'email, un'esecuzione di un Flow in entrata, un callback di
-un webhook.
+uscita da un Flow, un'email, un'esecuzione di un Flow in ingresso, un callback
+di un webhook.
 
 La pagina conta queste operazioni. Non ne indica il prezzo. Il conteggio ti
 mostra che un Flow effettua molte chiamate in uscita, cosa che nessuna altra
@@ -71,6 +75,6 @@ l'altro sistema o la rete.
 
 1. Seleziona il contatore interessato.
 2. Identifica il giorno UTC e la fonte di finanziamento.
-3. Esamina l'attività dell'Assistente per lo stesso periodo.
-4. Verifica la connessione del provider selezionato.
+3. Esamina l'attività di Assistant per lo stesso periodo.
+4. Controlla la connessione del provider selezionato.
 5. Modifica il budget dell'organizzazione quando sei autorizzato a farlo.

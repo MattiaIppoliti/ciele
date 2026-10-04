@@ -1,5 +1,7 @@
 "use client";
 
+import { ThreadSwipeRow } from "@/components/thread-swipe-row";
+import { ThreadListControls, useThreadListView, useThreadPreferences } from "@/components/thread-preferences";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
@@ -564,6 +566,9 @@ export function InboxClient({
   const [exporting, setExporting] = useState(false);
   const [legalHoldPending, setLegalHoldPending] = useState(false);
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  const preferences = useThreadPreferences();
+  const [threadView, setThreadView] = useThreadListView();
+  const visibleConversations = conversations.filter(c => preferences.visible({ kind: "inbox", id: c.id }, threadView));
   const threadHeadingRef = useRef<HTMLHeadingElement>(null);
   const detailsButtonRef = useRef<HTMLButtonElement>(null);
   const detailsHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -1270,7 +1275,7 @@ export function InboxClient({
         <aside
           aria-label="Conversations"
           aria-busy={loadingList}
-          className={`w-full shrink-0 flex-col overflow-y-auto border-r lg:flex lg:w-72 ${
+          className={`touch-scroll-clearance w-full shrink-0 flex-col overflow-y-auto border-r lg:flex lg:w-72 ${
             selected ? "hidden" : "flex"
           }`}
         >
@@ -1299,10 +1304,16 @@ export function InboxClient({
               action={<Button variant="outline" size="sm" onClick={() => { setSearch(""); setFilters(defaultInboxFilters()); }}>Reset filters</Button>}
             />
           )}
-          {conversations.map((c, index) => (
+          <ThreadListControls value={threadView} onChange={setThreadView} />
+          {!loadingList && conversations.length > 0 && visibleConversations.length === 0 && <p className="px-4 py-3 text-sm text-muted-foreground">No {threadView} conversations in this loaded window.</p>}
+          {visibleConversations.map((c, index) => (
             // A link, so Cmd/Ctrl/middle-click opens the conversation in a new
             // tab; a plain click selects it in place.
             <RollRow key={c.id} index={index}>
+            <ThreadSwipeRow target={{ kind: "inbox", id: c.id }} label={c.title || subjectName(c)} height={88 + (c.notificationOnly ? 20 : 0) + (c.collectionName ? 20 : 0)} radius={0} canDelete={!c.legalHold} onDeleted={() => {
+              setConversations(current => current.filter(row => row.id !== c.id));
+              if (selectedId === c.id) { setSelectedId(null); replaceConversationParam(null); }
+            }}>
             <a
               href={conversationHref(c.id)}
               data-conversation-row={c.id}
@@ -1343,6 +1354,7 @@ export function InboxClient({
                 </span>
               </span>
             </a>
+            </ThreadSwipeRow>
             </RollRow>
           ))}
           {nextCursor && (
@@ -1360,7 +1372,7 @@ export function InboxClient({
         {/* Thread */}
         <section
           aria-label="Transcript"
-          className={`min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:block ${
+          className={`touch-scroll-clearance min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:block ${
             selected ? "block" : "hidden"
           }`}
         >

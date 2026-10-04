@@ -404,7 +404,7 @@ export function AiSettingsClient({
   }
 
   return (
-    <div className="mt-8 space-y-8">
+    <div className="provider-connections mt-8 space-y-8">
       <Card size="sm" data-animate-group className="gap-0 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -412,7 +412,7 @@ export function AiSettingsClient({
             <h2 className="text-base font-semibold">API keys</h2>
           </div>
           {canManage && (
-            <Button size="sm" onClick={() => setDialog("key")}>
+            <Button variant="outline" size="sm" onClick={() => setDialog("key")}>
               <AnimatedIcon icon={Plus} size={16} /> Connect
             </Button>
           )}
@@ -467,7 +467,7 @@ export function AiSettingsClient({
             <h2 className="text-base font-semibold">OpenAI-compatible endpoints</h2>
           </div>
           {canManage && (
-            <Button size="sm" onClick={() => setDialog("compat")}>
+            <Button variant="outline" size="sm" onClick={() => setDialog("compat")}>
               <AnimatedIcon icon={Plus} size={16} /> Connect
             </Button>
           )}
@@ -535,8 +535,8 @@ export function AiSettingsClient({
             <h2 className="text-base font-semibold">Keyless enterprise auth</h2>
           </div>
           {canManage && (
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => setDialog("vertex")}>
+            <div className="provider-connect-actions flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setDialog("vertex")}>
                 <AnimatedIcon icon={Plus} size={16} /> Google Vertex
               </Button>
               <Button
@@ -790,7 +790,7 @@ export function AiSettingsClient({
               {...vertexField("displayName")}
               placeholder="e.g. Production Vertex"
             />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 @md/settings:grid-cols-2">
               <Field
                 id="vertex-project"
                 label="Project ID"
@@ -864,7 +864,7 @@ export function AiSettingsClient({
               placeholder="trusted identity provider audience"
               required
             />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 @md/settings:grid-cols-2">
               <Field
                 id="anthropic-org"
                 label="Organization ID (optional)"
@@ -922,7 +922,7 @@ export function AiSettingsClient({
               placeholder="https://example.openai.azure.com"
               required
             />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 @md/settings:grid-cols-2">
               <Field
                 id="azure-tenant"
                 label="Tenant ID"
@@ -940,7 +940,7 @@ export function AiSettingsClient({
                 required
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 @md/settings:grid-cols-2">
               <Field
                 id="azure-client"
                 label="Client ID (optional)"

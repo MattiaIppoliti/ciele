@@ -1,9 +1,11 @@
 "use client";
 
+import { ConfettiButton } from "@/components/confetti-button";
+import { celebrate } from "@/lib/celebration";
 import { RollInText } from "@/components/motion/roll-in-text";
 
 import React from "react";
-import { Button, cn } from "@agent-hub/ui";
+import { cn } from "@agent-hub/ui";
 import { FooterGithubCard } from "./footer-github-card";
 import {
   subscribeToNewsletterAction,
@@ -87,14 +89,11 @@ export function FooterNewsletter() {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              startTransition(async () =>
-                setResult(
-                  await subscribeToNewsletterAction({
-                    email,
-                    organizationReference: honeypot,
-                  }),
-                ),
-              );
+              startTransition(async () => {
+                const response = await subscribeToNewsletterAction({ email, organizationReference: honeypot });
+                setResult(response);
+                if (response.status === "check_inbox" && !honeypot.trim()) void celebrate();
+              });
             }}
             className={cn(
               "border-border bg-background/60 flex items-center rounded-full border p-1 pl-2",
@@ -122,14 +121,15 @@ export function FooterNewsletter() {
               className="pointer-events-none absolute left-[-9999px] h-0 w-0 opacity-0"
               placeholder="leave this empty"
             />
-            <Button
+            <ConfettiButton
+              celebrateOnClick={false}
               type="submit"
               size="sm"
               disabled={pending}
               className="shrink-0 rounded-full px-4"
             >
               <RollInText text={pending ? "Sending…" : "Subscribe"} />
-            </Button>
+            </ConfettiButton>
           </form>
           {message ? (
             <p role="alert" className="text-muted-foreground px-3 text-xs">

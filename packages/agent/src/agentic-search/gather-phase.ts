@@ -1,3 +1,4 @@
+import { INTERACTIVE_TABLE_TOOLS } from "../interactive-table-tools";
 import { streamText } from "ai";
 import { dispatchToolBatch, modelToolDeclarations } from "../tool-batch";
 import type { LanguageModel, ModelMessage, ToolSet } from "ai";
@@ -145,7 +146,7 @@ export async function runGatherPhase(
         const component =
           chunk.toolName === RENDER_TABLE_TOOL_NAME
             ? RENDER_TABLE_COMPONENT
-            : undefined;
+            : INTERACTIVE_TABLE_TOOLS.find(spec => spec.name === chunk.toolName)?.component;
         if (component) {
           renderCalls.set(chunk.id, component);
           emit({

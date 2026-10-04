@@ -573,7 +573,7 @@ export function ImprovementsBoard({
         }
       >
         <div
-          className={`h-full min-h-0 ${view === "kanban" ? "overflow-y-auto" : "overflow-hidden"}`}
+          className={`h-full min-h-0 ${view === "kanban" ? "touch-scroll-clearance overflow-y-auto" : "overflow-hidden"}`}
         >
           <div
             className={

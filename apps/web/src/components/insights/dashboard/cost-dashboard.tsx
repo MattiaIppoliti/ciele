@@ -1,6 +1,7 @@
 "use client";
 
 import type { UsageDashboardFilter } from "@agent-hub/core";
+import { UsageGauge } from "@/components/usage-gauge";
 import {
   Table,
   TableBody,
@@ -44,6 +45,7 @@ export function CostDashboard({
   const { dashboard } = view;
   const highlights = tokenHighlights(dashboard.daily);
   const surfaceSpend = dashboard.surfaces.reduce((sum, s) => sum + s.spendEur, 0);
+  const totalTokens = dashboard.totals.inputTokens + dashboard.totals.outputTokens;
 
   return (
     <DashboardFrame
@@ -83,6 +85,28 @@ export function CostDashboard({
             description="Input and output tokens per UTC day. Hover or use arrow keys to inspect a day."
             className="col-span-12 @5xl:col-span-5"
           >
+            <div className="mb-5 flex flex-wrap items-center gap-5 border-b pb-5">
+              <UsageGauge
+                rings={[{
+                  fraction: totalTokens ? dashboard.totals.inputTokens / totalTokens : null,
+                  label: `Input tokens: ${formatCount(dashboard.totals.inputTokens)} / ${formatCount(totalTokens)} total tokens`,
+                }]}
+                valueLabel={totalTokens ? `${Math.round((dashboard.totals.inputTokens / totalTokens) * 100)}%` : "—"}
+                size={112}
+                variant="dial"
+              />
+              <dl className="space-y-2 text-sm">
+                <div>
+                  <dt className="text-muted-foreground text-xs">Input tokens · share of total</dt>
+                  <dd className="font-medium tabular-nums">{formatCount(dashboard.totals.inputTokens)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Output tokens</dt>
+                  <dd className="font-medium tabular-nums">{formatCount(dashboard.totals.outputTokens)}</dd>
+                </div>
+              </dl>
+              {!totalTokens && <p className="text-muted-foreground text-xs">No token usage in this range.</p>}
+            </div>
             <div className="overflow-x-auto">
               <TokenHeatCalendar daily={dashboard.daily} />
             </div>

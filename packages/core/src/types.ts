@@ -1855,6 +1855,13 @@ export interface Publication {
 /** Who may see a Teammate on the roster: everyone, or its owner and admins. */
 export type TeammateVisibility = "org" | "private";
 
+/** Admin-controlled execution, independent of the Standing Role and Ciele Action Grants. */
+export interface TeammateRuntimeConfig {
+  harness: { kind: "ciele" } | { kind: "ag_ui"; connectionId: string };
+  internet: boolean;
+  computer: { browser: boolean; files: boolean; terminal: boolean };
+}
+
 /**
  * An **AI Teammate** (spec #767): the Assistant's internal sibling. Same chat
  * runtime, same knowledge, same citations, but it answers Members inside the
@@ -1868,6 +1875,8 @@ export type TeammateVisibility = "org" | "private";
 export interface Teammate {
   id: string;
   organizationId: string;
+  /** Absent on an older schema: native harness, no computer or internet tools. */
+  runtimeConfig?: TeammateRuntimeConfig;
   /** What Members call it: the roster card, the chat title, the persona's name. */
   name: string;
   /** Job title under the name ("Support Copywriter"). Empty is allowed. */
@@ -2182,6 +2191,8 @@ export interface TeammateChannel {
    * settles (#776).
    */
   projectId: string | null;
+  /** Namespaced external harness state. Runtime writes only; never routing authority. */
+  runtimeState?: Record<string, unknown>;
   /** Who opened it. Keeps the roster and the name theirs to change. */
   createdBy: string | null;
   createdAt: string;
@@ -2305,7 +2316,7 @@ export type TeammatePatch = Partial<
  * ceiling or hand it approval-bypass in the same write.
  */
 export type TeammateGovernancePatch = Partial<
-  Pick<Teammate, "capabilityCeiling" | "approvalBypass">
+  Pick<Teammate, "capabilityCeiling" | "approvalBypass" | "runtimeConfig">
 >;
 
 /**
@@ -4630,3 +4641,15 @@ export interface MessageReaction {
   actorName: string;
   emoji: string;
 }
+
+/** A Member's reversible triage of a conversation or shared group. */
+export interface ThreadPreference {
+  id: string;
+  organizationId: string;
+  userId: string;
+  conversationId: string | null;
+  channelId: string | null;
+  action: "archive" | "flag";
+  createdAt: string;
+}
+export type ThreadTarget = { kind: "inbox" | "conversation" | "channel"; id: string };

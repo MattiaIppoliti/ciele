@@ -500,8 +500,20 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
 - **Scrollbars.** A thin `alpha-strong` thumb on a transparent track everywhere, set once in
   `globals.css` (`scrollbar-color` for Chromium and Firefox, the `::-webkit-scrollbar` pseudos
   for Safari). Do not style a scrollbar per component; hide one with `.no-scrollbar` if it must go.
-- **Touch.** Under `lg` and on coarse pointers the admin surface raises icon buttons, selects and
-  nav rows to 44px. It does this by `data-slot`, so only the shared primitives get it.
+- **Touch.** Under `lg` and on touch-only coarse pointers, shared admin buttons and selectors have
+  44px targets. Standalone buttons use a pill contour and can wrap long labels; grouped buttons
+  retain their seams. Inputs use 16px text. Cards use native surfaces without the expanded SVG
+  frame or sheen. Forced colors retains an explicit boundary; desktop styling stays compact.
+  Home opens a non-modal curved panel on the left. Its circular surface follows the arc picker
+  and ends its opaque core near the longest label, with a broad outer fade covering rotated labels.
+  Its surface uses the neutral Ciele gray #0F1011.
+  The page stays visible and interactive with a light dim and 4px blur;
+  its normal header remains available above a clear gap and feathered top edge of the rail/backdrop.
+  The gap includes the workspace frame inset and border. Open sits at the viewport's bottom right,
+  aligned with the floating dock, outside the narrow rail in the viewport-sized focus boundary.
+  Only the rail and controls capture pointer input. Close with Home or Escape. Arc releases project momentum
+  into their settling spring. Opt-in menu scrollers emit quiet row detents during user gestures,
+  throttled to one per 80ms; ordinary page scrolling and reduced-motion preferences stay silent.
 
 ---
 
@@ -689,4 +701,3 @@ the press, sound and roll-in feedback.
 - **The typeface.** Linear's is proprietary; Host Grotesk stays, since it is already ours.
 - **Zero tracking at small sizes.** Ours is slightly positive below `text-base`, which reads better
   at the console's 92% density.
-

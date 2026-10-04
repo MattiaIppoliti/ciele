@@ -97,7 +97,7 @@ async function loadChannel(
 }
 
 /** id → a channel this Member is in, or `not_found`. */
-async function requireChannel(
+export async function requireChannel(
   ctx: OperationContext,
   id: string
 ): Promise<ResolvedChannel> {

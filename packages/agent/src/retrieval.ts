@@ -144,6 +144,8 @@ export function buildKnowledgeSearcher(opts: {
  */
 export function buildCollectionSearcher(opts: {
   db: Db;
+  /** Embedding/rerank accounting uses the internal runtime port. */
+  systemDb?: Db;
   connections: ProviderConnection[];
   organizationId: string;
   collectionIds: string[];
@@ -157,7 +159,7 @@ export function buildCollectionSearcher(opts: {
 }): KnowledgeSearcher {
   const { db, organizationId, collectionIds, sourceIds, conversationId } = opts;
   const attribution = {
-    db,
+    db: opts.systemDb ?? db,
     organizationId,
     // No Assistant to attribute the spend to; the Teammate and the Member who
     // asked are on the spender tuple instead (#849).

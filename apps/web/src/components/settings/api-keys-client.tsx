@@ -342,7 +342,7 @@ export function ApiKeysClient({
                 }
               })
             }
-            className="bg-muted hover:bg-muted/70 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left font-mono text-sm break-all transition-colors"
+            className="press-control bg-muted hover:bg-muted/70 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left font-mono text-sm break-all transition-colors"
           >
             {mintedSecret}
             <CopyFeedbackIcon copied={isCopied("minted")} className="size-4 shrink-0" />

@@ -10,17 +10,31 @@ Datensatz zu ändern.
 Diagramme in Insights, Eval, Assistant Overview und Usage verwenden eine
 Graustufenpalette, die sich an helle und dunkle Designs anpasst. Positive und
 negative Ergebnisse bleiben grün bzw. rot. Bei Änderungen wird die Richtung der
-jeweiligen Kennzahl berücksichtigt: Niedrigere Kosten, Latenz und Fehlerzahlen
-sind positiv. Labels, Legends und genaue Werte identifizieren jede Kennzahl. Die
+jeweiligen Kennzahl berücksichtigt: Niedrigere Kosten, Latenz und Fehler sind
+positiv. Labels, Legends und genaue Werte kennzeichnen jede Kennzahl. Die
 Latenz-Zeitleiste verwendet eine gestrichelte Linie für p95.
+
+Diagramm- und Statistikkarten platzieren ihre Visualisierung in einem
+abgerundeten Einsatz. Der Titel und die Beschreibung befinden sich darunter, mit
+den Änderungen des Zeitraums und den verfügbaren Aktionen auf der rechten Seite.
+Costs, Observability, Platform Admin und einzelne Eval Runs verwenden dasselbe
+Kartenlayout.
+
+Animationen folgen den Rezepten von Transitions.dev. Aktualisierte Zahlen
+erscheinen mit einer kurzen, gestaffelten Einblendung der Ziffern, und
+Bildunterschriften wechseln mit einem leichten Unschärfeeffekt. Ladekarten
+blenden in ihren Inhalt ein, und Datentabellen erweitern sich fließend. Die
+Anzeige für den aktiven Tab gleitet zwischen den ausgewählten Tabs hin und her.
+Einstellungen für reduzierte Bewegungen entfernen die Ziffernbewegung und die
+Unschärfe aus diesen Übergängen.
 
 ## Aktuelle Übersicht
 
 Die Übersicht kann folgende Kennzahlen enthalten:
 
-- Conversations und Unique Visitors
+- Konversationen und eindeutige Besucher
 - KI-Antworten
-- AI Resolution Rate
+- KI-Lösungsrate
 - Bewertungen von Antworten und Daten zur Kundenzufriedenheit
 - Eskalationen
 - Antworten pro Conversation
@@ -39,7 +53,7 @@ Das Diagramm **Conversation depth** zeigt die durchschnittliche Gesprächsdauer
 und die Anzahl der Fragen pro Gespräch für jeden Tag, jede Woche oder jeden
 Monat. Ciele ordnet jede Conversation dem Zeitraum zu, in dem sie begonnen hat.
 Eine Conversation, die nach dem Ende des Zeitraums fortgesetzt wird, behält ihre
-volle Dauer bei.
+vollständige Dauer bei.
 
 Das **Usage**-Diagramm trennt Anzahlen, Prozentsätze, Verhältnisse und Sekunden,
 sodass unterschiedliche Einheiten nicht dieselbe Achse teilen. Wählen Sie eine
@@ -49,8 +63,8 @@ Metrik aus, um sie ein- oder auszublenden. Die Registerkarten **Assistants** und
 Verwenden Sie das Fenster **Explore conversations over time**, um die Diagramme
 innerhalb des ausgewählten Datumsbereichs zu zoomen. Ziehen Sie das Fenster oder
 seine Griffe, oder verwenden Sie die Pfeiltasten, nachdem Sie einen Griff
-fokussiert haben. Summary cards, die Datentabelle und die Exporte decken
-weiterhin den gesamten Datumsbereich ab.
+fokussiert haben. Summary cards, die Datentabelle und Exporte decken weiterhin
+den gesamten Datumsbereich ab.
 
 ## Kosten und Beobachtbarkeit
 
@@ -58,18 +72,18 @@ Zwei Dashboards zeigen, was die KI Ihrer Organisation kostet und wie gut sie
 funktioniert. **Costs** zeigt Ausgaben und Nutzung. **Observability** zeigt
 Zuverlässigkeit, Geschwindigkeit und Antwortqualität.
 
-Beide Dashboards verwenden dieselben Filter. Wählen Sie einen Datumsbereich aus
-und wählen Sie anschließend **All**, **Assistants**, **Teammates** oder
+Beide Dashboards verwenden dieselben Filter. Wählen Sie einen Zeitraum aus und
+wählen Sie anschließend **All**, **Assistants**, **Teammates** oder
 **Internal**.
 
-- **Assistants** zeigt den Traffic von Widgets und der Vorschau sowie eingehende
-  HTTP-Flows.
+- **Assistants** zeigt den Widget- und Preview-Traffic sowie eingehende HTTP
+  Flows an.
 - **Teammates** zeigt AI Teammate-Chats, Channel Turns und Routines an.
 - **Internal** zeigt die Plattformaktivitäten: Indexierung, geplante Jobs sowie
   Aufrufe über API-Schlüssel und MCP.
 
-Wenn **All** oder **Assistants** ausgewählt ist, können Sie auch einen Assistant
-auswählen.
+Wenn **All** oder **Assistants** ausgewählt ist, können Sie zusätzlich einen
+Assistant auswählen.
 
 Jedes Dashboard beginnt mit Stat-Cards. Eine Karte zeigt einen Wert für den
 Zeitraum, eine Linie mit den Tageswerten und die Veränderung gegenüber dem
@@ -79,11 +93,13 @@ um den Wert für jeden Tag abzulesen.
 
 ### Kosten
 
-- geschätzte Ausgaben, Kosten pro Turn, Modellaufrufe und Tokens
+- geschätzte Ausgaben, Kosten pro Turn, Modellaufrufe und Token
 - Geschätzte Gesamtausgaben pro Tag
 - Ein Streamgraph der täglich geschätzten Ausgaben nach Surface. Die Bandbreite
   repräsentiert einen Betrag, keinen Prozentsatz.
 - ein Kalender der täglichen Token-Nutzung
+- eine monochrome Anzeige für Input-Token als Anteil an allen Token, mit exakten
+  Zählungen für Input und Output
 - Ausgaben pro Modell und pro Pipeline-Phase
 - Eine Treemap der Ausgaben nach Provider und Modell. Wählen Sie einen Provider
   aus, um dessen Modelle zu prüfen
@@ -91,25 +107,25 @@ um den Wert für jeden Tag abzulesen.
 Der Filter „Surface“ gilt für die Tagesdiagramme und die Modellaufschlüsselung.
 Die Surface-Summen unter dem Streamgraph vergleichen stets alle Surfaces.
 
-Die Ausgaben sind eine Schätzung in Euro. Ciele berechnet dies anhand der
-Token-Anzahl und der Listenpreise. Dies ist keine Rechnung.
+Die Ausgaben sind eine Schätzung in Euro. Ciele berechnet dies anhand der Anzahl
+der Token und der Listenpreise. Dies ist keine Rechnung.
 
 ### Observability
 
-- abgeschlossene Turns, Erfolgsquote, fehlgeschlagene Turns und Tool-Aufrufe pro
+- abgeschlossene Turns, Erfolgsrate, fehlgeschlagene Turns und Tool-Aufrufe pro
   Turn
 - Turn-Latenz: Median, 95. Perzentil, ein Histogramm und ein täglicher Trend
-- **Answer accuracy**: der Anteil der Antworten des Assistenten, die der
-  Verifizierer als korrekt bewertet hat
-- **Autonomy**: der Anteil der Visitor Conversations, die nicht an einen Help
-  Desk weitergeleitet wurden
-- eine Anzeige der Zuverlässigkeit und ein Autonomie-Raster, mit genauen
-  Zählungen neben den Diagrammen
+- **Answer accuracy**: der Anteil der Antworten des Assistenten, die vom
+  Verifizierer als erfolgreich bewertet wurden
+- **Autonomy**: der Anteil der Besucher-Konversationen, die nicht an einen
+  Helpdesk weitergeleitet wurden
+- Einfarbige Anzeigen für Reliability, Accuracy und Autonomy, mit exakten
+  Zählern neben den Diagrammen
 - ein Vergleich von Reliability, Accuracy und Autonomy mit dem vorherigen
   Zeitraum, in Prozentpunkten
-- die am häufigsten auftretenden Fehlerklassen
-- die fünf am häufigsten verwendeten Flows, im Vergleich zueinander pro Tag oder
-  pro Woche
+- die häufigsten Fehlerklassen
+- die fünf am häufigsten verwendeten Flows, gegeneinander nach Tag oder Woche
+  geordnet
 
 **Answer accuracy** und **Autonomy** gelten nur für Assistants. Für
 **Teammates** und **Internal** werden diese Kennzahlen nicht angezeigt.
@@ -118,20 +134,20 @@ Token-Anzahl und der Listenpreise. Dies ist keine Rechnung.
 
 Tage sind UTC-Tage. Ein Modellaufruf, der vor der Surface-Zuordnung
 aufgezeichnet wurde, hat keine Surface. Es wird in **All** als **Unattributed**
-gezählt und in keiner anderen Surface.
+gezählt und in keiner anderen Oberfläche.
 
 Verwenden Sie **Export CSV**, um für jeden Tag im Zeitraum eine Zeile
 herunterzuladen. Für eine Berichtsdatei mit weiteren Optionen verwenden Sie
 [Exports](/operations/exports).
 
-## Plattform-Berichterstattung
+## Plattform-Reporting
 
-Bei verwalteten Bereitstellungen sehen autorisierte Owners und Admins der
+In verwalteten Bereitstellungen sehen autorisierte Owners und Admins der
 festgelegten Plattform-Organisation **Admin** als letzte Registerkarte
 „Insights“. Diese Registerkarte zeigt die Nutzung und die geschätzten Kosten für
 alle Organisationen, einschließlich der Plattformorganisation. Wählen Sie einen
-Datumsbereich aus, um Modellaufrufe, Tokens, Crawl-Seiten und geschätzte Kosten
-für jede Organisation zu überprüfen. Die von der Plattform finanzierten Kosten
+Zeitraum aus, um Modellaufrufe, Tokens, Crawl-Seiten und geschätzte Kosten für
+jede Organisation zu überprüfen. Die von der Plattform finanzierten Kosten
 umfassen weder Kunden-API-Schlüssel noch persönliche Abonnements. Andere
 Organisationen und Mitglieder haben keinen Zugriff auf diese Registerkarte.
 
@@ -148,7 +164,7 @@ Scores, Eskalationen) erreicht die Zahlen innerhalb von fünf Minuten.
 
 Um eine neue Berechnung vor Ablauf der fünf Minuten zu erzwingen, senden Sie
 `DELETE /api/insights` von einer angemeldeten Browsersitzung aus. Die Antwort
-lautet `204`, und beim nächsten Abruf wird die Übersicht erneut berechnet. Jedes
+lautet `204`, und beim nächsten Lesen wird die Übersicht erneut berechnet. Jedes
 Mitglied der Organisation kann diese Anfrage senden.
 
 ## Zählung von Benachrichtigungen
@@ -163,7 +179,7 @@ proaktive Bereitstellung separat.
 
 1. Wählen Sie den gewünschten Datumsbereich und den gewünschten Assistant aus.
 2. Identifizieren Sie die Metrik, die sich geändert hat.
-3. Öffnen Sie die Inbox mit demselben Scope.
+3. Öffnen Sie den Inbox mit demselben Scope.
 4. Lesen Sie repräsentative Conversations.
 5. Erstellen Sie Improvements für umsetzbare Probleme bei Antworten.
 

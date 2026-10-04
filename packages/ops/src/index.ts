@@ -377,3 +377,6 @@ export {
   platformOperationPolicy,
   runPlatformOperation,
 } from "./platform-actions";
+export { configureTeammateRuntimeOp, teammateRuntimeSchema } from "./teammate-runtime";
+
+export { listThreadPreferencesOp, setThreadPreferenceOp, deleteThreadOp } from "./thread-preferences";

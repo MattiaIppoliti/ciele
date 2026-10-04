@@ -7,7 +7,7 @@ import {
   type RightRailState,
 } from "./right-rail-occupant";
 
-/** One rail, two tenants (#754), the exclusivity rule and the persisted tab. */
+/** One rail, exclusive tenants (#754), and the persisted Developer tab. */
 
 const held = (occupant: RightRailState["occupant"]): RightRailState => ({
   ...INITIAL_RIGHT_RAIL,
@@ -67,6 +67,20 @@ describe("the right rail holds one occupant", () => {
       state = rightRailReducer(state, { type: "open", occupant });
       expect(state.occupant).toBe(occupant);
     }
+  });
+
+  it.each(["developer", "preview", "agent"] as const)("swaps %s with the Teammate workspace", occupant => {
+    const workspace = rightRailReducer(held(occupant), { type: "open", occupant: "workspace" });
+    expect(workspace.occupant).toBe("workspace");
+    expect(rightRailReducer(workspace, { type: "open", occupant }).occupant).toBe(occupant);
+    expect(rightRailReducer(workspace, { type: "claim", occupant }).occupant).toBe("workspace");
+  });
+
+  it("releases the Workspace on navigation without closing a later Developer panel", () => {
+    const workspace = rightRailReducer(INITIAL_RIGHT_RAIL, { type: "open", occupant: "workspace" });
+    expect(rightRailReducer(workspace, { type: "close", occupant: "workspace" }).occupant).toBeNull();
+    const developer = rightRailReducer(workspace, { type: "open", occupant: "developer" });
+    expect(rightRailReducer(developer, { type: "close", occupant: "workspace" })).toBe(developer);
   });
 
   it("lets a restore claim only a free rail", () => {

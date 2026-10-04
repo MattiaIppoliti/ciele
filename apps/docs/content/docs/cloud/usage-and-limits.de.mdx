@@ -10,24 +10,28 @@ der letzten 30 Tage aus.
 
 Ciele misst diese Ressourcengruppen getrennt:
 
-- Nutzung von KI-Modellen
+- Nutzung des KI-Modells
 - Nutzung von Embeddings
 - Nutzung von Scraping
 
-Auf der Seite wird angegeben, ob der Vorgang durch das Guthaben der
-Ciele-Plattform oder durch die Anmeldeinformationen der Organisation finanziert
-wurde.
+Auf der Seite wird angegeben, ob der Vorgang durch Ciele-Plattform-Guthaben oder
+durch die Anmeldeinformationen der Organisation finanziert wurde.
 
-Credits stellen die geschätzten Kosten in Cent dar. Sie stellen keine Zählung
-der Antworten des Assistenten dar.
+Credits geben die geschätzten Kosten in Cent an. Sie stellen keine Zählung der
+Antworten des Assistenten dar.
 
 ## Limits
 
-Die Seite vergleicht die aktuelle Nutzung mit den im Tarif verfügbaren Limits.
-Sie kann auch das Tagesbudget der Organisation anzeigen.
+Die Seite vergleicht die aktuelle Nutzung mit den im Abonnement verfügbaren
+Limits. Sie kann auch das Tagesbudget der Organisation anzeigen.
 
-Die Tageszeilen verwenden die koordinierte Weltzeit (UTC). Verwenden Sie diese
-Grenze, wenn Sie Ciele-Daten mit einer Rechnung des Anbieters vergleichen.
+Einfarbige Anzeigen visualisieren die Auslastung der einzelnen Fenster. **Near
+limit** und **Limit reached** geben den Limitstatus in Textform an. Der
+Prozentsatz kann 100 % überschreiten, selbst wenn die Anzeige voll ist. Ein
+Fenster ohne Obergrenze zeigt **N/A** an.
+
+In den Tageszeilen wird die koordinierte Weltzeit (UTC) verwendet. Verwenden Sie
+diese Grenze, wenn Sie Ciele-Daten mit einer Rechnung des Anbieters vergleichen.
 
 ## Wohin die Credits geflossen sind
 
@@ -38,18 +42,18 @@ Jede Karte summiert eine Art von Spender. Eine Antwort eines Teammates nennt den
 Teammate sowie den Kollegen, der die Frage gestellt hat. Dasselbe Guthaben
 befindet sich somit auf zwei Karten. Addieren Sie die Karten nicht.
 
-## Aufstockungsguthaben
+## Auflade-Credits
 
 Ein Plan-Kontingent wird mit seinem Zeitraum zurückgesetzt. Top-up-Guthaben sind
-ein Pool, den Ihre Organisation so lange behält, bis sie ihn aufbraucht.
+ein Pool, den Ihre Organisation so lange behält, bis sie ihn ausgibt.
 
 Ciele greift erst dann auf den Pool zu, wenn das Kontingent eines Zeitfensters
-vollständig aufgebraucht ist. Die Beantwortung wird dann fortgesetzt, anstatt
-unterbrochen zu werden. Wenn auch der Pool leer ist, gilt wieder die übliche
+vollständig aufgebraucht ist. Anschließend wird die Beantwortung fortgesetzt,
+anstatt pausiert zu werden. Wenn auch der Pool leer ist, gilt wieder die übliche
 Meldung zum Erreichen des Limits.
 
-Kaufen Sie ein Paket in **Settings > Billing**. Ein Paket kostet pro Credit
-immer mehr als Ihr Tarif. Wenn Sie jeden Monat ein Pack kaufen, ist ein Upgrade
+Kaufen Sie ein Pack in **Settings > Billing**. Ein Paket kostet pro Credit immer
+mehr als Ihr Tarif. Wenn Sie jeden Monat ein Pack kaufen, ist ein Upgrade
 günstiger.
 
 ## Sonstige Arbeiten
@@ -58,13 +62,13 @@ Einige Vorgänge kosten keine Credits: eine ausgehende API-Anfrage von einem
 Flow, eine E-Mail, eine Ausführung eines eingehenden Flows, ein
 Webhook-Callback.
 
-Die Seite zählt diese Operationen. Sie werden nicht bepreist. Die Anzahl zeigt
+Die Seite zählt diese Operationen. Sie werden nicht bepreist. Die Zählung zeigt
 Ihnen, dass ein Flow viele ausgehende Aufrufe tätigt – etwas, das auf keiner
 anderen Seite angezeigt wird.
 
 Jede Zeile zeigt außerdem das Ergebnis an. **Refused by Ciele** bedeutet, dass
-unsere eigene Richtlinie den Aufruf gestoppt hat. **Failed** bedeutet, dass das
-andere System oder das Netzwerk ihn gestoppt hat.
+unsere eigene Richtlinie den Anruf gestoppt hat. **Failed** bedeutet, dass das
+andere System oder das Netzwerk dies getan hat.
 
 ## Unerwartete Nutzung untersuchen
 

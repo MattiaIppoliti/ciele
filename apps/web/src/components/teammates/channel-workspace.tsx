@@ -1,4 +1,5 @@
 "use client";
+import { useThreadBusy } from "@/components/thread-preferences";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -125,6 +126,7 @@ export function ChannelWorkspace({
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen, setFullscreen]);
   const [pending, setPending] = useState(false);
+  useThreadBusy({ kind: "channel", id: channel.id }, pending);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [, startTransition] = useTransition();
 

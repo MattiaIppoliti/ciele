@@ -105,7 +105,7 @@ export function SortableHandle({
   }
 
   return (
-    <button type="button" onPointerDown={startDrag} {...props}>
+    <button data-slot="sortable-handle" type="button" onPointerDown={startDrag} {...props}>
       {children}
     </button>
   );

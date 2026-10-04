@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { GraduationCap, LoaderCircle } from "lucide-react";
 import type { StudyExercise } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
-import { normalizeTable } from "@agent-hub/agent/client";
+import { normalizeTable, normalizeRecordsTable, normalizeFilterTable } from "@agent-hub/agent/client";
 
 // Own the Suspense boundary here: without `loading`, the lazy card suspends
 // PreviewPanel's outer boundary and hides the entire conversation/composer.
@@ -23,6 +23,25 @@ const StudyExerciseReply = dynamic(
     ),
   },
 );
+
+const RecordsTable = dynamic(() => import("./tables/records-table"), { loading: () => <TableLoading /> });
+const FilterTable = dynamic(() => import("./tables/filter-table"), { loading: () => <TableLoading /> });
+function TableLoading() {
+  return <div role="status" className="flex min-h-24 w-full items-center gap-2 rounded-xl border p-3 text-sm text-muted-foreground"><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />Preparing table…</div>;
+}
+function InteractiveTable({ part, onAsk }: { part: ComponentPart; onAsk?: (text: string) => void }) {
+  if (part.pending) return <TableLoading />;
+  const records = part.name === "records_table" ? normalizeRecordsTable(part.props) : null;
+  const tasks = part.name === "filter_table" ? normalizeFilterTable(part.props) : null;
+  const table = records ?? tasks;
+  if (!table) return null;
+  return <div className="min-w-0 w-full space-y-2">
+    {table.title && <p className="text-sm font-medium">{table.title}</p>}
+    {records && <RecordsTable rows={records.rows} additionalColumn={records.additionalColumn} onAsk={onAsk} />}
+    {tasks && <FilterTable rows={tasks.rows} labels={tasks.labels} />}
+    {table.caption && <p className="text-xs text-muted-foreground">{table.caption}</p>}
+  </div>;
+}
 
 /**
  * Reply Components, client half: one component per catalogue entry the runtime
@@ -153,6 +172,9 @@ export function ComponentReplyPart({
   switch (part.name) {
     case "study_exercise":
       return <StudyExerciseReply exercise={part.props.exercise as StudyExercise} />;
+    case "records_table":
+    case "filter_table":
+      return <InteractiveTable key={part.callId} part={part} onAsk={onAsk} />;
     case "table":
       return (
         <TableComponent props={part.props} pending={part.pending} onAsk={onAsk} />

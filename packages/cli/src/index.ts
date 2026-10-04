@@ -218,6 +218,9 @@ Commands:
   teammates update <id> [--name|--title|--role|--collections|--visibility]
   teammates conversations <id>                   Your own thread with a Teammate
   teammates conversation <id> <conversationId>
+  teammates runtime <id>                       Read execution configuration
+  teammates set-runtime <id> --file config.json Configure execution (admin)
+  teammates ag-ui <id> --file run.json          Return AG-UI SSE events
   channels list|get|create|update|delete
   channels create --name <name> [--teammates <id,id>] [--members <userId,userId>]
   channels add-member <id> <userId>              Invite a colleague

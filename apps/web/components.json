@@ -25,6 +25,7 @@
     "@smoothui": "https://smoothui.dev/r/{name}.json",
     "@beui": "https://beui.dev/r/{name}.json",
     "@lucide-animated": "https://lucide-animated.com/r/{name}.json",
-    "@uiarc": "https://uiarc.dev/r/{name}.json"
+    "@uiarc": "https://uiarc.dev/r/{name}.json",
+    "@toggles": "https://toggles.dev/r/{name}.json"
   }
 }

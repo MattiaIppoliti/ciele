@@ -24,8 +24,10 @@ import * as reviews from "./reviews";
 import * as routines from "./routines";
 import * as teammateGrants from "./teammate-grants";
 import * as teammateProvision from "./teammate-provision";
+import * as teammateRuntime from "./teammate-runtime";
 import * as teammates from "./teammates";
 import * as usage from "./usage";
+import * as threadPreferences from "./thread-preferences";
 import type { MutatedEntity } from "./entities";
 import { OperationError, type Operation, type OperationContext } from "./operation";
 
@@ -81,8 +83,10 @@ const MODULES: Record<string, unknown>[] = [
   routines,
   teammateGrants,
   teammateProvision,
+  teammateRuntime,
   teammates,
   usage,
+  threadPreferences,
 ];
 
 function isOperation(value: unknown): value is PlatformOperation {
@@ -140,6 +144,8 @@ const EXCLUDED_PREFIXES = [
   "flows.agent.",
   "channels.messages.post",
   "members.leave",
+  // Personal console triage belongs to the Member, not an agent turn.
+  "threads.",
 ];
 
 export type PlatformOperationPolicy = "excluded" | "confirm" | "run";

@@ -13,7 +13,8 @@ import type { HapticInput } from "web-haptics";
  *   - `success`  an outcome toast of the good kind.
  *   - `error`    an outcome toast of the bad kind.
  *
- * Hovering, opening, typing and scrolling get nothing. Adding a kind should
+ * Menu scrolling gets row detents; ordinary page scrolling, hovering and typing
+ * stay silent. Adding a kind should
  * require an argument and a call site in the same change, not a call site alone.
  */
 export type Haptic = "commit" | "detent" | "press" | "toggle" | "success" | "error";

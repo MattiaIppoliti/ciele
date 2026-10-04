@@ -54,27 +54,21 @@ export function TopBar({ demo }: { demo: boolean }) {
   const { title, actions, form, crumbLabel } = useTopBarContent();
   const trail = breadcrumbTrail(underlying, crumbLabel);
   const isLocalhost = useIsLocalhost();
-  // The icon rail keeps only the Organization's avatar, so from `md` up the
-  // bar carries Find and the sidebar control whenever the sidebar is not at
-  // full width: hidden (the control shows it) or the rail (it widens it).
+  // Desktop layouts put Find and the sidebar control in the bar when the
+  // sidebar is hidden or reduced to its icon rail. Touch layouts always show
+  // Find here and use the bottom dock for navigation.
   const onRail = sidebarDocked && isRailWidth(sidebarWidth);
   const navInBar = !sidebarDocked || onRail;
 
   return (
-    <header className="relative flex h-14 shrink-0 items-center gap-2 border-b pr-[max(0.5rem,env(safe-area-inset-right))] pl-[max(0.5rem,env(safe-area-inset-left))] sm:gap-3 sm:pr-[max(1rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))]">
-      {/* Below `md` the sidebar is a drawer, so this button is the only way
-          into navigation and is always present. It wears the desktop's
-          sidebar toggle, not a hamburger, so a phone and a desktop show the
-          same control for the same thing. From `md` up (a tablet included)
-          the reopen button takes over, only while the sidebar is not full. */}
-      {/* The nav controls sit as one tight group, so the toggle and Find read as
-          a pair. Below `md` the pair is the drawer toggle + Find and Find is
-          always there; from `md` it is the reopen button + Find, only while
-          the sidebar is hidden or on its icon rail. */}
+    <header className="relative flex min-h-14 shrink-0 items-center gap-2 border-b pr-[max(0.5rem,env(safe-area-inset-right))] pl-[max(0.5rem,env(safe-area-inset-left))] sm:gap-3 sm:pr-[max(1rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))]">
+      {/* The controls share one group. Touch styles hide the sidebar toggles
+          and keep Find visible with a 44 px target on phones and tablets. */}
       <div className="flex shrink-0 items-center gap-0.5">
         <button
           type="button"
           aria-label="Open navigation"
+          data-desktop-nav-toggle
           aria-expanded={navDrawerOpen}
           onClick={() => setNavDrawerOpen(true)}
           onPointerEnter={(event) => {
@@ -90,6 +84,7 @@ export function TopBar({ demo }: { demo: boolean }) {
             <button
               type="button"
               aria-label={onRail ? "Expand sidebar" : "Show sidebar"}
+              data-desktop-nav-toggle
               aria-expanded={false}
               onPointerEnter={(event) => {
                 if (event.pointerType === "mouse") setToggleHovered(true);
@@ -112,7 +107,7 @@ export function TopBar({ demo }: { demo: boolean }) {
             onClick={openFind}
             onPointerEnter={prefetchFind}
             onFocus={prefetchFind}
-            className={`text-muted-foreground hover:bg-muted hover:text-foreground z-10 size-9 shrink-0 items-center justify-center rounded-lg transition-colors md:size-8 ${
+            className={`shell-find-trigger press-control text-muted-foreground hover:bg-muted hover:text-foreground z-10 size-9 shrink-0 items-center justify-center rounded-lg transition-colors md:size-8 ${
               navInBar ? "flex" : "flex md:hidden"
             }`}
           >
@@ -124,7 +119,7 @@ export function TopBar({ demo }: { demo: boolean }) {
         <div className="bg-border hidden h-5 w-px shrink-0 md:block" />
       )}
       {/* One shrinkable group: on a phone the switcher and the page title share
-          whatever the hamburger and the actions leave, each truncating in
+          whatever Find and the actions leave, each truncating in
           place rather than pushing the row wider than the screen. */}
       <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <ScopeSwitcher />
@@ -174,23 +169,25 @@ export function TopBar({ demo }: { demo: boolean }) {
       {/* Pages mount their search, filters and export here through
           `SlotPortal`, so the breadcrumb is the title and the controls share
           its row instead of sitting under it. */}
-      <PortalSlot
-        id={TOP_BAR_SLOT}
-        className="z-10 flex min-w-0 shrink-0 items-center gap-2"
-      />
-      <div className="z-10 flex shrink-0 items-center gap-1 sm:gap-2">
-        {actions}
-        {form}
-        <DeveloperPanelButton />
-        {demo && !isLocalhost && (
-          <Badge variant="secondary" className="text-muted-foreground">
-            {/* The full sentence needs room the phone header doesn't have. */}
-            <span className="hidden lg:inline">
-              Demo data, Supabase not configured
-            </span>
-            <span className="lg:hidden">Demo</span>
-          </Badge>
-        )}
+      <div data-top-bar-controls className="flex min-w-0 shrink-0 items-center gap-2">
+        <PortalSlot
+          id={TOP_BAR_SLOT}
+          className="z-10 flex min-w-0 shrink-0 items-center gap-2"
+        />
+        <div className="z-10 flex shrink-0 items-center gap-1 sm:gap-2">
+          {actions}
+          {form}
+          <DeveloperPanelButton />
+          {demo && !isLocalhost && (
+            <Badge variant="secondary" className="text-muted-foreground">
+              {/* The full sentence needs room the phone header doesn't have. */}
+              <span className="hidden lg:inline">
+                Demo data, Supabase not configured
+              </span>
+              <span className="lg:hidden">Demo</span>
+            </Badge>
+          )}
+        </div>
       </div>
     </header>
   );

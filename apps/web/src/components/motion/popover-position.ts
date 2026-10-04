@@ -8,6 +8,7 @@ import {
 } from "react";
 
 export type PortalLayout = {
+  viewport: { left: number; top: number; right: number; bottom: number };
   trigger: {
     left: number;
     top: number;
@@ -17,17 +18,23 @@ export type PortalLayout = {
   content: {
     width: number;
     height: number;
+    naturalHeight: number;
   };
 };
 
 function sameLayout(a: PortalLayout | null, b: PortalLayout) {
   return (
+    a?.viewport.left === b.viewport.left &&
+    a.viewport.top === b.viewport.top &&
+    a.viewport.right === b.viewport.right &&
+    a.viewport.bottom === b.viewport.bottom &&
     a?.trigger.left === b.trigger.left &&
     a.trigger.top === b.trigger.top &&
     a.trigger.width === b.trigger.width &&
     a.trigger.height === b.trigger.height &&
     a.content.width === b.content.width &&
-    a.content.height === b.content.height
+    a.content.height === b.content.height &&
+    a.content.naturalHeight === b.content.naturalHeight
   );
 }
 
@@ -48,7 +55,11 @@ export function usePopoverPortalPosition<
     if (!trigger || !content) return;
 
     const rect = trigger.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft ?? 0;
+    const top = viewport?.offsetTop ?? 0;
     const next: PortalLayout = {
+      viewport: { left, top, right: left + (viewport?.width ?? window.innerWidth), bottom: top + (viewport?.height ?? window.innerHeight) },
       trigger: {
         left: rect.left,
         top: rect.top,
@@ -58,6 +69,7 @@ export function usePopoverPortalPosition<
       content: {
         width: content.offsetWidth,
         height: content.offsetHeight,
+        naturalHeight: content.scrollHeight,
       },
     };
     setLayout((current) => (sameLayout(current, next) ? current : next));
@@ -75,10 +87,14 @@ export function usePopoverPortalPosition<
 
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
     return () => {
       observer.disconnect();
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
     };
   }, [active, contentRef, triggerRef, update]);
 

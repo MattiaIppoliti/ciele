@@ -238,10 +238,12 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
     <Popover>
       <PopoverTrigger
         render={
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             aria-label={`Show ${provider.label} usage`}
-            className="text-muted-foreground hover:text-foreground rounded-full p-1 transition-colors"
+            className="text-muted-foreground"
           />
         }
       >

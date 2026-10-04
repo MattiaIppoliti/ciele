@@ -35,7 +35,7 @@ export function UsageSpendersBlock({
       <p className="text-muted-foreground mt-1 text-sm">
         Who used this window&apos;s credits. A Teammate answer counts for both the Teammate and the colleague, so don&apos;t add the cards up.
       </p>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+      <div className="mt-3 grid gap-4 @md/settings:grid-cols-2">
         {sections.map((section) => (
           <Card key={section.dimension}>
             <CardHeader>

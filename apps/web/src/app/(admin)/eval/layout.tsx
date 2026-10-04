@@ -4,5 +4,5 @@
  * cut off at the bottom of the window.
  */
 export default function EvalLayout({ children }: { children: React.ReactNode }) {
-  return <div className="h-full overflow-y-auto">{children}</div>;
+  return <div className="touch-scroll-clearance h-full overflow-y-auto">{children}</div>;
 }

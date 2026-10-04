@@ -1,6 +1,6 @@
 import { formatCount, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { RollInText } from "./roll-in-text";
+import { MorphText } from "./morph-text";
 
 const FORMATS = { count: formatCount, percent: formatPercent } as const;
 
@@ -10,16 +10,7 @@ const FORMATS = { count: formatCount, percent: formatPercent } as const;
  */
 const NUMBER_ROLL_MS = 380;
 
-/**
- * A number that rolls digit by digit when it changes: a badge count, a KPI, a
- * lane total. Scritto reads the direction from the two values, so a count that
- * goes up rolls up and one that goes down rolls down, and it skips the motion
- * under `prefers-reduced-motion`.
- *
- * No "use client" on purpose: a server component can render this, and the
- * formatted string is all that crosses into `RollInText`. Tabular figures keep
- * a changing value from nudging whatever sits beside it.
- */
+/** Shared formatted counters use Torph's place-value morphing on changes. */
 export function RollingNumber({
   value,
   format = "count",
@@ -30,7 +21,7 @@ export function RollingNumber({
   className?: string;
 }) {
   return (
-    <RollInText
+    <MorphText
       text={FORMATS[format](value)}
       className={cn("tabular-nums", className)}
       duration={NUMBER_ROLL_MS}

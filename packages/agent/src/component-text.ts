@@ -1,3 +1,4 @@
+import { normalizeFilterTable, normalizeRecordsTable } from "./interactive-tables";
 import type { StudyExercise } from "@agent-hub/core";
 import type { ChatReplyPart } from "./types";
 import { normalizeTable } from "./reply-components";
@@ -45,6 +46,18 @@ export function componentPartText(part: ComponentPart): string {
     }
     case "table":
       return tableText(part.props);
+    case "records_table": {
+      const table = normalizeRecordsTable(part.props);
+      if (!table) return "";
+      const strength = { strong: "Very strong", weak: "Weak", veryweak: "Very weak", none: "No communication", unknown: "No data" };
+      return [table.title, ["Company", "Categories", "Last interaction", "Connection strength", "Links", ...(table.additionalColumn ? [table.additionalColumn] : [])].join(" | "), ...table.rows.map(row => [row.name, row.tags.join(", "), row.last, strength[row.strength], row.website ?? "", ...(table.additionalColumn ? [row.additional ?? ""] : [])].join(" | ")), table.caption].filter(Boolean).join("\n");
+    }
+    case "filter_table": {
+      const table = normalizeFilterTable(part.props);
+      if (!table) return "";
+      const status = { todo: "To do", progress: "In Progress", done: "Completed" };
+      return [table.title, Object.values(table.labels.columns).join(" | "), ...table.rows.map(row => [row.task, row.date, status[row.status], row.owner].join(" | ")), table.caption].filter(Boolean).join("\n");
+    }
     default:
       // A name this build does not know (a message written by a newer runtime):
       // contribute nothing rather than a placeholder that reads like content.

@@ -283,7 +283,7 @@ export function HelpDeskManage({
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="touch-scroll-clearance h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
         <SectionHeading
           icon={CircleHelp}

@@ -138,6 +138,7 @@ describe("the platform catalogue", () => {
       "organization.budget.set",
       "providers.setEmbedding",
       "knowledge.sources.direct_access.set",
+      "teammates.runtime.configure",
     ]) {
       expect(everyOperationName(), name).toContain(name);
       expect(platformOperationPolicy(name), name).toBe("confirm");

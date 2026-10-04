@@ -4606,6 +4606,14 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return data === true;
     },
 
+    async mergeChannelRuntimeState(input) {
+      return must(await client.rpc("merge_channel_runtime_state", {
+        p_organization_id: input.organizationId,
+        p_channel_id: input.channelId,
+        p_patch: input.patch,
+      })) === true;
+    },
+
     async appendChannelMessage(input) {
       const { data, error } = await client
         .from("teammate_channel_messages")

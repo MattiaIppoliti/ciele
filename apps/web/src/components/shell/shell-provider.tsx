@@ -54,9 +54,8 @@ interface ShellContextValue {
   navDrawerOpen: boolean;
   setNavDrawerOpen: (open: boolean) => void;
   /**
-   * Which of the two tenants holds the workspace's single right rail, the
-   * Assistant editor's live Preview, or the Developer Panel. One value rather
-   * than two booleans, so they cannot both be open (#754).
+   * Which panel holds the single right rail: Preview, Developer panel,
+   * Flows Agent or Teammate workspace. One value keeps them exclusive.
    */
   rightRail: RightRailOccupant | null;
   openRightRail: (occupant: RightRailOccupant) => void;

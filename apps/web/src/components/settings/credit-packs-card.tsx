@@ -67,7 +67,7 @@ export function CreditPacksCard({
           <span className="text-muted-foreground">credits held</span>
         </p>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 @xl/settings:grid-cols-3">
           {packs.map((pack) => {
             const perCredit = pack.priceEur / pack.credits;
             return (

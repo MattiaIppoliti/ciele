@@ -13,8 +13,8 @@ import { countLabel } from "@/lib/pagination";
  * Everything here is a pure function of (snapshot, now): the app's vitest only
  * collects `.test.ts`, so logic that lives in the page component cannot be
  * tested at all. The thresholds come from the shared `USAGE_WARN_FRACTION`, so a
- * ring turns amber at exactly the point the enterprise ladder raises its Alert,
- * an admin who got the email and then opens this page sees the same story.
+ * meter reads "Near limit" at exactly the point the enterprise ladder raises
+ * its Alert. Limit status stays explicit while the gauge uses monochrome ink.
  */
 
 /** How a meter reads: calm, near its cap, or at/over it. */

@@ -331,23 +331,34 @@ export interface TurnView extends TurnTrace {
  * events of whoever is speaking (#778).
  */
 export async function* decodeRuntimeEvents<E = RuntimeEvent>(
-  body: ReadableStream<Uint8Array>
+  body: ReadableStream<Uint8Array>,
+  signal?: AbortSignal
 ): AsyncGenerator<E> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      yield JSON.parse(line) as E;
+  const abort = () => { void reader.cancel().catch(() => {}); };
+  signal?.addEventListener("abort", abort, { once: true });
+  try {
+    for (;;) {
+      signal?.throwIfAborted();
+      const { done, value } = await reader.read();
+      signal?.throwIfAborted();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        yield JSON.parse(line) as E;
+      }
     }
+    buffer += decoder.decode();
+    if (buffer.trim()) yield JSON.parse(buffer) as E;
+  } finally {
+    signal?.removeEventListener("abort", abort);
+    reader.releaseLock();
   }
-  if (buffer.trim()) yield JSON.parse(buffer) as E;
 }
 
 /** A turn that failed for capacity: what to call it and how long to wait. */

@@ -275,7 +275,7 @@ export function teammateRuntimeAssistant(teammate: Teammate): Assistant {
     // No escalation: a colleague who needs a human asks one, they do not need
     // the widget's contact-support ramp.
     helpDeskSettings: {},
-    tools: {},
+    tools: { builtIns: { fetchUrl: teammate.runtimeConfig?.internet === true, renderTable: true } },
     requireSignIn: false,
     createdAt: teammate.createdAt,
     updatedAt: teammate.updatedAt,

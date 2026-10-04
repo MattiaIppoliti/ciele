@@ -4,9 +4,11 @@ description: Create an internal AI colleague that answers your team from the Kno
 ---
 
 An **AI Teammate** is an AI colleague that your members chat with inside Ciele. It uses the same
-answer engine as your Assistant. It answers your team, not your Visitors.
+answer engine as your Assistant by default. An admin can connect an external agent harness.
+It answers your team, not your Visitors.
 
 A Teammate has no Publication, no widget, and no Help Desk. Nothing about it reaches your website.
+With a configured channel connection, members can also chat with it in Slack, Telegram or Microsoft Teams.
 
 <Mermaid
   title="The same engine, two audiences"
@@ -97,6 +99,8 @@ recognisable at a glance, and a real photo always wins over the generated figure
 
 ## Knowledge scope
 
+The Knowledge scope below applies to the Ciele harness. An external harness supplies its own knowledge and tools.
+
 A Teammate searches only what you select. You select in two ways, and you can use both together.
 
 - **Collections.** A whole Knowledge Collection. Use this for a subject that grows over time.
@@ -126,6 +130,41 @@ If you delete a collection or an item that a Teammate still searches, Ciele crea
 A Teammate reads the Library. It does not hold a separate copy. New content in a selected
 Collection is available in the next message.
 </Callout>
+
+## Execution
+
+An Organization admin controls execution in **Configure → Execution**. New Teammates use the Ciele harness, with internet and computer capabilities off.
+
+- **Agent harness.** Choose Ciele or an external AG-UI harness registered by your deployment operator.
+- **Public internet.** Read public pages to research current information.
+- **Browser.** Browse with the Teammate's persistent browser profile. This requires internet access and a configured computer service.
+- **Workspace files.** Keep files in the Teammate's own workspace across computer restarts.
+- **Terminal.** Run commands inside its computer. This requires internet, workspace files and an edit capability ceiling.
+
+Computer actions run autonomously with these permissions. Ciele operations keep their existing action approvals.
+All members who can use a Teammate share its workspace and browser profile.
+
+Select **Check computer**, **Start** or **Stop** to control its computer after you save permissions.
+Cancelling an active computer operation stops the computer. Its files remain available after a restart.
+Your deployment operator must configure the computer service before these controls become available.
+
+An external AG-UI harness receives the Standing role, permitted memory and recent text conversation.
+It controls its own tools, permissions and billing. Ciele records its answer and tool receipts in the transcript.
+Ciele's Knowledge scope, model selection, computer permissions and action grants do not configure that external harness.
+External harnesses currently support text conversations. Use the Ciele harness for attachments and native action approvals.
+
+## Other clients and messaging channels
+
+An AG-UI client can connect through `POST /api/v1/teammates/{id}/ag-ui`, using a Ciele API key.
+Ciele restores the Member's persisted history and checks their current permissions.
+
+Your deployment operator can connect Slack, Telegram and Microsoft Teams through Chat SDK adapters.
+Each connection specifies the Teammate, permitted channels and platform users mapped to existing Ciele members.
+An unmapped user cannot start a Teammate conversation. A private Teammate answers only in a direct message.
+Answers posted in a group are visible to that group's participants.
+
+Channel conversations use the Ciele harness or the selected external harness. Ciele keeps a separate history for each Member.
+Open Ciele to review the transcript and decide pending action approvals. Channel attachments and native approval buttons are not bridged.
 
 ## Who can see a Teammate
 
@@ -437,6 +476,16 @@ Each run:
 The limit of 5 applies to new items only. A problem you already know about
 always gets the new evidence.
 
+## Organize chat rows
+
+Swipe a history or group row to the left, or select its **Actions** button.
+A full swipe archives the row. The action drawer also offers **Flag** and **Delete**.
+Use **Archived** to restore a row, or **Flagged** to find marked rows.
+These preferences belong to you and remain saved after a reload.
+Archiving a group leaves its shared transcript and the other members' lists intact.
+Deleting a group requires confirmation and removes it for everyone. Only its creator or an Organization admin can delete it.
+You can delete only your own Teammate conversations. Row actions wait while that chat streams a response.
+
 ## Conversations
 
 Each member has a private thread with each Teammate. Select a conversation under **Conversations**
@@ -518,6 +567,44 @@ connection serves as **not connected**.
 Your own AI subscription has priority. If you paired your own device, your chats use your
 subscription. The chat window model does not apply. Change your subscription in **Settings**, then
 **AI**.
+
+## Interactive table replies
+
+Teammates can show CRM records grids and task tables with status filters when their data supports these views.
+Select rows, sort or resize CRM columns, and use task status chips to filter displayed rows.
+
+For a new CRM property, open **New property**, review the prompt, and select **Go calculate**.
+The request enters your Teammate conversation and follows its existing permissions. The UI never invents property results.
+The table remains part of the saved conversation. Display controls do not change records in connected systems.
+
+## View the workspace
+
+Computer actions add an **Agent screen** card inside the Teammate's reply while it works.
+The card shows current browser captures and the operation's status. Select **Open** to expand the screen.
+Terminal actions show their command and recorded result below the card.
+Closing the screen keeps the Teammate working. Earlier replies retain their action receipts and link to the current screen.
+They do not contain a screen recording of the earlier run.
+
+Select **Workspace** in a Teammate chat to open Browser, Terminal and Files.
+On desktop, the viewer opens in the resizable right sidebar beside the chat.
+It shares the **Developer** panel's space. Opening either panel closes the other.
+On phones and touch tablets, the viewer opens full-screen. Use the close control to hide the viewer.
+
+**Browser** shows fresh captures of the Teammate's browser, its current URL and the capture time.
+The screen updates while visible. Opening the viewer does not start a stopped computer. If the
+computer service is not connected, Ciele shows that state instead of a sample screen.
+
+**Terminal** shows computer commands and their recorded results from the current conversation.
+Use **Ask teammate** to request a command or a browser URL. The request runs through the usual chat,
+model, tools and permission checks, and its result stays in the transcript.
+
+**Files** lists the running computer's saved workspace files. Select **Refresh files**, then a file
+to read it. File access must be enabled. Large files and lists show when the displayed content is
+truncated.
+
+Organization admins can **Start computer** or **Stop computer**. Stop interrupts computer work but
+keeps its files and browser profile. A stopped computer must be started before its files or screen
+can be viewed. Grant access in **Configure → Execution** and save the settings first.
 
 ## Delete a Teammate
 

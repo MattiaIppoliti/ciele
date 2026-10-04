@@ -4,10 +4,12 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationDock } from "@/components/notifications/notification-dock";
 import { ShellProvider } from "@/components/shell/shell-provider";
 import { findScopeKey } from "@/lib/find-index";
+import { ThreadPreferencesProvider } from "@/components/thread-preferences";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PendingActivationBanner } from "@/components/shell/pending-activation-banner";
 import { TopBar } from "@/components/shell/top-bar";
 import { DeveloperPanelLauncher } from "@/components/developer-panel/developer-panel-launcher";
+import { PortalSlot, RIGHT_RAIL_SLOT } from "@/components/shell/slot-portal";
 import { StaticIcons } from "@/components/ui/animated-icon";
 import { TooltipProvider } from "@agent-hub/ui";
 import { FeedbackProvider } from "@agent-hub/ui/feedback";
@@ -95,6 +97,7 @@ export default function AdminLayout({
       <FeedbackProvider soundSet="bencho">
       <TooltipProvider delay={300}>
         <ShellProvider assistants={assistants} findScope={findScope}>
+        <ThreadPreferencesProvider scope={findScope}>
           {/* The siblings below are keyed in development only, for the root
               layout's reason (lib/dev-key.ts). */}
           <div className="bg-shell text-foreground flex h-full">
@@ -108,7 +111,7 @@ export default function AdminLayout({
             <Suspense
               key={devKey("sidebar")}
               fallback={
-                <div className="hidden w-60 shrink-0 md:block" />
+                <div className="desktop-sidebar hidden w-60 shrink-0 md:block" />
               }
             >
               <SidebarLoader />
@@ -134,12 +137,12 @@ export default function AdminLayout({
                     (#754): the Developer Panel, docked outside this panel on
                     the frame, or the Assistant editor's live Preview, which
                     docks inside `main` from the assistant layout. */}
-                <div key={devKey("content")} className="flex min-h-0 flex-1">
+                <div key={devKey("content")} className="flex min-h-0 min-w-0 flex-1">
                   <main
                     key={devKey("main")}
                     id="main-content"
                     tabIndex={-1}
-                    className="bg-content @container min-h-0 flex-1 overflow-hidden focus:outline-none"
+                    className="bg-content @container min-h-0 min-w-0 flex-1 overflow-hidden focus:outline-none"
                   >
                     <StaticIcons>{children}</StaticIcons>
                     {modal}
@@ -150,10 +153,12 @@ export default function AdminLayout({
             {/* The left sidebar's mirror, on the frame beside the workspace
                 panel rather than inside it (#754). */}
             <DeveloperPanelLauncher key={devKey("developer-panel")} />
+            <PortalSlot id={RIGHT_RAIL_SLOT} className="contents" />
             <Suspense key={devKey("notification-dock")} fallback={null}>
               <NotificationDockLoader />
             </Suspense>
           </div>
+        </ThreadPreferencesProvider>
         </ShellProvider>
       </TooltipProvider>
       </FeedbackProvider>

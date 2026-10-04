@@ -13,9 +13,9 @@ Desktop. This page is the server path.
 
 - Instala Git.
 - Instala Docker con Docker Compose.
-- Reserva suficiente espacio en disco para las imágenes, Postgres y los archivos
+- Reserva suficiente espacio en disco para imágenes, Postgres y archivos
   subidos.
-- Reserva más memoria cuando actives los workers opcionales.
+- Reserva más memoria cuando habilites los workers opcionales.
 
 ## Un solo comando
 
@@ -43,7 +43,7 @@ En un Mac sin Docker, el instalador no se detiene ante un error. Abre
 primero descarga la versión correspondiente. La configuración guiada que se
 ofrece allí vincula Docker Desktop e inicia la misma pila que se describe en
 esta página. En Linux, el instalador se niega, porque no hay ninguna aplicación
-de escritorio a la que pasarle la tarea.
+de escritorio a la que delegar la tarea.
 
 ## Inicializa la pila
 
@@ -62,10 +62,10 @@ Abre [http://localhost:3000](http://localhost:3000) cuando los servicios estén
 en estado «healthy». La primera cuenta se convierte en el propietario de la
 organización.
 
-Usa `./deploy/bootstrap.sh --seed` para añadir contenido de demostración
+Utiliza `./deploy/bootstrap.sh --seed` para añadir contenido de demostración
 depurado.
 
-## Ejecuta imágenes publicadas en lugar de compilar
+## Ejecuta imágenes publicadas en lugar de compilarlas
 
 Compilar `app`, `migrate` y `cron` desde el checkout lleva mucho tiempo y
 requiere el repositorio completo. Cada versión también publica esos tres
@@ -102,14 +102,23 @@ restart alone keeps the previous value.
 
 | Profile | Default | Services |
 | --- | :---: | --- |
-| `db` | Sí | Postgres, pgvector, autenticación, API de datos, almacenamiento y puerta de enlace. |
+| `db` | Sí | Postgres, pgvector, autenticación, API de datos, almacenamiento y pasarela. |
 | `migrate` | Sí | Migraciones pendientes y buckets de almacenamiento necesarios. |
 | `app` | Sí | Administrator console, widget runtime y API v1. |
 | `cron` | Sí | Tareas programadas de la aplicación. |
-| `workers` | No | Servicio de rastreo con renderizado en JavaScript. |
+| `workers` | No | Servicio de rastreo con renderizado de JavaScript. |
 | `studio` | No | Interfaz de administración de la base de datos. |
 
 ## Inspecciona la pila
+
+La pasarela actualiza las direcciones de los servicios a través de Docker DNS.
+Después de recrear un servicio, las solicitudes pueden fallar brevemente
+mientras se resuelve su nueva dirección. La pasarela se recupera sin necesidad
+de reiniciarla. La comprobación de disponibilidad de PostgreSQL utiliza TCP, por
+lo que los servicios esperan hasta que finalice la inicialización de la base de
+datos en una instalación nueva. El ejecutor de migraciones también espera a que
+la autenticación y el almacenamiento completen sus propias migraciones antes de
+aplicar el esquema de Ciele.
 
 ```bash
 docker compose -f deploy/docker-compose.yml ps
@@ -128,13 +137,13 @@ loopback. Accede a ella a través de un túnel SSH.
 The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
 
-La aplicación comprueba esto al iniciar. Lee `PUBLIC_URL`, `CIELE_PUBLIC_ORIGIN`
-y `NEXT_PUBLIC_APP_URL`. Cuando cualquiera de ellas empieza por `http://` y no
-apunta al equipo local, la aplicación no se inicia. El registro del contenedor
-indica el nombre de la variable. El valor predeterminado
-`PUBLIC_URL=http://localhost:3000` supera la comprobación. Para ejecutar
-deliberadamente sobre HTTP sin cifrar, por ejemplo en una red privada, establece
-`CIELE_ALLOW_INSECURE_HTTP=1` en `deploy/.env`.
+La aplicación comprueba esto al iniciarse. Lee `PUBLIC_URL`,
+`CIELE_PUBLIC_ORIGIN` y `NEXT_PUBLIC_APP_URL`. Cuando cualquiera de ellas
+empieza por `http://` y no apunta al equipo local, la aplicación no se inicia.
+El registro del contenedor indica el nombre de la variable. El valor
+predeterminado `PUBLIC_URL=http://localhost:3000` supera la comprobación. Para
+ejecutar deliberadamente sobre HTTP sin cifrar, por ejemplo en una red privada,
+establece `CIELE_ALLOW_INSECURE_HTTP=1` en `deploy/.env`.
 
 Una vez que exista un origen público, establece `CIELE_PUBLIC_ORIGIN` en
 `deploy/.env` con esa URL HTTPS. Los enlaces que se incluyen en un correo

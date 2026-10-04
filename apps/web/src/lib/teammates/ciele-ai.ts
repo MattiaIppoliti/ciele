@@ -61,8 +61,9 @@ export async function cieleAiKnowledgeScope(
  * and the picker still only shows what the Organization's connections serve.
  */
 export function chatAllowedModels(
-  teammate: Pick<Teammate, "allowedModels"> & Partial<Pick<Teammate, "systemKind">>
+  teammate: Pick<Teammate, "allowedModels"> & Partial<Pick<Teammate, "systemKind" | "runtimeConfig">>
 ): ModelRef[] {
+  if (teammate.runtimeConfig?.harness.kind === "ag_ui") return [];
   const own = teammate.allowedModels ?? [];
   if (!isCieleAi(teammate) || own.length > 0) return [...own];
   return (Object.entries(MODEL_CATALOG) as [Provider, { id: string }[]][]).flatMap(

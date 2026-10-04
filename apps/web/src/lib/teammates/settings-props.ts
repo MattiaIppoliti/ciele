@@ -7,6 +7,7 @@ import type {
   TeammateRoutine,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { teammateExecutionOptions } from "@agent-hub/agent";
 import type { MemberOption } from "@/components/teammates/teammate-editors-picker";
 import type { TeammateGovernanceState } from "@/components/teammates/teammate-grants-picker";
 import type { CollectionOption } from "@/components/teammates/teammates-client";
@@ -17,6 +18,7 @@ import { listPlatformEvalModels } from "@/lib/platform";
 import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
 
 export interface TeammateSettingsProps {
+  executionOptions: ReturnType<typeof teammateExecutionOptions>;
   collections: CollectionOption[];
   /** The Library items a scope can name one at a time (PRD #726). */
   sources: ScopeSource[];
@@ -118,6 +120,7 @@ export async function loadTeammateSettingsProps(
   ]);
 
   return {
+    executionOptions: teammateExecutionOptions(organizationId),
     platformModels,
     collections: collections.map((c) => ({ id: c.id, name: c.name })),
     sources: libraryItems.sources,

@@ -1,19 +1,33 @@
 ---
 title: Insights
-description: Revisa las métricas actuales de Conversation, Answer, Escalation, Feedback y Notification.
+description: Revisa las métricas actuales de Conversation, answer, escalation, feedback y Notification.
 ---
 
 Insights calcula las métricas de la organización a partir de los eventos de
 tiempo de ejecución almacenados. Utiliza el intervalo de fechas disponible y los
 filtros de Assistant para cambiar el conjunto de datos.
 
-Los gráficos de Insights, Eval, Assistant Overview y Usage utilizan una paleta
-en escala de grises que se adapta a los temas claros y oscuros. Los resultados
+Los gráficos de Insights, Eval, Assistant Overview y Usage emplean una paleta en
+escala de grises que se adapta a los temas claros y oscuros. Los resultados
 positivos y negativos siguen siendo verdes y rojos. Los cambios se basan en la
 dirección de cada métrica: la reducción de costes, de la latencia y de los
-fallos es positiva. Las etiquetas, las leyendas y los valores exactos
+errores es positiva. Las etiquetas, las leyendas y los valores exactos
 identifican cada métrica. La línea temporal de latencia utiliza una línea
 discontinua para el p95.
+
+Las tarjetas de gráficos y de estadísticas sitúan su visualización en un
+recuadro redondeado. El título y la descripción se sitúan debajo, con los
+cambios de período y las acciones disponibles a la derecha. Costs,
+Observability, Platform Admin y las ejecuciones individuales de Eval utilizan el
+mismo diseño de tarjeta.
+
+La animación sigue las recetas de Transitions.dev. Los números actualizados
+aparecen con un breve escalonamiento de los dígitos, y los pies de foto se
+intercambian con un ligero desenfoque. Las tarjetas de carga se difuminan hasta
+mostrar su contenido, y las tablas de datos se expanden con suavidad. El
+indicador de la pestaña activa se desliza entre las selecciones. Los ajustes de
+movimiento reducido eliminan el movimiento de los dígitos y el desenfoque de
+estas transiciones.
 
 ## Descripción general actual
 
@@ -37,9 +51,9 @@ seleccionado.
 
 El gráfico **Conversation depth** muestra la duración media de las
 conversaciones y el número de preguntas por conversación para cada día, semana o
-mes. Ciele asigna cada Conversation al periodo en el que se inició. Una
+mes. Ciele asigna cada Conversación al periodo en el que se inició. Una
 Conversation que continúa después del final del intervalo conserva su duración
-completa.
+total.
 
 El gráfico **Usage** separa recuentos, porcentajes, ratios y segundos para que
 las diferentes unidades no compartan un mismo eje. Selecciona una métrica para
@@ -48,9 +62,9 @@ desgloses de las conversaciones.
 
 Utiliza la ventana **Explore conversations over time** para ampliar los gráficos
 dentro del intervalo de fechas seleccionado. Arrastra la ventana o sus
-controladores, o usa las teclas de dirección después de seleccionar un
-controlador. Las tarjetas de resumen, la tabla de datos y las exportaciones
-siguen abarcando todo el intervalo de fechas.
+controles, o usa las teclas de dirección después de seleccionar un control. Las
+tarjetas de resumen, la tabla de datos y las exportaciones siguen abarcando todo
+el intervalo de fechas.
 
 ## Costes y observabilidad
 
@@ -58,14 +72,14 @@ Dos paneles muestran cuánto cuesta la IA de tu organización y cómo de bien
 funciona. **Costs** muestra el gasto y el uso. **Observability** muestra la
 fiabilidad, la velocidad y la calidad de las respuestas.
 
-Ambos paneles de control utilizan los mismos filtros. Selecciona un intervalo de
-fechas y, a continuación, selecciona **All**, **Assistants**, **Teammates** o
+Ambos paneles utilizan los mismos filtros. Selecciona un intervalo de fechas y,
+a continuación, selecciona **All**, **Assistants**, **Teammates** o
 **Internal**.
 
-- **Assistants** muestra el tráfico de widgets y de la vista previa, así como
-  los flujos HTTP entrantes.
-- **Teammates** muestra los chats de AI Teammate, los turnos de los canales y
-  las Routines.
+- **Assistants** muestra el tráfico de widgets y de Preview, así como los flujos
+  HTTP entrantes.
+- **Teammates** muestra los chats de los AI Teammates, los turnos de los canales
+  y las Routines.
 - **Internal** muestra el trabajo de la plataforma: indexación, tareas
   programadas y llamadas desde claves API y MCP.
 
@@ -85,13 +99,15 @@ la línea para leer el valor de cada día.
 - un streamgraph del gasto diario estimado por superficie. El grosor de la banda
   representa una cantidad, no un porcentaje
 - un calendario del uso de tokens por día
+- un indicador monocromo que muestra los tokens de entrada como proporción del
+  total de tokens, con los recuentos exactos de tokens de entrada y de salida
 - gasto por modelo y por etapa del pipeline
 - un treemap del gasto por proveedor y por modelo. Selecciona un proveedor para
   inspeccionar sus modelos
 
-El filtro Surface se aplica a los gráficos diarios y al desglose por modelo. Los
-totales de las superficies que aparecen debajo del streamgraph siempre comparan
-todas las superficies.
+El filtro Surface se aplica a los gráficos diarios y al desglose por modelos.
+Los totales de las superficies que aparecen debajo del streamgraph siempre
+comparan todas las superficies.
 
 El gasto es una estimación en euros. Ciele lo calcula a partir del número de
 tokens y de los precios de lista. No es una factura.
@@ -104,16 +120,16 @@ tokens y de los precios de lista. No es una factura.
   diaria
 - **Answer accuracy**: el porcentaje de respuestas del asistente que superaron
   la verificación
-- **Autonomy**: el porcentaje de conversaciones con visitantes que no se
+- **Autonomy**: el porcentaje de conversaciones de visitantes que no se
   derivaron a un servicio de asistencia
-- un indicador de fiabilidad y una cuadrícula de autonomía, con los recuentos
+- indicadores monocromos de fiabilidad, precisión y autonomía, con los recuentos
   exactos junto a los gráficos
 - una comparación de la fiabilidad, la precisión y la autonomía con respecto al
   periodo anterior, en puntos porcentuales
 - las clases de error más frecuentes
 - los cinco Flows más utilizados, clasificados entre sí por día o por semana
 
-**Answer accuracy** y **Autonomy** solo se aplican a los asistentes. Para
+**Answer accuracy** y **Autonomy** solo se aplican a los Asistentes. Para
 **Teammates** y **Internal**, estas métricas no se muestran.
 
 ### Notas
@@ -141,14 +157,14 @@ pestaña.
 ## Actualidad de los datos
 
 Insights almacena la vista general calculada y los paneles durante un máximo de
-cinco minutos para cada organización y conjunto de filtros. Todos los Miembros
-de la Organización leen los mismos datos almacenados.
+cinco minutos para cada organización y conjunto de filtros. Todos los miembros
+de la organización leen los mismos datos almacenados.
 
 Cualquier cambio que un Member realice en la consola (en un Assistant, una
 Conversation o una Improvement) borra al instante la vista general almacenada.
 El tráfico de widgets (nuevas Conversations, valoraciones de respuestas,
-puntuaciones de satisfacción, escaladas) alcanza las cifras en un plazo de cinco
-minutos.
+puntuaciones de satisfacción, escalaciones) alcanza las cifras en un plazo de
+cinco minutos.
 
 Para forzar un nuevo cálculo antes de que transcurran los cinco minutos, envía
 `DELETE /api/insights` desde una sesión de navegador en la que hayas iniciado
@@ -169,7 +185,7 @@ proactiva por separado.
 2. Identifica la métrica que ha cambiado.
 3. Abre la Inbox con el mismo ámbito.
 4. Lee Conversations representativas.
-5. Crea Improvements para los problemas de respuestas procesables.
+5. Crea «Improvements» para los problemas de respuestas procesables.
 
 Utiliza [Exports](/operations/exports) para obtener registros estructurados de
-las conversaciones.
+conversaciones.

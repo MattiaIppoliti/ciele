@@ -65,7 +65,7 @@ export function AssistantsPageClient({
   }, [assistants, query, sort]);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="touch-scroll-clearance h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl px-6 py-6">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-64 flex-1">

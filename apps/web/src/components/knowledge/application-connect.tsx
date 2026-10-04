@@ -65,7 +65,7 @@ export function ApplicationConnect({
   }
 
   return (
-    <main className="h-full overflow-y-auto bg-background text-foreground">
+    <main className="touch-scroll-clearance h-full overflow-y-auto bg-background text-foreground">
       <div className="flex min-h-full flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-md space-y-8 text-center">
           <div className="flex items-center justify-center gap-4" aria-hidden="true">

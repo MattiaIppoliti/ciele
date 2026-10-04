@@ -13,14 +13,38 @@ contrôler les fonctionnalités d'exécution et les instructions réutilisables.
 | Search knowledge | Activé | Effectue une recherche dans la Knowledge connectée et renvoie des réponses citées. |
 | Session memory | On | Utilise les informations de la session de conversation en cours. |
 | Fetch URL | Off | Lit une URL lorsque l'environnement d'exécution sélectionne l'outil. |
-| Show a table | Off | Affiche les faits dans un tableau lorsque l'environnement d'exécution sélectionne l'outil. |
+| Interactive tables | Off | Affiche les faits sous la forme d'un tableau simple, d'une grille d'enregistrements CRM ou d'un tableau de tâches avec des filtres de statut. |
 
 L'outil Search knowledge est toujours disponible. Vous pouvez activer ou
 désactiver les autres outils intégrés.
 
-Show a table organise les faits que l'Assistant a trouvés dans cette réponse. Il
-ne calcule pas de valeurs. Le tableau s'affiche au-dessus de la réponse écrite,
-et la transcription de l'Inbox présente le même tableau.
+**Interactive tables** organise les faits que l'Assistant a trouvés dans cette
+réponse. Le runtime sélectionne le tableau en fonction de votre requête et des
+données disponibles.
+
+- Un tableau simple compare des faits et peut inclure des questions de suivi par
+  ligne.
+- Une grille d'enregistrements CRM affiche les entreprises, les catégories, la
+  dernière interaction, le statut de la relation et les liens vers les sites
+  web. Sélectionnez des lignes, triez, redimensionnez ou épinglez des colonnes.
+- Un tableau des tâches affiche les dates, le statut et les propriétaires.
+  Sélectionnez **All**, **To do**, **In Progress** ou **Completed** pour filtrer
+  ses lignes.
+
+Les nombres de filtres proviennent des données affichées. Les données manquantes
+restent vides. Les paramètres du tableau affectent l'affichage actuel et ne
+modifient pas les enregistrements du CRM.
+
+Utilisez **New property** ou **Add calculation** dans la grille CRM pour
+préparer une demande de propriété. Vérifiez son prompt, puis sélectionnez **Go
+calculate**. Cela envoie une requête de chat normale. Le harness actuel, les
+sources connectées et les autorisations continuent de s'appliquer. L'interface
+utilisateur ne simule pas les valeurs générées.
+
+Les mêmes tableaux apparaissent dans Preview, dans le Widget publié et dans la
+transcription de l'Inbox. Publiez l'Assistant après avoir activé cet outil.
+L'Inbox prend en charge l'affichage, la sélection, le filtrage et la disposition
+des colonnes. Elle n'envoie pas de demandes de propriétés.
 
 L'Assistant peut ajouter une question de suivi à une ligne. Le Visitor
 sélectionne la ligne pour poser cette question. La transcription de l'Inbox
@@ -29,7 +53,8 @@ affiche ces lignes, mais un Member ne peut pas les sélectionner.
 ## Activer le mode Étude
 
 **Study Mode** est désactivé par défaut. Activez-le pour permettre aux Visiteurs
-de s'exercer sur la Knowledge de l'Assistant grâce à des exercices interactifs.
+de s'exercer à utiliser les Connaissances de l'Assistant grâce à des exercices
+interactifs.
 
 1. Ouvrez **Tools & Skills** et activez **Study Mode**.
 2. Activez au moins un format de question.
@@ -44,7 +69,7 @@ Lorsqu'il est activé, **Study Mode** apparaît également dans **Flows**. Son
 bouton Settings ouvre cette section. Désactivez le mode Étude dans **Tools &
 Skills**. Le Flow n'a pas de commutateur distinct. Les requêtes provenant du
 menu Study exercises sont directement acheminées vers ce Flow. Une icône
-représentant un chapeau de diplômé apparaît dans Thinking.
+représentant un chapeau de diplômé s'affiche dans Thinking.
 
 Les exercices nécessitent des ressources pertinentes dans la Knowledge de
 l'Assistant. Si aucun support n'est trouvé, l'Assistant vous demande un sujet
@@ -53,7 +78,7 @@ pris en charge ou un support d'étude.
 | Format | Comment le visiteur répond |
 | --- | --- |
 | Choix multiple | Sélectionnez une option. Aucune réponse en texte libre n'est disponible. |
-| Faites glisser les mots | Faites glisser ou sélectionnez un mot pour remplir un espace vide par question. |
+| Drag the words | Faites glisser ou sélectionnez un mot pour remplir un espace vide par question. |
 | True / False | Sélectionnez l'une des deux options. |
 | Flashcards | Saisissez le mot manquant ou une courte expression. |
 
@@ -61,11 +86,11 @@ pris en charge ou un support d'étude.
 maximum cinq questions distinctes basées sur les Knowledge extraites.
 
 Sélectionnez **Check** pour enregistrer une réponse. Ciele indique si la réponse
-est correcte, fournit la bonne réponse et donne une explication. Une réponse
+est correcte, affiche la bonne réponse et fournit une explication. Une réponse
 soumise ne peut pas être modifiée. Les flashcards acceptent les variantes
 orthographiques définies lors de la création de l'exercice.
 
-La Inbox affiche les questions, les réponses soumises, les bonnes réponses et le
+L'Inbox affiche les questions, les réponses soumises, les bonnes réponses et le
 score. Les exercices non terminés indiquent le nombre de questions restées sans
 réponse. Les exercices s'exécutent dans le chat. Ils n'ont pas besoin d'un
 lecteur H5P externe.
@@ -91,8 +116,8 @@ Add only the endpoints that the Assistant must use. The runtime cannot call an u
 ### Empêcher une écriture en double
 
 Une requête peut être envoyée à nouveau après un délai d'expiration ou un échec.
-Si le point de terminaison écrit des données, la deuxième requête peut créer un
-deuxième enregistrement.
+Si l'endpoint écrit des données, la deuxième requête peut créer un deuxième
+enregistrement.
 
 Pour éviter cela, attribuez une clé d'idempotence au point de terminaison. Dans
 le formulaire de l'endpoint, indiquez où votre API lit la clé :
@@ -120,7 +145,7 @@ Une Skill est un modèle d'instruction réutilisable. Une Organisation peut
 associer une même Skill à plusieurs Assistants.
 
 1. Ouvrez **Tools & Skills**.
-2. Recherchez la **Skill** d'organisation requise.
+2. Recherchez la Skill d'organisation requise.
 3. Associez la Skill à l'Assistant.
 4. Testez le résultat dans Preview.
 5. Publiez l'Assistant lorsque le résultat est correct.
@@ -139,7 +164,7 @@ fenêtre de discussion inscrit la phrase d'ouverture dans la zone de message.
 Vous pouvez modifier le texte avant de l'envoyer.
 
 Si la phrase d'ouverture est vide, la Skill n'apparaît pas dans le menu **/**.
-Le prompt de la Skill continue de s'appliquer à chaque réponse.
+L'invite de la Skill continue de s'appliquer à chaque réponse.
 
 Publiez l'Assistant après avoir rédigé une phrase d'ouverture. Le Widget utilise
 le dernier instantané de Publication.

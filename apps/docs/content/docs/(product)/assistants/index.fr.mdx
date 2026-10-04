@@ -11,21 +11,40 @@ historique de publication.
 
 | Section | Objectif |
 | --- | --- |
-| General | Définir l'identité, le modèle et les valeurs par défaut de la conversation. |
+| General | Définir l'identité, le modèle et les paramètres par défaut de la conversation. |
 | Knowledge | Ajouter des sources et des FAQ. |
-| Flows | Définir le routage et les réponses. |
+| Flows | Définissez le routage et les réponses. |
 | Tools & Skills | Contrôlez les outils d'exécution, l'intégration des API et les instructions réutilisables. |
 | Goals | Planifier des vérifications de réponses déterministes. |
 | Guardrails | Vérifiez les messages des visiteurs et masquez le texte des réponses marquées. |
-| Assistant Help Desks | Sélectionnez les Help Desks pour la remontée des demandes. |
+| Assistant Help Desks | Sélectionnez les Help Desks pour la remontée. |
 | Style | Définissez la couleur de la marque et la position du lanceur. |
 | Authentication | Exiger la connexion via Microsoft Entra pour les visiteurs. |
 | Publish | Créez et gérez le snapshot en production. |
 
-Les modifications affectent immédiatement l'Aperçu. Le widget en production ne
-change qu'après la publication.
+Les modifications affectent immédiatement l'aperçu (Preview). Le widget en
+direct ne change qu'après la publication.
 
-## Dupliquer un assistant
+Preview peut utiliser votre abonnement local connecté à Claude ou à ChatGPT
+depuis **Settings → AI**. Le panneau de progression affiche les recherches et
+leurs résultats. Il ne sollicite pas le raisonnement privé du modèle. Un modèle
+connecté a toujours besoin de Knowledge Sources pour répondre de manière fiable
+aux questions spécifiques à l'organisation.
+
+## Inspecter les sources dans l'aperçu
+
+L'aperçu affiche des citations de sources numérotées dans la réponse de
+l'Assistant. Passez le curseur sur une citation ou placez le focus dessus à
+l'aide du clavier pour afficher son titre et les détails de la Source. Appuyez
+sur Échap pour fermer la carte. Cliquez sur une citation comportant une URL
+publique pour ouvrir la page d'origine dans un nouvel onglet.
+
+Chaque phrase ou étape sourcée porte sa citation à côté du texte qu'elle étaye.
+Une Source peut être citée plusieurs fois dans une même réponse. Les documents
+privés affichent un aperçu sans lien externe. Les sources sans référence
+intégrée restent disponibles dans la liste Sources située sous la réponse.
+
+## Dupliquer un Assistant
 
 La duplication copie la configuration et les Flows. Elle ne copie pas le contenu
 de la Knowledge Base.

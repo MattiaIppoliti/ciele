@@ -324,7 +324,7 @@ export function KnowledgeHubClient({
   // the `[tab]` segment; this component is the bucket's own content.
   return (
     <>
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+      <div className="touch-scroll-clearance min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
         {tab === "applications" && (
           <ApplicationKnowledgePanel
             connections={applicationConnections}

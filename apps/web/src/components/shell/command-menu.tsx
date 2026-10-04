@@ -12,7 +12,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { SPRING_PANEL } from "@/lib/ease";
-import { PanelRight, Search, Type } from "lucide-react";
+import { PanelRight, Search, Type, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
 import { findStore, useFindSnapshot } from "@/lib/find-client";
 import { createPointerAim, WARM_LIMIT } from "@/lib/find-store";
@@ -341,10 +341,10 @@ export function CommandMenu({
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-background/5 supports-backdrop-filter:backdrop-blur-md supports-backdrop-filter:backdrop-saturate-150 data-open:duration-200 data-closed:duration-100"
-        className="top-[10vh] flex h-[min(640px,80vh)] translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0 shadow-strong will-change-transform sm:max-w-4xl data-open:duration-300 data-open:ease-[cubic-bezier(0.16,1,0.3,1)] data-open:slide-in-from-top-2 data-closed:duration-100 data-closed:slide-out-to-top-2 motion-reduce:data-open:slide-in-from-top-0 motion-reduce:data-open:zoom-in-100 motion-reduce:data-closed:slide-out-to-top-0 motion-reduce:data-closed:zoom-out-100"
+        className="find-dialog top-[10vh] flex h-[min(640px,80vh)] translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0 shadow-strong will-change-transform sm:max-w-4xl data-open:duration-300 data-open:ease-[cubic-bezier(0.16,1,0.3,1)] data-open:slide-in-from-top-2 data-closed:duration-100 data-closed:slide-out-to-top-2 motion-reduce:data-open:slide-in-from-top-0 motion-reduce:data-open:zoom-in-100 motion-reduce:data-closed:slide-out-to-top-0 motion-reduce:data-closed:zoom-out-100"
       >
         <DialogTitle className="sr-only">Find</DialogTitle>
-        <div className="flex shrink-0 items-center gap-2.5 px-4">
+        <div className="find-search-header flex shrink-0 items-center gap-2.5 px-4">
           <Search aria-hidden className="text-muted-foreground size-4 shrink-0" />
           <input
             autoFocus={canAutoFocus()}
@@ -378,12 +378,20 @@ export function CommandMenu({
           >
             <PanelRight aria-hidden className="size-4" />
           </button>
-          <kbd className="text-muted-foreground rounded-md border px-1.5 py-0.5 font-sans text-xs">
+          <button
+            type="button"
+            aria-label="Close search"
+            onClick={() => handleOpenChange(false)}
+            className="flex size-[44px] shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted sm:hidden"
+          >
+            <X aria-hidden className="size-5" />
+          </button>
+          <kbd className="text-muted-foreground hidden rounded-md border px-1.5 py-0.5 font-sans text-xs sm:block">
             Esc
           </kbd>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b px-4 pb-3">
+        <div className="find-search-filters flex shrink-0 flex-wrap items-center gap-1.5 border-b px-4 pb-3">
           <FilterChip
             pressed={filters.titleOnly}
             onClick={() => updateFilters({ titleOnly: !filters.titleOnly })}
@@ -437,6 +445,7 @@ export function CommandMenu({
             id={`${uid}-list`}
             role="listbox"
             aria-label="Search results"
+            data-foley-scroll=""
             onMouseLeave={hoverIntent.leave}
             className="relative min-w-0 flex-1 overflow-y-auto overscroll-contain p-2"
           >
@@ -537,10 +546,10 @@ export function CommandMenu({
         </div>
 
         <div className="text-muted-foreground flex shrink-0 items-center gap-4 border-t px-4 py-2.5 text-xs">
-          <span className="flex items-center gap-1.5">
+          <span className="hidden items-center gap-1.5 sm:flex">
             <kbd className="rounded border px-1 font-sans">↵</kbd> Open
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="hidden items-center gap-1.5 sm:flex">
             <kbd className="rounded border px-1 font-sans">⌘ ↵</kbd> Open in new tab
           </span>
           {records !== null && (recordsStatus === "partial" || recordsStatus === "error") && (

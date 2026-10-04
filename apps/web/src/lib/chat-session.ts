@@ -44,6 +44,8 @@ export interface ChatSession {
   requestNewChat(): void;
   /** The chat opened a thread: from the history, a link, or its own turn's end. */
   opened(id: string): void;
+  /** Drop a successfully deleted thread from the locally reported history. */
+  forget(id: string): void;
   /** A turn started (or continued) this thread. Opens it and reports its row. */
   started(entry: SidebarConversation): void;
   /** A turn began or ended. Ending applies a queued New chat. */
@@ -96,6 +98,10 @@ export function createChatSession(): ChatSession {
     requestNewChat,
     opened(id) {
       if (state.conversationId !== id) set({ conversationId: id });
+    },
+    forget(id) {
+      set({ reported: state.reported.filter(entry => entry.id !== id) });
+      if (state.conversationId === id) requestNewChat();
     },
     started(entry) {
       set({

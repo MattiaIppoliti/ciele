@@ -27,4 +27,11 @@ describe("stored conversation restoration", () => {
   it("restores a legacy or verbatim reply without inventing a running trace", () => {
     expect(chatMessagesFromStored([{ ...message, trace: null }])[0]).toMatchObject({ phase: "done", steps: [], searchCount: 0, iteration: null, terminal: null });
   });
+  it("restores interactive tables with their original sourced rows and call identities", () => {
+    const content = [
+      { type: "component", name: "records_table", action: "search_knowledge", callId: "crm-1", props: { rows: [{ id: "company-1", name: "Acme", tags: ["Customer"], last: "2026-10-01", strength: "strong" }] } },
+      { type: "component", name: "filter_table", action: "search_knowledge", callId: "tasks-1", props: { rows: [{ task: "Review contract", date: "2026-10-04", status: "todo", owner: "Alex" }] } },
+    ];
+    expect(chatMessagesFromStored([{ ...message, content }])[0]).toMatchObject({ phase: "done", parts: content });
+  });
 });

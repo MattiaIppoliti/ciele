@@ -131,6 +131,12 @@ describe("granted actions as tools", () => {
     });
   });
 
+  it("keeps bounded computer output in the transcript for the workspace terminal", async () => {
+    const { ctx, events } = makeContext([action({ operation: "computer.exec", domain: "computer", inputSchema: z.object({ command: z.string() }), run: async () => ({ entities: [{ kind: "computer", id: "tm-1" }], result: { stdout: "complete", stderr: "", exitCode: 0 } }) })]);
+    await run(buildToolset(ctx), "computer_exec", { command: "echo complete" });
+    expect(events.find(event => event.type === "tool-end")).toMatchObject({ result: { operation: "computer.exec", output: { stdout: "complete", exitCode: 0 } } });
+  });
+
   it("says plainly when a read touched nothing", async () => {
     const { ctx, events } = makeContext([
       action({

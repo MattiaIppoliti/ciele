@@ -2,9 +2,7 @@
 
 import { RollInText } from "@/components/motion/roll-in-text";
 
-import { ArcFrame } from "@/components/charts/arc/arc-frame";
-import { DonutChart } from "@/components/charts/arc/donut-chart/donut-chart";
-import { CHART_SERIES } from "@/components/charts/palette";
+import { Gauge, GaugeMarks, GaugeStack, GaugeText } from "@/components/gauge";
 import {
   Card,
   CardContent,
@@ -13,6 +11,8 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import { formatCredits } from "@/lib/usage-summary";
+
+const SHADES = [1, 0.55, 0.3];
 
 /**
  * The Usage tab's two donuts: where the credits went (by metered resource) and
@@ -54,24 +54,30 @@ function Donut({
           </p>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <ArcFrame className="w-full">
-              <DonutChart
-                label={title}
-                data={slices.map((slice, index) => ({
-                  key: slice.key,
-                  label: slice.label,
-                  value: slice.credits,
-                  color: CHART_SERIES[index % CHART_SERIES.length],
-                }))}
-                unit="credits"
-                formatValue={formatCredits}
-                size={144}
-                thickness={22}
-                groupBelow={0}
-                maxSegments={slices.length}
-                legend={false}
-              />
-            </ArcFrame>
+            <div
+              role="img"
+              aria-label={`${title}: ${formatCredits(total)} credits. ${slices.map((slice) => `${slice.label}: ${formatCredits(slice.credits)} credits, ${percent(slice)}%`).join(". ")}`}
+              className="size-36 text-foreground"
+            >
+              <Gauge value={100} startAngle={180} endAngle={540} padding={24} aria-hidden="true">
+                <GaugeStack
+                  width={32}
+                  parts={slices.map((slice, index) => ({
+                    weight: slice.credits,
+                    color: "currentColor",
+                    opacity: SHADES[index % SHADES.length],
+                  }))}
+                />
+                <GaugeMarks
+                  values={slices.map((_, index) => (slices.slice(0, index + 1).reduce((sum, slice) => sum + slice.credits, 0) / total) * 100)}
+                  length={36}
+                  width={6}
+                  color="var(--card)"
+                />
+                <GaugeText fontSize={82} weight="semibold" className="tabular-nums">{formatCredits(total)}</GaugeText>
+                <GaugeText y={62} fontSize={32} color="var(--muted-foreground)">credits</GaugeText>
+              </Gauge>
+            </div>
             {/* Legend under the ring, not beside it: these cards sit two-up
                 inside the dialog, where a side legend truncates every label. */}
             <ul className="w-full space-y-1.5 text-sm">
@@ -79,8 +85,8 @@ function Donut({
                 <li key={slice.key} className="flex items-center gap-2">
                   <span
                     aria-hidden
-                    className="size-2.5 shrink-0 rounded-full"
-                    style={{ background: CHART_SERIES[index % CHART_SERIES.length] }}
+                    className="size-2.5 shrink-0 rounded-full bg-foreground"
+                    style={{ opacity: SHADES[index % SHADES.length] }}
                   />
                   <span className="min-w-0 flex-1 truncate">{slice.label}</span>
                   <span className="shrink-0 tabular-nums">
@@ -107,7 +113,7 @@ export function UsagePies({
   byFunding: UsageSlice[];
 }) {
   return (
-    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+    <div className="mt-4 grid gap-4 @md/settings:grid-cols-2">
       <Donut
         title="Credits by resource"
         description="Answering, indexing, and crawling, priced through one conversion."

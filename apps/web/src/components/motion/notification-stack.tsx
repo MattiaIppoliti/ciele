@@ -294,7 +294,7 @@ export function NotificationStack({
         style={{ transform: `translateY(${closeOffset}px)` }}
         // Floats just outside the muted shell's top-right corner so it
         // costs the banner no height and never covers a card.
-        className="group border-border/60 bg-background text-muted-foreground hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-background absolute -top-3 -right-3 z-20 flex cursor-pointer items-center rounded-full border p-1.5 text-xs font-medium shadow-light transition-[transform,color] duration-300 ease-out focus-visible:ring-2 focus-visible:ring-offset-2 motion-reduce:transition-none"
+        className="group border-border/60 bg-background text-muted-foreground hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-background absolute -top-3 -right-3 z-20 flex cursor-pointer items-center justify-center rounded-full border p-1.5 text-xs font-medium shadow-light transition-[transform,color] duration-300 ease-out focus-visible:ring-2 focus-visible:ring-offset-2 motion-reduce:transition-none"
       >
         <X className="size-3.5 shrink-0" aria-hidden="true" />
         {/* Collapsed to zero width until hover/focus opens the label. */}

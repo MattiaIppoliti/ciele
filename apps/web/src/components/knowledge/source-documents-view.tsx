@@ -49,7 +49,7 @@ export function SourceDocumentsView({
   canEdit: boolean;
 }) {
   return (
-    <div className="@container flex h-full flex-col overflow-y-auto">
+    <div className="touch-scroll-clearance @container flex h-full flex-col overflow-y-auto">
       <header className="shrink-0 px-6 pt-5 pb-4">
         <KnowledgeBreadcrumb
           crumbs={[

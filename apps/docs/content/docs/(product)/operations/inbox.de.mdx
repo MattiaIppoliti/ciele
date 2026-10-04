@@ -3,8 +3,8 @@ title: Inbox
 description: Überprüfen Sie Conversations, Sources, Runtime Traces und Session Metadata.
 ---
 
-In der Inbox werden die Beiträge von Visitor und Assistant gespeichert. Öffnen
-Sie eine Conversation, um das exakt gespeicherte Transkript einzusehen.
+Die Inbox speichert die Beiträge von Visitor und Assistant. Öffnen Sie eine
+Conversation, um das exakte, gespeicherte Transkript einzusehen.
 
 ## Liste der Konversationen
 
@@ -14,9 +14,18 @@ Conversation an.
 
 Eine Sitzung, die nur proaktive Notifications enthält, ist mit dem Marker
 **Notification only** gekennzeichnet. Nachdem ein Visitor geantwortet hat, wird
-sie zu einer normalen Conversation.
+daraus eine normale Conversation.
 
-## Konversationsdetails
+Wischen Sie eine Zeile nach links oder wählen Sie die Schaltfläche **Actions**
+aus, um **Archive**, **Flag** und **Delete** anzuzeigen. Ein vollständiges
+Wischen archiviert die Conversation. Wählen Sie **Archived**, um sie
+wiederherzustellen, oder **Flagged**, um Ihre markierten Conversations zu
+finden. Archive und Flag wirken sich nur auf Ihre eigene Liste aus. Sie ändern
+weder das Transkript noch dessen Analysen. Delete fordert eine Bestätigung an
+und entfernt das Transkript. Eine Conversation, die einer gesetzlichen
+Aufbewahrungspflicht (legal hold) unterliegt, kann nicht gelöscht werden.
+
+## Details der Konversation
 
 Die Detailansicht kann Folgendes anzeigen:
 
@@ -27,13 +36,13 @@ Die Detailansicht kann Folgendes anzeigen:
 - Eskalationsstatus
 - Start- und Gerätemetadaten
 - das verifizierte SSO-Subject und der konfigurierte Identity Claim
-- gespeicherte Thinking-Informationen, sofern die Member-Rolle den Zugriff
-  erlaubt
+- gespeicherte Thinking-Informationen, wenn die Member-Rolle den Zugriff erlaubt
 
 Verbatim Message-Aktionen und Basic-Antworten enthalten keine Thinking-Trace.
-Search Knowledge-Antworten können Tool- und Fortschrittsereignisse enthalten.
+Antworten aus der Wissenssuche können Tool- und Fortschrittsereignisse
+enthalten.
 
-API-Integrationsaufrufe erscheinen ebenfalls im Trace. Ihre Events zeigen,
+API-Integrationsaufrufe werden ebenfalls im Trace angezeigt. Ihre Events zeigen,
 welcher Endpoint die Antwort unterstützt hat.
 
 ## Hochwertige Arbeit erstellen

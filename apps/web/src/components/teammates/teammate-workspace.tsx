@@ -1,5 +1,6 @@
 "use client";
 
+import { TeammateAgentScreen, TeammateComputer } from "@/components/teammates/teammate-computer";
 import { RollInText } from "@/components/motion/roll-in-text";
 
 import {
@@ -541,6 +542,7 @@ export function TeammateWorkspace({
 
   return (
     <div data-eye-tracker-frame className="flex h-full flex-col overflow-hidden">
+      <TeammateComputer key={teammate.id} teammate={teammate} steps={messages.flatMap(message => message.role === "bot" ? message.steps : [])} busy={pending} retired={retired} onAsk={send}>
       {/* No header bar above the chat: the Teammate's name is in the chat's
           own header, and Configure is its right-click menu in the sidebar. */}
 
@@ -613,6 +615,7 @@ export function TeammateWorkspace({
                 onAcceptReferral={acceptReferral}
                 acceptingReferral={acceptingReferral}
                 onDecideApproval={decideApproval}
+                renderComputerActivity={(message, live) => <TeammateAgentScreen steps={message.steps} live={live} />}
               />
               {/* Where a referral from this conversation went (#773). The
                   handoff is two threads on purpose, so the origin has to say
@@ -807,6 +810,7 @@ export function TeammateWorkspace({
         </>
         </ChatSurface>
       </div>
+      </TeammateComputer>
     </div>
   );
 }

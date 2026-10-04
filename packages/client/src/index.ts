@@ -12,6 +12,7 @@ import type {
   TeammateChannelParticipant,
   TeammateInput,
   TeammatePatch,
+  TeammateRuntimeConfig,
   TeammateRoutine,
   MemoryDocument,
   MemoryDocumentEntry,
@@ -274,6 +275,8 @@ interface RequestOptions {
   form?: FormData;
   query?: Record<string, string | number | undefined>;
   idempotencyKey?: string;
+  signal?: AbortSignal;
+  accept?: string;
 }
 
 /** Tagged template for request paths: every interpolation is URL-encoded. */
@@ -300,11 +303,11 @@ export class CieleClient {
     this.fetchImpl = options.fetch ?? fetch;
   }
 
-  private async request<T>(
+  private async requestResponse(
     method: string,
     path: string,
-    options: RequestOptions & { parseText?: boolean } = {}
-  ): Promise<T> {
+    options: RequestOptions = {}
+  ): Promise<Response> {
     const url = new URL(`${this.baseUrl}/api/v1${path}`);
     for (const [key, value] of Object.entries(options.query ?? {})) {
       if (value !== undefined) url.searchParams.set(key, String(value));
@@ -314,10 +317,12 @@ export class CieleClient {
     };
     if (options.body !== undefined) headers["content-type"] = "application/json";
     if (options.idempotencyKey) headers["idempotency-key"] = options.idempotencyKey;
+    if (options.accept) headers.accept = options.accept;
 
     const response = await this.fetchImpl(url.toString(), {
       method,
       headers,
+      signal: options.signal,
       body:
         options.form ??
         (options.body === undefined ? undefined : JSON.stringify(options.body)),
@@ -333,6 +338,15 @@ export class CieleClient {
         envelope?.error?.message ?? `HTTP ${response.status}`
       );
     }
+    return response;
+  }
+
+  private async request<T>(
+    method: string,
+    path: string,
+    options: RequestOptions & { parseText?: boolean } = {}
+  ): Promise<T> {
+    const response = await this.requestResponse(method, path, options);
     if (options.parseText) return (await response.text()) as T;
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
@@ -776,6 +790,13 @@ export class CieleClient {
     list: (): Promise<{ data: Teammate[] }> => this.request("GET", "/teammates"),
     get: (id: string): Promise<Teammate> =>
       this.request("GET", p`/teammates/${id}`),
+    runtime: (id: string): Promise<{ config: TeammateRuntimeConfig; computerConfigured: boolean; harnesses: { id: string; name: string }[] }> =>
+      this.request("GET", p`/teammates/${id}/runtime`),
+    setRuntime: (id: string, config: TeammateRuntimeConfig): Promise<Teammate> =>
+      this.request("PUT", p`/teammates/${id}/runtime`, { body: config }),
+    /** The caller's AG-UI library decodes SSE; cancellation reaches the persisted turn. */
+    agUi: (id: string, input: unknown, options: { signal?: AbortSignal } = {}): Promise<Response> =>
+      this.requestResponse("POST", p`/teammates/${id}/ag-ui`, { body: input, signal: options.signal, accept: "text/event-stream" }),
     create: (input: Omit<TeammateInput, "organizationId" | "ownerId">): Promise<Teammate> =>
       this.request("POST", "/teammates", { body: input }),
 

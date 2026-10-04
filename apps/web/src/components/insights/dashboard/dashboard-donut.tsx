@@ -2,7 +2,7 @@
 
 import { ArcFrame } from "@/components/charts/arc/arc-frame";
 import { DonutChart } from "@/components/charts/arc/donut-chart/donut-chart";
-import { Gauge } from "@/components/charts/arc/gauge/gauge";
+import { UsageGauge } from "@/components/usage-gauge";
 import { WaffleChart } from "@/components/charts/arc/waffle-chart/waffle-chart";
 import { formatCount } from "@/lib/format";
 import { OUTCOME_COLORS } from "./palette";
@@ -49,13 +49,19 @@ export function RateDonut({
   return (
     <ArcFrame>
       {variant === "gauge" ? (
-        <div className="mx-auto max-w-56">
-          <Gauge
-            value={total ? (good / total) * 100 : 0}
-            label={title}
-            detail={`${formatCount(good)} ${goodLabel.toLowerCase()} · ${formatCount(bad)} ${badLabel.toLowerCase()}`}
-            tone="success"
+        <div className="flex flex-col items-center gap-3">
+          <UsageGauge
+            rings={[{
+              fraction: total ? good / total : null,
+              label: `${title}: ${formatCount(good)} ${goodLabel.toLowerCase()} / ${formatCount(total)} total`,
+            }]}
+            valueLabel={total ? `${((good / total) * 100).toFixed(1)}%` : "—"}
+            size={180}
+            variant="dial"
           />
+          <p className="text-center text-xs text-muted-foreground">
+            {formatCount(good)} {goodLabel.toLowerCase()} · {formatCount(bad)} {badLabel.toLowerCase()}
+          </p>
         </div>
       ) : variant === "waffle" ? (
         <>

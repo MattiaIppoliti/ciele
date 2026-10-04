@@ -11,25 +11,49 @@ capacidades en tiempo de ejecución y las instrucciones reutilizables.
 | Herramienta | Predeterminado | Comportamiento actual |
 | --- | :---: | --- |
 | Search knowledge | Activado | Busca en la Knowledge conectada y devuelve respuestas con citas. |
-| Session memory | Activada | Utiliza información de la sesión de conversación actual. |
+| Session memory | Activada | Utiliza la información de la sesión de conversación actual. |
 | Fetch URL | Off | Lee una URL cuando el entorno de ejecución selecciona la herramienta. |
-| Show a table | Off | Muestra datos en una tabla cuando el entorno de ejecución selecciona la herramienta. |
+| Tablas interactivas | Desactivado | Muestra los datos como una tabla sencilla, una cuadrícula de registros de CRM o una tabla de tareas con filtros de estado. |
 
 La herramienta Search knowledge está siempre disponible. Puedes habilitar o
 deshabilitar las demás herramientas integradas.
 
-Show a table organiza los datos que el asistente ha encontrado en esta
-respuesta. No calcula valores. La tabla aparece encima de la respuesta escrita,
-y la transcripción de Inbox muestra la misma tabla.
+**Interactive tables** organiza los datos que el asistente ha encontrado en esta
+respuesta. El tiempo de ejecución selecciona la tabla a partir de tu solicitud y
+de los datos disponibles.
+
+- Una tabla sencilla compara datos y puede incluir preguntas de seguimiento por
+  filas.
+- Una cuadrícula de registros de CRM muestra empresas, categorías, última
+  interacción, estado de la relación y enlaces a sitios web. Selecciona filas,
+  ordena, cambia el tamaño o ancla columnas.
+- Una tabla de tareas muestra las fechas, el estado y los propietarios.
+  Selecciona **All**, **To do**, **In Progress** o **Completed** para filtrar
+  sus filas.
+
+Los recuentos de los filtros proceden de los datos mostrados. Los datos
+faltantes permanecen vacíos. La configuración de la tabla afecta a la vista
+actual y no modifica los registros del CRM.
+
+Utiliza **New property** o **Add calculation** en la cuadrícula del CRM para
+preparar una solicitud de propiedad. Revisa su prompt y, a continuación,
+selecciona **Go calculate**. Esto envía una solicitud de chat normal. Siguen
+aplicándose el harness actual, las fuentes conectadas y los permisos. La
+interfaz de usuario no simula los valores generados.
+
+Las mismas tablas aparecen en Preview, en el Widget publicado y en la
+transcripción de Inbox. Publica el asistente después de habilitar esta
+herramienta. La bandeja de entrada admite la visualización, la selección, el
+filtrado y el diseño de columnas. No envía solicitudes de propiedades.
 
 El asistente puede añadir una pregunta de seguimiento a una fila. El Visitor
-selecciona la fila para hacer esa pregunta. La transcripción de la bandeja de
+selecciona la fila para hacer esa pregunta. La transcripción de la Bandeja de
 entrada muestra estas filas, pero un Member no puede seleccionarlas.
 
 ## Habilita el modo de estudio
 
 **Study Mode** está desactivado de forma predeterminada. Actívalo para que los
-visitantes puedan practicar el Knowledge del asistente con ejercicios
+visitantes puedan practicar el Knowledge del asistente mediante ejercicios
 interactivos.
 
 1. Abre **Tools & Skills** y habilita **Study Mode**.
@@ -38,13 +62,14 @@ interactivos.
 4. Prueba un ejercicio en Preview.
 5. Publica el asistente para actualizar el widget.
 
-El editor de chat muestra un botón **Study exercises**. Selecciona un formato,
-añade un tema y, a continuación, envía la solicitud.
+El editor de mensajes del chat muestra un botón **Study exercises**. Selecciona
+un formato, añade un tema y, a continuación, envía la solicitud.
 
 Cuando está habilitado, **Study Mode** también aparece en **Flows**. Su botón de
-ajustes abre esta sección. Desactiva el modo de estudio en **Tools & Skills**.
-El Flow no tiene un conmutador independiente. Las solicitudes del menú Study
-exercises van directamente a este Flow. Aparece un icono de birrete en Thinking.
+ajustes abre esta sección. Desactiva el Study Mode en **Tools & Skills**. El
+Flow no tiene un conmutador independiente. Las solicitudes del menú Study
+exercises van directamente a este Flow. Aparece un icono de birrete de
+graduación en Thinking.
 
 Los ejercicios necesitan material relevante en la Knowledge del Assistant. Si no
 se encuentra ningún material, el Asistente te pide un tema admitido o material
@@ -52,18 +77,18 @@ de estudio.
 
 | Formato | Cómo responde el Visitor |
 | --- | --- |
-| Multiple choice | Selecciona una opción. No hay disponible ninguna respuesta de texto libre. |
-| Arrastra las palabras | Arrastra o selecciona una palabra para completar un espacio en blanco por pregunta. |
+| Opción múltiple | Selecciona una opción. No hay disponible ninguna respuesta de texto libre. |
+| Drag the words | Arrastra o selecciona una palabra para completar un espacio en blanco por pregunta. |
 | Verdadero / Falso | Selecciona una de las dos opciones. |
-| Flashcards | Escribe la palabra que falta o una frase corta. |
+| Flashcards | Escribe la palabra que falta o una expresión corta. |
 
 **Choose for me** selecciona un formato habilitado. Cada ejercicio contiene como
 máximo cinco preguntas distintas basadas en el Knowledge recuperado.
 
 Selecciona **Check** para guardar una respuesta. Ciele te muestra si es
 correcta, la respuesta correcta y una explicación. No puedes modificar una
-respuesta ya enviada. Las tarjetas de memoria (flashcards) aceptan las variantes
-ortográficas definidas cuando se creó el ejercicio.
+respuesta ya enviada. Las tarjetas de memoria aceptan las variantes ortográficas
+definidas cuando se creó el ejercicio.
 
 La Inbox muestra las preguntas, las respuestas enviadas, las respuestas
 correctas y la puntuación. Los ejercicios sin terminar muestran cuántas
@@ -75,7 +100,7 @@ necesitan un reproductor H5P externo.
 Un asistente puede utilizar una integración de API registrada. La integración
 contiene una URL base, una credencial protegida y endpoints descritos.
 
-Para cada endpoint, define el método, la ruta, la finalidad, los parámetros y la
+Para cada endpoint, define el método, la ruta, el propósito, los parámetros y la
 estructura de la respuesta. El entorno de ejecución valida cada ruta solicitada
 frente a este catálogo.
 
@@ -104,7 +129,8 @@ diferentes nombres.
 
 Ciele genera una clave para cada llamada. Al reintentar la misma llamada, se
 envía la misma clave. Una llamada diferente envía una clave diferente. Tu API
-puede entonces ver las dos solicitudes como una única operación de escritura.
+puede entonces considerar las dos solicitudes como una única operación de
+escritura.
 
 Tu API también debe hacer su parte. Debe almacenar la clave y devolver el primer
 resultado cuando vuelva a ver la clave.
@@ -119,10 +145,10 @@ Una Skill es una plantilla de instrucciones reutilizable. Una organización pued
 asociar la misma Skill a varios asistentes.
 
 1. Abre **Tools & Skills**.
-2. Busca la Skill de organización necesaria.
+2. Busca la Organization Skill necesaria.
 3. Asocia la Skill al Assistant.
 4. Prueba el resultado en Preview.
-5. Publica el asistente cuando el resultado sea correcto.
+5. Publica el Assistant cuando el resultado sea correcto.
 
 Los cambios en las habilidades están disponibles en Preview de inmediato. El
 Widget publicado utiliza la última instantánea de Publication.
@@ -130,7 +156,7 @@ Widget publicado utiliza la última instantánea de Publication.
 ### Permite que los usuarios inicien una Skill desde la ventana de chat
 
 Una Skill puede tener un **Opening line**. Escríbelo como la persona que
-pregunta, no como el Asistente.
+pregunta, no como el Assistant.
 
 La ventana de chat muestra un menú **/** con cada Skill que tiene una frase de
 apertura. Cuando seleccionas una Skill, la ventana de chat escribe la frase de
@@ -142,7 +168,7 @@ prompt de la Skill sigue aplicándose a cada respuesta.
 Publica el asistente después de escribir una frase de apertura. El Widget
 utiliza la última instantánea de Publication.
 
-## Los archivos adjuntos y la Knowledge no son lo mismo
+## Los archivos adjuntos y el conocimiento no son lo mismo
 
 Tanto un archivo adjunto como una Knowledge Source se convierten en texto, y
 Ciele los lee con el mismo extractor. Lo que ocurre a continuación es diferente.

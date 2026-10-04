@@ -23,7 +23,7 @@ export interface FormActionsProps {
 /**
  * Cancel and Save for a settings page drawn as a section timeline. The same
  * pair sits at the foot of the page and, through {@link useTopBarFormActions},
- * at the right of the top bar, so a long form can be saved from wherever the
+ * at the right of the top bar above phone widths, so a long form can be saved from wherever the
  * reader stopped scrolling.
  */
 function FormActions({
@@ -37,7 +37,7 @@ function FormActions({
   className,
 }: FormActionsProps) {
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
       <Button
         variant="ghost"
         size="sm"
@@ -69,7 +69,7 @@ function FormActions({
  */
 export function SettingsSaveBar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-background sticky -bottom-6 z-10 -mx-2 flex items-center justify-end gap-3 border-t px-2 pt-4 pb-10 sm:-bottom-7 sm:pb-11">
+    <div className="settings-save-bar bg-background sticky -bottom-6 z-10 -mx-2 flex flex-wrap items-center justify-end gap-3 border-t px-2 pt-4 pb-10 sm:-bottom-7 sm:pb-11">
       {children}
     </div>
   );
@@ -95,6 +95,7 @@ export function useTopBarFormActions(props: FormActionsProps): ReactElement {
     setSlot(
       "form",
       <FormActions
+        className="hidden sm:flex"
         dirty={dirty}
         saving={saving}
         saveLabel={saveLabel}

@@ -8,12 +8,14 @@ import type {
   TeammateCapabilityCeiling,
   TeammateGrantDomain,
   TeammatePatch,
+  TeammateRuntimeConfig,
   TeammateRoutine,
   TeammateRoutinePatch,
 } from "@agent-hub/core";
 import {
   createRoutineOp,
   createTeammateOp,
+  configureTeammateRuntimeOp,
   deleteRoutineOp,
   deleteTeammateOp,
   getTeammateMemoryOp,
@@ -55,6 +57,10 @@ export async function updateTeammateAction(
   patch: TeammatePatch
 ): Promise<Teammate> {
   return runOperation(updateTeammateOp, { id, patch });
+}
+
+export async function configureTeammateRuntimeAction(id: string, config: TeammateRuntimeConfig): Promise<Teammate> {
+  return runOperation(configureTeammateRuntimeOp, { id, config });
 }
 
 export async function deleteTeammateAction(id: string): Promise<void> {

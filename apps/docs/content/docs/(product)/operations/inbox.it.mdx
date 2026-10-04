@@ -1,9 +1,9 @@
 ---
 title: Inbox
-description: Esamina Conversations, Sources, le tracce di runtime e i metadati delle sessioni.
+description: Esamina Conversations, Sources, runtime traces e i metadati delle sessioni.
 ---
 
-La Inbox memorizza i turni di Visitor e di Assistant. Apri una Conversation per
+L'Inbox memorizza i turni di Visitor e di Assistant. Apri una Conversation per
 esaminare la trascrizione esatta memorizzata.
 
 ## Elenco delle conversazioni
@@ -11,32 +11,40 @@ esaminare la trascrizione esatta memorizzata.
 Usa la ricerca e i filtri disponibili per restringere l'elenco. Ogni riga indica
 l'attività recente e lo stato corrente della Conversation.
 
-Una sessione che contiene solo Notifications proattive ha il marcatore
-**Notification only**. Diventa una Conversation normale dopo che un Visitor
-risponde.
+Una sessione che contiene solo Notifiche proattive presenta il marcatore
+**Notification only**. Diventa una Conversation normale dopo che un Visitor ha
+risposto.
+
+Fai scorrere una riga verso sinistra oppure seleziona il relativo pulsante
+**Actions** per visualizzare **Archive**, **Flag** e **Delete**. Uno scorrimento
+completo archivia la Conversation. Seleziona **Archived** per ripristinarla
+oppure **Flagged** per trovare le tue Conversazioni contrassegnate. Le azioni
+Archive e Flag influiscono solo sul tuo elenco personale. Non modificano la
+trascrizione né le relative analisi. Delete richiede una conferma e rimuove la
+trascrizione. Una Conversation soggetta a legal hold non può essere eliminata.
 
 ## Dettagli della conversazione
 
-La vista dettagliata può mostrare:
+La vista dettagli può mostrare:
 
-- Messaggi di Visitor e di Assistant
+- Messaggi di Visitor e Assistant
 - il Flow che ha gestito un turno
-- citazioni di Source con nome
-- Feedback del visitatore
+- citazioni di fonti denominate
+- Feedback dei visitatori
 - stato di escalation
 - metadati di avvio e del dispositivo
 - il soggetto SSO verificato e l'identity claim configurato
 - informazioni su Thinking memorizzate quando il ruolo del membro consente
   l'accesso
 
-Le azioni Verbatim Message e le risposte Basic non contengono una traccia
+Le azioni Verbatim Message e le Basic replies non contengono una traccia
 Thinking. Le risposte di Search Knowledge possono contenere eventi relativi agli
 strumenti e all'avanzamento.
 
 Anche le chiamate di integrazione API compaiono nella traccia. I loro eventi
 mostrano quale endpoint ha supportato la risposta.
 
-## Crea lavoro di qualità
+## Crea un lavoro di qualità
 
 Usa l'azione Improvement disponibile quando una risposta deve essere corretta.
 Il nuovo elemento rimanda al messaggio della Conversation interessato.
