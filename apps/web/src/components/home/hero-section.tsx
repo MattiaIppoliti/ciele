@@ -80,22 +80,22 @@ export function HeroSection() {
             </span>
           </Link>
 
-          {/* Same type treatment as the page's closing line in `CtaSection`:
-              semibold, tight tracking, and the fade painted into the type
-              itself, so the fold and the sign-off read as one voice. The
-              rotating word paints its own chromatic gradient and the mascot is
-              an SVG with literal fills, so neither inherits the transparency. */}
+          {/* Keep the fade on static text. Animated shadow-root glyphs inside
+              a background-clip:text ancestor can leave stray paint at the
+              headline's left edge when Scritto removes its exiting letters. */}
           <h1
-            className="home-reveal-hero from-foreground to-foreground/25 mx-auto mt-8 max-w-4xl bg-gradient-to-b bg-clip-text text-5xl font-semibold text-balance text-transparent md:max-w-5xl md:text-pretty md:text-6xl xl:max-w-6xl xl:text-7xl"
+            className="home-reveal-hero mx-auto mt-8 max-w-4xl text-5xl font-semibold text-balance md:max-w-5xl md:text-pretty md:text-6xl xl:max-w-6xl xl:text-7xl"
             style={{ "--reveal-delay": "0.05s" } as CSSProperties}
           >
-            Your organization&apos;s{" "}
-            <span className="whitespace-nowrap">AI Teammates,</span>{" "}
-            {/* Desktop (lg+): hard break so the headline is exactly two lines,
-                only where line 1 fits at the current font size. Below lg the
-                break is hidden and the text wraps freely. */}
-            <br className="hidden lg:block" />
-            above the{" "}
+            <span className="from-foreground to-foreground/25 bg-gradient-to-b bg-clip-text text-transparent">
+              Your organization&apos;s{" "}
+              <span className="whitespace-nowrap">AI Teammates,</span>{" "}
+              {/* Desktop (lg+): hard break so the headline is exactly two lines,
+                  only where line 1 fits at the current font size. Below lg the
+                  break is hidden and the text wraps freely. */}
+              <br className="hidden lg:block" />
+              above the{" "}
+            </span>
             {/* Keep the ghost + "clouds" on the same line. Plain inline (not
                 flex) so "clouds" shares the text baseline with "above the";
                 the ghost is baseline-aligned then nudged to sit optically on
@@ -107,11 +107,8 @@ export function HeroSection() {
                   the ghost sits immediately before it. */}
               <HeroRotatingWord
                 words={["clouds", "sky", "ciele", "cielo"]}
-                // The h1 paints a top-to-bottom fade over the whole block, and
-                // this word uses its own glyphs, so it cannot inherit that
-                // fade. Left at full --foreground it settled two tones darker
-                // than the "above the" beside it. This is what the h1's fade
-                // works out to on the last line, so the row lands as one color.
+                // Match the static headline's last line without putting the
+                // animated letters inside its text-clipping mask.
                 foregroundColor="color-mix(in oklab, var(--foreground) 45%, transparent)"
                 delay={0.05}
                 duration={1.1}

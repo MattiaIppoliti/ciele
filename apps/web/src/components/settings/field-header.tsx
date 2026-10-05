@@ -1,9 +1,24 @@
-/** A Settings field's title and one-line hint. */
-export function FieldHeader({ title, hint }: { title: string; hint: string }) {
+import type { ReactNode } from "react";
+import { Label } from "@agent-hub/ui";
+
+/** A field label and hint. Associate the hint using `${htmlFor}-hint`. */
+export function FieldHeader({ title, hint, htmlFor }: {
+  title: string;
+  hint?: ReactNode;
+  htmlFor?: string;
+}) {
   return (
-    <div>
-      <h2 className="text-base font-semibold">{title}</h2>
-      <p className="text-muted-foreground mt-0.5 text-sm">{hint}</p>
+    <div data-slot="field-header" className="space-y-1">
+      {htmlFor ? (
+        <Label htmlFor={htmlFor} className="leading-5">{title}</Label>
+      ) : (
+        <p className="text-sm font-medium leading-5">{title}</p>
+      )}
+      {hint && (
+        <p id={htmlFor ? `${htmlFor}-hint` : undefined} className="text-muted-foreground text-xs leading-relaxed">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useActionState } from "react";
+import { Suspense, useActionState, useState } from "react";
 import { Button } from "@agent-hub/ui";
 import { Input } from "@/components/motion/input";
 import { signInWithPasswordAction } from "@/app/auth/actions";
@@ -14,6 +14,9 @@ function LoginFormInner() {
     signInWithPasswordAction,
     EMPTY_AUTH_FORM_STATE
   );
+  // A failed action must keep the entered credentials for correction.
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <form action={formAction} className="space-y-4">
@@ -22,6 +25,9 @@ function LoginFormInner() {
         id="email"
         name="email"
         label="Email"
+        density="comfortable"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
         type="email"
         autoComplete="email"
         placeholder="my@email.com"
@@ -34,6 +40,9 @@ function LoginFormInner() {
         id="password"
         name="password"
         label="Password"
+        density="comfortable"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
         type="password"
         autoComplete="current-password"
         placeholder="••••••••"

@@ -2,7 +2,7 @@
 
 import { prefetchFind } from "@/lib/find-client";
 import Link, { useLinkStatus } from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
 import { Bot, ChevronsUpDown, LifeBuoy, Search, Settings, type LucideIcon } from "lucide-react";
 import { BookOpen, Check, Loader2, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
@@ -20,20 +20,8 @@ import {
 import { Hint } from "@agent-hub/ui";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ResizeHandle, SHELL_GAP } from "@/components/ui/resizable-panel";
-import {
-  DEFAULT_WIDTH,
-  ICON_ONLY_AT,
-  MAX_WIDTH,
-  RAIL_WIDTH,
-  isRailWidth,
-  sidebarDragFor,
-  sidebarReleaseFor,
-} from "@/components/shell/sidebar-drag";
-import { SPRING_PANEL, SPRING_REFOLD, SPRING_UNFOLD } from "@/lib/ease";
-import { grabOffsetFor } from "@agent-hub/ui/resize-geometry";
-import { haptic, playFeedback } from "@agent-hub/ui/feedback";
+import { MobileNavigation } from "@/components/shell/mobile-navigation";
+import { SidebarFrame } from "@/components/shell/sidebar-frame";
 import {
   GLOBAL_NAV,
   SETUP_SECTIONS,
@@ -65,7 +53,6 @@ import {
   isChatPath,
   QuickLinks,
 } from "@/components/shell/sidebar-chat-controls";
-import { MobileNavigation } from "@/components/shell/mobile-navigation";
 import { ROW_IDLE } from "@/components/shell/sidebar-row";
 
 
@@ -724,283 +711,24 @@ function SidebarContent({
   );
 }
 
-/**
- * Vercel-style shell sidebar with the previous rail's mechanics: drag the
- * right edge to resize, below ICON_ONLY_AT it collapses to an icon rail,
- * past HIDE_AT it hides entirely. While hidden, hovering the left screen
- * edge peeks a floating panel; the top bar shows a reopen button.
- *
- * All of that is desktop behaviour (`lg` and up). Below it the sidebar leaves
- * the layout entirely and navigation moves into the fullscreen Home picker, dragging a
- * resize handle and hovering a 6px screen edge are both mouse affordances,
- * and the space simply isn't there.
- */
+/** The platform and component library share the sidebar's interaction frame. */
 export function AppSidebar(props: AppSidebarProps) {
   const {
-    sidebarDocked,
-    setSidebarDocked,
-    sidebarWidth: width,
-    setSidebarWidth: setWidth,
+    sidebarDocked, setSidebarDocked, sidebarWidth, setSidebarWidth,
+    navDrawerOpen, setNavDrawerOpen,
   } = useShell();
-  const [peek, setPeek] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const reduceMotion = useReducedMotion();
-  // Armed, not committed. Crossing HIDE_AT used to end the drag mid-gesture
-  // and reset the width to the default, so a slip past the threshold was
-  // unrecoverable *and* destroyed a width the user had chosen. Now it only
-  // arms the outcome: dragging back disarms, and release decides.
-  const [armedToHide, setArmedToHide] = useState(false);
-  const grabOffsetRef = useRef(0);
-  const widthBeforeDragRef = useRef(DEFAULT_WIDTH);
-  const handleRef = useRef<HTMLElement | null>(null);
-  const pointerIdRef = useRef<number | null>(null);
-
-  function startDrag(event: React.PointerEvent) {
-    const handle = event.currentTarget as HTMLElement;
-    const edge = handle.parentElement?.getBoundingClientRect().right ?? event.clientX;
-    grabOffsetRef.current = grabOffsetFor(edge, event.clientX);
-    widthBeforeDragRef.current = width;
-    if (handle.setPointerCapture) {
-      handle.setPointerCapture(event.pointerId);
-      handleRef.current = handle;
-      pointerIdRef.current = event.pointerId;
-    }
-    setArmedToHide(false);
-    setDragging(true);
-  }
-
-  useEffect(() => {
-    if (!dragging) return;
-    const handle = handleRef.current;
-    // Last few moves, so release velocity is a short average rather than the
-    // single final delta, which is noisy enough to flip the outcome.
-    const trail: { x: number; t: number }[] = [];
-    const onMove = (e: PointerEvent) => {
-      trail.push({ x: e.clientX, t: e.timeStamp });
-      if (trail.length > 5) trail.shift();
-      const next = sidebarDragFor(e.clientX, grabOffsetRef.current);
-      setWidth(next.width);
-      setArmedToHide(next.armedToHide);
-    };
-    const releaseVelocity = () => {
-      if (trail.length < 2) return 0;
-      const first = trail[0];
-      const last = trail[trail.length - 1];
-      const dt = last.t - first.t;
-      return dt > 0 ? ((last.x - first.x) / dt) * 1000 : 0;
-    };
-    const endDrag = (e: PointerEvent) => {
-      const release = sidebarReleaseFor(
-        sidebarDragFor(e.clientX, grabOffsetRef.current),
-        widthBeforeDragRef.current,
-        releaseVelocity(),
-      );
-      setWidth(release.width);
-      setSidebarDocked(release.docked);
-      // The snap is the felt end of the drag (#817): rail <-> full, or hidden.
-      // Same frame as the visual, same detent the bottom sheet uses.
-      if (
-        !release.docked ||
-        isRailWidth(release.width) !== isRailWidth(widthBeforeDragRef.current)
-      ) {
-        playFeedback("tick");
-        haptic("detent");
-      }
-      setArmedToHide(false);
-      setDragging(false);
-      const id = pointerIdRef.current;
-      if (handle && id !== null && handle.hasPointerCapture?.(id)) {
-        handle.releasePointerCapture(id);
-      }
-      handleRef.current = null;
-      pointerIdRef.current = null;
-    };
-    // Capture keeps the drag alive across the main content and any iframe in
-    // it (the live Preview), and gives us a pointercancel to clean up on.
-    const target: EventTarget = handle ?? window;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    target.addEventListener("pointermove", onMove as EventListener);
-    target.addEventListener("pointerup", endDrag as EventListener);
-    target.addEventListener("pointercancel", endDrag as EventListener);
-    return () => {
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      target.removeEventListener("pointermove", onMove as EventListener);
-      target.removeEventListener("pointerup", endDrag as EventListener);
-      target.removeEventListener("pointercancel", endDrag as EventListener);
-    };
-  }, [dragging, setSidebarDocked, setWidth]);
-
-  // Toggle = fully hide the sidebar (it leaves the layout entirely, not an
-  // icon rail). The width is preserved on purpose: reopening restores the
-  // exact state the sidebar had before closing, so a full sidebar reopens
-  // full and one dragged down to the icon rail reopens as the rail.
-  const close = () => setSidebarDocked(false);
-
-  const collapsed = isRailWidth(width);
 
   return (
-    <>
-      {/* The docked sidebar's width is animated rather than transitioned,
-          and it animates to and from zero, which is what makes closing and
-          reopening read as a movement at all. It used to unmount on close and
-          mount on open, so the main content jumped 240px in one frame; the
-          CSS `transition-[width]` it carried only ever ran on the rail/full
-          change, and 200ms of `ease-out` there was invisible anyway.
-
-          `SPRING_UNFOLD` opens and `SPRING_REFOLD` closes: the opening is
-          allowed its overshoot, because a panel arriving under its own
-          momentum is the thing that makes the gesture legible, while a
-          closing panel that overshot would pull the main content past the
-          screen edge and back. Dragging animates nothing, or the width would
-          chase the pointer a beat behind it. */}
-      <AnimatePresence initial={false}>
-        {sidebarDocked && (
-          <motion.aside
-            key="docked-sidebar"
-            initial={{ width: 0 }}
-            animate={{ width: collapsed ? RAIL_WIDTH : width }}
-            exit={{
-              width: 0,
-              transition: reduceMotion ? { duration: 0 } : SPRING_REFOLD,
-            }}
-            transition={
-              reduceMotion || dragging ? { duration: 0 } : SPRING_UNFOLD
-            }
-            // While armed, the panel dims toward the outcome instead of just
-            // sitting there: the in-between frames should point at what
-            // release will do, so "let go now and it closes" is legible
-            // before it does.
-            className={`desktop-sidebar relative hidden h-full shrink-0 flex-col md:flex ${
-              armedToHide ? "opacity-45" : "opacity-100"
-            }`}
-          >
-            {/* The clip belongs to the content, not to the panel. The resize
-                grip hangs off the panel's own edge and is wider than the edge
-                it centres on, so a panel that clipped its overflow cut the
-                grip in half down the border. */}
-            <div className="h-full overflow-hidden">
-              {/* The content keeps the width it is animating to, so it slides
-                  out from behind the edge instead of reflowing every row while
-                  the panel opens. */}
-              <div
-                className="flex h-full flex-col"
-                style={{ width: collapsed ? RAIL_WIDTH : width }}
-              >
-                <SidebarContent
-                  {...props}
-                  collapsed={collapsed}
-                  toggleLabel="Hide sidebar"
-                  // Toggle fully hides the sidebar (never a rail). Width is
-                  // preserved so reopening from the top bar restores the same
-                  // state, full or the dragged-down icon rail. Rail is reached
-                  // only by dragging.
-                  onToggle={close}
-                />
-              </div>
-            </div>
-            <ResizeHandle
-              side="right"
-              gap={SHELL_GAP}
-              // The workspace panel's own extent (the layout's `md:p-2`), so
-              // the lit line bends round its rounded corners.
-              span="inset-y-2"
-              cornered="right"
-              label="Resize sidebar"
-              resizing={dragging}
-              onPointerDown={startDrag}
-              value={collapsed ? RAIL_WIDTH : width}
-              minValue={RAIL_WIDTH}
-              maxValue={MAX_WIDTH}
-              onValueChange={(nextWidth) =>
-                setWidth(
-                  collapsed &&
-                    nextWidth > RAIL_WIDTH &&
-                    nextWidth < ICON_ONLY_AT
-                    ? ICON_ONLY_AT
-                    : nextWidth,
-                )
-              }
-            />
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
-      {!sidebarDocked && (
-        <UndockedSidebar
-          {...props}
-          peek={peek}
-          setPeek={setPeek}
-          onDock={() => setSidebarDocked(true)}
-        />
-      )}
-      <MobileNavigation {...props} />
-    </>
-  );
-}
-
-/**
- * What stands in for the sidebar while it is hidden: the hover zone along the
- * screen edge, and the floating panel that zone reveals.
- *
- * A module-level component, not one declared inside `AppSidebar`. A component
- * defined during render is a new type on every render, so React unmounts and
- * remounts its whole subtree; `setPeek` alone would have remounted this one
- * twice per hover, which is the one thing that breaks `AnimatePresence`: the
- * exit never plays, because by the time `peek` is false the presence that was
- * tracking the child is itself gone.
- */
-function UndockedSidebar({
-  peek,
-  setPeek,
-  onDock,
-  ...props
-}: AppSidebarProps & {
-  peek: boolean;
-  setPeek: (peek: boolean) => void;
-  /** Toggling from the floating panel docks it, rather than hiding it again. */
-  onDock: () => void;
-}) {
-  const reduceMotion = useReducedMotion();
-  return (
-    <>
-      {/* Hover zone along the screen edge that reveals the floating panel. */}
-      <div
-        className="desktop-sidebar fixed inset-y-0 left-0 z-40 hidden w-1.5 md:block"
-        onMouseEnter={() => setPeek(true)}
-      />
-      {/* Enter and exit along the same path. This used to slide in from the
-          left over 200ms and then vanish in a single frame when `peek` went
-          false, which contradicts the spatial relationship the entrance had
-          just established: a panel that came from the left edge should go back
-          to it. AnimatePresence is what gives the unmount somewhere to go. */}
-      <AnimatePresence>
-        {peek && (
-          <motion.div
-            onMouseLeave={() => setPeek(false)}
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
-            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
-            transition={SPRING_PANEL}
-            // Exactly on the workspace panel's own inset and radius (the
-            // layout's `md:p-2`, `rounded-xl`), so its top, left and bottom
-            // edges and its corners land on the panel's: one box, not a
-            // second one offset a few pixels inside the first.
-            className="desktop-sidebar bg-background fixed top-2 bottom-2 left-2 z-50 hidden w-64 flex-col overflow-hidden rounded-xl border shadow-strong md:flex"
-          >
-            <SidebarContent
-              {...props}
-              collapsed={false}
-              toggleLabel="Dock sidebar"
-              onToggle={() => {
-                setPeek(false);
-                onDock();
-              }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+    <SidebarFrame
+      desktopClassName="desktop-sidebar"
+      mobileNavigation={<MobileNavigation {...props} />}
+      docked={sidebarDocked}
+      setDocked={setSidebarDocked}
+      width={sidebarWidth}
+      setWidth={setSidebarWidth}
+      drawerOpen={navDrawerOpen}
+      setDrawerOpen={setNavDrawerOpen}
+      renderContent={(options) => <SidebarContent {...props} {...options} />}
+    />
   );
 }

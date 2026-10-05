@@ -1,0 +1,47 @@
+/* Library chrome stays quiet so the production components remain the subject. */
+.surface {
+  --catalog-radius: 1.25rem;
+}
+.heading {
+  font-size: clamp(1.875rem, 4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -.035em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.tile {
+  border-radius: var(--catalog-radius);
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.tile:active { transform: scale(.985); }
+.tile:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.workbench {
+  border: 1px solid var(--border);
+  border-radius: var(--catalog-radius);
+  background: var(--background);
+}
+.stage {
+  width: 100%;
+  margin-inline: auto;
+  transition: max-width 280ms cubic-bezier(.2,.8,.2,1);
+}
+.example {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--background);
+}
+.toolbar { background: color-mix(in srgb, var(--card) 88%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .tile, .stage { transition: none; }
+  .tile:active { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .toolbar { background: var(--card); }
+}
+@media (prefers-contrast: more) {
+  .tile, .workbench, .example { border-color: var(--foreground); }
+}
+
+@media (pointer: coarse) {
+  .toolbar button { min-width: 2.75rem; min-height: 2.75rem; }
+}

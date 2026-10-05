@@ -20,7 +20,8 @@ import {
 } from "@/components/agents/agent-code";
 import { ActionSwapText } from "@/components/motion/action-swap";
 import { AgentDisclosure } from "@/components/agents/agent-disclosure";
-import { SPRING_PRESS, SPRING_SWAP } from "@/lib/ease";
+import { SPRING_SWAP } from "@/lib/ease";
+import { Button } from "@agent-hub/ui";
 import { useCopied } from "@/lib/hooks/use-copied";
 import { cn } from "@/lib/utils";
 
@@ -96,20 +97,18 @@ function ToolResultAction({
   onClick: () => void;
   children: ReactNode;
 }) {
-  const reduce = useReducedMotion() ?? false;
-
   return (
-    <motion.button
+    <Button
       type="button"
       aria-label={label}
       title={label}
       onClick={onClick}
-      whileTap={reduce ? undefined : { scale: 0.9 }}
-      transition={SPRING_PRESS}
-      className="grid size-7 place-items-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+      variant="ghost"
+      size="icon-sm"
+      className="text-muted-foreground hover:text-foreground"
     >
       {children}
-    </motion.button>
+    </Button>
   );
 }
 

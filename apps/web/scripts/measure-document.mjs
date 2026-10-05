@@ -70,6 +70,10 @@ const BUDGETS = {
   total: 1606 * 1024,
   document: 96 * 1024,
   row: 8 * 1024,
+  // The component library adds one static document per reusable family.
+  // Give those small documents their own 20 KB ceiling and count-scaled
+  // aggregate, while preserving the existing application's 1,606 KB gate.
+  catalogDocument: 20 * 1024,
 };
 
 // An intercepting route (`(.)settings`, `(..)x`, `(..)(..)x`) is prerendered to its own
@@ -154,13 +158,15 @@ if (!checkOnly) {
   console.log();
 }
 
-const total = rows.reduce((n, row) => n + row.flight, 0);
+const catalogRows = rows.filter((row) => row.route === "/components" || row.route.startsWith("/components/"));
+const applicationRows = rows.filter((row) => !catalogRows.includes(row));
+const total = applicationRows.reduce((n, row) => n + row.flight, 0);
 const worstDocument = rows[0];
 const worstRow = rows.reduce((a, b) => (b.widestRow > a.widestRow ? b : a));
 
 const checks = [
   {
-    label: `RSC payload across ${rows.length} documents`,
+    label: `RSC payload across ${applicationRows.length} application documents`,
     value: total,
     budget: BUDGETS.total,
     detail: "a boundary every route inherits is charged once per document",
@@ -178,6 +184,21 @@ const checks = [
     detail: "usually a payload handed to a client component instead of a key",
   },
 ];
+
+if (catalogRows.length > 0) {
+  const worstCatalog = catalogRows[0];
+  checks.push({
+    label: `Component library payload across ${catalogRows.length} documents`,
+    value: catalogRows.reduce((n, row) => n + row.flight, 0),
+    budget: catalogRows.length * BUDGETS.catalogDocument,
+    detail: "the component library's boundary cost grows with its family count",
+  }, {
+    label: `Largest component document (${worstCatalog.route})`,
+    value: worstCatalog.flight,
+    budget: BUDGETS.catalogDocument,
+    detail: "component pages should carry metadata, while previews and source load separately",
+  });
+}
 
 let failed = false;
 for (const check of checks) {

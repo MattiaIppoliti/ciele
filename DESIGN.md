@@ -371,11 +371,13 @@ Constants live in `lib/ease.ts`. Use them, do not write a new bezier or spring i
 
 **Press contract** (CSS, in `globals.css`):
 
-- `<Button>` presses itself: `scale(0.97)` + 1px nudge on `:active`, 100ms.
+- `<Button>` and the motion-button compatibility API share `scale(0.96)` on pointer press, 100ms. `static` disables the travel; keyboard activation keeps its geometry.
 - `.press` for large tappable surfaces (cards, list rows, nav items): `scale(0.985)`.
-- `.press-control` for small non-`Button` controls (bare icon buttons, chips, tabs): `scale(0.94)`.
+- `.press-control` for small non-`Button` controls (bare icon buttons, chips, tabs): `scale(0.96)`. `data-static` disables the travel.
 - `.press-text` for links and text triggers: an opacity dip, because scaling text reflows it.
-- Reduced motion keeps the acknowledgement and drops the travel (opacity 0.7).
+- Reduced motion keeps the acknowledgement and drops the travel (opacity 0.7 on press utilities, 0.8 on buttons).
+
+Operational `SectionHeading` titles are static, with a compact unboxed icon. Only the marketing variant uses a decorative tile and text entrance. Switch travel and validation feedback take at most 150ms and respect `static` and reduced motion.
 
 **Sound and haptics** come with the primitive (`packages/ui/src/feedback/`). `Button` carries
 `data-foley-press`/`-release`; put `data-foley-toggle` on switches and disclosures and
@@ -399,7 +401,7 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
 | A menu | `dropdown-menu`, `motion/context-menu` for right-click | |
 | A select | `ui/select` | `<select>`, `motion/select` (see §6) |
 | Tabs | `motion/tabs` (sliding pill, link tabs) | `ui/tabs` (see §6) |
-| A switch | `ui/motion-switch` | `ui/switch` (see §6) |
+| A switch | `ui/switch` (`ui/motion-switch` is a compatibility re-export) | another track/thumb implementation |
 | Checkbox / radio | `ui/checkbox`, `ui/radio-group` | `<input type="checkbox">` |
 | Input / textarea / label | `Input`, `ui/textarea`, `Label`: `alpha-medium` hairline on an `alpha-lighter` fill, 8/12px padding, lavender border and ring on focus | `border-input`, `dark:bg-input/30` |
 | A table | `ui/table` + `table-column-header`, `table-pagination`, `table-selection`, `table-menu` | a hand-built `<table>` |
@@ -489,8 +491,17 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
   scrolling under them paints over the bar. Inside a padded scroller they stick at minus that
   padding, or text shows through the gap.
 - **Forms.** Label above control, `text-sm font-medium` label, `text-muted-foreground text-xs`
-  help under the control, character limits shown as `N/limit` in the help line. Unsaved-changes
-  guarding through `use-unsaved-changes`.
+  help, character limits shown as `N/limit` in the help line. `settings/field-header` shares
+  that label and supplies a `${htmlFor}-hint` id; associate it with `aria-describedby`.
+  Group titles are headings, individual fields are labels. Field-to-control gap is 8px,
+  related fields 20px, groups 32px. `TimelineSection boxed` applies this field rhythm without
+  adding a second enclosing card. Unsaved-changes guarding uses `use-unsaved-changes`.
+  `motion/input` composes the shared Input and Label with validation feedback; `console`
+  density stays 32px and `comfortable` opts into 44px for auth. The error line reserves space
+  by default; callers may set `reserveErrorSpace={false}` when layout stability is irrelevant.
+- **Overview and analytics cards.** Both take their frame, inset and hairline from the same
+  theme tokens, including Mist Blue. One outer hairline defines the card. The inset radius
+  equals the card radius minus its 8px gap, so nested curves follow the shared radius scale.
 - **Lists that can be empty** always render `EmptyState` with a sentence that says what will
   appear and, if the user can act, one `Button`.
 - **Destructive actions** use the `destructive` variant (a tint, not a red block) and confirm
@@ -585,10 +596,12 @@ CSS custom property for the overshoot curve, declared once in `globals.css`.
 |---|---|---:|---|---:|
 | Tabs | `motion/tabs` | 11 | `ui/tabs` | 2 |
 | Table | `ui/table` | 13 | `motion/table` | 2 |
-| Switch | `ui/motion-switch` | 18 | `ui/switch` | 2 |
+| Switch | `ui/switch` | shared | `ui/motion-switch` | compatibility re-export |
 
-`ui/select` is not on the list: it re-exports `motion/select`, so it is one module with two
-import paths. "Kept" follows usage. If the retired one has a behaviour the kept one lacks, port it first.
+`ui/select` and Switch each have one implementation with two import paths: select re-exports
+`motion/select`, and `ui/motion-switch` re-exports `ui/switch`. Switch supports controlled or
+uncontrolled state, labels, form submission, `sm`/`default` geometry and static feedback.
+"Kept" follows usage for the remaining duplicate implementations. If the retired one has a behaviour the kept one lacks, port it first.
 
 **Order of work**, highest leverage and lowest risk first:
 

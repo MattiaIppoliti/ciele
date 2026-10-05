@@ -136,7 +136,7 @@ export function TimelineSection({
 }: {
   title: string;
   children: ReactNode;
-  /** Group related fields when the section does not already contain a card. */
+  /** Apply the shared field rhythm without adding another enclosing surface. */
   boxed?: boolean;
 }) {
   const id = useId();
@@ -152,29 +152,22 @@ export function TimelineSection({
   const active = ctx?.activeId === id;
 
   return (
-    // Tighter below `lg` (phones and portrait tablets), where the page is one
-    // narrow column and desktop's breathing room reads as dead scroll.
-    <section ref={ref} className="relative pt-1 pb-7 pl-7 last:pb-4 lg:pt-2 lg:pb-12 lg:pl-10">
+    <section ref={ref} className="relative pt-1 pb-8 pl-7 last:pb-0 lg:pl-8">
       <span
         aria-hidden
-        className={`absolute top-[7px] left-0 size-3 lg:top-[13px] rounded-full border-2 transition-[transform,border-color] duration-300 motion-reduce:transition-none ${
+        className={`absolute top-[9px] left-0 size-3 rounded-full border-2 transition-[transform,border-color] duration-150 motion-reduce:transition-none ${
           active
             ? "border-foreground bg-background scale-110"
             : "border-muted-foreground/35 bg-background"
         }`}
       />
-      <h2
-        className={`text-base font-semibold transition-colors duration-300 lg:text-lg ${
-          active ? "text-foreground" : "text-muted-foreground/60"
-        }`}
-      >
+      <h2 className="text-base font-semibold text-foreground">
         {title}
       </h2>
-      {/* Only the heading and the dot mark the inactive sections. The fields
-          stay at full strength: dimmed text and controls read as disabled,
-          and fell under contrast minimums. */}
+      {/* The rail marks the active group; headings and fields stay readable. */}
       <div
-        className={`mt-3 lg:mt-5 ${boxed ? "min-w-0 rounded-2xl border border-border bg-background p-4 sm:p-5" : ""}`}
+        data-layout={boxed ? "fields" : undefined}
+        className={`mt-4 min-w-0 ${boxed ? "space-y-5" : ""}`}
       >
         {children}
       </div>

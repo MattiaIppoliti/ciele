@@ -22,6 +22,7 @@ import {
 } from "@/components/chat/model-allow-list";
 import { ModelSourceSelect } from "@/components/chat/model-source-select";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
+import { FieldHeader } from "@/components/settings/field-header";
 import {
   SectionTimeline,
   TimelineSection,
@@ -41,7 +42,6 @@ import { applyMarkdownCommand, type MarkdownCommand } from "@/lib/markdown-toolb
 import { updateAssistantAction, uploadAssistantAvatarAction } from "@/app/actions";
 
 import { Button } from "@agent-hub/ui";
-import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
@@ -101,41 +101,12 @@ const TOOLBAR_BUTTONS: Array<{
   { label: "Link", Icon: Link2, command: { wrap: "[", wrapEnd: "](url)" } },
 ];
 
-/**
- * A field's heading and hint. With `htmlFor`, the heading text is the
- * control's `<label>` and the hint is reachable as `${htmlFor}-hint`, so pass
- * that to the control's `aria-describedby`.
- */
 /** `n/max` under a field: only the changing half rolls. */
 function CharCount({ value, max }: { value: number; max: number }) {
   return (
     <p className="text-muted-foreground mt-1 text-right text-xs tabular-nums">
       <RollingNumber value={value} />/{formatCount(max)}
     </p>
-  );
-}
-
-function FieldHeader({
-  title,
-  hint,
-  htmlFor,
-}: {
-  title: string;
-  hint: string;
-  htmlFor?: string;
-}) {
-  return (
-    <div>
-      <h2 className="text-base font-semibold">
-        {htmlFor ? <label htmlFor={htmlFor}>{title}</label> : title}
-      </h2>
-      <p
-        id={htmlFor ? `${htmlFor}-hint` : undefined}
-        className="text-muted-foreground mt-0.5 text-sm"
-      >
-        {hint}
-      </p>
-    </div>
   );
 }
 
@@ -344,12 +315,12 @@ function GeneralFormBody({
   }
 
   return (
-    <div className="pt-10 pb-24">
+    <div className="pt-6 pb-16">
       <SectionTimeline>
       <TimelineSection title="Identity" boxed>
-      <div className="space-y-8">
+      <div className="space-y-5">
       {/* Logo */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Assistant logo"
           hint="Circular icon shown next to this assistant in the sidebar and widget header."
@@ -370,7 +341,7 @@ function GeneralFormBody({
       </div>
 
       {/* Title */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Assistant title"
           htmlFor={`${fieldId}-title`}
@@ -392,7 +363,6 @@ function GeneralFormBody({
             setTitle(e.target.value);
             if (titleError && e.target.value.trim()) setTitleError("");
           }}
-          className="h-11"
         />
         {titleError && (
           <p id={`${fieldId}-title-error`} className="text-destructive text-sm">
@@ -402,7 +372,7 @@ function GeneralFormBody({
       </div>
 
       {/* Nickname */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Nickname"
           htmlFor={`${fieldId}-nickname`}
@@ -415,12 +385,11 @@ function GeneralFormBody({
           autoComplete="off"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
-          className="h-11"
         />
       </div>
 
       {/* Description */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Description"
           htmlFor={`${fieldId}-description`}
@@ -434,7 +403,7 @@ function GeneralFormBody({
             value={description}
             maxLength={DESCRIPTION_MAX}
             onChange={(e) => setDescription(e.target.value)}
-            rows={5}
+            rows={3}
             className="resize-none"
           />
           <CharCount value={description.length} max={DESCRIPTION_MAX} />
@@ -444,9 +413,9 @@ function GeneralFormBody({
       </TimelineSection>
 
       <TimelineSection title="Messaging" boxed>
-      <div className="space-y-8">
+      <div className="space-y-5">
       {/* Welcome message */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Welcome Message"
           htmlFor={`${fieldId}-welcome`}
@@ -483,7 +452,7 @@ function GeneralFormBody({
       </div>
 
       {/* AI Disclaimer */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="AI Disclaimer"
           htmlFor={`${fieldId}-disclaimer`}
@@ -508,9 +477,9 @@ function GeneralFormBody({
       </TimelineSection>
 
       <TimelineSection title="Model & knowledge" boxed>
-      <div className="space-y-8">
+      <div className="space-y-5">
       {/* Model */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Model"
           hint="Answers published chats. Needs an organization credential in Settings → AI. The Preview uses your own default model."
@@ -524,7 +493,7 @@ function GeneralFormBody({
             setModelId(modelCatalog[next][0].id);
             setModelSource(null);
           }} className="w-full @lg:w-40">
-            <SelectTrigger className="h-11" aria-label="Model provider">
+            <SelectTrigger aria-label="Model provider">
               <SelectValue>{PROVIDER_NAMES[modelProvider]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -544,7 +513,7 @@ function GeneralFormBody({
             setModelId(next);
             setModelSource(null);
           }} className="min-w-0 flex-1">
-            <SelectTrigger className="h-11" aria-label="Model">
+            <SelectTrigger aria-label="Model">
               <SelectValue>{modelCatalog[modelProvider].find((m) => m.id === modelId)?.label ?? modelId}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -565,7 +534,7 @@ function GeneralFormBody({
       </div>
 
       {/* Models the chat window offers */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Let visitors choose the model"
           hint="Extra models visitors can switch to. Leave empty to hide the picker."
@@ -585,13 +554,16 @@ function GeneralFormBody({
       </div>
 
       {/* Visitor attachments */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Let visitors attach files"
+          htmlFor={`${fieldId}-attachments`}
           hint="Visitors can attach a PDF, Office file, text file or image. Files are read once and never stored."
         />
         <div className="flex items-center gap-3">
           <Switch
+            id={`${fieldId}-attachments`}
+            aria-describedby={`${fieldId}-attachments-hint`}
             checked={attachmentsEnabled}
             onCheckedChange={setAttachmentsEnabled}
             aria-label="Let visitors attach files"
@@ -607,13 +579,13 @@ function GeneralFormBody({
       </TimelineSection>
 
       <TimelineSection title="Voice mode">
-        <VoiceSettings assistantId={assistant.id} value={voice} onChange={setVoice} />
+        <VoiceSettings assistantId={assistant.id} value={voice} onChange={setVoice} variant="embedded" />
       </TimelineSection>
 
       <TimelineSection title="Behavior" boxed>
-      <div className="space-y-8">
+      <div className="space-y-5">
       {/* Answering style (the assistant's system prompt) */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Answering style"
           htmlFor={`${fieldId}-style`}
@@ -638,33 +610,36 @@ function GeneralFormBody({
       </div>
 
       {/* Simplified thinking */}
-      <Card size="sm" className="gap-0 p-4">
+      <div className="border-t pt-5">
         <div className="flex flex-col gap-3 @lg:flex-row @lg:items-start @lg:justify-between @lg:gap-4">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold">Simplified thinking</h2>
-            <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-              Show visitors one short line per step while the assistant works, like &ldquo;Checking the return policy…&rdquo;. The Inbox keeps the lines too.
-            </p>
+            <FieldHeader
+              title="Simplified thinking"
+              htmlFor={`${fieldId}-thinking`}
+              hint="Show visitors one short line per step while the assistant works, like ‘Checking the return policy…’. The Inbox keeps the lines too."
+            />
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <StatePill on={simplifiedThinking}>
               <RollInText text={simplifiedThinking ? "On" : "Off"} />
             </StatePill>
             <Switch
+              id={`${fieldId}-thinking`}
+              aria-describedby={`${fieldId}-thinking-hint`}
               checked={simplifiedThinking}
               onCheckedChange={setSimplifiedThinking}
               aria-label="Simplified thinking"
             />
           </div>
         </div>
-      </Card>
+      </div>
       </div>
       </TimelineSection>
 
       <TimelineSection title="Shortcuts" boxed>
-      <div className="space-y-8">
+      <div className="space-y-5">
       {/* Suggested questions */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Suggested questions"
           hint="Quick prompts shown under the welcome message"
@@ -710,7 +685,7 @@ function GeneralFormBody({
       </div>
 
       {/* Quick reply buttons */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <FieldHeader
           title="Quick reply buttons"
           hint="Buttons above the suggested questions: send a message, contact support or open a link."

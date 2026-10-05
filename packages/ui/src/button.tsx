@@ -3,22 +3,12 @@ import { isValidElement } from "react"
 
 import { cn } from "./cn"
 
-// Press feedback lives on `:active`, so it fires on pointer-*down* rather than
-// on the click that follows. Three deliberate choices in here:
-//
-//   - `duration-100` on transform, because the previous `transition-all` with
-//     no duration inherited the 150ms default and applied it to a 1px nudge.
-//     A one-pixel move arriving a sixth of a second late is not feedback.
-//   - `scale-[0.97]` alongside the nudge: a 1px translate is below the
-//     threshold where a press reads as acknowledged at all.
-//   - No `not-aria-[haspopup]` exclusion. Menu triggers used to opt out of
-//     press feedback entirely, which made every dropdown in the app feel dead
-//     on the way down; the popover arriving afterwards is a separate event.
-//
-// `transition-all` is gone: it animated colour, border, shadow and transform on
-// one duration, so the press could never be quicker than the hover tint.
+// Every button shares the same restrained press. Keyboard activation and the
+// static opt-out keep their geometry; reduced motion uses an opacity cue.
+const buttonPress = "motion-safe:active:not-focus-visible:scale-[0.96] motion-reduce:active:opacity-80"
+
 const buttonBase =
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap outline-none select-none transition-[background-color,border-color,color,box-shadow,transform,opacity] duration-100 ease-out focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px active:scale-[0.97] motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5"
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap outline-none select-none transition-[background-color,border-color,color,box-shadow,transform,opacity] duration-100 ease-out focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5"
 
 type ButtonVariant =
   | "default"
@@ -84,7 +74,7 @@ function buttonClasses(
   variant: ButtonVariant = "default",
   size: ButtonSize = "default"
 ) {
-  return cn(buttonBase, buttonVariantClasses[variant], buttonSizeClasses[size])
+  return cn(buttonBase, buttonPress, buttonVariantClasses[variant], buttonSizeClasses[size])
 }
 
 /**
@@ -106,17 +96,20 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  static: isStatic = false,
   nativeButton,
   render,
   ...props
 }: ButtonPrimitive.Props & {
   variant?: ButtonVariant
   size?: ButtonSize
+  static?: boolean
 }) {
   return (
     <ButtonPrimitive
       data-slot="button"
       data-size={size}
+      data-static={isStatic || undefined}
       // Sound follows the same events as the visual press (see feedback/):
       // pointerdown plays `press`, pointerup `release`, keyboard activation
       // `tap`. Attribute-driven so a page gets it by using the primitive.
@@ -124,6 +117,7 @@ function Button({
       data-foley-release=""
       className={cn(
         buttonBase,
+        !isStatic && buttonPress,
         buttonVariantClasses[variant],
         buttonSizeClasses[size],
         className

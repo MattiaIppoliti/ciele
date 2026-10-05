@@ -111,6 +111,7 @@ export const menuItems: MenuItem[] = [
     href: "/security",
     columns: [
       [
+        { name: "Components", href: "/components" },
         { name: "Security", href: "/security" },
         { name: "Privacy", href: "/policies/privacy" },
         { name: "Terms of Service", href: "/policies/terms-of-service" },

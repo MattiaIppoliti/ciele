@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { FEATURES } from "@/components/marketing/feature-catalog";
+import { COMPONENT_FAMILIES, catalogPath } from "@/components/component-catalog/catalog";
 import { MARKETING_SITEMAP_PATHS } from "@/lib/console-routes";
 import { CIELE_ORIGIN, isCanonicalMarketingHost } from "@/lib/marketing/seo";
 
@@ -13,6 +14,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!isCanonicalMarketingHost(host)) return [];
 
   const paths = [
+    "/components",
+    "/components/blocks",
+    ...COMPONENT_FAMILIES.map(catalogPath),
     ...MARKETING_SITEMAP_PATHS,
     ...FEATURES.map((feature) => `/features/${feature.slug}`),
   ];

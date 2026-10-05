@@ -2,6 +2,7 @@
 // beui.dev/components/agents/streaming-response
 
 import { ChevronDown } from "lucide-react";
+import { Button } from "@agent-hub/ui";
 // Icon data for the copy mark, which reshapes into the check on click.
 import { Check as CheckData, Copy as CopyData } from "lucide";
 import { MorphIcon } from "morphicons/react";
@@ -14,7 +15,7 @@ import {
 } from "@/components/agents/citations";
 import { AgentDisclosure } from "@/components/agents/agent-disclosure";
 import { useCopied } from "@/lib/hooks/use-copied";
-import { EASE_OUT, SPRING_PRESS, SPRING_SWAP } from "@/lib/ease";
+import { EASE_OUT, SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { MessageReactions, type ReactionTarget } from "@/components/chat/message-reactions";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
@@ -62,24 +63,22 @@ function ResponseAction({
   onClick: () => void;
   children: ReactNode;
 }) {
-  const reduce = useReducedMotion() ?? false;
-
   return (
-    <motion.button
+    <Button
       type="button"
       aria-label={label}
       title={label}
       aria-pressed={label === "Helpful" || label === "Not helpful" ? active : undefined}
       onClick={onClick}
-      whileTap={reduce ? undefined : { scale: 0.9 }}
-      transition={SPRING_PRESS}
+      variant="ghost"
+      size="icon-sm"
       className={cn(
-        "grid size-7 place-items-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+        "text-muted-foreground hover:text-foreground",
         active && "bg-muted text-foreground",
       )}
     >
       {children}
-    </motion.button>
+    </Button>
   );
 }
 

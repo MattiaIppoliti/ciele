@@ -6,7 +6,7 @@ import { Activity, Download, UserRound, X } from "lucide-react";
 import { BellRing, Calendar as CalendarIcon, ListFilter } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import { CalendarRange } from "@/components/ui/calendar";
-import { AnalyticsCard } from "./analytics-card";
+import { InsightsStatCard as StatCard } from "./insights-stat-card";
 import {
   Dialog,
   DialogContent,
@@ -33,8 +33,6 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { AssistantFilterDropdown } from "@/components/insights/assistant-filter-dropdown";
 import { DateRangeDropdown, formatRange } from "@/components/insights/date-range-dropdown";
 import { CHART_OUTCOMES, CHART_SERIES } from "@/components/charts/palette";
-import { ArcFrame } from "@/components/charts/arc/arc-frame";
-import { MetricCard } from "@/components/charts/arc/metric-card/metric-card";
 import { DeferredUsageCard } from "@/components/insights/deferred-usage-card";
 import { formatDuration } from "@/lib/insights/dashboard-view";
 import type {
@@ -111,40 +109,6 @@ const SERIES_COLORS: Record<string, string> = {
   "Negative vote": CHART_OUTCOMES.negative,
 };
 
-function StatCard({
-  icon: Icon,
-  title,
-  subtitle,
-  value,
-  numericValue,
-  suffix,
-  decimals = 0,
-  valueClass,
-  action,
-  className,
-}: {
-  icon?: React.ComponentType<{ className?: string }>;
-  title: string;
-  subtitle?: string;
-  value: string;
-  numericValue?: number;
-  suffix?: string;
-  decimals?: number;
-  valueClass?: string;
-  action?: React.ReactNode;
-  className?: string;
-}) {
-  if (numericValue !== undefined) return <ArcFrame className={className}>
-    <MetricCard label={title} value={numericValue} suffix={suffix} decimals={decimals} context={subtitle ?? "Selected range"} action={action} />
-  </ArcFrame>;
-  return (
-    <AnalyticsCard title={<span className="flex items-center gap-2">{Icon && <Icon className="size-4 text-muted-foreground" aria-hidden />}{title}</span>} description={subtitle} className={className} action={action}>
-      <p className={`min-w-0 text-3xl font-semibold tracking-tight tabular-nums ${valueClass ?? ""}`}>
-        <RollInText text={value} />
-      </p>
-    </AnalyticsCard>
-  );
-}
 
 export function InsightsClient({
   initial,

@@ -144,6 +144,16 @@ describe("middleware local connector relay", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
+  it("serves the component catalog and UI source snapshots without a session", async () => {
+    for (const path of ["/components", "/components/buttons", "/components/buttons/source", "/components/blocks", "/components/blocks/tables"]) {
+      const response = await middleware(new NextRequest(`https://ciele.example.com${path}`));
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+      expect(response.headers.get("location")).toBeNull();
+    }
+    const lookalike = await middleware(new NextRequest("https://ciele.example.com/components-private"));
+    expect(lookalike.status).toBe(307);
+  });
+
   it("lets the OAuth handoff preserve its full continuation through its own sign-in gate", async () => {
     for (const request of [
       new NextRequest("https://ciele.example.com/application-connect/slack?returnTo=%2Fassistants%2Fa1%2Fknowledge&connectionId=c1"),

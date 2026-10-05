@@ -3,9 +3,9 @@
   flex-direction: column;
   min-width: 0;
   height: 100%;
-  padding: 8px;
+  padding: var(--overview-inset-gap);
   border: 1px solid var(--overview-border);
-  border-radius: 24px;
+  border-radius: var(--overview-radius);
   background: var(--overview-frame);
   transition: background-color 220ms cubic-bezier(.23,1,.32,1), border-color 220ms cubic-bezier(.23,1,.32,1);
 }
@@ -13,8 +13,8 @@
   flex: 1;
   min-width: 0;
   padding: 16px;
-  border: 1px solid var(--overview-inset-border);
-  border-radius: 17px;
+  border: 0;
+  border-radius: var(--overview-inset-radius);
   background: var(--overview-inset);
   transition: background-color 220ms cubic-bezier(.23,1,.32,1);
 }
@@ -50,5 +50,6 @@
   .card, .content { transition: none; }
 }
 @media (forced-colors: active) {
-  .card, .content { background: Canvas; border-color: CanvasText; }
+  .card { background: Canvas; border-color: CanvasText; }
+  .content { background: Canvas; outline: 1px solid CanvasText; }
 }

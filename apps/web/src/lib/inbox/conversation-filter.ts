@@ -68,7 +68,7 @@ export function inboxUrlStateFromSearchParams(
   return filtersFromSearchParams(params, defaultInboxUrlState(), INBOX_FILTER_OPTIONS);
 }
 
-export function subjectName(c: InboxConversation): string {
+export function subjectName(c: Pick<InboxConversation, "metadata" | "subjectType">): string {
   if (c.metadata.userName) return c.metadata.userName;
   if (c.metadata.userEmail) return c.metadata.userEmail.split("@")[0];
   if (c.metadata.ssoClaimValue) return c.metadata.ssoClaimValue;

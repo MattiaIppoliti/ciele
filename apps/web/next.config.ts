@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CONNECTOR_FILENAME } from "./src/lib/local-connector-installer";
+import { COMPONENT_FAMILIES, catalogPath } from "./src/components/component-catalog/catalog";
 
 const appDir = dirname(fileURLToPath(import.meta.url));
 
@@ -66,6 +67,11 @@ const nextConfig: NextConfig = {
   // name, are never touched.
   async redirects() {
     return [
+      ...COMPONENT_FAMILIES.filter((family) => family.kind === "block").map((family) => ({
+        source: `/components/${family.slug}`,
+        destination: catalogPath(family),
+        permanent: true,
+      })),
       { source: "/knowledge", destination: "/library", permanent: true },
       {
         source: "/knowledge/:tab",

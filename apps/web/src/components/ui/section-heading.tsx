@@ -4,9 +4,8 @@ import { RollInText } from "@/components/motion/roll-in-text";
 import { cn } from "@/lib/utils";
 
 /**
- * Product-shaped heading shared by the console and the public feature pages.
- * The icon tile deliberately mirrors the SETUP navigation: it makes a public
- * feature recognisable as the same surface visitors later meet in Ciele.
+ * Operational headings stay static and compact. Public feature pages opt into
+ * the decorative icon tile and title entrance.
  */
 export function SectionHeading({
   icon: Icon,
@@ -37,21 +36,22 @@ export function SectionHeading({
           ? "mx-auto w-fit max-w-full justify-center gap-4 sm:gap-6"
           : mock
             ? "gap-3"
-            : "gap-5",
+            : "items-start gap-3",
         className
       )}
     >
       <div
         className={cn(
-          "bg-card ring-foreground/10 relative flex shrink-0 items-center justify-center overflow-hidden shadow-light ring-1",
+          "relative flex shrink-0 items-center justify-center",
+          (marketing || mock) && "bg-card ring-foreground/10 overflow-hidden shadow-light ring-1",
           marketing
             ? "size-16 rounded-2xl sm:size-20 sm:rounded-[1.35rem]"
             : mock
               ? "size-12 rounded-xl"
-              : "size-16 rounded-2xl"
+              : "mt-0.5 size-6 text-muted-foreground"
         )}
       >
-        <div
+        {(marketing || mock) && <><div
           aria-hidden
           className={cn(
             "absolute inset-0 [background-image:linear-gradient(to_right,var(--color-foreground)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-foreground)_1px,transparent_1px)] [background-position:center] opacity-25 [mask-image:radial-gradient(circle_at_center,black_25%,transparent_72%)]",
@@ -65,11 +65,11 @@ export function SectionHeading({
         <div
           aria-hidden
           className="via-foreground/25 absolute inset-x-2 top-0 h-px bg-gradient-to-r from-transparent to-transparent"
-        />
+        /></>}
         <Icon
           className={cn(
             "relative",
-            marketing ? "size-7 sm:size-8" : mock ? "size-5" : "size-7"
+            marketing ? "size-7 sm:size-8" : "size-5"
           )}
           aria-hidden
         />
@@ -96,9 +96,7 @@ export function SectionHeading({
                 : "text-2xl"
           )}
         >
-          {/* The mock variant is a drawing inside a marketing preview, not a
-              page that opened, so it does not roll. */}
-          {mock ? title : <RollInText text={title} />}
+          {marketing ? <RollInText text={title} /> : title}
         </Heading>
         <p
           className={cn(

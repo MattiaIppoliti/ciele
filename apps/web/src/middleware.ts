@@ -32,6 +32,8 @@ function marketingHomeRedirect(): NextResponse {
 // The whole `(marketing)` route group is public through `isMarketingPath`
 // (pinned to the filesystem); these are the one-off public paths outside it.
 const PUBLIC_PATHS = [
+  // The component library and its pre-rendered, allowlisted UI source snapshots.
+  /^\/components(?:\/|$)/,
   // Slack verifies its own raw-body signature; no browser session is present.
   /^\/api\/slack\/events$/,
   // Cron routes carry their own shared-secret bearer authentication. Vercel's

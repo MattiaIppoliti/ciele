@@ -34,10 +34,12 @@ const modelKey = (model: VoiceModelRef) => `${model.provider}:${model.modelId}`;
 const fits = (voice: VoiceCatalogVoice, model: VoiceModelRef) =>
   voice.provider === model.provider && (!voice.modelIds || voice.modelIds.includes(model.modelId));
 
-export function VoiceSettings({ assistantId, value, onChange }: {
+export function VoiceSettings({ assistantId, value, onChange, variant = "standalone" }: {
   assistantId: string;
   value: AssistantVoiceSettings;
   onChange: (settings: AssistantVoiceSettings) => void;
+  /** An enclosing settings section already owns the title and surface. */
+  variant?: "standalone" | "embedded";
 }) {
   const [catalog, setCatalog] = useState<VoiceCatalog | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,14 +142,16 @@ export function VoiceSettings({ assistantId, value, onChange }: {
     }
   }
 
-  return (
-    <Card size="sm" className="gap-0 p-4">
+  const content = (
+    <>
       {/* Stacks on a narrow screen, like the other toggle cards, so the copy
           never squeezes into a one-word column beside the switch. */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className={variant === "embedded"
+        ? "flex flex-col gap-3 @lg:flex-row @lg:items-start @lg:justify-between @lg:gap-4"
+        : "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"}>
         <div className="min-w-0">
-          <h2 className="text-base font-semibold">Voice mode</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Enable microphone input and AI-generated audio playback.</p>
+          {variant === "standalone" && <h2 className="text-base font-semibold">Voice mode</h2>}
+          <p className={variant === "embedded" ? "text-muted-foreground text-xs leading-relaxed" : "text-muted-foreground mt-1 text-sm"}>Enable microphone input and AI-generated audio playback.</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <StatusPill
@@ -182,7 +186,7 @@ export function VoiceSettings({ assistantId, value, onChange }: {
                   ? "Transcribe your microphone recording. Auto detects the spoken language without translating it."
                   : "Choose how the assistant speaks. Auto follows the language of the latest input."}</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className={variant === "embedded" ? "grid gap-3 @lg:grid-cols-2" : "grid gap-3 sm:grid-cols-2"}>
                 <div className="min-w-0 space-y-2 text-sm font-medium">
                   <span>Model</span>
                   <Select value={currentModelKey} onValueChange={(key) => selectModel(kind, key)}>
@@ -252,6 +256,7 @@ export function VoiceSettings({ assistantId, value, onChange }: {
           </div>
         </div>
       )}
-    </Card>
+    </>
   );
+  return variant === "embedded" ? <div>{content}</div> : <Card size="sm" className="gap-0 p-4">{content}</Card>;
 }

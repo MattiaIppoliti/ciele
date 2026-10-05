@@ -688,18 +688,6 @@ html[data-app-surface="admin"] svg[viewBox="0 0 24 24"][fill="none"][stroke-widt
   stroke-width: 1.75;
 }
 
-/* Checked switches keep Midnight's white track in every admin dark palette,
-   even where a palette uses a dark primary action color. */
-html.dark[data-app-surface="admin"] [data-slot="switch"][data-checked],
-html.dark[data-app-surface="admin"] [data-slot="switch"][data-state="checked"] {
-  background-color: #fff;
-}
-
-html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="switch"][data-checked] > *,
-html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="switch"][data-state="checked"] > * {
-  background-color: #151b23;
-}
-
 /* The Find preview's open arrow: on hover it exits through the top-right corner
    and re-enters from the bottom-left, then settles. The button clips, so it
    really does leave the box. */
@@ -770,7 +758,7 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
    states, so almost nothing acknowledged a press, only a hover that touch
    devices never deliver.
 
-   The scale is gentler than the button's 0.97 on purpose: a card is a large
+   The scale is gentler than the button's 0.96 on purpose: a card is a large
    surface, and shrinking a large surface that far reads as the page moving
    rather than the card being pressed. Transform only, so it composites. */
 /* Unlayered on purpose. `@utility` registers into Tailwind's `utilities` layer,
@@ -787,10 +775,10 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
 .press-control {
   transition-property: transform, color, background-color, border-color, opacity;
   transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
-.press:active {
+.press:active:not([data-static]):not(:focus-visible) {
   transform: scale(0.985);
 }
 
@@ -806,16 +794,16 @@ html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="
   opacity: 0.55;
 }
 
-.press-control:active {
-  transform: scale(0.94);
+.press-control:active:not([data-static]):not(:focus-visible) {
+  transform: scale(0.96);
 }
 
 /* Reduced motion keeps the acknowledgement and drops the travel, rather than
    removing the feedback altogether: a press that does nothing is the problem
    this utility exists to fix. */
 @media (prefers-reduced-motion: reduce) {
-  .press:active,
-  .press-control:active {
+  .press:active:not([data-static]):not(:focus-visible),
+  .press-control:active:not([data-static]):not(:focus-visible) {
     transform: none;
     opacity: 0.7;
   }
@@ -2018,47 +2006,38 @@ scritto-text:not(:defined) {
   @keyframes tab-page-fade-out { from { opacity: 1; } to { opacity: 0; } }
 }
 
-/* Overview: a gray frame, black inset and a caption beneath the content.
-   Paint stays separate from text so the squircle filter cannot soften it. */
+/* Overview and analytics share the theme surface ladder, including Mist Blue.
+   The inset has its own fill; one outer hairline defines the card. */
 .assistant-overview, .analytics-card {
-  --overview-frame: #e4e4e7;
-  --overview-frame-hover: #d9d9dd;
-  --overview-border: #c6c6cc;
-  --overview-border-hover: #aaaab2;
-  --overview-inset: #ffffff;
-  --overview-inset-hover: #fafafa;
-  --overview-inset-border: #d5d5db;
-  --overview-icon: #f4f4f5;
-}
-.dark .assistant-overview, .dark .analytics-card {
-  --overview-frame: #202023;
-  --overview-frame-hover: #29292d;
-  --overview-border: #343439;
-  --overview-border-hover: #505058;
-  --overview-inset: #080809;
-  --overview-inset-hover: #0d0d0f;
-  --overview-inset-border: #151518;
-  --overview-icon: #303035;
+  --overview-frame: var(--muted);
+  --overview-frame-hover: color-mix(in oklab, var(--muted), var(--foreground) 4%);
+  --overview-border: var(--alpha-medium);
+  --overview-border-hover: var(--alpha-strong);
+  --overview-inset: var(--content, var(--background));
+  --overview-inset-hover: color-mix(in oklab, var(--content, var(--background)), var(--foreground) 2%);
+  --overview-icon: var(--alpha-light);
+  --overview-radius: var(--radius-xl);
+  --overview-inset-gap: 0.5rem;
+  --overview-inset-radius: max(0px, calc(var(--overview-radius) - var(--overview-inset-gap)));
 }
 .assistant-overview .overview-card {
   position: relative;
   isolation: isolate;
-  padding: 8px;
+  padding: var(--overview-inset-gap);
   border: 1px solid var(--overview-border);
-  border-radius: 24px;
+  border-radius: var(--overview-radius);
   background: var(--overview-frame);
   box-shadow: none;
-  transition: background-color 220ms cubic-bezier(.23,1,.32,1), border-color 220ms cubic-bezier(.23,1,.32,1), transform 100ms ease-out, opacity 100ms ease-out;
+  transition: background-color 150ms cubic-bezier(.23,1,.32,1), border-color 150ms cubic-bezier(.23,1,.32,1), transform 100ms ease-out, opacity 100ms ease-out;
 }
 .assistant-overview .overview-card-content {
   position: relative;
   isolation: isolate;
-  border: 1px solid var(--overview-inset-border);
-  border-radius: 17px;
+  border: 0;
+  border-radius: var(--overview-inset-radius);
 }
 .assistant-overview .overview-card-content::before {
-  /* The outlined inset needs one contour for its border and fill. An SVG
-     squircle on the fill alone separates the two curves at the corners. */
+  /* Keep paint separate so filtering the surface cannot soften the text. */
   content: "";
   position: absolute;
   inset: 0;
@@ -2066,7 +2045,7 @@ scritto-text:not(:defined) {
   border-radius: inherit;
   background: var(--overview-inset);
   pointer-events: none;
-  transition: background-color 220ms cubic-bezier(.23,1,.32,1);
+  transition: background-color 150ms cubic-bezier(.23,1,.32,1);
 }
 .assistant-overview .overview-card-icon {
   border: 1px solid var(--overview-border);
@@ -2084,7 +2063,7 @@ scritto-text:not(:defined) {
   flex-shrink: 0;
   opacity: .5;
   transform: rotate(0deg);
-  transition: transform 220ms cubic-bezier(.23,1,.32,1), opacity 220ms ease, color 220ms ease;
+  transition: transform 150ms cubic-bezier(.23,1,.32,1), opacity 150ms ease, color 150ms ease;
 }
 .assistant-overview .overview-card:focus-within > .overview-card-caption .overview-card-link,
 .assistant-overview .overview-card:focus-within > .overview-card-link { color: var(--foreground); }

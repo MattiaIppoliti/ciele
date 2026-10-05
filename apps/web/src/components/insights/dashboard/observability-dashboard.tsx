@@ -4,21 +4,17 @@ import type { UsageDashboardFilter } from "@agent-hub/core";
 import { formatCount } from "@/lib/format";
 import type { DashboardView } from "@/lib/insights/dashboard-filter";
 import { observabilityStats } from "@/lib/insights/dashboard-stats";
-import { formatDuration } from "@/lib/insights/dashboard-view";
 import {
   DashboardFrame,
   DashboardStatCards,
-  FlowBumpChart,
-  LatencyHistogram,
-  LatencyTrend,
   OutcomeBars,
   RateCard,
-  RateComparison,
-  Section,
   VerdictBars,
   useDashboardView,
   type AssistantOption,
 } from "./dashboard-kit";
+
+import { LatencyCard, RatesComparisonCard, FlowRankingCard } from "./dashboard-blocks";
 
 /**
  * The Observability dashboard: how reliably and how fast the AI answers, how
@@ -64,42 +60,10 @@ export function ObservabilityDashboard({
     >
       <DashboardStatCards specs={observabilityStats(dashboard, view.previous)} loading={stale} />
 
-        <div className="grid grid-cols-12 gap-4">
-          <Section
-            title="Latency"
-            description="How long a finished turn took, end to end"
-            className="col-span-12 @5xl:col-span-6"
-          >
-            <dl className="mb-4 grid grid-cols-3 gap-4">
-              {[
-                ["Median (p50)", totals.latencyP50Ms],
-                ["p95", totals.latencyP95Ms],
-                ["Mean", totals.meanLatencyMs],
-              ].map(([label, value]) => (
-                <div key={label as string}>
-                  <dt className="text-muted-foreground text-xs">{label}</dt>
-                  <dd className="text-xl font-semibold tabular-nums">{formatDuration(value as number | null)}</dd>
-                </div>
-              ))}
-            </dl>
-            {totals.turns === 0 ? (
-              <p className="text-muted-foreground py-6 text-sm">No finished turns in this range.</p>
-            ) : (
-              <LatencyHistogram buckets={dashboard.latency} />
-            )}
-          </Section>
-          <Section
-            title="Latency over time"
-            description="Daily median and 95th percentile, estimated from the histogram"
-            className="col-span-12 @5xl:col-span-6"
-          >
-            {totals.turns === 0 ? (
-              <p className="text-muted-foreground py-6 text-sm">No finished turns in this range.</p>
-            ) : (
-              <LatencyTrend daily={dashboard.daily} />
-            )}
-          </Section>
-        </div>
+      <div className="grid grid-cols-12 gap-4">
+        <div className="col-span-12 @5xl:col-span-6"><LatencyCard dashboard={dashboard} /></div>
+        <div className="col-span-12 @5xl:col-span-6"><LatencyCard dashboard={dashboard} variant="trend" /></div>
+      </div>
 
         <div className="grid grid-cols-12 gap-4">
           <RateCard
@@ -165,16 +129,8 @@ export function ObservabilityDashboard({
           />
         </div>
 
-      <Section title="Change from the prior period" description="The same rates in consecutive periods of equal length. Changes are percentage points.">
-        {stale ? <div aria-label="Loading comparison" className="h-64 animate-pulse rounded-lg bg-muted/40" /> : <RateComparison current={totals} previous={view.previous} />}
-      </Section>
-
-      <Section
-        title="Most used Flows"
-        description={`Top five by turns, ranked against each other ${dashboard.flows.granularity === "week" ? "per week" : "per day"}`}
-      >
-        <FlowBumpChart flows={dashboard.flows} />
-      </Section>
+      <RatesComparisonCard current={totals} previous={view.previous} loading={stale} />
+      <FlowRankingCard flows={dashboard.flows} />
     </DashboardFrame>
   );
 }

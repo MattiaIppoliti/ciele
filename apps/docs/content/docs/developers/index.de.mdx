@@ -10,6 +10,16 @@ Administrator-Konsole.
 Um die Operation hinter einem Steuerelement der Konsole zu ermitteln, öffnen Sie
 auf der entsprechenden Seite das [Developer Panel](/developers/developer-panel).
 
+Um die Schnittstelle zu erkunden, öffnen Sie die öffentliche
+[component library](https://ciele.app/components). Jede Seite behandelt eine
+Komponente sowie deren Zustände oder Varianten. Der
+[Blocks section](https://ciele.app/components/blocks) enthält vollständige
+Features wie Tabellen, Konversationen und Editoren. Beide Bereiche enthalten die
+Registerkarten **Preview**, **Usage** und **Code**. Sie können in jedem
+Abschnitt suchen und dessen Theme oder Palette ändern. Vorschauen verwenden
+Beispielinhalte. Die Registerkarte **Code** zeigt die Quelldateien des aktuellen
+Builds an.
+
 <Cards>
   <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
   <Card title="API" href="/developers/api" description="Call the versioned HTTP API and read its OpenAPI contract." />
@@ -21,7 +31,7 @@ auf der entsprechenden Seite das [Developer Panel](/developers/developer-panel).
 ## Gemeinsames Verbindungsmodell
 
 Alle drei Schnittstellen erfordern einen Organization API Key. Die zugewiesene
-Rolle bestimmt die Operationen, die mit dem Schlüssel ausgeführt werden können.
+Role steuert die Operationen, die der Schlüssel verwenden kann.
 
 <Mermaid
   title="Drei Clients, eine API, ein Satz von Operationen"
@@ -54,5 +64,5 @@ Die [API-Referenz](/api-reference) listet alle verfügbaren `/api/v1`-Operatione
 nach Domäne auf.
 
 Die API stellt nicht alle Funktionen der Konsole bereit. Beispielsweise sind das
-Hochladen von Avataren und das Erstellen von Verbesserungen weiterhin nur in der
-Konsole möglich.
+Hochladen von Avataren und das Erstellen von Verbesserungen weiterhin
+ausschließlich über die Konsole möglich.

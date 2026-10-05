@@ -5,13 +5,12 @@ import { Check, FileCode2 } from "lucide-react";
 // Icon data for the copy mark, which reshapes into the check on click.
 import { Check as CheckData, Copy as CopyData } from "lucide";
 import { MorphIcon } from "morphicons/react";
-import { motion, useReducedMotion } from "motion/react";
+import { Button } from "@agent-hub/ui";
 import {
   type AgentCodeLanguage,
   AgentCodeLine,
   useAgentCodeTokens,
 } from "@/components/agents/agent-code";
-import { SPRING_PRESS } from "@/lib/ease";
 import { useCopied } from "@/lib/hooks/use-copied";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +25,6 @@ export function CodeBlock({
   language?: AgentCodeLanguage;
   className?: string;
 }) {
-  const reduce = useReducedMotion() ?? false;
   const [copied, markCopied] = useCopied();
   const tokens = useAgentCodeTokens(code, language);
   const lines: Array<{ content: string; offset: number }> = [];
@@ -62,17 +60,17 @@ export function CodeBlock({
           <Check className="size-3" />
           Ready
         </span>
-        <motion.button
+        <Button
           type="button"
           aria-label={copied ? "Copied" : "Copy code"}
           title={copied ? "Copied" : "Copy code"}
           onClick={handleCopy}
-          whileTap={reduce ? undefined : { scale: 0.9 }}
-          transition={SPRING_PRESS}
-          className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-background/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-foreground"
         >
           <MorphIcon icon={copied ? CheckData : CopyData} size={14} />
-        </motion.button>
+        </Button>
       </div>
 
       <div

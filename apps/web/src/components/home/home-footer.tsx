@@ -50,6 +50,7 @@ const COLUMNS: Array<{
     title: "Resources",
     links: [
       { name: "Docs", href: DOCS, external: true },
+      { name: "Components", href: "/components" },
       { name: "Getting started", href: `${DOCS}/getting-started`, external: true },
       { name: "Self-hosting", href: `${DOCS}/self-hosting`, external: true },
     ],

@@ -31,10 +31,10 @@ function CardSkeleton({ rows = 2 }: { rows?: number }) {
 
 function FieldSkeleton({ multiline = false }: { multiline?: boolean }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <Skeleton className="h-5 w-36" />
-      <Skeleton className="h-4 w-2/3" />
-      <Skeleton className={`${multiline ? "h-28" : "h-11"} w-full`} />
+      <Skeleton className="h-3 w-2/3" />
+      <Skeleton className={`${multiline ? "h-20" : "h-8"} w-full`} />
     </div>
   );
 }
@@ -54,12 +54,20 @@ function ListRowSkeleton() {
 
 function GeneralSkeleton() {
   return (
-    <div className="space-y-8 pt-10 pb-24">
-      <CardSkeleton rows={0} />
-      <FieldSkeleton />
-      <FieldSkeleton />
-      <FieldSkeleton />
-      <FieldSkeleton multiline />
+    <div className="relative pt-6 pb-16">
+      <div aria-hidden className="absolute top-9 bottom-16 left-[5.5px] w-px bg-alpha-strong" />
+      {[0, 1, 2].map((group) => (
+        <section key={group} className="relative pt-1 pb-8 pl-7 last:pb-0 lg:pl-8">
+          <Skeleton className="absolute top-[9px] left-0 size-3 rounded-full" />
+          <Skeleton className="h-6 w-36" />
+          <div className="mt-4 space-y-5">
+            {group === 0 && <Skeleton className="size-24 rounded-full" />}
+            <FieldSkeleton />
+            <FieldSkeleton multiline={group > 0} />
+            {group === 0 && <FieldSkeleton multiline />}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

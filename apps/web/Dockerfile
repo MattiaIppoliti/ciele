@@ -46,6 +46,9 @@ COPY packages/ui/package.json packages/ui/
 RUN pnpm install --frozen-lockfile --filter @agent-hub/web...
 
 FROM deps AS build
+# The full app and static catalog exceed Node's default container heap during
+# compilation. Keep the larger heap in this build stage, outside the runtime.
+ENV NODE_OPTIONS=--max-old-space-size=4096
 COPY packages ./packages
 COPY apps/web ./apps/web
 # NEXT_PUBLIC_* is inlined into the browser bundle at build time, so a
