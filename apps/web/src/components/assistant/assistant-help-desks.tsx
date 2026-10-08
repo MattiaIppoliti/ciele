@@ -41,7 +41,7 @@ function SettingToggle({
   onCheckedChange,
 }: {
   title: string;
-  description: string;
+  description?: string;
   checked: boolean;
   disabled?: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -50,7 +50,7 @@ function SettingToggle({
     <div className="flex items-start justify-between gap-4">
       <div className="min-w-0">
         <p className="font-semibold">{title}</p>
-        <p className="text-muted-foreground mt-1 text-sm">{description}</p>
+        {description && <p className="text-muted-foreground mt-1 text-sm">{description}</p>}
       </div>
       <Switch
         checked={checked}
@@ -224,14 +224,11 @@ export function AssistantHelpDesks({
     <div className="pt-8">
       <SectionTimeline>
       <TimelineSection title="Escalation behavior">
-      <p className="text-muted-foreground -mt-3 text-sm">
-        Configure how and when this assistant offers support escalation.
-      </p>
 
       <Card size="sm" className="mt-4 gap-0 p-4">
         <SettingToggle
           title="AI recommended help desk"
-          description="When the AI Assistant does not know the answer to a question, it will recommend a help desk based on the help desk description."
+
           checked={settings.aiRecommended ?? false}
           disabled={!canEdit}
           onCheckedChange={(aiRecommended) =>
@@ -247,7 +244,7 @@ export function AssistantHelpDesks({
         <div className="rounded-lg border bg-muted/30 p-3.5">
           <SettingToggle
             title="Hide Always Available Escalation Button"
-            description="Turn on to hide the contact support button that always floats at the bottom of the chat window."
+
             checked={settings.hideEscalationButton ?? false}
             disabled={!canEdit}
             onCheckedChange={(hideEscalationButton) =>
@@ -263,9 +260,7 @@ export function AssistantHelpDesks({
             Contact Support Button Name{" "}
             <span className="text-destructive">*</span>
           </p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Customize the button name to display the support options
-          </p>
+
           <Input
             value={buttonLabel}
             aria-label="Contact support button name"
@@ -280,10 +275,6 @@ export function AssistantHelpDesks({
       </TimelineSection>
 
       <TimelineSection title="Select help desks">
-      <p className="text-muted-foreground -mt-3 text-sm">
-        Choose which help desks the assistant can recommend based on
-        conversation context.
-      </p>
 
       <Card size="sm" className="mt-4 gap-0 p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -325,16 +316,16 @@ export function AssistantHelpDesks({
 
         <div className="mt-4 space-y-3">
           {visible.length === 0 && (
-            <EmptyState size="sm" title="No matching help desks" description="Try another view or add a help desk for this assistant." />
+            <EmptyState size="sm" title="No matching help desks"  />
           )}
           {visible.map((desk) => (
             <div key={desk.id} className="rounded-lg border bg-muted/20 p-3.5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-base font-semibold break-words"><RollInText text={desk.name} /></p>
-                  <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
-                    {desk.description || "No description yet."}
-                  </p>
+                  {desk.description && (<p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+                    {desk.description}
+                  </p>)}
                 </div>
                 <Switch
                   checked={selectedIds.includes(desk.id)}

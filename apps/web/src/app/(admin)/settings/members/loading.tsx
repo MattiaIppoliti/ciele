@@ -3,7 +3,7 @@ import { Skeleton } from "@agent-hub/ui";
 /** Members' own loading state, at the Settings dialog's scale. */
 export default function MembersLoading() {
   return (
-    <div className="mx-auto max-w-2xl pr-6" role="status" aria-busy="true">
+    <div className="mx-auto max-w-3xl pr-6" role="status" aria-busy="true">
       <span className="sr-only">Loading members…</span>
       <Skeleton className="h-7 w-32" />
       <Skeleton className="mt-1 h-5 w-56" />

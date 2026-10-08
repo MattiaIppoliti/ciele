@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+@import '@agent-hub/ui/button.css';
+@import '@agent-hub/ui/dialog.css';
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 @import 'fumadocs-openapi/css/preset.css';

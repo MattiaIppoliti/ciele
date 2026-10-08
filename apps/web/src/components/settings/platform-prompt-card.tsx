@@ -69,7 +69,7 @@ export function PlatformPromptCard({
         <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
           {dirty && <RollInText text="Unsaved changes" />}
         </span>
-        <Button onClick={save} disabled={isPending || !dirty}>
+        <Button loading={isPending} onClick={save} disabled={isPending || !dirty}>
           <RollInText text={isPending ? "Saving…" : "Save platform prompt"} />
         </Button>
       </div>

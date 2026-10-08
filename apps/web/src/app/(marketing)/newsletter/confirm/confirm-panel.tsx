@@ -39,7 +39,7 @@ export function ConfirmPanel({ token, email }: { token: string; email: string })
         Press confirm and we will start sending the Ciele newsletter to {email}.
       </p>
       <div>
-        <ConfettiButton
+        <ConfettiButton loading={pending}
           celebrateOnClick={false}
           disabled={pending}
           onClick={() =>

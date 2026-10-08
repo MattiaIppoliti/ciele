@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import {
+import { DialogBody,
   Button,
   Dialog,
   DialogContent,
@@ -170,138 +170,143 @@ export function SlackBotDialog({
   }
   return (
     <>
-    <Dialog open onOpenChange={(open) => !open && requestClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Conversational Ciele in Slack</DialogTitle>
-          <DialogDescription>
-            Choose the published Assistant that answers @Ciele in{" "}
-            {connection.name}.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Everyone in these channels can get answers from this Assistant’s knowledge. Invite Ciele to each one. Slack Connect channels aren’t supported.
-          </p>
-          {!hasScopes && (
-            <Button disabled={pending} onClick={reconnect}>
-              Authorize conversational permissions
-            </Button>
-          )}
-          <div className="space-y-2">
-            <Label>Assistant</Label>
-            <Select
-              value={assistantId}
-              onValueChange={(value) => setAssistantId(value ?? "")}
-            >
-            <SelectTrigger aria-label="Slack Assistant">
-                <SelectValue placeholder="Select a published Assistant">
-                  {(value: string) =>
-                    assistants.find((assistant) => assistant.id === value)
-                      ?.title ?? "Select a published Assistant"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {assistants.map((assistant) => (
-                  <SelectItem key={assistant.id} value={assistant.id}>
-                    {assistant.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <fieldset className="min-w-0 space-y-2">
-            <legend className="text-sm leading-none font-medium">Channels</legend>
-            <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border p-2">
-              {channelsLoading && (
-                <p role="status" className="p-2 text-sm">
-                  Loading channels…
-                </p>
-              )}
-              {!channelsLoading && visibleChannels.length === 0 && (
-                <p className="p-2 text-sm text-muted-foreground">
-                  No Slack channels were found. Invite Ciele to a channel, then
-                  reopen this dialog.
-                </p>
-              )}
-              {visibleChannels.map((channel) => (
-                <label
-                  key={channel.id}
-                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedChannels.has(channel.id)}
-                    disabled={
-                      !selectable(channel) && !selectedChannels.has(channel.id)
-                    }
-                    onChange={() => toggleChannel(channel.id)}
-                  />
-                  <span className="min-w-0 flex-1 truncate">
-                    {channel.label}
-                  </span>
-                  {channel.metadata.shared === true ? (
-                    <span className="text-xs text-muted-foreground">
-                      Slack Connect, not supported
-                    </span>
-                  ) : channel.metadata.member === false ? (
-                    <span className="text-xs text-muted-foreground">
-                      Invite Ciele first
-                    </span>
-                  ) : null}
-                </label>
-              ))}
-              {unknownChannelIds.map((channelId) => (
-                <label
-                  key={channelId}
-                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
-                >
-                  <input
-                    type="checkbox"
-                    checked
-                    onChange={() => toggleChannel(channelId)}
-                  />
-                  <span className="min-w-0 flex-1 truncate">
-                    {channelId}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Previously configured
-                  </span>
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Invite Ciele to each channel first. Private channels appear once invited. Replies stay in the thread.
+      <Dialog open onOpenChange={(open) => !open && requestClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conversational Ciele in Slack</DialogTitle>
+            <DialogDescription>
+              Choose the published Assistant that answers @Ciele in{" "}
+              {connection.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Everyone in these channels can get answers from this Assistant’s
+              knowledge. Invite Ciele to each one. Slack Connect channels aren’t
+              supported.
             </p>
-          </fieldset>
-        </div>
-        <DialogFooter>
-          {config && (
+            {!hasScopes && (
+              <Button loading={pending} disabled={pending} onClick={reconnect}>
+                Authorize conversational permissions
+              </Button>
+            )}
+            <div className="space-y-2">
+              <Label>Assistant</Label>
+              <Select
+                value={assistantId}
+                onValueChange={(value) => setAssistantId(value ?? "")}
+              >
+                <SelectTrigger aria-label="Slack Assistant">
+                  <SelectValue placeholder="Select a published Assistant">
+                    {(value: string) =>
+                      assistants.find((assistant) => assistant.id === value)
+                        ?.title ?? "Select a published Assistant"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {assistants.map((assistant) => (
+                    <SelectItem key={assistant.id} value={assistant.id}>
+                      {assistant.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <fieldset className="min-w-0 space-y-2">
+              <legend className="text-sm leading-none font-medium">
+                Channels
+              </legend>
+              <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border p-2">
+                {channelsLoading && (
+                  <p role="status" className="p-2 text-sm">
+                    Loading channels…
+                  </p>
+                )}
+                {!channelsLoading && visibleChannels.length === 0 && (
+                  <p className="p-2 text-sm text-muted-foreground">
+                    No Slack channels were found. Invite Ciele to a channel,
+                    then reopen this dialog.
+                  </p>
+                )}
+                {visibleChannels.map((channel) => (
+                  <label
+                    key={channel.id}
+                    className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedChannels.has(channel.id)}
+                      disabled={
+                        !selectable(channel) &&
+                        !selectedChannels.has(channel.id)
+                      }
+                      onChange={() => toggleChannel(channel.id)}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {channel.label}
+                    </span>
+                    {channel.metadata.shared === true ? (
+                      <span className="text-xs text-muted-foreground">
+                        Slack Connect, not supported
+                      </span>
+                    ) : channel.metadata.member === false ? (
+                      <span className="text-xs text-muted-foreground">
+                        Invite Ciele first
+                      </span>
+                    ) : null}
+                  </label>
+                ))}
+                {unknownChannelIds.map((channelId) => (
+                  <label
+                    key={channelId}
+                    className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                  >
+                    <input
+                      type="checkbox"
+                      checked
+                      onChange={() => toggleChannel(channelId)}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{channelId}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Previously configured
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Invite Ciele to each channel first. Private channels appear once
+                invited. Replies stay in the thread.
+              </p>
+            </fieldset>
+          </DialogBody>
+          <DialogFooter>
+            {config && (
+              <Button
+                variant="outline"
+                disabled={pending}
+                onClick={() => save(true)}
+              >
+                <RollInText
+                  text={saving === "disable" ? "Disabling…" : "Disable replies"}
+                />
+              </Button>
+            )}
             <Button
-              variant="outline"
-              disabled={pending}
-              onClick={() => save(true)}
+              loading={pending}
+              disabled={
+                pending || !hasScopes || !assistantId || channelIds.length === 0
+              }
+              onClick={() => save()}
             >
               <RollInText
-                text={saving === "disable" ? "Disabling…" : "Disable replies"}
+                text={saving === "save" ? "Saving…" : "Save Slack assistant"}
               />
             </Button>
-          )}
-          <Button
-            disabled={
-              pending || !hasScopes || !assistantId || channelIds.length === 0
-            }
-            onClick={() => save()}
-          >
-            <RollInText
-              text={saving === "save" ? "Saving…" : "Save Slack assistant"}
-            />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }

@@ -190,7 +190,7 @@ export function OrganizationClient({
       <div className="space-y-3">
         <FieldHeader
           title="Logo"
-          hint="Circular icon shown in the organization switcher and account menu."
+
         />
         <AvatarUpload
           value={logoPreviewUrl || logoUrl}
@@ -206,7 +206,7 @@ export function OrganizationClient({
       </div>
 
       <div className="space-y-3">
-        <FieldHeader title="Organization name" hint="Shown throughout the admin app." />
+        <FieldHeader title="Organization name"  />
         <Input
           aria-label="Organization name"
           autoComplete="organization"
@@ -272,7 +272,7 @@ export function OrganizationClient({
         <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
           {dirty && <RollInText text="Unsaved changes" />}
         </span>
-        <Button onClick={handleSave} disabled={isPending || !dirty} className="px-6 font-semibold">
+        <Button loading={isPending} onClick={handleSave} disabled={isPending || !dirty} className="px-6 font-semibold">
           <RollInText text={isPending ? "Saving…" : "Save changes"} />
         </Button>
       </SettingsSaveBar>

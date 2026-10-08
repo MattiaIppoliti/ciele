@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import type { OrgKnowledgeSourceListItem } from "@agent-hub/core";
 import { ChevronDown } from "lucide-react";
-import {
+import { DialogBody, DialogSection,
   Badge,
   Button,
   Dialog,
@@ -127,7 +127,7 @@ export function LinkAssistantsDialog({
   onClose: () => void;
 }) {
   const [initial] = useState(
-    () => item?.linkedAssistants.map((l) => l.assistantId) ?? []
+    () => item?.linkedAssistants.map((l) => l.assistantId) ?? [],
   );
   const [selected, setSelected] = useState<string[]>(initial);
   const [isPending, startTransition] = useTransition();
@@ -144,44 +144,50 @@ export function LinkAssistantsDialog({
 
   return (
     <>
-    <Dialog open={item !== null} onOpenChange={(open) => !open && requestClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Link assistants</DialogTitle>
-          <DialogDescription className="[overflow-wrap:anywhere]">
-            Choose which assistants can use “{item?.name}”. Unlinking takes
-            effect immediately.
-          </DialogDescription>
-        </DialogHeader>
-        <AssistantMultiSelect
-          assistants={assistants}
-          selected={selected}
-          onChange={setSelected}
-        />
-        <DialogFooter>
-          <Button variant="outline" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={isPending || !item}
-            onClick={() =>
-              startTransition(async () => {
-                try {
-                  await setSourceLinksAction(item!.id, selected);
-                  toast.success("Linked assistants updated.");
-                  onClose();
-                } catch {
-                  toast.error("Could not update the links.");
-                }
-              })
-            }
-          >
-            <RollInText text={isPending ? "Saving…" : "Save"} />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+      <Dialog
+        open={item !== null}
+        onOpenChange={(open) => !open && requestClose()}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link assistants</DialogTitle>
+            <DialogDescription className="[overflow-wrap:anywhere]">
+              Choose which assistants can use “{item?.name}”. Unlinking takes
+              effect immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <AssistantMultiSelect
+              assistants={assistants}
+              selected={selected}
+              onChange={setSelected}
+            />
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={requestClose}>
+              Cancel
+            </Button>
+            <Button
+              loading={isPending}
+              disabled={isPending || !item}
+              onClick={() =>
+                startTransition(async () => {
+                  try {
+                    await setSourceLinksAction(item!.id, selected);
+                    toast.success("Linked assistants updated.");
+                    onClose();
+                  } catch {
+                    toast.error("Could not update the links.");
+                  }
+                })
+              }
+            >
+              <RollInText text={isPending ? "Saving…" : "Save"} />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }
@@ -209,8 +215,8 @@ export function ManageDirectAccessDialog({
         await setSourceDirectAccessAction(item!.id, assistantId, next);
         setLinks((prev) =>
           prev.map((l) =>
-            l.assistantId === assistantId ? { ...l, directAccess: next } : l
-          )
+            l.assistantId === assistantId ? { ...l, directAccess: next } : l,
+          ),
         );
       } catch {
         toast.error("Could not update direct access.");
@@ -222,40 +228,43 @@ export function ManageDirectAccessDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Manage direct access</DialogTitle>
-          <DialogDescription className="[overflow-wrap:anywhere]">
-            When direct access is on, chat users can open “{item?.name}”
-            directly from the AI chat. When off, it&apos;s still cited inline
-            but the link stays hidden. Set this per assistant.
-          </DialogDescription>
+          <DialogDescription className="[overflow-wrap:anywhere]">Chat users can open the source when enabled. Disabling hides the link; inline citations remain. Set per assistant.</DialogDescription>
         </DialogHeader>
-        {disabled && (
-          <p className="text-muted-foreground rounded-md border p-3 text-sm">
-            The original isn&apos;t stored for this file. Re-upload it to open it.
-          </p>
-        )}
-        <div className="space-y-1 rounded-md border p-2">
-          {links.length === 0 && (
-            <p className="text-muted-foreground p-2 text-sm">
-              Link this file to an assistant first.
-            </p>
-          )}
-          {links.map((link) => (
-            <div
-              key={link.assistantId}
-              className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm"
-            >
-              <span className="truncate">
-                {link.assistantName || link.assistantId}
-              </span>
-              <Switch
-                checked={link.directAccess}
-                disabled={disabled || isPending}
-                aria-label={`Allow ${link.assistantName || link.assistantId} direct access`}
-                onCheckedChange={(next) => toggle(link.assistantId, next)}
-              />
+        <DialogBody>
+          <DialogSection>
+            {disabled && (
+              <p className="text-muted-foreground rounded-md border p-3 text-sm">
+                The original isn&apos;t stored for this file. Re-upload it to
+                open it.
+              </p>
+            )}
+          </DialogSection>
+          <DialogSection>
+            <div className="space-y-1 rounded-md border p-2">
+              {links.length === 0 && (
+                <p className="text-muted-foreground p-2 text-sm">
+                  Link this file to an assistant first.
+                </p>
+              )}
+              {links.map((link) => (
+                <div
+                  key={link.assistantId}
+                  className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm"
+                >
+                  <span className="truncate">
+                    {link.assistantName || link.assistantId}
+                  </span>
+                  <Switch
+                    checked={link.directAccess}
+                    disabled={disabled || isPending}
+                    aria-label={`Allow ${link.assistantName || link.assistantId} direct access`}
+                    onCheckedChange={(next) => toggle(link.assistantId, next)}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </DialogSection>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Done
@@ -350,138 +359,141 @@ export function AddWebsiteDialog({
             pageTimeoutSecs: Number.parseInt(pageTimeoutSecs, 10) || undefined,
             waitSecs: Number.parseInt(waitSecs, 10) || undefined,
           },
-          selected
+          selected,
         );
         ingestionStarted();
         toast.success("Website added, crawling in the background.");
         onClose();
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Could not add the website."
+          error instanceof Error ? error.message : "Could not add the website.",
         );
       }
     });
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add website</DialogTitle>
-          <DialogDescription>
-            We automatically check the websites you add for updates once a
-            week.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="hub-site-name">Name</Label>
-            <Input
-              id="hub-site-name"
-              autoComplete="off"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Main website"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="hub-site-url">Knowledge base URL</Label>
-            <Input
-              id="hub-site-url"
-              type="url"
-              inputMode="url"
-              autoComplete="off"
-              spellCheck={false}
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com"
-            />
-          </div>
-          <CollapsibleSection title="Custom URL filtering rules">
+      <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add website</DialogTitle>
+            <DialogDescription>
+              We automatically check the websites you add for updates once a
+              week.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="hub-site-include">
-                Positive search filters (one per line)
-              </Label>
-              <Textarea
-                id="hub-site-include"
-                spellCheck={false}
-                value={includeGlobs}
-                onChange={(e) =>
-                  setIncludeGlobs(e.target.value.slice(0, FILTER_MAX))
-                }
-                rows={3}
+              <Label htmlFor="hub-site-name">Name</Label>
+              <Input
+                id="hub-site-name"
+                autoComplete="off"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Main website"
               />
-              <LimitCounter value={includeGlobs} max={FILTER_MAX} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="hub-site-exclude">
-                Negative search filters (one per line)
-              </Label>
-              <Textarea
-                id="hub-site-exclude"
+              <Label htmlFor="hub-site-url">Knowledge base URL</Label>
+              <Input
+                id="hub-site-url"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
                 spellCheck={false}
-                value={excludeGlobs}
-                onChange={(e) =>
-                  setExcludeGlobs(e.target.value.slice(0, FILTER_MAX))
-                }
-                rows={3}
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://example.com"
               />
-              <LimitCounter value={excludeGlobs} max={FILTER_MAX} />
             </div>
-          </CollapsibleSection>
-          <CollapsibleSection title="Additional settings">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={throttle}
-                onCheckedChange={(v) => setThrottle(v === true)}
-              />
-              Throttle requests (for rate-limited sites)
-            </label>
-            <div className="grid grid-cols-2 gap-3">
+            <CollapsibleSection title="Custom URL filtering rules">
               <div className="space-y-1.5">
-                <Label htmlFor="hub-site-timeout">Page timeout (seconds)</Label>
-                <Input
-                  id="hub-site-timeout"
-                  autoComplete="off"
-                  value={pageTimeoutSecs}
-                  onChange={(e) => setPageTimeoutSecs(e.target.value)}
-                  inputMode="numeric"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="hub-site-wait">
-                  Wait before extraction (seconds)
+                <Label htmlFor="hub-site-include">
+                  Positive search filters (one per line)
                 </Label>
-                <Input
-                  id="hub-site-wait"
-                  autoComplete="off"
-                  value={waitSecs}
-                  onChange={(e) => setWaitSecs(e.target.value)}
-                  inputMode="numeric"
+                <Textarea
+                  id="hub-site-include"
+                  spellCheck={false}
+                  value={includeGlobs}
+                  onChange={(e) =>
+                    setIncludeGlobs(e.target.value.slice(0, FILTER_MAX))
+                  }
+                  rows={3}
                 />
+                <LimitCounter value={includeGlobs} max={FILTER_MAX} />
               </div>
-            </div>
-          </CollapsibleSection>
-          <AssistantMultiSelect
-            assistants={assistants}
-            selected={selected}
-            onChange={setSelected}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={isPending || !url.trim() || selected.length === 0}
-            onClick={submit}
-          >
-            <RollInText text={isPending ? "Adding…" : "Add website"} />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+              <div className="space-y-1.5">
+                <Label htmlFor="hub-site-exclude">
+                  Negative search filters (one per line)
+                </Label>
+                <Textarea
+                  id="hub-site-exclude"
+                  spellCheck={false}
+                  value={excludeGlobs}
+                  onChange={(e) =>
+                    setExcludeGlobs(e.target.value.slice(0, FILTER_MAX))
+                  }
+                  rows={3}
+                />
+                <LimitCounter value={excludeGlobs} max={FILTER_MAX} />
+              </div>
+            </CollapsibleSection>
+            <CollapsibleSection title="Additional settings">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={throttle}
+                  onCheckedChange={(v) => setThrottle(v === true)}
+                />
+                Throttle requests (for rate-limited sites)
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="hub-site-timeout">
+                    Page timeout (seconds)
+                  </Label>
+                  <Input
+                    id="hub-site-timeout"
+                    autoComplete="off"
+                    value={pageTimeoutSecs}
+                    onChange={(e) => setPageTimeoutSecs(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="hub-site-wait">
+                    Wait before extraction (seconds)
+                  </Label>
+                  <Input
+                    id="hub-site-wait"
+                    autoComplete="off"
+                    value={waitSecs}
+                    onChange={(e) => setWaitSecs(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+            </CollapsibleSection>
+            <AssistantMultiSelect
+              assistants={assistants}
+              selected={selected}
+              onChange={setSelected}
+            />
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={requestClose}>
+              Cancel
+            </Button>
+            <Button
+              loading={isPending}
+              disabled={isPending || !url.trim() || selected.length === 0}
+              onClick={submit}
+            >
+              <RollInText text={isPending ? "Adding…" : "Add website"} />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }
@@ -524,47 +536,46 @@ export function AddFileDialog({
         onClose();
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Could not upload the file."
+          error instanceof Error ? error.message : "Could not upload the file.",
         );
       }
     });
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add file</DialogTitle>
-          <DialogDescription>
-            Linked assistants will use this file to answer questions.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Input
-            type="file"
-            aria-label="File to upload"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-          <AssistantMultiSelect
-            assistants={assistants}
-            selected={selected}
-            onChange={setSelected}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={isPending || !file || selected.length === 0}
-            onClick={submit}
-          >
-            <RollInText text={isPending ? "Uploading…" : "Upload"} />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+      <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add file</DialogTitle>
+
+          </DialogHeader>
+          <DialogBody className="space-y-3">
+            <Input
+              type="file"
+              aria-label="File to upload"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            <AssistantMultiSelect
+              assistants={assistants}
+              selected={selected}
+              onChange={setSelected}
+            />
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={requestClose}>
+              Cancel
+            </Button>
+            <Button
+              loading={isPending}
+              disabled={isPending || !file || selected.length === 0}
+              onClick={submit}
+            >
+              <RollInText text={isPending ? "Uploading…" : "Upload"} />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }
@@ -590,12 +601,13 @@ export function FaqDialog({
   // The parent keys this dialog by the edited row, so state starts fresh.
   const [answer, setAnswer] = useState(editing?.answerPreview ?? "");
   const [load, setLoad] = useState<"loading" | "ready" | "failed">(
-    editing ? "loading" : "ready"
+    editing ? "loading" : "ready",
   );
   /** What the load returned, so closing an untouched edit asks nothing. */
-  const [loaded, setLoaded] = useState<{ question: string; answer: string } | null>(
-    null
-  );
+  const [loaded, setLoaded] = useState<{
+    question: string;
+    answer: string;
+  } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   useEffect(() => {
@@ -644,7 +656,7 @@ export function FaqDialog({
         onClose();
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Could not save the FAQ."
+          error instanceof Error ? error.message : "Could not save the FAQ.",
         );
       }
     });
@@ -659,92 +671,91 @@ export function FaqDialog({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{editing ? "Edit FAQ" : "New FAQ"}</DialogTitle>
-          <DialogDescription>
-            Add sets of questions and answers to fine tune AI responses.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          {load === "failed" && (
-            <p
-              role="alert"
-              className="border-destructive/40 text-destructive rounded-md border p-3 text-sm"
-            >
-              Could not load the full answer, so this FAQ cannot be saved from
-              here. Close the dialog and try again.
-            </p>
-          )}
-          <div className="space-y-1.5">
-            <Label htmlFor="hub-faq-question">Question</Label>
-            <Input
-              id="hub-faq-question"
-              autoComplete="off"
-              disabled={!ready}
-              value={question}
-              onChange={(e) =>
-                setQuestion(e.target.value.slice(0, FAQ_QUESTION_MAX))
-              }
-            />
-            <LimitCounter value={question} max={FAQ_QUESTION_MAX} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="hub-faq-answer">Answer</Label>
-            <Textarea
-              id="hub-faq-answer"
-              disabled={!ready}
-              aria-busy={load === "loading"}
-              value={answer}
-              onChange={(e) =>
-                setAnswer(e.target.value.slice(0, FAQ_ANSWER_MAX))
-              }
-              rows={6}
-            />
-            {load === "loading" ? (
-              <p role="status" className="text-muted-foreground text-xs">
-                Loading the full answer…
+      <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit FAQ" : "New FAQ"}</DialogTitle>
+
+          </DialogHeader>
+          <DialogBody className="space-y-3">
+            {load === "failed" && (
+              <p
+                role="alert"
+                className="border-destructive/40 text-destructive rounded-md border p-3 text-sm"
+              >
+                Could not load the full answer, so this FAQ cannot be saved from
+                here. Close the dialog and try again.
               </p>
-            ) : (
-              <LimitCounter value={answer} max={FAQ_ANSWER_MAX} />
             )}
-          </div>
-          {!editing && (
-            <AssistantMultiSelect
-              assistants={assistants}
-              selected={selected}
-              onChange={setSelected}
-            />
-          )}
-          {editing && (
-            <p className="text-muted-foreground text-xs">
-              Links are managed from the row’s{" "}
-              <Badge variant="outline">Manage linked assistants</Badge>{" "}
-              control.
-            </p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={
-              isPending ||
-              !ready ||
-              !question.trim() ||
-              !answer.trim() ||
-              (!editing && selected.length === 0)
-            }
-            onClick={submit}
-          >
-            <RollInText text={submitLabel} />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+            <div className="space-y-1.5">
+              <Label htmlFor="hub-faq-question">Question</Label>
+              <Input
+                id="hub-faq-question"
+                autoComplete="off"
+                disabled={!ready}
+                value={question}
+                onChange={(e) =>
+                  setQuestion(e.target.value.slice(0, FAQ_QUESTION_MAX))
+                }
+              />
+              <LimitCounter value={question} max={FAQ_QUESTION_MAX} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="hub-faq-answer">Answer</Label>
+              <Textarea
+                id="hub-faq-answer"
+                disabled={!ready}
+                aria-busy={load === "loading"}
+                value={answer}
+                onChange={(e) =>
+                  setAnswer(e.target.value.slice(0, FAQ_ANSWER_MAX))
+                }
+                rows={6}
+              />
+              {load === "loading" ? (
+                <p role="status" className="text-muted-foreground text-xs">
+                  Loading the full answer…
+                </p>
+              ) : (
+                <LimitCounter value={answer} max={FAQ_ANSWER_MAX} />
+              )}
+            </div>
+            {!editing && (
+              <AssistantMultiSelect
+                assistants={assistants}
+                selected={selected}
+                onChange={setSelected}
+              />
+            )}
+            {editing && (
+              <p className="text-muted-foreground text-xs">
+                Links are managed from the row’s{" "}
+                <Badge variant="outline">Manage linked assistants</Badge>{" "}
+                control.
+              </p>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={requestClose}>
+              Cancel
+            </Button>
+            <Button
+              loading={isPending}
+              disabled={
+                isPending ||
+                !ready ||
+                !question.trim() ||
+                !answer.trim() ||
+                (!editing && selected.length === 0)
+              }
+              onClick={submit}
+            >
+              <RollInText text={submitLabel} />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }
@@ -781,51 +792,54 @@ export function ImportFaqsDialog({
         toast.success(
           `Imported ${imported} FAQ${imported === 1 ? "" : "s"}${
             skipped.length > 0 ? ` (${skipped.length} skipped)` : ""
-          }.`
+          }.`,
         );
         onClose();
       } catch {
-        toast.error("Import failed. Check the CSV has two columns and try again.");
+        toast.error(
+          "Import failed. Check the CSV has two columns and try again.",
+        );
       }
     });
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Import FAQs</DialogTitle>
-          <DialogDescription>
-            A CSV with two columns: question, then answer.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Input
-            type="file"
-            accept=".csv,text/csv"
-            aria-label="FAQ CSV file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-          <AssistantMultiSelect
-            assistants={assistants}
-            selected={selected}
-            onChange={setSelected}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={isPending || !file || selected.length === 0}
-            onClick={submit}
-          >
-            <RollInText text={isPending ? "Importing…" : "Import"} />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+      <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import FAQs</DialogTitle>
+            <DialogDescription>
+              A CSV with two columns: question, then answer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-3">
+            <Input
+              type="file"
+              accept=".csv,text/csv"
+              aria-label="FAQ CSV file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            <AssistantMultiSelect
+              assistants={assistants}
+              selected={selected}
+              onChange={setSelected}
+            />
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={requestClose}>
+              Cancel
+            </Button>
+            <Button
+              loading={isPending}
+              disabled={isPending || !file || selected.length === 0}
+              onClick={submit}
+            >
+              <RollInText text={isPending ? "Importing…" : "Import"} />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }

@@ -60,6 +60,14 @@ const nextConfig: NextConfig = {
     // standalone bundle. The terminal one-liner is served from here too.
     "/api/local-connector/runtime": [connectorArtifact],
   },
+  async headers() {
+    // Crawlers still need these resources to render pages and social cards.
+    // Exclude them from search results without blocking their fetches.
+    return ["/opengraph-image", "/_next/static/:path*"].map((source) => ({
+      source,
+      headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+    }));
+  },
   // The org-level knowledge hub moved from /knowledge to /library with its nav
   // label, so bookmarks and browser history keep resolving. Only the two
   // console URLs that existed are listed: `:tab` matches a single segment, so

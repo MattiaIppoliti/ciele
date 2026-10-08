@@ -20,7 +20,7 @@ export function EvaluationDistributions({
   );
   return (
     <AnalyticsCard title="Latency distribution by model"
-      description="Compare spread and long tails, beyond the average. Includes technical failures; curves smooth the recorded observations and are exploratory with fewer than 20 samples.">
+      description="Includes failures. Smoothed curves; exploratory below 20 samples.">
       <p className="mb-4 text-xs text-muted-foreground">
         {series
           .map((row) => `${row.label}: ${row.values.length} observations`)

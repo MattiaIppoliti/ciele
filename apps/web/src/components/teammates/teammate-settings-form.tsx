@@ -346,11 +346,7 @@ export function TeammateSettingsForm({
         <SectionHeading
           icon={Settings2}
           title={platformLayer ? `${teammate.name} settings` : "Teammate settings"}
-          description={
-            platformLayer
-              ? "Name your organization's AI layer, give it a standing role and pick its models."
-              : "Manage this teammate's persona, knowledge, models and access."
-          }
+
           className="min-w-0 flex-1"
         />
         {headerActions && (
@@ -417,9 +413,7 @@ export function TeammateSettingsForm({
       {platformLayer ? (
         <div>
           <p className="text-muted-foreground text-sm">
-            <RollInText text={teammate.name} /> searches the whole Library and works across the platform
-            with the permissions of whoever is chatting with it, never more. Deleting
-            or publishing always waits for them to confirm.
+            Uses the Library and your permissions. Deleting or publishing requires confirmation.
           </p>
         </div>
       ) : (
@@ -489,9 +483,7 @@ export function TeammateSettingsForm({
           sources={modelSources}
         />
         <p className="text-muted-foreground text-sm">
-          {modelAllowListSummary(allowedModels, unavailableProviders)} Your own connected
-          subscription, if you have one, still runs your turns and ignores this
-          list: change it in Settings → AI.
+          {modelAllowListSummary(allowedModels, unavailableProviders)} Your personal subscription overrides this list.
         </p>
       </div>
 
@@ -518,7 +510,7 @@ export function TeammateSettingsForm({
           // Read-only until the read on open lands, so nobody types into a
           // value that is about to be replaced by a newer one.
           disabled={loadedMemory === null}
-          placeholder="Nothing yet. It adds a line here when a conversation teaches it something durable about this role."
+          placeholder="No notes yet."
           onChange={(e) =>
             setAgentMemory(e.target.value.slice(0, MEMORY_DOCUMENT_MAX_CHARS))
           }
@@ -526,7 +518,7 @@ export function TeammateSettingsForm({
         <p className="text-muted-foreground text-sm">
           {memoryUnreadable
             ? "Could not read the latest notes, so they are shown as the page loaded them and cannot be edited here. Close and reopen to try again."
-            : "Its own notes, added at the end of a conversation. Edit or delete a line that is wrong; it reads this every message."}
+            : "Read with every message."}
         </p>
       </div>
 

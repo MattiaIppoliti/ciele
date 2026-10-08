@@ -17,6 +17,8 @@ export function ApplicationImportDocumentsView({
   total,
   page,
   pageSize,
+  fileTypes,
+  mimeType,
   basePath,
   sourcePrefix,
   backHref,
@@ -27,6 +29,8 @@ export function ApplicationImportDocumentsView({
   total: number;
   page: number;
   pageSize: number;
+  fileTypes: string[];
+  mimeType: string;
   basePath: string;
   sourcePrefix: string;
   backHref: string;
@@ -64,6 +68,8 @@ export function ApplicationImportDocumentsView({
           total={total}
           page={page}
           pageSize={pageSize}
+          fileTypes={fileTypes}
+          mimeType={mimeType}
           basePath={basePath}
           sourcePrefix={sourcePrefix}
         />

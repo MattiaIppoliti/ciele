@@ -50,7 +50,7 @@ export function DeferredUsageCard(props: {
   return (
     <div ref={root} className="min-h-[28rem]">
       <LoadingReveal loading={!visible} placeholder={
-        <AnalyticsCard title="Usage" description="Conversation activity over time.">
+        <AnalyticsCard title="Usage" >
           <Skeleton className="h-96 w-full" />
         </AnalyticsCard>
       }>

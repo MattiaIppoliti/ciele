@@ -37,24 +37,19 @@ export function CtaSection({
         </span>
       </h2>
 
-      {/* The hero's pair of buttons, not a second set: same component, same
-          sizes, same ringed frame around the primary. */}
+      {/* Both actions use the shared reference button. */}
       <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-        <div className="bg-foreground/10 rounded-[calc(var(--radius-xl)+0.125rem)] border p-0.5">
           <Button
             size="lg"
-            className="rounded-xl px-5 text-base"
             nativeButton={false}
             render={<Link href={primary.href} />}
           >
             <span className="text-nowrap">{primary.label}</span>
           </Button>
-        </div>
         {secondary && (
           <Button
             size="lg"
             variant="ghost"
-            className="rounded-xl px-5 text-base"
             nativeButton={false}
             render={<Link href={secondary.href} />}
           >

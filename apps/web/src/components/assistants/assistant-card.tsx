@@ -217,8 +217,9 @@ export function AssistantCard({
     <ContextMenu>
     <ContextMenuTrigger>
     <Card
+      data-squircle-frame="none"
       className={cn(
-        "press group relative h-full gap-2 py-4 transition-colors duration-150 hover:bg-muted/40",
+        "press group relative h-full gap-2 py-4 ring-0 transition-colors duration-150 hover:bg-muted/40 [--squircle-fill-image:none]",
         hasPersistentHover && "-translate-y-0.5 shadow-light",
         isPending && "opacity-50"
       )}
@@ -264,16 +265,16 @@ export function AssistantCard({
             </span>
           )}
         </h3>
-        <p className="text-muted-foreground line-clamp-2 min-h-10 text-sm leading-snug">
-          {assistant.description || "No description yet."}
-        </p>
+        {assistant.description && (<p className="text-muted-foreground line-clamp-2 min-h-10 text-sm leading-snug">
+          {assistant.description}
+        </p>)}
       </CardContent>
 
       <CardFooter className="relative border-t-0 bg-transparent pt-0 pb-4">
         <div className="flex w-full items-center justify-between gap-2">
           <div className="text-muted-foreground flex min-w-0 items-center gap-2 text-xs">
             <Hint label={cardCopied ? "Assistant ID copied" : `Copy ID: ${assistant.id}`}>
-              <button
+              <Button variant="ghost" size="sm"
                 type="button"
                 onClick={() => void copyId("card")}
                 aria-label={cardCopied ? "Assistant ID copied" : "Copy ID"}
@@ -281,7 +282,7 @@ export function AssistantCard({
               >
                 <CopyFeedbackIcon copied={cardCopied} className="size-3.5" />
                 <span translate="no" className="truncate font-mono">{assistant.id}</span>
-              </button>
+              </Button>
             </Hint>
             <span className="bg-foreground/5 shrink-0 rounded-md px-2 py-1 dark:bg-white/10">
               Updated {formatShortDay(assistant.updatedAt)}
@@ -294,12 +295,6 @@ export function AssistantCard({
         </div>
       </CardFooter>
 
-      <div
-        className={cn(
-          "bg-linear-to-br pointer-events-none absolute inset-0 -z-10 rounded-xl from-transparent via-gray-200/70 to-transparent p-px transition-opacity duration-300 dark:via-white/10",
-          hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-has-[a:focus-visible]:opacity-100"
-        )}
-      />
     </Card>
     </ContextMenuTrigger>
     {menuContent}

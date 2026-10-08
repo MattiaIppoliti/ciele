@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Ciele
-description: "A neutral admin console for AI assistants, laid out like Linear's app: the sidebar sits on a darker frame and the workspace is one rounded panel lifted off it, with the top bar inside. Monochrome grounds (#f5f5f5 light, #121212 dark) built from translucent alphas, Host Grotesk throughout, two elevations, six status tones, and a single chromatic accent borrowed from Linear's lavender (#5e6ad2) for the committing button, the focus ring and link emphasis. The marketing site and the docs stay monochrome."
+description: "A neutral admin console for AI assistants, laid out like Linear's app: the sidebar sits on a darker frame and the workspace is one rounded panel lifted off it, with the top bar inside. Monochrome grounds (#f5f5f5 light, #121212 dark) built from translucent alphas, Host Grotesk throughout, two elevations, six status tones, and a single chromatic accent borrowed from Linear's lavender (#5e6ad2) for the focus ring and link emphasis. The marketing site and the docs stay monochrome."
 
 colors:
   brand: "#5e6ad2"
@@ -18,7 +18,9 @@ colors:
   rail-dark: "#18191a"
   surface: "#f1f1f1"
   surface-dark: "#141516"
-  table-frame: "#dcdcdc"
+  table-frame: "#eeeeee"
+  table-sheet: "#ffffff"
+  table-sheet-dark: "#141516"
   table-frame-dark: "#0b0c0d"
   hairline-dark: "#23252a"
   ink: "oklch(0.145 0 0)"
@@ -89,16 +91,17 @@ elevation:
 
 components:
   button-primary:
-    backgroundColor: "{colors.brand}"
-    textColor: "{colors.on-brand}"
-    typography: "{typography.label}"
-    rounded: "{rounded.lg}"
-    height: 32px
+    background: "linear-gradient(#323137, #201e25)"
+    textColor: "#fafafa"
+    fontFamily: Inter
+    fontSize: 14px
+    rounded: 12px
+    height: 40px
   button-secondary:
-    backgroundColor: "{colors.alpha-lighter}"
-    borderColor: "{colors.alpha-medium}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.lg}"
+    backgroundColor: "#ffffff"
+    borderColor: "#e5e5e5"
+    textColor: "#171717"
+    rounded: 12px
   card:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.xl}"
@@ -152,8 +155,7 @@ changed in one without the other is a bug in the front matter.
 1. **Monochrome first, colour means state.** The ground, the ink and every control are neutral.
    Colour appears only when it carries information: a status, a destructive action, a chart
    series. A decorative colour competes with the one that means "this failed". The one exception
-   is the **accent** (§2.1), and it is scarce by rule: the committing button, the focus ring and
-   an inline link, never a fill, a card title or a section background.
+   is the **accent** (§2.1), and it is scarce by rule: the focus ring and an inline link, never a fill, a card title or a section background.
 2. **Translucent, not grey.** A control is built from black (white in dark mode) at a fixed
    alpha, so it keeps its weight over the shell, over a card and over a coloured banner. A literal
    grey matches exactly one of those.
@@ -184,20 +186,21 @@ changed in one without the other is a bug in the front matter.
 | `bg-rail` | `#ededed` | `#18191a` | A right-rail card that needs its own edge (the Flows Agent) |
 | `bg-card` / `bg-popover` | `#f1f1f1` | `#141516` | Cards, popovers, panels |
 | `bg-muted` / `bg-secondary` / `bg-accent` | `#f1f1f1` | `#18191a` | Recessed panels, hover rows |
-| `bg-table-frame` | `#dcdcdc` | `#0b0c0d` | A table card's header band and footer, one step darker than its rows |
+| `bg-table-frame` | `#eeeeee` | `#0b0c0d` | The table's title, history controls and footer tray |
+| `bg-table-sheet` | `#ffffff` | `#141516` | The rounded sheet shared by headings and data cells |
 | `border` / `input` | `oklch(0.922 0 0)` | `#23252a` / `#34343a` | Hairlines: cards and panels, then inputs |
 | `text-foreground` | `oklch(0.145 0 0)` | `#f7f8f8` | Body ink |
 | `text-muted-foreground` | `oklch(0.52 0 0)` | `#8a8f98` | Secondary ink. 0.52 is ~5.0:1 on the ground; `#8a8f98` is 5.4:1 on the darkest control surface and better elsewhere |
 | `bg-primary` / `text-primary-foreground` | near-black / white | near-white / near-black | Solid neutral ink: avatars, checked controls, the old CTA |
-| `bg-brand` / `text-brand-foreground` | `#5e6ad2` / white | `#5e6ad2` / white | **The page's one committing action** (`Button` `default`). 4.7:1 |
-| `hover:bg-brand-hover` | brand + 12% black | same | Hover on it. Darker, not lighter: Linear's `#828fff` under white text is 2.9:1 |
+| `bg-brand` / `text-brand-foreground` | `#5e6ad2` / white | `#5e6ad2` / white | Brand marks and state accents; committing buttons use the shared neutral gradient |
+| `hover:bg-brand-hover` | brand + 12% black | same | Hover for brand surfaces; shared buttons own their hover paint |
 | `text-brand-ink` | `#4c57c0` | `#828fff` | An inline link that should stand out. `#5e6ad2` as text is 4.3:1 on `#f5f5f5` |
 | `text-destructive` | `oklch(0.577 0.245 27)` | `oklch(0.704 0.191 22)` | Destructive actions and invalid fields only |
 | `ring-ring` | `#5e6ad2` in the console, grey elsewhere | same | Focus rings, drawn at 50% (`ring-ring/50`) |
 | `chart-1..5` | grey ramp | grey ramp | Default chart series (see `packages/charts`) |
 
 The brand tokens are lavender only on the admin surface's Midnight palette. On the marketing
-site and the docs they equal `primary`, so a shared `Button` is a black (or white) pill there;
+site and the docs they equal `primary`, while shared action buttons use the supplied neutral reference in every app;
 Mist Blue resets them to its own navy. Under increased contrast the ring and the link ink deepen
 to `#3f49b3` (light) and `#aab2ff` (dark).
 
@@ -340,7 +343,7 @@ Two exemptions, both deliberate:
   `ui/icons/local-glyphs.ts`, so a row renders the twin without an `Icon === X` branch of its own.
   Help Desks is the two-figure UsersRound, not a question mark: a help desk is people. Sounds is
   a local Volume2 whose waves pulse on hover; a row that is not a `menuitem` plays its icon by
-  carrying `data-animate-group`. Buttons carry 14px icons (`size-3.5`, the `Button` default),
+  carrying `data-animate-group`. Buttons carry 16 / 18 / 20px icons for `sm` / `md` / `lg`,
   menu rows 16px (`size-4`), badges 12px.
 - **Stroke 1.75 in the console**, not lucide's 2, for Linear's lighter line. One rule in
   `globals.css` matches the icon signature (24-unit viewBox, no fill, the default width), so it
@@ -369,9 +372,27 @@ Constants live in `lib/ease.ts`. Use them, do not write a new bezier or spring i
 | `SPRING_THROW` | The only spring allowed to overshoot, and only after a gesture threw something. Pass the release velocity |
 | `SPRING_UNFOLD` / `SPRING_REFOLD` | A side panel opening and closing by width: the left sidebar, the Preview rail, the Developer Panel. Opening overshoots a little, closing settles with less. All three use the same pair, so a panel on either side feels the same |
 
-**Press contract** (CSS, in `globals.css`):
+**Action button contract** (`packages/ui/src/button.tsx` and `button.css`):
 
-- `<Button>` and the motion-button compatibility API share `scale(0.96)` on pointer press, 100ms. `static` disables the travel; keyboard activation keeps its geometry.
+Use the supplied reference everywhere: primary has a dark gradient with a lit border and dark
+1px ring; secondary has a neutral outlined surface; ghost has muted ink with hover fill;
+destructive has red ink on pale red (deeper in dark mode). Buttons use Inter, weight 500.
+`sm` is 32px / radius 10px / font 13px, `md` is 40px / radius 12px / font 14px, and `lg` is
+48px / radius 14px / font 15px at a 16px root. These dimensions use `rem` so the
+console's 92% root scale also scales button height, padding, text, gaps and icons;
+the standard button is 36.8px tall there. `default` and `outline` remain aliases for
+primary and secondary.
+Import `@agent-hub/ui/button.css` once per app, including the root-error boundary.
+
+`loading` blocks activation while retaining focus, dims the label, sweeps a shimmer across it,
+and replaces a leading icon with a spinner. Changed text or icons morph width over 480ms and
+enter with a short blur; initial render stays still. Reduced motion suppresses those animations.
+Keep committing form actions as `type="submit"`; other buttons default to `type="button"`.
+Preserve menu, tab, calendar, switch, drag-handle and navigable-card geometry and semantics.
+
+**Press contract**:
+
+- `<Button>` presses itself: `scale(0.97)` on `:active`, 160ms; no nudge.
 - `.press` for large tappable surfaces (cards, list rows, nav items): `scale(0.985)`.
 - `.press-control` for small non-`Button` controls (bare icon buttons, chips, tabs): `scale(0.96)`. `data-static` disables the travel.
 - `.press-text` for links and text triggers: an opacity dip, because scaling text reflows it.
@@ -387,12 +408,45 @@ Operational `SectionHeading` titles are static, with a compact unboxed icon. Onl
 
 ## 3. Primitives: which one to use
 
+Admin cards and the Flow toolbar use the shared squircle paint in `globals.css`.
+The frame and fill must both use `SquiCircleFilter`, with a one-pixel inset between them;
+hide the resting native border/ring rather than drawing a second corner around the paint.
+The frame keeps the component's ring colour, including hover and status colours. Card
+decorations use child layers; `::before` and `::after` belong to the shared contour. A
+custom wash goes through `--squircle-fill-image` rather than replacing either paint layer.
+Text, controls, keyboard focus and resize handles stay outside the filter. Flush footers
+keep their top divider and use the parent fill so they do not repaint the old bottom corners.
+Forced colours replace both paint layers with one unfiltered Canvas/CanvasText contour.
+Overview bento cards are borderless: `data-squircle-frame="none"` omits the frame,
+and `--squircle-fill-image: none` leaves only the card's dotted hover texture.
+Help Desk cards share the Assistant Overview's inset panels through `overview-panels`:
+the description sits in the inset, with the icon, name and Manage Desk link in the caption.
+Knowledge application cards use the same panels, with connection controls in the caption
+and existing connections in the inset. Connect opens `IntegrationSettings`, adapted from
+the supplied tray-and-sheet component, using each provider's real OAuth fields and actions.
+
+Popup modals share the Integration Settings tray and inset sheet through
+`@agent-hub/ui/dialog.css`: `DialogHeader` sits on the gray tray, `DialogBody` is the
+rounded sheet, `DialogSection` separates field groups, and `DialogFooter` returns actions
+to the tray. Keep a native form around the body and footer for submission and validation.
+The tray and sheet both have a 24px contour; their fill and border use the same native
+geometry instead of filtered paint. Fields use 12px corners and a 44px minimum height.
+Dark mode uses the Overview frame (`#202023`) and inset (`#080809`).
+Search, Settings, project workspaces, lightboxes and resizable channel panels keep their
+specialized dimensions and scrolling while sharing these surfaces. Destructive confirms,
+bottom sheets, marketing feature previews, cookie preferences and documentation search
+use the same treatment. Anchored popovers and persistent workspaces remain their own
+surfaces. Shared modal fades last 180ms; gesture-driven sheets keep their existing motion.
+Keyboard search opens instantly, and reduced motion disables entrance animation.
+Preserve focus trapping, Escape, close guards and pending
+action states when adapting a popup.
+
 Import shared primitives from `@agent-hub/ui`, app primitives from `@/components/ui/*` or
 `@/components/motion/*`. Check this table before building anything.
 
 | You need | Use | Not |
 |---|---|---|
-| A button or button-shaped link (12px side padding on 32px, 16px on `lg`) | `Button` (`variant`: default / outline / secondary / ghost / destructive; `size`: xs / sm / default / lg / icon / icon-sm / icon-lg). Links through `render={<Link/>}` | a bare `<button>` with classes |
+| A button or button-shaped link (12 / 16 / 20px padding for 32 / 40 / 48px height) | `Button` (`variant`: primary / secondary / ghost / destructive; `size`: sm / md / lg, with compatibility aliases and icon sizes). Links through `render={<Link/>}` | a bare `<button>` with classes |
 | A status label | `Badge tone="…"` | `bg-emerald-50 text-emerald-700 dark:…` |
 | A tooltip or hint | `Hint` | a `title` attribute on a control |
 | A card | `Card` + `CardHeader`/`CardContent`/`CardFooter` (`size="sm"` for dense) | `div.rounded-xl.border.bg-card` by hand |
@@ -490,20 +544,14 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
 - **Sticky footers** (a form's save bar) take `z-10` and an opaque ground, or a focused select
   scrolling under them paints over the bar. Inside a padded scroller they stick at minus that
   padding, or text shows through the gap.
-- **Forms.** Label above control, `text-sm font-medium` label, `text-muted-foreground text-xs`
-  help, character limits shown as `N/limit` in the help line. `settings/field-header` shares
-  that label and supplies a `${htmlFor}-hint` id; associate it with `aria-describedby`.
-  Group titles are headings, individual fields are labels. Field-to-control gap is 8px,
-  related fields 20px, groups 32px. `TimelineSection boxed` applies this field rhythm without
-  adding a second enclosing card. Unsaved-changes guarding uses `use-unsaved-changes`.
-  `motion/input` composes the shared Input and Label with validation feedback; `console`
-  density stays 32px and `comfortable` opts into 44px for auth. The error line reserves space
-  by default; callers may set `reserveErrorSpace={false}` when layout stability is irrelevant.
-- **Overview and analytics cards.** Both take their frame, inset and hairline from the same
-  theme tokens, including Mist Blue. One outer hairline defines the card. The inset radius
-  equals the card radius minus its 8px gap, so nested curves follow the shared radius scale.
-- **Lists that can be empty** always render `EmptyState` with a sentence that says what will
-  appear and, if the user can act, one `Button`.
+- **Copy.** Use titles, labels and actions to explain the interface. Add a description only
+  when it explains a constraint, a consequence or a distinction needed to choose. Omit
+  introductions that repeat the title, obvious instructions and missing-description filler.
+- **Forms.** Label above control, `text-sm font-medium` label. Use `text-muted-foreground text-xs`
+  help only for formats, limits or behavior the label cannot convey. Show character limits as
+  `N/limit`. Guard unsaved changes through `use-unsaved-changes`.
+- **Lists that can be empty** render `EmptyState` with a concise title and, if the user can
+  act, one `Button`. Add help only when the cause or recovery is not evident from those controls.
 - **Destructive actions** use the `destructive` variant (a tint, not a red block) and confirm
   through `confirm-delete-modal`. Irreversible bulk actions use `slide-to-confirm`.
 - **Loading.** Every admin route has a `loading.tsx` that mirrors its layout, with
@@ -640,8 +688,8 @@ charts for type. When the next row reaches zero, add its pattern there.
 - [ ] No new `dark:` class. If you needed one, a token is missing; add it to all three stylesheets.
 - [ ] No `text-[Npx]`, no `shadow-md`, no hex, no raw palette colour outside a chart or a status dot.
 - [ ] Status uses `Badge tone`, with the mapping in §2.3.
-- [ ] Lavender appears only on the committing button, the focus ring or an inline link
-      (`text-brand-ink`), and at most one `Button` per view is `default`.
+- [ ] Lavender appears only on brand marks, the focus ring or an inline link
+      (`text-brand-ink`), and at most one committing `Button` per view is `primary`.
 - [ ] Clickable things acknowledge a press (`Button` or a `press*` utility).
 - [ ] Icon-only controls have an `aria-label`.
 - [ ] Checked in light, dark and mist-blue, and with reduced motion on.
@@ -670,12 +718,12 @@ came across and most of the colours did not.
 
 | Linear rule | Here |
 |---|---|
-| One chromatic accent, lavender `#5e6ad2`, only on the brand mark, the primary CTA, focus and link emphasis | `brand` tokens, lavender in the console only (§2.1) |
+| One chromatic accent, lavender `#5e6ad2`, only on the brand mark, focus and link emphasis | `brand` tokens, lavender in the console only (§2.1) |
 | Focus is a 50% ring of the accent | `--ring: #5e6ad2`, drawn as `ring-ring/50` |
 | Display at 600, body at 400, no 700 | No `font-bold` in the console (§2.5) |
 | Eyebrows carry positive tracking against negatively tracked headings | The eyebrow recipe (§2.5) |
 | 4 / 6 / 8 / 12 / 16 radius steps; controls at 8, cards at 12 | The radius table (§2.6) |
-| No atmospheric gradients | The primary button lost its radial glow and hover halo |
+| No atmospheric gradients | Buttons use only the supplied gradient and edge, without an extra radial glow or hover halo |
 | Hairline borders and a faint top highlight carry depth | `alpha-medium` hairlines on Card, Dialog, Input and Textarea, plus the card sheen |
 | Buttons 8px radius with generous side padding | `Button` at 12px (`lg` 16px) side padding, same heights |
 | Inputs on a lifted surface with a hairline | `Input` / `Textarea` on `alpha-lighter`, 8/12px padding |
@@ -714,3 +762,36 @@ the press, sound and roll-in feedback.
 - **The typeface.** Linear's is proprietary; Host Grotesk stays, since it is already ours.
 - **Zero tracking at small sizes.** Ours is slightly positive below `text-base`, which reads better
   at the console's 92% density.
+
+### Table categories and editing
+
+`TableCategory` uses the reference’s outlined pastel purple, blue, gray, green and pink pills,
+with brighter text over translucent fills in dark mode. Use `TableEditableCell` for field-specific
+edits on double-click or Enter/F2. Its option menu has a rounded tray, inset hover rows and colored
+selected text. System facts must not receive an editor. Table columns reuse
+`ui/sortable-list` and its Flow spring settings; browser column order preferences are scoped to the
+organization, member, route and table, and never sent to the server. Rows follow the table's
+sorting and pagination and cannot be reordered by dragging.
+
+The shared table toolbar shows **Total Results** and a count with the table's entity name.
+Use `TableFilter` and `TableSearch` on its right for the table's actual filters. They share
+state with the column controls and participate in Undo/Redo. `TablePagination` uses Previous,
+numbered pages and Next below the sheet, including a disabled single page for small or empty
+result sets. Filter before client pagination; server-paged tables keep filtering and paging
+in their existing URL queries. Do not filter only the current server page.
+Apply this contract to every console result table, including Settings usage, Insights chart
+data and model costs, Eval runs, leaderboards and question results. Use `motion/table` for
+complete client result sets; its `pagination` override accepts an already paged server set
+and its global count. An Actions column has a visible **Actions** heading and remains fixed
+at the end. Document drill-downs expose Open, Copy ID and permitted exclusion actions there,
+as well as in the contextual menu.
+
+Table toolbars respond to the card's width. Keep the count and history together, with filters
+on their own row in narrow panels. The frame must not clip filter or page-size menus.
+Active filters retain a visible surface cue. Search has an explicit clear control that keeps focus
+in the field. Single-line cell editors preserve row height, and Escape returns focus to the cell.
+Column dragging highlights its header and values. Pointer reorders keep the Flow spring;
+keyboard reorders and Undo/Redo settle immediately. Table controls press at `scale(0.96)` for
+150ms, with opacity feedback under reduced motion.
+Table filter and page-size menus use the shared Select's compact mode: a 180ms entrance
+from their trigger, no row stagger, and immediate keyboard or reduced-motion updates.

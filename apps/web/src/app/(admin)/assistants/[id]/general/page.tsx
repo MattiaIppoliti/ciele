@@ -27,7 +27,7 @@ export default async function GeneralPage({
       <SectionHeading
         icon={SlidersHorizontal}
         title="General Settings"
-        description="Manage your assistant's name, messaging, and other settings."
+
       />
       <GeneralForm
         assistant={assistant}

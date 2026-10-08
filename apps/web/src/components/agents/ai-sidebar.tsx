@@ -1,6 +1,7 @@
 "use client";
 // beui.dev/components/agents/ai-sidebar, trimmed to conversation navigation.
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { FileText, Folder, FolderOpen, MoreHorizontal } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
@@ -187,7 +188,7 @@ function ResourceRow({
       {!row.item.disabled && menu ? (
         <MorphPopover open={menuOpen} onOpenChange={onMenuOpenChange}>
           <MorphPopoverTrigger>
-            <button
+            <CieleButton variant="ghost" size="icon-sm"
               data-resource-actions
               type="button"
               tabIndex={-1}
@@ -196,7 +197,7 @@ function ResourceRow({
               className="grid size-7 shrink-0 place-items-center rounded-lg opacity-0 outline-none transition-opacity hover:bg-foreground/5 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/resource:opacity-100 group-data-[menu-open=true]/resource:opacity-100"
             >
               <MoreHorizontal aria-hidden="true" className="size-4" />
-            </button>
+            </CieleButton>
           </MorphPopoverTrigger>
           <MorphPopoverContent side="bottom" align="end" className="w-40 p-1.5">
             <div data-sidebar-resource-menu={row.item.id}>{menu}</div>

@@ -23,7 +23,7 @@ export default async function AuthenticationPage({
       <SectionHeading
         icon={Lock}
         title="Authentication"
-        description="Ask visitors to sign in before they chat. One connection serves all your assistants."
+        description="Shared across assistants."
       />
       <AuthenticationClient
         assistantId={id}

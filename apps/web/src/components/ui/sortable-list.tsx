@@ -6,6 +6,7 @@ import {
   type ButtonHTMLAttributes,
   type CSSProperties,
   type PointerEvent,
+  type HTMLAttributes,
   type ReactNode,
 } from "react";
 import { Reorder, useDragControls, useReducedMotion } from "motion/react";
@@ -19,7 +20,12 @@ export function SortableList({
   onReorder,
   className,
   children,
-}: {
+  as = "div",
+  axis = "y",
+  ...props
+}: Omit<HTMLAttributes<HTMLElement>, "onAnimationStart" | "onDrag" | "onDragStart" | "onDragEnd"> & {
+  as?: "div" | "tbody" | "tr";
+  axis?: "x" | "y";
   values: string[];
   onReorder: (values: string[]) => void;
   className?: string;
@@ -27,11 +33,12 @@ export function SortableList({
 }) {
   return (
     <Reorder.Group
-      as="div"
-      axis="y"
+      as={as}
+      axis={axis}
       values={values}
       onReorder={onReorder}
       className={className}
+      {...props}
     >
       {children}
     </Reorder.Group>
@@ -45,7 +52,12 @@ export function SortableItem({
   onDragStart,
   onDragEnd,
   children,
-}: {
+  as = "div",
+  animateLayout = true,
+  ...props
+}: Omit<HTMLAttributes<HTMLElement>, "onAnimationStart" | "onDrag" | "onDragStart" | "onDragEnd"> & {
+  as?: "div" | "tr" | "th";
+  animateLayout?: boolean;
   value: string;
   className?: string;
   style?: CSSProperties;
@@ -59,7 +71,8 @@ export function SortableItem({
   return (
     <SortableItemContext value={controls}>
       <Reorder.Item
-        as="div"
+        as={as}
+        {...props}
         value={value}
         dragListener={false}
         dragControls={controls}
@@ -72,11 +85,11 @@ export function SortableItem({
         onDragEnd={onDragEnd}
         whileDrag={{
           zIndex: 20,
-          scale: reduceMotion ? 1 : 1.01,
-          boxShadow: "0 16px 36px rgb(15 23 42 / 0.16)",
+          scale: reduceMotion || as === "th" ? 1 : 1.01,
+          boxShadow: as === "th" ? "var(--elevation-strong)" : "0 16px 36px rgb(15 23 42 / 0.16)",
         }}
         transition={
-          reduceMotion
+          reduceMotion || !animateLayout
             ? { duration: 0 }
             : { type: "spring", stiffness: 520, damping: 42, mass: 0.7 }
         }
@@ -99,8 +112,9 @@ export function SortableHandle({
 
   function startDrag(event: PointerEvent<HTMLButtonElement>) {
     onPointerDown?.(event);
-    if (event.defaultPrevented || event.button !== 0) return;
+    if (event.defaultPrevented || event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
     controls?.start(event);
   }
 

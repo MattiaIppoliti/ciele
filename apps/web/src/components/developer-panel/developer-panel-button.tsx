@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Code2, PanelTop } from "lucide-react";
-import { Hint } from "@agent-hub/ui";
+import { Button as CieleButton, Hint } from "@agent-hub/ui";
 import { useShell } from "@/components/shell/shell-provider";
 import { assistantIdFromPath, panelDomainsForPath } from "@/components/shell/nav";
 import { useTouchNavigation } from "@/components/shell/mobile-navigation";
@@ -45,7 +45,7 @@ export function DeveloperPanelButton() {
     <Hint
       label={`${open ? "Hide" : "Show"} ${label} (D)`}
     >
-      <button
+      <CieleButton variant="ghost" size="icon-sm"
         type="button"
         aria-pressed={open}
         aria-label={`${label} developer panel`}
@@ -57,7 +57,7 @@ export function DeveloperPanelButton() {
         }`}
       >
         <Code2 className="size-4 shrink-0" />
-      </button>
+      </CieleButton>
     </Hint>
   );
 }

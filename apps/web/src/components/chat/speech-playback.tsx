@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { LoaderCircle, Pause, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
@@ -107,7 +108,7 @@ function SpeechPlaybackSession({ endpoint, assistantId, visitorId, text, convers
   }
 
   const label = state === "playing" ? "Pause reading aloud" : state === "loading" ? "Cancel audio loading" : "Read response aloud";
-  return <button type="button" aria-label={label} title={label} onClick={() => void toggle()} className="grid size-7 place-items-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+  return <CieleButton variant="ghost" size="icon-sm" type="button" aria-label={label} title={label} onClick={() => void toggle()} className="grid size-7 place-items-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
     {state === "loading" ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" /> : state === "playing" ? <Pause className="size-3.5" /> : <Volume2 className="size-3.5" />}
-  </button>;
+  </CieleButton>;
 }

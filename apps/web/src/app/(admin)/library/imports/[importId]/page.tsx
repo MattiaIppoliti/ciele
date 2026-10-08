@@ -2,9 +2,9 @@ import { listApplicationImportDocumentsOp } from "@ciele/ops";
 import { ApplicationImportDocumentsView } from "@/components/knowledge/application-import-documents-view";
 import { requirePageMember } from "@/lib/authz";
 import { runPageOperation } from "@/lib/operations";
-import { parseSourceDocumentsParams } from "@/lib/source-documents";
 import {
   applicationImportHref,
+  parseApplicationImportDocumentsParams,
   applicationSourcePrefix,
 } from "@/lib/application-import-documents";
 
@@ -25,10 +25,10 @@ export default async function LibraryApplicationImportPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { importId } = await params;
-  const page = parseSourceDocumentsParams(await searchParams).page;
+  const options = parseApplicationImportDocumentsParams(await searchParams);
   await requirePageMember();
 
-  const result = await runPageOperation(listApplicationImportDocumentsOp, { importId, page });
+  const result = await runPageOperation(listApplicationImportDocumentsOp, { importId, ...options });
 
   return (
     <ApplicationImportDocumentsView
@@ -37,6 +37,8 @@ export default async function LibraryApplicationImportPage({
       total={result.total}
       page={result.page}
       pageSize={result.pageSize}
+      fileTypes={result.fileTypes}
+      mimeType={options.mimeType}
       basePath={applicationImportHref(importId)}
       sourcePrefix={applicationSourcePrefix()}
       backHref="/library/applications"

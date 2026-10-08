@@ -139,9 +139,7 @@ export function KnowledgeScopePicker({
                 <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border p-2">
                   {tab === "collections" ? (
                     collections.length === 0 ? (
-                      <p className="text-muted-foreground px-2 py-1.5 text-sm">
-                        No collections yet. Pick websites, files or FAQs, or leave empty.
-                      </p>
+                      <p className="text-muted-foreground px-2 py-1.5 text-sm">No collections yet.</p>
                     ) : visibleCollections.length === 0 ? (
                       <p className="text-muted-foreground px-2 py-1.5 text-sm">
                         No collection matches that.
@@ -217,9 +215,7 @@ export function KnowledgeScopePicker({
         {knowledgeScopeSummary({ collectionIds, sourceIds })}
       </p>
       {sourcesTruncated && (
-        <p className="text-muted-foreground text-xs">
-          Only recent items are listed. For the rest, pick a collection.
-        </p>
+        <p className="text-muted-foreground text-xs">Recent items only. Choose a collection for older items.</p>
       )}
     </div>
   );

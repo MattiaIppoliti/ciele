@@ -1,11 +1,11 @@
 "use client";
 // beui.dev/components/agents/code-block
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { Check, FileCode2 } from "lucide-react";
 // Icon data for the copy mark, which reshapes into the check on click.
 import { Check as CheckData, Copy as CopyData } from "lucide";
 import { MorphIcon } from "morphicons/react";
-import { Button } from "@agent-hub/ui";
 import {
   type AgentCodeLanguage,
   AgentCodeLine,
@@ -60,17 +60,16 @@ export function CodeBlock({
           <Check className="size-3" />
           Ready
         </span>
-        <Button
+        <CieleButton variant="ghost" size="icon-sm"
           type="button"
           aria-label={copied ? "Copied" : "Copy code"}
           title={copied ? "Copied" : "Copy code"}
           onClick={handleCopy}
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground hover:text-foreground"
+
+          className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-background/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
           <MorphIcon icon={copied ? CheckData : CopyData} size={14} />
-        </Button>
+        </CieleButton>
       </div>
 
       <div

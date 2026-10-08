@@ -31,7 +31,7 @@ import {
 } from "@/lib/flow-draft-storage";
 import { createFlowAction, deleteFlowAction, updateFlowAction } from "@/app/actions";
 import { adoptFlowsAgentThreadAction } from "@/app/(admin)/assistants/[id]/flows/flows-agent-actions";
-import {
+import { DialogBody, DialogFooter,
   Badge,
   Button,
   Card,
@@ -145,7 +145,7 @@ function StepCard({
   icon: LucideIcon;
   title: string;
   badge: "required" | "optional" | null;
-  subtitle: string;
+  subtitle?: string;
   defaultOpen?: boolean;
   children: ReactNode;
 }) {
@@ -171,7 +171,7 @@ function StepCard({
                 </Badge>
               )}
             </span>
-            <span className="text-muted-foreground block text-xs">{subtitle}</span>
+            {subtitle && <span className="text-muted-foreground block text-xs">{subtitle}</span>}
           </span>
           <ChevronDown
             className={cn(
@@ -781,7 +781,7 @@ export function FlowBuilder({
           </span>
         )}
         {canEdit ? (
-          <Button
+          <Button loading={isPending}
             type="button"
             disabled={!canSave || isPending}
             onClick={save}
@@ -807,30 +807,36 @@ export function FlowBuilder({
         <DialogHeader>
           <DialogTitle>Change the trigger?</DialogTitle>
         </DialogHeader>
-        <p className="text-muted-foreground text-sm">
-          {pendingTrigger === null
-            ? null
-            : (() => {
-                const plan = triggerChangePlan(draft, pendingTrigger);
-                return `“${FLOW_TRIGGER_LABELS[pendingTrigger]}” cannot run ${plan.discarded
-                  .map((action) => FLOW_ACTIONS[action].label)
-                  .join(", ")}${
-                  plan.clearsConditions
-                    ? ", and a flow that starts on its own has no conditions"
-                    : ""
-                }. Changing the trigger removes ${
-                  plan.clearsConditions ? "them" : "those actions"
-                }; everything else is kept.`;
-              })()}
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setPendingTrigger(null)}>
+        <DialogBody>
+          <p className="text-muted-foreground text-sm">
+            {pendingTrigger === null
+              ? null
+              : (() => {
+                  const plan = triggerChangePlan(draft, pendingTrigger);
+                  return `“${FLOW_TRIGGER_LABELS[pendingTrigger]}” cannot run ${plan.discarded
+                    .map((action) => FLOW_ACTIONS[action].label)
+                    .join(", ")}${
+                    plan.clearsConditions
+                      ? ", and a flow that starts on its own has no conditions"
+                      : ""
+                  }. Changing the trigger removes ${
+                    plan.clearsConditions ? "them" : "those actions"
+                  }; everything else is kept.`;
+                })()}
+          </p>
+        </DialogBody>
+        <DialogFooter className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPendingTrigger(null)}
+          >
             Keep current trigger
           </Button>
           <Button type="button" onClick={applyPendingTrigger}>
             Change and clear
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -915,7 +921,7 @@ export function FlowBuilder({
           icon={MousePointerClick}
           title="Trigger"
           badge={isDefaultFlow ? null : "required"}
-          subtitle="Define the event that starts this flow"
+
           defaultOpen={!triggerOk}
         >
           <FlowTriggerConfig
@@ -937,7 +943,7 @@ export function FlowBuilder({
           icon={ListFilter}
           title="Conditions"
           badge={isDefaultFlow ? null : "optional"}
-          subtitle="Criteria that must be met for the flow to continue."
+
           defaultOpen={draft.conditions.length > 0}
         >
           <FlowConditionsConfig
@@ -955,7 +961,7 @@ export function FlowBuilder({
           icon={MessageSquareReply}
           title="Response"
           badge={isDefaultFlow ? null : "required"}
-          subtitle="Define what will happen if the trigger and conditions are met."
+
           defaultOpen={!responseOk}
         >
           <div className="space-y-3">

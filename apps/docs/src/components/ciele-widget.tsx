@@ -1,5 +1,6 @@
 'use client';
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { useEffect, useState } from 'react';
 import { GripVertical } from 'lucide-react';
 import { useResizableWidth } from '@agent-hub/ui/use-resizable-width';
@@ -117,14 +118,14 @@ export function CieleWidget() {
   return (
     <>
       {!open && (
-        <button
+        <CieleButton variant="primary" size="sm"
           type="button"
           onClick={() => setOpen(true)}
           className="ciele-ask-ai fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-2xl bg-fd-secondary px-4 py-2 text-sm font-medium text-fd-secondary-foreground shadow-strong ring-1 ring-fd-border transition-colors hover:bg-fd-accent"
         >
           <ChatBubbleIcon />
           Ask AI
-        </button>
+        </CieleButton>
       )}
 
       {open && (

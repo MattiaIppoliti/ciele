@@ -50,7 +50,7 @@ function LoginFormInner() {
         required
       />
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button loading={pending} type="submit" className="w-full" disabled={pending}>
         {pending ? "Logging in…" : "Log in"}
       </Button>
       <p className="text-muted-foreground text-center text-sm">

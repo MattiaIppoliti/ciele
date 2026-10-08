@@ -1,5 +1,6 @@
 "use client";
 
+import { TableEditableCell } from "@/components/ui/table-editable-cell";
 import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
 
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
@@ -65,6 +66,7 @@ import {
   setRecrawlScheduleAction,
   updateOrgFaqAction,
   updateWebsiteSourceAction,
+  renameSourceAction,
   uploadFileSourceAction,
   type WebsiteFormInput,
 } from "@/app/actions";
@@ -72,7 +74,7 @@ import { FAQ_CSV_MAX_BYTES, serializeFaqCsv } from "@/lib/faq-csv";
 import { validateKnowledgeFile } from "@/lib/storage/assets";
 import { FileUpload, type FileUploadItem } from "@/components/ui/file-upload";
 import { Switch } from "@/components/ui/motion-switch";
-import { Badge } from "@agent-hub/ui";
+import { DialogBody, DialogSection, Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import {
   DropdownMenu,
@@ -107,6 +109,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TableFilter, TableSearch } from "@/components/ui/table-filters";
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
   TableColumnHeader,
@@ -222,11 +225,13 @@ function websiteFormDefaults(
 }
 
 function WebsiteConfigFields({
+  readOnlyUrl = false,
   form,
   setForm,
   crawl4aiAvailable,
   apifyAvailable,
 }: {
+  readOnlyUrl?: boolean;
   form: WebsiteFormInput;
   setForm: (f: WebsiteFormInput) => void;
   crawl4aiAvailable: boolean;
@@ -239,7 +244,7 @@ function WebsiteConfigFields({
         <Label htmlFor={`${id}-name`}>
           Name of Knowledge source <span className="text-destructive">*</span>
         </Label>
-        <p className="text-muted-foreground text-xs">A generic name that can help you remember it.</p>
+
         <Input
           id={`${id}-name`}
           name="name"
@@ -258,10 +263,11 @@ function WebsiteConfigFields({
         <Label htmlFor={`${id}-url`}>
           Knowledge Base URL <span className="text-destructive">*</span>
         </Label>
-        <p className="text-muted-foreground text-xs">The URL of the website whose content you want to import.</p>
+
         <Input
           id={`${id}-url`}
           name="url"
+          readOnly={readOnlyUrl}
           type="url"
           autoComplete="url"
           spellCheck={false}
@@ -571,7 +577,9 @@ function WebsiteEditDialog({
         await updateWebsiteSourceAction(assistantId, source.id, form);
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Could not update the website"
+          error instanceof Error
+            ? error.message
+            : "Could not update the website",
         );
         return;
       }
@@ -582,33 +590,46 @@ function WebsiteEditDialog({
 
   return (
     <>
-    {confirmDeleteModal}
-    <Dialog open onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Edit knowledge source: <RollInText text={source.name} /></DialogTitle>
-          <SourceSummary source={source} documentCount={documents.length} />
-        </DialogHeader>
+      {confirmDeleteModal}
+      <Dialog open onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Edit knowledge source: <RollInText text={source.name} />
+            </DialogTitle>
+            <SourceSummary source={source} documentCount={documents.length} />
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <WebsiteConfigFields
-            form={form}
-            setForm={setForm}
-            crawl4aiAvailable={crawl4aiAvailable}
-            apifyAvailable={apifyAvailable}
-          />
-        </div>
+          <DialogBody className="space-y-4">
+            <WebsiteConfigFields
+              readOnlyUrl
+              form={form}
+              setForm={setForm}
+              crawl4aiAvailable={crawl4aiAvailable}
+              apifyAvailable={apifyAvailable}
+            />
+          </DialogBody>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={requestClose} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button onClick={save} disabled={isPending} className="font-semibold">
-            <RollInText text={isPending ? "Updating…" : "Update"} />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={requestClose}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={isPending}
+              onClick={save}
+              disabled={isPending}
+              className="font-semibold"
+            >
+              <RollInText text={isPending ? "Updating…" : "Update"} />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -683,6 +704,7 @@ function SourceBulkBar({
   return (
     <>
       <TableBulkBar
+        selection={selection}
         count={selection.count}
         noun={noun}
         pluralNoun={pluralNoun}
@@ -745,7 +767,7 @@ function WebsitesTab({
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<WebsiteFormInput>(
-    websiteFormDefaults(undefined, apifyOrgConnected)
+    websiteFormDefaults(undefined, apifyOrgConnected),
   );
   const [confirmed, setConfirmed] = useState(false);
   const [editing, setEditing] = useState<Source | null>(null);
@@ -764,7 +786,7 @@ function WebsitesTab({
       recrawl: (s) => s.recrawlSchedule,
       lastCrawled: (s) => s.lastCrawledAt,
       updated: (s) => s.updatedAt ?? s.createdAt,
-    }
+    },
   );
   // The same footer the Library has, over rows this component already holds:
   // "Showing 1-25 of 61", a rows-per-page control and the page arrows,
@@ -802,7 +824,11 @@ function WebsitesTab({
       let settled = false;
       for (const id of ids) {
         try {
-          const status = await pollWebsiteCrawlAction(assistantId, collectionId, id);
+          const status = await pollWebsiteCrawlAction(
+            assistantId,
+            collectionId,
+            id,
+          );
           if (status !== "processing") settled = true;
         } catch {
           // transient, try again next tick
@@ -846,7 +872,9 @@ function WebsitesTab({
       try {
         await addWebsiteSourceAction(assistantId, collectionId, form);
         ingestionStarted();
-        toast.success("Crawl started, Documents will appear as they're indexed");
+        toast.success(
+          "Crawl started, Documents will appear as they're indexed",
+        );
         setForm(websiteFormDefaults(undefined, apifyOrgConnected));
         setShowAdd(false);
       } catch (error) {
@@ -866,13 +894,19 @@ function WebsitesTab({
             </Badge>
           </h2>
         </div>
-        <Button onClick={() => setShowAdd(!showAdd)} className="px-5 font-semibold">
+        <Button
+          onClick={() => setShowAdd(!showAdd)}
+          className="px-5 font-semibold"
+        >
           <Plus className="size-4" /> Add
         </Button>
       </div>
 
       {showAdd && (
-        <form onSubmit={submit} className="space-y-4 rounded-xl border bg-card p-4">
+        <form
+          onSubmit={submit}
+          className="space-y-4 rounded-xl border bg-card p-4"
+        >
           <WebsiteConfigFields
             form={form}
             setForm={setForm}
@@ -886,19 +920,50 @@ function WebsitesTab({
               onChange={(e) => setConfirmed(e.target.checked)}
               className="mt-0.5 size-4"
             />
-            I confirm that by importing content from the websites above I am
-            not violating any copyright regulations.
+            I confirm that by importing content from the websites above I am not
+            violating any copyright regulations.
           </label>
           <div className="flex justify-end">
-            <Button type="submit" disabled={isPending} className="px-5 font-semibold">
+            <Button
+              loading={isPending}
+              type="submit"
+              disabled={isPending}
+              className="px-5 font-semibold"
+            >
               <Plus className="size-4" />
-              <RollInText text={isPending ? "Starting crawl…" : "Add Website"} />
+              <RollInText
+                text={isPending ? "Starting crawl…" : "Add Website"}
+              />
             </Button>
           </div>
         </form>
       )}
 
       <TableCard
+        title="Websites"
+        results={{ total: websiteSources.length, noun: "website" }}
+        filters={
+          <>
+            <TableFilter
+              label="Status"
+              value={statusFilter}
+              anyLabel="All statuses"
+              options={SOURCE_STATUS_OPTIONS}
+              onChange={(value) => {
+                setStatusFilter(value);
+                paged.onPageChange(1);
+              }}
+            />
+            <TableSearch
+              label="Search websites"
+              value={query}
+              onChange={(value) => {
+                setQuery(value);
+                paged.onPageChange(1);
+              }}
+            />
+          </>
+        }
         footer={
           <TablePagination
             page={paged.page}
@@ -925,6 +990,7 @@ function WebsitesTab({
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <SelectAllHead
+                selection={selection}
                 state={selection.allState}
                 onToggle={selection.toggleAll}
                 disabled={websiteSources.length === 0}
@@ -988,7 +1054,7 @@ function WebsitesTab({
                   <EmptyState
                     size="sm"
                     title="No websites yet"
-                    description="Add your organization's site to start."
+
                   />
                 </TableCell>
               </TableRow>
@@ -1004,8 +1070,9 @@ function WebsitesTab({
                     name: source.name,
                     sharedWith: sharedWith[source.id],
                     deleteLabel: "Delete website",
-                    deleteEffect: "The website and every page crawled from it go.",
-                  })
+                    deleteEffect:
+                      "The website and every page crawled from it go.",
+                  }),
                 );
               return (
                 <TableRowMenu
@@ -1018,11 +1085,12 @@ function WebsitesTab({
                       icon: Maximize2,
                       href: assistantDocumentsHref(assistantId, source.id),
                     },
-                  {
-                    label: "Copy ID",
-                    icon: Copy,
-                    onSelect: () => void copyToClipboard(source.id, "ID copied."),
-                  },
+                    {
+                      label: "Copy ID",
+                      icon: Copy,
+                      onSelect: () =>
+                        void copyToClipboard(source.id, "ID copied."),
+                    },
                     {
                       label:
                         source.kind === "website"
@@ -1045,145 +1113,178 @@ function WebsitesTab({
                     },
                   ]}
                 >
-                <TableRow
-                  data-state={
-                    selection.isSelected(source.id) ? "selected" : undefined
-                  }
-                >
-                  <SelectRowCell
-                    checked={selection.isSelected(source.id)}
-                    onToggle={() => selection.toggle(source.id)}
-                    label={source.name}
-                  />
-                  <TableCell>
-                    <TableOpenCell
-                      href={assistantDocumentsHref(assistantId, source.id)}
+                  <TableRow
+                    data-state={
+                      selection.isSelected(source.id) ? "selected" : undefined
+                    }
+                  >
+                    <SelectRowCell
+                      checked={selection.isSelected(source.id)}
+                      onToggle={() => selection.toggle(source.id)}
                       label={source.name}
+                    />
+                    <TableEditableCell
+                      editor={{
+                        value: source.name,
+                        label: "Source name",
+                        maxLength: 500,
+                        onSave: (name) =>
+                          renameSourceAction(source.id, name, assistantId),
+                      }}
                     >
-                    <span className="flex items-center gap-2 text-sm font-medium">
-                      <Globe className="text-muted-foreground size-4 shrink-0" />
-                      <span className="truncate"><RollInText text={source.name} /></span>
-                    </span>
-                    {source.config.url && (
-                      <span className="ml-6 block min-w-0">
-                        <a
-                          href={source.config.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-muted-foreground inline-flex max-w-full items-center gap-1 text-xs hover:underline"
-                        >
-                          {/* truncate needs a block box, so it sits on the text
+                      <TableOpenCell
+                        href={assistantDocumentsHref(assistantId, source.id)}
+                        label={source.name}
+                      >
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          <Globe className="text-muted-foreground size-4 shrink-0" />
+                          <span className="truncate">
+                            <RollInText text={source.name} />
+                          </span>
+                        </span>
+                        {source.config.url && (
+                          <span className="ml-6 block min-w-0">
+                            <a
+                              href={source.config.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-muted-foreground inline-flex max-w-full items-center gap-1 text-xs hover:underline"
+                            >
+                              {/* truncate needs a block box, so it sits on the text
                               and not on the inline-flex link around it. */}
-                          <span className="min-w-0 truncate">{source.config.url}</span>
-                          <ExternalLink className="size-3 shrink-0" />
-                        </a>
-                        {/* A crawl refused for budget (#510) leaves the Source on
+                              <span className="min-w-0 truncate">
+                                {source.config.url}
+                              </span>
+                              <ExternalLink className="size-3 shrink-0" />
+                            </a>
+                            {/* A crawl refused for budget (#510) leaves the Source on
                             its previous status, so the reason needs saying here,
                             the status badge alone would look like nothing happened. */}
-                        {source.config.crawlBlockedReason ? (
-                          <span className="block text-[0.7rem] text-amber-600 dark:text-amber-500">
-                            {source.config.crawlBlockedReason}
+                            {source.config.crawlBlockedReason ? (
+                              <span className="block text-[0.7rem] text-amber-600 dark:text-amber-500">
+                                {source.config.crawlBlockedReason}
+                              </span>
+                            ) : null}
                           </span>
-                        ) : null}
-                      </span>
-                    )}
-                    {/* The reason used to live only in the badge's tooltip,
+                        )}
+                        {/* The reason used to live only in the badge's tooltip,
                         which touch and keyboard never reach. */}
-                    {source.status === "error" && source.error && (
-                      <p
-                        className="text-destructive ml-6 line-clamp-2 text-xs break-words"
-                        title={source.error}
-                      >
-                        {source.error}
-                      </p>
-                    )}
-                    </TableOpenCell>
-                  </TableCell>
-                  <TableCell>
-                    <SourceStatusBadge status={source.status} error={source.error} />
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={assistantDocumentsHref(assistantId, source.id)}
-                      className="text-primary press-text text-sm font-semibold hover:underline"
-                      title="Open this Source's Documents"
-                    >
-                      <DocumentCount count={documentCount} />
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap" suppressHydrationWarning>
-                    {formatDateTime(source.updatedAt ?? source.createdAt)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap" suppressHydrationWarning>
-                    {source.lastCrawledAt ? formatDateTime(source.lastCrawledAt) : "Never"}
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex flex-col gap-0.5">
-                      <Select
-                        value={source.recrawlSchedule}
-                        onValueChange={(value) =>
-                          startTransition(async () => {
-                            try {
-                              await setRecrawlScheduleAction(
-                                assistantId,
-                                source.id,
-                                value as RecrawlSchedule
-                              );
-                            } catch (error) {
-                              toast.error(
-                                error instanceof Error ? error.message : "Could not save schedule"
-                              );
-                            }
-                          })
-                        }
-                      >
-                        <SelectTrigger size="sm" className="w-[7.5rem]" aria-label="Re-crawl schedule">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="never">Never</SelectItem>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {nextCrawl && (
-                        <span
-                          className="text-muted-foreground text-2xs"
-                          suppressHydrationWarning
-                        >
-                          {nextCrawl}
-                        </span>
-                      )}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <TableActions>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={source.kind === "website" ? "Re-crawl website" : "Retry ingestion"}
-                        disabled={isPending || source.status === "processing"}
-                        onClick={() => recrawl(source)}
-                      >
-                        <RefreshCw className="size-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Edit website"
-                        onClick={() => setEditing(source)}
-                      >
-                        <Pencil className="size-3.5" />
-                      </Button>
-                      <DeleteSourceButton
-                        noun="website"
-                        unlinks={(sharedWith[source.id] ?? []).length > 0}
-                        onClick={remove}
+                        {source.status === "error" && source.error && (
+                          <p
+                            className="text-destructive ml-6 line-clamp-2 text-xs break-words"
+                            title={source.error}
+                          >
+                            {source.error}
+                          </p>
+                        )}
+                      </TableOpenCell>
+                    </TableEditableCell>
+                    <TableCell>
+                      <SourceStatusBadge
+                        status={source.status}
+                        error={source.error}
                       />
-                    </TableActions>
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={assistantDocumentsHref(assistantId, source.id)}
+                        className="text-primary press-text text-sm font-semibold hover:underline"
+                        title="Open this Source's Documents"
+                      >
+                        <DocumentCount count={documentCount} />
+                      </Link>
+                    </TableCell>
+                    <TableCell
+                      className="text-muted-foreground whitespace-nowrap"
+                      suppressHydrationWarning
+                    >
+                      {formatDateTime(source.updatedAt ?? source.createdAt)}
+                    </TableCell>
+                    <TableCell
+                      className="text-muted-foreground whitespace-nowrap"
+                      suppressHydrationWarning
+                    >
+                      {source.lastCrawledAt
+                        ? formatDateTime(source.lastCrawledAt)
+                        : "Never"}
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex flex-col gap-0.5">
+                        <Select
+                          value={source.recrawlSchedule}
+                          onValueChange={(value) =>
+                            startTransition(async () => {
+                              try {
+                                await setRecrawlScheduleAction(
+                                  assistantId,
+                                  source.id,
+                                  value as RecrawlSchedule,
+                                );
+                              } catch (error) {
+                                toast.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not save schedule",
+                                );
+                              }
+                            })
+                          }
+                        >
+                          <SelectTrigger
+                            size="sm"
+                            className="w-[7.5rem]"
+                            aria-label="Re-crawl schedule"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="never">Never</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {nextCrawl && (
+                          <span
+                            className="text-muted-foreground text-2xs"
+                            suppressHydrationWarning
+                          >
+                            {nextCrawl}
+                          </span>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <TableActions>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={
+                            source.kind === "website"
+                              ? "Re-crawl website"
+                              : "Retry ingestion"
+                          }
+                          disabled={isPending || source.status === "processing"}
+                          onClick={() => recrawl(source)}
+                        >
+                          <RefreshCw className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Edit website"
+                          onClick={() => setEditing(source)}
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <DeleteSourceButton
+                          noun="website"
+                          unlinks={(sharedWith[source.id] ?? []).length > 0}
+                          onClick={remove}
+                        />
+                      </TableActions>
+                    </TableCell>
+                  </TableRow>
                 </TableRowMenu>
               );
             })}
@@ -1230,7 +1331,7 @@ function DocumentsTab({
   const order = useClientSort();
   const documents = order.sorted(
     tabSources(sources, "files", { query, status: statusFilter }),
-    { name: (s) => s.name, status: (s) => s.status }
+    { name: (s) => s.name, status: (s) => s.status },
   );
   const paged = useClientPage(documents);
   const selection = useRowSelection(paged.items.map((s) => s.id));
@@ -1242,11 +1343,16 @@ function DocumentsTab({
   ] satisfies TableColumnLayout[]);
 
   function patchUpload(id: string, patch: Partial<FileUploadItem>) {
-    setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+    setUploads((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ...patch } : u)),
+    );
   }
 
   async function ingest(item: FileUploadItem, file: File) {
-    const validation = validateKnowledgeFile({ name: file.name, size: file.size });
+    const validation = validateKnowledgeFile({
+      name: file.name,
+      size: file.size,
+    });
     if (!validation.ok) {
       patchUpload(item.id, { status: "error", error: validation.error });
       return;
@@ -1261,9 +1367,15 @@ function DocumentsTab({
       setUploads((prev) =>
         prev.map((u) =>
           u.id === item.id && u.status === "uploading"
-            ? { ...u, progress: Math.min(90, (u.progress ?? 0) + 4 + Math.random() * 8) }
-            : u
-        )
+            ? {
+                ...u,
+                progress: Math.min(
+                  90,
+                  (u.progress ?? 0) + 4 + Math.random() * 8,
+                ),
+              }
+            : u,
+        ),
       );
     }, 350);
     try {
@@ -1308,6 +1420,30 @@ function DocumentsTab({
       />
 
       <TableCard
+        title="Files"
+        results={{ total: documents.length, noun: "file" }}
+        filters={
+          <>
+            <TableFilter
+              label="Status"
+              value={statusFilter}
+              anyLabel="All statuses"
+              options={SOURCE_STATUS_OPTIONS}
+              onChange={(value) => {
+                setStatusFilter(value);
+                paged.onPageChange(1);
+              }}
+            />
+            <TableSearch
+              label="Search files"
+              value={query}
+              onChange={(value) => {
+                setQuery(value);
+                paged.onPageChange(1);
+              }}
+            />
+          </>
+        }
         footer={
           <TablePagination
             page={paged.page}
@@ -1334,6 +1470,7 @@ function DocumentsTab({
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <SelectAllHead
+                selection={selection}
                 state={selection.allState}
                 onToggle={selection.toggleAll}
                 disabled={documents.length === 0}
@@ -1378,7 +1515,7 @@ function DocumentsTab({
                   <EmptyState
                     size="sm"
                     title="No files yet"
-                    description="Drop one above and it is indexed as it uploads."
+
                   />
                 </TableCell>
               </TableRow>
@@ -1392,97 +1529,116 @@ function DocumentsTab({
                     name: source.name,
                     sharedWith: sharedWith[source.id],
                     deleteLabel: "Delete document",
-                    deleteEffect: "The document and everything indexed from it go.",
-                  })
+                    deleteEffect:
+                      "The document and everything indexed from it go.",
+                  }),
                 );
               return (
-              <TableRowMenu
-                key={source.id}
-                title={source.name}
-                onOpen={() => selection.selectForMenu(source.id)}
-                actions={[
-                  {
-                    label: "Open Documents",
-                    icon: Maximize2,
-                    href: assistantDocumentsHref(assistantId, source.id),
-                  },
-                {
-                  label: "Copy ID",
-                  icon: Copy,
-                  onSelect: () => void copyToClipboard(source.id, "ID copied."),
-                },
-                  {
-                    label: "Remove from this assistant",
-                    icon: Unlink,
-                    destructive: true,
-                    onSelect: remove,
-                  },
-                ]}
-              >
-              <TableRow
-                data-state={
-                  selection.isSelected(source.id) ? "selected" : undefined
-                }
-              >
-                <SelectRowCell
-                  checked={selection.isSelected(source.id)}
-                  onToggle={() => selection.toggle(source.id)}
-                  label={source.name}
-                />
-                <TableCell>
-                  <TableOpenCell
-                    href={assistantDocumentsHref(assistantId, source.id)}
-                    label={source.name}
+                <TableRowMenu
+                  key={source.id}
+                  title={source.name}
+                  onOpen={() => selection.selectForMenu(source.id)}
+                  actions={[
+                    {
+                      label: "Open Documents",
+                      icon: Maximize2,
+                      href: assistantDocumentsHref(assistantId, source.id),
+                    },
+                    {
+                      label: "Copy ID",
+                      icon: Copy,
+                      onSelect: () =>
+                        void copyToClipboard(source.id, "ID copied."),
+                    },
+                    {
+                      label: "Remove from this assistant",
+                      icon: Unlink,
+                      destructive: true,
+                      onSelect: remove,
+                    },
+                  ]}
+                >
+                  <TableRow
+                    data-state={
+                      selection.isSelected(source.id) ? "selected" : undefined
+                    }
                   >
-                  <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                    <Download className="text-muted-foreground size-4 shrink-0" />
-                    <span className="truncate"><RollInText text={source.name} /></span>
-                  </span>
-                  {source.status === "error" && source.error && (
-                    <p
-                      className="text-destructive ml-6 line-clamp-2 text-xs break-words"
-                      title={source.error}
-                    >
-                      {source.error}
-                    </p>
-                  )}
-                  </TableOpenCell>
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-2">
-                    <SourceStatusBadge status={source.status} error={source.error} />
-                    <span className="text-muted-foreground text-xs" suppressHydrationWarning>
-                      <RollInText text={formatDateTime(source.createdAt)} />
-                    </span>
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <TableActions>
-                    {source.status === "error" && (
-                      <RetrySourceButton
-                        assistantId={assistantId}
-                        collectionId={collectionId}
-                        sourceId={source.id}
-                      />
-                    )}
-                    {source.kind === "file" && source.status !== "error" && (
-                      <ReprocessSourceButton
-                        assistantId={assistantId}
-                        collectionId={collectionId}
-                        sourceId={source.id}
-                        disabled={source.status === "processing"}
-                        hasOriginal={Boolean(source.originalObjectPath)}
-                      />
-                    )}
-                    <DeleteSourceButton
-                      noun="document"
-                      unlinks={(sharedWith[source.id] ?? []).length > 0}
-                      onClick={remove}
+                    <SelectRowCell
+                      checked={selection.isSelected(source.id)}
+                      onToggle={() => selection.toggle(source.id)}
+                      label={source.name}
                     />
-                  </TableActions>
-                </TableCell>
-              </TableRow>
-              </TableRowMenu>
+                    <TableEditableCell
+                      editor={{
+                        value: source.name,
+                        label: "Source name",
+                        maxLength: 500,
+                        onSave: (name) =>
+                          renameSourceAction(source.id, name, assistantId),
+                      }}
+                    >
+                      <TableOpenCell
+                        href={assistantDocumentsHref(assistantId, source.id)}
+                        label={source.name}
+                      >
+                        <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                          <Download className="text-muted-foreground size-4 shrink-0" />
+                          <span className="truncate">
+                            <RollInText text={source.name} />
+                          </span>
+                        </span>
+                        {source.status === "error" && source.error && (
+                          <p
+                            className="text-destructive ml-6 line-clamp-2 text-xs break-words"
+                            title={source.error}
+                          >
+                            {source.error}
+                          </p>
+                        )}
+                      </TableOpenCell>
+                    </TableEditableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-2">
+                        <SourceStatusBadge
+                          status={source.status}
+                          error={source.error}
+                        />
+                        <span
+                          className="text-muted-foreground text-xs"
+                          suppressHydrationWarning
+                        >
+                          <RollInText text={formatDateTime(source.createdAt)} />
+                        </span>
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <TableActions>
+                        {source.status === "error" && (
+                          <RetrySourceButton
+                            assistantId={assistantId}
+                            collectionId={collectionId}
+                            sourceId={source.id}
+                          />
+                        )}
+                        {source.kind === "file" &&
+                          source.status !== "error" && (
+                            <ReprocessSourceButton
+                              assistantId={assistantId}
+                              collectionId={collectionId}
+                              sourceId={source.id}
+                              disabled={source.status === "processing"}
+                              hasOriginal={Boolean(source.originalObjectPath)}
+                            />
+                          )}
+                        <DeleteSourceButton
+                          noun="document"
+                          unlinks={(sharedWith[source.id] ?? []).length > 0}
+                          onClick={remove}
+                        />
+                      </TableActions>
+                    </TableCell>
+                  </TableRow>
+                </TableRowMenu>
               );
             })}
           </TableBody>
@@ -1515,7 +1671,9 @@ function RetrySourceButton({
             await retrySourceIngestAction(assistantId, collectionId, sourceId);
             toast.success("Retry started");
           } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Retry failed");
+            toast.error(
+              error instanceof Error ? error.message : "Retry failed",
+            );
           }
         })
       }
@@ -1546,7 +1704,9 @@ function ReprocessSourceButton({
       variant="ghost"
       size="icon-sm"
       aria-label={hasOriginal ? "Re-process document" : unavailableReason}
-      title={hasOriginal ? "Re-process from the stored original" : unavailableReason}
+      title={
+        hasOriginal ? "Re-process from the stored original" : unavailableReason
+      }
       disabled={isPending || disabled || !hasOriginal}
       onClick={() =>
         startTransition(async () => {
@@ -1554,7 +1714,9 @@ function ReprocessSourceButton({
             await reprocessSourceAction(assistantId, collectionId, sourceId);
             toast.success("Re-processing started");
           } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Re-process failed");
+            toast.error(
+              error instanceof Error ? error.message : "Re-process failed",
+            );
           }
         })
       }
@@ -1582,7 +1744,9 @@ function DeleteSourceButton({
       variant="ghost"
       size="icon-sm"
       data-destructive=""
-      aria-label={unlinks ? `Remove ${noun} from this assistant` : `Delete ${noun}`}
+      aria-label={
+        unlinks ? `Remove ${noun} from this assistant` : `Delete ${noun}`
+      }
       onClick={onClick}
     >
       <AnimatedIcon icon={unlinks ? Unlink : Trash2} size={14} />
@@ -1603,7 +1767,9 @@ const FAQ_TOOLBAR: Array<
       Icon: RemoveFormatting,
       command: {
         transform: (s) =>
-          s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*\*|\*|`|^#+\s/gm, ""),
+          s
+            .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+            .replace(/\*\*|\*|`|^#+\s/gm, ""),
       },
     },
     { label: "Code", Icon: Code, command: { wrap: "`" } },
@@ -1700,7 +1866,9 @@ function FaqDialog({
     const el = answerRef.current;
     if (!el) return;
     const { selectionStart, selectionEnd, value } = el;
-    setAnswerTracked(applyMarkdownCommand(value, selectionStart, selectionEnd, command));
+    setAnswerTracked(
+      applyMarkdownCommand(value, selectionStart, selectionEnd, command),
+    );
     requestAnimationFrame(() => el.focus());
   }
 
@@ -1723,7 +1891,9 @@ function FaqDialog({
         try {
           await updateOrgFaqAction(faq.sourceId, question, answer);
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Could not update the FAQ");
+          toast.error(
+            error instanceof Error ? error.message : "Could not update the FAQ",
+          );
           return;
         }
         toast.success("FAQ updated");
@@ -1731,7 +1901,9 @@ function FaqDialog({
         try {
           await createFaqAction(assistantId, collectionId, question, answer);
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Could not add the FAQ");
+          toast.error(
+            error instanceof Error ? error.message : "Could not add the FAQ",
+          );
           return;
         }
         toast.success("FAQ added");
@@ -1742,109 +1914,151 @@ function FaqDialog({
 
   return (
     <>
-    {confirmDeleteModal}
-    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{faq ? "Edit FAQ Knowledge" : "Add New FAQ Knowledge"}</DialogTitle>
-          <DialogDescription>Add free text content to the knowledge of your assistant</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="faq-q">
-              Question <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="faq-q"
-              ref={questionRef}
-              value={question}
-              onChange={(e) => setQuestion(e.target.value.slice(0, 1000))}
-              placeholder="Enter the question or title of your content.."
-              autoFocus={!faq && canAutoFocus()}
-              aria-invalid={questionInvalid}
-              aria-describedby={questionInvalid ? "faq-q-error" : undefined}
-              className={
-                questionInvalid
-                  ? "border-destructive placeholder:text-destructive/70 focus-visible:ring-destructive/30"
-                  : undefined
-              }
-            />
-            <div className="flex items-center justify-between text-xs">
-              <span id="faq-q-error" className="text-destructive">
-                {questionInvalid ? "Question is required" : ""}
-              </span>
-              <span className="text-muted-foreground">
-                <CharCount count={question.length} max={1000} />
-              </span>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="faq-a">
-              Answer <span className="text-destructive">*</span>
-            </Label>
-            <p className="text-muted-foreground text-xs">We recommend adding at least 100 words</p>
-            <div className="rounded-xl border focus-within:border-ring focus-within:ring-ring/50 transition-[border-color,box-shadow] focus-within:ring-3">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-2 py-1.5">
-                {FAQ_TOOLBAR.map((group, g) => (
-                  <span key={g} className="flex items-center gap-0.5">
-                    {group.map((btn) => (
-                      <Button
-                        key={btn.label}
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        title={btn.label}
-                        aria-label={btn.label}
-                        onClick={() => applyCommand(btn.command)}
-                      >
-                        <btn.Icon className="size-4" />
-                      </Button>
-                    ))}
-                  </span>
-                ))}
-                <span className="flex items-center gap-0.5">
-                  <Button type="button" variant="ghost" size="icon-sm" title="Undo" aria-label="Undo" onClick={undo}>
-                    <Undo2 className="size-4" />
-                  </Button>
-                  <Button type="button" variant="ghost" size="icon-sm" title="Redo" aria-label="Redo" onClick={redo}>
-                    <Redo2 className="size-4" />
-                  </Button>
-                </span>
-              </div>
-              <Textarea
-                id="faq-a"
-                ref={answerRef}
-                value={answer}
-                onChange={(e) => setAnswerTracked(e.target.value)}
-                placeholder="Enter your answer or content here.."
-                aria-invalid={answerInvalid}
-                aria-describedby={answerInvalid ? "faq-a-error" : undefined}
-                rows={12}
-                className="resize-none rounded-t-none border-0 shadow-none focus-visible:ring-0"
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span id="faq-a-error" className="text-destructive">
-                {answerInvalid ? "Answer is required" : ""}
-              </span>
-              <span className="text-muted-foreground">
-                <CharCount count={answer.length} max={20000} />
-              </span>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={requestClose} disabled={isPending}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isPending} className="font-semibold">
-              <RollInText
-                text={isPending ? "Saving…" : faq ? "Save FAQ" : "Add FAQ Knowledge"}
-              />
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      {confirmDeleteModal}
+      <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {faq ? "Edit FAQ Knowledge" : "Add New FAQ Knowledge"}
+            </DialogTitle>
+
+          </DialogHeader>
+          <form onSubmit={submit} className="space-y-4">
+            <DialogBody>
+              <DialogSection>
+                <div className="space-y-2">
+                  <Label htmlFor="faq-q">
+                    Question <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="faq-q"
+                    ref={questionRef}
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value.slice(0, 1000))}
+                    placeholder="Enter the question or title of your content.."
+                    autoFocus={!faq && canAutoFocus()}
+                    aria-invalid={questionInvalid}
+                    aria-describedby={
+                      questionInvalid ? "faq-q-error" : undefined
+                    }
+                    className={
+                      questionInvalid
+                        ? "border-destructive placeholder:text-destructive/70 focus-visible:ring-destructive/30"
+                        : undefined
+                    }
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span id="faq-q-error" className="text-destructive">
+                      {questionInvalid ? "Question is required" : ""}
+                    </span>
+                    <span className="text-muted-foreground">
+                      <CharCount count={question.length} max={1000} />
+                    </span>
+                  </div>
+                </div>
+              </DialogSection>
+              <DialogSection>
+                <div className="space-y-2">
+                  <Label htmlFor="faq-a">
+                    Answer <span className="text-destructive">*</span>
+                  </Label>
+
+                  <div className="rounded-xl border focus-within:border-ring focus-within:ring-ring/50 transition-[border-color,box-shadow] focus-within:ring-3">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-2 py-1.5">
+                      {FAQ_TOOLBAR.map((group, g) => (
+                        <span key={g} className="flex items-center gap-0.5">
+                          {group.map((btn) => (
+                            <Button
+                              key={btn.label}
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              title={btn.label}
+                              aria-label={btn.label}
+                              onClick={() => applyCommand(btn.command)}
+                            >
+                              <btn.Icon className="size-4" />
+                            </Button>
+                          ))}
+                        </span>
+                      ))}
+                      <span className="flex items-center gap-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          title="Undo"
+                          aria-label="Undo"
+                          onClick={undo}
+                        >
+                          <Undo2 className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          title="Redo"
+                          aria-label="Redo"
+                          onClick={redo}
+                        >
+                          <Redo2 className="size-4" />
+                        </Button>
+                      </span>
+                    </div>
+                    <Textarea
+                      id="faq-a"
+                      ref={answerRef}
+                      value={answer}
+                      onChange={(e) => setAnswerTracked(e.target.value)}
+                      placeholder="Enter your answer or content here.."
+                      aria-invalid={answerInvalid}
+                      aria-describedby={
+                        answerInvalid ? "faq-a-error" : undefined
+                      }
+                      rows={12}
+                      className="resize-none rounded-t-none border-0 shadow-none focus-visible:ring-0"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span id="faq-a-error" className="text-destructive">
+                      {answerInvalid ? "Answer is required" : ""}
+                    </span>
+                    <span className="text-muted-foreground">
+                      <CharCount count={answer.length} max={20000} />
+                    </span>
+                  </div>
+                </div>
+              </DialogSection>
+            </DialogBody>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={requestClose}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                loading={isPending}
+                type="submit"
+                disabled={isPending}
+                className="font-semibold"
+              >
+                <RollInText
+                  text={
+                    isPending
+                      ? "Saving…"
+                      : faq
+                        ? "Save FAQ"
+                        : "Add FAQ Knowledge"
+                  }
+                />
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -1896,13 +2110,15 @@ function ImportFaqsDialog({
         if (imported > 0) {
           toast.success(
             `Imported ${imported} FAQ${imported === 1 ? "" : "s"}` +
-              (skipped.length > 0 ? ` · ${skipped.length} row${skipped.length === 1 ? "" : "s"} skipped` : "")
+              (skipped.length > 0
+                ? ` · ${skipped.length} row${skipped.length === 1 ? "" : "s"} skipped`
+                : ""),
           );
         } else {
           toast.error(
             skipped.length > 0
               ? `Nothing imported, ${skipped[0]}`
-              : "Nothing imported, the file has no valid rows"
+              : "Nothing imported, the file has no valid rows",
           );
         }
         if (imported > 0) onClose();
@@ -1918,78 +2134,86 @@ function ImportFaqsDialog({
         <DialogHeader>
           <DialogTitle>Import FAQs</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              pick(e.dataTransfer.files?.[0]);
-            }}
-            className={`flex flex-col items-center justify-center rounded-xl border px-6 py-10 text-center transition-colors ${
-              dragging ? "border-primary bg-primary/5" : ""
-            }`}
-          >
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(e) => {
-                pick(e.target.files?.[0]);
-                e.target.value = "";
+        <DialogBody className="space-y-4">
+          <DialogSection>
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
               }}
-            />
-            <span className="flex size-12 items-center justify-center rounded-xl border">
-              <CloudUpload className="size-5" />
-            </span>
-            <p className="mt-4 text-[0.9375rem]">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="text-primary font-semibold hover:underline"
-              >
-                Click to upload
-              </button>{" "}
-              or drag and drop
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-sm">CSV file.</p>
-            {file && (
-              <p className="mt-3 max-w-full min-w-0 text-sm font-medium break-all">
-                {file.name}{" "}
-                <span className="text-muted-foreground whitespace-nowrap">
-                  ({FILE_SIZE_KB.format(file.size / 1024)})
-                </span>
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                pick(e.dataTransfer.files?.[0]);
+              }}
+              className={`flex flex-col items-center justify-center rounded-xl border px-6 py-10 text-center transition-colors ${
+                dragging ? "border-primary bg-primary/5" : ""
+              }`}
+            >
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  pick(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <span className="flex size-12 items-center justify-center rounded-xl border">
+                <CloudUpload className="size-5" />
+              </span>
+              <p className="mt-4 text-[0.9375rem]">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="text-primary font-semibold hover:underline"
+                >
+                  Click to upload
+                </Button>{" "}
+                or drag and drop
               </p>
-            )}
-          </div>
-
-          <div className="bg-muted/40 flex gap-3 rounded-xl border px-4 py-4">
-            <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
-              <Info className="size-4" />
-            </span>
-            <div className="text-sm">
-              <p className="font-semibold">
-                Please note that only two columns are expected in the CSV file.
-              </p>
-              <p className="text-muted-foreground mt-1.5">
-                Questions can be up to 1000 characters, and answers can be up to
-                20000 characters.
-                <br />
-                Maximum supported file size is 10 MB.
-              </p>
+              <p className="text-muted-foreground mt-0.5 text-sm">CSV file.</p>
+              {file && (
+                <p className="mt-3 max-w-full min-w-0 text-sm font-medium break-all">
+                  {file.name}{" "}
+                  <span className="text-muted-foreground whitespace-nowrap">
+                    ({FILE_SIZE_KB.format(file.size / 1024)})
+                  </span>
+                </p>
+              )}
             </div>
-          </div>
-        </div>
+          </DialogSection>
+
+          <DialogSection>
+            <div className="bg-muted/40 flex gap-3 rounded-xl border px-4 py-4">
+              <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
+                <Info className="size-4" />
+              </span>
+              <div className="text-sm">
+                <p className="font-semibold">
+                  Please note that only two columns are expected in the CSV
+                  file.
+                </p>
+                <p className="text-muted-foreground mt-1.5">
+                  Questions can be up to 1000 characters, and answers can be up
+                  to 20000 characters.
+                  <br />
+                  Maximum supported file size is 10 MB.
+                </p>
+              </div>
+            </div>
+          </DialogSection>
+        </DialogBody>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button
+            loading={isPending}
             type="button"
             onClick={upload}
             disabled={!file || isPending}
@@ -2001,6 +2225,11 @@ function ImportFaqsDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+async function saveFaqCell(faq: Concept, question: string, answer: string) {
+  if (!faq.sourceId) throw new Error("This FAQ has no Library entry to update.");
+  await updateOrgFaqAction(faq.sourceId, question, answer);
 }
 
 function FaqsTab({
@@ -2151,7 +2380,10 @@ function FaqsTab({
         </div>
       </div>
 
-      <TableCard
+      <TableCard title="FAQs" results={{ total: filtered.length, noun: "FAQ" }}
+        filters={<>
+          <TableSearch label="Search FAQs" value={query} onChange={(value) => { setQuery(value); paged.onPageChange(1); }} />
+        </>}
         footer={
           <TablePagination
             page={paged.page}
@@ -2165,6 +2397,7 @@ function FaqsTab({
         }
       >
         <TableBulkBar
+          selection={selection}
           count={selection.count}
           noun="FAQ"
           pluralNoun="FAQs"
@@ -2225,6 +2458,7 @@ function FaqsTab({
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <SelectAllHead
+                selection={selection}
                 state={selection.allState}
                 onToggle={selection.toggleAll}
                 disabled={filtered.length === 0}
@@ -2262,7 +2496,7 @@ function FaqsTab({
                   <EmptyState
                     size="sm"
                     title="No FAQs yet"
-                    description="Add one to fine-tune answers."
+
                   />
                 </TableCell>
               </TableRow>
@@ -2301,17 +2535,17 @@ function FaqsTab({
                     onToggle={() => selection.toggle(faq.id)}
                     label={faq.frontmatter.title ?? faq.path}
                   />
-                  <TableCell className="align-top">
+                  <TableEditableCell className="align-top" editor={faq.sourceId ? { value: faq.frontmatter.title || faq.path, label: "FAQ question", maxLength: 500, onSave: (question) => saveFaqCell(faq, question, faq.body) } : undefined}>
                     <span
                       className="block truncate text-sm font-medium"
                       title={faq.frontmatter.title || faq.path}
                     >
                       {faq.frontmatter.title || faq.path}
                     </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground align-top">
+                  </TableEditableCell>
+                  <TableEditableCell className="text-muted-foreground align-top" editor={faq.sourceId ? { value: faq.body, label: "FAQ answer", multiline: true, maxLength: 10000, onSave: (answer) => saveFaqCell(faq, faq.frontmatter.title || faq.path, answer) } : undefined}>
                     <span className="block truncate text-sm">{faq.body}</span>
-                  </TableCell>
+                  </TableEditableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5">
                       {/* Trust tier (OKF §5.3), the FAQ list is where it matters most:

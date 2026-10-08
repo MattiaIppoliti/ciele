@@ -40,7 +40,7 @@ export function PlatformInsightsDashboard({ report }: { report: PlatformInsights
       <InsightsRangeChip {...report.range} hint="Usage and estimated costs for all organizations, including Ciele, over the selected UTC days." />
     </SlotPortal>
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-muted-foreground text-sm">Usage and costs across all organizations.</p>
+
       <DateRangeDropdown {...report.range} onChange={(from, to) => {
         const params = new URLSearchParams(window.location.search);
         params.set("from", from);
@@ -49,10 +49,11 @@ export function PlatformInsightsDashboard({ report }: { report: PlatformInsights
       }} />
     </div>
     <DashboardStatCards specs={specs} />
-    <AnalyticsCard title="Organizations" description="Costs are estimates from model tokens and crawl pages, not provider invoices. Platform cost excludes customer API keys and personal subscriptions. Members, assistants, conversations and source errors show current totals.">
-        <Table data={report.organizations} columns={columns} getRowId={(row) => row.id}
+    <AnalyticsCard title="Organizations" description="Estimates, not invoices. Platform costs exclude customer keys and subscriptions. Entity counts are current.">
+        <Table title="Organizations" noun="organization" data={report.organizations} columns={columns} getRowId={(row) => row.id}
           emptyState={<p className="text-muted-foreground text-sm">No organizations yet.</p>}
-          footer={<p className="text-muted-foreground text-xs">{formatCount(report.organizations.length)} organizations · {formatCount(total((row) => row.inputTokens))} input tokens · {formatCount(total((row) => row.outputTokens))} output tokens</p>} />
+          />
+        <p className="text-muted-foreground mt-3 text-xs">{formatCount(total((row) => row.inputTokens))} input tokens · {formatCount(total((row) => row.outputTokens))} output tokens</p>
     </AnalyticsCard>
   </div>;
 }

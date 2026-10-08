@@ -18,7 +18,7 @@ export default async function ApiKeysPage() {
     <SettingsPanel
       icon={KeyRound}
       title="API Keys"
-      description="Organization-scoped keys for the CLI, the MCP server and the API. A key acts with the role you give it, capped at your own."
+      description="Keys act with their assigned role, up to your own."
     >
       <ApiKeysClient
         keys={keys}

@@ -1,3 +1,6 @@
+"use client";
+
+import { Table, type TableColumn } from "@/components/motion/table";
 
 import { RollingNumber } from "@/components/motion/rolling-number";
 import {
@@ -64,8 +67,8 @@ export function EvaluationLeaderboard({
   const bests = columns.map(bestOf);
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-card">
-      <div className="border-b px-5 py-4">
+    <section className="space-y-3">
+      <div>
         <h2 className="font-medium">Leaderboard</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           <RollingNumber value={run.examples.length} /> examples per model. Cost is the EUR estimate per 1,000 examples.
@@ -77,40 +80,15 @@ export function EvaluationLeaderboard({
             }.`}
         </p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm tabular-nums">
-          <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">Model</th>
-              {columns.map((column) => (
-                <th key={column.head} className="whitespace-nowrap px-4 py-3 text-right font-medium">
-                  {column.head}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => {
-              const key = modelSelector(row.candidate);
-              return (
-                <tr key={key} className="border-b last:border-0">
-                  <td className={`whitespace-nowrap px-4 py-3 ${rowIndex === 0 && rows.length > 1 ? "font-semibold" : ""}`}>
-                    {labels[key] ?? row.candidate.modelId}
-                  </td>
-                  {columns.map((column, index) => (
-                    <td
-                      key={column.head}
-                      className={`whitespace-nowrap px-4 py-3 text-right ${bests[index] !== null && column.best?.(row) === bests[index] ? "font-semibold" : ""}`}
-                    >
-                      {column.cell(row)}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <Table title="Leaderboard" noun="model" data={rows} getRowId={row => modelSelector(row.candidate)}
+        columns={[
+          { key: "model", header: "Model", accessor: row => labels[modelSelector(row.candidate)] ?? row.candidate.modelId,
+            cell: row => <span className={row === rows[0] && rows.length > 1 ? "font-semibold" : undefined}>{labels[modelSelector(row.candidate)] ?? row.candidate.modelId}</span> },
+          { key: "provider", header: "Provider", accessor: row => row.candidate.provider, filterLabel: "Provider",
+            filterOptions: [...new Set(rows.map(row => row.candidate.provider))].map(value => ({ value, label: value })) },
+          ...columns.map((column, index): TableColumn<EvaluationLeaderboardRow> => ({ key: `metric-${index}`, header: column.head, align: "right",
+            accessor: column.cell, cell: row => <span className={bests[index] !== null && column.best?.(row) === bests[index] ? "font-semibold" : undefined}>{column.cell(row)}</span> })),
+        ]} emptyState="No evaluated models yet." />
     </section>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { RollInText } from "@/components/motion/roll-in-text";
 
 import { ReactionRecord } from "@/components/chat/reaction-record";
@@ -107,13 +108,13 @@ function PartView({
         )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Need more help?</p>
-          <button
+          <CieleButton variant="primary" size="sm"
             type="button"
             className="text-primary text-sm font-semibold hover:underline"
             onClick={() => onOpenSupport(part.helpDeskId)}
           >
             {part.label}
-          </button>
+          </CieleButton>
         </div>
       </div>
     );
@@ -140,14 +141,14 @@ function PartView({
           </p>
         )}
         {onAcceptReferral && (
-          <button
+          <CieleButton variant="primary" size="sm"
             type="button"
             disabled={acceptingReferral}
             className="text-primary text-sm font-semibold hover:underline disabled:opacity-50 disabled:hover:no-underline"
             onClick={() => onAcceptReferral(part)}
           >
             {acceptingReferral ? "Opening…" : `Continue with ${part.teammateName} →`}
-          </button>
+          </CieleButton>
         )}
       </div>
     );
@@ -204,20 +205,20 @@ function PartView({
         </div>
         {!closed && part.simulated && onDecideReview && (
           <div className="flex gap-2">
-            <button
+            <CieleButton variant="primary" size="sm"
               type="button"
               className="text-primary text-sm font-semibold hover:underline"
               onClick={() => onDecideReview(part, "approved")}
             >
               Approve
-            </button>
-            <button
+            </CieleButton>
+            <CieleButton variant="destructive" size="sm"
               type="button"
               className="text-muted-foreground text-sm font-semibold hover:underline"
               onClick={() => onDecideReview(part, "rejected")}
             >
               Reject
-            </button>
+            </CieleButton>
           </div>
         )}
       </div>
@@ -247,7 +248,7 @@ function PartView({
   if (part.type === "button") {
     if (part.buttonType === "send_text" || part.buttonType === "faq") {
       return (
-        <button
+        <CieleButton variant="primary" size="sm"
           type="button"
           onClick={() => onSend(part.text ?? "")}
           className="bg-primary text-primary-foreground inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
@@ -256,21 +257,19 @@ function PartView({
           {part.showIcon !== false && (
             <FlowButtonIcon icon={part.icon} className="size-3.5" />
           )}
-        </button>
+        </CieleButton>
       );
     }
     return (
-      <a
-        href={part.url}
-        target="_blank"
-        rel="noopener noreferrer"
+      <CieleButton variant="primary" size="sm" wrap render={<a href={part.url} target="_blank" rel="noopener noreferrer" />}
+
         className="bg-primary text-primary-foreground inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
       >
         {part.label}
         {part.showIcon !== false && (
           <FlowButtonIcon icon={part.icon} className="size-3.5" />
         )}
-      </a>
+      </CieleButton>
     );
   }
   if (part.type === "iframe") {
@@ -304,14 +303,14 @@ function PartView({
     return (
       <div className="flex flex-wrap gap-2 pt-1">
         {part.questions.map((q) => (
-          <button
+          <CieleButton variant="secondary" size="sm" wrap
             key={q}
             type="button"
             onClick={() => onSend(q)}
             className="border-primary/30 text-primary hover:bg-primary/5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
           >
             {q}
-          </button>
+          </CieleButton>
         ))}
       </div>
     );
@@ -448,7 +447,6 @@ export function AuthorLine({ author, animated = false }: { author: ChatAuthor; a
     </div>
   );
 }
-
 
 export function ChatThread({
   messages,

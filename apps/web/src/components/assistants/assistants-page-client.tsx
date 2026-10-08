@@ -79,7 +79,7 @@ export function AssistantsPageClient({
               type="search"
               autoComplete="off"
               data-testid="assistants-search"
-              className="h-9 pl-9"
+              className="h-12 pl-9"
             />
           </div>
 
@@ -117,18 +117,19 @@ export function AssistantsPageClient({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="border-input flex h-9 items-center rounded-lg border p-0.5">
+          <div className="border-input flex h-12 items-center rounded-lg border p-0.5">
             {(
               [
                 { mode: "grid", icon: LayoutGrid, label: "Grid view" },
                 { mode: "list", icon: GalleryVerticalEnd, label: "List view" },
               ] as const
             ).map(({ mode, icon: Icon, label }) => (
-              <button
+              <Button variant="ghost" size="icon-lg"
                 key={mode}
                 type="button"
                 aria-label={label}
                 aria-pressed={view === mode}
+                style={{ height: "100%", width: "2.75rem" }}
                 onClick={() => setView(mode)}
                 className={`focus-visible:ring-ring/50 flex h-full w-9 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-2 ${
                   view === mode
@@ -137,7 +138,7 @@ export function AssistantsPageClient({
                 }`}
               >
                 <AnimatedIcon icon={Icon} size={16} />
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -190,7 +191,7 @@ export function AssistantsPageClient({
         {filtered.length === 0 && (
           <EmptyState
             title={assistants.length === 0 ? "No assistants yet" : "No matching assistants"}
-            description={assistants.length === 0 ? "Create an assistant, give it knowledge, then publish it for your visitors." : "Try another name or clear the search."}
+
             action={assistants.length > 0 ? <Button variant="outline" onClick={() => setQuery("")}>Clear search</Button> : undefined}
           />
         )}

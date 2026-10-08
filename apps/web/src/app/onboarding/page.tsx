@@ -11,7 +11,7 @@ export default async function OnboardingPage() {
   return (
     <AuthShell
       title="Create your organization"
-      subtitle="Your team's workspace for assistants. You'll be the owner."
+      subtitle="You'll be the owner."
     >
       <OnboardingForm />
     </AuthShell>

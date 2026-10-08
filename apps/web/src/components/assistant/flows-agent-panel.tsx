@@ -335,7 +335,7 @@ export function FlowsAgentPanel({
                   Loading conversations…
                 </p>
               ) : history.length === 0 ? (
-                <EmptyState size="sm" title="No earlier conversations" description="Ask the Flows Agent to help with this flow to start a conversation." />
+                <EmptyState size="sm" title="No earlier conversations"  />
               ) : (
                 <ul className="space-y-1">
                   {history.map((entry) => (

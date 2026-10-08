@@ -1,0 +1,363 @@
+/* Responsive visibility utilities must override the default button display. */
+@layer components {
+  .ui-button,
+  #cc-main .pm-wrapper .pm__close-btn,
+  #cc-main .cm-wrapper .cm__btn,
+  #cc-main .pm-wrapper .pm__btn {
+    display: inline-flex;
+  }
+}
+
+/* Shared action buttons from the supplied reference, including cookie consent actions. */
+.ui-button,
+#cc-main .pm-wrapper .pm__close-btn,
+#cc-main .cm-wrapper .cm__btn,
+#cc-main .pm-wrapper .pm__btn {
+  --ui-btn-ink: #171717;
+  --ui-btn-on-ink: #fafafa;
+  --ui-btn-dark-top: #323137;
+  --ui-btn-dark-bottom: #201e25;
+  --ui-btn-surface: #ffffff;
+  --ui-btn-line: #e5e5e5;
+  --ui-btn-muted: #737373;
+  --ui-btn-hover: #404040;
+  --ui-btn-fill: #f0f0f0;
+  --ui-btn-shine: rgba(23, 23, 23, 0.92);
+  --ui-btn-shine-on-ink: rgba(255, 255, 255, 0.95);
+  --ui-btn-danger: #ff0000;
+  --ui-btn-danger-bg: #ffe6e9;
+  --ui-btn-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ui-btn-load: 650ms;
+
+  /* Follow the host's root scale, including the console's 92% density. */
+  --h: 2.5rem;
+  --px: 1rem;
+  --gap: 0.5rem;
+  --fs: 0.875rem;
+  --icon: 1.125rem;
+  --radius: 0.75rem;
+
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap);
+  height: var(--h);
+  padding: 0 var(--px);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-family: var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--fs);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms var(--ui-btn-ease),
+    opacity 160ms ease;
+}
+.ui-button--sm {
+  --h: 2rem;
+  --px: 0.75rem;
+  --gap: 0.375rem;
+  --fs: 0.8125rem;
+  --icon: 1rem;
+  --radius: 0.625rem;
+}
+.ui-button--lg {
+  --h: 3rem;
+  --px: 1.25rem;
+  --gap: 0.625rem;
+  --fs: 0.9375rem;
+  --icon: 1.25rem;
+  --radius: 0.875rem;
+}
+.ui-button--icon-only {
+  width: var(--h);
+  padding: 0;
+}
+.ui-button::before,
+#cc-main .pm-wrapper .pm__close-btn::before,
+.ui-button::after { content: none !important; }
+.ui-button:not([class~="absolute"]):not([class~="fixed"]):not([class~="sticky"]),
+#cc-main .pm-wrapper .pm__close-btn:not([class~="absolute"]):not([class~="fixed"]):not([class~="sticky"]),
+#cc-main .cm-wrapper .cm__btn:not([class~="absolute"]):not([class~="fixed"]):not([class~="sticky"]),
+#cc-main .pm-wrapper .pm__btn:not([class~="absolute"]):not([class~="fixed"]):not([class~="sticky"]) {
+  position: relative;
+}
+.ui-button[data-wrap],
+#cc-main .cm-wrapper .cm__btn[data-wrap],
+#cc-main .pm-wrapper .pm__btn[data-wrap] { height: auto; min-height: var(--h); white-space: normal; padding-block: 0.625rem; }
+.ui-button[data-wrap] .ui-button__label,
+#cc-main .cm-wrapper .cm__btn[data-wrap] .ui-button__label,
+#cc-main .pm-wrapper .pm__btn[data-wrap] .ui-button__label { text-align: inherit; }
+.ui-button--primary,
+#cc-main .cm-wrapper .cm__btn:not(.cm__btn--secondary),
+#cc-main .pm-wrapper .pm__btn:not(.pm__btn--secondary) {
+  background:
+    linear-gradient(var(--ui-btn-dark-top), var(--ui-btn-dark-bottom)) padding-box,
+    linear-gradient(#4b4951, #31303a, #18171b) border-box;
+  color: var(--ui-btn-on-ink);
+  box-shadow:
+    0 0 0 1px #0d0d0d,
+    0 2px 4px rgba(0, 0, 0, 0.1);
+}
+@media (hover: hover) and (pointer: fine) {
+.ui-button--primary:hover:not(:disabled),
+#cc-main .cm-wrapper .cm__btn:not(.cm__btn--secondary):hover:not(:disabled),
+#cc-main .pm-wrapper .pm__btn:not(.pm__btn--secondary):hover:not(:disabled) {
+  background:
+    linear-gradient(#3c3b42, #29272f) padding-box,
+    linear-gradient(#4b4951, #31303a, #18171b) border-box;
+}
+}
+.ui-button--secondary,
+#cc-main .cm-wrapper .cm__btn--secondary,
+#cc-main .pm-wrapper .pm__btn--secondary {
+  background: var(--ui-btn-surface);
+  border-color: var(--ui-btn-line);
+  color: var(--ui-btn-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+@media (hover: hover) and (pointer: fine) {
+.ui-button--secondary:hover:not(:disabled),
+#cc-main .cm-wrapper .cm__btn--secondary:hover:not(:disabled),
+#cc-main .pm-wrapper .pm__btn--secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-btn-surface) 96%, var(--ui-btn-ink));
+}
+}
+.ui-button--ghost,
+#cc-main .pm-wrapper .pm__close-btn {
+  background: transparent;
+  color: var(--ui-btn-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+.ui-button--ghost:hover:not(:disabled),
+#cc-main .pm-wrapper .pm__close-btn:hover:not(:disabled) {
+  background: var(--ui-btn-fill);
+  color: var(--ui-btn-hover);
+}
+}
+.ui-button--destructive {
+  background: var(--ui-btn-danger-bg);
+  color: var(--ui-btn-danger);
+}
+@media (hover: hover) and (pointer: fine) {
+.ui-button--destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-btn-danger-bg) 88%, var(--ui-btn-danger));
+}
+}
+.ui-button--destructive .ui-button__label::after {
+  --ui-btn-shine: var(--ui-btn-danger);
+}
+.ui-button:active:not(:focus-visible):not(:disabled):not([data-loading]):not([data-static]),
+#cc-main .pm-wrapper .pm__close-btn:active:not(:focus-visible):not(:disabled):not([data-loading]):not([data-static]),
+#cc-main .cm-wrapper .cm__btn:active:not(:focus-visible):not(:disabled):not([data-loading]):not([data-static]),
+#cc-main .pm-wrapper .pm__btn:active:not(:focus-visible):not(:disabled):not([data-loading]):not([data-static]) {
+  transform: scale(0.96);
+}
+.ui-button:focus-visible,
+#cc-main .pm-wrapper .pm__close-btn:focus-visible,
+#cc-main .cm-wrapper .cm__btn:focus-visible,
+#cc-main .pm-wrapper .pm__btn:focus-visible {
+  transition-duration: 0ms;
+  outline: 2px solid var(--ring, rgba(23, 23, 23, 0.22));
+  outline-offset: 2px;
+}
+.ui-button:disabled,
+#cc-main .pm-wrapper .pm__close-btn:disabled,
+#cc-main .cm-wrapper .cm__btn:disabled,
+#cc-main .pm-wrapper .pm__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.ui-button[data-loading],
+#cc-main .cm-wrapper .cm__btn[data-loading],
+#cc-main .pm-wrapper .pm__btn[data-loading] {
+  cursor: default;
+}
+.ui-button__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--icon);
+  height: var(--icon);
+}
+.ui-button__icon > svg {
+  width: 100%;
+  height: 100%;
+}
+.ui-button,
+#cc-main .pm-wrapper .pm__close-btn,
+#cc-main .cm-wrapper .cm__btn,
+#cc-main .pm-wrapper .pm__btn {
+  overflow: clip;
+}
+.ui-button__label {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  justify-content: inherit;
+  gap: var(--gap);
+  position: relative;
+}
+.ui-button__label::after {
+  content: attr(data-text);
+  content: attr(data-text) / "";
+  position: absolute;
+  inset: 0;
+  white-space: nowrap;
+  color: transparent;
+  background: linear-gradient(90deg, transparent 38%, var(--ui-btn-shine) 50%, transparent 62%) 100% 0 / 300% 100%
+    no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  opacity: 0;
+  pointer-events: none;
+}
+.ui-button--primary .ui-button__label::after,
+#cc-main .cm-wrapper .cm__btn:not(.cm__btn--secondary) .ui-button__label::after,
+#cc-main .pm-wrapper .pm__btn:not(.pm__btn--secondary) .ui-button__label::after {
+  --ui-btn-shine: var(--ui-btn-shine-on-ink);
+}
+.ui-button[data-loading] .ui-button__label,
+#cc-main .cm-wrapper .cm__btn[data-loading] .ui-button__label,
+#cc-main .pm-wrapper .pm__btn[data-loading] .ui-button__label {
+  color: color-mix(in srgb, currentColor 55%, transparent);
+}
+.ui-button[data-loading] .ui-button__label::after,
+#cc-main .cm-wrapper .cm__btn[data-loading] .ui-button__label::after,
+#cc-main .pm-wrapper .pm__btn[data-loading] .ui-button__label::after {
+  opacity: 1;
+  animation: ui-button-sweep calc(var(--ui-btn-load) * 1.6) linear infinite;
+}
+.ui-button__spinner {
+  animation: ui-button-spin 900ms linear infinite;
+}
+
+@keyframes ui-button-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes ui-button-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+.ui-button,
+#cc-main .pm-wrapper .pm__close-btn,
+#cc-main .cm-wrapper .cm__btn,
+#cc-main .pm-wrapper .pm__btn {
+    transition-duration: 1ms;
+  }
+.ui-button:active:not(:disabled),
+#cc-main .pm-wrapper .pm__close-btn:active:not(:disabled),
+#cc-main .cm-wrapper .cm__btn:active:not(:disabled),
+#cc-main .pm-wrapper .pm__btn:active:not(:disabled) { transform: none; opacity: 0.7; }
+.ui-button__spinner { animation: none; }
+.ui-button[data-loading] .ui-button__label::after,
+#cc-main .cm-wrapper .cm__btn[data-loading] .ui-button__label::after,
+#cc-main .pm-wrapper .pm__btn[data-loading] .ui-button__label::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+.dark .ui-button:not(.light .ui-button),
+[data-theme="dark"] .ui-button,
+.dark #cc-main .cm-wrapper .cm__btn:not(.light #cc-main .cm-wrapper .cm__btn),
+[data-theme="dark"] #cc-main .cm-wrapper .cm__btn,
+.dark #cc-main .pm-wrapper .pm__btn:not(.light #cc-main .pm-wrapper .pm__btn),
+[data-theme="dark"] #cc-main .pm-wrapper .pm__btn {
+  --ui-btn-ink: #fafafa;
+  --ui-btn-surface: #202023;
+  --ui-btn-line: #38383d;
+  --ui-btn-muted: #a3a3a3;
+  --ui-btn-hover: #fafafa;
+  --ui-btn-fill: #29292d;
+  --ui-btn-shine: rgba(255, 255, 255, 0.95);
+  --ui-btn-danger: #ff6b78;
+  --ui-btn-danger-bg: #39191e;
+}
+.ui-button__label > svg { flex: none; width: var(--icon); height: var(--icon); }
+.ui-button[aria-invalid="true"],
+#cc-main .cm-wrapper .cm__btn[aria-invalid="true"],
+#cc-main .pm-wrapper .pm__btn[aria-invalid="true"] { border-color: var(--ui-btn-danger); }
+.ui-button[aria-disabled="true"],
+#cc-main .cm-wrapper .cm__btn[aria-disabled="true"],
+#cc-main .pm-wrapper .pm__btn[aria-disabled="true"] { cursor: default; }
+.ui-button--ghost[aria-expanded="true"],
+.ui-button--ghost[aria-pressed="true"] {
+  background: var(--ui-btn-fill); color: var(--ui-btn-hover);
+}
+.ui-button--secondary[aria-expanded="true"],
+.ui-button--secondary[aria-pressed="true"],
+#cc-main .cm-wrapper .cm__btn--secondary[aria-expanded="true"],
+#cc-main .cm-wrapper .cm__btn--secondary[aria-pressed="true"],
+#cc-main .pm-wrapper .pm__btn--secondary[aria-expanded="true"],
+#cc-main .pm-wrapper .pm__btn--secondary[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ui-btn-surface) 92%, var(--ui-btn-ink));
+}
+@media (forced-colors: active) {
+.ui-button,
+#cc-main .pm-wrapper .pm__close-btn,
+#cc-main .cm-wrapper .cm__btn,
+#cc-main .pm-wrapper .pm__btn { border: 1px solid ButtonText; box-shadow: none; }
+.ui-button--primary,
+.ui-button--secondary,
+#cc-main .cm-wrapper .cm__btn--secondary,
+#cc-main .pm-wrapper .pm__btn--secondary,
+#cc-main .cm-wrapper .cm__btn:not(.cm__btn--secondary),
+#cc-main .pm-wrapper .pm__btn:not(.pm__btn--secondary) { background: ButtonFace; color: ButtonText; }
+}
+
+/* Calendar cells retain the calendar's grid geometry and selection semantics. */
+[data-slot="calendar"] .ui-button {
+  --h: var(--cell-size);
+  --radius: var(--cell-radius);
+  padding: 0;
+  font-weight: 400;
+}
+[data-slot="calendar"] .ui-button[data-day] { width: 100%; }
+[data-slot="calendar"] .ui-button[data-selected-single="true"],
+[data-slot="calendar"] .ui-button[data-range-start="true"],
+[data-slot="calendar"] .ui-button[data-range-end="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+[data-slot="calendar"] .ui-button[data-range-middle="true"] {
+  border-radius: 0;
+  background: color-mix(in oklab, var(--foreground) 12%, var(--popover));
+  color: var(--foreground);
+}
+
+/* Plugin controls share the reference instead of its built-in 42px minimum. */
+#cc-main .cm-wrapper .cm__btn,
+#cc-main .pm-wrapper .pm__btn { min-height: var(--h); }
+#cc-main .pm-wrapper .pm__close-btn {
+  width: var(--h);
+  padding: 0;
+  box-shadow: none;
+}
+#cc-main .pm-wrapper .pm__close-btn > svg { width: var(--icon); height: var(--icon); }
+.dark #cc-main .pm-wrapper .pm__close-btn {
+  --ui-btn-muted: #a3a3a3;
+  --ui-btn-hover: #fafafa;
+  --ui-btn-fill: #29292d;
+}

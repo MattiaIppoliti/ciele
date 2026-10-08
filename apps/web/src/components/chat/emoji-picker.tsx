@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Car, ChevronLeft, Clock, Flag, Hand, Heart, Lightbulb, PawPrint, Search, Smile, Utensils, Volleyball, X } from "lucide-react";
 import { EMOJI_CATALOG, EMOJI_CATEGORIES, searchEmoji, type PickerEmoji } from "@/lib/emoji-catalog";
@@ -58,20 +59,20 @@ export default function EmojiPicker({ onSelect, onBack, selected, disabled }: {
   return (
     <div className="flex max-h-[min(420px,calc(100dvh-32px))] flex-col">
       <div className="flex shrink-0 items-center gap-1.5 px-2.5 pt-2.5">
-        <button type="button" aria-label="Back to quick reactions" onClick={onBack} className="press-control grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"><ChevronLeft className="size-4" /></button>
+        <CieleButton variant="ghost" size="icon-sm" type="button" aria-label="Back to quick reactions" onClick={onBack} className="press-control grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"><ChevronLeft className="size-4" /></CieleButton>
         <div className="relative min-w-0 flex-1">
           <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <input ref={input} type="search" aria-label="Search emojis" placeholder="Search emojis" maxLength={64} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
             if (event.key === "Enter" && query.trim() && matches[0] && !disabled) { event.preventDefault(); onSelect(matches[0].native); }
           }} className="h-9 w-full min-w-0 rounded-xl border bg-muted/40 pl-8 pr-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-search-cancel-button]:cursor-pointer" />
         </div>
-        {query && <button type="button" aria-label="Clear emoji search" onClick={() => { setQuery(""); input.current?.focus(); }} className="press-control grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted"><X className="size-3.5" /></button>}
+        {query && <CieleButton variant="ghost" size="icon-sm" type="button" aria-label="Clear emoji search" onClick={() => { setQuery(""); input.current?.focus(); }} className="press-control grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted"><X className="size-3.5" /></CieleButton>}
       </div>
       <div role="toolbar" aria-label="Emoji categories" className="flex shrink-0 items-center justify-between gap-0.5 px-3 py-2">
-        <button type="button" aria-label="Suggested" aria-pressed={!query && category === "suggested"} onClick={() => jump("suggested")} className={cn("press-control grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring", !query && category === "suggested" && "bg-muted text-foreground")}><Clock className="size-3.5" /></button>
+        <CieleButton variant="ghost" size="icon-sm" type="button" aria-label="Suggested" aria-pressed={!query && category === "suggested"} onClick={() => jump("suggested")} className={cn("press-control grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring", !query && category === "suggested" && "bg-muted text-foreground")}><Clock className="size-3.5" /></CieleButton>
         {EMOJI_CATEGORIES.map((entry, index) => {
           const Icon = categoryIcons[index] ?? Smile;
-          return <button key={entry.id} type="button" aria-label={entry.name} title={entry.name} aria-pressed={!query && category === entry.id} onClick={() => jump(entry.id)} className={cn("press-control grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring", !query && category === entry.id && "bg-muted text-foreground")}><Icon className="size-3.5" /></button>;
+          return <CieleButton variant="ghost" size="icon-sm" key={entry.id} type="button" aria-label={entry.name} title={entry.name} aria-pressed={!query && category === entry.id} onClick={() => jump(entry.id)} className={cn("press-control grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring", !query && category === entry.id && "bg-muted text-foreground")}><Icon className="size-3.5" /></CieleButton>;
         })}
       </div>
       <div ref={scroll} className="relative min-h-0 overflow-y-auto overscroll-contain px-3 pb-3" aria-busy={query !== deferredQuery}>

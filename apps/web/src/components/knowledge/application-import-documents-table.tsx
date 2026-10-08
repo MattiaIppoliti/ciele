@@ -10,9 +10,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Copy, ExternalLink, Maximize2 } from "lucide-react";
 import type { ApplicationImportDocumentRow } from "@ciele/ops";
+import { Button, Hint } from "@agent-hub/ui";
 
 import {
   Table,
+  TableActions,
   TableBody,
   TableCard,
   TableCell,
@@ -24,6 +26,7 @@ import { useColumnWidths, type TableColumnLayout } from "@/components/ui/table-c
 import { TableOpenCell } from "@/components/ui/table-open-cell";
 import { TableRowMenu } from "@/components/ui/table-menu";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { TableFilter } from "@/components/ui/table-filters";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/lib/toast";
 import { relativeTimeLabel } from "@/lib/source-documents";
@@ -50,6 +53,8 @@ export function ApplicationImportDocumentsTable({
   pageSize,
   basePath,
   sourcePrefix,
+  fileTypes,
+  mimeType,
 }: {
   rows: ApplicationImportDocumentRow[];
   total: number;
@@ -59,6 +64,8 @@ export function ApplicationImportDocumentsTable({
   basePath: string;
   /** Where the Source routes live on this surface; rows append their ids. */
   sourcePrefix: string;
+  fileTypes: string[];
+  mimeType: string;
 }) {
   const router = useRouter();
   const now = new Date();
@@ -67,18 +74,23 @@ export function ApplicationImportDocumentsTable({
     { key: "memories", width: 120 },
     { key: "status", width: 140 },
     { key: "updated", width: 180 },
+    { key: "actions", width: 140, fixed: true },
   ];
   const columns = useColumnWidths("application-import-documents", layout);
 
   return (
-    <TableCard
+    <TableCard title="Imported documents" results={{ total: total, noun: "document" }}
+      filters={<TableFilter label="File type" anyLabel="All file types" value={mimeType}
+        options={fileTypes.map(value => ({ value, label: value === "__unknown" ? "Unrecorded type" : value === "application/pdf" ? "PDF" : value === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ? "Word" : value === "application/vnd.google-apps.document" ? "Google Docs" : value }))}
+        onChange={value => router.push(applicationImportPageHref(basePath, 1, value, pageSize))} />}
       footer={
         <TablePagination
           page={page}
           pageSize={pageSize}
           total={total}
           noun="Document"
-          onPageChange={(next) => router.push(applicationImportPageHref(basePath, next))}
+          onPageChange={(next) => router.push(applicationImportPageHref(basePath, next, mimeType, pageSize))}
+          onPageSizeChange={size => router.push(applicationImportPageHref(basePath, 1, mimeType, size))}
         />
       }
     >
@@ -90,16 +102,17 @@ export function ApplicationImportDocumentsTable({
             <TableColumnHeader label="Memories" resize={columns.handleFor("memories")} />
             <TableColumnHeader label="Status" resize={columns.handleFor("status")} />
             <TableColumnHeader label="Updated" resize={columns.handleFor("updated")} />
+            <TableColumnHeader label="Actions" align="right" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="hover:bg-transparent">
+              <TableCell colSpan={layout.length} className="hover:bg-transparent">
                 <EmptyState
                   size="sm"
-                  title="No Documents yet"
-                  description="They appear as the import synchronizes them."
+                  title={mimeType ? "No matching documents" : "No Documents yet"}
+
                 />
               </TableCell>
             </TableRow>
@@ -165,6 +178,13 @@ export function ApplicationImportDocumentsTable({
                   >
                     <RollInText text={relativeTimeLabel(row.updatedAt, now)} />
                   </TableCell>
+                  <TableCell><TableActions>
+                    <Hint label="Open"><Button render={<Link href={href} />} nativeButton={false} variant="ghost" size="icon-sm" aria-label={`Open ${row.title}`}><Maximize2 className="size-4" /></Button></Hint>
+                    <Hint label="Copy ID"><Button variant="ghost" size="icon-sm" aria-label={`Copy ID for ${row.title}`} onClick={async () => {
+                      try { await navigator.clipboard.writeText(row.documentId ?? row.sourceId); toast.success("ID copied."); }
+                      catch { toast.error("Could not copy ID."); }
+                    }}><Copy className="size-4" /></Button></Hint>
+                  </TableActions></TableCell>
                 </TableRow>
               </TableRowMenu>
               </RollRow>

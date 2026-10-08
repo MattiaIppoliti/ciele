@@ -7,7 +7,7 @@ import { motionTokens } from "../motion-tokens";
 import { AnimatedCounter } from "../animated-counter/animated-counter";
 import { AnalyticsCard } from "@/components/insights/analytics-card";
 import styles from "./metric-card.module.css";
-export interface MetricCardProps { label: string; value: number; prefix?: string; suffix?: string; decimals?: number; context: string; change?: string; children?: ReactNode; action?: ReactNode; bare?: boolean }
+export interface MetricCardProps { label: string; value: number; prefix?: string; suffix?: string; decimals?: number; context?: string; change?: string; children?: ReactNode; action?: ReactNode; bare?: boolean }
 
 /** Copy that holds a number enters from the side it moved toward: a larger value rises from below, a smaller one drops from above. */
 const rise: Variants = { hidden: (direction: number) => ({ opacity: 0, y: 4 * direction, filter: "blur(2px)" }), shown: { opacity: 1, y: 0, filter: "blur(0px)", transition: TRANSITION_TEXT_SWAP }, gone: (direction: number) => ({ opacity: 0, y: -4 * direction, filter: "blur(2px)", transition: TRANSITION_TEXT_SWAP }) };
@@ -44,7 +44,7 @@ function Swap({ text, morph = false, block = false }: { text: string; morph?: bo
 export function MetricCard({ label, value, prefix, suffix, decimals, context, change, children, action, bare }: MetricCardProps) {
   const reduceMotion = !!useReducedMotion();
   const changeBadge = <AnimatePresence initial={false}>{change && <motion.small className={styles.change} key="change" data-trend={/^[+]/.test(change) ? "up" : /^[-−]/.test(change) ? "down" : undefined} initial={{ opacity: 0, scale: .96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .96, transition: { duration: motionTokens.duration.fast } }} transition={reduceMotion ? { duration: 0 } : motionTokens.spring.snappy}><Swap text={change} morph /></motion.small>}</AnimatePresence>;
-  return <AnalyticsCard title={<Swap text={label} block />} description={<Swap text={context} block />} bare={bare}
+  return <AnalyticsCard title={<Swap text={label} block />} description={context ? <Swap text={context} block /> : undefined} bare={bare}
     action={change || action ? <>{changeBadge}{action}</> : undefined}>
     <AnimatedCounter value={value} prefix={prefix} suffix={suffix} decimals={decimals} animateOnView />
     {children}

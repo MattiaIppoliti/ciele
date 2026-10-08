@@ -17,7 +17,7 @@ import { useTopBarFormActions } from "@/components/settings/form-actions";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ChannelUnread, Teammate, TeammateVisibility } from "@agent-hub/core";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Skeleton } from "@agent-hub/ui";
+import { DialogBody, DialogFooter, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label, Skeleton } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/toast";
 import { createTeammateAction, updateTeammateAction } from "@/app/(admin)/teammates/actions";
@@ -200,7 +200,7 @@ export function CreateTeammatePage({
   return (
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
-        <SectionHeading icon={Settings2} title="New AI Teammate" description="Give your teammate a name, a standing role and the knowledge it needs." />
+        <SectionHeading icon={Settings2} title="New AI Teammate"  />
         <div className="pt-10 pb-24"><SectionTimeline>
         <TimelineSection title="Start from a role" boxed>
 
@@ -381,7 +381,7 @@ function CreateChannelDialog({
         <DialogHeader>
           <DialogTitle className="text-xl">New group</DialogTitle>
         </DialogHeader>
-        <div className="space-y-5">
+        <DialogBody className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="new-channel-name">Name</Label>
             <Input
@@ -396,8 +396,8 @@ function CreateChannelDialog({
             <Label>Teammates</Label>
             {teammates.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                No teammates yet. Create one first, or open the group and add
-                it later.
+                No teammates yet. Create one first, or open the group and add it
+                later.
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -409,7 +409,7 @@ function CreateChannelDialog({
                       toggle(teammate.id, teammateIds, setTeammateIds)
                     }
                     aria-pressed={teammateIds.includes(teammate.id)}
-className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
                       teammateIds.includes(teammate.id)
                         ? "border-primary bg-primary/5 text-primary"
                         : "hover:bg-muted"
@@ -430,55 +430,59 @@ className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
               </p>
             ) : (
               <>
-              {members.length > PEOPLE_FILTER_AT && (
-                <Input
-                  type="search"
-                  value={peopleQuery}
-                  onChange={(e) => setPeopleQuery(e.target.value)}
-                  placeholder="Filter people…"
-                  aria-label="Filter people"
-                  autoComplete="off"
-                  className="h-9"
-                />
-              )}
-              <div className="flex flex-wrap gap-2">
-                {shownMembers.length === 0 && (
-                  <p className="text-muted-foreground text-sm">
-                    Nobody by that name.
-                  </p>
+                {members.length > PEOPLE_FILTER_AT && (
+                  <Input
+                    type="search"
+                    value={peopleQuery}
+                    onChange={(e) => setPeopleQuery(e.target.value)}
+                    placeholder="Filter people…"
+                    aria-label="Filter people"
+                    autoComplete="off"
+                    className="h-9"
+                  />
                 )}
-                {shownMembers.map((member) => (
-                  <button
-                    key={member.userId}
-                    type="button"
-                    onClick={() => toggle(member.userId, memberIds, setMemberIds)}
-                    aria-pressed={memberIds.includes(member.userId)}
-className={`rounded-full border px-3 py-1.5 text-sm ${
-                      memberIds.includes(member.userId)
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "hover:bg-muted"
-                    }`}
-                  >
-                    {member.label}
-                  </button>
-                ))}
-              </div>
+                <div className="flex flex-wrap gap-2">
+                  {shownMembers.length === 0 && (
+                    <p className="text-muted-foreground text-sm">
+                      Nobody by that name.
+                    </p>
+                  )}
+                  {shownMembers.map((member) => (
+                    <button
+                      key={member.userId}
+                      type="button"
+                      onClick={() =>
+                        toggle(member.userId, memberIds, setMemberIds)
+                      }
+                      aria-pressed={memberIds.includes(member.userId)}
+                      className={`rounded-full border px-3 py-1.5 text-sm ${
+                        memberIds.includes(member.userId)
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "hover:bg-muted"
+                      }`}
+                    >
+                      {member.label}
+                    </button>
+                  ))}
+                </div>
               </>
             )}
           </div>
+        </DialogBody>
+        <DialogFooter>
           <Button
+            loading={isPending}
             className="w-full"
             disabled={isPending || !name.trim()}
             onClick={handleCreate}
           >
             <RollInText text={isPending ? "Opening…" : "Open group"} />
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
 
 /**
  * The Teammates shell (#768, #778): the Chat surface.

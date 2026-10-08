@@ -1,27 +1,23 @@
 "use client";
 
+// Source: https://beui.dev/components/motion/table (MIT).
+// Adapted to the console's shared table controls.
+import { TableEditableCell, type TableCellEditor } from "@/components/ui/table-editable-cell";
 import { EmptyState } from "@/components/ui/empty-state";
-// Source: https://beui.dev/components/motion/table (MIT)
-//
-// Ported down to the read-only surface this app needs: columns, sorting and
-// an empty state. Upstream's row virtualization
-// (@tanstack/react-virtual), column resize/reorder, editable cells, row
-// selection and the row handle menu are left out, no caller wants them and
-// each pulls a dependency or a hook file. The prop names that survive keep
-// upstream's spelling so re-adding a feature is an additive change.
-
-import { motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { useColumnWidths } from "@/components/ui/table-columns";
+import { TableColumnHeader, useClientPage, useClientSort } from "@/components/ui/table-column-header";
 import {
   Table as TableRoot,
   TableBody,
   TableCard,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TableFilter, TableSearch } from "@/components/ui/table-filters";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { cn } from "@/lib/utils";
 import { RollInText, RollRow } from "./roll-in-text";
 
@@ -38,21 +34,33 @@ export interface TableColumn<T> {
   accessor?: (row: T) => string | number | null | undefined;
   /** Render the cell. Falls back to `accessor`. */
   cell?: (row: T) => ReactNode;
+  editor?: (row: T) => TableCellEditor | undefined;
   sortable?: boolean;
+  filterOptions?: ReadonlyArray<{ value: string; label: string }>;
+  filterLabel?: string;
+  filterAnyLabel?: string;
   align?: "left" | "center" | "right";
   /** Any CSS width ("30%", "12rem"); omit to share the leftover space. */
   width?: string;
-  /** Hidden below `sm`, lets a wide table degrade instead of scrolling. */
+  /** Retained for compatibility; tables now scroll to keep every column available. */
   hideBelowSm?: boolean;
 }
 
 export interface TableProps<T> {
+  title?: ReactNode;
+  noun: string;
+  pluralNoun?: string;
+  searchValue?: (row: T) => string;
   data: T[];
   columns: TableColumn<T>[];
   getRowId: (row: T) => string;
   emptyState: ReactNode;
-  /** Drawn inside the card under a rule; normally a `<TablePagination />`. */
-  footer: ReactNode;
+  filters?: ReactNode;
+  searchable?: boolean;
+  /** Server-paged tables supply their global count and URL navigation. */
+  pagination?: ComponentProps<typeof TablePagination>;
+  onRowClick?: (row: T) => void;
+  isRowSelected?: (row: T) => boolean;
 }
 
 function alignText(align: TableColumn<unknown>["align"]) {
@@ -76,97 +84,79 @@ function compare(a: unknown, b: unknown): number {
   return String(a).localeCompare(String(b));
 }
 
-/** Sort cycles asc -> desc -> unsorted, so a click can always undo itself. */
-function nextSort(current: SortState | null, key: string): SortState | null {
-  if (current?.key !== key) return { key, direction: "asc" };
-  if (current.direction === "asc") return { key, direction: "desc" };
-  return null;
-}
-
 export function Table<T>({
+  title,
+  noun,
+  pluralNoun,
+  searchValue,
   data,
   columns,
   getRowId,
   emptyState,
-  footer,
+  filters: toolbarFilters,
+  searchable = true,
+  pagination,
+  onRowClick,
+  isRowSelected,
 }: TableProps<T>) {
-  const reduce = useReducedMotion();
-  const [sort, setSort] = useState<SortState | null>(null);
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const order = useClientSort();
+  const sort = order.sort;
+  const layout = useColumnWidths("records-" + columns.map((column) => column.key).join("-"), columns.map((column) => ({
+    key: column.key,
+    width: column.width?.endsWith("rem") ? parseFloat(column.width) * 16
+      : column.width?.endsWith("px") ? parseFloat(column.width) : 200,
+    fixed: column.key === "actions",
+  })));
 
-  const rows = useMemo(
-    () => data.map((row) => ({ row, id: getRowId(row) })),
-    [data, getRowId]
-  );
+  const filtered = useMemo(() => pagination ? data : data.filter((row) => {
+    const text = searchValue?.(row) ?? columns.map((column) => column.accessor?.(row) ?? "").join(" ");
+    return text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()) && columns.every((column) =>
+      !filters[column.key] || String(column.accessor?.(row)) === filters[column.key]);
+  }), [data, columns, searchValue, query, filters, pagination]);
+  const rows = useMemo(() => filtered.map((row) => ({ row, id: getRowId(row) })), [filtered, getRowId]);
 
   const sortedRows = useMemo(() => {
     if (!sort) return rows;
     const column = columns.find((c) => c.key === sort.key);
     if (!column?.accessor) return rows;
-    const factor = sort.direction === "asc" ? 1 : -1;
+    const factor = sort.ascending ? 1 : -1;
     return [...rows].sort(
       (a, b) =>
         factor * compare(column.accessor!(a.row), column.accessor!(b.row))
     );
   }, [rows, columns, sort]);
 
+  const paged = useClientPage(sortedRows);
+  const resetQuery = (value: string) => { setQuery(value); paged.onPageChange(1); };
+
   return (
-    <TableCard footer={footer}>
-      <TableRoot empty={rows.length === 0}>
-        <colgroup>
-          {columns.map((column) => (
-            <col
-              key={column.key}
-              data-column={column.key}
-              style={column.key === "actions" ? { width: "1%" } : column.width ? { width: column.width } : undefined}
-            />
-          ))}
-        </colgroup>
+    <TableCard title={title} results={{ total: pagination?.total ?? filtered.length, noun, pluralNoun }}
+      filters={<>
+        {toolbarFilters}
+        {columns.filter((column) => !pagination && column.filterOptions).map((column) => <TableFilter key={column.key}
+          label={column.filterLabel ?? column.key} value={filters[column.key] ?? ""} anyLabel={column.filterAnyLabel ?? `All ${(column.filterLabel ?? column.key).toLowerCase()}s`}
+          options={column.filterOptions!} onChange={(value) => { setFilters((previous) => ({ ...previous, [column.key]: value })); paged.onPageChange(1); }} />)}
+        {!pagination && searchable && <TableSearch label={`Search ${pluralNoun ?? noun + "s"}`} value={query} onChange={resetQuery} />}
+      </>}
+      footer={<TablePagination page={paged.page} pageSize={paged.pageSize} total={filtered.length} noun={noun}
+        onPageChange={paged.onPageChange} onPageSizeChange={paged.onPageSizeChange} {...pagination} />}>
+
+      <TableRoot fixed empty={rows.length === 0}>
+        {layout.colGroup}
 
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            {columns.map((column) => {
-              const active = sort?.key === column.key;
-              return (
-                <TableHead
-                  key={column.key}
-                  scope="col"
-                  aria-sort={
-                    active
-                      ? sort.direction === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : undefined
-                  }
-                  className={cn(
-                    alignText(column.align),
-                    column.hideBelowSm && "hidden sm:table-cell"
-                  )}
-                >
-                  {column.sortable && column.accessor ? (
-                    <button
-                      type="button"
-                      onClick={() => setSort(nextSort(sort, column.key))}
-                      className="hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
-                    >
-                      {column.header}
-                      <motion.span
-                        aria-hidden
-                        animate={{
-                          opacity: active ? 1 : 0.25,
-                          rotate: active && sort.direction === "desc" ? 180 : 0,
-                        }}
-                        transition={reduce ? { duration: 0 } : { duration: 0.18 }}
-                        className="text-2xs leading-none"
-                      >
-                        ▲
-                      </motion.span>
-                    </button>
-                  ) : (
-                    column.header
-                  )}
-                </TableHead>
-              );
-            })}
+            {columns.map((column) => (
+              <TableColumnHeader key={column.key} label={column.header}
+                resize={layout.handleFor(column.key)}
+                sort={!pagination && column.sortable && column.accessor ? order.column(column.key) : undefined}
+                filter={!pagination && column.filterOptions ? { kind: "options", value: filters[column.key] ?? "", anyLabel: column.filterAnyLabel ?? `All ${(column.filterLabel ?? column.key).toLowerCase()}s`,
+                  options: column.filterOptions, onChange: (value) => { setFilters((previous) => ({ ...previous, [column.key]: value })); paged.onPageChange(1); } } : undefined}
+                align={column.align === "right" ? "right" : "left"}
+                className={alignText(column.align)} />
+            ))}
           </TableRow>
         </TableHeader>
 
@@ -177,27 +167,30 @@ export function Table<T>({
                 colSpan={columns.length}
                 className="text-muted-foreground p-10 text-center"
               >
-                {typeof emptyState === "string" ? <EmptyState size="sm" title="Nothing here yet" description={emptyState} /> : emptyState}
+                {data.length > 0 ? <EmptyState size="sm" title="No matching results" description="Try another search or clear the filters." /> :
+                  typeof emptyState === "string" ? <EmptyState size="sm" title="Nothing here yet" description={emptyState} /> : emptyState}
               </TableCell>
             </TableRow>
           ) : (
-            sortedRows.map((entry, index) => (
+            (pagination ? sortedRows : paged.items).map((entry, index) => (
               <RollRow key={entry.id} index={index}>
               <TableRow
                 style={{ height: 56 }}
-                className="border-border/60 last:border-b-0"
+                onClick={onRowClick ? () => onRowClick(entry.row) : undefined}
+                data-state={isRowSelected?.(entry.row) ? "selected" : undefined}
+                className={cn("border-border/60 last:border-b-0", onRowClick && "cursor-pointer")}
               >
                 {columns.map((column) => (
-                  <TableCell
+                  <TableEditableCell
+                    editor={column.editor?.(entry.row)}
                     key={column.key}
                     className={cn(
                       "text-foreground",
                       alignText(column.align),
-                      column.hideBelowSm && "hidden sm:table-cell"
                     )}
                   >
                     {readCell(entry.row, column)}
-                  </TableCell>
+                  </TableEditableCell>
                 ))}
               </TableRow>
               </RollRow>

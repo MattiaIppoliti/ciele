@@ -1601,6 +1601,7 @@ export interface Db {
       sourceKey?: string | null;
     }
   ): Promise<Alert>;
+  updateAlert(id: string, patch: Partial<Pick<Alert, "type" | "title" | "detail" | "status">>, updatedBy?: string | null): Promise<Alert>;
   resolveAlert(id: string, resolvedBy?: string | null): Promise<Alert>;
   /** Auto-resolve active alerts with this sourceKey (underlying issue cleared). */
   resolveAlertsByKey(organizationId: string, sourceKey: string): Promise<void>;

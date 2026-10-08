@@ -105,6 +105,13 @@ describe("Website Source actions", () => {
     });
   });
 
+  it("refuses a changed crawl URL without changing the source label or configuration", async () => {
+    const { assistant, collection } = await seed("immutable-url");
+    const source = await db.createSource({ collectionId: collection.id, name: "Original", kind: "website", config: { url: "https://public.example/docs" } });
+    await expect(updateWebsiteSourceAction(assistant.id, source.id, { name: "Changed", url: "https://another.example", crawlerProvider: "local" })).rejects.toThrow("crawl URL cannot be changed");
+    expect(await db.getSource(source.id)).toMatchObject({ name: "Original", config: { url: "https://public.example/docs" } });
+  });
+
   it("starts manual re-crawls with fresh run metadata", async () => {
     const { collection } = await seed("action-recrawl-provider");
     const source = await db.createSource({

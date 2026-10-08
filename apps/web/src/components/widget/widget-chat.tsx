@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton, Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@agent-hub/ui";
 import dynamic from "next/dynamic";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -61,7 +62,7 @@ import {
   type TriggerReport,
 } from "@/lib/widget-triggers";
 import type { WidgetConversationSummary, WidgetMemory } from "./widget-history";
-import { ArrowRight, ExternalLink, DraftingCompass, X } from "lucide-react";
+import { ArrowRight, ExternalLink, DraftingCompass } from "lucide-react";
 import { Headphones, HelpCircle, Maximize2, Paperclip } from "lucide-react";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 import { sentAtLabel } from "@/lib/format";
@@ -111,14 +112,16 @@ function IframeReplyPart({
             <span />
           )}
           {part.lightbox && (
-            <button
+            <CieleButton
+              variant="ghost"
+              size="icon-sm"
               type="button"
               onClick={() => setOpen(true)}
               className="press-control text-muted-foreground hover:text-foreground"
               aria-label="Open in full screen"
             >
               <Maximize2 className="size-4" />
-            </button>
+            </CieleButton>
           )}
         </div>
       )}
@@ -131,31 +134,27 @@ function IframeReplyPart({
           style={{ height }}
         />
       </div>
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          data-modal-layout="lightbox"
+          className="h-[calc(100dvh-2rem)] sm:max-w-6xl"
         >
-          <div className="mb-2 flex items-center justify-between text-white">
-            <span className="text-sm font-medium">{title}</span>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close full screen"
-            >
-              <X className="size-5" />
-            </button>
-          </div>
-          <iframe
-            src={part.url}
-            title={title}
-            sandbox={IFRAME_SANDBOX}
-            className="w-full flex-1 rounded-lg bg-white"
-          />
-        </div>
-      )}
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <DialogBody
+            className="min-h-0 flex-1 overflow-hidden"
+            data-modal-padding="none"
+          >
+            <iframe
+              src={part.url}
+              title={title}
+              sandbox={IFRAME_SANDBOX}
+              className="h-full w-full border-0"
+            />
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -273,7 +272,7 @@ function BotMessageView({
           }
           if (part.type === "help_desk") {
             return (
-              <button
+              <CieleButton variant="primary" size="sm" wrap
                 key={j}
                 type="button"
                 onClick={() => onOpenSupport(part.helpDeskId)}
@@ -288,7 +287,7 @@ function BotMessageView({
                 )}
                 <span className="text-sm font-medium">{part.label}</span>
                 <ArrowRight className="text-muted-foreground ml-auto size-4" />
-              </button>
+              </CieleButton>
             );
           }
           if (part.type === "human_review") {
@@ -342,36 +341,34 @@ function BotMessageView({
           if (part.type === "button") {
             if (part.buttonType === "send_text" || part.buttonType === "faq") {
               return (
-                <button
+                <CieleButton variant="primary" size="sm" wrap
                   key={j}
                   type="button"
                   onClick={() =>
                     onSend(part.text ?? "", { faq: part.buttonType === "faq" })
                   }
                   className="press-control inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: brandColor }}
+
                 >
                   {part.label}
                   {part.showIcon !== false && (
                     <FlowButtonIcon icon={part.icon} className="size-3.5" />
                   )}
-                </button>
+                </CieleButton>
               );
             }
             return (
-              <a
+              <CieleButton variant="primary" size="sm" wrap render={<a href={part.url} target="_blank" rel="noopener noreferrer" />}
                 key={j}
-                href={part.url}
-                target="_blank"
-                rel="noopener noreferrer"
+
                 className="press-control inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: brandColor }}
+
               >
                 {part.label}
                 {part.showIcon !== false && (
                   <FlowButtonIcon icon={part.icon} className="size-3.5" />
                 )}
-              </a>
+              </CieleButton>
             );
           }
           if (part.type === "iframe") {
@@ -393,14 +390,14 @@ function BotMessageView({
                 </div>
                 <div className="mt-2 space-y-2">
                   {part.questions.map((q) => (
-                    <button
+                    <CieleButton variant="secondary" size="sm" wrap
                       key={q}
                       type="button"
                       onClick={() => onSend(q)}
                       className="press w-full rounded-xl border bg-background px-4 py-3 text-left text-sm leading-snug transition-colors hover:bg-muted"
                     >
                       {q}
-                    </button>
+                    </CieleButton>
                   ))}
                 </div>
               </div>
@@ -669,7 +666,7 @@ export function WidgetChat({
           {
             value: "attach",
             label: "Attach a file",
-            description: "A document, a spreadsheet or a screenshot.",
+
             icon: <Paperclip />,
             disabled: attachments.full,
           },
@@ -680,7 +677,7 @@ export function WidgetChat({
           {
             value: "skill",
             label: "Use a skill",
-            description: "Start from a prepared request.",
+
             icon: <DraftingCompass />,
           },
         ]
@@ -690,7 +687,7 @@ export function WidgetChat({
           {
             value: "desk",
             label: "Contact a help desk",
-            description: "Reach a person instead.",
+
             icon: <Headphones />,
           },
         ]
@@ -1165,7 +1162,7 @@ export function WidgetChat({
         {messages.length === 0 && (
           <div className={fullscreen ? "grid grid-cols-2 gap-3 pt-1" : "space-y-2 pt-1"}>
             {quickReplies.map((button) => (
-              <button
+              <CieleButton variant="primary" size="sm" wrap
                 key={button.id}
                 type="button"
                 onClick={() => {
@@ -1176,7 +1173,7 @@ export function WidgetChat({
                     send(button.text, { faq: button.type === "faq" });
                 }}
                 className="press flex w-full items-center justify-center gap-1.5 rounded-lg border px-4 py-2.5 text-center text-[0.9375rem] font-medium transition-colors hover:bg-muted"
-                style={{ borderColor: ws.buttonColor, color: ws.buttonColor }}
+
               >
                 {button.label}
                 {button.type === "external_link" && (
@@ -1185,17 +1182,17 @@ export function WidgetChat({
                 {button.type === "escalation" && (
                   <Headphones className="size-3.5 shrink-0" />
                 )}
-              </button>
+              </CieleButton>
             ))}
             {suggestedQuestions.map((q) => (
-              <button
+              <CieleButton variant="secondary" size="sm" wrap
                 key={q}
                 type="button"
                 onClick={() => send(q)}
                 className="press text-foreground w-full rounded-lg bg-foreground/10 px-4 py-2.5 text-center text-[0.9375rem] transition-colors hover:bg-foreground/15"
               >
                 {q}
-              </button>
+              </CieleButton>
             ))}
           </div>
         )}
@@ -1242,13 +1239,13 @@ export function WidgetChat({
       >
         {!hideEscalation && (
           <div className="flex justify-center pb-3">
-            <button
+            <CieleButton variant="secondary" size="sm"
               type="button"
               onClick={() => openSupport(recommendedHelpDeskId)}
               className="press bg-muted hover:bg-muted/80 rounded-xl border px-5 py-2.5 text-sm font-semibold transition-colors"
             >
               {contactLabel}
-            </button>
+            </CieleButton>
           </div>
         )}
         {attachmentsEnabled && (

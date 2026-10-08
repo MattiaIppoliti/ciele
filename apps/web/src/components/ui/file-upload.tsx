@@ -1,6 +1,7 @@
 "use client";
 // Adapted from beui.dev/components/blocks/file-upload
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { FileArchive, FileAudio, FileImage, FileSpreadsheet, FileText, FileVideo, RotateCcw, X } from "lucide-react";
 import { AlertCircle, CheckCircle2, FileCode2, FileIcon, Loader2, UploadCloud } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -236,23 +237,23 @@ function FileUploadRow({
             <div className="flex shrink-0 items-center gap-1">
               <StatusIcon status={status} reduce={reduce} />
               {status === "error" ? (
-                <button
+                <CieleButton variant="ghost" size="icon-sm"
                   type="button"
                   onClick={() => onRetry(item)}
                   aria-label={`Retry ${item.name}`}
                   className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground active:scale-95"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                </button>
+                </CieleButton>
               ) : null}
-              <button
+              <CieleButton variant="ghost" size="icon-sm"
                 type="button"
                 onClick={() => onRemove(item)}
                 aria-label={`Remove ${item.name}`}
                 className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground active:scale-95"
               >
                 <X className="h-3.5 w-3.5" />
-              </button>
+              </CieleButton>
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 "use client";
 // beui.dev/components/agents/tool-result
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { Ban, ChevronDown, CircleCheck, CircleX, LoaderCircle } from "lucide-react";
 // Icon data for the copy mark, which reshapes into the check on click.
 import { Check as CheckData, Copy as CopyData } from "lucide";
@@ -21,7 +22,6 @@ import {
 import { ActionSwapText } from "@/components/motion/action-swap";
 import { AgentDisclosure } from "@/components/agents/agent-disclosure";
 import { SPRING_SWAP } from "@/lib/ease";
-import { Button } from "@agent-hub/ui";
 import { useCopied } from "@/lib/hooks/use-copied";
 import { cn } from "@/lib/utils";
 
@@ -97,18 +97,18 @@ function ToolResultAction({
   onClick: () => void;
   children: ReactNode;
 }) {
+
   return (
-    <Button
+    <CieleButton variant="ghost" size="icon-sm"
       type="button"
       aria-label={label}
       title={label}
       onClick={onClick}
-      variant="ghost"
-      size="icon-sm"
-      className="text-muted-foreground hover:text-foreground"
+
+      className="grid size-7 place-items-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
     >
       {children}
-    </Button>
+    </CieleButton>
   );
 }
 

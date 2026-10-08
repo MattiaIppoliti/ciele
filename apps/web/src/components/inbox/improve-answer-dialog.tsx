@@ -9,15 +9,8 @@ import {
   linkMessageToImprovementAction,
   listImprovementsPageAction,
 } from "@/app/actions"
-import { Button } from "@agent-hub/ui"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@agent-hub/ui"
+import { DialogBody, DialogSection, DialogFooter, Button } from "@agent-hub/ui"
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@agent-hub/ui"
 import { Input } from "@agent-hub/ui"
 import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs"
@@ -157,136 +150,172 @@ export function ImproveAnswerDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Improve Answer</DialogTitle>
-          <DialogDescription>
-            Add this message to the improvements list by creating a new item or
-            linking it to a similar existing improvement.
-          </DialogDescription>
+          <DialogTitle className="text-lg font-semibold">
+            Improve Answer
+          </DialogTitle>
+
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
-          <TabsList aria-label="Improvement source">
-            {(
-              [
-                ["create", "Create New Improvement"],
-                ["link", "Link Existing Improvement"],
-              ] as const
-            ).map(([key, label]) => (
-              <TabsTrigger key={key} value={key}>
-                {label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <DialogBody>
+          <DialogSection>
+            <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+              <TabsList aria-label="Improvement source">
+                {(
+                  [
+                    ["create", "Create New Improvement"],
+                    ["link", "Link Existing Improvement"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <TabsTrigger key={key} value={key}>
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </DialogSection>
 
-        <SlidingPanel activeKey={tab} direction={slideDirection} sizing="flow">
-        {tab === "create" ? (
-          <form id="improve-answer-create" onSubmit={createNew}>
-            <Input
-              aria-label="Improvement title"
-              name="improvement-title"
-              autoComplete="off"
-              autoFocus={canAutoFocus()}
-              value={title}
-              maxLength={TITLE_MAX}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Improvement title"
-              className="h-11 rounded-lg"
-            />
-            <p className="mt-1 text-right text-xs text-muted-foreground">
-              <RollingNumber value={title.length} />/{TITLE_MAX}
-            </p>
-          </form>
-        ) : (
-          <div className="space-y-2">
-            <div className="relative">
-              <Search aria-hidden="true" className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                aria-label="Search existing improvements"
-                aria-describedby="improve-answer-search-hint"
-                type="search"
-                name="improvement-search"
-                autoComplete="off"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search improvements…"
-                className="h-10 rounded-lg pl-9"
-              />
-            </div>
-            <p id="improve-answer-search-hint" className="text-xs text-muted-foreground">
-              Searches the improvements loaded below.
-            </p>
-            <div className="max-h-56 space-y-1 overflow-y-auto">
-              {existing === null && (
-                <p role="status" className="py-6 text-center text-sm text-muted-foreground">
-                  Loading improvements…
-                </p>
+          <DialogSection>
+            <SlidingPanel
+              activeKey={tab}
+              direction={slideDirection}
+              sizing="flow"
+            >
+              {tab === "create" ? (
+                <form id="improve-answer-create" onSubmit={createNew}>
+                  <Input
+                    aria-label="Improvement title"
+                    name="improvement-title"
+                    autoComplete="off"
+                    autoFocus={canAutoFocus()}
+                    value={title}
+                    maxLength={TITLE_MAX}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Improvement title"
+                    className="h-11 rounded-lg"
+                  />
+                  <p className="mt-1 text-right text-xs text-muted-foreground">
+                    <RollingNumber value={title.length} />/{TITLE_MAX}
+                  </p>
+                </form>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search
+                      aria-hidden="true"
+                      className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                    />
+                    <Input
+                      aria-label="Search existing improvements"
+                      aria-describedby="improve-answer-search-hint"
+                      type="search"
+                      name="improvement-search"
+                      autoComplete="off"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search improvements…"
+                      className="h-10 rounded-lg pl-9"
+                    />
+                  </div>
+                  <p
+                    id="improve-answer-search-hint"
+                    className="text-xs text-muted-foreground"
+                  >Loaded improvements only.</p>
+                  <div className="max-h-56 space-y-1 overflow-y-auto">
+                    {existing === null && (
+                      <p
+                        role="status"
+                        className="py-6 text-center text-sm text-muted-foreground"
+                      >
+                        Loading improvements…
+                      </p>
+                    )}
+                    {existing !== null &&
+                      existing.length === 0 &&
+                      !loadFailed && (
+                        <p className="py-6 text-center text-sm text-muted-foreground">
+                          No improvements to link yet.
+                        </p>
+                      )}
+                    {existing !== null &&
+                      existing.length > 0 &&
+                      filtered.length === 0 && (
+                        <p className="py-6 text-center text-sm [overflow-wrap:anywhere] text-muted-foreground">
+                          No matches for “{search.trim()}”
+                        </p>
+                      )}
+                    {filtered.map((i) => (
+                      <button
+                        key={i.id}
+                        type="button"
+                        aria-pressed={selectedId === i.id}
+                        onClick={() => setSelectedId(i.id)}
+                        className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+                          selectedId === i.id
+                            ? "border-primary bg-primary/5 dark:bg-primary/20"
+                            : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <span className="rounded-md border bg-muted/40 px-1.5 py-0.5 font-mono text-xs">
+                          IMP-{i.seq}
+                        </span>
+                        <span className="truncate">{i.title}</span>
+                      </button>
+                    ))}
+                    {nextCursor && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full"
+                        onClick={loadMore}
+                        disabled={loadingMore}
+                      >
+                        <RollInText
+                          text={
+                            loadingMore ? "Loading…" : "Load more improvements"
+                          }
+                        />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
-              {existing !== null && existing.length === 0 && !loadFailed && (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  No improvements to link yet.
-                </p>
-              )}
-              {existing !== null && existing.length > 0 && filtered.length === 0 && (
-                <p className="py-6 text-center text-sm [overflow-wrap:anywhere] text-muted-foreground">
-                  No matches for “{search.trim()}”
-                </p>
-              )}
-              {filtered.map((i) => (
-                <button
-                  key={i.id}
-                  type="button"
-                  aria-pressed={selectedId === i.id}
-                  onClick={() => setSelectedId(i.id)}
-                  className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                    selectedId === i.id
-                      ? "border-primary bg-primary/5 dark:bg-primary/20"
-                      : "hover:bg-muted/50"
-                  }`}
-                >
-                  <span className="rounded-md border bg-muted/40 px-1.5 py-0.5 font-mono text-xs">
-                    IMP-{i.seq}
-                  </span>
-                  <span className="truncate">{i.title}</span>
-                </button>
-              ))}
-              {nextCursor && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                >
-                  <RollInText text={loadingMore ? "Loading…" : "Load more improvements"} />
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
+            </SlidingPanel>
+          </DialogSection>
+          <DialogSection>
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+          </DialogSection>
+        </DialogBody>
 
-        </SlidingPanel>
-        {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        )}
-
-        <div className="-mx-4 -mb-4 flex justify-end gap-2 rounded-b-xl border-t bg-muted/50 p-4">
-          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+        <DialogFooter className="-mx-4 -mb-4 flex justify-end gap-2 rounded-b-xl border-t bg-muted/50 p-4">
+          <DialogClose render={<Button variant="outline" />}>
+            Cancel
+          </DialogClose>
           {tab === "create" ? (
             // Outside the form, so it submits it by id: Enter in the title
             // field and this button take the same path.
-            <Button type="submit" form="improve-answer-create" disabled={pending || !title.trim()}>
+            <Button
+              loading={pending}
+              type="submit"
+              form="improve-answer-create"
+              disabled={pending || !title.trim()}
+            >
               <RollInText text={pending ? "Creating…" : "Create Improvement"} />
             </Button>
           ) : (
-            <Button onClick={linkExisting} disabled={pending || !selectedId}>
+            <Button
+              loading={pending}
+              onClick={linkExisting}
+              disabled={pending || !selectedId}
+            >
               <RollInText text={pending ? "Linking…" : "Link Improvement"} />
             </Button>
           )}
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

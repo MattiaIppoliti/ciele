@@ -18,7 +18,10 @@ assert.ok(same(snapshot,{...snapshot,finished:'later'}));
 const temp=mkdtempSync(join(tmpdir(),'local-validation-test-'));
 const script=join(dirname(fileURLToPath(import.meta.url)),'local-validation.mjs');
 try {
- const git=(...args)=>execFileSync('git',args,{cwd:temp,encoding:'utf8'}).trim();
+ // A Git hook exports repository-local variables. Keep the temporary repo isolated.
+ const testEnv={...process.env};
+ for (const key of execFileSync('git',['rev-parse','--local-env-vars'],{encoding:'utf8'}).trim().split('\n')) delete testEnv[key];
+ const git=(...args)=>execFileSync('git',args,{cwd:temp,encoding:'utf8',env:testEnv}).trim();
  git('init','-q');git('config','user.name','Test');git('config','user.email','test@example.invalid');
  writeFileSync(join(temp,'file'),'base');git('add','.');git('commit','-qm','base');const base=git('rev-parse','HEAD');
  git('update-ref','refs/remotes/origin/main',base);
@@ -28,7 +31,7 @@ try {
  const eventPath=join(temp,'.git','event.json'),output=join(temp,'.git','output');
  const invoke=(event,name='pull_request',extra={})=>{
   writeFileSync(eventPath,JSON.stringify(event));writeFileSync(output,'');
-  return spawnSync(process.execPath,[script,'gate'],{cwd:temp,encoding:'utf8',env:{...process.env,PATH:`${join(temp,'bin')}:${process.env.PATH}`,GITHUB_EVENT_PATH:eventPath,GITHUB_OUTPUT:output,GITHUB_EVENT_NAME:name,GITHUB_REPOSITORY:'owner/repo',GITHUB_SHA:head,TEST_STATUSES:JSON.stringify(statuses),...extra}});
+  return spawnSync(process.execPath,[script,'gate'],{cwd:temp,encoding:'utf8',env:{...testEnv,PATH:`${join(temp,'bin')}:${process.env.PATH}`,GITHUB_EVENT_PATH:eventPath,GITHUB_OUTPUT:output,GITHUB_EVENT_NAME:name,GITHUB_REPOSITORY:'owner/repo',GITHUB_SHA:head,TEST_STATUSES:JSON.stringify(statuses),...extra}});
  };
  const event={pull_request:{head:{sha:head,repo:{full_name:'owner/repo'}},base:{sha:base}}};
  assert.equal(invoke(event).status,0);assert.match(readFileSync(output,'utf8'),/skip=true/);

@@ -3,14 +3,14 @@ import { Skeleton } from "@agent-hub/ui";
 /**
  * A Settings tab while it loads, inside the dialog's content pane (which
  * already pads it). Mirrors SettingsPanel, measured against the rendered
- * General tab: the centred max-w-2xl column, the icon tile beside the title and its
+ * General tab: the centred max-w-3xl column, the icon tile beside the title and its
  * one-line description, then either the grouped cards of a form tab or the
  * toolbar and rows of a list tab. The shared RouteSkeleton added a second
  * layer of padding and a title-bar button no tab has.
  */
 export function SettingsPanelSkeleton({ variant }: { variant: "form" | "list" }) {
   return (
-    <div className="mx-auto max-w-2xl pr-6" role="status" aria-busy="true">
+    <div className="mx-auto max-w-3xl pr-6" role="status" aria-busy="true">
       {/* A skeleton is silent to a screen reader; this is what it hears. */}
       <span className="sr-only">Loading settings…</span>
       <div className="flex items-center gap-5">

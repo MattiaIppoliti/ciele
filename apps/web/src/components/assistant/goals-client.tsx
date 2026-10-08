@@ -129,7 +129,7 @@ function GoalForm({
         The answer must cite at least one Source
       </label>
       <div className="flex gap-2">
-        <Button size="sm" onClick={onSave} disabled={saving || !draft.question.trim()}>
+        <Button loading={saving} size="sm" onClick={onSave} disabled={saving || !draft.question.trim()}>
           <RollInText text={saving ? "Saving…" : saveLabel} />
         </Button>
         {onCancel && (
@@ -217,7 +217,7 @@ export function GoalsClient({
             </div>
 
             {goals.length === 0 && !adding && (
-              <EmptyState size="sm" title="No goals yet" description="Add the questions that matter most, like pricing or policies." action={canEdit ? <Button variant="outline" size="sm" disabled={full} onClick={() => setAdding(true)}>Add goal</Button> : undefined} />
+              <EmptyState size="sm" title="No goals yet"  action={canEdit ? <Button variant="outline" size="sm" disabled={full} onClick={() => setAdding(true)}>Add goal</Button> : undefined} />
             )}
 
             {goals.length > 0 && (

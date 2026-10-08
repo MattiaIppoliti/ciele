@@ -209,7 +209,7 @@ export function ImprovementsKanban({
               {items.length === 0 ? (
                 <EmptyState size="sm"
                   title={lanes.draggingId ? "Drop an improvement here" : filterActive ? "No matching improvements" : "No improvements in this lane"}
-                  description={lanes.draggingId ? "Release to move it into this status." : filterActive ? "Try another search or load more improvements." : canEdit ? "Move an improvement here when it reaches this status." : "Your team's improvements will appear here."}
+
                 />
               ) : (
                 // Lanes sit side by side, so the budget is per lane: the top

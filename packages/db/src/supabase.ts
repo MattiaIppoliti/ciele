@@ -1328,6 +1328,17 @@ function supabaseTable<K extends DbTableName>(
 ): DbTableAccessor<K> {
   const spec = DB_TABLE_SPECS[name];
   return {
+    async count(filter = {}) {
+      let query = client.from(spec.table).select("id", { count: "exact", head: true });
+      for (const [key, value] of Object.entries(filter)) {
+        if (value === undefined) continue;
+        const column = camelToSnakeKey(key);
+        query = value === null ? query.is(column, null) : query.eq(column, value);
+      }
+      const result = await query;
+      if (result.error) throw result.error;
+      return result.count ?? 0;
+    },
     async list(filter = {}, options) {
       let query = client.from(spec.table).select("*");
       for (const [key, value] of Object.entries(filter)) {
@@ -5877,6 +5888,15 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         })
         .select()
         .single());
+      return toAlert(data as AlertRow);
+    },
+
+    async updateAlert(id, patch, updatedBy) {
+      const data = must(await client.from("alerts").update({
+        ...patch,
+        ...(patch.status ? { resolved_at: patch.status === "resolved" ? new Date().toISOString() : null,
+          resolved_by: patch.status === "resolved" ? updatedBy ?? null : null } : {}),
+      }).eq("id", id).select().single());
       return toAlert(data as AlertRow);
     },
 

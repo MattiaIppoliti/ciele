@@ -35,6 +35,7 @@ import {
 } from "@/lib/table-sort";
 import { cn } from "@/lib/utils";
 import { canAutoFocus } from "@/lib/auto-focus";
+import { useTableChange } from "./table-history";
 
 /**
  * A column header that does something when you click it.
@@ -62,6 +63,8 @@ export interface ColumnSort {
   /** "A to Z" reads wrong on a date and "Oldest first" reads wrong on a name. */
   ascLabel?: string;
   descLabel?: string;
+  /** Complete sort state, so undo can restore a different sorted column. */
+  restore?: { value: ClientSort | null; onChange: (value: ClientSort | null) => void; key: string };
 }
 
 export type ColumnFilter =
@@ -99,6 +102,23 @@ export function TableColumnHeader({
   align?: "left" | "right";
 }) {
   const [open, setOpen] = React.useState(false);
+  const changeFilter = useTableChange(filter?.value ?? "", (value: string) => filter?.onChange(value), "Filter column");
+  const restoreSort = useTableChange(sort?.restore?.value ?? null,
+    (value: ClientSort | null) => sort?.restore?.onChange(value), "Sort rows");
+  const restoreWidth = useTableChange(resize?.value ?? 0,
+    (value: number) => resize?.onCommit(value), "Reset column width");
+  const resetWidth = () => {
+    if (resize?.resetWidth !== undefined) restoreWidth(resize.resetWidth);
+    else resize?.onReset();
+  };
+  const applySort = (direction: ColumnSortDirection) => {
+    if (sort?.restore) restoreSort({ key: sort.restore.key, ascending: direction === "asc" });
+    else sort?.onSort(direction);
+  };
+  const clearSort = () => {
+    if (sort?.restore) restoreSort(null);
+    else sort?.onClear?.();
+  };
   const filtered = Boolean(filter?.value);
   const sorted = sort?.direction ?? null;
 
@@ -120,14 +140,14 @@ export function TableColumnHeader({
           {sort && (
             <>
               <ContextMenuItem
-                onSelect={() => sort.onSort("asc")}
+                onSelect={() => applySort("asc")}
                 textValue={sort.ascLabel ?? "Sort ascending"}
               >
                 <ArrowUp className="size-4 shrink-0" />
                 {sort.ascLabel ?? "Sort ascending"}
               </ContextMenuItem>
               <ContextMenuItem
-                onSelect={() => sort.onSort("desc")}
+                onSelect={() => applySort("desc")}
                 textValue={sort.descLabel ?? "Sort descending"}
               >
                 <ArrowDown className="size-4 shrink-0" />
@@ -135,7 +155,7 @@ export function TableColumnHeader({
               </ContextMenuItem>
               {sort.onClear && sorted && (
                 <ContextMenuItem
-                  onSelect={() => sort.onClear?.()}
+                  onSelect={() => clearSort()}
                   textValue="Clear sort"
                 >
                   <X className="size-4 shrink-0" />
@@ -160,7 +180,7 @@ export function TableColumnHeader({
               </ContextMenuItem>
               {filter.value && (
                 <ContextMenuItem
-                  onSelect={() => filter.onChange("")}
+                  onSelect={() => changeFilter("")}
                   textValue="Clear filter"
                 >
                   <X className="size-4 shrink-0" />
@@ -175,7 +195,7 @@ export function TableColumnHeader({
               {sort && <ContextMenuSeparator />}
               <ContextMenuRadioGroup
                 value={filter.value}
-                onValueChange={(next) => filter.onChange(next)}
+                onValueChange={(next) => changeFilter(next)}
               >
                 <ContextMenuRadioItem value="" textValue={filter.anyLabel}>
                   {filter.anyLabel}
@@ -197,7 +217,7 @@ export function TableColumnHeader({
             <>
               <ContextMenuSeparator />
               <ContextMenuItem
-                onSelect={resize.onReset}
+                onSelect={resetWidth}
                 textValue="Reset column width"
               >
                 <Columns3 className="size-4 shrink-0" />
@@ -245,11 +265,12 @@ export function TableColumnHeader({
           render={
             <button
               type="button"
+              aria-label={typeof label === "string" ? `${label} column options` : undefined}
               className={cn(
                 // No `max-w-full` or truncation here: inside a table cell it
                 // makes the browser size the column to its minimum, and
                 // "Linked assistants" came out as "Linked assist…".
-                "press-text hover:text-foreground -mx-1.5 flex max-w-full items-center gap-1 rounded-md px-1.5 py-1 whitespace-nowrap transition-colors",
+                "press-control hover:bg-alpha-light hover:text-foreground aria-expanded:bg-alpha-light focus-visible:outline-ring -mx-1.5 flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-2 whitespace-nowrap focus-visible:outline-2",
                 (sorted || filtered) && "text-foreground",
                 align === "right" && "flex-row-reverse"
               )}
@@ -260,9 +281,9 @@ export function TableColumnHeader({
           {/* The caret is the affordance, so it appears on hover and stays
               while the column is doing something. */}
           {sorted === "asc" ? (
-            <ArrowUp className="size-3.5 shrink-0" />
+            <ArrowUp className="ml-auto size-3.5 shrink-0 text-brand-ink" />
           ) : sorted === "desc" ? (
-            <ArrowDown className="size-3.5 shrink-0" />
+            <ArrowDown className="ml-auto size-3.5 shrink-0 text-brand-ink" />
           ) : (
             <ChevronsUpDown className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover/th:opacity-50 group-focus-within/th:opacity-50" />
           )}
@@ -280,7 +301,7 @@ export function TableColumnHeader({
                 icon={ArrowUp}
                 selected={sorted === "asc"}
                 onClick={() => {
-                  sort.onSort("asc");
+                  applySort("asc");
                   setOpen(false);
                 }}
               >
@@ -290,7 +311,7 @@ export function TableColumnHeader({
                 icon={ArrowDown}
                 selected={sorted === "desc"}
                 onClick={() => {
-                  sort.onSort("desc");
+                  applySort("desc");
                   setOpen(false);
                 }}
               >
@@ -300,7 +321,7 @@ export function TableColumnHeader({
                 <MenuItem
                   icon={X}
                   onClick={() => {
-                    sort.onClear?.();
+                    clearSort();
                     setOpen(false);
                   }}
                 >
@@ -320,7 +341,7 @@ export function TableColumnHeader({
                   autoFocus={canAutoFocus()}
                   value={filter.value}
                   placeholder={filter.placeholder ?? "Contains…"}
-                  onChange={(e) => filter.onChange(e.target.value)}
+                  onChange={(e) => changeFilter(e.target.value)}
                   className="h-8 pl-8 text-sm"
                 />
               </div>
@@ -329,7 +350,7 @@ export function TableColumnHeader({
                   variant="ghost"
                   size="sm"
                   className="mt-1 w-full justify-start"
-                  onClick={() => filter.onChange("")}
+                  onClick={() => changeFilter("")}
                 >
                   <X className="mr-1.5 size-3.5" /> Clear filter
                 </Button>
@@ -342,7 +363,7 @@ export function TableColumnHeader({
               <MenuItem
                 selected={filter.value === ""}
                 onClick={() => {
-                  filter.onChange("");
+                  changeFilter("");
                   setOpen(false);
                 }}
               >
@@ -353,7 +374,7 @@ export function TableColumnHeader({
                   key={option.value}
                   selected={filter.value === option.value}
                   onClick={() => {
-                    filter.onChange(option.value);
+                    changeFilter(option.value);
                     setOpen(false);
                   }}
                 >
@@ -417,6 +438,7 @@ export function useClientSort(initial: ClientSort | null = null): {
     column: (key, labels) => ({
       direction:
         sort?.key === key ? (sort.ascending ? "asc" : "desc") : null,
+      restore: { value: sort, onChange: setSort, key },
       ascLabel: labels?.asc,
       descLabel: labels?.desc,
       onSort: (next) => setSort({ key, ascending: next === "asc" }),

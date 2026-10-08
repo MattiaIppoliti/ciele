@@ -35,7 +35,7 @@ export function TeammateDefaultModelSettings({ teammates, models }: {
   }
   return <section className="mt-4 rounded-xl border bg-card p-4 shadow-light">
     <h2 className="text-lg font-medium">Teammate default model</h2>
-    <p className="mt-1 mb-5 text-sm text-muted-foreground">Choose the model used when a Teammate runs on Auto.</p>
+
     <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-1.5"><Label>Teammate</Label><Select value={teammateId} onValueChange={setTeammateId} disabled={saving || !teammates.length}>
         <SelectTrigger aria-label="Default model Teammate"><SelectValue placeholder="No editable Teammates" /></SelectTrigger>

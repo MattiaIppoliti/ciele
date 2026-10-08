@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { Loader2 } from "lucide-react";
@@ -44,9 +45,8 @@ export function TableOpenCell({
         aria-hidden
         className="from-card pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l to-transparent opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100"
       />
-      <Link
-        data-slot="table-open-action"
-        href={href}
+      <CieleButton variant="secondary" size="sm" data-slot="table-open-action" render={<Link href={href} />}
+
         aria-label={`Open ${label}`}
         // Once clicked it stays up: the next layer is a server render, and a
         // control that fades out on `mouseleave` while the page is still
@@ -55,7 +55,7 @@ export function TableOpenCell({
       >
         <OpenGlyph />
         Open
-      </Link>
+      </CieleButton>
     </div>
   );
 }

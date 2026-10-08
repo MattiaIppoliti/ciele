@@ -1,6 +1,7 @@
 "use client";
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
+import { TableCategory, type TableCategoryTone } from "@/components/ui/table-editable-cell";
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useMemo, useState, useTransition } from "react";
 import type { Invite, Member, Role } from "@agent-hub/core";
@@ -11,7 +12,6 @@ import { toast } from "@/lib/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { createInviteAction, updateMemberRoleAction } from "@/app/actions";
 import { Table, type TableColumn } from "@/components/motion/table";
-import { TablePagination } from "@/components/ui/table-pagination";
 import { RemoveMemberModal } from "@/components/settings/remove-member-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
@@ -159,7 +159,7 @@ export function MembersClient({
             userId={row.kind === "member" ? row.subjectId : null}
             email={row.email}
           />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate font-medium">
               <RollInText text={row.name} />
               {row.isSelf && <span className="text-muted-foreground"> (you)</span>}
@@ -175,6 +175,9 @@ export function MembersClient({
     },
     {
       key: "status",
+      filterOptions: [{ value: "active", label: "Active" }, { value: "pending", label: "Pending" }],
+      filterLabel: "Status",
+      filterAnyLabel: "All statuses",
       header: "Status",
       accessor: (row) => row.status,
       sortable: true,
@@ -199,48 +202,22 @@ export function MembersClient({
     },
     {
       key: "role",
+      filterOptions: ["owner", "admin", "editor", "viewer"].map((value) => ({ value, label: capitalize(value) })),
+      filterLabel: "Role",
       header: "Role",
       accessor: (row) => row.role,
       sortable: true,
       width: "18%",
-      // A pending invite's role is fixed at creation; there is no member row
-      // to update yet, so it renders as a badge like an unmanageable member.
-      cell: (row) =>
-        row.kind === "member" && canManageRow(row, manageOpts) ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-label={`Role for ${row.name}: ${row.role}`}
-                />
-              }
-            >
-              <RollInText text={capitalize(row.role)} />
-              <ChevronDown className="size-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {assignableRoles(canManageOwners).map((role) => (
-                <DropdownMenuItem
-                  key={role}
-                  className="capitalize"
-                  onClick={() => changeRole(row, role)}
-                >
-                  {role}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <Badge variant="outline" className="capitalize">
-            {row.role}
-          </Badge>
-        ),
+      editor: (row) => row.kind === "member" && canManageRow(row, manageOpts) ? {
+        value: row.role, label: `Role for ${row.name}`,
+        options: assignableRoles(canManageOwners).map((value) => ({ value, label: capitalize(value) })),
+        onSave: (value) => changeRole(row, value as Role),
+      } : undefined,
+      cell: (row) => <TableCategory tone={({ owner: "purple", admin: "blue", editor: "green", viewer: "gray" } satisfies Record<Role, TableCategoryTone>)[row.role]}>{capitalize(row.role)}</TableCategory>,
     },
     {
       key: "actions",
-      header: <span className="sr-only">Actions</span>,
+      header: "Actions",
       align: "right",
       width: "12%",
       cell: (row) => (
@@ -293,11 +270,13 @@ export function MembersClient({
       <SectionTimeline>
       <TimelineSection title="Members">
       <Table
+        title="Members"
         data={rows}
+        searchValue={(row) => `${row.name} ${row.email ?? ""}`}
         columns={columns}
         getRowId={(row) => row.id}
         emptyState="No members yet"
-        footer={<TablePagination total={rows.length} noun="member" />}
+        noun="member"
       />
       </TimelineSection>
 
@@ -313,7 +292,7 @@ export function MembersClient({
           <p className="text-muted-foreground text-sm">
             Creates a join link you can share. Email is optional (just a note).
           </p>
-          <form onSubmit={handleInvite} className="mt-3 flex flex-wrap gap-2">
+          <form onSubmit={handleInvite} className="members-invite-form mt-3 flex flex-wrap items-center gap-2">
             <Input
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
@@ -322,7 +301,7 @@ export function MembersClient({
               type="email"
               autoComplete="off"
               spellCheck={false}
-              className="w-64"
+              className="h-9 w-full sm:w-64"
             />
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -330,6 +309,7 @@ export function MembersClient({
                   <Button
                     type="button"
                     variant="outline"
+                    className="h-9"
                     aria-label={`Invite role: ${inviteRole}`}
                   />
                 }
@@ -349,7 +329,7 @@ export function MembersClient({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button type="submit" disabled={inviting}>
+            <Button type="submit" className="h-9" disabled={inviting}>
               <Plus className="size-4" />
               <RollInText text={inviting ? "Creating…" : "Create invite"} />
             </Button>

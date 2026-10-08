@@ -215,13 +215,13 @@ export function EmptyState({
             </Swap>
           </AnimatePresence>
         </h3>
-        <p>
+        {description && <p>
           <AnimatePresence mode="popLayout" initial={false}>
             <Swap key={description} className={styles.line} {...swap}>
               {description}
             </Swap>
           </AnimatePresence>
-        </p>
+        </p>}
       </HeightFrame>
       {action && <div className={styles.action}>{action}</div>}
     </section>

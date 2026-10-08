@@ -16,7 +16,7 @@ import { messageText } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 
 import { ExternalLink, Plus, Search, Trash2, X } from "lucide-react";
-import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, Loader2, SquareArrowOutUpRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2, SquareArrowOutUpRight } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { FoldersIcon } from "@/components/ui/icons/folders";
@@ -31,7 +31,7 @@ import {
 } from "@/app/actions";
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { Button } from "@agent-hub/ui";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   isRedirectError,
   useConfirmDelete,
@@ -546,7 +546,7 @@ export function ImprovementDetail({
               <h2 className="font-semibold">Associated Messages</h2>
               {associationTotal > 1 && (
                 <div className="flex items-center gap-2 text-sm">
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     type="button"
                     aria-label="Previous message"
                     disabled={page === 0}
@@ -554,7 +554,7 @@ export function ImprovementDetail({
                     className="hover:bg-muted press-control rounded-md p-0.5 transition-colors disabled:opacity-40"
                   >
                     <ChevronLeft className="size-4" />
-                  </button>
+                  </Button>
                   <span
                     aria-live="polite"
                     className="text-muted-foreground text-xs tabular-nums"
@@ -562,7 +562,7 @@ export function ImprovementDetail({
                     <RollingNumber value={page + 1} /> of{" "}
                     <RollingNumber value={associationTotal} />
                   </span>
-                  <button
+                  <Button variant="ghost" size="icon-sm"
                     type="button"
                     aria-label="Next message"
                     aria-busy={loadingAssociation || undefined}
@@ -575,7 +575,7 @@ export function ImprovementDetail({
                     ) : (
                       <ChevronRight className="size-4" />
                     )}
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -636,7 +636,7 @@ export function ImprovementDetail({
                 <div className="bg-card rounded-xl border p-4">
                   <h3 className="mb-2 font-semibold">Sources</h3>
                   {sources.length === 0 ? (
-                    <EmptyState size="sm" title="No sources" description="This answer has no stored source citations." />
+                    <EmptyState size="sm" title="No sources"  />
                   ) : (
                     <div className="flex flex-col gap-1">
                       {sources.map((s, i) => (
@@ -793,14 +793,14 @@ export function ImprovementDetail({
                       className="bg-muted inline-flex max-w-full min-w-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs"
                     >
                       <span className="truncate">{t}</span>
-                      <button
+                      <Button variant="ghost" size="icon-sm"
                         type="button"
                         className="shrink-0"
                         aria-label={`Remove ${t}`}
                         onClick={() => removeTag(t)}
                       >
                         <X className="size-3" />
-                      </button>
+                      </Button>
                     </span>
                   ))}
                   <input
@@ -997,33 +997,8 @@ export function ImprovementDetail({
 
           {/* Due Date */}
           <FieldPill label="Due Date">
-            <Popover>
-              <PopoverTrigger
-                className={PILL}
-                disabled={!canEdit}
-                aria-label={`Due date: ${
-                  dueDate ? formatDay(`${dueDate}T00:00:00.000Z`) : "none"
-                }`}
-              >
-                <CalendarIcon className="size-3.5" />
-                {dueDate ? formatDay(`${dueDate}T00:00:00.000Z`) : "None"}
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-auto p-3">
-                <Calendar
-                  value={dueDate}
-                  onSelect={(iso) => changeDueDate(iso)}
-                />
-                {dueDate && (
-                  <button
-                    type="button"
-                    onClick={() => changeDueDate(null)}
-                    className="text-muted-foreground press-text mt-2 w-full text-center text-xs hover:underline"
-                  >
-                    Clear due date
-                  </button>
-                )}
-              </PopoverContent>
-            </Popover>
+            <DatePicker label="Due date" value={dueDate} disabled={!canEdit} allowClear
+              onChange={value => changeDueDate(value || null)} className="max-w-full" />
           </FieldPill>
         </aside>
       </div>
@@ -1254,7 +1229,7 @@ function SuggestedFix({
               </div>
             ) : (
               <div className="flex gap-2">
-                <Button size="sm" onClick={accept} disabled={pending}>
+                <Button loading={pending} size="sm" onClick={accept} disabled={pending}>
                   Accept &amp; add FAQ
                 </Button>
                 <Button

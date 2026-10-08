@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import { useApplicationConnectedToast } from "@/components/knowledge/use-application-connected";
+import { IntegrationSettings } from "@/components/knowledge/integration-settings";
 import { SlackBotDialog } from "@/components/knowledge/slack-bot-dialog";
 import type {
   ApplicationImport,
@@ -19,6 +20,8 @@ import type { ApplicationScopeOption } from "@agent-hub/agent";
 import {
   AppWindow,
   Copy,
+  Eye,
+  EyeOff,
   Maximize2,
   Pause,
   Play,
@@ -28,18 +31,7 @@ import {
   Unlink,
 } from "lucide-react";
 import { Settings2 } from "lucide-react";
-import {
-  Badge,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-} from "@agent-hub/ui";
+import { DialogBody, Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
 import {
   createApplicationImportAction,
   discoverApplicationScopesAction,
@@ -63,7 +55,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TableColumnHeader } from "@/components/ui/table-column-header";
+import { TableFilter, TableSearch } from "@/components/ui/table-filters";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { useClientPage, TableColumnHeader } from "@/components/ui/table-column-header";
 import { useColumnWidths, type TableColumnLayout } from "@/components/ui/table-columns";
 import { TableOpenCell } from "@/components/ui/table-open-cell";
 import { TableRowMenu } from "@/components/ui/table-menu";
@@ -152,9 +146,13 @@ function OAuthSetupDialog({
   provider,
   connectionId,
   initialName,
+  configured,
+  showSetupGuide,
   onClose,
 }: {
-  provider: "salesforce" | "servicenow" | null;
+  provider: ApplicationProvider | null;
+  configured: boolean;
+  showSetupGuide: boolean;
   connectionId?: string;
   initialName?: string;
   onClose: () => void;
@@ -165,33 +163,48 @@ function OAuthSetupDialog({
     connectionName: initialName ?? "",
   }));
   const [isPending, startTransition] = useTransition();
+  const [secretVisible, setSecretVisible] = useState(false);
   const definition = provider ? PROVIDER_BY_ID[provider] : null;
+  const needsRegistration = definition?.auth === "configured_oauth";
+  const dirty =
+    form.connectionName !== (initialName ?? "") ||
+    form.baseUrl !== "" ||
+    form.clientId !== "" ||
+    form.clientSecret !== "";
   const { requestClose, confirmDeleteModal } = useDiscardGuard({
     open: provider !== null,
-    dirty:
-      form.connectionName !== (initialName ?? "") ||
-      form.baseUrl !== "" ||
-      form.clientId !== "" ||
-      form.clientSecret !== "",
+    dirty,
     pending: isPending,
     onClose,
     description: "This connection has not been set up yet.",
   });
 
-  const complete = Boolean(
-    form.connectionName.trim() &&
-      form.clientId.trim() &&
-      form.clientSecret.trim() &&
-      form.baseUrl.trim()
-  );
+  const complete = needsRegistration
+    ? Boolean(
+        form.connectionName.trim() &&
+          form.clientId.trim() &&
+          form.clientSecret.trim() &&
+          form.baseUrl.trim(),
+      )
+    : configured;
 
   function submit() {
-    if (!provider) return;
+    if (!provider || isPending || !complete) return;
     const popup = window.open(
       "about:blank",
       "ciele-application-oauth",
-      "popup,width=560,height=760"
+      "popup,width=560,height=760",
     );
+    if (!popup) {
+      if (!needsRegistration) {
+        const params = new URLSearchParams({ returnTo: pathname });
+        if (connectionId) params.set("connectionId", connectionId);
+        window.location.assign(`/application-connect/${provider}?${params}`);
+      } else {
+        toast.error("Allow pop-ups to continue authorization.");
+      }
+      return;
+    }
     startTransition(async () => {
       try {
         const response = await fetch(
@@ -201,20 +214,31 @@ function OAuthSetupDialog({
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               returnTo: pathname,
-              connectionName: form.connectionName,
-              loginUrl: form.baseUrl,
-              baseUrl: form.baseUrl,
-              clientId: form.clientId,
-              clientSecret: form.clientSecret,
               connectionId,
+              ...(needsRegistration
+                ? {
+                    connectionName: form.connectionName,
+                    loginUrl: form.baseUrl,
+                    baseUrl: form.baseUrl,
+                    clientId: form.clientId,
+                    clientSecret: form.clientSecret,
+                  }
+                : {}),
             }),
-          }
+          },
         );
-        if (!response.ok) {
-          throw new Error(await response.text());
+        if (!response.ok || response.redirected) {
+          throw new Error("Could not start authorization. Please try again.");
         }
-        const result = (await response.json()) as { authorizationUrl: string };
-        if (!popup) throw new Error("Allow pop-ups to continue authorization.");
+        const result: unknown = await response.json();
+        if (
+          !result ||
+          typeof result !== "object" ||
+          !("authorizationUrl" in result) ||
+          typeof result.authorizationUrl !== "string"
+        ) {
+          throw new Error("Could not start authorization. Please try again.");
+        }
         popup.location.href = result.authorizationUrl;
         onClose();
       } catch (error) {
@@ -226,98 +250,209 @@ function OAuthSetupDialog({
 
   return (
     <>
-    <Dialog open={provider !== null} onOpenChange={(open) => !open && requestClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Connect {definition?.label}</DialogTitle>
-          <DialogDescription>
-            Sign in through the provider. Tokens remain server-side and encrypted.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="application-connection-name">Name of integration</Label>
-            <Input
-              id="application-connection-name"
-              autoComplete="off"
-              value={form.connectionName}
-              onChange={(event) =>
-                setForm({ ...form, connectionName: event.target.value })
+      <Dialog
+        open={provider !== null}
+        onOpenChange={(open) => !open && !isPending && requestClose()}
+      >
+        <DialogContent
+          className="bg-table-frame max-h-[90dvh] overflow-y-auto rounded-3xl border p-0 ring-0 sm:max-w-xl"
+          showCloseButton={!isPending}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <IntegrationSettings
+              logo={
+                provider ? (
+                  <AppBrandMark provider={provider} size="size-10" />
+                ) : null
               }
-              placeholder={definition ? `${definition.label} knowledge` : "Knowledge connection"}
-            />
-            <p className="text-muted-foreground text-xs">
-              A name that helps your Organization remember this connection.
-            </p>
-          </div>
-          {provider ? (
-            <div className="space-y-2">
-              <Label htmlFor="application-base-url">Base URL</Label>
-              <Input
-                id="application-base-url"
-                type="url"
-                inputMode="url"
-                autoComplete="off"
-                spellCheck={false}
-                value={form.baseUrl}
-                onChange={(event) =>
-                  setForm({ ...form, baseUrl: event.target.value })
-                }
-                placeholder={
-                  provider === "salesforce"
-                    ? "https://login.salesforce.com"
-                    : "https://your-instance.service-now.com"
-                }
-              />
-              {provider === "salesforce" && (
-                <p className="text-muted-foreground text-xs">
-                  Use login.salesforce.com, test.salesforce.com, or your My Domain URL.
-                </p>
+              title={
+                <DialogTitle className="text-lg">
+                  {connectionId ? "Reconnect" : "Connect"} {definition?.label}
+                </DialogTitle>
+              }
+
+              footer={
+                <>
+                  {dirty && (
+                    <span
+                      className="text-muted-foreground mr-auto text-xs"
+                      role="status"
+                    >
+                      Unsaved setup
+                    </span>
+                  )}
+                  {dirty && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={isPending}
+                      onClick={() => {
+                        setForm({
+                          ...EMPTY_OAUTH_SETUP,
+                          connectionName: initialName ?? "",
+                        });
+                        setSecretVisible(false);
+                      }}
+                    >
+                      Discard
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending}
+                    onClick={requestClose}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    loading={isPending}
+                    type="submit"
+                    disabled={isPending || !complete}
+                  >
+                    <RollInText
+                      text={isPending ? "Connecting…" : "Continue connecting"}
+                    />
+                  </Button>
+                </>
+              }
+            >
+              {needsRegistration ? (
+                <>
+                  <div className="space-y-2 p-5">
+                    <Label htmlFor="application-connection-name">
+                      Name of integration
+                    </Label>
+                    <Input
+                      id="application-connection-name"
+                      className="h-11 rounded-xl"
+                      autoComplete="off"
+                      required
+                      disabled={isPending}
+                      value={form.connectionName}
+                      onChange={(event) =>
+                        setForm({ ...form, connectionName: event.target.value })
+                      }
+                      placeholder={`${definition?.label} knowledge`}
+                    />
+
+                  </div>
+                  <div className="space-y-2 p-5">
+                    <Label htmlFor="application-base-url">Site address</Label>
+                    <Input
+                      id="application-base-url"
+                      className="h-11 rounded-xl"
+                      type="url"
+                      inputMode="url"
+                      autoComplete="off"
+                      spellCheck={false}
+                      required
+                      pattern="https://.+"
+                      disabled={isPending}
+                      aria-describedby="application-base-url-hint"
+                      value={form.baseUrl}
+                      onChange={(event) =>
+                        setForm({ ...form, baseUrl: event.target.value })
+                      }
+                      placeholder={
+                        provider === "salesforce"
+                          ? "https://login.salesforce.com"
+                          : "https://your-instance.service-now.com"
+                      }
+                    />
+                    <p
+                      id="application-base-url-hint"
+                      className="text-muted-foreground text-xs"
+                    >{provider === "salesforce" ? "login.salesforce.com, test.salesforce.com or your https:// My Domain URL." : "Your ServiceNow https:// instance URL."}</p>
+                  </div>
+                  <div className="space-y-2 p-5">
+                    <Label htmlFor="application-client-id">
+                      OAuth client ID
+                    </Label>
+                    <Input
+                      id="application-client-id"
+                      className="h-11 rounded-xl"
+                      spellCheck={false}
+                      autoComplete="off"
+                      required
+                      disabled={isPending}
+                      value={form.clientId}
+                      onChange={(event) =>
+                        setForm({ ...form, clientId: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2 p-5">
+                    <Label htmlFor="application-client-secret">
+                      OAuth client secret
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="application-client-secret"
+                        type={secretVisible ? "text" : "password"}
+                        className="h-11 rounded-xl pr-11"
+                        autoComplete="new-password"
+                        required
+                        disabled={isPending}
+                        value={form.clientSecret}
+                        onChange={(event) =>
+                          setForm({ ...form, clientSecret: event.target.value })
+                        }
+                      />
+                      <span className="absolute top-1/2 right-1 -translate-y-1/2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isPending}
+                          aria-label={
+                            secretVisible
+                              ? "Hide client secret"
+                              : "Show client secret"
+                          }
+                          onClick={() => setSecretVisible(!secretVisible)}
+                        >
+                          {secretVisible ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
+                        </Button>
+                      </span>
+                    </div>
+
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3 p-5 text-sm">
+                  <p>
+                    {configured
+                      ? `Sign in to ${definition?.label}, approve access, then return to Ciele.`
+                      : `This Ciele deployment is not set up to connect to ${definition?.label} yet. Ask the person who manages Ciele to enable this connection.`}
+                  </p>
+
+                  {!configured && showSetupGuide && (
+                    <a
+                      href="https://docs.ciele.app/knowledge/applications#configure-oauth-for-a-self-hosted-deployment"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="press-text inline-block underline underline-offset-4"
+                    >
+                      View connection setup guide
+                    </a>
+                  )}
+                </div>
               )}
-            </div>
-          ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="application-client-id">OAuth client ID</Label>
-            <Input
-              id="application-client-id"
-              spellCheck={false}
-              value={form.clientId}
-              onChange={(event) =>
-                setForm({ ...form, clientId: event.target.value })
-              }
-              autoComplete="off"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="application-client-secret">OAuth client secret</Label>
-            <Input
-              id="application-client-secret"
-              type="password"
-              value={form.clientSecret}
-              onChange={(event) =>
-                setForm({ ...form, clientSecret: event.target.value })
-              }
-              autoComplete="new-password"
-            />
-          </div>
-          {provider === "servicenow" && (
-            <p className="text-muted-foreground text-xs">
-              Ciele uses ServiceNow OAuth Authorization Code. Your ServiceNow
-              username and password are never stored in Ciele.
-            </p>
-          )}
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button type="button" disabled={isPending || !complete} onClick={submit}>
-            <RollInText text={isPending ? "Connecting…" : "Connect"} />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+            </IntegrationSettings>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }
@@ -327,7 +462,7 @@ function providerConfigFields(
   config: Record<string, string>,
   setConfig: (next: Record<string, string>) => void,
   scopes: ApplicationScopeOption[],
-  scopesLoading: boolean
+  scopesLoading: boolean,
 ) {
   const update = (key: string, value: string) =>
     setConfig({ ...config, [key]: value });
@@ -346,46 +481,47 @@ function providerConfigFields(
     return (
       <div className="space-y-2">
         <fieldset className="min-w-0 space-y-2">
-        <legend className="text-sm leading-none font-medium">Channels</legend>
-        <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
-          {scopesLoading && (
-            <p role="status" className="p-2 text-sm">
-              Loading channels…
-            </p>
-          )}
-          {!scopesLoading && channels.length === 0 && (
-            <p className="p-2 text-sm text-muted-foreground">
-              No Slack channels were found. Invite Ciele to a channel, then
-              reopen this dialog.
-            </p>
-          )}
-          {channels.map((scope) => {
-            const isMember =
-              scope.metadata.member !== false && scope.metadata.shared !== true;
-            const isSelected = selected.has(scope.id);
-            return (
-              <label
-                key={scope.id}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  disabled={!isMember && !isSelected}
-                  onChange={() => toggleCsv("channelIds", scope.id)}
-                />
-                <span className="min-w-0 flex-1 truncate">{scope.label}</span>
-                {!isMember && (
-                  <span className="text-xs text-muted-foreground">
-                    {scope.metadata.shared === true
-                      ? "Slack Connect, not supported"
-                      : "Invite Ciele first"}
-                  </span>
-                )}
-              </label>
-            );
-          })}
-        </div>
+          <legend className="text-sm leading-none font-medium">Channels</legend>
+          <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
+            {scopesLoading && (
+              <p role="status" className="p-2 text-sm">
+                Loading channels…
+              </p>
+            )}
+            {!scopesLoading && channels.length === 0 && (
+              <p className="p-2 text-sm text-muted-foreground">
+                No Slack channels were found. Invite Ciele to a channel, then
+                reopen this dialog.
+              </p>
+            )}
+            {channels.map((scope) => {
+              const isMember =
+                scope.metadata.member !== false &&
+                scope.metadata.shared !== true;
+              const isSelected = selected.has(scope.id);
+              return (
+                <label
+                  key={scope.id}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    disabled={!isMember && !isSelected}
+                    onChange={() => toggleCsv("channelIds", scope.id)}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{scope.label}</span>
+                  {!isMember && (
+                    <span className="text-xs text-muted-foreground">
+                      {scope.metadata.shared === true
+                        ? "Slack Connect, not supported"
+                        : "Invite Ciele first"}
+                    </span>
+                  )}
+                </label>
+              );
+            })}
+          </div>
         </fieldset>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -394,7 +530,9 @@ function providerConfigFields(
               value={config.historyDays ?? "180"}
               onValueChange={(value) => update("historyDays", value ?? "180")}
             >
-              <SelectTrigger id="application-history-days" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="application-history-days" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="30">30 days</SelectItem>
                 <SelectItem value="90">90 days</SelectItem>
@@ -405,16 +543,19 @@ function providerConfigFields(
           </div>
         </div>
         <p className="text-muted-foreground text-xs">
-          Only channels Ciele has joined can be imported. Private channels appear once invited.
+          Only channels Ciele has joined can be imported. Private channels
+          appear once invited.
         </p>
       </div>
     );
   }
   if (provider === "onedrive" || provider === "google_drive") {
     const onedrive = provider === "onedrive";
-    const label = onedrive ? "Drive or folder" : "My Drive, Shared Drive, or folder";
+    const label = onedrive
+      ? "Drive or folder"
+      : "My Drive, Shared Drive, or folder";
     const selectable = scopes.filter(
-      (scope) => scope.kind === "drive" || scope.kind === "folder"
+      (scope) => scope.kind === "drive" || scope.kind === "folder",
     );
     return (
       <div className="space-y-2">
@@ -433,9 +574,25 @@ function providerConfigFields(
             });
           }}
         >
-          <SelectTrigger className="w-full" aria-label={label}><SelectValue placeholder={scopesLoading ? "Loading…" : onedrive ? "Select a drive or folder" : "Select a scope"} /></SelectTrigger>
+          <SelectTrigger className="w-full" aria-label={label}>
+            <SelectValue
+              placeholder={
+                scopesLoading
+                  ? "Loading…"
+                  : onedrive
+                    ? "Select a drive or folder"
+                    : "Select a scope"
+              }
+            />
+          </SelectTrigger>
           <SelectContent>
-            {selectable.map((scope) => <SelectItem key={scope.id} value={scope.id}>{scope.kind === "folder" ? `Folder · ${scope.label}` : scope.label}</SelectItem>)}
+            {selectable.map((scope) => (
+              <SelectItem key={scope.id} value={scope.id}>
+                {scope.kind === "folder"
+                  ? `Folder · ${scope.label}`
+                  : scope.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -450,17 +607,26 @@ function providerConfigFields(
         <div className="space-y-2">
           <Label htmlFor="application-language">Article language</Label>
           <Select
-            value={config.language ?? languages[0]?.metadata.language?.toString() ?? "en_US"}
+            value={
+              config.language ??
+              languages[0]?.metadata.language?.toString() ??
+              "en_US"
+            }
             onValueChange={(value) => update("language", value ?? "en_US")}
           >
             <SelectTrigger id="application-language" className="w-full">
-              <SelectValue placeholder={scopesLoading ? "Loading…" : "Select a language"} />
+              <SelectValue
+                placeholder={scopesLoading ? "Loading…" : "Select a language"}
+              />
             </SelectTrigger>
             <SelectContent>
               {languages.map((scope) => (
                 <SelectItem
                   key={scope.id}
-                  value={String(scope.metadata.language ?? scope.id.replace("language:", ""))}
+                  value={String(
+                    scope.metadata.language ??
+                      scope.id.replace("language:", ""),
+                  )}
                 >
                   {scope.label}
                 </SelectItem>
@@ -476,9 +642,18 @@ function providerConfigFields(
             </legend>
             <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
               {categories.map((scope) => (
-                <label key={scope.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm">
-                  <input type="checkbox" checked={selected.has(scope.id)} onChange={() => toggleCsv("dataCategories", scope.id)} />
-                  <span className="min-w-0 [overflow-wrap:anywhere]">{scope.label}</span>
+                <label
+                  key={scope.id}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(scope.id)}
+                    onChange={() => toggleCsv("dataCategories", scope.id)}
+                  />
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    {scope.label}
+                  </span>
                 </label>
               ))}
             </div>
@@ -488,12 +663,14 @@ function providerConfigFields(
     );
   }
   const knowledgeBases = scopes.filter(
-    (scope) => scope.kind === "knowledge_base"
+    (scope) => scope.kind === "knowledge_base",
   );
   const selectedKnowledgeBases = csvIds("knowledgeBaseIds");
   return (
     <fieldset className="min-w-0 space-y-2">
-      <legend className="text-sm leading-none font-medium">Knowledge bases</legend>
+      <legend className="text-sm leading-none font-medium">
+        Knowledge bases
+      </legend>
       <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
         {scopesLoading && (
           <p role="status" className="p-2 text-sm">
@@ -501,9 +678,18 @@ function providerConfigFields(
           </p>
         )}
         {knowledgeBases.map((scope) => (
-          <label key={scope.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm">
-            <input type="checkbox" checked={selectedKnowledgeBases.has(scope.id)} onChange={() => toggleCsv("knowledgeBaseIds", scope.id)} />
-            <span className="min-w-0 [overflow-wrap:anywhere]">{scope.label}</span>
+          <label
+            key={scope.id}
+            className="flex items-center gap-2 rounded px-2 py-1.5 text-sm"
+          >
+            <input
+              type="checkbox"
+              checked={selectedKnowledgeBases.has(scope.id)}
+              onChange={() => toggleCsv("knowledgeBaseIds", scope.id)}
+            />
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              {scope.label}
+            </span>
           </label>
         ))}
       </div>
@@ -526,10 +712,11 @@ function ImportDialog({
 }) {
   const [name, setName] = useState(editingImport?.name ?? "");
   const [cadence, setCadence] = useState<"manual" | "daily">(
-    editingImport?.cadence ?? "daily"
+    editingImport?.cadence ?? "daily",
   );
   const [assistantIds, setAssistantIds] = useState<string[]>(
-    editingImport?.assistantIds ?? (contextAssistantId ? [contextAssistantId] : [])
+    editingImport?.assistantIds ??
+      (contextAssistantId ? [contextAssistantId] : []),
   );
   const [config, setConfig] = useState<Record<string, string>>(() => {
     if (!editingImport) return {};
@@ -537,7 +724,7 @@ function ImportDialog({
       Object.entries(editingImport.config).map(([key, value]) => [
         key,
         Array.isArray(value) ? value.join(",") : String(value ?? ""),
-      ])
+      ]),
     );
     if (editingImport.config.allHistory === true) values.historyDays = "all";
     return values;
@@ -574,7 +761,9 @@ function ImportDialog({
         if (!cancelled) {
           setScopes(items);
           if (connection.provider === "salesforce") {
-            const firstLanguage = items.find((item) => item.kind === "language");
+            const firstLanguage = items.find(
+              (item) => item.kind === "language",
+            );
             if (firstLanguage) {
               setConfig((current) =>
                 current.language
@@ -583,9 +772,9 @@ function ImportDialog({
                       ...current,
                       language: String(
                         firstLanguage.metadata.language ??
-                          firstLanguage.id.replace("language:", "")
+                          firstLanguage.id.replace("language:", ""),
                       ),
-                    }
+                    },
               );
             }
           }
@@ -656,114 +845,119 @@ function ImportDialog({
 
   return (
     <>
-    <Dialog open={connection !== null} onOpenChange={(open) => !open && requestClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>
-            {editingImport ? "Edit" : "Import from"} {definition?.label}
-          </DialogTitle>
-          <DialogDescription>
-            Choose the content boundary and which assistants may answer from it.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="application-import-name">Import name</Label>
-            <Input
-              id="application-import-name"
-              autoComplete="off"
-              value={name}
-              onChange={(event) => {
-                setTouched(true);
-                setName(event.target.value);
-              }}
-              placeholder={`${definition?.label ?? "Application"} knowledge`}
-            />
-          </div>
-          {connection &&
-            providerConfigFields(
-              connection.provider,
-              config,
-              editConfig,
-              scopes,
-              scopesLoading
-            )}
-          <div className="space-y-2">
-            <Label>Synchronization</Label>
-            <Select
-              value={cadence}
-              onValueChange={(value) => {
-                setTouched(true);
-                setCadence((value ?? "daily") as "manual" | "daily");
-              }}
-            >
-              <SelectTrigger className="w-full" aria-label="Synchronization">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="manual">Manual only</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Linked assistants</legend>
-            <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border p-2">
-              {assistants.map((assistant) => {
-                const checked = assistantIds.includes(assistant.id);
-                return (
-                  <label
-                    key={assistant.id}
-                    className="hover:bg-muted flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={assistant.id === contextAssistantId}
-                      onChange={() => {
-                        setTouched(true);
-                        setAssistantIds(
-                          checked
-                            ? assistantIds.filter((id) => id !== assistant.id)
-                            : [...assistantIds, assistant.id]
-                        );
-                      }}
-                    />
-                    <span className="min-w-0 truncate">{assistant.title}</span>
-                  </label>
-                );
-              })}
+      <Dialog
+        open={connection !== null}
+        onOpenChange={(open) => !open && requestClose()}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingImport ? "Edit" : "Import from"} {definition?.label}
+            </DialogTitle>
+
+          </DialogHeader>
+          <DialogBody className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="application-import-name">Import name</Label>
+              <Input
+                id="application-import-name"
+                autoComplete="off"
+                value={name}
+                onChange={(event) => {
+                  setTouched(true);
+                  setName(event.target.value);
+                }}
+                placeholder={`${definition?.label ?? "Application"} knowledge`}
+              />
             </div>
-          </fieldset>
-          <div className="rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-400/30 dark:bg-amber-950/30 dark:text-amber-100">
-            Content is copied into Ciele. The linked Assistants can answer from it, without re-checking source permissions.
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={isPending || assistantIds.length === 0}
-            onClick={submit}
-          >
-            <RollInText
-              text={
-                isPending
-                  ? editingImport
-                    ? "Saving…"
-                    : "Creating…"
-                  : editingImport
-                    ? "Save and sync"
-                    : "Create import"
-              }
-            />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+            {connection &&
+              providerConfigFields(
+                connection.provider,
+                config,
+                editConfig,
+                scopes,
+                scopesLoading,
+              )}
+            <div className="space-y-2">
+              <Label>Synchronization</Label>
+              <Select
+                value={cadence}
+                onValueChange={(value) => {
+                  setTouched(true);
+                  setCadence((value ?? "daily") as "manual" | "daily");
+                }}
+              >
+                <SelectTrigger className="w-full" aria-label="Synchronization">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="manual">Manual only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Linked assistants</legend>
+              <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border p-2">
+                {assistants.map((assistant) => {
+                  const checked = assistantIds.includes(assistant.id);
+                  return (
+                    <label
+                      key={assistant.id}
+                      className="hover:bg-muted flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={assistant.id === contextAssistantId}
+                        onChange={() => {
+                          setTouched(true);
+                          setAssistantIds(
+                            checked
+                              ? assistantIds.filter((id) => id !== assistant.id)
+                              : [...assistantIds, assistant.id],
+                          );
+                        }}
+                      />
+                      <span className="min-w-0 truncate">
+                        {assistant.title}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <div className="rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-400/30 dark:bg-amber-950/30 dark:text-amber-100">
+              Content is copied into Ciele. The linked Assistants can answer
+              from it, without re-checking source permissions.
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={requestClose}>
+              Cancel
+            </Button>
+            <Button
+              loading={isPending}
+              type="button"
+              disabled={isPending || assistantIds.length === 0}
+              onClick={submit}
+            >
+              <RollInText
+                text={
+                  isPending
+                    ? editingImport
+                      ? "Saving…"
+                      : "Creating…"
+                    : editingImport
+                      ? "Save and sync"
+                      : "Create import"
+                }
+              />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }
@@ -817,11 +1011,10 @@ export function ApplicationKnowledgePanel({
     { lastRun: ApplicationSyncRun | null; sourceCount: number }
   >;
 }) {
-  const pathname = usePathname();
   // The OAuth setup dialog: which provider, and the connection being
   // reconnected when it is not a new one.
   const [oauth, setOauth] = useState<{
-    provider: "salesforce" | "servicenow";
+    provider: ApplicationProvider;
     connectionId?: string;
     connectionName?: string;
   } | null>(null);
@@ -843,6 +1036,13 @@ export function ApplicationKnowledgePanel({
         : imports,
     [contextAssistantId, imports]
   );
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const filteredImports = visibleImports.filter((item) => item.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()) &&
+    (!statusFilter || (item.enabled ? item.status : "paused") === statusFilter));
+  const pagedImports = useClientPage(filteredImports);
+  const importStatuses = Array.from(new Map(visibleImports.map((item) => [item.enabled ? item.status : "paused",
+    applicationImportStatusLabel(item.status, item.enabled)])).entries()).map(([value, label]) => ({ value, label }));
   const availableImports = useMemo(
     () =>
       contextAssistantId
@@ -862,19 +1062,7 @@ export function ApplicationKnowledgePanel({
     connectionId?: string,
     connectionName?: string
   ) {
-    if (definition.auth === "configured_oauth") {
-      setOauth({
-        provider: definition.provider as "salesforce" | "servicenow",
-        connectionId,
-        connectionName,
-      });
-      return;
-    }
-    const params = new URLSearchParams({ returnTo: pathname });
-    if (connectionId) params.set("connectionId", connectionId);
-    const url = `/application-connect/${definition.provider}?${params}`;
-    const popup = window.open(url, "ciele-application-oauth", "popup,width=560,height=760");
-    if (!popup) window.location.assign(url);
+    setOauth({ provider: definition.provider, connectionId, connectionName });
   }
 
   /** `startsIngestion` also wakes the bottom-right activity card. */
@@ -904,13 +1092,10 @@ export function ApplicationKnowledgePanel({
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold">Applications</h2>
-        <p className="text-muted-foreground text-sm">
-          Connect external systems directly to Ciele, choose what to import, and
-          keep the resulting sources synchronized.
-        </p>
+
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="overview-panels grid gap-6 md:grid-cols-2">
         {PROVIDERS.map((definition) => {
           const providerConnections = connections.filter(
             (connection) => connection.provider === definition.provider
@@ -927,44 +1112,21 @@ export function ApplicationKnowledgePanel({
           return (
             <section
               key={definition.provider}
-              className="rounded-xl border bg-card p-4"
+              data-slot="overview-card"
+              className="overview-card flex min-w-0 flex-col"
             >
-              <div className="flex items-start gap-3">
-                <AppBrandMark provider={definition.provider} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-semibold">{definition.label}</h3>
-                    {mayConnect && (
-                      <Button
-                        size="sm"
-                        variant={providerConnections.length > 0 ? "outline" : "default"}
-                        disabled={alreadyConnected}
-                        title={
-                          alreadyConnected
-                              ? `Only one ${definition.label} connection is allowed for this ${ownerType === "member" ? "Member" : "Organization"}.`
-                            : !availability.configured
-                              ? `Set up a connection to ${definition.label}`
-                              : undefined
-                        }
-                        onClick={() => connect(definition)}
-                      >
-                        <Plus className="size-3.5" /> Connect
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    {definition.description}
-                  </p>
-                </div>
-              </div>
+              <div data-slot="overview-card-content" className="overview-card-content min-h-32 min-w-0 flex-1 p-5">
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {definition.description}
+                </p>
               {providerConnections.length > 0 && (
                 <div className="mt-3 space-y-2 border-t pt-3">
                   {providerConnections.map((connection) => (
                     <div
                       key={connection.id}
-                      className="bg-muted/40 flex items-center gap-2 rounded-lg px-3 py-2"
+                      className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2"
                     >
-                      <span className="min-w-0 flex-1">
+                      <span className="min-w-0 flex-1 basis-36">
                         <span className="block truncate text-sm font-medium">
                           <RollInText text={connection.name} />
                           {connection.ownerType === "member" ? " · Personal" : ""}
@@ -1080,6 +1242,24 @@ export function ApplicationKnowledgePanel({
                   ))}
                 </div>
               )}
+              </div>
+              <footer data-slot="overview-card-caption" className="overview-card-caption flex flex-wrap items-center justify-between gap-3 px-3 py-3">
+                <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
+                  <AppBrandMark provider={definition.provider} size="size-9" className="rounded-full" />
+                  <h3 className="min-w-0 text-sm font-medium">{definition.label}</h3>
+                </div>
+                {mayConnect && (
+                  <Button size="sm" variant={providerConnections.length > 0 ? "outline" : "default"}
+                    disabled={alreadyConnected}
+                    aria-label={`Connect ${definition.label}`}
+                    title={alreadyConnected
+                      ? `Only one ${definition.label} connection is allowed for this ${ownerType === "member" ? "Member" : "Organization"}.`
+                      : !availability.configured ? `Set up a connection to ${definition.label}` : undefined}
+                    onClick={() => connect(definition)}>
+                    <Plus className="size-3.5" /> Connect
+                  </Button>
+                )}
+              </footer>
             </section>
           );
         })}
@@ -1094,10 +1274,19 @@ export function ApplicationKnowledgePanel({
         </div>
         {visibleImports.length === 0 ? (
           <EmptyState size="sm" className="rounded-xl border" title="No configured imports"
-            description="Connect an application above, then configure an import to add its content." />
+             />
         ) : (
-          <TableCard className={isPending ? "opacity-60" : undefined}>
-            <Table fixed>
+          <TableCard title="Application knowledge" results={{ total: filteredImports.length, noun: "import" }}
+            className={isPending ? "opacity-60" : undefined}
+            filters={<>
+              <TableFilter label="Status" value={statusFilter} anyLabel="All statuses" options={importStatuses}
+                onChange={(value) => { setStatusFilter(value); pagedImports.onPageChange(1); }} />
+              <TableSearch label="Search imports" value={query} onChange={(value) => { setQuery(value); pagedImports.onPageChange(1); }} />
+            </>}
+            footer={<TablePagination page={pagedImports.page} pageSize={pagedImports.pageSize} total={filteredImports.length} noun="import"
+              onPageChange={pagedImports.onPageChange} onPageSizeChange={pagedImports.onPageSizeChange} />}>
+
+            <Table fixed empty={filteredImports.length === 0}>
               {importColumns.colGroup}
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -1110,7 +1299,8 @@ export function ApplicationKnowledgePanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleImports.map((item) => {
+                {filteredImports.length === 0 && <TableRow><TableCell colSpan={6}><EmptyState size="sm" title="No matching imports"  /></TableCell></TableRow>}
+                {pagedImports.items.map((item) => {
                   const connection = connections.find(
                     (candidate) => candidate.id === item.connectionId
                   );
@@ -1371,6 +1561,8 @@ export function ApplicationKnowledgePanel({
         provider={oauth?.provider ?? null}
         connectionId={oauth?.connectionId}
         initialName={oauth?.connectionName}
+        configured={oauth ? oauthAvailability[oauth.provider].configured : false}
+        showSetupGuide={canManageConnections}
         onClose={() => setOauth(null)}
       />
       {slackBotConnection && (

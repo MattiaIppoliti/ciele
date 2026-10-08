@@ -4,6 +4,7 @@
 // Continue is available, what a failure says, all of it is read off the
 // snapshot, so the screen cannot disagree with what actually ran.
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import {
   AlertTriangle,
   ArrowRight,
@@ -40,7 +41,7 @@ function Logs({ lines }: { lines: string[] }): ReactNode {
   if (lines.length === 0) return null;
   return (
     <div className="rounded-lg border border-line bg-canvas">
-      <button
+      <CieleButton variant="ghost" size="sm"
         type="button"
         className="flex w-full items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:text-ink"
         onClick={() => setOpen((was) => !was)}
@@ -48,7 +49,7 @@ function Logs({ lines }: { lines: string[] }): ReactNode {
       >
         <ChevronDown className={`size-3.5 transition ${open ? "" : "-rotate-90"}`} />
         {open ? "Hide" : "Show"} details ({lines.length})
-      </button>
+      </CieleButton>
       {open ? (
         <pre
           className="max-h-48 overflow-auto px-3 pb-3 font-mono text-[11px] leading-relaxed text-ink-muted"

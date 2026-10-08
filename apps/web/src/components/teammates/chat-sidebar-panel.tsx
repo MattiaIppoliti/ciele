@@ -10,7 +10,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import type { Teammate } from "@agent-hub/core";
 import type { SidebarConversation } from "@/lib/chat-session";
 import { Copy, Eye, EyeOff, MessageSquareText, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
-import { Hint } from "@agent-hub/ui";
+import { Button as CieleButton, Hint } from "@agent-hub/ui";
 import { useRouter } from "next/navigation";
 import {
   deleteTeammateAction,
@@ -286,25 +286,17 @@ export function ChatSidebarPanel({
   const newTeammate = canEdit ? (
     <div className="flex justify-center">
       <Hint label="New teammate" side={collapsed ? "right" : "bottom"}>
-        <button
-          type="button"
-          aria-label="New teammate"
-          onClick={onNewTeammate}
-          className="press-control group/new flex w-14 flex-col items-center gap-1.5 rounded-lg py-1"
-        >
-          <span
-            className={`text-muted-foreground group-hover/new:text-foreground group-hover/new:border-foreground/40 flex items-center justify-center rounded-full border border-dashed transition-colors ${
-              collapsed ? "size-8" : "size-11"
-            }`}
-          >
+        <span className="flex w-14 flex-col items-center gap-1.5 py-1">
+          <CieleButton variant="ghost" size={collapsed ? "icon-sm" : "icon"}
+            aria-label="New teammate" onClick={onNewTeammate}>
             <Plus className="size-4" />
-          </span>
+          </CieleButton>
           {!collapsed && (
             <span className="text-muted-foreground w-full truncate text-center text-2xs">
               New
             </span>
           )}
-        </button>
+        </span>
       </Hint>
     </div>
   ) : null;
@@ -383,21 +375,21 @@ export function ChatSidebarPanel({
         <SectionLabel
           action={
             <Hint label="New group">
-              <button
+              <CieleButton variant="ghost" size="icon-sm"
                 type="button"
                 aria-label="New group"
                 onClick={onNewGroup}
                 className="press-control hover:bg-muted hover:text-foreground flex size-6 items-center justify-center rounded-md transition-colors"
               >
                 <Plus className="size-3.5" />
-              </button>
+              </CieleButton>
             </Hint>
           }
         >
           Groups
         </SectionLabel>
         {visibleChannels.length === 0 ? (
-          <EmptyState size="sm" title="No groups yet" description="Start a shared conversation with your team." action={<button type="button" className="press-text text-sm underline underline-offset-4" onClick={onNewGroup}>New group</button>} />
+          <EmptyState size="sm" title="No groups yet"  action={<CieleButton variant="secondary" size="sm" type="button" className="press-text text-sm underline underline-offset-4" onClick={onNewGroup}>New group</CieleButton>} />
         ) : (
           <div className="flex flex-col gap-0.5">{groupRows}</div>
         )}
@@ -406,7 +398,7 @@ export function ChatSidebarPanel({
       <section aria-label="Conversations">
         <SectionLabel>Conversations</SectionLabel>
         {visibleConversations.length === 0 ? (
-          <EmptyState size="sm" title="No conversations yet" description="Pick a teammate to start a conversation." />
+          <EmptyState size="sm" title="No conversations yet"  />
         ) : (
           <AISidebar
             // Remounted when a new day appears, so its folder opens like the
@@ -470,7 +462,7 @@ export function ChatSidebarPanel({
                 <span className="min-w-0 flex-1 truncate text-xs font-medium">
                   <RollInText text={teammate.name} />
                 </span>
-                <button
+                <CieleButton variant="ghost" size="icon-sm"
                   type="button"
                   disabled={isPending}
                   title="Show again"
@@ -479,7 +471,7 @@ export function ChatSidebarPanel({
                   className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-6 items-center justify-center rounded-md"
                 >
                   <Eye className="size-3.5" />
-                </button>
+                </CieleButton>
               </li>
             ))}
           </ul>

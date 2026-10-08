@@ -869,13 +869,13 @@ function FlowCanvasInner({
                 />
                 <p className="text-muted-foreground mt-2 flex items-center gap-1 px-1 text-xs">
                   Or
-                  <button
+                  <Button variant="ghost" size="sm"
                     type="button"
                     className="press-text text-foreground underline underline-offset-2"
                     onClick={() => setBuildByHand(true)}
                   >
                     build it by hand
-                  </button>
+                  </Button>
                   , one step at a time.
                 </p>
               </div>
@@ -1463,24 +1463,24 @@ function NodePanel({
             rather than as a bare destructive button one pixel from Close. */}
         <NodeMenu entries={menu} side="bottom" />
         <Hint label={fullscreen ? "Exit full screen" : "Open full screen"}>
-          <button
+          <Button variant="ghost" size="icon-sm"
             type="button"
             aria-label={fullscreen ? "Exit full screen" : "Open full screen"}
             onClick={() => onFullscreenChange(!fullscreen)}
             className="press-control text-muted-foreground hover:text-foreground hover:bg-foreground/5 flex size-8 shrink-0 items-center justify-center rounded-full transition-colors"
           >
             {fullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
-          </button>
+          </Button>
         </Hint>
         <Hint label={fullscreen ? "Exit full screen" : "Close"}>
-          <button
+          <Button variant="ghost" size="icon-sm"
             type="button"
             aria-label="Close node panel"
             onClick={onClose}
             className="press-control text-muted-foreground hover:text-foreground hover:bg-foreground/5 flex size-8 shrink-0 items-center justify-center rounded-full transition-colors"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         </Hint>
       </div>
 

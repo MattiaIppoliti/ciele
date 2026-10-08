@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { UsageDashboard, DashboardSurface } from "@agent-hub/core";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+const CostModelsTable = dynamic(() => import("./cost-models-table"));
 import { formatCount, formatPercent, formatShortDay } from "@/lib/format";
 import { formatCompact, formatDuration, formatEur, tokenHighlights } from "@/lib/insights/dashboard-view";
 import { Section, SpendBars, StageBars, SurfaceComposition, TokenHeatCalendar, ModelSpendTree, LatencyHistogram, LatencyTrend, RateComparison, FlowBumpChart } from "./dashboard-kit";
@@ -55,16 +55,7 @@ export function ModelSpendCard({ models }: { models: UsageDashboard["models"] })
 }
 
 export function ModelUsageCard({ models }: { models: UsageDashboard["models"] }) {
-  return <Section title="Models" description="Every model that ran in this range, by estimated spend">
-    {!models.length ? <p className="py-6 text-sm text-muted-foreground">No model calls in this range.</p> : <div className="overflow-x-auto"><Table>
-      <TableHeader><TableRow><TableHead>Model</TableHead><TableHead>Provider</TableHead><TableHead className="text-right">Estimated spend</TableHead><TableHead className="text-right">Calls</TableHead><TableHead className="text-right">Input tokens</TableHead><TableHead className="text-right">Output tokens</TableHead><TableHead className="w-40">Share of spend</TableHead></TableRow></TableHeader>
-      <TableBody>{models.map((model) => <TableRow key={`${model.provider}/${model.modelId}`}>
-        <TableCell className="font-medium">{model.modelId || "unknown"}</TableCell><TableCell className="text-muted-foreground">{model.provider || "unknown"}</TableCell>
-        <TableCell className="text-right tabular-nums">{formatEur(model.spendEur)}</TableCell><TableCell className="text-right tabular-nums">{formatCount(model.calls)}</TableCell><TableCell className="text-right tabular-nums">{formatCount(model.inputTokens)}</TableCell><TableCell className="text-right tabular-nums">{formatCount(model.outputTokens)}</TableCell>
-        <TableCell><div className="flex items-center gap-2"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-chart-1" style={{ width: `${model.share * 100}%` }} /></div><span className="w-9 text-right text-xs tabular-nums text-muted-foreground">{formatPercent(Math.round(model.share * 100))}</span></div></TableCell>
-      </TableRow>)}</TableBody>
-    </Table></div>}
-  </Section>;
+  return <Section title="Models"><CostModelsTable models={models} /></Section>;
 }
 
 export function StageSpendCard({ stages }: { stages: UsageDashboard["stages"] }) {

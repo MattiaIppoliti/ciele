@@ -8,10 +8,12 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./button.css": "./src/button.css",
     "./calendar": "./src/calendar.tsx",
     "./use-resizable-width": "./src/use-resizable-width.ts",
     "./resize-geometry": "./src/resize-geometry.ts",
-    "./feedback": "./src/feedback/index.ts"
+    "./feedback": "./src/feedback/index.ts",
+    "./dialog.css": "./src/dialog.css"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

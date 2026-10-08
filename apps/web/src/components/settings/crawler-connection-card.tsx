@@ -161,7 +161,7 @@ export function CrawlerConnectionCard({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || !token.trim()}>
+            <Button loading={isPending} type="submit" disabled={isPending || !token.trim()}>
               <RollInText text={isPending ? "Checking…" : "Save"} />
             </Button>
           </div>

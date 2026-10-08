@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useEffect, useRef, useState } from "react";
@@ -103,21 +104,21 @@ export function PreviewEscalation({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between px-4 py-4">
-        <button
+        <CieleButton variant="secondary" size="sm"
           type="button"
           onClick={back}
           className="hover:bg-muted flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold"
         >
           <ChevronLeft className="size-4" strokeWidth={3} /> Back
-        </button>
-        <button
+        </CieleButton>
+        <CieleButton variant="ghost" size="icon-sm"
           type="button"
           aria-label="Close support"
           onClick={onBack}
           className="hover:bg-muted rounded p-1.5"
         >
           <AnimatedIcon icon={X} size={20} />
-        </button>
+        </CieleButton>
       </div>
       <div ref={screenRoot} className="no-scrollbar flex-1 overflow-y-auto px-5 pb-6">
         {screen === "loading" && (
@@ -131,13 +132,13 @@ export function PreviewEscalation({
             <p data-screen-focus tabIndex={-1} className="outline-none">
               Support options could not load.
             </p>
-            <button
+            <CieleButton variant="primary" size="sm"
               type="button"
               onClick={retry}
               className="press-control hover:bg-muted mt-3 rounded-xl border px-4 py-2 font-semibold"
             >
               Try again
-            </button>
+            </CieleButton>
           </div>
         )}
         {screen === "empty" && (
@@ -203,12 +204,12 @@ export function PreviewEscalation({
                   </span>
                 </label>
               ))}
-              <button
+              <CieleButton variant="primary" size="sm"
                 type="submit"
                 className="bg-muted hover:bg-muted/80 w-full rounded-xl px-4 py-3 text-sm font-semibold transition-colors"
               >
                 Submit
-              </button>
+              </CieleButton>
             </form>
           </>
         )}

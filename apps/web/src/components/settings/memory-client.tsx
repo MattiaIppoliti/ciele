@@ -125,7 +125,7 @@ export function MemoryClient({
             <RollingNumber value={body.length} /> /{" "}
             {formatCount(MEMORY_DOCUMENT_MAX_CHARS)} characters
           </span>
-          <Button
+          <Button loading={isPending}
             size="sm"
             disabled={!dirty || isPending}
             onClick={save}

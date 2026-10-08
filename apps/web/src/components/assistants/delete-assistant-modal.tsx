@@ -9,7 +9,7 @@ import { deleteAssistantAction } from "@/app/actions";
 import { MorphingModal } from "@/components/motion/morphing-modal";
 import { isRedirectError } from "@/components/ui/confirm-delete-modal";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
-import { Button, Input, Label } from "@agent-hub/ui";
+import { DialogBody, DialogFooter, Button, Input, Label } from "@agent-hub/ui";
 import { canAutoFocus } from "@/lib/auto-focus";
 
 /**
@@ -77,16 +77,14 @@ export function DeleteAssistantModal({
     <MorphingModal
       viewId={open ? view : null}
       title={
-        view === "warning"
-          ? `Delete “${assistantTitle}”?`
-          : "Confirm deletion"
+        view === "warning" ? `Delete “${assistantTitle}”?` : "Confirm deletion"
       }
       onClose={close}
       placement="bottom"
     >
       {view === "warning" ? (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+        <div className="ui-modal-stack">
+          <div className="ui-modal-header flex items-start gap-3">
             <div className="bg-destructive/10 text-destructive rounded-full p-2">
               <AnimatedIcon icon={TriangleAlert} size={20} />
             </div>
@@ -94,47 +92,55 @@ export function DeleteAssistantModal({
               <h3 className="text-base font-semibold break-words">
                 Delete &ldquo;{assistantTitle}&rdquo;?
               </h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                This permanently removes the assistant and cannot be undone.
-              </p>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
+          <DialogBody>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+              This permanently removes the assistant and cannot be undone.
+            </p>
+          </DialogBody>
+          <DialogFooter className="flex justify-end gap-2">
             <Button variant="ghost" onClick={close}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={() => setView("name")}>
               Continue to delete
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       ) : view === "name" ? (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+        <div className="ui-modal-stack">
+          <div className="ui-modal-header flex items-start gap-3">
             <div className="bg-destructive/10 text-destructive rounded-full p-2">
               <AnimatedIcon icon={Trash2} size={20} />
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-semibold">Confirm deletion</h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed break-words">
-                Type <span className="text-foreground font-medium">{assistantTitle}</span> to continue.
-              </p>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirm-assistant-name">Assistant name</Label>
-            <Input
-              id="confirm-assistant-name"
-              name="confirm-assistant-name"
-              autoFocus={canAutoFocus()}
-              value={typedName}
-              onChange={(event) => setTypedName(event.target.value)}
-              placeholder={assistantTitle}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-          <div className="flex justify-end gap-2">
+          <DialogBody>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed break-words">
+              Type{" "}
+              <span className="text-foreground font-medium">
+                {assistantTitle}
+              </span>{" "}
+              to continue.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-assistant-name">Assistant name</Label>
+              <Input
+                id="confirm-assistant-name"
+                name="confirm-assistant-name"
+                autoFocus={canAutoFocus()}
+                value={typedName}
+                onChange={(event) => setTypedName(event.target.value)}
+                placeholder={assistantTitle}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter className="flex justify-end gap-2">
             <Button
               variant="ghost"
               onClick={() => {
@@ -151,29 +157,31 @@ export function DeleteAssistantModal({
             >
               Delete assistant…
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+        <div className="ui-modal-stack">
+          <div className="ui-modal-header flex items-start gap-3">
             <div className="bg-destructive/10 text-destructive rounded-full p-2">
               <AnimatedIcon icon={Trash2} size={20} />
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-semibold">Confirm deletion</h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed break-words">
-                Slide to permanently delete &ldquo;{assistantTitle}&rdquo;.
-              </p>
             </div>
           </div>
-          <div className="flex justify-center">
-            <SlideToConfirm
-              onConfirm={handleDelete}
-              label="Slide to delete"
-              confirmedLabel="Deleted"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
+          <DialogBody>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed break-words">
+              Slide to permanently delete &ldquo;{assistantTitle}&rdquo;.
+            </p>
+            <div className="flex justify-center">
+              <SlideToConfirm
+                onConfirm={handleDelete}
+                label="Slide to delete"
+                confirmedLabel="Deleted"
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter className="flex justify-end gap-2">
             <Button
               variant="ghost"
               onClick={() => setView("name")}
@@ -181,7 +189,7 @@ export function DeleteAssistantModal({
             >
               Back
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       )}
     </MorphingModal>

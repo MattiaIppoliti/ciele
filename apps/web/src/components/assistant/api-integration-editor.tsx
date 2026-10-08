@@ -422,7 +422,7 @@ export function ApiIntegrationEditor({
         </div>
 
         {endpoints.length === 0 && (
-          <EmptyState size="sm" title="No endpoints yet" description="Describe an endpoint above so the assistant can query your API." />
+          <EmptyState size="sm" title="No endpoints yet"  />
         )}
 
         {endpoints.map((draft) => {
@@ -606,7 +606,7 @@ export function ApiIntegrationEditor({
 
         {canEdit && (
           <div className="flex gap-2">
-            <Button onClick={save} disabled={pending}>
+            <Button loading={pending} onClick={save} disabled={pending}>
               <RollInText text={pending ? "Saving…" : "Save integration"} />
             </Button>
             {configured && (

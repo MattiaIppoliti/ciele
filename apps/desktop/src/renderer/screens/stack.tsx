@@ -15,22 +15,22 @@ import type { StackHealth, StackStatus } from "../../shared/stack";
 const HEALTH: Record<StackHealth, { label: string; blurb: string; dot: string }> = {
   running: {
     label: "Running",
-    blurb: "Ciele is answering on this machine.",
+    blurb: "",
     dot: "bg-accent",
   },
   starting: {
     label: "Starting",
-    blurb: "The containers are up; Ciele is not answering yet. This can take a minute.",
+    blurb: "Waiting for Ciele to respond.",
     dot: "bg-ink-muted animate-pulse",
   },
   stopped: {
     label: "Stopped",
-    blurb: "The stack is not running. Your data is untouched, starting it brings everything back.",
+    blurb: "Your data is preserved.",
     dot: "bg-ink-muted/40",
   },
   "docker-unavailable": {
     label: "Docker unavailable",
-    blurb: "Docker Desktop is not running, so the local stack cannot be reached. Start it and check again.",
+    blurb: "Start Docker Desktop, then check again.",
     dot: "bg-danger",
   },
 };
@@ -74,7 +74,7 @@ export function StackScreen(): ReactNode {
               {health.label}
             </span>
           </div>
-          <p className="text-sm text-ink-muted">{health.blurb}</p>
+          {health.blurb && (<p className="text-sm text-ink-muted">{health.blurb}</p>)}
           {status.error ? (
             <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
               {status.error}
@@ -129,8 +129,7 @@ export function StackScreen(): ReactNode {
             </span>
           </div>
           <p className="pt-1 text-ink-muted">
-            Your assistants and knowledge live in Docker volumes, not in that folder, they
-            survive restarts and app updates. Quitting Ciele leaves the stack running.
+            Data survives restarts and updates. Quitting Ciele leaves the stack running.
           </p>
         </Card>
 
@@ -138,8 +137,7 @@ export function StackScreen(): ReactNode {
           <div className="flex flex-col gap-1">
             <h2 className="text-sm font-semibold">Run setup again</h2>
             <p className="text-xs text-ink-muted">
-              Takes you back through the wizard from the first step. Your configuration, your
-              database and your files are left exactly as they are, nothing here deletes data.
+              Keeps your configuration, database and files.
             </p>
           </div>
           <Button

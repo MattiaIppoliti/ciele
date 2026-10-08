@@ -8,6 +8,7 @@ import { Download, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { bridge } from "../lib/bridge";
 import type { UpdateNotice } from "../../shared/state";
+import { Button } from "@agent-hub/ui";
 
 export function UpdateBanner({ update }: { update: UpdateNotice }): ReactNode {
   return (
@@ -16,21 +17,21 @@ export function UpdateBanner({ update }: { update: UpdateNotice }): ReactNode {
       <span className="text-ink-muted">
         Ciele Desktop <span className="text-ink">{update.version}</span> is available.
       </span>
-      <button
+      <Button variant="secondary" size="sm"
         type="button"
         className="font-medium text-accent underline-offset-2 hover:underline"
         onClick={() => void bridge().openExternal(update.url)}
       >
         Get it
-      </button>
-      <button
+      </Button>
+      <Button variant="ghost" size="icon-sm"
         type="button"
         aria-label="Dismiss update notice"
         className="ml-auto text-ink-muted hover:text-ink"
         onClick={() => void bridge().dismissUpdate()}
       >
         <X className="size-3.5" />
-      </button>
+      </Button>
     </div>
   );
 }

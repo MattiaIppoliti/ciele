@@ -29,6 +29,19 @@ function marketingHomeRedirect(): NextResponse {
   return NextResponse.redirect(new URL("/home", marketingOrigin()), 307);
 }
 
+function anonymousRootResponse(request: NextRequest, onMarketingHost: boolean): NextResponse {
+  const url = request.nextUrl.clone();
+  url.search = "";
+  if (onMarketingHost) {
+    // Serve the public home at its canonical URL. Members keep the dashboard
+    // at this same route after their session has been validated.
+    url.pathname = "/home";
+    return NextResponse.rewrite(url);
+  }
+  url.pathname = "/login";
+  return NextResponse.redirect(url);
+}
+
 // The whole `(marketing)` route group is public through `isMarketingPath`
 // (pinned to the filesystem); these are the one-off public paths outside it.
 const PUBLIC_PATHS = [
@@ -171,7 +184,7 @@ export async function middleware(request: NextRequest) {
    * A visitor who has never signed in carries no Supabase auth cookie, so
    * there is nothing for `getClaims()` to validate, and everything below is
    * pure cost: constructing the Supabase client, and on a cold function the
-   * JWKS fetch that validation needs, on the request that has to redirect
+   * JWKS fetch that validation needs, on the request that has to resolve
    * `/` to the right public entry before a single byte reaches the browser:
    * the marketing home on Ciele's site, or login on an application fork. That
    * network hop sat on the critical path of every first visit, and when
@@ -185,14 +198,12 @@ export async function middleware(request: NextRequest) {
    */
   if (!hasSupabaseAuthCookie(request)) {
     if (!isPublic) {
-      const url = request.nextUrl.clone();
       if (pathname === "/") {
-        url.pathname = onMarketingHost ? "/home" : "/login";
-        url.search = "";
-      } else {
-        url.pathname = "/login";
-        url.searchParams.set("next", pathname);
+        return signedOutHint(request, anonymousRootResponse(request, onMarketingHost));
       }
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("next", pathname);
       return signedOutHint(request, NextResponse.redirect(url));
     }
     return signedOutHint(request, NextResponse.next({ request }));
@@ -259,16 +270,12 @@ export async function middleware(request: NextRequest) {
   };
 
   if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
     if (pathname === "/") {
-      // On Ciele's website a signed-out visitor gets the marketing home. On a
-      // branded application domain the root is the authenticated app entry.
-      url.pathname = onMarketingHost ? "/home" : "/login";
-      url.search = "";
-    } else {
-      url.pathname = "/login";
-      url.searchParams.set("next", pathname);
+      return applyAuthHint(anonymousRootResponse(request, onMarketingHost));
     }
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", pathname);
     return applyAuthHint(NextResponse.redirect(url));
   }
 

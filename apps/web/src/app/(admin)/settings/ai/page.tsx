@@ -63,7 +63,7 @@ export default async function AiSettingsPage() {
       <SettingsPanel
         icon={Sparkles}
         title="AI Provider"
-        description="Platform-wide model settings for every Ciele organization."
+        description="Applies to every organization."
       >
         <SectionTimeline>
           <TimelineSection title="Platform">{platformCards}</TimelineSection>
@@ -118,7 +118,7 @@ export default async function AiSettingsPage() {
     <SettingsPanel
       icon={Sparkles}
       title="AI Provider"
-      description={`Choose how ${session.organization.name}'s assistants reach their models: platform plan, your own API keys, or keyless enterprise auth.`}
+
     >
       <SectionTimeline>
       <TimelineSection title="Default models">

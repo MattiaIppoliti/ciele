@@ -38,7 +38,7 @@ export function ObservabilityDashboard({
   return (
     <DashboardFrame
       title="Observability"
-      hint="Latency percentiles are estimated from a histogram of turn durations. Accuracy and autonomy measure Assistants only."
+      hint="Histogram-estimated latency. Accuracy and autonomy cover Assistants only."
       filter={filter}
       setFilter={setFilter}
       refreshing={refreshing}
@@ -69,7 +69,7 @@ export function ObservabilityDashboard({
           <RateCard
             title="Reliability"
             variant="gauge"
-            description="Turns that finished without an error"
+
             good={totals.succeededTurns}
             bad={totals.failedTurns}
             goodLabel="Succeeded"

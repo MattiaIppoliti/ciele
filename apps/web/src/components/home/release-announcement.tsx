@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -45,11 +46,11 @@ export function ReleaseAnnouncement({ onHeightChange }: { onHeightChange: (heigh
             <span>Ciele’s latest release is here.</span>
             <Link href="/change-log" className={`${styles.cta} press-text`}>See what’s new <ArrowRight className="size-3.5" aria-hidden="true" /></Link>
           </p>
-          <button type="button" aria-label="Dismiss release announcement" className={`${styles.icon} press-control`} onClick={() => {
+          <CieleButton variant="ghost" size="icon-sm" type="button" aria-label="Dismiss release announcement" className={`${styles.icon} press-control`} onClick={() => {
             setClosed(true);
             try { window.localStorage.setItem(STORAGE_KEY,"dismissed"); } catch { /* Dismiss still works when storage is blocked. */ }
             window.dispatchEvent(new Event(CHANGE_EVENT));
-          }}><X className="size-4" aria-hidden="true" /></button>
+          }}><X className="size-4" aria-hidden="true" /></CieleButton>
         </div>
       </motion.section>}
     </AnimatePresence>

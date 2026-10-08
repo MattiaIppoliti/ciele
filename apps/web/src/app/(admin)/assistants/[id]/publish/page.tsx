@@ -22,7 +22,7 @@ export default async function PublishPage({
       <SectionHeading
         icon={Plane}
         title="Publish"
-        description="The live widget serves your last publish. New edits stay in Preview until you publish again."
+        description="Live chats use the last published version."
       />
       <PublishClient
         assistant={assistant}

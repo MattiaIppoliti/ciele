@@ -24,7 +24,7 @@ function PaneHeader({
 }: {
   icon: LucideIcon;
   title: string;
-  description: string;
+  description?: string;
   action?: string;
 }) {
   return (
@@ -130,9 +130,7 @@ function KnowledgeWebsites() {
           <span className="flex items-center gap-2 text-sm font-semibold">
             Websites <Pill>{WEBSITES.length}</Pill>
           </span>
-          <p className="text-muted-foreground mt-0.5 truncate text-xs">
-            Sites the assistant crawls, indexes and answers from.
-          </p>
+
         </div>
         <span className="bg-primary text-primary-foreground flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium">
           <Plus className="size-3.5" /> Add
@@ -180,9 +178,7 @@ function KnowledgeApplications() {
           <span className="flex items-center gap-2 text-sm font-semibold">
             Applications <Pill>{APPLICATIONS.length}</Pill>
           </span>
-          <p className="text-muted-foreground mt-0.5 truncate text-xs">
-            Tools the assistant imports from, on your account&apos;s own permissions.
-          </p>
+
         </div>
         <span className="bg-primary text-primary-foreground flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium">
           <Plus className="size-3.5" /> Connect
@@ -226,10 +222,7 @@ function KnowledgeApplications() {
 function KnowledgeDocuments() {
   return (
     <>
-      <p className="text-muted-foreground text-xs">
-        Upload files to add to your assistant&apos;s knowledge base. The
-        assistant will use these to answer questions.
-      </p>
+
       <MockSearch placeholder="Search documents" />
       <div className="border-border flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-8 text-center">
         <span className="bg-muted flex size-10 items-center justify-center rounded-full border">
@@ -255,9 +248,7 @@ function KnowledgeFaqs() {
           <span className="flex items-center gap-2 text-sm font-semibold">
             Questions and Answers <Pill>{FAQS.length}</Pill>
           </span>
-          <p className="text-muted-foreground mt-0.5 truncate text-xs">
-            Add sets of questions and answers to fine tune AI responses.
-          </p>
+
         </div>
         <span className="flex shrink-0 items-center gap-2">
           <span className="bg-card rounded-lg border px-3 py-1.5 text-xs font-medium">Export</span>
@@ -301,7 +292,7 @@ export function KnowledgeMock() {
       <PaneHeader
         icon={BookText}
         title="Knowledge"
-        description="Websites, applications, documents and FAQs indexed for retrieval."
+
       />
 
       <div className="bg-muted/60 inline-flex w-fit rounded-xl border p-1">
@@ -370,7 +361,7 @@ export function FlowsMock() {
         headingLevel={3}
         icon={Workflow}
         title="Flows"
-        description="Drag flows to set priority. The first matching flow wins."
+
       />
 
       <div className="mt-4 flex justify-end">
@@ -460,7 +451,7 @@ export function PublishingMock() {
       <PaneHeader
         icon={Plane}
         title="Publish"
-        description="Publish a snapshot to every live channel."
+
         action="Publish"
       />
       <div className="flex flex-col gap-2">
@@ -498,7 +489,7 @@ export function AuthenticationMock() {
       <PaneHeader
         icon={Lock}
         title="Authentication"
-        description="Require visitors to sign in before they can chat."
+
       />
       <div className="bg-card flex items-center gap-3 rounded-xl border p-4">
         <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg border">
@@ -665,7 +656,7 @@ export function AlertsMock() {
           headingLevel={3}
           icon={Bell}
           title="Alerts"
-          description="Failures and recoveries that need your attention."
+
         />
         <span className="bg-destructive flex size-4 items-center justify-center rounded-full text-2xs font-semibold text-white">
           2
@@ -720,7 +711,7 @@ export function DevelopersMock() {
         <PaneHeader
           icon={Workflow}
           title="Flows"
-          description="The router that decides how each message is answered."
+
           action="New flow"
         />
         <div className="flex flex-col gap-2">
@@ -756,9 +747,7 @@ export function DevelopersMock() {
           {`ciele flows list \\
   aK3mPqR7xT2w`}
         </pre>
-        <p className="text-muted-foreground text-xs leading-relaxed">
-          Every id on the page is already filled in. Copy it, run it, keep going.
-        </p>
+
         <span className="text-muted-foreground mt-auto flex items-center gap-2 text-xs">
           <Pill tone="ok">Editor</Pill>
           the role this call needs

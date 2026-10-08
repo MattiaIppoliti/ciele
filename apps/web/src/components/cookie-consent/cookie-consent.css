@@ -22,8 +22,8 @@
      feedback is never buried by the banner. */
   --cc-z-index: 100000;
   --cc-modal-margin: 1.25rem;
-  --cc-modal-border-radius: var(--radius-xl);
-  --cc-btn-border-radius: var(--radius-lg);
+  --cc-modal-border-radius: 24px;
+  --cc-btn-border-radius: 12px;
   --cc-pm-toggle-border-radius: 999px;
   --cc-modal-transition-duration: 0.2s;
 
@@ -33,7 +33,7 @@
   --cc-secondary-color: var(--muted-foreground);
   --cc-link-color: var(--foreground);
   --cc-separator-border-color: var(--border);
-  --cc-overlay-bg: color-mix(in oklch, var(--background) 70%, transparent);
+  --cc-overlay-bg: rgb(0 0 0 / 0.12);
 
   /* Primary action, mirrors <Button variant="default"> */
   --cc-btn-primary-bg: var(--primary);
@@ -101,6 +101,7 @@
 }
 
 .dark #cc-main {
+  --cc-overlay-bg: rgb(0 0 0 / 0.4);
   color-scheme: dark;
 }
 
@@ -154,18 +155,7 @@
 
 /* Stack the three actions: "Accept all" and "Reject all" share a row of equal
    halves, "Manage preferences" sits below at the same weight. */
-#cc-main .cm-wrapper .cm__btn {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  padding: 0.55rem 0.9rem;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
 
-#cc-main .cm-wrapper .cm__btn:active {
-  transform: translateY(1px);
-}
 
 #cc-main .cm-wrapper .cm__footer {
   display: flex;
@@ -189,8 +179,13 @@
 /* --- Preferences modal (second layer) --------------------------------- */
 
 #cc-main .pm-wrapper .pm {
-  border: 1px solid var(--border);
-  box-shadow: 0 24px 60px -20px oklch(0 0 0 / 0.4);
+  --modal-frame: #e4e4e7;
+  --modal-sheet: #ffffff;
+  --modal-line: #d5d5db;
+  border: 0;
+  border-radius: 24px;
+  background: var(--modal-frame);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.04), 0 24px 60px -20px rgb(0 0 0 / 0.35);
 }
 
 #cc-main .pm-wrapper .pm__title {
@@ -209,10 +204,6 @@
   line-height: 1.55;
 }
 
-#cc-main .pm-wrapper .pm__btn {
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
 
 /* The disclosure tables carry the actual cookie names, so keep them legible
    rather than shrinking them away. */
@@ -238,3 +229,17 @@
     --cc-modal-transition-duration: 0s;
   }
 }
+
+/* Preferences use the same title tray and inset sheet as product dialogs. */
+.dark #cc-main .pm-wrapper .pm {
+  --modal-frame: #202023;
+  --modal-sheet: #080809;
+  --modal-line: #343439;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 60px -20px rgb(0 0 0 / 0.6);
+}
+#cc-main .pm-wrapper .pm__header { background: transparent; border: 0; padding: 24px; }
+#cc-main .pm-wrapper .pm__body { background: var(--modal-sheet); border: 1px solid var(--modal-line); border-radius: 24px; padding: 20px; }
+#cc-main .pm-wrapper .pm__footer { background: transparent; border: 0; padding: 16px 20px; }
+#cc-main .pm-wrapper .pm-overlay { backdrop-filter: blur(8px); }
+#cc-main .pm-wrapper .pm__title { font-size: 1.125rem; }
+@media (prefers-reduced-transparency: reduce) { #cc-main .pm-wrapper .pm-overlay { backdrop-filter: none; } }

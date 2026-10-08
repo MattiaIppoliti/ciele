@@ -1,22 +1,11 @@
 import { EmptyState } from "@/components/ui/empty-state";
-import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
-import { CreditCard, ExternalLink } from "lucide-react";
+import { CreditCard } from "lucide-react";
 import type { BillingAccountSnapshot } from "@agent-hub/agent";
 import { Card, CardContent, CardHeader, CardTitle } from "@agent-hub/ui";
-import {
-  Table,
-  TableBody,
-  TableCard,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TablePagination } from "@/components/ui/table-pagination";
+import { BillingInvoicesTable } from "./billing-invoices-table";
 import { openBillingPortalAction } from "@/app/(admin)/settings/billing/actions";
 import { PendingSubmitButton } from "@/components/settings/pending-submit-button";
 import {
-  EMPTY_FIELD,
   formatBillingDate,
   formatBillingMoney,
   invoiceRows,
@@ -99,68 +88,9 @@ export function BillingAccountCard({
         </CardHeader>
         <CardContent>
           {account.invoices.length === 0 ? (
-            <EmptyState size="sm" title="No invoices yet" description="Invoices appear here after your first billing cycle." />
+            <EmptyState size="sm" title="No invoices yet"  />
           ) : (
-            <TableCard
-              footer={
-                <TablePagination
-                  total={account.invoices.length}
-                  noun="invoice"
-                />
-              }
-            >
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Date</TableHead>
-                  {/* The provider's invoice number: what an accounts department
-                      reconciles a payment against. */}
-                  <TableHead>Number</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">
-                    Total
-                  </TableHead>
-                  <TableHead className="text-right">
-                    Invoice
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoiceRows(account.invoices).map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.dateLabel}</TableCell>
-                    <TableCell className="text-muted-foreground tabular-nums">
-                      {row.numberLabel}
-                    </TableCell>
-                    <TableCell>
-                      <StatusPill
-                        status={row.statusVariant === "secondary" ? "online" : row.statusVariant === "destructive" ? "error" : "away"}
-                        primaryText={row.statusLabel}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {row.amountLabel}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {row.url ? (
-                        <a
-                          href={row.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`View invoice ${row.numberLabel} (opens in new tab)`}
-                          className="press-text inline-flex items-center gap-1 underline underline-offset-4"
-                        >
-                          View <ExternalLink className="size-3" aria-hidden="true" />
-                        </a>
-                      ) : (
-                        EMPTY_FIELD
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            </TableCard>
+            <BillingInvoicesTable rows={invoiceRows(account.invoices)} />
           )}
         </CardContent>
       </Card>

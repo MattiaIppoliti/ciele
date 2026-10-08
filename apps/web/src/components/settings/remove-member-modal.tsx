@@ -10,7 +10,7 @@ import { MorphingModal } from "@/components/motion/morphing-modal";
 import { isRedirectError } from "@/components/ui/confirm-delete-modal";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import type { MemberRow } from "@/lib/member-rows";
-import { Button } from "@agent-hub/ui";
+import { DialogBody, DialogFooter, Button } from "@agent-hub/ui";
 
 /**
  * The same two-step (warning -> slide-to-confirm) morphing modal the assistant
@@ -80,8 +80,8 @@ export function RemoveMemberModal({
       placement="bottom"
     >
       {view === "warning" ? (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+        <div className="ui-modal-stack">
+          <div className="ui-modal-header flex items-start gap-3">
             <div className="bg-destructive/10 text-destructive rounded-full p-2">
               <AnimatedIcon icon={TriangleAlert} size={20} />
             </div>
@@ -89,25 +89,27 @@ export function RemoveMemberModal({
               <h3 className="text-base font-semibold">
                 {isInvite ? "Revoke" : "Remove"} &ldquo;{subject}&rdquo;?
               </h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                {isInvite
-                  ? "This permanently voids the invitation link and cannot be undone."
-                  : "This permanently removes their access to this organization and cannot be undone."}
-              </p>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
+          <DialogBody>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+              {isInvite
+                ? "This permanently voids the invitation link and cannot be undone."
+                : "This permanently removes their access to this organization and cannot be undone."}
+            </p>
+          </DialogBody>
+          <DialogFooter className="flex justify-end gap-2">
             <Button variant="ghost" onClick={close}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={() => setView("confirm")}>
               Continue
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+        <div className="ui-modal-stack">
+          <div className="ui-modal-header flex items-start gap-3">
             <div className="bg-destructive/10 text-destructive rounded-full p-2">
               <AnimatedIcon icon={Trash2} size={20} />
             </div>
@@ -115,20 +117,22 @@ export function RemoveMemberModal({
               <h3 className="text-base font-semibold">
                 Confirm {isInvite ? "revocation" : "removal"}
               </h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                Slide to permanently {isInvite ? "revoke" : "remove"} &ldquo;
-                {subject}&rdquo;.
-              </p>
             </div>
           </div>
-          <div className="flex justify-center">
-            <SlideToConfirm
-              onConfirm={handleRemove}
-              label={isInvite ? "Slide to revoke" : "Slide to remove"}
-              confirmedLabel={isInvite ? "Revoked" : "Removed"}
-            />
-          </div>
-          <div className="flex justify-end gap-2">
+          <DialogBody>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+              Slide to permanently {isInvite ? "revoke" : "remove"} &ldquo;
+              {subject}&rdquo;.
+            </p>
+            <div className="flex justify-center">
+              <SlideToConfirm
+                onConfirm={handleRemove}
+                label={isInvite ? "Slide to revoke" : "Slide to remove"}
+                confirmedLabel={isInvite ? "Revoked" : "Removed"}
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter className="flex justify-end gap-2">
             <Button
               variant="ghost"
               onClick={() => setView("warning")}
@@ -136,7 +140,7 @@ export function RemoveMemberModal({
             >
               Back
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       )}
     </MorphingModal>

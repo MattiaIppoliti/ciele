@@ -18,7 +18,7 @@ export function SectionHeading({
 }: {
   icon: LucideIcon;
   title: string;
-  description: ReactNode;
+  description?: ReactNode;
   eyebrow?: string;
   variant?: "console" | "marketing" | "mock";
   headingLevel?: 1 | 2 | 3;
@@ -98,7 +98,7 @@ export function SectionHeading({
         >
           {marketing ? <RollInText text={title} /> : title}
         </Heading>
-        <p
+        {description && <p
           className={cn(
             "text-muted-foreground",
             marketing
@@ -109,7 +109,7 @@ export function SectionHeading({
           )}
         >
           {description}
-        </p>
+        </p>}
       </div>
     </div>
   );

@@ -248,7 +248,7 @@ export function AuthenticationClient({
             </p>
             {canManageConnection && (
               <div className="flex flex-wrap gap-2">
-                <Button onClick={validate} disabled={isPending}>
+                <Button loading={isPending} onClick={validate} disabled={isPending}>
                   Validate connection
                 </Button>
                 <Button
@@ -320,7 +320,7 @@ export function AuthenticationClient({
                 Optional. Matches signed-in users to your data. Off keeps them anonymous.
               </p>
             </div>
-            <Button
+            <Button loading={isPending}
               onClick={connect}
               disabled={
                 isPending || !clientId.trim() || !tenantId.trim() || !clientSecret.trim()

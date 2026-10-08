@@ -3,6 +3,13 @@ import { sourceDocumentStatusLabel } from "@agent-hub/core";
 import type { BadgeTone } from "@agent-hub/ui";
 import type { ApplicationImportDocumentRow } from "@ciele/ops";
 import { sourceDocumentTone } from "@/lib/source-documents";
+import { parseSourceDocumentsParams } from "@/lib/source-documents";
+import { clampPageSize } from "@/lib/pagination";
+
+export function parseApplicationImportDocumentsParams(raw: Record<string, string | string[] | undefined>) {
+  return { page: parseSourceDocumentsParams(raw).page, pageSize: clampPageSize(raw.size),
+    mimeType: typeof raw.type === "string" ? raw.type.slice(0, 200) : "" };
+}
 
 /**
  * Pure derivations for an Application Import's drill-down: the Configured
@@ -38,8 +45,12 @@ export function applicationImportRowHref(
 }
 
 /** One page's href; page one is the bare route. */
-export function applicationImportPageHref(base: string, page: number): string {
-  return page > 1 ? `${base}?page=${page}` : base;
+export function applicationImportPageHref(base: string, page: number, mimeType = "", pageSize = 25): string {
+  const params = new URLSearchParams();
+  if (page > 1) params.set("page", String(page));
+  if (mimeType) params.set("type", mimeType);
+  if (pageSize !== 25) params.set("size", String(pageSize));
+  return params.size ? `${base}?${params}` : base;
 }
 
 type ApplicationImportRowStatus = ApplicationImportDocumentRow["status"];

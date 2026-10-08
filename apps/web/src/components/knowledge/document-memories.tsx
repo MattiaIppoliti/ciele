@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { Copy, RotateCcw } from "lucide-react";
 import { EyeOff, Maximize2 } from "lucide-react";
 import type { KnowledgeMemory, MemoriesEmptyState } from "@agent-hub/core";
-import {
+import { DialogBody,
   Badge,
   Button,
   CopyFeedbackIcon,
@@ -17,11 +17,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  Hint,
   Input,
   useCopyFeedback,
 } from "@agent-hub/ui";
 import {
   Table,
+  TableActions,
   TableBody,
   TableCard,
   TableCell,
@@ -31,6 +33,7 @@ import {
 import {
   TableColumnHeader,
   useClientSort,
+  useClientPage,
 } from "@/components/ui/table-column-header";
 import {
   useColumnWidths,
@@ -42,6 +45,8 @@ import {
   TableBulkBar,
   useRowSelection,
 } from "@/components/ui/table-selection";
+import { TableSearch } from "@/components/ui/table-filters";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { Switch } from "@/components/ui/motion-switch";
 import { TableRowMenu } from "@/components/ui/table-menu";
 import {
@@ -91,6 +96,7 @@ export function DocumentMemories({
   chunksHref: string;
 }) {
   const [memories, setMemories] = useState(initialMemories);
+  const [query, setQuery] = useState("");
   const [showForgotten, setShowForgotten] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -100,12 +106,13 @@ export function DocumentMemories({
     () => visibleMemories(memories, showForgotten),
     [memories, showForgotten]
   );
-  const rows = order.sorted(visible, {
+  const rows = order.sorted(visible.filter((memory) => memory.text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())), {
     memory: (memory) => memory.text,
     state: (memory) => memoryStateLabel(memory),
     updated: (memory) => memory.updatedAt,
   });
-  const selection = useRowSelection(rows.map((memory) => memory.id));
+  const paged = useClientPage(rows);
+  const selection = useRowSelection(paged.items.map((memory) => memory.id));
   const columns = useColumnWidths("document-memories", [
     ...(canEdit
       ? [{ key: "select", width: 44, fixed: true } as TableColumnLayout]
@@ -113,6 +120,7 @@ export function DocumentMemories({
     { key: "memory", width: 460, min: 200 },
     { key: "state", width: 130 },
     { key: "updated", width: 160 },
+    { key: "actions", width: 140, fixed: true },
   ] satisfies TableColumnLayout[]);
   const open = memories.find((memory) => memory.id === openId) ?? null;
   const live = liveMemoryCount(memories);
@@ -156,6 +164,14 @@ export function DocumentMemories({
     });
   }
 
+  function copyMemoryText(text: string) {
+    void copyToClipboard(
+      text,
+      "Copied.",
+      "Could not copy. Check the browser allows clipboard access."
+    );
+  }
+
   const selectedForgettable = forgettableIds(
     memories,
     new Set(selection.ids)
@@ -163,40 +179,21 @@ export function DocumentMemories({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <label className="text-muted-foreground flex cursor-pointer items-center gap-2 text-sm">
-          Show forgotten
-          <Switch
-            checked={showForgotten}
-            onCheckedChange={(next: boolean) => setShowForgotten(next)}
-            aria-label="Show forgotten memories"
-          />
-        </label>
-      </div>
-
-      {rows.length === 0 ? (
-        <MemoriesEmpty
-          state={emptyState}
-          sourceId={sourceId}
-          canEdit={canEdit}
-        />
-      ) : (
-        <TableCard
-          footer={
-            <p className="text-muted-foreground px-4 py-2 text-xs">
-              <RollingNumber value={live} /> live{" "}
-              {live === 1 ? "memory" : "memories"}
-              {showForgotten && memories.length > live && (
-                <>
-                  {" · "}
-                  <RollingNumber value={memories.length - live} /> forgotten
-                </>
-              )}
-            </p>
-          }
-        >
+      <TableCard title="Memories" results={{ total: rows.length, noun: "memory", pluralNoun: "memories" }}
+        filters={<>
+          <label className="text-muted-foreground flex cursor-pointer items-center gap-2 text-sm">
+            Show forgotten
+            <Switch checked={showForgotten} onCheckedChange={(next: boolean) => { setShowForgotten(next); paged.onPageChange(1); }}
+              aria-label="Show forgotten memories" />
+          </label>
+          <span className="text-muted-foreground text-xs"><RollingNumber value={live} /> live</span>
+          <TableSearch label="Search memories" value={query} onChange={(value) => { setQuery(value); paged.onPageChange(1); }} />
+        </>}
+        footer={<TablePagination page={paged.page} pageSize={paged.pageSize} total={rows.length} noun="memory"
+          pluralNoun="memories" onPageChange={paged.onPageChange} onPageSizeChange={paged.onPageSizeChange} />}>
           {canEdit && (
             <TableBulkBar
+              selection={selection}
               count={selection.count}
               noun="memory"
               pluralNoun="memories"
@@ -220,6 +217,7 @@ export function DocumentMemories({
               <TableRow className="hover:bg-transparent">
                 {canEdit && (
                   <SelectAllHead
+                    selection={selection}
                     state={selection.allState}
                     onToggle={selection.toggleAll}
                   />
@@ -245,10 +243,15 @@ export function DocumentMemories({
                     desc: "Newest first",
                   })}
                 />
+                <TableColumnHeader label="Actions" className="text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((memory) => (
+              {rows.length === 0 && <TableRow><TableCell colSpan={canEdit ? 5 : 4}>
+                {query ? <EmptyState size="sm" title="No matching memories"  /> :
+                  <MemoriesEmpty state={emptyState} sourceId={sourceId} canEdit={canEdit} />}
+              </TableCell></TableRow>}
+              {paged.items.map((memory) => (
                 <TableRowMenu
                   key={memory.id}
                   title={memory.text.slice(0, 60)}
@@ -261,24 +264,21 @@ export function DocumentMemories({
                     {
                       label: "Copy text",
                       icon: Copy,
-                      onSelect: () =>
-                        copyToClipboard(
-                          memory.text,
-                          "Copied.",
-                          "Could not copy. Check the browser allows clipboard access."
-                        ),
+                      onSelect: () => copyMemoryText(memory.text),
                     },
                     canEdit &&
                       (memory.forgottenAt
                         ? {
                             label: "Restore",
                             icon: RotateCcw,
+                            disabled: isPending,
                             onSelect: () => restore(memory.id),
                           }
                         : {
                             label: "Forget",
                             icon: EyeOff,
                             destructive: true,
+                            disabled: isPending,
                             onSelect: () => forget([memory.id]),
                           }),
                   ]}
@@ -319,13 +319,36 @@ export function DocumentMemories({
                   >
                     {relativeTimeLabel(memory.updatedAt)}
                   </TableCell>
+                  <TableCell>
+                    <TableActions>
+                      <Hint label="Open memory">
+                        <Button variant="ghost" size="icon-sm" aria-label={`Open memory: ${memory.text}`}
+                          onClick={() => setOpenId(memory.id)}>
+                          <Maximize2 className="size-4" />
+                        </Button>
+                      </Hint>
+                      <Hint label="Copy text">
+                        <Button variant="ghost" size="icon-sm" aria-label={`Copy memory text: ${memory.text}`}
+                          onClick={() => copyMemoryText(memory.text)}>
+                          <Copy className="size-4" />
+                        </Button>
+                      </Hint>
+                      {canEdit && <Hint label={memory.forgottenAt ? "Restore memory" : "Forget memory"}>
+                        <Button variant="ghost" size="icon-sm" disabled={isPending}
+                          data-destructive={!memory.forgottenAt || undefined}
+                          aria-label={`${memory.forgottenAt ? "Restore" : "Forget"} memory: ${memory.text}`}
+                          onClick={() => memory.forgottenAt ? restore(memory.id) : forget([memory.id])}>
+                          {memory.forgottenAt ? <RotateCcw className="size-4" /> : <EyeOff className="size-4" />}
+                        </Button>
+                      </Hint>}
+                    </TableActions>
+                  </TableCell>
                 </TableRow>
                 </TableRowMenu>
               ))}
             </TableBody>
           </Table>
         </TableCard>
-      )}
 
       <MemoryDialog
         memory={open}
@@ -385,23 +408,14 @@ function MemoriesEmpty({
       )}
       {state.kind === "not_extracted" && (
         <EmptyState size="sm" title="No memories yet"
-          description={`Nothing has extracted memories from this document yet. ${state.nextCrawlAt
-              ? `The next crawl, due ${formatDay(state.nextCrawlAt)}, will.`
-              : canEdit
-                ? "Extract memories starts it now."
-                : "An Editor can start it with Extract memories on the Source's page."}`}
+          description={state.nextCrawlAt ? `Next crawl: ${formatDay(state.nextCrawlAt)}.` : canEdit ? "Use Extract memories to start." : "An Editor can extract memories from the Source page."}
           action={canEdit ? <ExtractMemoriesButton sourceId={sourceId} /> : undefined}
         />
       )}
       {state.kind === "extracting" && (
         <>
           <p className="font-medium">Extracting…</p>
-          <p className="text-muted-foreground text-sm" aria-live="polite">
-            {state.remaining === 1
-              ? "1 Document of this Source is still queued."
-              : `${state.remaining} Documents of this Source are still queued.`}{" "}
-            Memories appear here when this one finishes.
-          </p>
+          <p className="text-muted-foreground text-sm" aria-live="polite">{state.remaining === 1 ? "1 document queued." : `${state.remaining} documents queued.`}</p>
         </>
       )}
       {state.kind === "failed" && (
@@ -467,126 +481,146 @@ function MemoryDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {memory && (
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">
-                {memoryActorLabel(memory.generatedBy)}
-              </Badge>
-              {memory.forgottenAt && <StatusPill status="offline" primaryText="Forgotten" />}
-            </div>
-
-            <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-y-2 font-mono text-xs">
-              <dt className="text-muted-foreground">Created</dt>
-              <dd>{formatDateTime(memory.createdAt)}</dd>
-              <dt className="text-muted-foreground">Updated</dt>
-              <dd>{formatDateTime(memory.updatedAt)}</dd>
-              <dt className="text-muted-foreground">ID</dt>
-              <dd className="flex items-center gap-1 break-all">
-                {memory.id}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={copied ? "Memory ID copied" : "Copy memory ID"}
-                  onClick={async () => {
-                    if (await copyText(memory.id, memory.id)) {
-                      toast.success("Memory ID copied");
-                    } else {
-                      toast.error("Could not copy the memory ID");
-                    }
-                  }}
-                >
-                  <CopyFeedbackIcon copied={copied} className="size-3.5" />
-                </Button>
-              </dd>
-              <dt className="text-muted-foreground">Sources</dt>
-              <dd>
-                {memory.sourceCount}
-                <span className="text-muted-foreground ml-2 font-sans">
-                  {memory.sourceCount === 1
-                    ? "the page said it once"
-                    : "the page has said it this many times"}
-                </span>
-              </dd>
-              <dt className="text-muted-foreground">Collection</dt>
-              <dd className="font-sans">
-                <Badge variant="secondary">{collectionName}</Badge>
-              </dd>
-              {memory.forgetReason && (
-                <>
-                  <dt className="text-muted-foreground">Reason</dt>
-                  <dd className="font-sans [overflow-wrap:anywhere]">
-                    {memory.forgetReason}
-                  </dd>
-                </>
-              )}
-            </dl>
-
-            <section className="space-y-2">
-              <h3 className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">
-                Evidence
-              </h3>
-              <blockquote className="border-l-2 pl-4 text-sm italic [overflow-wrap:anywhere]">
-                {memory.quote || "No quote was recorded for this memory."}
-              </blockquote>
-              {memory.chunkId ? (
-                <Link
-                  href={`${chunksHref}&chunk=${memory.chunkId}`}
-                  className="hover:bg-accent press inline-flex items-center rounded-md border px-3 py-1.5 text-sm"
-                >
-                  Open chunk
-                </Link>
-              ) : null}
-              {memory.conceptId === null && (
-                <p className="text-muted-foreground text-xs">
-                  {/* The memory outlived the Document row it was read from,
-                      which is what keying on the page rather than the row
-                      buys (ADR-0024). */}
-                  This memory predates the current version of the page.
-                </p>
-              )}
-            </section>
-
-            {canEdit && (
-              <div className="border-t pt-4">
-                {memory.forgottenAt ? (
-                  <Button variant="outline" disabled={busy} onClick={onRestore}>
-                    Restore
-                  </Button>
-                ) : confirming ? (
-                  <div className="space-y-2">
-                    <Input
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value.slice(0, 500))}
-                      placeholder="Why? (optional)"
-                      aria-label="Reason for forgetting"
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        variant="destructive"
-                        disabled={busy}
-                        onClick={() => onForget(reason.trim() || undefined)}
-                      >
-                        Forget memory
-                      </Button>
-                      <Button variant="ghost" onClick={() => setConfirming(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                    <p className="text-muted-foreground text-xs">
-                      It stays here with its evidence, leaves retrieval, and can
-                      be restored.
-                    </p>
-                  </div>
-                ) : (
-                  <Button variant="destructive" onClick={() => setConfirming(true)}>
-                    Forget memory
-                  </Button>
+        <DialogBody>
+          {memory && (
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">
+                  {memoryActorLabel(memory.generatedBy)}
+                </Badge>
+                {memory.forgottenAt && (
+                  <StatusPill status="offline" primaryText="Forgotten" />
                 )}
               </div>
-            )}
-          </div>
-        )}
+
+              <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-y-2 font-mono text-xs">
+                <dt className="text-muted-foreground">Created</dt>
+                <dd>{formatDateTime(memory.createdAt)}</dd>
+                <dt className="text-muted-foreground">Updated</dt>
+                <dd>{formatDateTime(memory.updatedAt)}</dd>
+                <dt className="text-muted-foreground">ID</dt>
+                <dd className="flex items-center gap-1 break-all">
+                  {memory.id}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={copied ? "Memory ID copied" : "Copy memory ID"}
+                    onClick={async () => {
+                      if (await copyText(memory.id, memory.id)) {
+                        toast.success("Memory ID copied");
+                      } else {
+                        toast.error("Could not copy the memory ID");
+                      }
+                    }}
+                  >
+                    <CopyFeedbackIcon copied={copied} className="size-3.5" />
+                  </Button>
+                </dd>
+                <dt className="text-muted-foreground">Sources</dt>
+                <dd>
+                  {memory.sourceCount}
+                  <span className="text-muted-foreground ml-2 font-sans">
+                    {memory.sourceCount === 1
+                      ? "the page said it once"
+                      : "the page has said it this many times"}
+                  </span>
+                </dd>
+                <dt className="text-muted-foreground">Collection</dt>
+                <dd className="font-sans">
+                  <Badge variant="secondary">{collectionName}</Badge>
+                </dd>
+                {memory.forgetReason && (
+                  <>
+                    <dt className="text-muted-foreground">Reason</dt>
+                    <dd className="font-sans [overflow-wrap:anywhere]">
+                      {memory.forgetReason}
+                    </dd>
+                  </>
+                )}
+              </dl>
+
+              <section className="space-y-2">
+                <h3 className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">
+                  Evidence
+                </h3>
+                <blockquote className="border-l-2 pl-4 text-sm italic [overflow-wrap:anywhere]">
+                  {memory.quote || "No quote was recorded for this memory."}
+                </blockquote>
+                {memory.chunkId ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    render={
+                      <Link href={`${chunksHref}&chunk=${memory.chunkId}`} />
+                    }
+                    className="hover:bg-accent press inline-flex items-center rounded-md border px-3 py-1.5 text-sm"
+                  >
+                    Open chunk
+                  </Button>
+                ) : null}
+                {memory.conceptId === null && (
+                  <p className="text-muted-foreground text-xs">
+                    {/* The memory outlived the Document row it was read from,
+                      which is what keying on the page rather than the row
+                      buys (ADR-0024). */}
+                    This memory predates the current version of the page.
+                  </p>
+                )}
+              </section>
+
+              {canEdit && (
+                <div className="border-t pt-4">
+                  {memory.forgottenAt ? (
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={onRestore}
+                    >
+                      Restore
+                    </Button>
+                  ) : confirming ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={reason}
+                        onChange={(e) =>
+                          setReason(e.target.value.slice(0, 500))
+                        }
+                        placeholder="Why? (optional)"
+                        aria-label="Reason for forgetting"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          disabled={busy}
+                          onClick={() => onForget(reason.trim() || undefined)}
+                        >
+                          Forget memory
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setConfirming(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                      <p className="text-muted-foreground text-xs">
+                        It stays here with its evidence, leaves retrieval, and
+                        can be restored.
+                      </p>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="destructive"
+                      onClick={() => setConfirming(true)}
+                    >
+                      Forget memory
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

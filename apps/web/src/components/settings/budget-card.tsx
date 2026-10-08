@@ -171,7 +171,7 @@ export function BudgetCard({
           </Select>
         </div>
         {canManage && (
-          <Button onClick={save} disabled={!dirty || isPending}>
+          <Button loading={isPending} onClick={save} disabled={!dirty || isPending}>
             <RollInText text={isPending ? "Saving…" : "Save budget"} />
           </Button>
         )}

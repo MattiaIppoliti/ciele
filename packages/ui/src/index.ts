@@ -17,6 +17,7 @@ export { Badge } from "./badge";
 export type { BadgeTone } from "./badge";
 // buttonClasses stays internal to the calendar's nav buttons.
 export { Button } from "./button";
+export type { ButtonProps } from "./button";
 export * from "./calendar";
 export * from "./card";
 export * from "./copy-feedback";

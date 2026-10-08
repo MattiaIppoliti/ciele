@@ -5,7 +5,7 @@ import { Loader2, TriangleAlert } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { MorphingModal } from "@/components/motion/morphing-modal";
 import { toast } from "@/lib/toast";
-import { Button } from "@agent-hub/ui";
+import { DialogBody, DialogFooter, Button } from "@agent-hub/ui";
 
 /**
  * The warning step of the assistant/member delete modal on its own, for
@@ -47,19 +47,21 @@ export function ConfirmDeleteModal({
       onClose={close}
       placement="bottom"
     >
-      <div className="space-y-4">
-        <div className="flex items-start gap-3">
+      <div className="ui-modal-stack">
+        <div className="ui-modal-header flex items-start gap-3">
           <div className="bg-destructive/10 text-destructive rounded-full p-2">
             <AnimatedIcon icon={TriangleAlert} size={20} />
           </div>
           <div>
             <h3 className="text-base font-semibold">{title}</h3>
-            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-              {description}
-            </p>
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
+        <DialogBody>
+          <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+            {description}
+          </p>
+        </DialogBody>
+        <DialogFooter className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={close} disabled={pending}>
             Cancel
           </Button>
@@ -70,11 +72,16 @@ export function ConfirmDeleteModal({
               {secondaryLabel}
             </Button>
           )}
-          <Button variant="destructive" onClick={onConfirm} disabled={pending}>
+          <Button
+            loading={pending}
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={pending}
+          >
             {pending ? <Loader2 className="size-4 animate-spin" /> : null}
             {confirmLabel}
           </Button>
-        </div>
+        </DialogFooter>
       </div>
     </MorphingModal>
   );

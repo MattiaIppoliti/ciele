@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import dynamic from "next/dynamic";
@@ -7,7 +8,6 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowLeft,
-  CheckCircle2,
   CircleAlert,
   Clock3,
   Coins,
@@ -19,6 +19,7 @@ import {
 import { modelSelector, type EvaluationRun } from "@agent-hub/core";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { EvaluationResultsTable } from "@/components/eval/evaluation-results-table";
 import { EvaluationLeaderboard } from "@/components/eval/evaluation-leaderboard";
 import { AnalyticsCard } from "@/components/insights/analytics-card";
 import { ChartSkeleton } from "@/components/insights/dashboard/dashboard-kit";
@@ -201,8 +202,8 @@ export function EvaluationDashboard({
       )}
       <ArcFrame className="grid gap-3 md:grid-cols-3">
         <MetricCard label="Executed comparisons" value={run.results.length} context={`${run.examples.length * run.candidates.length} expected across all models`} />
-        <MetricCard label="Dataset examples" value={run.examples.length} context="The same questions for every model" />
-        <MetricCard label="Models compared" value={run.candidates.length} context="Candidates in this evaluation run" />
+        <MetricCard label="Dataset examples" value={run.examples.length}  />
+        <MetricCard label="Models compared" value={run.candidates.length}  />
       </ArcFrame>
       <section className="grid gap-3 md:grid-cols-3">
         {stats.map((row) => (
@@ -251,80 +252,8 @@ export function EvaluationDashboard({
       </section>
       <EvaluationDistributions run={run} labels={labels} />
       <EvaluationLeaderboard run={run} labels={labels} />
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="border-b px-5 py-4">
-          <h2 className="font-medium">Results by question</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Select a row to inspect answers and errors.
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
-              <tr>
-                {[
-                  "Question",
-                  "Model",
-                  "Accuracy",
-                  "Flow",
-                  "Latency",
-                  "Token",
-                  "Model cost",
-                  "Error",
-                ].map((head) => (
-                  <th key={head} className="px-4 py-3 font-medium">
-                    {head}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {run.results.map((result) => {
-                const example = dataset.examples.find(
-                  (item) => item.id === result.exampleId,
-                );
-                return (
-                  <tr
-                    key={`${result.exampleId}-${candidateKey(result.candidate)}`}
-                    onClick={() => setSelected(result.exampleId)}
-                    className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${selected === result.exampleId ? "bg-muted/30" : ""}`}
-                  >
-                    <td
-                      className="max-w-xs truncate px-4 py-3"
-                      title={example?.inputs.question}
-                    >
-                      {example?.inputs.question ?? result.exampleId}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {result.candidate.modelId}
-                    </td>
-                    <td className="px-4 py-3">
-                      {result.accuracy === null ? (
-                        "—"
-                      ) : result.accuracy ? (
-                        <CheckCircle2 className="size-4 text-emerald-500" />
-                      ) : (
-                        <CircleAlert className="size-4 text-amber-500" />
-                      )}
-                    </td>
-                    <td className="max-w-24 truncate px-4 py-3 text-xs">
-                      {result.flowName ?? result.flowId ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">{result.latencyMs} ms</td>
-                    <td className="px-4 py-3">
-                      {result.inputTokens + result.outputTokens}
-                    </td>
-                    <td className="px-4 py-3">{number(result.costEur, "€")}</td>
-                    <td className="px-4 py-3 text-xs text-destructive">
-                      {result.error ? "Yes" : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <EvaluationResultsTable run={run} questions={Object.fromEntries(dataset.examples.map(item => [item.id, item.inputs.question]))}
+        selected={selected} onSelect={setSelected} />
       {selectedExample && (
         <section className="rounded-xl border bg-card p-5">
           <div className="flex items-start justify-between">
@@ -334,12 +263,12 @@ export function EvaluationDashboard({
                 {selectedExample.id}
               </p>
             </div>
-            <button
+            <CieleButton variant="ghost" size="sm"
               onClick={() => setSelected(null)}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               Close
-            </button>
+            </CieleButton>
           </div>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             {selectedResults.map((result) => (
@@ -383,12 +312,7 @@ export function EvaluationDashboard({
         </section>
       )}
       <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-        <Gauge className="mt-0.5 size-4 shrink-0" /> Accuracy is deterministic:
-        it checks only reference_outputs fields. Autonomy means no
-        fallback or error in the tested path; it does not measure the quality of the
-        decision. Cost and tokens use model telemetry; retrieval
-        may add cost to the organization ledger. The reranker uses
-        estimated token counts.
+        <Gauge className="mt-0.5 size-4 shrink-0" /> Accuracy checks reference_outputs. Autonomy = no fallback or error, independent of answer quality. Model telemetry excludes retrieval costs; reranker tokens are estimated.
       </p>
     </div>
   );

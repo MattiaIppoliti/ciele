@@ -13,7 +13,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { SPRING_PANEL } from "@/lib/ease";
 import { PanelRight, Search, Type, X } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
+import { Button as CieleButton, Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
 import { findStore, useFindSnapshot } from "@/lib/find-client";
 import { createPointerAim, WARM_LIMIT } from "@/lib/find-store";
 import { FilterChip, FilterMenu } from "@/components/shell/find-filters";
@@ -339,13 +339,18 @@ export function CommandMenu({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        data-modal-layout="search"
+        data-modal-motion="instant"
         showCloseButton={false}
-        overlayClassName="bg-background/5 supports-backdrop-filter:backdrop-blur-md supports-backdrop-filter:backdrop-saturate-150 data-open:duration-200 data-closed:duration-100"
+        overlayClassName="ui-modal-instant"
         className="find-dialog top-[10vh] flex h-[min(640px,80vh)] translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0 shadow-strong will-change-transform sm:max-w-4xl data-open:duration-300 data-open:ease-[cubic-bezier(0.16,1,0.3,1)] data-open:slide-in-from-top-2 data-closed:duration-100 data-closed:slide-out-to-top-2 motion-reduce:data-open:slide-in-from-top-0 motion-reduce:data-open:zoom-in-100 motion-reduce:data-closed:slide-out-to-top-0 motion-reduce:data-closed:zoom-out-100"
       >
         <DialogTitle className="sr-only">Find</DialogTitle>
         <div className="find-search-header flex shrink-0 items-center gap-2.5 px-4">
-          <Search aria-hidden className="text-muted-foreground size-4 shrink-0" />
+          <Search
+            aria-hidden
+            className="text-muted-foreground size-4 shrink-0"
+          />
           <input
             autoFocus={canAutoFocus()}
             data-foley-type=""
@@ -365,7 +370,9 @@ export function CommandMenu({
             aria-autocomplete="list"
             className="placeholder:text-muted-foreground h-12 w-full bg-transparent text-sm outline-none"
           />
-          <button
+          <CieleButton
+            variant="ghost"
+            size="icon-sm"
             type="button"
             aria-label={showPreview ? "Hide preview" : "Show preview"}
             aria-pressed={showPreview}
@@ -377,15 +384,8 @@ export function CommandMenu({
             }`}
           >
             <PanelRight aria-hidden className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Close search"
-            onClick={() => handleOpenChange(false)}
-            className="flex size-[44px] shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted sm:hidden"
-          >
-            <X aria-hidden className="size-5" />
-          </button>
+          </CieleButton>
+          <CieleButton variant="ghost" size="icon" aria-label="Close search" onClick={() => handleOpenChange(false)} className="sm:hidden"><X className="size-5" /></CieleButton>
           <kbd className="text-muted-foreground hidden rounded-md border px-1.5 py-0.5 font-sans text-xs sm:block">
             Esc
           </kbd>
@@ -403,7 +403,11 @@ export function CommandMenu({
             label="Type"
             value={filters.kind ? FIND_KIND_INFO[filters.kind].plural : null}
             options={[
-              { key: "all", label: "Everything", selected: filters.kind === null },
+              {
+                key: "all",
+                label: "Everything",
+                selected: filters.kind === null,
+              },
               ...FIND_KINDS.map((kind) => ({
                 key: kind,
                 label: FIND_KIND_INFO[kind].plural,
@@ -416,7 +420,11 @@ export function CommandMenu({
           />
           <FilterMenu
             label="Updated"
-            value={filters.updated === "any" ? null : FIND_UPDATED_LABELS[filters.updated]}
+            value={
+              filters.updated === "any"
+                ? null
+                : FIND_UPDATED_LABELS[filters.updated]
+            }
             options={(Object.keys(FIND_UPDATED_LABELS) as FindUpdated[]).map(
               (updated) => ({
                 key: updated,
@@ -427,7 +435,9 @@ export function CommandMenu({
             onSelect={(key) => updateFilters({ updated: key as FindUpdated })}
           />
           {narrowed && (
-            <button
+            <CieleButton
+              variant="ghost"
+              size="sm"
               type="button"
               onClick={() =>
                 updateFilters({ titleOnly: false, kind: null, updated: "any" })
@@ -435,11 +445,14 @@ export function CommandMenu({
               className="text-muted-foreground hover:text-foreground ml-1 text-xs transition-colors"
             >
               Clear filters
-            </button>
+            </CieleButton>
           )}
         </div>
 
-        <div className="flex min-h-0 flex-1">
+        <div
+          className="ui-modal-body flex min-h-0 flex-1 overflow-hidden"
+          data-modal-padding="none"
+        >
           <div
             ref={setListElement}
             id={`${uid}-list`}
@@ -462,13 +475,15 @@ export function CommandMenu({
                 {records === null && recordsStatus === "error" ? (
                   <>
                     <p>Couldn’t load results.</p>
-                    <button
+                    <CieleButton
+                      variant="secondary"
+                      size="sm"
                       type="button"
                       onClick={() => findStore.open()}
                       className="text-foreground mt-2 underline underline-offset-4"
                     >
                       Try again
-                    </button>
+                    </CieleButton>
                   </>
                 ) : (
                   <p>
@@ -520,7 +535,10 @@ export function CommandMenu({
             aria-label="Preview"
             inert={!showPreview}
             initial={false}
-            animate={{ width: showPreview ? PREVIEW_WIDTH : 0, opacity: showPreview ? 1 : 0 }}
+            animate={{
+              width: showPreview ? PREVIEW_WIDTH : 0,
+              opacity: showPreview ? 1 : 0,
+            }}
             transition={reduceMotion ? { duration: 0 } : SPRING_PANEL}
             className="hidden shrink-0 overflow-hidden md:block"
           >
@@ -537,30 +555,33 @@ export function CommandMenu({
                   onOpen={onOpenActive}
                 />
               ) : (
-                <p className="text-muted-foreground text-sm">
-                  Select a result to preview it.
-                </p>
+                null
               )}
             </div>
           </motion.aside>
         </div>
 
-        <div className="text-muted-foreground flex shrink-0 items-center gap-4 border-t px-4 py-2.5 text-xs">
+        <div className="ui-modal-footer text-muted-foreground flex shrink-0 items-center gap-4 text-xs">
           <span className="hidden items-center gap-1.5 sm:flex">
             <kbd className="rounded border px-1 font-sans">↵</kbd> Open
           </span>
           <span className="hidden items-center gap-1.5 sm:flex">
-            <kbd className="rounded border px-1 font-sans">⌘ ↵</kbd> Open in new tab
+            <kbd className="rounded border px-1 font-sans">⌘ ↵</kbd> Open in new
+            tab
           </span>
-          {records !== null && (recordsStatus === "partial" || recordsStatus === "error") && (
-            <button
-              type="button"
-              onClick={() => findStore.open()}
-              className="hover:text-foreground underline underline-offset-4"
-            >
-              Some results could not be loaded. Try again
-            </button>
-          )}
+          {records !== null &&
+            (recordsStatus === "partial" || recordsStatus === "error") && (
+              <CieleButton
+                variant="secondary"
+                size="sm"
+                wrap
+                type="button"
+                onClick={() => findStore.open()}
+                className="hover:text-foreground underline underline-offset-4"
+              >
+                Some results could not be loaded. Try again
+              </CieleButton>
+            )}
           <span role="status" className="ml-auto tabular-nums">
             {items.length} {items.length === 1 ? "result" : "results"}
           </span>

@@ -296,6 +296,7 @@ export default function Example() {
     slug: "cards",
     kind: "component",
     title: "Card",
+    notes: "Shared cards use one native border following the same rounded contour as their fill, without filtered frame layers or corner halos.",
     description: "One content surface with matching header, body and footer parts.",
     group: "Surfaces",
     preview: "primitive",
@@ -321,7 +322,8 @@ export default function Example() {
     group: "Surfaces",
     preview: "primitive",
     variants: ["Default", "Header / footer", "Controlled", "Dismissible"],
-    sources: ["packages/ui/src/dialog.tsx"],
+    sources: ["packages/ui/src/dialog.tsx", "packages/ui/src/dialog.css", "apps/web/src/components/settings/settings-dialog.tsx"],
+    notes: "Table controls retain their shared shapes and heights inside dialogs. Settings navigation and outer frame share --modal-frame: #202023 in dark mode and #e4e4e7 in light mode.",
     usage: `"use client";
 
 import { Button, Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@agent-hub/ui";
@@ -479,7 +481,7 @@ export default function Example() {
     group: "Data display",
     preview: "primitive",
     variants: ["TableCard", "Table parts", "Motion Table", "Sortable / filterable headers", "Resizable columns", "Row selection / bulk bar", "Row actions", "Pagination", "Open cell"],
-    sources: ["apps/web/src/components/ui/table.tsx", "apps/web/src/components/ui/table-column-header.tsx", "apps/web/src/components/ui/table-columns.tsx", "apps/web/src/components/ui/table-selection.tsx", "apps/web/src/components/ui/table-menu.tsx", "apps/web/src/components/ui/table-pagination.tsx", "apps/web/src/components/ui/table-open-cell.tsx"],
+    sources: ["apps/web/src/components/ui/table.tsx", "apps/web/src/components/ui/table-editable-cell.tsx", "apps/web/src/components/ui/table-filters.tsx", "apps/web/src/components/ui/table-history.tsx", "apps/web/src/components/ui/table-preferences.tsx", "apps/web/src/components/ui/table-view.tsx", "apps/web/src/lib/table-view.ts", "apps/web/src/components/ui/table-column-header.tsx", "apps/web/src/components/ui/table-columns.tsx", "apps/web/src/components/ui/table-selection.tsx", "apps/web/src/components/ui/table-menu.tsx", "apps/web/src/components/ui/table-pagination.tsx", "apps/web/src/components/ui/table-open-cell.tsx"],
     usage: `"use client";
 
 import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -496,12 +498,12 @@ export default function Example() {
   {
     slug: "calendars",
     kind: "component",
-    title: "Calendar",
-    description: "A shared date-selection contract for single dates and ranges.",
+    title: "Date Picker",
+    description: "BoardUI single dates and ranges with editable chips and Cancel/Apply.",
     group: "Forms",
     preview: "primitive",
-    variants: ["Single date", "Date range", "Disabled dates", "Shared wrapper"],
-    sources: ["packages/ui/src/calendar.tsx", "apps/web/src/components/ui/calendar.tsx"],
+    variants: ["Single date", "Date range", "Disabled", "Cancel and Apply"],
+    sources: ["packages/ui/src/calendar.tsx", "apps/web/src/components/ui/date-picker.tsx", "apps/web/src/components/ui/date-picker-panel.tsx", "apps/web/src/lib/date-picker.ts", "apps/web/src/components/ui/calendar.tsx"],
     usage: `"use client";
 
 import { Calendar } from "@/components/ui/calendar";
@@ -513,7 +515,7 @@ export default function Example() {
     </>
   );
 }`,
-    notes: "The app wrappers format the shared calendar value as an ISO date string or range.",
+    notes: "The BoardUI picker keeps a pending draft until Apply. Cancel or dismissal preserves the committed ISO date or range.",
   },
   {
     slug: "color-pickers",

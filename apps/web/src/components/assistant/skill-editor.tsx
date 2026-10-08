@@ -116,7 +116,7 @@ export function SkillEditor({
         >
           Cancel
         </Button>
-        <Button className="h-8 rounded-lg px-3 font-semibold" disabled={pending} onClick={save}>
+        <Button loading={pending} className="h-8 rounded-lg px-3 font-semibold" disabled={pending} onClick={save}>
           <RollInText text={pending ? "Saving…" : skill ? "Save skill" : "Create skill"} />
         </Button>
       </SlotPortal>
@@ -136,9 +136,6 @@ export function SkillEditor({
         onChange={(event) => setDraft({ ...draft, description: event.target.value })}
         className={`placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none ${LINE_FOCUS}`}
       />
-      <p className="text-muted-foreground mt-1 text-xs">
-        A reusable prompt template. Attach it to any assistant in your organization.
-      </p>
 
       <div className="mt-4 border-t pt-4">
         <Textarea
@@ -148,9 +145,7 @@ export function SkillEditor({
           onChange={(event) => setDraft({ ...draft, prompt: event.target.value })}
           className="min-h-56 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0 focus-visible:bg-muted/40"
         />
-        <p className="text-muted-foreground mt-2 text-xs">
-          Added to the instructions of every assistant the skill is attached to.
-        </p>
+
       </div>
 
       <section className="mt-6 rounded-lg border">
@@ -167,9 +162,7 @@ export function SkillEditor({
             className="resize-none border-0 px-1 shadow-none focus-visible:ring-0"
           />
           <p className="text-muted-foreground mt-2 px-1 text-xs">
-            What the chat window writes into the message box when someone picks this skill from
-            the <code>/</code> menu. Write it as the asker. Leave empty to keep the skill out of
-            the menu.
+            Filled into the composer from the <code>/</code> menu. Leave empty to hide.
           </p>
         </div>
       </section>

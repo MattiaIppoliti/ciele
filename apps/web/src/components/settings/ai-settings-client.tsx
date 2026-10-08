@@ -35,7 +35,7 @@ import {
   testOpenAiCompatibleConnectionAction,
   updatePersonalAiSubscriptionsAllowedAction,
 } from "@/app/actions";
-import { Badge } from "@agent-hub/ui";
+import { DialogBody, DialogSection, Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
 import {
@@ -192,7 +192,7 @@ function ConnectFooter({
       <Button type="button" variant="outline" onClick={onCancel}>
         Cancel
       </Button>
-      <Button type="submit" disabled={pending}>
+      <Button loading={pending} type="submit" disabled={pending}>
         <RollInText text={pending ? "Connecting…" : "Connect"} />
       </Button>
     </DialogFooter>
@@ -418,9 +418,9 @@ export function AiSettingsClient({
           )}
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Use your own provider key and billing. Keys are stored encrypted. An AI
-          Gateway key serves Anthropic, OpenAI, and Google models through your own
-          Vercel AI Gateway account.
+          Use your own provider key and billing. Keys are stored encrypted. An
+          AI Gateway key serves Anthropic, OpenAI, and Google models through
+          your own Vercel AI Gateway account.
         </p>
         <div className="mt-3 space-y-2">
           {byokConnections.length === 0 && (
@@ -463,8 +463,14 @@ export function AiSettingsClient({
       <Card size="sm" data-animate-group className="gap-0 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <AnimatedIcon icon={Server} size={16} iconClassName="text-primary" />
-            <h2 className="text-base font-semibold">OpenAI-compatible endpoints</h2>
+            <AnimatedIcon
+              icon={Server}
+              size={16}
+              iconClassName="text-primary"
+            />
+            <h2 className="text-base font-semibold">
+              OpenAI-compatible endpoints
+            </h2>
           </div>
           {canManage && (
             <Button variant="outline" size="sm" onClick={() => setDialog("compat")}>
@@ -473,7 +479,8 @@ export function AiSettingsClient({
           )}
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Any OpenAI-compatible server, like Ollama, vLLM or LM Studio. The API key is optional.
+          Any OpenAI-compatible server, like Ollama, vLLM or LM Studio. The API
+          key is optional.
         </p>
         <div className="mt-3 space-y-2">
           {openAiCompatibleConnections.length === 0 && (
@@ -531,7 +538,11 @@ export function AiSettingsClient({
       <Card size="sm" data-animate-group className="gap-0 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <AnimatedIcon icon={CloudCog} size={16} iconClassName="text-primary" />
+            <AnimatedIcon
+              icon={CloudCog}
+              size={16}
+              iconClassName="text-primary"
+            />
             <h2 className="text-base font-semibold">Keyless enterprise auth</h2>
           </div>
           {canManage && (
@@ -557,7 +568,8 @@ export function AiSettingsClient({
           )}
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Keyless access to enterprise cloud APIs, billed to your cloud account. Not for personal subscriptions.
+          Keyless access to enterprise cloud APIs, billed to your cloud account.
+          Not for personal subscriptions.
         </p>
         <div className="mt-3 space-y-2">
           {federatedConnections.length === 0 && (
@@ -572,9 +584,7 @@ export function AiSettingsClient({
             const anthropicWif = isAnthropicWifConfig(c.config)
               ? c.config
               : null;
-            const azureOpenAi = isAzureOpenAiConfig(c.config)
-              ? c.config
-              : null;
+            const azureOpenAi = isAzureOpenAiConfig(c.config) ? c.config : null;
             return (
               <div
                 key={c.id}
@@ -611,7 +621,7 @@ export function AiSettingsClient({
                       ? "Anthropic WIF"
                       : azureOpenAi
                         ? "Azure OpenAI"
-                    : CONNECTION_PROVIDER_LABELS[c.provider]}
+                        : CONNECTION_PROVIDER_LABELS[c.provider]}
                 </Badge>
                 {canManage && (
                   <Hint label="Disconnect keyless auth">
@@ -636,11 +646,18 @@ export function AiSettingsClient({
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <AnimatedIcon icon={User} size={16} iconClassName="text-primary" />
-              <h2 className="text-base font-semibold">Personal AI subscriptions</h2>
+              <AnimatedIcon
+                icon={User}
+                size={16}
+                iconClassName="text-primary"
+              />
+              <h2 className="text-base font-semibold">
+                Personal AI subscriptions
+              </h2>
             </div>
             <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-              Let Members use their own ChatGPT or Claude subscription in their Preview. It never serves visitors or other Members.
+              Let Members use their own ChatGPT or Claude subscription in their
+              Preview. It never serves visitors or other Members.
             </p>
             {!canEnablePersonalSubscriptions && !personalSubscriptionsOn && (
               <p className="text-muted-foreground mt-2 text-xs">
@@ -679,7 +696,8 @@ export function AiSettingsClient({
             <div>
               <h2 className="text-base font-semibold">Retired subscriptions</h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Ciele no longer uses hosted Claude or ChatGPT subscription tokens. Use an API key instead.
+                Ciele no longer uses hosted Claude or ChatGPT subscription
+                tokens. Use an API key instead.
               </p>
             </div>
           </div>
@@ -705,7 +723,9 @@ export function AiSettingsClient({
                       size="icon"
                       aria-label={`Remove ${c.displayName || CONNECTION_PROVIDER_LABELS[c.provider]}`}
                       disabled={isPending}
-                      onClick={() => handleDisconnect(c.id, "Retired subscription")}
+                      onClick={() =>
+                        handleDisconnect(c.id, "Retired subscription")
+                      }
                     >
                       <AnimatedIcon icon={Trash2} size={16} />
                     </Button>
@@ -727,37 +747,52 @@ export function AiSettingsClient({
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddKey} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Provider</Label>
-              <Select value={provider} onValueChange={(value) => setProvider(value as ApiKeyProvider)}>
-                <SelectTrigger aria-label="Provider" className="w-full">
-                  <SelectValue>{CONNECTION_PROVIDER_LABELS[provider]}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {BYOK_PROVIDERS.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {CONNECTION_PROVIDER_LABELS[p]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Field
-              id="api-key"
-              label="API key"
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
-              required
-            />
-            <Field
-              id="key-name"
-              label="Display name (optional)"
-              value={keyName}
-              onChange={(e) => setKeyName(e.target.value)}
-              placeholder="e.g. Production billing key"
-            />
+            <DialogBody>
+              <DialogSection>
+                <div className="space-y-2">
+                  <Label>Provider</Label>
+                  <Select
+                    value={provider}
+                    onValueChange={(value) =>
+                      setProvider(value as ApiKeyProvider)
+                    }
+                  >
+                    <SelectTrigger aria-label="Provider" className="w-full">
+                      <SelectValue>
+                        {CONNECTION_PROVIDER_LABELS[provider]}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BYOK_PROVIDERS.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {CONNECTION_PROVIDER_LABELS[p]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="api-key"
+                  label="API key"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  required
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="key-name"
+                  label="Display name (optional)"
+                  value={keyName}
+                  onChange={(e) => setKeyName(e.target.value)}
+                  placeholder="e.g. Production billing key"
+                />
+              </DialogSection>
+            </DialogBody>
             <ConnectFooter pending={isPending} onCancel={closeDialog} />
           </form>
         </DialogContent>
@@ -779,52 +814,62 @@ export function AiSettingsClient({
                 () => createGoogleVertexFederatedConnectionAction(vertex),
                 "Google Vertex keyless auth connected",
                 "Couldn't connect Google Vertex keyless auth",
-                () => setVertex(EMPTY_VERTEX)
+                () => setVertex(EMPTY_VERTEX),
               )
             }
             className="space-y-4"
           >
-            <Field
-              id="vertex-name"
-              label="Display name (optional)"
-              {...vertexField("displayName")}
-              placeholder="e.g. Production Vertex"
-            />
-            <div className="grid gap-4 @md/settings:grid-cols-2">
-              <Field
-                id="vertex-project"
-                label="Project ID"
-                spellCheck={false}
-                {...vertexField("projectId")}
-                placeholder="ciele-prod"
-                required
-              />
-              <Field
-                id="vertex-location"
-                label="Location"
-                spellCheck={false}
-                {...vertexField("location")}
-                placeholder="europe-west4"
-                required
-              />
-            </div>
-            <Field
-              id="vertex-audience"
-              label="WIF audience"
-              spellCheck={false}
-              {...vertexField("workloadIdentityAudience")}
-              placeholder="//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/ciele/providers/vercel"
-              required
-            />
-            <Field
-              id="vertex-service-account"
-              label="Service account email (optional)"
-              type="email"
-              inputMode="email"
-              spellCheck={false}
-              {...vertexField("serviceAccountEmail")}
-              placeholder="ciele-runtime@ciele-prod.iam.gserviceaccount.com"
-            />
+            <DialogBody>
+              <DialogSection>
+                <Field
+                  id="vertex-name"
+                  label="Display name (optional)"
+                  {...vertexField("displayName")}
+                  placeholder="e.g. Production Vertex"
+                />
+              </DialogSection>
+              <DialogSection>
+                <div className="grid gap-4 @md/settings:grid-cols-2">
+                  <Field
+                    id="vertex-project"
+                    label="Project ID"
+                    spellCheck={false}
+                    {...vertexField("projectId")}
+                    placeholder="ciele-prod"
+                    required
+                  />
+                  <Field
+                    id="vertex-location"
+                    label="Location"
+                    spellCheck={false}
+                    {...vertexField("location")}
+                    placeholder="europe-west4"
+                    required
+                  />
+                </div>
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="vertex-audience"
+                  label="WIF audience"
+                  spellCheck={false}
+                  {...vertexField("workloadIdentityAudience")}
+                  placeholder="//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/ciele/providers/vercel"
+                  required
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="vertex-service-account"
+                  label="Service account email (optional)"
+                  type="email"
+                  inputMode="email"
+                  spellCheck={false}
+                  {...vertexField("serviceAccountEmail")}
+                  placeholder="ciele-runtime@ciele-prod.iam.gserviceaccount.com"
+                />
+              </DialogSection>
+            </DialogBody>
             <ConnectFooter pending={isPending} onCancel={closeDialog} />
           </form>
         </DialogContent>
@@ -845,41 +890,49 @@ export function AiSettingsClient({
                 () => createAnthropicWifFederatedConnectionAction(anthropic),
                 "Anthropic WIF connected",
                 "Couldn't connect Anthropic WIF",
-                () => setAnthropic(EMPTY_ANTHROPIC)
+                () => setAnthropic(EMPTY_ANTHROPIC),
               )
             }
             className="space-y-4"
           >
-            <Field
-              id="anthropic-name"
-              label="Display name (optional)"
-              {...anthropicField("displayName")}
-              placeholder="e.g. Anthropic enterprise WIF"
-            />
-            <Field
-              id="anthropic-audience"
-              label="WIF audience"
-              spellCheck={false}
-              {...anthropicField("workloadIdentityAudience")}
-              placeholder="trusted identity provider audience"
-              required
-            />
-            <div className="grid gap-4 @md/settings:grid-cols-2">
-              <Field
-                id="anthropic-org"
-                label="Organization ID (optional)"
-                spellCheck={false}
-                {...anthropicField("organizationId")}
-                placeholder="org_..."
-              />
-              <Field
-                id="anthropic-workspace"
-                label="Workspace ID (optional)"
-                spellCheck={false}
-                {...anthropicField("workspaceId")}
-                placeholder="wrkspc_..."
-              />
-            </div>
+            <DialogBody>
+              <DialogSection>
+                <Field
+                  id="anthropic-name"
+                  label="Display name (optional)"
+                  {...anthropicField("displayName")}
+                  placeholder="e.g. Anthropic enterprise WIF"
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="anthropic-audience"
+                  label="WIF audience"
+                  spellCheck={false}
+                  {...anthropicField("workloadIdentityAudience")}
+                  placeholder="trusted identity provider audience"
+                  required
+                />
+              </DialogSection>
+              <DialogSection>
+                <div className="grid gap-4 @md/settings:grid-cols-2">
+                  <Field
+                    id="anthropic-org"
+                    label="Organization ID (optional)"
+                    spellCheck={false}
+                    {...anthropicField("organizationId")}
+                    placeholder="org_..."
+                  />
+                  <Field
+                    id="anthropic-workspace"
+                    label="Workspace ID (optional)"
+                    spellCheck={false}
+                    {...anthropicField("workspaceId")}
+                    placeholder="wrkspc_..."
+                  />
+                </div>
+              </DialogSection>
+            </DialogBody>
             <ConnectFooter pending={isPending} onCancel={closeDialog} />
           </form>
         </DialogContent>
@@ -901,61 +954,71 @@ export function AiSettingsClient({
                 () => createAzureOpenAiFederatedConnectionAction(azure),
                 "Azure OpenAI keyless auth connected",
                 "Couldn't connect Azure OpenAI keyless auth",
-                () => setAzure(EMPTY_AZURE)
+                () => setAzure(EMPTY_AZURE),
               )
             }
             className="space-y-4"
           >
-            <Field
-              id="azure-name"
-              label="Display name (optional)"
-              {...azureField("displayName")}
-              placeholder="e.g. Enterprise Azure OpenAI"
-            />
-            <Field
-              id="azure-endpoint"
-              label="Endpoint"
-              type="url"
-              inputMode="url"
-              spellCheck={false}
-              {...azureField("endpoint")}
-              placeholder="https://example.openai.azure.com"
-              required
-            />
-            <div className="grid gap-4 @md/settings:grid-cols-2">
-              <Field
-                id="azure-tenant"
-                label="Tenant ID"
-                spellCheck={false}
-                {...azureField("tenantId")}
-                placeholder="00000000-0000-0000-0000-000000000000"
-                required
-              />
-              <Field
-                id="azure-deployment"
-                label="Deployment"
-                spellCheck={false}
-                {...azureField("deployment")}
-                placeholder="gpt-4.1"
-                required
-              />
-            </div>
-            <div className="grid gap-4 @md/settings:grid-cols-2">
-              <Field
-                id="azure-client"
-                label="Client ID (optional)"
-                spellCheck={false}
-                {...azureField("clientId")}
-                placeholder="managed identity client id"
-              />
-              <Field
-                id="azure-audience"
-                label="Audience (optional)"
-                spellCheck={false}
-                {...azureField("audience")}
-                placeholder="https://cognitiveservices.azure.com/.default"
-              />
-            </div>
+            <DialogBody>
+              <DialogSection>
+                <Field
+                  id="azure-name"
+                  label="Display name (optional)"
+                  {...azureField("displayName")}
+                  placeholder="e.g. Enterprise Azure OpenAI"
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="azure-endpoint"
+                  label="Endpoint"
+                  type="url"
+                  inputMode="url"
+                  spellCheck={false}
+                  {...azureField("endpoint")}
+                  placeholder="https://example.openai.azure.com"
+                  required
+                />
+              </DialogSection>
+              <DialogSection>
+                <div className="grid gap-4 @md/settings:grid-cols-2">
+                  <Field
+                    id="azure-tenant"
+                    label="Tenant ID"
+                    spellCheck={false}
+                    {...azureField("tenantId")}
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    required
+                  />
+                  <Field
+                    id="azure-deployment"
+                    label="Deployment"
+                    spellCheck={false}
+                    {...azureField("deployment")}
+                    placeholder="gpt-4.1"
+                    required
+                  />
+                </div>
+              </DialogSection>
+              <DialogSection>
+                <div className="grid gap-4 @md/settings:grid-cols-2">
+                  <Field
+                    id="azure-client"
+                    label="Client ID (optional)"
+                    spellCheck={false}
+                    {...azureField("clientId")}
+                    placeholder="managed identity client id"
+                  />
+                  <Field
+                    id="azure-audience"
+                    label="Audience (optional)"
+                    spellCheck={false}
+                    {...azureField("audience")}
+                    placeholder="https://cognitiveservices.azure.com/.default"
+                  />
+                </div>
+              </DialogSection>
+            </DialogBody>
             <ConnectFooter pending={isPending} onCancel={closeDialog} />
           </form>
         </DialogContent>
@@ -972,7 +1035,8 @@ export function AiSettingsClient({
           <DialogHeader>
             <DialogTitle>Connect an OpenAI-compatible endpoint</DialogTitle>
             <DialogDescription>
-              Any OpenAI-compatible server. The key is optional and stored encrypted.
+              Any OpenAI-compatible server. The key is optional and stored
+              encrypted.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -991,92 +1055,111 @@ export function AiSettingsClient({
                 () => {
                   setCompat(EMPTY_COMPAT);
                   setCompatTestResult(null);
-                }
+                },
               )
             }
             className="space-y-4"
           >
-            <Field
-              id="compat-name"
-              label="Display name (optional)"
-              {...compatField("displayName")}
-              placeholder="e.g. Campus Ollama"
-            />
-            <Field
-              id="compat-base-url"
-              label="Base URL"
-              type="url"
-              inputMode="url"
-              spellCheck={false}
-              {...compatField("baseUrl")}
-              placeholder="http://localhost:11434/v1"
-              required
-            />
-            <Field
-              id="compat-api-key"
-              label="API key (optional)"
-              type="password"
-              {...compatField("apiKey")}
-              placeholder="Leave empty for local servers"
-            />
-            <Field
-              id="compat-chat-model"
-              label="Chat model"
-              spellCheck={false}
-              {...compatField("chatModel")}
-              placeholder="llama3.1:8b"
-              required
-            />
-            <Field
-              id="compat-context-window"
-              label="Context window (tokens)"
-              type="number"
-              min={8192}
-              max={10000000}
-              {...compatField("contextWindow")}
-              placeholder="e.g. 32768"
-              required
-            />
-            <Field
-              id="compat-embedding-model"
-              label="Embedding model (optional)"
-              spellCheck={false}
-              {...compatField("embeddingModel")}
-              placeholder="nomic-embed-text"
-            />
-            {/* Always mounted, so the result is announced when it arrives. */}
-            <div role="status" aria-live="polite">
-            {compatTestResult && (
-              <div className="space-y-1 rounded-lg border bg-muted/30 px-3 py-2 text-xs">
-                {compatTestResult.chat.ok ? (
-                  <p className="text-emerald-600 dark:text-emerald-400">
-                    Chat: ✓ model responded
-                  </p>
-                ) : (
-                  <p className="text-destructive">
-                    Chat: ✗ {compatTestResult.chat.detail || "request failed"}
-                  </p>
-                )}
-                {compatTestResult.embedding === null ? (
-                  <p className="text-muted-foreground">
-                    Embeddings: not configured, knowledge search stays lexical
-                  </p>
-                ) : compatTestResult.embedding.ok ? (
-                  <p className="text-emerald-600 dark:text-emerald-400">
-                    Embeddings: ✓
-                    {compatTestResult.embedding.dims !== null
-                      ? ` ${compatTestResult.embedding.dims} dimensions`
-                      : " model responded"}
-                  </p>
-                ) : (
-                  <p className="text-destructive">
-                    Embeddings: ✗{" "}
-                    {compatTestResult.embedding.detail || "request failed"}
-                  </p>
-                )}
-              </div>
-            )}
-            </div>
+            <DialogBody>
+              <DialogSection>
+                <Field
+                  id="compat-name"
+                  label="Display name (optional)"
+                  {...compatField("displayName")}
+                  placeholder="e.g. Campus Ollama"
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="compat-base-url"
+                  label="Base URL"
+                  type="url"
+                  inputMode="url"
+                  spellCheck={false}
+                  {...compatField("baseUrl")}
+                  placeholder="http://localhost:11434/v1"
+                  required
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="compat-api-key"
+                  label="API key (optional)"
+                  type="password"
+                  {...compatField("apiKey")}
+                  placeholder="Leave empty for local servers"
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="compat-chat-model"
+                  label="Chat model"
+                  spellCheck={false}
+                  {...compatField("chatModel")}
+                  placeholder="llama3.1:8b"
+                  required
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="compat-context-window"
+                  label="Context window (tokens)"
+                  type="number"
+                  min={8192}
+                  max={10000000}
+                  {...compatField("contextWindow")}
+                  placeholder="e.g. 32768"
+                  required
+                />
+              </DialogSection>
+              <DialogSection>
+                <Field
+                  id="compat-embedding-model"
+                  label="Embedding model (optional)"
+                  spellCheck={false}
+                  {...compatField("embeddingModel")}
+                  placeholder="nomic-embed-text"
+                />
+              </DialogSection>
+              {/* Always mounted, so the result is announced when it arrives. */}
+              <DialogSection>
+                <div role="status" aria-live="polite">
+                  {compatTestResult && (
+                    <div className="space-y-1 rounded-lg border bg-muted/30 px-3 py-2 text-xs">
+                      {compatTestResult.chat.ok ? (
+                        <p className="text-emerald-600 dark:text-emerald-400">
+                          Chat: ✓ model responded
+                        </p>
+                      ) : (
+                        <p className="text-destructive">
+                          Chat: ✗{" "}
+                          {compatTestResult.chat.detail || "request failed"}
+                        </p>
+                      )}
+                      {compatTestResult.embedding === null ? (
+                        <p className="text-muted-foreground">
+                          Embeddings: not configured, knowledge search stays
+                          lexical
+                        </p>
+                      ) : compatTestResult.embedding.ok ? (
+                        <p className="text-emerald-600 dark:text-emerald-400">
+                          Embeddings: ✓
+                          {compatTestResult.embedding.dims !== null
+                            ? ` ${compatTestResult.embedding.dims} dimensions`
+                            : " model responded"}
+                        </p>
+                      ) : (
+                        <p className="text-destructive">
+                          Embeddings: ✗{" "}
+                          {compatTestResult.embedding.detail ||
+                            "request failed"}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </DialogSection>
+            </DialogBody>
             <ConnectFooter pending={isPending} onCancel={closeDialog}>
               <Button
                 type="button"
@@ -1088,7 +1171,9 @@ export function AiSettingsClient({
                 }
                 onClick={handleTestCompat}
               >
-                <RollInText text={isTestingCompat ? "Testing…" : "Test connection"} />
+                <RollInText
+                  text={isTestingCompat ? "Testing…" : "Test connection"}
+                />
               </Button>
             </ConnectFooter>
           </form>

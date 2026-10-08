@@ -18,7 +18,7 @@ export default async function HelpDesksPage({ params }: { params: Promise<{ id: 
       <SectionHeading
         icon={Phone}
         title="Help desks"
-        description="Configure escalation behavior and select which help desks this assistant can recommend."
+
       />
       <AssistantHelpDesks
         assistantId={id}

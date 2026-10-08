@@ -1,9 +1,10 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   PAGE_SIZE_OPTIONS,
-  countLabel,
+  pageNumbers,
   pageWindow,
 } from "@/lib/pagination";
 import {
@@ -14,29 +15,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { RollInText } from "@/components/motion/roll-in-text";
-import { RollingNumber } from "@/components/motion/rolling-number";
 
-/**
- * The bar at the foot of a table card: which slice is on screen, how big a
- * page is, and where you are in the set.
- *
- * It is one component rather than a prop on the table because the three
- * numbers come from wherever the table's data does. Server-paged tables bind
- * them to URL search params, client-paged ones to state, and a table that does
- * not page at all passes only `total` and gets the count on its own.
- */
+/** Numbered navigation shared by URL-paged and locally paged tables. */
 export function TablePagination({
   page,
   pageSize,
   total,
-  noun,
-  pluralNoun,
   onPageChange,
   onPageSizeChange,
   className,
 }: {
-  /** Omit on a table that shows everything; the bar then states the count only. */
+  /** Omit on a table that shows everything; it has a single page. */
   page?: number;
   pageSize?: number;
   total: number;
@@ -48,75 +37,38 @@ export function TablePagination({
   onPageSizeChange?: (pageSize: number) => void;
   className?: string;
 }) {
-  const paged = page !== undefined && pageSize !== undefined;
-  const window = pageWindow(page ?? 1, pageSize ?? total ?? 1, total);
+  const window = pageWindow(page ?? 1, pageSize ?? Math.max(1, total), total);
   const current = Math.min(Math.max(1, page ?? 1), window.pageCount);
+  const control = "press-control hover:bg-accent hover:text-foreground focus-visible:outline-ring inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-sm transition-colors focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-40";
 
   return (
-    <div
-      className={cn(
-        "text-muted-foreground flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 text-sm",
-        className
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <span>
-          <RollInText duration={380} entrance={false} text={total === 0
-            ? `No ${pluralNoun ?? `${noun}s`}`
-            : paged
-              ? `Showing ${window.from}–${window.to} of ${countLabel(total, noun, pluralNoun)}`
-              : `Showing ${countLabel(total, noun, pluralNoun)}`} />
-        </span>
-        {onPageSizeChange && pageSize !== undefined && (
-          <Select
-            value={String(pageSize)}
-            onValueChange={(value) => onPageSizeChange(Number(value))}
-          >
-            <SelectTrigger
-              aria-label="Rows per page"
-              className="h-7 w-auto gap-1 border-0 bg-transparent px-2 shadow-none"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-
-      {paged && (
-        <div className="flex items-center gap-1">
-          {onPageChange && window.pageCount > 1 && (
-            <button
-              type="button"
-              aria-label="Previous page"
-              disabled={current <= 1}
-              onClick={() => onPageChange(current - 1)}
-              className="press-control hover:text-foreground focus-visible:outline-ring inline-flex size-7 items-center justify-center rounded-md transition-colors focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-40"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-          )}
-          <span className="tabular-nums">
-            Page <RollingNumber value={current} /> of <RollingNumber value={window.pageCount} />
-          </span>
-          {onPageChange && window.pageCount > 1 && (
-            <button
-              type="button"
-              aria-label="Next page"
-              disabled={current >= window.pageCount}
-              onClick={() => onPageChange(current + 1)}
-              className="press-control hover:text-foreground focus-visible:outline-ring inline-flex size-7 items-center justify-center rounded-md transition-colors focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-40"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          )}
-        </div>
+    <div className={cn("text-muted-foreground flex flex-wrap items-center justify-center gap-3 px-3 py-3", className)}>
+      <nav data-slot="table-page-controls" aria-label="Table pages" className="flex flex-wrap items-center justify-center gap-1">
+        <CieleButton variant="ghost" size="sm" type="button" aria-label="Previous page" disabled={!onPageChange || current <= 1}
+          onClick={() => onPageChange?.(current - 1)} className={control}>
+          <ChevronLeft aria-hidden="true" className="size-4" /><span className="hidden sm:inline">Previous</span>
+        </CieleButton>
+        {pageNumbers(current, window.pageCount).map((item) => typeof item === "number" ? (
+          <CieleButton variant="ghost" size="icon-sm" key={item} type="button" aria-label={`Page ${item}`} aria-current={current === item ? "page" : undefined}
+            onClick={() => onPageChange?.(item)} disabled={!onPageChange && current !== item}
+            className={cn(control, "size-9 px-0 tabular-nums", current === item && "bg-table-sheet text-foreground ring-border ring-1")}>
+            {item}
+          </CieleButton>
+        ) : <span key={item} aria-hidden="true" className="px-1">…</span>)}
+        <CieleButton variant="ghost" size="sm" type="button" aria-label="Next page" disabled={!onPageChange || current >= window.pageCount}
+          onClick={() => onPageChange?.(current + 1)} className={control}>
+          <span className="hidden sm:inline">Next</span><ChevronRight aria-hidden="true" className="size-4" />
+        </CieleButton>
+      </nav>
+      {onPageSizeChange && pageSize !== undefined && (
+        <Select compact value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
+          <SelectTrigger aria-label="Rows per page" className="press-control h-9 w-auto gap-2 rounded-full bg-table-sheet px-3 text-xs">
+            <SelectValue><span>{pageSize} per page</span></SelectValue>
+          </SelectTrigger>
+          <SelectContent side="top" className="bg-table-sheet">
+            {PAGE_SIZE_OPTIONS.map((size) => <SelectItem key={size} value={String(size)}>{size}</SelectItem>)}
+          </SelectContent>
+        </Select>
       )}
     </div>
   );

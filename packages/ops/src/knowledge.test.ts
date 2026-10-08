@@ -23,6 +23,7 @@ import {
   searchKnowledgeOp,
   setDirectAccessOp,
   setSourceLinksOp,
+  renameSourceOp,
   unlinkSourceOp,
   updateOrgFaqOp,
 } from "./knowledge";
@@ -1322,5 +1323,20 @@ describe("searchKnowledgeOp", () => {
   it("trims the query and refuses an empty one", () => {
     expect(searchKnowledgeOp.input.safeParse({ query: "   " }).success).toBe(false);
     expect(searchKnowledgeOp.input.parse({ query: "  vpn  " }).query).toBe("vpn");
+  });
+});
+
+describe("source label editing", () => {
+  it("renames only the label and checks organization and linked assistant", async () => {
+    const assistant = await createAssistantOp.run(ctx(), { title: "Rename scope" });
+    const collection = await ctx().db.createCollection(assistant.id, { name: "Rename collection" });
+    const source = await ctx().db.createSource({ collectionId: collection.id, name: "Site", kind: "website", config: { url: "https://example.com" } });
+    await ctx().db.setSourceAssistantLinks(source.id, [assistant.id]);
+    await ctx().db.updateSource(source.id, { status: "ready", lastCrawledAt: "2026-10-01T00:00:00Z" });
+    await renameSourceOp.run(ctx(), { sourceId: source.id, name: " New name ", assistantId: assistant.id });
+    expect(await ctx().db.getSource(source.id)).toMatchObject({ name: "New name", config: { url: "https://example.com" }, status: "ready", lastCrawledAt: "2026-10-01T00:00:00Z" });
+    await expect(renameSourceOp.run(foreignCtx(), { sourceId: source.id, name: "Foreign" })).rejects.toMatchObject({ code: "not_found" });
+    const other = await createAssistantOp.run(ctx(), { title: "Unlinked" });
+    await expect(renameSourceOp.run(ctx(), { sourceId: source.id, name: "Wrong scope", assistantId: other.id })).rejects.toMatchObject({ code: "not_found" });
   });
 });

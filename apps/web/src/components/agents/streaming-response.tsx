@@ -1,6 +1,7 @@
 "use client";
 // beui.dev/components/agents/streaming-response
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 // Icon data for the copy mark, which reshapes into the check on click.
@@ -63,22 +64,22 @@ function ResponseAction({
   onClick: () => void;
   children: ReactNode;
 }) {
+
   return (
-    <Button
+    <CieleButton variant="ghost" size="icon-sm"
       type="button"
       aria-label={label}
       title={label}
       aria-pressed={label === "Helpful" || label === "Not helpful" ? active : undefined}
       onClick={onClick}
-      variant="ghost"
-      size="icon-sm"
+
       className={cn(
         "text-muted-foreground hover:text-foreground",
         active && "bg-muted text-foreground",
       )}
     >
       {children}
-    </Button>
+    </CieleButton>
   );
 }
 

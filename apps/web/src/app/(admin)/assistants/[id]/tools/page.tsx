@@ -22,7 +22,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ id: stri
       <SectionHeading
         icon={Wrench}
         title="Tools & Skills"
-        description="The agent's tool registry and reusable prompt skills, what it can do while answering, beyond generating text."
+
       />
       <ToolsClient
         assistantId={id}

@@ -16,6 +16,7 @@ import {
   type SelectAllState,
 } from "@/lib/table-selection";
 import { cn } from "@/lib/utils";
+import { useTableChange } from "./table-history";
 
 /**
  * Multi-select for the console's tables: the leading checkbox column and the
@@ -28,6 +29,9 @@ import { cn } from "@/lib/utils";
  */
 
 export interface RowSelection {
+  snapshot: string[];
+  nextAllSnapshot: string[];
+  restore: (ids: readonly string[]) => void;
   /** Selected rows, in the table's order, and already narrowed to what is on screen. */
   ids: string[];
   count: number;
@@ -59,6 +63,9 @@ export function useRowSelection(rowIds: readonly string[]): RowSelection {
     [selected, rowIds]
   );
   return {
+    snapshot: Array.from(selected),
+    nextAllSnapshot: Array.from(toggleAllRows(selected, rowIds)),
+    restore: (ids) => setSelected(new Set(ids)),
     ids,
     count: ids.length,
     isSelected: (id) => selected.has(id),
@@ -73,14 +80,18 @@ export function useRowSelection(rowIds: readonly string[]): RowSelection {
 
 /** The header cell: select or clear every row on screen. */
 export function SelectAllHead({
+  selection,
   state,
   onToggle,
   disabled,
 }: {
+  selection?: RowSelection;
   state: SelectAllState;
   onToggle: () => void;
   disabled?: boolean;
 }) {
+  const change = useTableChange(selection?.snapshot ?? [],
+    (ids: string[]) => selection?.restore(ids), "Select all rows");
   return (
     <TableHead data-table-select className="w-10 px-0">
       <div className="flex items-center justify-center">
@@ -89,7 +100,7 @@ export function SelectAllHead({
           checked={state === "all"}
           indeterminate={state === "some"}
           disabled={disabled}
-          onCheckedChange={onToggle}
+          onCheckedChange={() => selection ? change(selection.nextAllSnapshot) : onToggle()}
         />
       </div>
     </TableHead>
@@ -106,13 +117,16 @@ export function SelectRowCell({
   onToggle: () => void;
   label: string;
 }) {
+  const change = useTableChange(checked, (next: boolean) => {
+    if (next !== checked) onToggle();
+  }, "Select row");
   return (
     <TableCell data-table-select className="w-10 px-0">
       <div className="flex items-center justify-center">
         <Checkbox
           aria-label={`Select ${label}`}
           checked={checked}
-          onCheckedChange={onToggle}
+          onCheckedChange={() => change(!checked)}
         />
       </div>
     </TableCell>
@@ -128,6 +142,7 @@ export function SelectRowCell({
  * cannot see what they are about to act on.
  */
 export function TableBulkBar({
+  selection,
   count,
   noun,
   pluralNoun,
@@ -135,6 +150,7 @@ export function TableBulkBar({
   className,
   children,
 }: {
+  selection?: RowSelection;
   count: number;
   /** Singular; the bar pluralises it, or uses `pluralNoun` where an "s" is wrong. */
   noun: string;
@@ -143,6 +159,8 @@ export function TableBulkBar({
   className?: string;
   children?: React.ReactNode;
 }) {
+  const change = useTableChange(selection?.snapshot ?? [],
+    (ids: string[]) => selection?.restore(ids), "Clear row selection");
   if (count === 0) return null;
   return (
     <div
@@ -151,7 +169,7 @@ export function TableBulkBar({
       // than inside the sheet: a band on the frame with a border under it
       // reads as a row of the table that lost its columns.
       className={cn(
-        "bg-primary/10 mb-1 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg px-4 py-2 text-sm",
+        "flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3 text-sm",
         className
       )}
     >
@@ -163,7 +181,7 @@ export function TableBulkBar({
         <Button
           variant="ghost"
           size="sm"
-          onClick={onClear}
+          onClick={() => selection ? change([]) : onClear()}
           aria-label="Clear selection"
         >
           <X className="size-4" />

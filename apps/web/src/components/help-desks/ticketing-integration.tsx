@@ -11,7 +11,7 @@ import {
   connectServiceNowIntegrationAction,
   disconnectTicketingIntegrationAction,
 } from "@/app/actions";
-import { Button } from "@agent-hub/ui";
+import { DialogBody, DialogSection, Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import {
@@ -167,16 +167,16 @@ export function TicketingIntegrationSection({
 
   return (
     <>
-      <p className="text-muted-foreground -mt-3 mb-4 text-sm">
-        Optional. Create tickets from escalations. Set it up before your support channels.
-      </p>
+      <p className="text-muted-foreground -mt-3 mb-4 text-sm">Connect ticketing before adding ticket channels.</p>
 
       <Card size="sm" className="gap-0 p-4">
         {integration ? (
           <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3">
             <PlatformLogo platform={integration.platform} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-semibold">{integration.name}</p>
+              <p className="truncate text-base font-semibold">
+                {integration.name}
+              </p>
               <p className="text-muted-foreground truncate text-sm">
                 {TICKETING_PLATFORMS[integration.platform].label} ·{" "}
                 {integration.config.baseUrl}
@@ -204,9 +204,7 @@ export function TicketingIntegrationSection({
               <PlatformLogo platform="servicenow" />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">ServiceNow</p>
-                <p className="text-muted-foreground text-sm">
-                  Create ServiceNow cases from chat escalations.
-                </p>
+
               </div>
             </div>
             {canEdit && (
@@ -224,7 +222,9 @@ export function TicketingIntegrationSection({
 
       <Dialog
         open={dialogOpen}
-        onOpenChange={(open) => (open ? setDialogOpen(true) : requestCloseDialog())}
+        onOpenChange={(open) =>
+          open ? setDialogOpen(true) : requestCloseDialog()
+        }
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -235,52 +235,69 @@ export function TicketingIntegrationSection({
               </DialogTitle>
             </div>
           </DialogHeader>
-          <div className="max-h-[60vh] space-y-4 overflow-y-auto overscroll-contain rounded-xl bg-muted/40 p-4">
-            {FIELDS.map((f) => {
-              const id = `${fieldId}-${f.key}`;
-              const errorId = `${id}-error`;
-              const invalid = missing.has(f.key);
-              const common = {
-                id,
-                value: form[f.key],
-                onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-                  update(f.key, e.target.value),
-                placeholder: f.placeholder,
-                "aria-invalid": invalid || undefined,
-                "aria-describedby": invalid ? errorId : undefined,
-                className: "mt-2 h-11",
-              };
-              return (
-                <div key={f.key}>
-                  <Label htmlFor={id} className="font-semibold">
-                    {f.label} <span className="text-destructive">*</span>
-                  </Label>
-                  <p className="text-muted-foreground mt-0.5 text-sm">{f.hint}</p>
-                  {f.kind === "secret" ? (
-                    <PasswordInput {...common} autoComplete="new-password" />
-                  ) : (
-                    <Input
-                      {...common}
-                      type={f.kind === "url" ? "url" : undefined}
-                      inputMode={f.kind === "url" ? "url" : undefined}
-                      autoComplete="off"
-                      spellCheck={f.kind === "text" ? undefined : false}
-                    />
-                  )}
-                  {invalid && (
-                    <p id={errorId} className="text-destructive mt-1.5 text-sm">
-                      {f.label} is required.
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {submitError && (
-            <p role="alert" className="text-destructive text-sm break-words">
-              {submitError}
-            </p>
-          )}
+          <DialogBody>
+            <DialogSection>
+              <div className="max-h-[60vh] space-y-4 overflow-y-auto overscroll-contain rounded-xl bg-muted/40 p-4">
+                {FIELDS.map((f) => {
+                  const id = `${fieldId}-${f.key}`;
+                  const errorId = `${id}-error`;
+                  const invalid = missing.has(f.key);
+                  const common = {
+                    id,
+                    value: form[f.key],
+                    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                      update(f.key, e.target.value),
+                    placeholder: f.placeholder,
+                    "aria-invalid": invalid || undefined,
+                    "aria-describedby": invalid ? errorId : undefined,
+                    className: "mt-2 h-11",
+                  };
+                  return (
+                    <div key={f.key}>
+                      <Label htmlFor={id} className="font-semibold">
+                        {f.label} <span className="text-destructive">*</span>
+                      </Label>
+                      <p className="text-muted-foreground mt-0.5 text-sm">
+                        {f.hint}
+                      </p>
+                      {f.kind === "secret" ? (
+                        <PasswordInput
+                          {...common}
+                          autoComplete="new-password"
+                        />
+                      ) : (
+                        <Input
+                          {...common}
+                          type={f.kind === "url" ? "url" : undefined}
+                          inputMode={f.kind === "url" ? "url" : undefined}
+                          autoComplete="off"
+                          spellCheck={f.kind === "text" ? undefined : false}
+                        />
+                      )}
+                      {invalid && (
+                        <p
+                          id={errorId}
+                          className="text-destructive mt-1.5 text-sm"
+                        >
+                          {f.label} is required.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </DialogSection>
+            <DialogSection>
+              {submitError && (
+                <p
+                  role="alert"
+                  className="text-destructive text-sm break-words"
+                >
+                  {submitError}
+                </p>
+              )}
+            </DialogSection>
+          </DialogBody>
           <DialogFooter>
             <Button
               variant="outline"
@@ -289,7 +306,7 @@ export function TicketingIntegrationSection({
             >
               Cancel
             </Button>
-            <Button onClick={connect} disabled={isPending}>
+            <Button loading={isPending} onClick={connect} disabled={isPending}>
               <RollInText text={isPending ? "Connecting…" : "Connect"} />
             </Button>
           </DialogFooter>

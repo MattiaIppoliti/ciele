@@ -4,6 +4,11 @@ export const CIELE_ORIGIN = new URL(
   process.env.CIELE_MARKETING_ORIGIN?.trim() || "https://ciele.app"
 );
 
+/** /home is also served at / for anonymous visitors; both advertise one URL. */
+export function marketingCanonicalUrl(path: string): string {
+  return new URL(path === "/home" ? "/" : path, CIELE_ORIGIN).toString();
+}
+
 export function isCanonicalMarketingHost(host: string | null): boolean {
   if (!host) return false;
   try {
@@ -27,7 +32,7 @@ export function marketingMetadata({
   path,
   noIndex = false,
 }: MarketingMetadataInput): Metadata {
-  const canonical = new URL(path, CIELE_ORIGIN).toString();
+  const canonical = marketingCanonicalUrl(path);
   const image = new URL("/opengraph-image", CIELE_ORIGIN).toString();
 
   return {

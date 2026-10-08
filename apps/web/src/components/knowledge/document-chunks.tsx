@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Search } from "lucide-react";
 import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import type { DocumentChunkListItem } from "@agent-hub/core";
-import {
+import { DialogBody, DialogSection,
   Button,
   CopyFeedbackIcon,
   Dialog,
@@ -153,7 +153,7 @@ export function DocumentChunks({
       </div>
 
       {shown.length === 0 ? (
-        <EmptyState className="bg-card rounded-xl border" size="sm" title={chunks.length === 0 ? "No indexed chunks yet" : "No matching chunks"} description={chunks.length === 0 ? "Chunks appear after this document is indexed." : "Try a different term or clear the search."} action={chunks.length > 0 ? <Button variant="outline" size="sm" onClick={() => setQuery("")}>Clear search</Button> : undefined} />
+        <EmptyState className="bg-card rounded-xl border" size="sm" title={chunks.length === 0 ? "No indexed chunks yet" : "No matching chunks"}  action={chunks.length > 0 ? <Button variant="outline" size="sm" onClick={() => setQuery("")}>Clear search</Button> : undefined} />
       ) : (
         <div className="grid gap-3 @lg:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4">
           {shown.map((chunk) => (
@@ -240,7 +240,10 @@ function ChunkDialog({
   const copied = isCopied(text);
 
   return (
-    <Dialog open={index !== null} onOpenChange={(open: boolean) => !open && onClose()}>
+    <Dialog
+      open={index !== null}
+      onOpenChange={(open: boolean) => !open && onClose()}
+    >
       <DialogContent className="max-h-[85vh] sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="font-mono">
@@ -248,55 +251,62 @@ function ChunkDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <pre className="max-h-[55vh] overflow-y-auto rounded-md border p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
-          {loading && !chunk ? <span role="status">Loading…</span> : text}
-        </pre>
+        <DialogBody>
+          <DialogSection>
+            <pre className="max-h-[55vh] overflow-y-auto rounded-md border p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
+              {loading && !chunk ? <span role="status">Loading…</span> : text}
+            </pre>
+          </DialogSection>
 
-        <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs">
-          <span className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Previous chunk"
-              disabled={index === null || index === 0}
-              onClick={() => onStep(-1)}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <span className="font-mono tabular-nums">
-              <RollInText
-                text={index === null ? "" : chunkLabel(index)}
-                duration={380}
-              />{" "}
-              / {chunkLabel(total - 1)}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Next chunk"
-              disabled={index === null || index >= total - 1}
-              onClick={() => onStep(1)}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="font-mono uppercase">
-              <RollingNumber value={chunkWordCount(text)} /> words
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={copied ? "Chunk copied" : "Copy chunk"}
-              onClick={async () => {
-                if (await copyText(text, text)) toast.success("Chunk copied");
-                else toast.error("Could not copy the chunk");
-              }}
-            >
-              <CopyFeedbackIcon copied={copied} className="size-4" />
-            </Button>
-          </span>
-        </div>
+          <DialogSection>
+            <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs">
+              <span className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Previous chunk"
+                  disabled={index === null || index === 0}
+                  onClick={() => onStep(-1)}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="font-mono tabular-nums">
+                  <RollInText
+                    text={index === null ? "" : chunkLabel(index)}
+                    duration={380}
+                  />{" "}
+                  / {chunkLabel(total - 1)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Next chunk"
+                  disabled={index === null || index >= total - 1}
+                  onClick={() => onStep(1)}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="font-mono uppercase">
+                  <RollingNumber value={chunkWordCount(text)} /> words
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={copied ? "Chunk copied" : "Copy chunk"}
+                  onClick={async () => {
+                    if (await copyText(text, text))
+                      toast.success("Chunk copied");
+                    else toast.error("Could not copy the chunk");
+                  }}
+                >
+                  <CopyFeedbackIcon copied={copied} className="size-4" />
+                </Button>
+              </span>
+            </div>
+          </DialogSection>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

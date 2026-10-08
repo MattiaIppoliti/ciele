@@ -1,20 +1,11 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import { toast } from "@/lib/toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@agent-hub/ui";
+import { Button as CieleButton, Dialog, DialogContent, DialogBody, DialogFooter, DialogHeader, DialogTitle } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpRight, MessageSquare, X } from "lucide-react";
-
-const OPEN_EASE = [0.34, 1.25, 0.64, 1] as const;
-const CLOSE_EASE = [0.22, 1, 0.36, 1] as const;
+import { ArrowUpRight, MessageSquare } from "lucide-react";
 
 /**
  * "Send feedback" dialog opened from the chat header's ⋯ menu, shared by the
@@ -44,7 +35,7 @@ export function FeedbackDialog({
     if (!open) return;
     const timer = window.setTimeout(
       () => textareaRef.current?.focus(),
-      reduce ? 0 : 360,
+      reduce ? 0 : 180,
     );
     return () => window.clearTimeout(timer);
   }, [open, reduce]);
@@ -74,92 +65,48 @@ export function FeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="sm:max-w-md border-0 bg-transparent p-2 shadow-none ring-0"
-        overlayClassName="bg-black/35 supports-backdrop-filter:backdrop-blur-sm"
-      >
-        <AnimatePresence initial={false}>
-          {open && (
-            <motion.div
-              key="feedback-modal"
-              initial={
-                reduce
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: 16, scale: 0.97, filter: "blur(2px)" }
-              }
-              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              exit={
-                reduce
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: 12, scale: 0.98, filter: "blur(2px)" }
-              }
-              transition={
-                reduce
-                  ? { duration: 0.12 }
-                  : {
-                      duration: 0.36,
-                      ease: OPEN_EASE,
-                      opacity: { duration: 0.2, ease: CLOSE_EASE },
-                    }
-              }
-              className="rounded-[20px] border border-border bg-background p-5 text-foreground shadow-strong"
-            >
-              <div className="mb-4 flex items-start gap-3">
-                <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
-                  <MessageSquare className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <DialogHeader className="gap-1.5">
-                    <DialogTitle id="feedback-title">Send feedback</DialogTitle>
-                    <DialogDescription>
-                      Tell us how {nickname} is doing in this conversation.
-                    </DialogDescription>
-                  </DialogHeader>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onOpenChange(false)}
-                  aria-label="Close feedback"
-                  className="text-muted-foreground hover:text-foreground -mr-1 -mt-1 flex size-8 max-lg:size-11 shrink-0 items-center justify-center rounded-full transition-colors"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="flex-row items-start gap-3">
+          <span className="bg-muted flex size-11 shrink-0 items-center justify-center rounded-xl border">
+            <MessageSquare className="size-5" />
+          </span>
+          <div className="min-w-0 space-y-1.5">
+            <DialogTitle id="feedback-title">Send feedback</DialogTitle>
 
-              <Textarea
-                ref={textareaRef}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                aria-label="Your feedback"
-                placeholder="What went well? What could be better?"
-                className="min-h-28 resize-y bg-muted/40"
-                maxLength={2000}
-              />
-              <p className="text-muted-foreground mt-2 text-xs">
-                Opens a draft to hello@ciele.app for you to review and send.
-              </p>
-
-              <div className="mt-5 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => onOpenChange(false)}
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg px-3 py-2 text-sm transition-colors"
-                >
-                  Cancel
-                </button>
-                <a
-                  href={text.trim() ? mailtoHref() : undefined}
-                  onClick={openEmailDraft}
-                  aria-disabled={!text.trim()}
-                  className={`bg-primary text-primary-foreground inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-opacity ${text.trim() ? "hover:opacity-90" : "pointer-events-none opacity-50"}`}
-                >
-                  Open email <ArrowUpRight className="size-4" />
-                </a>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        </DialogHeader>
+        <DialogBody>
+          <Textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            aria-label="Your feedback"
+            placeholder="What went well? What could be better?"
+            className="min-h-28 resize-y"
+            maxLength={2000}
+          />
+          <p className="text-muted-foreground text-xs">
+            Opens a draft to hello@ciele.app for you to review and send.
+          </p>
+        </DialogBody>
+        <DialogFooter>
+          <CieleButton
+            variant="secondary"
+            type="button"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </CieleButton>
+          <CieleButton
+            variant="primary"
+            render={<a href={text.trim() ? mailtoHref() : undefined} />}
+            onClick={openEmailDraft}
+            aria-disabled={!text.trim()}
+            disabled={!text.trim()}
+          >
+            Open email <ArrowUpRight className="size-4" />
+          </CieleButton>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

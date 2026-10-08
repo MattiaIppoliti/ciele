@@ -1,6 +1,6 @@
 "use client";
 
-import { EmptyState } from "@/components/ui/empty-state";
+import { EvaluationRunsTable, type RunFilters } from "./evaluation-runs-table";
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { useRouter } from "next/navigation";
@@ -96,10 +96,6 @@ function fmtDate(value: string) {
     timeStyle: "short",
   }).format(new Date(value));
 }
-function fmtCost(value: number) {
-  return `€${value.toFixed(4)}`;
-}
-
 export function EvalLibrary({
   runs,
   datasets,
@@ -110,7 +106,9 @@ export function EvalLibrary({
   canManageProviders,
   canManageCatalog,
   page,
-  hasNext,
+  pageSize,
+  total,
+  filters,
 }: {
   runs: EvaluationRun[];
   datasets: EvaluationDataset[];
@@ -121,7 +119,9 @@ export function EvalLibrary({
   canManageProviders: boolean;
   canManageCatalog: boolean;
   page: number;
-  hasNext: boolean;
+  pageSize: number;
+  total: number;
+  filters: RunFilters;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"runs" | "datasets" | "models">("runs");
@@ -180,12 +180,6 @@ export function EvalLibrary({
       setBusy(false);
     }
   }
-  const datasetNames = new Map(
-    datasets.map((dataset) => [dataset.id, dataset.name]),
-  );
-  const assistantNames = new Map(
-    assistants.map((assistant) => [assistant.id, assistant.title]),
-  );
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
       <h1 className="sr-only">Eval</h1>
@@ -199,10 +193,7 @@ export function EvalLibrary({
           {canEdit && (
             <section className="rounded-xl border bg-card p-5 shadow-light">
               <h2 className="text-lg font-medium">New experiment</h2>
-              <p className="mb-5 mt-1 text-sm text-muted-foreground">
-                Each model receives the same examples. Up to 24 evaluations
-                per run.
-              </p>
+              <p className="mb-5 mt-1 text-sm text-muted-foreground">Up to 24 evaluations per run.</p>
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="eval-assistant">Assistant</Label>
@@ -327,7 +318,7 @@ export function EvalLibrary({
                     : selectedModels.length < 2
                       ? "Choose at least two models to start the comparison."
                       : <><RollingNumber value={selectedModels.length} /> models ready to compare.</>}
-                  {" "}<button type="button" onClick={() => setTab("models")} className="text-brand-ink press-text underline-offset-4 hover:underline">View all models</button>
+                  {" "}<Button variant="secondary" size="sm" type="button" onClick={() => setTab("models")} className="text-brand-ink press-text underline-offset-4 hover:underline">View all models</Button>
                   {(canManageProviders || canManageCatalog) && (
                     <> · <Link href="/settings/ai" className="text-brand-ink press-text underline-offset-4 hover:underline">AI Provider settings</Link></>
                   )}
@@ -342,107 +333,8 @@ export function EvalLibrary({
               </Button>
             </section>
           )}
-          <section className="overflow-hidden rounded-xl border bg-card">
-            <div className="border-b px-5 py-4">
-              <h2 className="font-medium">Recent runs</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[850px] text-left text-sm">
-                <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
-                  <tr>
-                    {[
-                      "Date",
-                      "Assistant",
-                      "Dataset",
-                      "Stage",
-                      "Models",
-                      "Accuracy",
-                      "Model cost",
-                      "Status",
-                      "",
-                    ].map((head) => (
-                      <th key={head} className="px-4 py-3 font-medium">
-                        {head}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.map((run) => {
-                    const graded = run.results.filter(
-                      (result) => result.accuracy !== null,
-                    );
-                    const accuracy = graded.length
-                      ? Math.round(
-                          (100 *
-                            graded.filter((result) => result.accuracy).length) /
-                            graded.length,
-                        ) + "%"
-                      : "—";
-                    return (
-                      <tr
-                        key={run.id}
-                        onClick={() => router.push(`/eval/${run.id}`)}
-                        className="cursor-pointer border-b last:border-0 hover:bg-muted/40"
-                      >
-                        <td className="whitespace-nowrap px-4 py-3">
-                          {fmtDate(run.createdAt)}
-                        </td>
-                        <td className="px-4 py-3">
-                          {assistantNames.get(run.assistantId) ??
-                            run.assistantName}
-                        </td>
-                        <td className="px-4 py-3">
-                          {datasetNames.get(run.datasetId) ?? run.datasetName}
-                        </td>
-                        <td className="px-4 py-3 capitalize">{run.stage}</td>
-                        <td className="px-4 py-3">{run.candidates.length}</td>
-                        <td className="px-4 py-3">{accuracy}</td>
-                        <td className="px-4 py-3">
-                          {fmtCost(
-                            run.results.reduce(
-                              (sum, result) => sum + result.costEur,
-                              0,
-                            ),
-                          )}
-                        </td>
-                        <td className="px-4 py-3"><StatusPill
-                          status={run.status === "completed" ? "online" : run.status === "failed" ? "error" : run.status === "running" ? "info" : "away"}
-                          animated={run.status === "running"}
-                          primaryText={run.status}
-                        /></td>
-                        <td className="px-4 py-3">
-                          <ArrowRight className="size-4" />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {!runs.length && (
-                <EmptyState title="No runs yet" description="Upload a dataset and start your first comparison." />
-              )}
-            </div>
-            <div className="flex items-center justify-end gap-4 border-t px-5 py-3 text-xs">
-              <span>Page {page}</span>
-              {page > 1 && (
-                <Link
-                  href={`/eval?page=${page - 1}`}
-                  className="text-primary hover:underline"
-                >
-                  Previous
-                </Link>
-              )}
-              {hasNext && (
-                <Link
-                  href={`/eval?page=${page + 1}`}
-                  className="text-primary hover:underline"
-                >
-                  Next
-                </Link>
-              )}
-            </div>
-          </section>
+          <EvaluationRunsTable runs={runs} datasets={datasets} assistants={assistants}
+            page={page} pageSize={pageSize} total={total} filters={filters} />
         </TabsContent>
         <TabsContent value="datasets">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -482,12 +374,12 @@ export function EvalLibrary({
               <code>inputs.history</code> and <code>inputs.memory</code> simulate
               chat context.
             </p>
-            <button
+            <Button variant="secondary" size="sm"
               onClick={downloadExample}
               className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline"
             >
               <Download className="size-4" /> Download example format
-            </button>
+            </Button>
             {canEdit && (
               <div className="mt-5 space-y-3">
                 <div className="space-y-1.5">
@@ -524,10 +416,7 @@ export function EvalLibrary({
         <TabsContent value="models" className="space-y-5">
           <section className="rounded-xl border bg-card p-5">
             <h2 className="text-lg font-medium">Model catalog</h2>
-            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              These models can be selected in Eval. A model is available through
-              the organization’s AI connections or through AI Gateway.
-            </p>
+
             {(canManageProviders || canManageCatalog) ? (
               <Link href="/settings/ai" className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline">
                 Open AI Provider settings <ArrowRight className="size-4" />
@@ -537,9 +426,7 @@ export function EvalLibrary({
                 An organization admin can configure Provider Connections in Settings → AI Provider.
               </p>
             )}
-            <p className="mt-2 text-xs text-muted-foreground">
-              A Ciele platform admin can add verified chat models in Settings → AI Provider.
-            </p>
+
           </section>
           <div className="grid gap-4 md:grid-cols-2">
             {[...new Set(allModels.map((model) => model.providerName))].map((providerName) => (

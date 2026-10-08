@@ -136,7 +136,7 @@ export function useTooltipPosition({
     return () => {
       stop();
       window.removeEventListener("scroll", onScroll, true);
-      version.current++;
+      version.current += 1;
       if (frame.current !== null) cancelAnimationFrame(frame.current);
       frame.current = null;
     };
@@ -144,7 +144,7 @@ export function useTooltipPosition({
 
   useLayoutEffect(
     () => () => {
-      version.current++;
+      version.current += 1;
       if (frame.current !== null) cancelAnimationFrame(frame.current);
     },
     [],

@@ -1,6 +1,7 @@
 "use client";
 // Source: https://beui.dev/components/motion/bottom-sheet (MIT)
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import {
   AnimatePresence,
   motion,
@@ -201,8 +202,7 @@ export function BottomSheet({
     const decision = sheetReleaseFor({
       snapPoints,
       currentIndex: snap,
-      viewportHeight:
-        typeof window === "undefined" ? 0 : window.innerHeight,
+      viewportHeight: typeof window === "undefined" ? 0 : window.innerHeight,
       offset: info.offset.y,
       velocity,
       dismissThreshold: DISMISS_THRESHOLD,
@@ -252,7 +252,7 @@ export function BottomSheet({
             // A dim scrim with a light blur. backdrop-blur is GPU-expensive and
             // re-rasterizes every frame the sheet drags over it; a small radius
             // plus more opacity keeps the glass look without the jank.
-            className="pointer-events-auto absolute inset-0 bg-background/40 backdrop-blur-sm"
+            className="ui-modal-overlay pointer-events-auto absolute inset-0"
           />
           <motion.div
             ref={sheetRef}
@@ -281,9 +281,9 @@ export function BottomSheet({
             }}
             style={heightStyle}
             className={cn(
-              "pointer-events-auto absolute bottom-0 left-0 right-0 mx-auto flex max-w-2xl flex-col overflow-hidden rounded-t-3xl will-change-transform",
-              "border border-border bg-background shadow-strong",
+              "ui-modal ui-modal-sheet pointer-events-auto absolute bottom-0 left-0 right-0 mx-auto flex max-w-2xl flex-col overflow-hidden will-change-transform",
             )}
+            data-modal-layout="sheet"
             role="dialog"
             aria-modal="true"
             aria-labelledby={title ? titleId : undefined}
@@ -293,10 +293,12 @@ export function BottomSheet({
           >
             <div
               onPointerDown={(e) => dragControls.start(e)}
-              className="flex cursor-grab touch-none flex-col items-center px-4 pb-2 pt-3 active:cursor-grabbing"
+              className="ui-modal-sheet-header flex cursor-grab touch-none flex-col items-center px-5 pb-5 pt-3 active:cursor-grabbing"
             >
               <div className="h-1.5 w-10 rounded-full bg-muted-foreground/40" />
-              <button
+              <CieleButton
+                variant="ghost"
+                size="icon-sm"
                 type="button"
                 aria-label="Close sheet"
                 onPointerDown={(event) => event.stopPropagation()}
@@ -304,16 +306,22 @@ export function BottomSheet({
                 className="absolute top-2 right-2 z-10 flex size-11 cursor-pointer items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <X className="size-4" aria-hidden="true" />
-              </button>
+              </CieleButton>
               {title || description ? (
                 <div className="mt-3 w-full">
                   {title ? (
-                    <h2 id={titleId} className="pr-12 text-base font-semibold text-foreground">
+                    <h2
+                      id={titleId}
+                      className="pr-12 text-base font-semibold text-foreground"
+                    >
                       {title}
                     </h2>
                   ) : null}
                   {description ? (
-                    <p id={descriptionId} className="mt-0.5 pr-12 text-sm text-muted-foreground">
+                    <p
+                      id={descriptionId}
+                      className="mt-0.5 pr-12 text-sm text-muted-foreground"
+                    >
                       {description}
                     </p>
                   ) : null}
@@ -321,7 +329,9 @@ export function BottomSheet({
               ) : null}
             </div>
             {/* overscroll-contain stops boundary scrolls from chaining to the page. */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6">{children}</div>
+            <div className="ui-modal-body flex-1 overflow-y-auto overscroll-contain">
+              {children}
+            </div>
           </motion.div>
         </div>
       ) : null}

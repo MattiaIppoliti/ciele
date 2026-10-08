@@ -5,11 +5,10 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { HelpDesk } from "@agent-hub/core";
-import { Plus } from "lucide-react";
+import { ArrowUpRight, Headset, Plus } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { createHelpDeskAction } from "@/app/actions";
-import { Button } from "@agent-hub/ui";
-import { Card } from "@agent-hub/ui";
+import { DialogBody, DialogSection, DialogFooter, Button } from "@agent-hub/ui";
 import {
   Dialog,
   DialogContent,
@@ -137,102 +136,107 @@ function CreateHelpDeskDialog({
           <DialogTitle className="text-xl">Create a Help Desk</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-2">
-          <p className="font-semibold">Choose a template</p>
-          <p className="text-muted-foreground text-sm">
-            Select a preset to pre-fill the name and description, or start
-            blank.
-          </p>
-          <div className="grid grid-cols-2 gap-3 pt-2 sm:grid-cols-3">
-            {TEMPLATES.map((t) => (
-              <button
-                key={t.name}
-                type="button"
-                aria-pressed={template === t.name}
-                onClick={() => pick(t)}
-                className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
-                  template === t.name
-                    ? "border-primary ring-primary/30 shadow-light ring-1"
-                    : "hover:bg-muted/50"
-                }`}
+        <DialogBody>
+          <DialogSection>
+            <div className="space-y-2">
+              <p className="font-semibold">Choose a template</p>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 sm:grid-cols-3">
+                {TEMPLATES.map((t) => (
+                  <button
+                    key={t.name}
+                    type="button"
+                    aria-pressed={template === t.name}
+                    onClick={() => pick(t)}
+                    className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
+                      template === t.name
+                        ? "border-primary ring-primary/30 shadow-light ring-1"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <span aria-hidden className="text-2xl">
+                      {t.emoji}
+                    </span>
+                    {t.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  aria-pressed={template === "blank"}
+                  onClick={() => pick(null)}
+                  className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
+                    template === "blank"
+                      ? "border-primary ring-primary/30 shadow-light ring-1"
+                      : "hover:bg-muted/50"
+                  }`}
+                >
+                  <Plus aria-hidden className="size-7" />
+                  Blank
+                </button>
+              </div>
+            </div>
+          </DialogSection>
+
+          <DialogSection>
+            <div className="space-y-2">
+              <Label htmlFor="desk-name">
+                Help Desk Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="desk-name"
+                autoComplete="off"
+                value={name}
+                aria-invalid={nameError || undefined}
+                aria-describedby={nameError ? "desk-name-error" : undefined}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setNameError(false);
+                }}
+              />
+              {nameError && (
+                <p id="desk-name-error" className="text-destructive text-sm">
+                  Help desk name is required.
+                </p>
+              )}
+            </div>
+          </DialogSection>
+
+          <DialogSection>
+            <div className="space-y-2">
+              <Label htmlFor="desk-description">Description</Label>
+              <Textarea
+                id="desk-description"
+                value={description}
+                onChange={(e) => {
+                  setClipped(e.target.value.length > DESCRIPTION_LIMIT);
+                  setDescription(e.target.value.slice(0, DESCRIPTION_LIMIT));
+                }}
+                placeholder="Describe what this help desk handles…"
+                rows={6}
+                aria-describedby="desk-description-count"
+              />
+              <p
+                id="desk-description-count"
+                className="text-muted-foreground text-right text-xs"
               >
-                <span aria-hidden className="text-2xl">
-                  {t.emoji}
-                </span>
-                {t.name}
-              </button>
-            ))}
-            <button
-              type="button"
-              aria-pressed={template === "blank"}
-              onClick={() => pick(null)}
-              className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition-colors ${
-                template === "blank"
-                  ? "border-primary ring-primary/30 shadow-light ring-1"
-                  : "hover:bg-muted/50"
-              }`}
-            >
-              <Plus aria-hidden className="size-7" />
-              Blank
-            </button>
-          </div>
-        </div>
+                <RollingNumber value={description.length} />/
+                {formatCount(DESCRIPTION_LIMIT)}
+              </p>
+              {description.length >= DESCRIPTION_LIMIT && (
+                <p role="status" className="text-destructive text-sm">
+                  {clipped
+                    ? `Only the first ${formatCount(DESCRIPTION_LIMIT)} characters were kept.`
+                    : `The description is at its ${formatCount(DESCRIPTION_LIMIT)}-character limit.`}
+                </p>
+              )}
+              <p className="text-muted-foreground text-sm">
+                200+ characters recommended for AI matching.
+              </p>
+            </div>
+          </DialogSection>
+        </DialogBody>
 
-        <div className="space-y-2">
-          <Label htmlFor="desk-name">
-            Help Desk Name <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="desk-name"
-            autoComplete="off"
-            value={name}
-            aria-invalid={nameError || undefined}
-            aria-describedby={nameError ? "desk-name-error" : undefined}
-            onChange={(e) => {
-              setName(e.target.value);
-              setNameError(false);
-            }}
-          />
-          {nameError && (
-            <p id="desk-name-error" className="text-destructive text-sm">
-              Help desk name is required.
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="desk-description">Description</Label>
-          <Textarea
-            id="desk-description"
-            value={description}
-            onChange={(e) => {
-              setClipped(e.target.value.length > DESCRIPTION_LIMIT);
-              setDescription(e.target.value.slice(0, DESCRIPTION_LIMIT));
-            }}
-            placeholder="Describe what this help desk handles…"
-            rows={6}
-            aria-describedby="desk-description-count"
-          />
-          <p
-            id="desk-description-count"
-            className="text-muted-foreground text-right text-xs"
-          >
-            <RollingNumber value={description.length} />/
-            {formatCount(DESCRIPTION_LIMIT)}
-          </p>
-          {description.length >= DESCRIPTION_LIMIT && (
-            <p role="status" className="text-destructive text-sm">
-              {clipped
-                ? `Only the first ${formatCount(DESCRIPTION_LIMIT)} characters were kept.`
-                : `The description is at its ${formatCount(DESCRIPTION_LIMIT)}-character limit.`}
-            </p>
-          )}
-          <p className="text-muted-foreground text-sm">
-            At least 200 characters recommended for best AI recognition.
-          </p>
-        </div>
-
-        <div className="flex justify-end gap-2 border-t pt-4">
+        <DialogFooter className="flex justify-end gap-2 border-t pt-4">
           <Button
             variant="outline"
             className="h-10 px-5"
@@ -242,13 +246,14 @@ function CreateHelpDeskDialog({
             Cancel
           </Button>
           <Button
+            loading={isPending}
             className="h-10 px-5"
             onClick={handleCreate}
             disabled={isPending}
           >
             <RollInText text={isPending ? "Creating…" : "Create Help Desk"} />
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -285,11 +290,7 @@ export function HelpDesksClient({
         <EmptyState
           className="flex-1"
           title="No help desks yet"
-          description={
-            canEdit
-              ? "A help desk is where a conversation goes when the assistant cannot answer it. Create one, then give it the channels your team actually watches."
-              : "A help desk is where a conversation goes when the assistant cannot answer it. Ask an editor to create one."
-          }
+
         >
           {canEdit && (
             <Button
@@ -301,31 +302,45 @@ export function HelpDesksClient({
           )}
         </EmptyState>
       ) : (
-      <div className="grid grid-cols-1 gap-4 border-t px-6 py-6 lg:grid-cols-2">
+      <div className="overview-panels grid grid-cols-1 gap-6 border-t px-6 py-6 lg:grid-cols-2">
         {desks.map((desk, index) => (
           <RollRow key={desk.id} index={index}>
-          <Card
-            size="sm"
-            className="items-start gap-3 p-4"
+          <Link
+            href={`/help-desks/${desk.id}`}
+            aria-label={`Manage ${desk.name}`}
+            data-slot="overview-card"
+            className="overview-card press flex min-w-0 flex-col outline-none"
           >
-            <Link
-              href={`/help-desks/${desk.id}`}
-              className="text-primary max-w-full text-lg font-semibold break-words underline underline-offset-4 hover:opacity-70"
+            <div
+              data-slot="overview-card-content"
+              className="overview-card-content flex min-h-32 min-w-0 flex-1 items-start p-5"
             >
-              <RollInText text={desk.name} />
-            </Link>
-            <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed break-words">
-              {desk.description || "No description yet."}
-            </p>
-            <Button
-              variant="outline"
-              className="mt-auto h-10 rounded-lg px-5"
-              render={<Link href={`/help-desks/${desk.id}`} />}
-              nativeButton={false}
+              {desk.description && (<p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed break-words">
+                {desk.description}
+              </p>)}
+            </div>
+            <div
+              data-slot="overview-card-caption"
+              className="overview-card-caption flex flex-wrap items-center justify-between gap-3 px-3 py-3"
             >
-              Manage Desk
-            </Button>
-          </Card>
+              <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
+                <span
+                  data-slot="overview-card-icon"
+                  className="overview-card-icon flex size-9 shrink-0 items-center justify-center rounded-full"
+                  aria-hidden="true"
+                >
+                  <Headset className="size-4" />
+                </span>
+                <h2 className="min-w-0 text-sm font-medium break-words">
+                  <RollInText text={desk.name} />
+                </h2>
+              </div>
+              <span className="overview-card-link text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs font-medium">
+                Manage Desk
+                <ArrowUpRight className="overview-card-arrow size-4" aria-hidden="true" />
+              </span>
+            </div>
+          </Link>
           </RollRow>
         ))}
 
@@ -333,9 +348,29 @@ export function HelpDesksClient({
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex min-h-36 items-center justify-center rounded-xl border border-dashed text-sm font-medium transition-colors"
+            data-slot="overview-card"
+            className="overview-card press flex min-w-0 flex-col text-left outline-none"
           >
-            Create New Help Desk
+            <span
+              data-slot="overview-card-content"
+              className="overview-card-content text-muted-foreground flex min-h-32 flex-1 items-center justify-center p-5"
+            >
+              <Plus className="size-6" aria-hidden="true" />
+            </span>
+            <span
+              data-slot="overview-card-caption"
+              className="overview-card-caption overview-card-link flex items-center gap-3 px-3 py-3 text-sm font-medium"
+            >
+              <span
+                data-slot="overview-card-icon"
+                className="overview-card-icon flex size-9 shrink-0 items-center justify-center rounded-full"
+                aria-hidden="true"
+              >
+                <Plus className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">Create New Help Desk</span>
+              <ArrowUpRight className="overview-card-arrow size-4" aria-hidden="true" />
+            </span>
           </button>
         )}
       </div>

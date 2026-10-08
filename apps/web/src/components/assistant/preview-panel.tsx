@@ -372,7 +372,6 @@ export function PreviewPanel({
           {
             value: "attach",
             label: "Attach a file",
-            description: "A document, a spreadsheet or a screenshot.",
             icon: <Paperclip />,
             disabled: attachments.full,
           },
@@ -383,7 +382,6 @@ export function PreviewPanel({
           {
             value: "skill",
             label: "Use a skill",
-            description: "Start from a prepared request.",
             icon: <DraftingCompass />,
           },
         ]
@@ -393,7 +391,6 @@ export function PreviewPanel({
           {
             value: "desk",
             label: "Contact a help desk",
-            description: "Reach a person instead.",
             icon: <Headphones />,
           },
         ]
@@ -870,7 +867,7 @@ export function PreviewPanel({
                   </Button>
                 </div>
               ) : historyGroups.length === 0 ? (
-                <EmptyState size="sm" title="No previous conversations" description="Start a preview conversation to see it here." />
+                <EmptyState size="sm" title="No previous conversations"  />
               ) : (
                 <AISidebar
                   items={historyGroups.map(
@@ -910,7 +907,7 @@ export function PreviewPanel({
                     if (!conversation) return null;
                     return (
                       <>
-                        <button
+                        <Button variant="ghost" size="sm"
                           type="button"
                           onClick={() => {
                             controls.close();
@@ -920,8 +917,8 @@ export function PreviewPanel({
                         >
                           <Pin className="size-3.5" />
                           {conversation.pinned ? "Unpin" : "Pin"}
-                        </button>
-                        <button
+                        </Button>
+                        <Button variant="destructive" size="sm"
                           type="button"
                           onClick={() => {
                             controls.close();
@@ -943,7 +940,7 @@ export function PreviewPanel({
                         >
                           <AnimatedIcon icon={Trash2} size={14} />
                           Delete
-                        </button>
+                        </Button>
                       </>
                     );
                   }}
@@ -984,14 +981,14 @@ export function PreviewPanel({
           {messages.length === 0 && (
             <div className={fullscreen ? "grid grid-cols-2 gap-3 pt-1" : "space-y-2 pt-1"}>
               {assistant.suggestedQuestions.map((q) => (
-                <button
+                <Button variant="secondary" size="sm" wrap
                   key={q}
                   type="button"
                   onClick={() => send(q)}
                   className="text-foreground w-full rounded-lg bg-foreground/10 px-4 py-2.5 text-center text-[0.9375rem] transition-colors hover:bg-foreground/15"
                 >
                   {q}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -1025,7 +1022,7 @@ export function PreviewPanel({
               Escalation Button" toggle, same rule as the published widget. */}
           {!hideEscalation && (
             <div className="flex justify-center pb-3">
-              <button
+              <Button variant="secondary" size="sm"
                 type="button"
                 onClick={() => {
                   setSupportHelpDeskId(recommendedHelpDeskId);
@@ -1034,7 +1031,7 @@ export function PreviewPanel({
                 className="bg-muted hover:bg-muted/80 rounded-xl border px-5 py-2.5 text-sm font-semibold transition-colors"
               >
                 {contactLabel}
-              </button>
+              </Button>
             </div>
           )}
           {attachmentsEnabled && (

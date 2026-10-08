@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { EASE_OUT, EASE_OUT_CSS, SPRING_SWAP } from "@/lib/ease";
+import type { ReactNode } from "react";
+import { EASE_OUT, SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 
 export interface ActionSwapTextProps {
@@ -32,25 +32,12 @@ const ROLL_VARIANTS: Variants = {
 /** Rolls the new label up into place when `value` changes. */
 export function ActionSwapText({ value, children, className }: ActionSwapTextProps) {
   const reduce = useReducedMotion();
-  const measureRef = useRef<HTMLSpanElement>(null);
-  const [width, setWidth] = useState<number>();
-
-  useLayoutEffect(() => {
-    const nextWidth = measureRef.current?.offsetWidth;
-    if (!nextWidth) return;
-    setWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
-  });
 
   return (
     <span
       className={cn("relative inline-block overflow-hidden whitespace-nowrap align-bottom", className)}
-      style={{
-        width,
-        transition: reduce ? undefined : `width 220ms ${EASE_OUT_CSS}`,
-      }}
     >
       <span
-        ref={measureRef}
         aria-hidden
         className="invisible inline-block whitespace-nowrap"
       >

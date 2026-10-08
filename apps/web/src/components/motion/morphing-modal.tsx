@@ -8,7 +8,7 @@ import {
 } from "motion/react";
 import { X } from "lucide-react";
 import { type ReactNode } from "react";
-import { Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
+import { Button as CieleButton, Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
 import { EASE_OUT, SPRING_PANEL } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 
@@ -44,9 +44,8 @@ export function MorphingModal({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         showCloseButton={false}
-        overlayClassName="bg-black/50 backdrop-blur-[1px] supports-backdrop-filter:bg-black/35"
         className={cn(
-          "z-[80] flex max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-sm flex-col overflow-y-auto rounded-3xl border border-border bg-background p-5 text-foreground shadow-strong outline-none",
+          "z-[80] max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-sm text-foreground",
           placement === "bottom"
             ? "top-auto bottom-8 translate-y-0"
             : "top-1/2 -translate-y-1/2",
@@ -56,14 +55,16 @@ export function MorphingModal({
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         {showClose ? (
-          <button
+          <CieleButton
+            variant="ghost"
+            size="icon-sm"
             type="button"
             aria-label="Close dialog"
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-ring absolute top-3 right-3 z-10 flex size-8 max-lg:size-11 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
           >
             <X className="size-4" />
-          </button>
+          </CieleButton>
         ) : null}
         <AnimatePresence mode="popLayout" initial={false}>
           {open ? (
@@ -79,7 +80,7 @@ export function MorphingModal({
                 transition: { duration: 0.18, ease: EASE_OUT },
               }}
               transition={SPRING_PANEL}
-              className="will-change-transform"
+              className="ui-modal-stack will-change-transform"
             >
               {children}
             </motion.div>

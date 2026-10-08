@@ -1,8 +1,7 @@
-// The app's whole component set. Four primitives, vendored rather than
-// imported: the web app's UI package is coupled to the Next app it lives in,
-// and the native surface here is a handful of screens.
+// Native fields/cards retain their tokens; actions use the product's shared button.
 
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import { Button as SharedButton } from "@agent-hub/ui";
 
 /** Joins class names, skipping falsy ones. No conflict merging: no call site passes two classes from one utility group. */
 export function cn(...classes: (string | false | null | undefined)[]): string {
@@ -11,32 +10,15 @@ export function cn(...classes: (string | false | null | undefined)[]): string {
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
-const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-accent-ink hover:opacity-90",
-  secondary: "bg-surface-raised text-ink border border-line hover:bg-line/50",
-  ghost: "text-ink-muted hover:text-ink hover:bg-surface-raised",
-  danger: "bg-transparent text-danger border border-danger/40 hover:bg-danger/10",
-};
-
 export function Button({
   variant = "primary",
   className,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }): ReactNode {
   return (
-    <button
-      type="button"
-      // Same interface sounds as the console's Button (#817): the shared
-      // feedback module reads these attributes, the palette stays this app's.
-      data-foley-press=""
-      data-foley-release=""
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium",
-        "transition disabled:pointer-events-none disabled:opacity-40",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-        BUTTON_VARIANTS[variant],
-        className,
-      )}
+    <SharedButton
+      variant={variant === "danger" ? "destructive" : variant}
+      className={className}
       {...props}
     />
   );

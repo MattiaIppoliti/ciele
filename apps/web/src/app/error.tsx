@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { useEffect } from "react";
 import Link from "next/link";
 import { isStaleBundleError } from "@/lib/stale-bundle";
@@ -57,19 +58,16 @@ export default function Error({
           That request did not go through. Trying again usually works.
         </p>
         <div className="flex justify-center gap-3 pt-2">
-          <button
+          <CieleButton variant="primary" size="sm"
             type="button"
             onClick={reset}
             className="bg-foreground text-background rounded-md px-4 py-2 text-sm font-medium"
           >
             Try again
-          </button>
-          <Link
-            href="/"
-            className="rounded-md border px-4 py-2 text-sm font-medium"
-          >
+          </CieleButton>
+          <CieleButton variant="secondary" size="sm" render={<Link href="/" />}>
             Back to assistants
-          </Link>
+          </CieleButton>
         </div>
         {(error.digest || error.message) && (
           // The digest names a server-side failure; the message is what a

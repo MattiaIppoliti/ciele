@@ -28,7 +28,7 @@ import {
 import { useApplicationConnectedToast } from "@/components/knowledge/use-application-connected";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { AlertCircle, KeyRound, Plug } from "lucide-react";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
+import { DialogBody, DialogFooter, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
 import {
   Select,
   SelectContent,
@@ -558,23 +558,41 @@ export function TestConnectorControl({ settings }: { settings: ConnectorActionSe
           : "Runs the real call against the connected system with sample values."}
       </p>
       <Button
+        loading={pending}
         type="button"
         variant={action?.effect === "write" ? "destructive" : "outline"}
         size="sm"
         disabled={!ready || pending}
-        onClick={() => (action?.effect === "write" ? setConfirming(true) : run(false))}
+        onClick={() =>
+          action?.effect === "write" ? setConfirming(true) : run(false)
+        }
       >
         <RollInText
-          text={pending ? "Running…" : action?.effect === "write" ? "Run write action…" : "Run node"}
+          text={
+            pending
+              ? "Running…"
+              : action?.effect === "write"
+                ? "Run write action…"
+                : "Run node"
+          }
         />
       </Button>
-      {!ready && <p className="text-muted-foreground text-xs">Complete the configuration first.</p>}
+      {!ready && (
+        <p className="text-muted-foreground text-xs">
+          Complete the configuration first.
+        </p>
+      )}
       {outcome && (
-        <div role="status" className="bg-muted/30 space-y-2 rounded-lg border p-3 text-xs">
+        <div
+          role="status"
+          className="bg-muted/30 space-y-2 rounded-lg border p-3 text-xs"
+        >
           <p className="flex items-center gap-2">
             <StatusPill
               status={outcome.ok ? "online" : "error"}
-              primaryText={outcome.ok ? "ok" : outcome.error?.code ?? "failed"}
+              primaryText={
+                outcome.ok ? "ok" : (outcome.error?.code ?? "failed")
+              }
             />
             {outcome.status !== null && (
               <span className="font-mono">
@@ -582,18 +600,23 @@ export function TestConnectorControl({ settings }: { settings: ConnectorActionSe
               </span>
             )}
           </p>
-          {outcome.error && <p className="text-destructive">{outcome.error.message}</p>}
+          {outcome.error && (
+            <p className="text-destructive">{outcome.error.message}</p>
+          )}
           {Object.keys(outcome.outputs).length > 0 && (
             <div className="space-y-0.5">
               {Object.entries(outcome.outputs).map(([name, value]) => (
                 <div key={name} className="font-mono break-all">
-                  {`{{${connectorOutputVariable(name)}}}`} = {value || <span className="opacity-60">(empty)</span>}
+                  {`{{${connectorOutputVariable(name)}}}`} ={" "}
+                  {value || <span className="opacity-60">(empty)</span>}
                 </div>
               ))}
             </div>
           )}
           {outcome.excerpt && (
-            <pre className="bg-background max-h-40 overflow-auto rounded-md p-2">{outcome.excerpt}</pre>
+            <pre className="bg-background max-h-40 overflow-auto rounded-md p-2">
+              {outcome.excerpt}
+            </pre>
           )}
         </div>
       )}
@@ -602,19 +625,32 @@ export function TestConnectorControl({ settings }: { settings: ConnectorActionSe
           <DialogHeader>
             <DialogTitle>Run this write action?</DialogTitle>
           </DialogHeader>
-          <p className="text-muted-foreground text-sm">
-            {action?.title} will run for real in{" "}
-            {action ? CONNECTOR_PROVIDER_LABELS[action.provider] : "the connected system"}, with
-            sample values in place of template variables. Whatever it creates or changes stays there.
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+          <DialogBody>
+            <p className="text-muted-foreground text-sm">
+              {action?.title} will run for real in{" "}
+              {action
+                ? CONNECTOR_PROVIDER_LABELS[action.provider]
+                : "the connected system"}
+              , with sample values in place of template variables. Whatever it
+              creates or changes stays there.
+            </p>
+          </DialogBody>
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(false)}
+            >
               Cancel
             </Button>
-            <Button type="button" variant="destructive" onClick={() => run(true)}>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => run(true)}
+            >
               Run it
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

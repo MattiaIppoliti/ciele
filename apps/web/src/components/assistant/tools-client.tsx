@@ -47,7 +47,7 @@ const BUILT_INS: Array<{
     name: "searchKnowledge",
     title: "Search knowledge",
     description:
-      "RAG over the assistant's Knowledge Collections with Source citations. Core grounding tool, always enabled.",
+      "Source citations. Always enabled.",
     defaultOn: true,
     locked: true,
   },
@@ -55,25 +55,24 @@ const BUILT_INS: Array<{
     name: "remember",
     title: "Session memory",
     description:
-      "Lets the assistant save short facts (role, product, preferences) that persist across turns in a conversation.",
+      "Keeps facts across turns in a conversation.",
     defaultOn: true,
   },
   {
     name: "renderTable",
     title: "Interactive tables",
     description:
-      "Shows retrieved facts as a table, a CRM records grid or a task table with status filters. Rows, links and counts come from actual data. New-property requests use the normal chat. Off by default.",
+      "Shows retrieved facts as a table, CRM records grid or task table with status filters. Rows, links and counts come from actual data.",
     defaultOn: false,
   },
   {
     name: "fetchUrl",
     title: "Fetch URL",
     description:
-      "Fetch a public web page or API during a turn for live information the knowledge base can't have. Off by default (network egress).",
+      "Reads public web pages and APIs during a turn.",
     defaultOn: false,
   },
 ];
-
 
 export function ToolsClient({
   assistantId,
@@ -157,7 +156,6 @@ export function ToolsClient({
     );
   }
 
-
   // A Skill belongs to the Organization, so deleting it detaches it from every
   // assistant it is attached to, not only this one.
   function removeSkill(skill: Skill) {
@@ -185,9 +183,7 @@ export function ToolsClient({
       <SectionTimeline>
       <TimelineSection title="Built-in tools" boxed>
       <section>
-        <p className="text-muted-foreground text-sm">
-          What the assistant can do while answering, beyond generating text.
-        </p>
+
         <div className="mt-4 space-y-5">
           {BUILT_INS.map((item) => (
             <div key={item.name} className="flex items-start justify-between gap-4">
@@ -230,9 +226,7 @@ export function ToolsClient({
       <TimelineSection title="Skills" boxed>
       <section>
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-muted-foreground text-sm">
-            Reusable prompts. Attached skills are added to this assistant&apos;s instructions.
-          </p>
+
           {canEdit && (
             // A page under Tools & Skills, not a dialog: a prompt needs room,
             // and the breadcrumb says where you are.
@@ -303,7 +297,6 @@ export function ToolsClient({
       </section>
       </TimelineSection>
       </SectionTimeline>
-
 
       <p className="text-muted-foreground mt-4 flex items-center gap-1.5 text-xs">
         <Globe className="size-3.5" />

@@ -1,3 +1,4 @@
+import { TablePreferenceScope } from "@/components/ui/table-preferences";
 import { Suspense, cache } from "react";
 import { devKey } from "@/lib/dev-key";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -89,7 +90,10 @@ export default function AdminLayout({
     ""
   );
 
+  const tableScope = shellRead("Table preferences", ({ organizationId, session }) => `${organizationId}:${session.userId}`, "");
+
   return (
+    <TablePreferenceScope scope={tableScope}>
     <ThemeProvider scope="admin">
       {/* Interface sounds + haptics (#817). Here and in the marketing
           layout, never in the root layout: the widget inherits only the
@@ -163,6 +167,7 @@ export default function AdminLayout({
       </TooltipProvider>
       </FeedbackProvider>
     </ThemeProvider>
+    </TablePreferenceScope>
   );
 }
 

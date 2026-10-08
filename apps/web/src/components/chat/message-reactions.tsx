@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { RollingNumber } from "@/components/motion/rolling-number";
 
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -104,13 +105,13 @@ function ReactionControls({ endpoint, children, presentation }: { endpoint: stri
           </span>
         ))}
       </div>
-      {available && <button ref={trigger} type="button" aria-label="Add reaction" aria-haspopup="menu" aria-expanded={Boolean(menu)} onClick={() => {
+      {available && <CieleButton variant="ghost" size="icon-sm" ref={trigger} type="button" aria-label="Add reaction" aria-haspopup="menu" aria-expanded={Boolean(menu)} onClick={() => {
         if (menu) { setMenu(null); return; }
         const bounds = trigger.current?.getBoundingClientRect();
         if (bounds) open(bounds.left, bounds.bottom + 4);
       }} className={cn("press-control grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring", presentation === "chat" && "mt-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/reaction:opacity-100 sm:group-focus-within/reaction:opacity-100")}>
         <SmilePlus className="size-3.5" />
-      </button>}
+      </CieleButton>}
       {error && <p role="alert" className="mt-1 text-xs text-destructive">{error}</p>}
       {menu && createPortal(
         <div ref={menuRef} role={more ? "dialog" : "menu"} aria-label={more ? "Choose an emoji" : "React to response"} style={{ left: Math.min(menu.x, Math.max(8, window.innerWidth - (more ? 328 : 252))), top: Math.min(menu.y, Math.max(8, window.innerHeight - (more ? 432 : 56))) }} className={cn("fixed z-[100] max-h-[calc(100dvh-16px)] max-w-[calc(100vw-16px)] overflow-hidden rounded-2xl border bg-popover/95 text-popover-foreground shadow-strong backdrop-blur-xl", more ? "w-80" : "w-[244px] p-1.5")} onKeyDown={(event) => {
@@ -129,7 +130,7 @@ function ReactionControls({ endpoint, children, presentation }: { endpoint: stri
           ) : (
             <div className="flex items-center justify-between gap-0.5">
               {QUICK_REACTIONS.map((emoji) => <button key={emoji} type="button" role="menuitemcheckbox" aria-label={emoji} aria-checked={reactions.some((r) => r.emoji === emoji && r.actorId === actorId)} disabled={saving} onClick={() => void toggle(emoji)} className={cn("press-control grid size-7 place-items-center rounded-full text-lg leading-none hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", reactions.some((r) => r.emoji === emoji && r.actorId === actorId) && "ring-2 ring-ring")} >{emoji}</button>)}
-              <button type="button" role="menuitem" aria-label="More emoji" aria-haspopup="dialog" onClick={() => setMore(true)} className="press-control grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"><SmilePlus className="size-4" /></button>
+              <CieleButton variant="ghost" size="icon-sm" type="button" role="menuitem" aria-label="More emoji" aria-haspopup="dialog" onClick={() => setMore(true)} className="press-control grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"><SmilePlus className="size-4" /></CieleButton>
             </div>
           )}
         </div>, document.body,

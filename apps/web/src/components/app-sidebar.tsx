@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Hint } from "@agent-hub/ui";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
-import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
+import { Button as CieleButton, Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import { MobileNavigation } from "@/components/shell/mobile-navigation";
 import { SidebarFrame } from "@/components/shell/sidebar-frame";
 import {
@@ -54,8 +54,6 @@ import {
   QuickLinks,
 } from "@/components/shell/sidebar-chat-controls";
 import { ROW_IDLE } from "@/components/shell/sidebar-row";
-
-
 
 interface AppSidebarProps {
   orgId: string;
@@ -345,14 +343,14 @@ function OrgAvatarSwitcher({
                 )}
                 {active && canManage && (
                   <Hint label="Manage members">
-                    <Link
-                      href="/settings/members"
+                    <CieleButton variant="ghost" size="icon-sm" render={<Link href="/settings/members" />}
+
                       aria-label="Manage members"
                       onClick={() => setOpen(false)}
                       className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-6 shrink-0 items-center justify-center rounded-md transition-colors"
                     >
                       <AnimatedIcon icon={Settings} size={14} />
-                    </Link>
+                    </CieleButton>
                   </Hint>
                 )}
               </div>
@@ -427,7 +425,7 @@ function SidebarContent({
 
   const toggleButton = (
     <Hint label={toggleLabel} side="right">
-      <button
+      <CieleButton variant="ghost" size="icon-sm"
         type="button"
         aria-label={toggleLabel}
         aria-expanded={!collapsed}
@@ -439,7 +437,7 @@ function SidebarContent({
         className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors"
       >
         <SidebarToggleIcon isOpen={toggleHovered ? collapsed : !collapsed} className="size-4" />
-      </button>
+      </CieleButton>
     </Hint>
   );
 
@@ -448,7 +446,7 @@ function SidebarContent({
   // to share.
   const findIconButton = (
     <Hint label="Find… (F)" side="bottom">
-      <button
+      <CieleButton variant="ghost" size="icon-sm"
         type="button"
         aria-label="Find"
         aria-keyshortcuts="F Meta+K"
@@ -458,7 +456,7 @@ function SidebarContent({
         className="press-control text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors"
       >
         <AnimatedIcon icon={Search} size={16} />
-      </button>
+      </CieleButton>
     </Hint>
   );
 

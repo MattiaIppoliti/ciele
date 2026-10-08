@@ -20,7 +20,7 @@ export default async function GuardrailsPage({ params }: { params: Promise<{ id:
       <SectionHeading
         icon={ShieldCheck}
         title="Guardrails"
-        description="Checks on what visitors send and what the answer shows."
+
       />
       <GuardrailsClient
         assistantId={id}

@@ -92,6 +92,7 @@ export {
   recrawlSourceOp,
   setDirectAccessOp,
   setSourceLinksOp,
+  renameSourceOp,
 } from "./knowledge";
 
 // Publish domain (#623): immutable Publication snapshots.
@@ -277,6 +278,7 @@ export {
   listAssistantGoalsOp,
   listSkillsOp,
   resolveAlertOp,
+  updateAlertOp,
   setAssistantSkillsOp,
   skillInputSchema,
   skillPatchSchema,

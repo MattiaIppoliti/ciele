@@ -13,7 +13,8 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   return {
     rules: {
       userAgent: '*',
-      allow: '/',
+      // Let Google see the permanent redirect for the API-prefix example.
+      allow: ['/', '/api/v1$'],
       disallow: ['/api/'],
     },
     sitemap: new URL('/sitemap.xml', DOCS_ORIGIN).toString(),

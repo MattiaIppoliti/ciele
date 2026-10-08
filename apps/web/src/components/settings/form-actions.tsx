@@ -46,7 +46,7 @@ function FormActions({
       >
         Cancel
       </Button>
-      <Button
+      <Button loading={saving}
         size="sm"
         onClick={onSave}
         disabled={saving || !dirty || saveDisabled}

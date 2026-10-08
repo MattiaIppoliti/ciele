@@ -20,7 +20,7 @@ function Path({
 }: {
   icon: ReactNode;
   title: string;
-  blurb: string;
+  blurb?: string;
   action: string;
   onClick: () => void;
   footnote: string;
@@ -32,7 +32,7 @@ function Path({
       </div>
       <div className="flex flex-col gap-1.5">
         <h2 className="text-base font-semibold">{title}</h2>
-        <p className="text-sm leading-relaxed text-ink-muted">{blurb}</p>
+        {blurb && (<p className="text-sm leading-relaxed text-ink-muted">{blurb}</p>)}
       </div>
       <div className="mt-auto flex flex-col gap-2 pt-2">
         <Button onClick={onClick}>{action}</Button>
@@ -55,28 +55,25 @@ export function WelcomeScreen({ state }: { state: AppState }): ReactNode {
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-8 pb-12">
         <header className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">Welcome to Ciele</h1>
-          <p className="text-sm text-ink-muted">
-            Connect to your organization, or run the whole product on this machine. You can
-            switch later, and both can coexist.
-          </p>
+
         </header>
 
         <div className="flex gap-4">
           <Path
             icon={<Building2 className="size-5" />}
             title="Sign in to your organization"
-            blurb="Open your organization's console in a window of its own. Your session is remembered, so this is a once-only step."
+
             action="Sign in"
             onClick={() => void bridge().chooseMode("saas")}
-            footnote={`Connecting to ${host}. Change it in settings to reach a self-hosted server.`}
+            footnote={`Server: ${host}`}
           />
           <Path
             icon={<HardDrive className="size-5" />}
             title="Use locally (self-host)"
-            blurb="Set up a complete Ciele on this machine, database, jobs and all. Guided, with no terminal; Docker Desktop is the one thing you install yourself."
+            blurb="Requires Docker Desktop."
             action="Set up locally"
             onClick={() => void bridge().chooseMode("local")}
-            footnote="Your data stays on this machine and survives app updates."
+            footnote="Data stays on this device."
           />
         </div>
       </div>

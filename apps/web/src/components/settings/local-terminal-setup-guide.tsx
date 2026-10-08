@@ -71,16 +71,14 @@ export function LocalTerminalSetupGuide({
         onOpenChange={setOpen}
         snapPoints={[0.68, 0.92]}
         title="Authorize provider CLIs from Terminal"
-        description="Sign in Codex and Claude locally after installing the Ciele Connector."
+
       >
         <div className="space-y-5 pt-3">
           <div className="border-primary/20 bg-primary/5 flex gap-3 rounded-xl border p-4">
             <ShieldCheck className="text-primary mt-0.5 size-5 shrink-0" />
             <div>
               <p className="text-sm font-medium">Ciele Connector is required</p>
-              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                Run the command below to connect the Ciele Connector.
-              </p>
+
             </div>
           </div>
 

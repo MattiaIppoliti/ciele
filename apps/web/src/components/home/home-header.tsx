@@ -177,7 +177,7 @@ export function HomeHeader({ scrolled, topOffset = 0 }: { scrolled: boolean; top
               <div className="-mr-2 flex items-center gap-1 lg:hidden">
                 <GithubLink />
                 <ThemeToggle />
-                <button
+                <Button variant="ghost" size="icon-sm"
                   onClick={() => {
                     // Closing collapses whatever was expanded, so reopening
                     // starts from the four macro areas again.
@@ -196,7 +196,7 @@ export function HomeHeader({ scrolled, topOffset = 0 }: { scrolled: boolean; top
                     size={24}
                     className="m-auto"
                   />
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -264,7 +264,7 @@ export function HomeHeader({ scrolled, topOffset = 0 }: { scrolled: boolean; top
                 <div className="home-cta-authed">
                   <Reveal delay={0.34}>
                     <Button
-                      className="h-14 w-full rounded-full text-base font-medium"
+                      size="lg" className="w-full"
                       nativeButton={false}
                       render={<Link href="/" />}
                     >
@@ -275,7 +275,7 @@ export function HomeHeader({ scrolled, topOffset = 0 }: { scrolled: boolean; top
                 <div className="home-cta-anon">
                   <Reveal delay={0.34}>
                     <Button
-                      className="h-14 w-full rounded-full text-base font-medium"
+                      size="lg" className="w-full"
                       nativeButton={false}
                       render={<Link href="/contact/sales" />}
                     >
@@ -285,7 +285,7 @@ export function HomeHeader({ scrolled, topOffset = 0 }: { scrolled: boolean; top
                   <Reveal delay={0.42}>
                     <Button
                       variant="secondary"
-                      className="h-14 w-full rounded-full text-base font-medium"
+                      size="lg" className="w-full"
                       nativeButton={false}
                       render={<Link href="/login" />}
                     >

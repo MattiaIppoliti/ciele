@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { SmilePlus } from "lucide-react";
@@ -42,7 +43,7 @@ export function EmojiFeedback({
 
   return (
     <div ref={root} className={cn("relative inline-flex", className)}>
-      <button
+      <CieleButton variant="ghost" size="icon-sm"
         type="button"
         aria-label={selected ? `Reaction: ${selected.label}` : "Rate response"}
         aria-haspopup="menu"
@@ -59,7 +60,7 @@ export function EmojiFeedback({
         ) : (
           <SmilePlus className="size-3.5" />
         )}
-      </button>
+      </CieleButton>
       <AnimatePresence>
         {open && (
           <motion.div

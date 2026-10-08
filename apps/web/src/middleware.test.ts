@@ -124,15 +124,46 @@ describe("middleware local connector relay", () => {
     }
   });
 
-  it("sends a signed-out visitor on the root to the marketing home", async () => {
+  it("serves the marketing home at the root without a redirect", async () => {
     const response = await middleware(
       new NextRequest("https://ciele.example.com/")
     );
 
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe(
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
       "https://ciele.example.com/home"
     );
+  });
+
+  it("serves the same public root when a session has expired", async () => {
+    const response = await middleware(withSession("https://ciele.example.com/"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBe("https://ciele.example.com/home");
+  });
+
+  it("keeps a production fork's root behind login", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    for (const request of [
+      new NextRequest("https://institution.example.com/"),
+      withSession("https://institution.example.com/"),
+    ]) {
+      const response = await middleware(request);
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe("https://institution.example.com/login");
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    }
+  });
+
+  it("serves the canonical production root and a configured branded root", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const ciele = await middleware(new NextRequest("https://ciele.app/"));
+    expect(ciele.headers.get("x-middleware-rewrite")).toBe("https://ciele.app/home");
+
+    vi.stubEnv("CIELE_MARKETING_ORIGIN", "https://institution.example.com");
+    const branded = await middleware(new NextRequest("https://institution.example.com/"));
+    expect(branded.headers.get("x-middleware-rewrite")).toBe("https://institution.example.com/home");
   });
 
   it("serves the marketing home without a session", async () => {
@@ -217,6 +248,7 @@ describe("middleware local connector relay", () => {
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
     expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
   });
 
   /**
@@ -299,7 +331,7 @@ describe("middleware local connector relay", () => {
    * The first-load fast path: a visitor with no Supabase cookie is signed out
    * by definition, so the middleware answers without constructing a Supabase
    * client or validating anything over the network. That round trip used to
-   * sit in front of the `/` → `/home` redirect on every first visit.
+   * sit in front of the public home on every first visit.
    */
   describe("anonymous fast path", () => {
     it("never asks Supabase about a request that carries no session cookie", async () => {

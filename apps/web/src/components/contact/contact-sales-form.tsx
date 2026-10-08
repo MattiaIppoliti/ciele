@@ -315,7 +315,7 @@ export function ContactSalesForm() {
         </p>
       ) : null}
 
-      <Button type="submit" className="w-full" disabled={!consent || pending}>
+      <Button loading={pending} type="submit" className="w-full" disabled={!consent || pending}>
         {pending ? "Sending…" : "Talk to Ciele"}
       </Button>
     </form>

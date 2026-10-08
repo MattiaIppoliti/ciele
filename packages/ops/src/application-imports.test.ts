@@ -284,7 +284,7 @@ describe("listApplicationImportDocumentsOp", () => {
     db: ReturnType<typeof getMockDb>,
     importId: string,
     remoteId: string,
-    options: { document?: boolean; documents?: number; error?: boolean; ready?: boolean } = {},
+    options: { document?: boolean; documents?: number; error?: boolean; ready?: boolean; mimeType?: string } = {},
   ) {
     const applicationImport = await db.getApplicationImport(importId);
     const source = await db.createSource({
@@ -309,6 +309,7 @@ describe("listApplicationImportDocumentsOp", () => {
       sourceId: source.id,
       remoteId,
       contentHash: remoteId,
+      remoteMimeType: options.mimeType ?? null,
       lastSeenAt: new Date().toISOString(),
     });
     const document = options.document
@@ -402,5 +403,27 @@ describe("listApplicationImportDocumentsOp", () => {
     });
     expect(page.page).toBe(1);
     expect(page.items).toHaveLength(1);
+  });
+
+  it("filters the whole import before pagination and keeps all file type choices", async () => {
+    const { db, port, result } = await created();
+    for (let index = 0; index < 26; index += 1) {
+      await item(db, result.id, `Text-${index}`, { mimeType: "text/plain" });
+    }
+    const pdf = await item(db, result.id, "PDF", { document: true, mimeType: "application/pdf" });
+    const page = await listApplicationImportDocumentsOp.run(ctx({ applicationImports: port }), {
+      importId: result.id, mimeType: "application/pdf", page: 8, pageSize: 10,
+    });
+    expect(page.total).toBe(1);
+    expect(page.page).toBe(1);
+    expect(page.pageSize).toBe(10);
+    expect(page.items.map(row => row.sourceId)).toEqual([pdf.source.id]);
+    expect(page.fileTypes).toEqual(["application/pdf", "text/plain"]);
+    const all = await listApplicationImportDocumentsOp.run(ctx({ applicationImports: port }), {
+      importId: result.id, page: 3, pageSize: 10,
+    });
+    expect(all.total).toBe(27);
+    expect(all.items).toHaveLength(7);
+    expect(all.items.some(row => row.sourceId === pdf.source.id)).toBe(true);
   });
 });

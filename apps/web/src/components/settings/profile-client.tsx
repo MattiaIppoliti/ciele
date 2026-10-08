@@ -147,7 +147,7 @@ export function ProfileClient({
       <div className="space-y-3">
         <FieldHeader
           title="Photo"
-          hint="Shown next to your name in the sidebar and the members list."
+
         />
         <AvatarUpload
           value={avatarPreviewUrl || avatarUrl}
@@ -196,7 +196,7 @@ export function ProfileClient({
       <div className="space-y-3">
         <FieldHeader
           title="Username"
-          hint="Starts as the part of your email before the @, change it to whatever you like."
+
         />
         <Input
           value={form.username}
@@ -230,7 +230,7 @@ export function ProfileClient({
         </span>
         {/* Only the button shows the pending save; the fields stay editable,
             a save that locks the form is the opposite of optimistic. */}
-        <Button
+        <Button loading={isPending}
           onClick={handleSave}
           disabled={isPending || !dirty}
           data-testid="profile-save"

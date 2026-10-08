@@ -27,7 +27,7 @@ export default function GeneralSettingsPage() {
     <SettingsPanel
       icon={Building2}
       title="General"
-      description={`Name and logo shown across ${session.organization.name}'s workspace.`}
+
     >
       <OrganizationClient
         organization={session.organization}

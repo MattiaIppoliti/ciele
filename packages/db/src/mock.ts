@@ -2404,6 +2404,10 @@ function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
       Object.entries(values).filter(([, value]) => value !== undefined)
     );
   return {
+    async count(filter = {}) {
+      return [...store().values()].filter(row => Object.entries(filter).every(([key, value]) =>
+        value === undefined || (row as unknown as Record<string, unknown>)[key] === value)).length;
+    },
     async list(filter = {}, options) {
       const orderBy = options?.orderBy ?? "createdAt";
       const ascending = options?.ascending ?? spec.ascending;
@@ -6836,6 +6840,17 @@ export const mockDb: Db = {
     };
     store.alerts.set(alert.id, alert);
     return alert;
+  },
+
+  async updateAlert(id, patch, updatedBy) {
+    const store = getStore();
+    const current = store.alerts.get(id);
+    if (!current) throw new Error(`Alert ${id} not found`);
+    const next: Alert = { ...current, ...patch,
+      ...(patch.status ? { resolvedAt: patch.status === "resolved" ? new Date().toISOString() : null,
+        resolvedBy: patch.status === "resolved" ? updatedBy ?? null : null } : {}) };
+    store.alerts.set(id, next);
+    return next;
   },
 
   async resolveAlert(id, resolvedBy) {

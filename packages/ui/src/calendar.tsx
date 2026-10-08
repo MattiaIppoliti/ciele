@@ -37,12 +37,12 @@ function Calendar({
           defaultClassNames.nav
         ),
         button_previous: cn(
-          buttonClasses("ghost"),
+          buttonClasses("ghost", "icon"),
           "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
           defaultClassNames.button_previous
         ),
         button_next: cn(
-          buttonClasses("ghost"),
+          buttonClasses("ghost", "icon"),
           "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
           defaultClassNames.button_next
         ),

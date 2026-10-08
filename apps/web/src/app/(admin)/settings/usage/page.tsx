@@ -1,9 +1,7 @@
 import { Gauge } from "lucide-react";
 import { redirect } from "next/navigation";
 import type {
-  UsageDailyRow,
   UsageResource,
-  UsageEventRow,
   UsageSpenderRow,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
@@ -14,21 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@agent-hub/ui";
-import {
-  Table,
-  TableBody,
-  TableCard,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TablePagination } from "@/components/ui/table-pagination";
+import { DailyUsageTable, UsageOperationsTable } from "@/components/settings/usage-tables";
 import { requirePageMember } from "@/lib/authz";
 import { canManageMembers } from "@/lib/rbac";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { formatCredits, summarizeUsage } from "@/lib/usage-summary";
-import { formatCount, formatDay } from "@/lib/format";
+import { formatCount } from "@/lib/format";
 import { budgetMeterView, usageLimitsView } from "@/lib/usage-meters";
 import {
   DailyBudgetCard,
@@ -47,21 +36,6 @@ import {
 export const dynamic = "force-dynamic";
 
 const USAGE_WINDOW_DAYS = 30;
-
-const CREDENTIAL_LABELS: Record<UsageDailyRow["credentialKind"], string> = {
-  platform: "Platform",
-  api_key: "Your API key",
-  google_vertex_federated: "Federated (Vertex)",
-  local_subscription: "Local subscription",
-  ai_gateway: "Your AI Gateway key",
-  unknown: "Unrecorded",
-};
-
-const KIND_LABELS: Record<UsageDailyRow["kind"], string> = {
-  chat: "Chat",
-  embedding: "Embedding",
-  crawl: "Crawl",
-};
 
 /** The three meters, in the order a plan lists them. */
 const METERS: {
@@ -85,25 +59,6 @@ const METERS: {
     description: "Pages fetched when a Website Source is crawled",
   },
 ];
-
-const OPERATION_LABELS: Record<UsageEventRow["operation"], string> = {
-  api_request: "API request",
-  send_email: "Email",
-  http_flow_run: "Inbound flow run",
-  webhook_call: "Webhook callback",
-};
-
-/**
- * Three outcomes, not two: a refusal is ours (an egress policy, an
- * unconfigured transport) and a failure is the other side's. A Flow firing a
- * thousand refusals an hour is a different problem from one firing a thousand
- * calls, and one label would have hidden that.
- */
-const OPERATION_STATUS_LABELS: Record<UsageEventRow["status"], string> = {
-  succeeded: "Completed",
-  failed: "Failed",
-  refused: "Refused by Ciele",
-};
 
 /**
  * Display names for the spender ids on the ledger (#848).
@@ -205,14 +160,7 @@ export default async function UsageSettingsPage() {
     <SettingsPanel
       icon={Gauge}
       title="Usage"
-      description={
-        <>
-          {session.organization.name}&apos;s usage over the last{" "}
-          {USAGE_WINDOW_DAYS} days, every model call and crawled page, split by
-          the credential that funded it. Credits are estimated cost: one credit
-          is a cent of what the work cost to run.
-        </>
-      }
+      description={<>{session.organization.name}&apos;s last {USAGE_WINDOW_DAYS} days. 1 credit = 1 cent of estimated cost.</>}
     >
       <SectionTimeline>
       <TimelineSection title="Overview">
@@ -262,39 +210,7 @@ export default async function UsageSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TableCard
-                footer={
-                  <TablePagination
-                    total={operationRows.length}
-                    noun="operation"
-                  />
-                }
-              >
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>Operation</TableHead>
-                    <TableHead>Outcome</TableHead>
-                    <TableHead className="text-right">
-                      Count
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {operationRows.map((row) => (
-                    <TableRow key={`${row.operation}-${row.status}`}>
-                      <TableCell>{OPERATION_LABELS[row.operation]}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {OPERATION_STATUS_LABELS[row.status]}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatCount(row.quantity)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              </TableCard>
+              <UsageOperationsTable rows={operationRows} />
             </CardContent>
           </Card>
         ) : null}
@@ -369,73 +285,7 @@ export default async function UsageSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {rows.length === 0 ? (
-              <p className="text-muted-foreground py-4 text-sm">
-                No usage yet. It appears once an assistant answers, indexes or crawls.
-              </p>
-            ) : (
-              <TableCard
-                footer={
-                  <TablePagination total={rows.length} noun="day of usage" pluralNoun="days of usage" />
-                }
-              >
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>Day</TableHead>
-                    <TableHead>Kind</TableHead>
-                    <TableHead>Credential</TableHead>
-                    <TableHead>Ran on</TableHead>
-                    <TableHead className="text-right">
-                      Calls
-                    </TableHead>
-                    <TableHead className="text-right">
-                      Tokens in · out
-                    </TableHead>
-                    <TableHead className="text-right">
-                      Pages
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((r) => (
-                    <TableRow
-                      key={`${r.day}-${r.kind}-${r.credentialKind}-${r.provider}-${r.modelId}`}
-                    >
-                      <TableCell className="font-medium whitespace-nowrap tabular-nums">
-                        {formatDay(r.day)}
-                      </TableCell>
-                      <TableCell>{KIND_LABELS[r.kind]}</TableCell>
-                      <TableCell>
-                        {CREDENTIAL_LABELS[r.credentialKind]}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <span
-                          className="block max-w-48 truncate"
-                          title={r.modelId || r.provider || undefined}
-                        >
-                          {r.modelId || r.provider || "N/A"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatCount(r.calls)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.kind === "crawl"
-                          ? "N/A"
-                          : `${formatCount(r.inputTokens)} · ${formatCount(
-                              r.outputTokens
-                            )}`}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.kind === "crawl" ? formatCount(r.units) : "N/A"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              </TableCard>
-            )}
+            <DailyUsageTable rows={rows} />
           </CardContent>
         </Card>
       </TimelineSection>

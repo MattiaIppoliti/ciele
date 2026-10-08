@@ -19,6 +19,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { Button } from "@agent-hub/ui";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { shouldDismissSwipe } from "@/components/motion/swipe-dismiss";
@@ -285,30 +286,14 @@ export function NotificationStack({
         className,
       )}
     >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        // Rides the shell's top edge as the stack fans out; the CSS
-        // transition matches the shell's own easing.
+      <span
+        className="absolute -top-3 -right-3 z-20 transition-transform duration-300 ease-out motion-reduce:transition-none"
         style={{ transform: `translateY(${closeOffset}px)` }}
-        // Floats just outside the muted shell's top-right corner so it
-        // costs the banner no height and never covers a card.
-        className="group border-border/60 bg-background text-muted-foreground hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-background absolute -top-3 -right-3 z-20 flex cursor-pointer items-center justify-center rounded-full border p-1.5 text-xs font-medium shadow-light transition-[transform,color] duration-300 ease-out focus-visible:ring-2 focus-visible:ring-offset-2 motion-reduce:transition-none"
       >
-        <X className="size-3.5 shrink-0" aria-hidden="true" />
-        {/* Collapsed to zero width until hover/focus opens the label. */}
-        <span
-          aria-hidden="true"
-          className="grid grid-cols-[0fr] transition-[grid-template-columns] duration-200 ease-out group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr] motion-reduce:transition-none"
-        >
-          <span className="min-w-0 overflow-hidden">
-            <span className="block pr-0.5 pl-1 whitespace-nowrap">
-              Close
-            </span>
-          </span>
-        </span>
-      </button>
+        <Button variant="secondary" size="icon-sm" onClick={onClose} aria-label="Close">
+          <X className="size-3.5" aria-hidden="true" />
+        </Button>
+      </span>
       {isExpanded && viewAllHref ? (
         // Pointer only: it covers the expanded shell (the root's box is the
         // collapsed footprint, so it rides the same offset as the dismiss

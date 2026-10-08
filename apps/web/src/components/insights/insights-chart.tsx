@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { TableSearch } from "@/components/ui/table-filters";
 import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { RollingNumber } from "@/components/motion/rolling-number";
@@ -141,6 +142,7 @@ export function UsageCard({
   const summaryId = useId();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [tableQuery, setTableQuery] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const unit = bucketUnit(labels);
 
@@ -162,9 +164,12 @@ export function UsageCard({
   }, [tab, metrics, assistants, channels]);
 
   const visible = rows.filter((r) => !hidden.has(r.key));
-  const tableWindow = pageWindow(page, pageSize, labels.length);
-  const tableRows = labels
+  const filteredTableRows = labels
     .map((label, i) => ({ label, i }))
+    .filter(({ label, i }) => `${bucketLabel(label, unit)} ${visible.map(r => formatValue(r.values[i])).join(" ")}`
+      .toLocaleLowerCase().includes(tableQuery.trim().toLocaleLowerCase()));
+  const tableWindow = pageWindow(page, pageSize, filteredTableRows.length);
+  const tableRows = filteredTableRows
     .slice(Math.max(0, tableWindow.from - 1), tableWindow.to);
   const summary =
     labels.length === 0
@@ -203,9 +208,7 @@ export function UsageCard({
 
   const slideDirection = useSlidingDirection(tab, TABS.map((tab) => tab.id));
   return (
-    <AnalyticsCard title="Usage" description={tab === "metrics"
-      ? "Conversation activity over time, click a metric to toggle it."
-      : `Conversations split by ${tab === "assistants" ? "assistant" : "channel"}.`}>
+    <AnalyticsCard title="Usage" >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Tabs value={tab} onValueChange={(value) => { if (value === "metrics" || value === "assistants" || value === "channels") selectTab(value); }}>
             {/* Library's pill rail: every section switcher in the console is
@@ -233,7 +236,7 @@ export function UsageCard({
             {tab === "metrics" && metricGroups.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Select a metric below to show its trend.</p>}
             {conversations && brushData.length >= 2 && <div className="border-t pt-4">
               <p className="mb-2 text-sm font-medium">Explore conversations over time</p>
-              <p className="mb-3 text-xs text-muted-foreground">Drag the window to zoom the charts above. Summary totals, the data table and exports cover the full selected range.</p>
+              <p className="mb-3 text-xs text-muted-foreground">Zoom changes charts only. Totals, table and exports use the full range.</p>
               <BrushChart key={signature} data={brushData} bucket={unit} label="Conversations timeline" height={130} overviewHeight={40}
                 minSpan={86_400_000} formatValue={formatValue} formatTick={(value) => COMPACT_FORMATTER.format(value)}
                 formatDate={(date) => bucketLabel(date.toISOString().slice(0, unit === "month" ? 7 : 10), unit)}
@@ -291,13 +294,14 @@ export function UsageCard({
 
         <div id={dataTableId} className="t-acc-panel" aria-hidden={!showTable} inert={!showTable}>
           <div className="t-acc-panel-inner">
-          <TableCard
+          <TableCard title="Chart data" results={{ total: filteredTableRows.length, noun: unit }}
             className="mt-2"
+            filters={<TableSearch label="Search chart data" value={tableQuery} onChange={value => { setTableQuery(value); setPage(1); }} />}
             footer={
               <TablePagination
-                page={page}
+                page={Math.min(page, tableWindow.pageCount)}
                 pageSize={pageSize}
-                total={labels.length}
+                total={filteredTableRows.length}
                 noun={unit}
                 onPageChange={setPage}
                 onPageSizeChange={(size) => {
@@ -319,6 +323,7 @@ export function UsageCard({
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {tableRows.length === 0 && <TableRow><TableCell colSpan={visible.length + 1} className="text-muted-foreground text-center">No matching results</TableCell></TableRow>}
                 {tableRows.map(({ label, i }) => (
                   <TableRow key={label}>
                     <TableCell className="whitespace-nowrap">{bucketLabel(label, unit)}</TableCell>

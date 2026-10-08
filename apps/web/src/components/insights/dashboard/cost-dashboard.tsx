@@ -6,6 +6,7 @@ import { costStats } from "@/lib/insights/dashboard-stats";
 import { DashboardFrame, DashboardStatCards, useDashboardView, type AssistantOption } from "./dashboard-kit";
 import { SpendTrendCard, TokenActivityCard, SurfaceSpendCard, ModelSpendCard, ModelUsageCard, StageSpendCard } from "./dashboard-blocks";
 
+
 /**
  * The Costs dashboard: what the Organization's AI spends, on what, where and
  * through which models. Estimated at list prices; never an invoice.
@@ -25,7 +26,7 @@ export function CostDashboard({
   return (
     <DashboardFrame
       title="Costs"
-      hint="Spend is estimated from token counts at list prices, in euros. It is not an invoice."
+      hint="EUR estimates at list prices; not invoices."
       filter={filter}
       setFilter={setFilter}
       refreshing={refreshing}

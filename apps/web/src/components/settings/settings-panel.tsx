@@ -20,11 +20,11 @@ export function SettingsPanel({
 }: {
   icon: LucideIcon;
   title: string;
-  description: React.ReactNode;
+  description?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="@container/settings mx-auto min-w-0 max-w-2xl">
+    <div className="@container/settings mx-auto min-w-0 max-w-3xl pr-6">
       <SectionHeading icon={icon} title={title} description={description} />
       {children}
     </div>

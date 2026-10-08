@@ -1,3 +1,5 @@
+
+import { Button as CieleButton } from "@agent-hub/ui";
 import { SkeletonReveal } from "@/components/spectrumui/skeleton-reveal";
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -31,9 +33,7 @@ export function IdentityGate({
         <h2 className="text-foreground text-xl font-semibold">
           Verify your identity to continue
         </h2>
-        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-          Sign in to continue.
-        </p>
+
         <SkeletonReveal
           loading={loading}
           pulseCount={2}
@@ -42,14 +42,14 @@ export function IdentityGate({
           skeleton={<div className="bg-muted h-11 rounded-lg" />}
         >
           {provider ? (
-            <button
+            <CieleButton variant="primary" size="sm"
               type="button"
               onClick={() => onLogin(provider)}
               className="border-border text-foreground flex h-11 w-full items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition hover:bg-muted"
               style={{ ["--brand" as string]: brandColor }}
             >
               Log in with {label}
-            </button>
+            </CieleButton>
           ) : (
             <p className="text-muted-foreground text-sm">
               Sign-in isn&apos;t available yet, please check back soon.

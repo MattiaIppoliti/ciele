@@ -15,7 +15,7 @@ import { CHART_SERIES } from "@/components/charts/palette";
 import { RANK_COLORS, SURFACE_COLORS, SURFACE_LABELS } from "./palette";
 
 export function TokenHeatCalendar({ daily }: { daily: DashboardDay[] }) {
-  if (!daily.some((d) => d.inputTokens + d.outputTokens > 0)) return <EmptyState size="sm" title="No tokens in this range" description="Choose a wider date range or wait for new AI turns." />;
+  if (!daily.some((d) => d.inputTokens + d.outputTokens > 0)) return <EmptyState size="sm" title="No tokens in this range"  />;
   return <ArcFrame><ActivityHeatmap days={daily.map((d) => ({ date: d.day, count: d.inputTokens + d.outputTokens }))}
     label="Daily token usage" period={`${daily[0]?.day} – ${daily[daily.length - 1]?.day} (UTC)`}
     unit={{ one: "token", other: "tokens" }} weekStartsOn={1} locale="en-GB" /></ArcFrame>;
@@ -24,7 +24,7 @@ export function TokenHeatCalendar({ daily }: { daily: DashboardDay[] }) {
 const SURFACES = ["assistants", "teammates", "internal", "unattributed"] as const;
 export function SurfaceComposition({ daily }: { daily: DashboardDay[] }) {
   const keys = SURFACES.filter((key) => daily.some((d) => d.spendBySurface[key] > 0));
-  if (keys.length === 0) return <EmptyState size="sm" title="No spend in this range" description="Choose a wider date range to see recorded usage." />;
+  if (keys.length === 0) return <EmptyState size="sm" title="No spend in this range"  />;
   return <ArcFrame><Streamgraph label="Estimated spend by surface over time" height={260}
     series={keys.map((key) => ({ key, label: SURFACE_LABELS[key], color: SURFACE_COLORS[key] }))}
     data={daily.map((d) => ({ key: d.day, label: d.day, axisLabel: formatShortDay(d.day), values: d.spendBySurface }))}
@@ -33,7 +33,7 @@ export function SurfaceComposition({ daily }: { daily: DashboardDay[] }) {
 
 /** Retained: Arc has no rank-over-many-periods chart; a slope chart would lose intermediate ranks. */
 export function FlowBumpChart({ flows }: { flows: UsageDashboard["flows"] }) {
-  if (flows.series.length === 0) return <EmptyState size="sm" title="No routed turns in this range" description="Flow rankings appear once turns name the Flow that handled them. Try a wider date range." />;
+  if (flows.series.length === 0) return <EmptyState size="sm" title="No routed turns in this range"  />;
   const series: BumpChartSeries[] = flows.series.map((flow, i) => ({ id: flow.name, name: flow.name, ranks: flow.ranks, color: RANK_COLORS[i] }));
   const periods = flows.periods.map((p) => flows.granularity === "week" ? `w/c ${formatShortDay(p)}` : formatShortDay(p));
   return <BumpChart series={series} periods={periods} label="Most used Flows" className="mx-auto max-w-3xl" />;

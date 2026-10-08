@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { useState, type ReactNode } from "react";
@@ -32,7 +33,7 @@ export function GroupThread({ messages, pending, channelId, targets, models, tea
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [replying, setReplying] = useState<string | null>(null);
   const threads = groupMessageThreads(messages);
-  if (threads.length === 0 && !pending) return <EmptyState size="sm" title="No messages yet" description={readOnly ? "This group has no stored messages." : "Write a message below to start the conversation. Use @ to ask a teammate."} />;
+  if (threads.length === 0 && !pending) return <EmptyState size="sm" title="No messages yet"  />;
   return <ol className={styles.list} aria-label="Group messages">
     {threads.map((thread) => {
       const expanded = !collapsed.has(thread.key);
@@ -56,7 +57,7 @@ export function GroupThread({ messages, pending, channelId, targets, models, tea
             </div>
             <div className={styles.footer}>
               {readOnly ? <ReactionRecord reactions={recordedReactions.filter((reaction) => reaction.messageId === message.id)} /> : message.id ? <MessageReactions target={{messageId:message.id,channelId}} presentation="comment">
-                <button type="button" className={`${styles.action} press-text`} onClick={reply} disabled={pending || !thread.root.id}><CornerDownRight className="size-3.5" />Reply</button>
+                <CieleButton variant="ghost" size="sm" type="button" className={`${styles.action} press-text`} onClick={reply} disabled={pending || !thread.root.id}><CornerDownRight className="size-3.5" />Reply</CieleButton>
               </MessageReactions> : null}
             </div>
           </div>
@@ -78,7 +79,7 @@ export function GroupThread({ messages, pending, channelId, targets, models, tea
         {replying === thread.key && <div className={styles.composer} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { event.stopPropagation(); setReplying(null); } }}>
           <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
             <span>Reply in thread</span>
-            <button type="button" aria-label="Cancel reply" className={`${styles.action} press-control`} onClick={() => setReplying(null)}><X className="size-3.5" /></button>
+            <CieleButton variant="ghost" size="icon-sm" type="button" aria-label="Cancel reply" className={`${styles.action} press-control`} onClick={() => setReplying(null)}><X className="size-3.5" /></CieleButton>
           </div>
           <GroupComposer autoFocus targets={targets} models={models} teammateId={teammateId} pending={pending} placeholder="Reply… Use @ to ask a teammate" aria-label="Reply in thread"
             onSubmit={async (text, model, attachments) => {

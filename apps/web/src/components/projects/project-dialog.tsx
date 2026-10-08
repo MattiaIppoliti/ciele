@@ -7,7 +7,7 @@ import {
 } from "@agent-hub/core";
 import type { MemoryDocumentEntry } from "@agent-hub/core";
 import { Archive, ArchiveRestore, ChevronRight, Trash2, X } from "lucide-react";
-import { Button, Dialog, DialogContent, DialogTitle, Skeleton } from "@agent-hub/ui";
+import { Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogTitle, Skeleton } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { FoldersIcon } from "@/components/ui/icons/folders";
 import { Textarea } from "@/components/ui/textarea";
@@ -184,197 +184,217 @@ export function ProjectDialog({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent
-        showCloseButton={false}
-        className="flex h-[85vh] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-3xl"
-      >
-        <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
-          <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
-            <span className="bg-primary/10 text-primary flex size-6 shrink-0 items-center justify-center rounded-md">
-              <AnimatedGlyph icon={FoldersIcon} size={14} />
-            </span>
-            <span>Projects</span>
-            <ChevronRight className="size-3.5" />
-            <DialogTitle className="text-foreground truncate text-sm font-medium">
-              {creating ? "New project" : name || "Project"}
-            </DialogTitle>
-            {archived && (
-              <span className="text-muted-foreground ml-1 text-xs">
-                (archived, teammates no longer read it)
+      <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent
+          data-modal-layout="workspace"
+          showCloseButton={false}
+          className="flex h-[85vh] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-3xl"
+        >
+          <header className="ui-modal-header flex shrink-0 items-center justify-between gap-2">
+            <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
+              <span className="bg-primary/10 text-primary flex size-6 shrink-0 items-center justify-center rounded-md">
+                <AnimatedGlyph icon={FoldersIcon} size={14} />
               </span>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Close project"
-            onClick={requestClose}
+              <span>Projects</span>
+              <ChevronRight className="size-3.5" />
+              <DialogTitle className="text-foreground truncate text-sm font-medium">
+                {creating ? "New project" : name || "Project"}
+              </DialogTitle>
+              {archived && (
+                <span className="text-muted-foreground ml-1 text-xs">
+                  (archived, teammates no longer read it)
+                </span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Close project"
+              onClick={requestClose}
+            >
+              <X className="size-5" />
+            </Button>
+          </header>
+
+          <DialogBody
+            className="min-h-0 flex-1 overflow-y-auto"
+            data-modal-padding="none"
           >
-            <X className="size-5" />
-          </Button>
-        </header>
-
-        {loading ? (
-          <div className="flex-1 space-y-4 px-6 py-6" aria-busy="true">
-            <Skeleton className="h-9 w-72" />
-            <Skeleton className="h-5 w-52" />
-            <Skeleton className="h-40 w-full" />
-          </div>
-        ) : unreadable ? (
-          <p className="text-muted-foreground flex-1 px-6 py-10 text-center text-sm">
-            Could not read this project. Close and open it again to retry.
-          </p>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            {/* Borderless, because this reads as the project's own title
+            {loading ? (
+              <div className="flex-1 space-y-4 px-6 py-6" aria-busy="true">
+                <Skeleton className="h-9 w-72" />
+                <Skeleton className="h-5 w-52" />
+                <Skeleton className="h-40 w-full" />
+              </div>
+            ) : unreadable ? (
+              <p className="text-muted-foreground flex-1 px-6 py-10 text-center text-sm">
+                Could not read this project. Close and open it again to retry.
+              </p>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+                {/* Borderless, because this reads as the project's own title
                 rather than a field of a form. */}
-            <input
-              autoFocus={creating && canAutoFocus()}
-              value={name}
-              placeholder="Project name"
-              aria-label="Project name"
-              onChange={(e) => setName(e.target.value.slice(0, 120))}
-              className="placeholder:text-muted-foreground w-full bg-transparent text-2xl font-semibold outline-none focus-visible:underline focus-visible:decoration-ring focus-visible:decoration-2 focus-visible:underline-offset-4"
-            />
-            <input
-              value={description}
-              placeholder="Add a short summary…"
-              aria-label="Short summary"
-              onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
-              className="placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none focus-visible:underline focus-visible:decoration-ring focus-visible:decoration-2 focus-visible:underline-offset-4"
-            />
+                <input
+                  autoFocus={creating && canAutoFocus()}
+                  value={name}
+                  placeholder="Project name"
+                  aria-label="Project name"
+                  onChange={(e) => setName(e.target.value.slice(0, 120))}
+                  className="placeholder:text-muted-foreground w-full bg-transparent text-2xl font-semibold outline-none focus-visible:underline focus-visible:decoration-ring focus-visible:decoration-2 focus-visible:underline-offset-4"
+                />
+                <input
+                  value={description}
+                  placeholder="Add a short summary…"
+                  aria-label="Short summary"
+                  onChange={(e) =>
+                    setDescription(e.target.value.slice(0, 2000))
+                  }
+                  className="placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none focus-visible:underline focus-visible:decoration-ring focus-visible:decoration-2 focus-visible:underline-offset-4"
+                />
 
-            <div className="mt-4 border-t pt-4">
-              <Textarea
-                value={body}
-                rows={12}
-                placeholder="Write the decisions this project holds: conventions, names, the calls nobody should have to make twice."
-                aria-label="Decisions"
-                onChange={(e) =>
-                  setBody(e.target.value.slice(0, MEMORY_DOCUMENT_MAX_CHARS))
-                }
-                /* Padded, not flush: at px-0 the first line of a decision sat
+                <div className="mt-4 border-t pt-4">
+                  <Textarea
+                    value={body}
+                    rows={12}
+                    placeholder="Write the decisions this project holds: conventions, names, the calls nobody should have to make twice."
+                    aria-label="Decisions"
+                    onChange={(e) =>
+                      setBody(
+                        e.target.value.slice(0, MEMORY_DOCUMENT_MAX_CHARS),
+                      )
+                    }
+                    /* Padded, not flush: at px-0 the first line of a decision sat
                    hard against the edge of the field with nothing to read
                    into, which is what the panel's own gutter gives every other
                    line on this screen. */
-                className="min-h-48 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0 focus-visible:bg-muted/40"
-              />
-              <p className="text-muted-foreground text-xs">
-                {body.length} / {MEMORY_DOCUMENT_MAX_CHARS} characters. Every
-                attached teammate reads this from its next message.
-              </p>
-            </div>
+                    className="min-h-48 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0 focus-visible:bg-muted/40"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    {body.length} / {MEMORY_DOCUMENT_MAX_CHARS} characters.
+                    Every attached teammate reads this from its next message.
+                  </p>
+                </div>
 
-            {/* Where Linear puts milestones: what this project has decided, and
+                {/* Where Linear puts milestones: what this project has decided, and
                 when. Empty on a new one, and it says so rather than hiding. */}
-            <section className="mt-5 rounded-lg border">
-              <div className="flex items-center justify-between border-b px-4 py-2.5">
-                <p className="text-sm font-medium">
-                  History
-                  {changes.length > 0 && (
-                    <>
-                      {" "}(<RollingNumber value={changes.length} />)
-                    </>
-                  )}
-                </p>
+                <section className="mt-5 rounded-lg border">
+                  <div className="flex items-center justify-between border-b px-4 py-2.5">
+                    <p className="text-sm font-medium">
+                      History
+                      {changes.length > 0 && (
+                        <>
+                          {" "}
+                          (<RollingNumber value={changes.length} />)
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto p-3">
+                    <MemoryHistory
+                      changes={changes}
+                      teammateNames={teammateNames}
+                      emptyHint={
+                        creating
+                          ? "Nothing yet. Once this project exists, every decision recorded here, by you or by a teammate, shows up in this list."
+                          : "Nothing written yet. Every decision recorded here, by you or by a teammate, shows up in this list."
+                      }
+                    />
+                  </div>
+                </section>
               </div>
-              <div className="max-h-64 overflow-y-auto p-3">
-                <MemoryHistory
-                  changes={changes}
-                  teammateNames={teammateNames}
-                  emptyHint={
-                    creating
-                      ? "Nothing yet. Once this project exists, every decision recorded here, by you or by a teammate, shows up in this list."
-                      : "Nothing written yet. Every decision recorded here, by you or by a teammate, shows up in this list."
+            )}
+          </DialogBody>
+          <DialogFooter className="flex-row items-center gap-2">
+            {!creating && projectId && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() =>
+                    startArchive(async () => {
+                      const next = !archived;
+                      try {
+                        await updateProjectAction(projectId, {
+                          archived: next,
+                        });
+                        // The read is not repeated, so the header note and this
+                        // button follow the write that just landed.
+                        setArchived(next);
+                        toast.success(
+                          next
+                            ? "Archived, teammates no longer read it"
+                            : "Restored",
+                        );
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Something went wrong",
+                        );
+                      }
+                    })
                   }
-                />
-              </div>
-            </section>
-          </div>
-        )}
-
-        <footer className="flex shrink-0 items-center gap-2 border-t px-4 py-3">
-          {!creating && projectId && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={busy}
-                onClick={() =>
-                  startArchive(async () => {
-                    const next = !archived;
-                    try {
-                      await updateProjectAction(projectId, { archived: next });
-                      // The read is not repeated, so the header note and this
-                      // button follow the write that just landed.
-                      setArchived(next);
-                      toast.success(
-                        next ? "Archived, teammates no longer read it" : "Restored"
-                      );
-                    } catch (error) {
-                      toast.error(
-                        error instanceof Error ? error.message : "Something went wrong"
-                      );
-                    }
-                  })
+                >
+                  {archived ? (
+                    <ArchiveRestore className="size-4" />
+                  ) : (
+                    <Archive className="size-4" />
+                  )}
+                  {archived ? "Restore" : "Archive"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  disabled={busy}
+                  aria-label="Delete project"
+                  onClick={() => {
+                    confirmDelete({
+                      title: `Delete ${name}?`,
+                      description:
+                        "Its decisions go with it, and every attached teammate and improvement detaches. Archive instead to keep the record.",
+                      confirmLabel: "Delete project",
+                      onConfirm: async () => {
+                        await deleteProjectAction(projectId);
+                        onDeleted?.(projectId);
+                        onClose();
+                        toast.success("Project deleted");
+                      },
+                    });
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </>
+            )}
+            <Button
+              variant="outline"
+              className="ml-auto"
+              onClick={requestClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!name.trim() || busy || loading}
+              onClick={creating ? create : save}
+            >
+              <RollInText
+                text={
+                  creating
+                    ? isPending
+                      ? "Creating…"
+                      : "Create project"
+                    : isPending
+                      ? "Saving…"
+                      : "Save"
                 }
-              >
-                {archived ? (
-                  <ArchiveRestore className="size-4" />
-                ) : (
-                  <Archive className="size-4" />
-                )}
-                {archived ? "Restore" : "Archive"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive"
-                disabled={busy}
-                aria-label="Delete project"
-                onClick={() => {
-                  confirmDelete({
-                    title: `Delete ${name}?`,
-                    description:
-                      "Its decisions go with it, and every attached teammate and improvement detaches. Archive instead to keep the record.",
-                    confirmLabel: "Delete project",
-                    onConfirm: async () => {
-                    await deleteProjectAction(projectId);
-                    onDeleted?.(projectId);
-                    onClose();
-                    toast.success("Project deleted");
-                    },
-                  });
-                }}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </>
-          )}
-          <Button variant="outline" className="ml-auto" onClick={requestClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!name.trim() || busy || loading}
-            onClick={creating ? create : save}
-          >
-            <RollInText
-              text={
-                creating
-                  ? isPending
-                    ? "Creating…"
-                    : "Create project"
-                  : isPending
-                    ? "Saving…"
-                    : "Save"
-              }
-            />
-          </Button>
-        </footer>
-      </DialogContent>
-    </Dialog>
-    {confirmDeleteModal}
+              />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmDeleteModal}
     </>
   );
 }

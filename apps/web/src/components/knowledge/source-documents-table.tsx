@@ -8,9 +8,10 @@ import { Copy, RotateCcw } from "lucide-react";
 import { EyeOff, Maximize2 } from "lucide-react";
 import type { SourceDocumentListItem } from "@agent-hub/core";
 import { sourceDocumentStatus, sourceDocumentStatusLabel } from "@agent-hub/core";
-import { Button } from "@agent-hub/ui";
+import { Button, Hint } from "@agent-hub/ui";
 import {
   Table,
+  TableActions,
   TableBody,
   TableCard,
   TableCell,
@@ -30,6 +31,7 @@ import {
   TableBulkBar,
   useRowSelection,
 } from "@/components/ui/table-selection";
+import { TableFilter } from "@/components/ui/table-filters";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { setDocumentsExcludedAction } from "@/app/actions";
@@ -97,6 +99,7 @@ export function SourceDocumentsTable({
     { key: "memories", width: 120 },
     { key: "status", width: 140 },
     { key: "updated", width: 180 },
+    { key: "actions", width: 140, fixed: true },
   ];
   const columns = useColumnWidths("source-documents", layout);
 
@@ -142,7 +145,10 @@ export function SourceDocumentsTable({
   }
 
   return (
-    <TableCard
+    <TableCard title="Documents" results={{ total, noun: "document" }}
+      filters={<TableFilter label="Status" value={params.status} anyLabel="All statuses"
+        options={[{ value: "ready", label: "Ready" }, { value: "pending", label: "Pending" }, { value: "excluded", label: "Excluded" }]}
+        onChange={(value) => go({ status: value as SourceDocumentsSearchParams["status"], page: 1 })} />}
       className={isPending ? "opacity-60" : undefined}
       footer={
         <TablePagination
@@ -157,6 +163,7 @@ export function SourceDocumentsTable({
       }
     >
       <TableBulkBar
+        selection={selection}
         count={selection.count}
         noun="Document"
         onClear={selection.clear}
@@ -185,6 +192,7 @@ export function SourceDocumentsTable({
           <TableRow className="hover:bg-transparent">
             {canEdit && (
               <SelectAllHead
+                selection={selection}
                 state={selection.allState}
                 onToggle={selection.toggleAll}
                 disabled={documents.length === 0}
@@ -195,6 +203,11 @@ export function SourceDocumentsTable({
               resize={columns.handleFor("document")}
               sort={{
                 direction: params.sort === "title" ? direction : null,
+                restore: {
+                  key: "title",
+                  value: { key: params.sort, ascending: params.ascending },
+                  onChange: (sort) => go({ sort: sort?.key === "title" ? "title" : "", ascending: sort?.ascending ?? false }),
+                },
                 ascLabel: "A to Z",
                 descLabel: "Z to A",
                 onSort: (next) =>
@@ -228,12 +241,18 @@ export function SourceDocumentsTable({
               resize={columns.handleFor("updated")}
               sort={{
                 direction: params.sort === "" ? direction : null,
+                restore: {
+                  key: "",
+                  value: { key: params.sort, ascending: params.ascending },
+                  onChange: (sort) => go({ sort: sort?.key === "title" ? "title" : "", ascending: sort?.ascending ?? false }),
+                },
                 ascLabel: "Oldest first",
                 descLabel: "Newest first",
                 onSort: (next) =>
                   go({ sort: "", ascending: next === "asc" }),
               }}
             />
+            <TableColumnHeader label="Actions" align="right" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -249,7 +268,7 @@ export function SourceDocumentsTable({
                 <EmptyState
                   size="sm"
                   title="No Documents yet"
-                  description="They appear as the crawl stores them."
+
                 />
               </TableCell>
             </TableRow>
@@ -353,6 +372,30 @@ export function SourceDocumentsTable({
                       differently, and RollInText would copy it into an
                       aria-label the suppression above does not cover. */}
                   {relativeTimeLabel(document.createdAt, now)}
+                </TableCell>
+                <TableCell>
+                  <TableActions>
+                    <Hint label="Open document">
+                      <Button variant="ghost" size="icon-sm" nativeButton={false}
+                        render={<Link href={sourceDocumentHref(basePath, document.id, params)} />}
+                        aria-label={`Open ${document.title}`}>
+                        <Maximize2 className="size-4" />
+                      </Button>
+                    </Hint>
+                    <Hint label="Copy ID">
+                      <Button variant="ghost" size="icon-sm" aria-label={`Copy ID for ${document.title}`}
+                        onClick={() => void copyToClipboard(document.id, "ID copied.", "Could not copy the ID. Check the browser allows clipboard access.")}>
+                        <Copy className="size-4" />
+                      </Button>
+                    </Hint>
+                    {canEdit && <Hint label={document.excluded ? "Restore to retrieval" : "Exclude from retrieval"}>
+                      <Button variant="ghost" size="icon-sm" disabled={isPending}
+                        aria-label={`${document.excluded ? "Restore" : "Exclude"} ${document.title}`}
+                        onClick={() => setRowExcluded(document.id, !document.excluded)}>
+                        {document.excluded ? <RotateCcw className="size-4" /> : <EyeOff className="size-4" />}
+                      </Button>
+                    </Hint>}
+                  </TableActions>
                 </TableCell>
               </TableRow>
               </TableRowMenu>

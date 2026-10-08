@@ -2,6 +2,7 @@
 // motion-primitives MorphingDialog, a trigger card that morphs (shared
 // layoutId) into a centered dialog. https://motion-primitives.com
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import {
   AnimatePresence,
   MotionConfig,
@@ -254,7 +255,7 @@ export function MorphingDialogContent({
       ref={containerRef}
       layoutId={`dialog-${uniqueId}`}
       id={`motion-ui-morphing-dialog-content-${uniqueId}`}
-      className={cn("overflow-hidden", className)}
+      className={cn("ui-modal overflow-hidden", className)}
       style={style}
       role="dialog"
       aria-modal="true"
@@ -291,7 +292,7 @@ export function MorphingDialogContainer({
         <>
           <motion.div
             key={`backdrop-${uniqueId}`}
-            className="fixed inset-0 z-[80] h-full w-full bg-white/40 backdrop-blur-sm dark:bg-black/40"
+            className="ui-modal-overlay fixed inset-0 z-[80] h-full w-full"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -398,7 +399,7 @@ export function MorphingDialogClose({
   }, [setIsOpen]);
 
   return (
-    <motion.button
+    <CieleButton variant="ghost" size="icon-sm"
       onClick={handleClose}
       type="button"
       aria-label="Close dialog"
@@ -409,6 +410,6 @@ export function MorphingDialogClose({
       )}
     >
       {children}
-    </motion.button>
+    </CieleButton>
   );
 }

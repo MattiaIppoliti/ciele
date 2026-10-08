@@ -536,7 +536,7 @@ export function ImprovementsBoard({
                 { mode: "kanban", icon: Columns3, label: "Kanban view" },
               ] as const
             ).map(({ mode, icon: Icon, label }) => (
-              <button
+              <Button variant="ghost" size="icon-sm"
                 key={mode}
                 type="button"
                 aria-label={label}
@@ -550,7 +550,7 @@ export function ImprovementsBoard({
                 }`}
               >
                 <Icon className="size-4" />
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -652,7 +652,7 @@ export function ImprovementsBoard({
                               />
                             </motion.span>
                           </button>
-                          <button
+                          <Button variant="ghost" size="icon-sm"
                             type="button"
                             disabled={exporting || paging.total === 0}
                             onClick={() =>
@@ -663,7 +663,7 @@ export function ImprovementsBoard({
                             className="text-muted-foreground hover:text-foreground press-text flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-foreground/5 disabled:opacity-40"
                           >
                             <Download className="size-3.5" aria-hidden="true" />
-                          </button>
+                          </Button>
                         </div>
 
                         <motion.div
@@ -686,7 +686,7 @@ export function ImprovementsBoard({
                             {items.length === 0 && (
                               <EmptyState size="sm"
                                 title={lanes.draggingId ? "Drop an improvement here" : filterActive ? "No matching improvements" : "No improvements in this lane"}
-                                description={lanes.draggingId ? "Release to move it into this status." : filterActive ? "Load more improvements or narrow your search." : "Move an improvement here when it reaches this status."}
+
                               />
                             )}
                             {items.map((i) => {
@@ -749,11 +749,7 @@ export function ImprovementsBoard({
             {totalCount === 0 && improvements.length === 0 && (
               <EmptyState
                 title="No improvements yet"
-                description={
-                  canEdit
-                    ? "Open the Inbox, pick an AI answer, and use “Improve Answer” to track a fix here."
-                    : "Flagged AI answers will show up here once your team starts tracking them."
-                }
+                description="Flag an AI answer in the Inbox with Improve Answer."
               />
             )}
           </div>

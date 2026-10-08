@@ -2,6 +2,8 @@
 
 // Adapted from Bencho Radial menu (MIT), copyright (c) 2026 Lorenzo Cabra.
 // See radial-menu.LICENSE. The fan faces into the workspace from its left edge.
+
+import { Button as CieleButton } from "@agent-hub/ui";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Ellipsis, X, type LucideIcon } from "lucide-react";
 
@@ -153,7 +155,7 @@ export function RadialMenu({
           );
         })}
       </div>
-      <button
+      <CieleButton variant="ghost" size="icon-sm"
         ref={core}
         type="button"
         className="bar-tool fan-core"
@@ -216,7 +218,7 @@ export function RadialMenu({
         ) : (
           <Ellipsis size={17} aria-hidden />
         )}
-      </button>
+      </CieleButton>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { RollInText } from "@/components/motion/roll-in-text";
 
 // beui.dev/components/agents/prompt-input
@@ -329,7 +330,7 @@ export function PromptInput({
               className="w-56 p-1.5"
             >
               {actions.map((action) => (
-                <button
+                <CieleButton variant="ghost" size="sm" wrap
                   key={action.value}
                   type="button"
                   disabled={action.disabled}
@@ -354,7 +355,7 @@ export function PromptInput({
                       </span>
                     ) : null}
                   </span>
-                </button>
+                </CieleButton>
               ))}
             </MorphPopoverContent>
           </MorphPopover>

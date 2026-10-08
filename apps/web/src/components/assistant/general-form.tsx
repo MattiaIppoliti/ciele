@@ -323,7 +323,7 @@ function GeneralFormBody({
       <div className="space-y-2">
         <FieldHeader
           title="Assistant logo"
-          hint="Circular icon shown next to this assistant in the sidebar and widget header."
+
         />
         <AvatarUpload
           value={avatarPreviewUrl || avatarUrl}
@@ -345,16 +345,12 @@ function GeneralFormBody({
         <FieldHeader
           title="Assistant title"
           htmlFor={`${fieldId}-title`}
-          hint="Shown on your assistants page."
+
         />
         <Input
           ref={titleRef}
           id={`${fieldId}-title`}
-          aria-describedby={
-            titleError
-              ? `${fieldId}-title-hint ${fieldId}-title-error`
-              : `${fieldId}-title-hint`
-          }
+          aria-describedby={titleError ? `${fieldId}-title-error` : undefined}
           aria-invalid={titleError ? true : undefined}
           name="title"
           autoComplete="off"
@@ -376,11 +372,11 @@ function GeneralFormBody({
         <FieldHeader
           title="Nickname"
           htmlFor={`${fieldId}-nickname`}
-          hint="Displayed on the AI Assistant header."
+
         />
         <Input
           id={`${fieldId}-nickname`}
-          aria-describedby={`${fieldId}-nickname-hint`}
+
           name="nickname"
           autoComplete="off"
           value={nickname}
@@ -393,12 +389,12 @@ function GeneralFormBody({
         <FieldHeader
           title="Description"
           htmlFor={`${fieldId}-description`}
-          hint="A short overview of what this assistant does"
+
         />
         <div>
           <Textarea
             id={`${fieldId}-description`}
-            aria-describedby={`${fieldId}-description-hint`}
+
             name="description"
             value={description}
             maxLength={DESCRIPTION_MAX}
@@ -419,7 +415,7 @@ function GeneralFormBody({
         <FieldHeader
           title="Welcome Message"
           htmlFor={`${fieldId}-welcome`}
-          hint="Shown when users first open the assistant"
+
         />
         <div className="focus-within:border-ring focus-within:ring-ring/50 rounded-xl border transition-[border-color,box-shadow] focus-within:ring-3">
           <div className="flex flex-wrap items-center gap-1 border-b px-2 py-1.5">
@@ -440,7 +436,7 @@ function GeneralFormBody({
           </div>
           <Textarea
             id={`${fieldId}-welcome`}
-            aria-describedby={`${fieldId}-welcome-hint`}
+
             name="welcomeMessage"
             ref={welcomeRef}
             value={welcomeMessage}
@@ -456,7 +452,7 @@ function GeneralFormBody({
         <FieldHeader
           title="AI Disclaimer"
           htmlFor={`${fieldId}-disclaimer`}
-          hint="Shown under AI responses at the bottom of the chat window. Leave empty to hide it."
+          hint="Leave empty to hide."
         />
         <div>
           <Textarea
@@ -482,7 +478,7 @@ function GeneralFormBody({
       <div className="space-y-2">
         <FieldHeader
           title="Model"
-          hint="Answers published chats. Needs an organization credential in Settings → AI. The Preview uses your own default model."
+          hint="Widget uses organization credentials. Preview uses your default model."
         />
         {/* Stacked until the page column has room for the three side by side;
             its width, not the window's, since both sidebars can take from it. */}
@@ -537,7 +533,7 @@ function GeneralFormBody({
       <div className="space-y-2">
         <FieldHeader
           title="Let visitors choose the model"
-          hint="Extra models visitors can switch to. Leave empty to hide the picker."
+          hint="Leave empty to hide the picker."
         />
         <ModelAllowList
           catalog={modelCatalog}
@@ -558,7 +554,7 @@ function GeneralFormBody({
         <FieldHeader
           title="Let visitors attach files"
           htmlFor={`${fieldId}-attachments`}
-          hint="Visitors can attach a PDF, Office file, text file or image. Files are read once and never stored."
+          hint="PDF, Office, text, images. Read once; never stored."
         />
         <div className="flex items-center gap-3">
           <Switch
@@ -589,7 +585,7 @@ function GeneralFormBody({
         <FieldHeader
           title="Answering style"
           htmlFor={`${fieldId}-style`}
-          hint="Persona, tone and format. Platform rules still apply."
+          hint="Platform rules still apply."
         />
         <div>
           <Textarea
@@ -616,7 +612,7 @@ function GeneralFormBody({
             <FieldHeader
               title="Simplified thinking"
               htmlFor={`${fieldId}-thinking`}
-              hint="Show visitors one short line per step while the assistant works, like ‘Checking the return policy…’. The Inbox keeps the lines too."
+              hint="Short progress updates in chat and Inbox."
             />
           </div>
           <div className="flex shrink-0 items-center gap-3">
@@ -642,7 +638,7 @@ function GeneralFormBody({
       <div className="space-y-2">
         <FieldHeader
           title="Suggested questions"
-          hint="Quick prompts shown under the welcome message"
+
         />
         <div className="space-y-2">
           {questions.map((q, i) => (
@@ -688,7 +684,7 @@ function GeneralFormBody({
       <div className="space-y-2">
         <FieldHeader
           title="Quick reply buttons"
-          hint="Buttons above the suggested questions: send a message, contact support or open a link."
+
         />
         <SortableList
           values={quickReplies.map((button) => button.id)}

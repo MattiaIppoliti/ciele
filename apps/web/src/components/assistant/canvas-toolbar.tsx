@@ -11,7 +11,7 @@ import {
   Plus,
   type LucideIcon,
 } from "lucide-react";
-import { Hint } from "@agent-hub/ui";
+import { Button as CieleButton, Hint } from "@agent-hub/ui";
 import { RadialMenu } from "@/components/assistant/radial-menu";
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -109,7 +109,7 @@ export function CanvasToolbar({
           ] as const
         ).map(({ key, label, Icon }) => (
           <Hint key={key} label={label} side="right">
-            <button
+            <CieleButton variant="ghost" size="icon-sm"
               type="button"
               className="bar-tool"
               data-on={tool === key}
@@ -121,12 +121,12 @@ export function CanvasToolbar({
               }}
             >
               <Icon size={17} strokeWidth={2} aria-hidden />
-            </button>
+            </CieleButton>
           </Hint>
         ))}
         {!readOnly && (
           <Hint label="Add a step" side="right">
-            <button
+            <CieleButton variant="ghost" size="icon-sm"
               ref={addRef}
               type="button"
               className="bar-tool"
@@ -136,33 +136,33 @@ export function CanvasToolbar({
               onClick={() => onPickerOpenChange(!open)}
             >
               <Plus size={17} strokeWidth={2} aria-hidden />
-            </button>
+            </CieleButton>
           </Hint>
         )}
         <span className="bar-split" aria-hidden />
         <Hint label="Fit to view" side="right">
-          <button
+          <CieleButton variant="ghost" size="icon-sm"
             type="button"
             className="bar-tool"
             aria-label="Fit to view"
             onClick={onFit}
           >
             <Frame size={17} strokeWidth={2} aria-hidden />
-          </button>
+          </CieleButton>
         </Hint>
         {[
           { label: "Zoom in", Icon: Plus, run: onZoomIn },
           { label: "Zoom out", Icon: Minus, run: onZoomOut },
         ].map(({ label, Icon, run }) => (
           <Hint key={label} label={label} side="right">
-            <button
+            <CieleButton variant="ghost" size="icon-sm"
               type="button"
               className="bar-tool"
               aria-label={label}
               onClick={run}
             >
               <Icon size={17} aria-hidden />
-            </button>
+            </CieleButton>
           </Hint>
         ))}
         <RadialMenu

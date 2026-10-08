@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { ThreadSwipeRow } from "@/components/thread-swipe-row";
 import { ThreadListControls, useThreadListView, useThreadPreferences } from "@/components/thread-preferences";
 import { RollInText } from "@/components/motion/roll-in-text";
@@ -71,23 +72,23 @@ export function ThreadHistoryMenu({
       )}
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-1.5">
         {entries.length === 0 ? (
-          <EmptyState size="sm" title="No conversations yet" description="Start a conversation to see it in your history." />
+          <EmptyState size="sm" title="No conversations yet"  />
         ) : groups.length === 0 ? (
-          <EmptyState size="sm" title="No matching conversations" description="Try a shorter search or another word." />
+          <EmptyState size="sm" title="No matching conversations"  />
         ) : (
           groups.map((group, index) => (
             <div key={group.id}>
               <div className="text-muted-foreground flex h-8 items-center px-2.5 text-xs font-medium">
                 <span className="flex-1">{group.label}</span>
                 {index === 0 && !searching && (
-                  <button
+                  <CieleButton variant="ghost" size="icon-sm"
                     type="button"
                     aria-label="Search conversations"
                     onClick={() => setSearching(true)}
                     className="press-control hover:bg-foreground/[0.07] hover:text-foreground -mr-1 flex size-6 items-center justify-center rounded-md"
                   >
                     <Search className="size-3.5" />
-                  </button>
+                  </CieleButton>
                 )}
               </div>
               {group.entries.map((entry) => (

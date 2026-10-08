@@ -1,5 +1,6 @@
 "use client";
 
+import { TableEditableCell } from "@/components/ui/table-editable-cell";
 import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
 
 import { useEffect, useState, useTransition } from "react";
@@ -23,7 +24,6 @@ import {
   MessageCircleQuestion,
   Pencil,
   Plus,
-  Search,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -38,7 +38,6 @@ import type { ApplicationOAuthAvailability } from "@/lib/application-oauth";
 import {
   Badge,
   Button,
-  Input,
 } from "@agent-hub/ui";
 import {
   Table,
@@ -56,6 +55,7 @@ import {
 } from "@/components/ui/table-columns";
 import { TableOpenCell } from "@/components/ui/table-open-cell";
 import { TableRowMenu } from "@/components/ui/table-menu";
+import { TableFilter, TableSearch } from "@/components/ui/table-filters";
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
   SelectAllHead,
@@ -64,6 +64,7 @@ import {
   useRowSelection,
 } from "@/components/ui/table-selection";
 import {
+  renameSourceAction,
   deleteOrgSourceAction,
   deleteOrgSourcesAction,
   exportOrgFaqsAction,
@@ -343,18 +344,6 @@ export function KnowledgeHubClient({
         {tab !== "applications" && (
           <>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-72">
-              <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}…`}
-                aria-label={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}`}
-                type="search"
-                autoComplete="off"
-                className="pl-8"
-              />
-            </div>
             <div className="ml-auto flex items-center gap-2">
               {tab === "faqs" && (
                 <Button
@@ -391,7 +380,15 @@ export function KnowledgeHubClient({
             </div>
           </div>
 
-          <TableCard
+          <TableCard title={KNOWLEDGE_TAB_LABELS[tab]} results={{ total, noun: TAB_ROW_NOUN[tab] }}
+            filters={<>
+              <TableFilter label="Status" value={filters.status} anyLabel="All statuses" options={SOURCE_STATUS_OPTIONS}
+                onChange={(value) => apply({ status: value as "" | SourceStatus, page: 1 })} />
+              <TableFilter label="Assistant" value={filters.assistant} anyLabel="All assistants"
+                options={assistants.map((assistant) => ({ value: assistant.id, label: assistant.title }))}
+                onChange={(value) => apply({ assistant: value, page: 1 })} />
+              <TableSearch label={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}`} value={query} onChange={setQuery} />
+            </>}
             className={isPending ? "opacity-60" : undefined}
             footer={
               <TablePagination
@@ -405,6 +402,7 @@ export function KnowledgeHubClient({
             }
           >
             <TableBulkBar
+              selection={selection}
               count={selection.count}
               noun={TAB_ROW_NOUN[tab]}
               onClear={selection.clear}
@@ -439,6 +437,7 @@ export function KnowledgeHubClient({
                 <TableRow className="hover:bg-transparent">
                   {canEdit && (
                     <SelectAllHead
+                      selection={selection}
                       state={selection.allState}
                       onToggle={selection.toggleAll}
                       disabled={items.length === 0}
@@ -449,6 +448,11 @@ export function KnowledgeHubClient({
                     resize={columns.handleFor("name")}
                     sort={{
                       direction: filters.sort === "name" ? direction : null,
+                      restore: {
+                        key: "name",
+                        value: filters.sort ? { key: filters.sort, ascending: filters.ascending } : null,
+                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
+                      },
                       ascLabel: "A to Z",
                       descLabel: "Z to A",
                       onSort: (next) =>
@@ -506,6 +510,11 @@ export function KnowledgeHubClient({
                     resize={columns.handleFor("status")}
                     sort={{
                       direction: filters.sort === "status" ? direction : null,
+                      restore: {
+                        key: "status",
+                        value: filters.sort ? { key: filters.sort, ascending: filters.ascending } : null,
+                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
+                      },
                       ascLabel: "Errors first",
                       descLabel: "Ready first",
                       onSort: (next) =>
@@ -526,6 +535,11 @@ export function KnowledgeHubClient({
                     resize={columns.handleFor("updated")}
                     sort={{
                       direction: filters.sort === "updatedAt" ? direction : null,
+                      restore: {
+                        key: "updatedAt",
+                        value: filters.sort ? { key: filters.sort, ascending: filters.ascending } : null,
+                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
+                      },
                       ascLabel: "Oldest first",
                       descLabel: "Newest first",
                       onSort: (next) =>
@@ -559,7 +573,7 @@ export function KnowledgeHubClient({
                     >
                       <EmptyState size="sm"
                         title={filters.q || filters.status || filters.assistant ? "No matching sources" : "Nothing here yet"}
-                        description={filters.q || filters.status || filters.assistant ? "Try another search or clear the filters." : canEdit ? "Use Add to connect a source to your library." : "Sources will appear here when your team adds them."}
+
                         action={filters.q || filters.status || filters.assistant ? <Button variant="outline" size="sm" onClick={() => { setQuery(""); apply({ q: "", status: "", assistant: "", page: 1 }); }}>Clear filters</Button> : undefined}
                       />
                     </TableCell>
@@ -640,7 +654,7 @@ export function KnowledgeHubClient({
                     )}
                     {tab === "faqs" ? (
                       <>
-                        <TableCell className="align-top font-medium">
+                        <TableCell className="align-top font-medium" onEdit={canEdit ? () => setEditingFaq(item) : undefined}>
                           <TableOpenCell
                             href={libraryDocumentsHref(item.kind, item.id)}
                             label={item.name}
@@ -648,14 +662,14 @@ export function KnowledgeHubClient({
                             <span className="block truncate"><RollInText text={item.name} /></span>
                           </TableOpenCell>
                         </TableCell>
-                        <TableCell className="text-muted-foreground align-top">
+                        <TableCell className="text-muted-foreground align-top" onEdit={canEdit ? () => setEditingFaq(item) : undefined}>
                           <span className="block truncate">
                             <RollInText text={item.answerPreview || "—"} />
                           </span>
                         </TableCell>
                       </>
                     ) : (
-                      <TableCell>
+                      <TableEditableCell editor={canEdit ? { value: item.name, label: "Source name", maxLength: 500, onSave: (name) => renameSourceAction(item.id, name) } : undefined}>
                         <TableOpenCell
                           href={libraryDocumentsHref(item.kind, item.id)}
                           label={item.name}
@@ -670,16 +684,11 @@ export function KnowledgeHubClient({
                           ) : (
                             <FileText className="text-muted-foreground mt-0.5 size-4 shrink-0" />
                           )}
-                          <span className="min-w-0">
-                            <Link
-                              href={libraryDocumentsHref(item.kind, item.id)}
-                              className="press-text block truncate font-medium hover:underline"
-                            >
-                              <RollInText text={item.name} />
-                            </Link>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium"><RollInText text={item.name} /></span>
                             </span>
                         </TableOpenCell>
-                      </TableCell>
+                      </TableEditableCell>
                     )}
                     {tab === "websites" && <TableCell>{item.config.url ? <a href={item.config.url} target="_blank" rel="noreferrer" className="block truncate text-muted-foreground hover:text-foreground" title={item.config.url}>{item.config.url}</a> : "—"}</TableCell>}
                     {tab === "websites" && (
@@ -693,7 +702,7 @@ export function KnowledgeHubClient({
                         </Link>
                       </TableCell>
                     )}
-                    <TableCell>
+                    <TableCell onEdit={canEdit ? () => setLinking(item) : undefined}>
                       <span className="flex items-center gap-1.5">
                         <LinkedAssistantChips item={item} />
                         {canEdit && (

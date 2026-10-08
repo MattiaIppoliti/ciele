@@ -13,16 +13,17 @@ import { MarketingScene } from "@/components/home/marketing-scene";
 export function HomeShell({ children }: { children: React.ReactNode }) {
   const [scrolled, setScrolled] = React.useState(false);
   const pathname = usePathname();
+  const isHome = pathname === "/" || pathname === "/home";
   const [announcementHeight, setAnnouncementHeight] = React.useState(44);
 
   return (
     <MarketingScene
       className="bg-background text-foreground"
       onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 50)}
-      showClouds={pathname !== "/home"}
+      showClouds={!isHome}
     >
-      {pathname === "/home" && <ReleaseAnnouncement onHeightChange={setAnnouncementHeight} />}
-      <HomeHeader scrolled={scrolled} topOffset={pathname === "/home" ? announcementHeight : 0} />
+      {isHome && <ReleaseAnnouncement onHeightChange={setAnnouncementHeight} />}
+      <HomeHeader scrolled={scrolled} topOffset={isHome ? announcementHeight : 0} />
       {children}
       <HomeCursorMount />
     </MarketingScene>

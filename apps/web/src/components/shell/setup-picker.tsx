@@ -5,7 +5,7 @@ import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronUp, MessageCircle, Plus, Search, X } from "lucide-react";
-import { cn } from "@agent-hub/ui";
+import { Button as CieleButton, cn } from "@agent-hub/ui";
 import Link from "next/link";
 import { formatDay } from "@/lib/format";
 import { fuzzyFilter } from "@/lib/fuzzy";
@@ -196,13 +196,13 @@ export function SetupPicker({
               <RollingNumber value={active.length} />
             </span>
           </h2>
-          <Link
-            href="/"
+          <CieleButton variant="ghost" size="icon-sm" render={<Link href="/" />}
+
             aria-label="Create a new assistant"
             className="border-border/50 text-muted-foreground hover:bg-muted/50 flex size-9 items-center justify-center rounded-full border transition-colors"
           >
             <Plus aria-hidden className="size-4" />
-          </Link>
+          </CieleButton>
         </div>
 
         <div className="relative">
@@ -293,7 +293,7 @@ export function SetupPicker({
           </div>
 
           {isExpanded ? (
-            <button
+            <CieleButton variant="ghost" size="icon-sm"
               type="button"
               aria-label="Close the assistants directory"
               aria-expanded
@@ -305,7 +305,7 @@ export function SetupPicker({
               }}
             >
               <X aria-hidden className="size-4" />
-            </button>
+            </CieleButton>
           ) : (
             <button
               type="button"

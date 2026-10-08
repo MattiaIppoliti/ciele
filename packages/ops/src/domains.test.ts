@@ -54,6 +54,7 @@ import {
   listAssistantGoalsOp,
   listSkillsOp,
   resolveAlertOp,
+  updateAlertOp,
   setAssistantSkillsOp,
   updateAssistantGoalOp,
 } from "./configuration";
@@ -275,6 +276,17 @@ describe("skills, goals, and alerts operations", () => {
     await expect(resolveAlertOp.run(foreignCtx(), { id: alert.id }))
       .rejects.toMatchObject({ code: "not_found" });
   });
+  it("edits alert fields, controls resolution dates, and rejects foreign or immutable writes", async () => {
+    const alert = await ctx().db.raiseAlert(DEMO_ORG.id, { type: "system", title: "Original", detail: "Detail", sourceKey: "edit-test" });
+    const next = await updateAlertOp.run(ctx(), { id: alert.id, patch: { type: "crawl", title: "Edited", status: "resolved" } });
+    expect(next).toMatchObject({ type: "crawl", title: "Edited", detail: alert.detail, detectedAt: alert.detectedAt, sourceKey: "edit-test", resolvedBy: ctx().userId });
+    expect(next.resolvedAt).not.toBeNull();
+    expect(await updateAlertOp.run(ctx(), { id: alert.id, patch: { status: "active" } })).toMatchObject({ resolvedAt: null, resolvedBy: null });
+    await expect(updateAlertOp.run(foreignCtx(), { id: alert.id, patch: { title: "Foreign" } })).rejects.toMatchObject({ code: "not_found" });
+    expect(updateAlertOp.input.safeParse({ id: alert.id, patch: { detectedAt: "invented" } }).success).toBe(false);
+    expect(updateAlertOp.input.safeParse({ id: alert.id, patch: { title: "  " } }).success).toBe(false);
+  });
+
 });
 
 describe("organization administration operations", () => {

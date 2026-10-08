@@ -96,7 +96,7 @@ export function RoutinesPanel({
       </div>
 
       {routines.length === 0 && !adding && (
-        <EmptyState size="sm" title="No routines yet" description={ROUTINES_EMPTY_HINT} action={canEdit ? <Button variant="outline" size="sm" onClick={() => setAdding(true)}>Add routine</Button> : undefined} />
+        <EmptyState size="sm" title="No routines yet"  action={canEdit ? <Button variant="outline" size="sm" onClick={() => setAdding(true)}>Add routine</Button> : undefined} />
       )}
 
       {routines.map((routine) => (
@@ -229,7 +229,7 @@ export function RoutinesPanel({
                 }
               />
             </div>
-            <Button
+            <Button loading={isPending}
               className="ml-auto"
               disabled={!instruction.trim() || isPending}
               onClick={() =>

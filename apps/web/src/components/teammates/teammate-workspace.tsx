@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { TeammateAgentScreen, TeammateComputer } from "@/components/teammates/teammate-computer";
 import { RollInText } from "@/components/motion/roll-in-text";
 
@@ -180,7 +181,7 @@ export function TeammateWorkspace({
     {
       value: "attach",
       label: "Attach a file",
-      description: "A document, a spreadsheet or a screenshot.",
+
       icon: <Paperclip />,
       disabled: attachments.full,
     },
@@ -189,7 +190,7 @@ export function TeammateWorkspace({
           {
             value: "skill",
             label: "Use a skill",
-            description: "Start from a prepared request.",
+
             icon: <DraftingCompass />,
           },
         ]
@@ -669,14 +670,14 @@ export function TeammateWorkspace({
                   <div className="mb-2 flex">
                     <span className="bg-foreground/[0.12] text-foreground inline-flex items-center gap-1.5 rounded-full py-1 pr-1 pl-2.5 text-sm font-medium">
                       @{addressee.name}
-                      <button
+                      <CieleButton variant="ghost" size="icon-sm"
                         type="button"
                         aria-label={`Stop asking ${addressee.name}`}
                         onClick={() => setAddressee(null)}
                         className="press-control text-muted-foreground hover:bg-foreground/10 hover:text-foreground flex size-5 items-center justify-center rounded-full"
                       >
                         <X className="size-3" />
-                      </button>
+                      </CieleButton>
                     </span>
                   </div>
                 )}
@@ -800,8 +801,7 @@ export function TeammateWorkspace({
               )}
               {!retired && models.length > 0 && personalSubscriptionsAllowed && (
                 <p className="text-muted-foreground mt-2 text-xs">
-                  A personal AI subscription connected in Settings → AI answers
-                  your turns instead, whichever model is picked here.
+                  Your personal subscription overrides this model.
                 </p>
               )}
             </div>

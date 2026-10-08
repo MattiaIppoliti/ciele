@@ -290,12 +290,12 @@ export function FlowsList({
           ))}
         </SortableList>
 
-        <Link
-          href={`/assistants/${assistantId}/flows/new`}
+        <Button variant="secondary" size="lg" render={<Link href={`/assistants/${assistantId}/flows/new`} />}
+
           className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3.5 text-sm font-medium transition-colors"
         >
           <AnimatedIcon icon={Plus} size={16} /> Create new flow
-        </Link>
+        </Button>
 
         {defaultFlow && (
           <Card size="sm" className="mt-8 flex-row gap-3 p-4">

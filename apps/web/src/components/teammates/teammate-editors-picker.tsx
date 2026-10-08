@@ -61,9 +61,7 @@ export function TeammateEditorsPicker({
           ))}
         </div>
       )}
-      <p className="text-muted-foreground text-sm">
-        The owner and the organization&apos;s admins can always maintain it.
-      </p>
+      <p className="text-muted-foreground text-sm">Owner and admins always have access.</p>
     </div>
   );
 }

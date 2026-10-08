@@ -137,7 +137,7 @@ export function MemorySubjectsCard({
       </CardHeader>
       <CardContent>
         {subjects.length === 0 ? (
-          <EmptyState size="sm" title="No remembered users yet" description="Users appear here when your assistants store their memories." />
+          <EmptyState size="sm" title="No remembered users yet"  />
         ) : (
           <>
             <Input
@@ -215,7 +215,7 @@ export function MemorySubjectsCard({
                         </ul>
                       )}
                       {canEdit && (
-                        <Button
+                        <Button loading={isPending}
                           variant="destructive"
                           size="sm"
                           className="mt-3"

@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { FEATURES } from "@/components/marketing/feature-catalog";
 import { COMPONENT_FAMILIES, catalogPath } from "@/components/component-catalog/catalog";
 import { MARKETING_SITEMAP_PATHS } from "@/lib/console-routes";
-import { CIELE_ORIGIN, isCanonicalMarketingHost } from "@/lib/marketing/seo";
+import { isCanonicalMarketingHost, marketingCanonicalUrl } from "@/lib/marketing/seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const requestHeaders = await headers();
@@ -22,6 +22,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   return paths.map((path) => ({
-    url: new URL(path, CIELE_ORIGIN).toString(),
+    url: marketingCanonicalUrl(path),
   }));
 }

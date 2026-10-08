@@ -4,6 +4,7 @@ import {
   clampPageSize,
   countLabel,
   pageWindow,
+  pageNumbers,
 } from "./pagination";
 
 describe("pageWindow", () => {
@@ -43,5 +44,20 @@ describe("countLabel", () => {
     expect(countLabel(2, "campaign")).toBe("2 campaigns");
     expect(countLabel(0, "campaign")).toBe("0 campaigns");
     expect(countLabel(3, "entry", "entries")).toBe("3 entries");
+  });
+});
+
+describe("pageNumbers", () => {
+  it("keeps small result sets and empty results on reachable numbered pages", () => {
+    expect(pageNumbers(1, 0)).toEqual([1]);
+    expect(pageNumbers(1, 6)).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it("keeps the current page, its neighbours and both ends on large result sets", () => {
+    expect(pageNumbers(1, 48)).toEqual([1, 2, 3, 4, 5, "after", 48]);
+    expect(pageNumbers(24, 48)).toEqual([1, "before", 23, 24, 25, "after", 48]);
+    expect(pageNumbers(48, 48)).toEqual([1, "before", 44, 45, 46, 47, 48]);
+    expect(pageNumbers(99, 48)).toEqual(pageNumbers(48, 48));
+    expect(pageNumbers(0, 48)).toEqual(pageNumbers(1, 48));
   });
 });

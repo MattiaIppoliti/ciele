@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applicationImportHref,
   applicationImportPageHref,
+  parseApplicationImportDocumentsParams,
   applicationImportRowHref,
   applicationImportRowStatusLabel,
   applicationImportRowTone,
@@ -16,6 +17,15 @@ describe("application import drill-down hrefs", () => {
     expect(applicationImportHref("imp_1", "as_1")).toBe(
       "/assistants/as_1/knowledge/imports/imp_1"
     );
+  });
+
+  it("preserves file-type and page-size filters between pages and limits untrusted sizes", () => {
+    const url = new URL(applicationImportPageHref("/library/imports/i", 3, "application/pdf", 10), "https://example.invalid");
+    expect(url.searchParams.get("type")).toBe("application/pdf");
+    expect(url.searchParams.get("page")).toBe("3");
+    expect(url.searchParams.get("size")).toBe("10");
+    expect(parseApplicationImportDocumentsParams(Object.fromEntries(url.searchParams))).toEqual({ page: 3, pageSize: 10, mimeType: "application/pdf" });
+    expect(parseApplicationImportDocumentsParams({ page: "0", size: "999999", type: ["application/pdf"] })).toEqual({ page: 1, pageSize: 25, mimeType: "" });
   });
 
   it("opens a row onto its Document, or onto its Source when it has none", () => {

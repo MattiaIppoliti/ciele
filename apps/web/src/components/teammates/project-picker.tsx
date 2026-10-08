@@ -39,7 +39,7 @@ export function ProjectPicker({
     <div className="space-y-2">
       <Label id={labelId}>Project</Label>
       {projects.length === 0 ? (
-        <EmptyState size="sm" title="No projects yet" description="Create a project to share your team's decisions with this teammate." />
+        <EmptyState size="sm" title="No projects yet"  />
       ) : (
         <div role="radiogroup" aria-labelledby={labelId} className="flex flex-wrap gap-2">
           <button

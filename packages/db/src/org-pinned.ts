@@ -318,6 +318,7 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   deleteRevokedApiKey: apiKeyOwner,
   deleteProviderConnection: providerConnectionOwner,
   resolveAlert: alertOwner,
+  updateAlert: alertOwner,
   deleteMemory: memoryOwner,
 };
 
@@ -449,6 +450,7 @@ const PINNED_TABLES = pinnedTableNames();
 function pinTableAccessor<
   T extends {
     list(filter?: object, options?: object): Promise<Array<{ organizationId?: string }>>;
+    count(filter?: object): Promise<number>;
     get(id: string): Promise<{ organizationId?: string } | null>;
     insert(values: object): Promise<unknown>;
     update(id: string, patch: never): Promise<unknown>;
@@ -465,6 +467,7 @@ function pinTableAccessor<
     ...table,
     list: (filter: object = {}, options?: object) =>
       table.list({ ...filter, organizationId }, options),
+    count: (filter: object = {}) => table.count({ ...filter, organizationId }),
     get: async (id: string) => {
       const row = await table.get(id);
       return row?.organizationId === organizationId ? row : null;

@@ -10,6 +10,7 @@ import { evaluationLeaderboard, modelSelector, recommendedEvaluationModel, type 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { evaluationDefaultContextAction, saveEvaluationDefaultAction } from "@/app/actions";
 import type { EvaluationModelOption } from "@/lib/evaluation-models";
+import { Table } from "@/components/motion/table";
 import { toast } from "@/lib/toast";
 
 const stages: { value: EvaluationStage; label: string }[] = [
@@ -62,7 +63,7 @@ export function DefaultModelSettings({ assistants, canEdit }: {
   }
   return <section className="mt-8 rounded-xl border bg-card p-4 shadow-light">
     <h2 className="text-lg font-medium">Default model</h2>
-    <p className="mt-1 mb-5 text-sm text-muted-foreground">Choose a default model and compare recent runs.</p>
+
     <div className="grid gap-4 @xl/settings:grid-cols-3">
       <div className="space-y-1.5"><Label>Assistant</Label><Select value={assistantId} onValueChange={value => { resetContext(); setAssistantId(value); }} disabled={saving || !assistants.length}><SelectTrigger aria-label="Default model Assistant"><SelectValue placeholder="Choose an Assistant" /></SelectTrigger><SelectContent>{assistants.map(item => <SelectItem key={item.id} value={item.id}>{item.title}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-1.5"><Label>Stage</Label><Select value={stage} onValueChange={value => { resetContext(); setStage(value as EvaluationStage); }} disabled={saving}><SelectTrigger aria-label="Default model stage"><SelectValue /></SelectTrigger><SelectContent>{stages.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
@@ -73,25 +74,21 @@ export function DefaultModelSettings({ assistants, canEdit }: {
       <h3 className="text-sm font-medium">Recent runs · {stages.find(item => item.value === stage)?.label}</h3>
       {loading ? <p className="mt-2 text-sm text-muted-foreground">Loading…</p> : !context?.recentRuns.length ?
         <p className="mt-2 text-sm text-muted-foreground">No runs yet.</p> :
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-muted-foreground"><tr>
-              <th className="py-2 pr-4 font-normal">Run</th><th className="py-2 pr-4 font-normal">Model</th>
-              <th className="py-2 pr-4 font-normal">Accuracy</th><th className="py-2 pr-4 font-normal">€ / 1,000</th><th className="py-2 font-normal">Median</th>
-            </tr></thead>
-            <tbody>{context.recentRuns.flatMap(run => evaluationLeaderboard(run).rows.map(row =>
-              <tr key={`${run.id}:${modelSelector(row.candidate)}`} className="border-t">
-                <td className="py-3 pr-4"><Link href={`/eval/${run.id}`} className="text-brand-ink hover:underline">{new Date(run.createdAt).toLocaleDateString("en-GB")}</Link><div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{run.datasetName}
-                  <StatusPill status={run.status === "completed" ? "online" : run.status === "failed" ? "error" : run.status === "running" ? "info" : "away"} animated={run.status === "running"} primaryText={run.status} />
-                </div></td>
-                <td className="py-3 pr-4">{models.find(item => modelSelector(item) === modelSelector(row.candidate))?.label ?? row.candidate.modelId}</td>
-                <td className="py-3 pr-4">{row.accuracy === null ? "—" : `${Math.round(row.accuracy * 100)}%`}</td>
-                <td className="py-3 pr-4">{row.eurPer1000.toFixed(2)}</td>
-                <td className="py-3">{row.medianMs === null ? "—" : `${Math.round(row.medianMs)} ms`}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>}
+        <div className="mt-2"><Table key={`${assistantId}:${stage}`} noun="model result"
+          data={context.recentRuns.flatMap(run => evaluationLeaderboard(run).rows.map(row => ({ run, row })))}
+          getRowId={({ run, row }) => `${run.id}:${modelSelector(row.candidate)}`}
+          searchValue={({ run, row }) => `${run.datasetName} ${row.candidate.modelId} ${run.status}`}
+          columns={[
+            { key: "run", header: "Run", accessor: ({ run }) => run.createdAt, sortable: true, cell: ({ run }) => <><Link href={`/eval/${run.id}`} className="text-brand-ink hover:underline">{new Date(run.createdAt).toLocaleDateString("en-GB")}</Link><div className="text-xs text-muted-foreground">{run.datasetName}</div></> },
+            { key: "status", header: "Status", accessor: ({ run }) => run.status, filterLabel: "Status", filterAnyLabel: "All statuses",
+              filterOptions: ["completed", "failed", "running"].map(value => ({ value, label: value })),
+              cell: ({ run }) => <StatusPill status={run.status === "completed" ? "online" : run.status === "failed" ? "error" : run.status === "running" ? "info" : "away"} animated={run.status === "running"} primaryText={run.status} /> },
+            { key: "model", header: "Model", accessor: ({ row }) => models.find(item => modelSelector(item) === modelSelector(row.candidate))?.label ?? row.candidate.modelId, sortable: true },
+            { key: "accuracy", header: "Accuracy", accessor: ({ row }) => row.accuracy, cell: ({ row }) => row.accuracy === null ? "—" : `${Math.round(row.accuracy * 100)}%`, sortable: true, align: "right" },
+            { key: "cost", header: "€ / 1,000", accessor: ({ row }) => row.eurPer1000, cell: ({ row }) => row.eurPer1000.toFixed(2), sortable: true, align: "right" },
+            { key: "median", header: "Median", accessor: ({ row }) => row.medianMs, cell: ({ row }) => row.medianMs === null ? "—" : `${Math.round(row.medianMs)} ms`, sortable: true, align: "right" },
+          ]} emptyState="No model results yet." /></div>}
+
     </div>
   </section>;
 }

@@ -8,9 +8,9 @@ export const DEFAULT_PAGE_SIZE = 25;
  * one we offer. Anything else falls back to the default rather than letting a
  * `?size=100000` turn one navigation into a full table scan.
  */
-export function clampPageSize(value: unknown): number {
+export function clampPageSize(value: unknown): (typeof PAGE_SIZE_OPTIONS)[number] {
   const n = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
-  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? n : DEFAULT_PAGE_SIZE;
+  return PAGE_SIZE_OPTIONS.find(size => size === n) ?? DEFAULT_PAGE_SIZE;
 }
 
 export interface PageWindow {
@@ -44,4 +44,14 @@ export function pageWindow(
 /** "1 campaign" / "2 campaigns", the only plural rule the footer needs. */
 export function countLabel(total: number, noun: string, plural?: string): string {
   return `${total} ${total === 1 ? noun : (plural ?? `${noun}s`)}`;
+}
+
+/** Keep the current page and the ends reachable without growing the footer. */
+export function pageNumbers(current: number, totalPages: number): Array<number | "before" | "after"> {
+  const last = Math.max(1, totalPages);
+  const page = Math.min(last, Math.max(1, current));
+  if (last <= 7) return Array.from({ length: last }, (_, index) => index + 1);
+  if (page <= 4) return [1, 2, 3, 4, 5, "after", last];
+  if (page >= last - 3) return [1, "before", last - 4, last - 3, last - 2, last - 1, last];
+  return [1, "before", page - 1, page, page + 1, "after", last];
 }

@@ -109,7 +109,7 @@ export default async function BillingPage({
     <SettingsPanel
       icon={CreditCard}
       title="Billing"
-      description={`${session.organization.name}'s plan, payment method, and invoices.`}
+
     >
         {outcome ? <CheckoutNotice outcome={outcome} /> : null}
       <SectionTimeline>

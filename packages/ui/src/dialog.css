@@ -1,0 +1,213 @@
+/* One tray and inset sheet for every modal, including the custom layouts.
+   Native borders and fills share the same contour; no filtered paint layer. */
+.ui-modal,
+.ui-modal-overlay {
+  --modal-frame: #e4e4e7;
+  --modal-sheet: #ffffff;
+  --modal-line: #d5d5db;
+  --modal-input: #fafafa;
+  --modal-scrim: rgb(0 0 0 / 0.12);
+  --modal-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.04), 0 8px 24px -8px rgb(0 0 0 / 0.16),
+    0 32px 64px -24px rgb(0 0 0 / 0.22);
+}
+.dark .ui-modal,
+.dark .ui-modal-overlay {
+  --modal-frame: #202023;
+  --modal-sheet: #080809;
+  --modal-line: #343439;
+  --modal-input: #111113;
+  --modal-scrim: rgb(0 0 0 / 0.4);
+  --modal-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 64px -16px rgb(0 0 0 / 0.6);
+}
+.ui-modal {
+  isolation: isolate;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background-color: var(--modal-frame);
+  background-image: none;
+  box-shadow: var(--modal-shadow);
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.ui-modal::before,
+.ui-modal::after {
+  content: none !important;
+}
+.ui-modal-overlay {
+  background: var(--modal-scrim);
+  backdrop-filter: blur(8px);
+  animation-duration: 180ms;
+}
+.ui-modal form:has(> [data-slot="dialog-body"]) {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0;
+  margin: 0;
+}
+.ui-modal form:has(> [data-slot="dialog-body"]) > * {
+  margin-block: 0;
+}
+.ui-modal:not([data-modal-layout])
+  > :is(form, .ui-modal-header, .ui-modal-body, .ui-modal-stack) {
+  flex-shrink: 0;
+}
+.ui-modal-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0;
+}
+.ui-modal-stack > * {
+  margin-block: 0;
+}
+.ui-modal-header {
+  padding: 24px 52px 24px 24px;
+  margin: 0;
+  border: 0;
+}
+.ui-modal-header [data-slot="dialog-description"] {
+  line-height: 1.5;
+}
+.ui-modal-body {
+  position: relative;
+  min-height: 0;
+  padding: 20px;
+  border: 1px solid var(--modal-line);
+  border-radius: 24px;
+  background: var(--modal-sheet);
+  background-image: none;
+  overflow-wrap: anywhere;
+}
+.ui-modal-body:has(> .ui-modal-section) {
+  padding: 0;
+}
+.ui-modal-body:has(> .ui-modal-section) > * {
+  margin-block: 0;
+}
+.ui-modal-body[data-modal-padding="none"] {
+  padding: 0;
+}
+.ui-modal-body:empty,
+.ui-modal-section:empty {
+  display: none;
+}
+.ui-modal-section {
+  padding: 20px;
+}
+.ui-modal-section:not(:empty) ~ .ui-modal-section:not(:empty) {
+  border-top: 1px solid var(--modal-line);
+}
+.ui-modal-footer {
+  padding: 16px 20px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.ui-modal
+  :is(
+    [data-slot="input"],
+    [data-slot="textarea"],
+    [data-slot="select-trigger"]
+  ):not([data-slot="table-card"] *) {
+  border-radius: 12px;
+  background-color: var(--modal-input);
+  border-color: var(--modal-line);
+  box-shadow: none;
+}
+.ui-modal :is([data-slot="input"], [data-slot="select-trigger"]):not([data-slot="table-card"] *) {
+  min-height: 44px;
+}
+.ui-modal
+  :is(
+    [data-slot="input"],
+    [data-slot="textarea"],
+    [data-slot="select-trigger"]
+  ):focus-visible {
+  border-color: var(--ring, #5e6ad2);
+  outline: 2px solid color-mix(in srgb, var(--ring, #5e6ad2) 50%, transparent);
+  outline-offset: 1px;
+}
+.ui-modal [data-slot="dialog-body"] > pre {
+  max-width: 100%;
+}
+.ui-modal[data-modal-motion="instant"] {
+  animation: none;
+}
+.ui-modal-instant {
+  animation: none;
+}
+.ui-modal.ui-modal-drawer {
+  border-radius: 24px 0 0 24px;
+}
+.ui-modal.ui-modal-sheet {
+  border-radius: 24px 24px 0 0;
+}
+.ui-modal-search .ui-modal-header {
+  padding: 20px;
+}
+.ui-modal-drawer .ui-modal-header {
+  padding-right: 24px;
+}
+.ui-modal[data-modal-layout="settings"] > .ui-modal-body {
+  padding: 0;
+}
+.ui-modal-overlay:has(+ [data-modal-motion="instant"]) {
+  animation: none;
+}
+@media (max-width: 639px) {
+  .ui-modal-header {
+    padding: 20px 52px 20px 20px;
+  }
+  .ui-modal-body,
+  .ui-modal-section {
+    padding: 16px;
+  }
+  .ui-modal-body:has(> .ui-modal-section) {
+    padding: 0;
+  }
+  .ui-modal-body[data-modal-padding="none"] {
+    padding: 0;
+  }
+  .ui-modal-footer {
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-modal,
+  .ui-modal-overlay {
+    animation: none;
+    transition: opacity 120ms ease-out;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ui-modal-overlay {
+    backdrop-filter: none;
+    background: rgb(0 0 0 / 0.45);
+  }
+}
+@media (forced-colors: active) {
+  .ui-modal,
+  .ui-modal-body {
+    background: Canvas;
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+  .ui-modal-overlay {
+    backdrop-filter: none;
+  }
+}
+
+@media (min-width: 1024px) and (pointer: fine) {
+  .ui-modal[data-modal-layout="settings"] :is([data-slot="input"], [data-slot="select-trigger"]):not([data-slot="table-card"] *) {
+    height: 2.25rem;
+    min-height: 2.25rem;
+  }
+}

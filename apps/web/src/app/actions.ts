@@ -183,6 +183,8 @@ import {
   disconnectTicketingIntegrationOp,
   setAssistantSkillsOp,
   resolveAlertOp,
+  updateAlertOp,
+  renameSourceOp,
   createInviteOp,
   createOrgApiKeyOp,
   removeMemberOp,
@@ -1587,13 +1589,17 @@ export async function updateWebsiteSourceAction(
       capability: "edit",
       entities: [{ kind: "assistantEditor", assistantId }],
     },
-    ({ db }) =>
-      updateWebsiteSourceConfiguration({
+    async ({ db }) => {
+      const source = await db.getSource(sourceId);
+      if (!source) throw new Error("Source not found");
+      if (source.config.url !== input.url) throw new Error("The crawl URL cannot be changed. Add a new website source instead.");
+      await updateWebsiteSourceConfiguration({
         db,
         sourceId,
         name: input.name.trim() || input.url,
         config: toWebsiteConfig(input),
-      }),
+      });
+    },
   );
 }
 
@@ -2754,4 +2760,12 @@ export async function saveTeammateDefaultModelAction(input: unknown): Promise<{ 
   } catch (error) {
     return { ok: false, error: thrownMessage(error, "Could not save the default model.") };
   }
+}
+
+export async function updateAlertAction(id: string, patch: Partial<Pick<import("@agent-hub/core").Alert, "type" | "title" | "detail" | "status">>) {
+  return runOperation(updateAlertOp, { id, patch });
+}
+
+export async function renameSourceAction(sourceId: string, name: string, assistantId?: string) {
+  await runOperation(renameSourceOp, { sourceId, name, assistantId });
 }

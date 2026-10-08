@@ -151,7 +151,6 @@ export function VoiceSettings({ assistantId, value, onChange, variant = "standal
         : "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"}>
         <div className="min-w-0">
           {variant === "standalone" && <h2 className="text-base font-semibold">Voice mode</h2>}
-          <p className={variant === "embedded" ? "text-muted-foreground text-xs leading-relaxed" : "text-muted-foreground mt-1 text-sm"}>Enable microphone input and AI-generated audio playback.</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <StatusPill

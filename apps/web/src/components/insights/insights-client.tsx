@@ -3,9 +3,9 @@
 import dynamic from "next/dynamic";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Activity, Download, UserRound, X } from "lucide-react";
-import { BellRing, Calendar as CalendarIcon, ListFilter } from "lucide-react";
-import { Button } from "@agent-hub/ui";
-import { CalendarRange } from "@/components/ui/calendar";
+import { BellRing, ListFilter } from "lucide-react";
+import { DialogBody, Button } from "@agent-hub/ui";
+import { DateRangePicker } from "@/components/ui/date-picker";
 import { InsightsStatCard as StatCard } from "./insights-stat-card";
 import {
   Dialog,
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { AssistantFilterDropdown } from "@/components/insights/assistant-filter-dropdown";
-import { DateRangeDropdown, formatRange } from "@/components/insights/date-range-dropdown";
+import { DateRangeDropdown } from "@/components/insights/date-range-dropdown";
 import { CHART_OUTCOMES, CHART_SERIES } from "@/components/charts/palette";
 import { DeferredUsageCard } from "@/components/insights/deferred-usage-card";
 import { formatDuration } from "@/lib/insights/dashboard-view";
@@ -120,10 +120,8 @@ export function InsightsClient({
   assistants: AssistantOption[];
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [dateRangeOpen, setDateRangeOpen] = useState(false);
   const filtersTitleId = useId();
   const dateCaptionId = useId();
-  const dateValueId = useId();
   const [filters, setFilters] = useState<Filters>({ ...initialFilters, helpDesk: "" });
   // A reload or a copied link opens on the same range and filters. helpDesk
   // filters nothing server-side yet, so it is left out of the address bar.
@@ -261,37 +259,14 @@ export function InsightsClient({
 
               <div className="space-y-4">
                 <div>
-                  <span id={dateCaptionId} className="mb-1.5 block text-sm font-medium">
+                  <span
+                    id={dateCaptionId}
+                    className="mb-1.5 block text-sm font-medium"
+                  >
                     Date Range
                   </span>
-                  <Popover open={dateRangeOpen} onOpenChange={setDateRangeOpen}>
-                    <PopoverTrigger
-                      render={
-                        <button
-                          type="button"
-                          aria-labelledby={`${dateCaptionId} ${dateValueId}`}
-                          className={FIELD_CLASS}
-                        />
-                      }
-                    >
-                      <span className="flex items-center gap-2">
-                        <CalendarIcon className="text-muted-foreground size-4 shrink-0" aria-hidden />
-                        <span id={dateValueId} className="whitespace-nowrap">
-                          <RollInText text={formatRange(filters.from, filters.to)} />
-                        </span>
-                      </span>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-3" align="start">
-                      <CalendarRange
-                        from={filters.from || null}
-                        to={filters.to || null}
-                        onSelect={(from, to, complete) => {
-                          setFilters({ ...filters, from, to });
-                          if (complete) setDateRangeOpen(false);
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DateRangePicker label="Date Range" from={filters.from} to={filters.to}
+                    onChange={(from, to) => setFilters({ ...filters, from, to })} className="w-full" />
                 </div>
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-medium">
@@ -308,7 +283,9 @@ export function InsightsClient({
                   >
                     <SelectTrigger>
                       <SelectValue>
-                        {(value: string) => AGGREGATE_LABELS[value as Aggregate]}
+                        {(value: string) =>
+                          AGGREGATE_LABELS[value as Aggregate]
+                        }
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -408,26 +385,36 @@ export function InsightsClient({
 
       {/* Date range chip */}
       <div className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-3 pb-1 sm:px-6">
-          <div className="order-last ml-auto flex min-w-0 items-center gap-2 text-sm">
-            <span role="status" aria-live="polite" className="text-muted-foreground whitespace-nowrap">
-              <span aria-hidden>
-                <RollInText text={status} />
-              </span>
-              <span className="sr-only">{status}</span>
+        <div className="order-last ml-auto flex min-w-0 items-center gap-2 text-sm">
+          <span
+            role="status"
+            aria-live="polite"
+            className="text-muted-foreground whitespace-nowrap"
+          >
+            <span aria-hidden>
+              <RollInText text={status} />
             </span>
-            {failed && !refreshing && (
-              <button
-                type="button"
-                onClick={() => setAttempt((n) => n + 1)}
-                className="press-text text-primary focus-visible:outline-ring rounded-sm font-semibold underline-offset-4 hover:underline focus-visible:outline-2"
-              >
-                Retry
-              </button>
-            )}
-          </div>
-      <SlotPortal id={INSIGHTS_RANGE_SLOT}>
-        <InsightsRangeChip from={filters.from} to={filters.to} hint="Metrics cover conversations started in this range." />
-      </SlotPortal>
+            <span className="sr-only">{status}</span>
+          </span>
+          {failed && !refreshing && (
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              onClick={() => setAttempt((n) => n + 1)}
+              className="press-text text-primary focus-visible:outline-ring rounded-sm font-semibold underline-offset-4 hover:underline focus-visible:outline-2"
+            >
+              Retry
+            </Button>
+          )}
+        </div>
+        <SlotPortal id={INSIGHTS_RANGE_SLOT}>
+          <InsightsRangeChip
+            from={filters.from}
+            to={filters.to}
+            hint="Metrics cover conversations started in this range."
+          />
+        </SlotPortal>
       </div>
 
       {/* Metric cards */}
@@ -441,7 +428,11 @@ export function InsightsClient({
       >
         <StatCard
           title="AI Resolution Rate"
-          value={stats.resolutionRate === null ? "N/A" : formatPercent(stats.resolutionRate)}
+          value={
+            stats.resolutionRate === null
+              ? "N/A"
+              : formatPercent(stats.resolutionRate)
+          }
           numericValue={stats.resolutionRate ?? undefined}
           suffix="%"
           valueClass="text-green-600"
@@ -450,8 +441,14 @@ export function InsightsClient({
         <StatCard
           title="Answer Rating"
           subtitle={`${formatStat(stats.positive)} positive and ${formatStat(stats.negative)} negative`}
-          value={stats.positive + stats.negative > 0 ? formatPercent(stats.answerRating) : "N/A"}
-          numericValue={stats.positive + stats.negative > 0 ? stats.answerRating : undefined}
+          value={
+            stats.positive + stats.negative > 0
+              ? formatPercent(stats.answerRating)
+              : "N/A"
+          }
+          numericValue={
+            stats.positive + stats.negative > 0 ? stats.answerRating : undefined
+          }
           suffix="%"
           valueClass="text-green-600"
           className="col-span-6 @5xl:col-span-3"
@@ -482,7 +479,7 @@ export function InsightsClient({
           }
           numericValue={stats.escalationIntentRate ?? undefined}
           suffix="%"
-          subtitle="Asked for a person at least once"
+          subtitle="Requested human support"
           className="col-span-6 @5xl:col-span-3"
         />
         <StatCard
@@ -494,7 +491,7 @@ export function InsightsClient({
           }
           numericValue={stats.implicitSatisfaction ?? undefined}
           suffix="%"
-          subtitle="Ended calm, among those nobody rated"
+          subtitle="Unrated conversations ending calm"
           className="col-span-6 @5xl:col-span-3"
         />
 
@@ -519,32 +516,35 @@ export function InsightsClient({
                 <DialogHeader>
                   <DialogTitle>Languages Spoken</DialogTitle>
                 </DialogHeader>
-                {stats.languages.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">
-                    No language data in the selected range.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {stats.languages.map(([language, count]) => (
-                      <li
-                        key={language}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="font-medium">{language}</span>
-                        <span className="text-muted-foreground tabular-nums">
-                          <RollInText text={formatCount(count)} /> conversation{count === 1 ? "" : "s"}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <DialogBody>
+                  {stats.languages.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      No language data in the selected range.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {stats.languages.map(([language, count]) => (
+                        <li
+                          key={language}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="font-medium">{language}</span>
+                          <span className="text-muted-foreground tabular-nums">
+                            <RollInText text={formatCount(count)} />{" "}
+                            conversation{count === 1 ? "" : "s"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </DialogBody>
               </DialogContent>
             </Dialog>
           }
         />
         <StatCard
           title="Number of AI Answers"
-          subtitle={`AI sent ${formatStat(stats.aiAnswers)} answers to ${formatStat(stats.userMessages)} user messages`}
+          subtitle={`${formatStat(stats.userMessages)} user messages`}
           value={formatStat(stats.aiAnswers)}
           numericValue={stats.aiAnswers}
           className="col-span-12 @md:col-span-6 @5xl:col-span-4"
@@ -554,11 +554,7 @@ export function InsightsClient({
         <StatCard
           icon={BellRing}
           title="Notifications Sent"
-          subtitle={
-            stats.notifications === 0
-              ? "No proactive notifications delivered"
-              : `${formatCount(stats.notifications)} proactive message${stats.notifications === 1 ? "" : "s"} nobody had to ask for`
-          }
+          subtitle="Proactive messages."
           value={formatStat(stats.notifications)}
           numericValue={stats.notifications}
           className="col-span-12 @md:col-span-6 @5xl:col-span-4"
@@ -566,7 +562,7 @@ export function InsightsClient({
         <StatCard
           icon={UserRound}
           title="Unique Users"
-          subtitle={`${formatStat(stats.uniqueUsers)} user${stats.uniqueUsers === 1 ? "" : "s"} engaged with assistant`}
+
           value={formatStat(stats.uniqueUsers)}
           numericValue={stats.uniqueUsers}
           className="col-span-12 @md:col-span-6 @5xl:col-span-4"
@@ -575,7 +571,7 @@ export function InsightsClient({
         <StatCard
           icon={Activity}
           title="Conversations / User"
-          subtitle={`On average, each user started ${formatStat(stats.conversationsPerUser)} conversation${stats.conversationsPerUser === 1 ? "" : "s"}`}
+
           value={formatStat(stats.conversationsPerUser)}
           numericValue={stats.conversationsPerUser}
           decimals={1}
@@ -599,7 +595,11 @@ export function InsightsClient({
         <StatCard
           title="Avg. Conversation Time"
           subtitle="From the start to the last message"
-          value={formatDuration(avgConversationSeconds === null ? null : avgConversationSeconds * 1000)}
+          value={formatDuration(
+            avgConversationSeconds === null
+              ? null
+              : avgConversationSeconds * 1000,
+          )}
           className="col-span-12 @md:col-span-6 @5xl:col-span-3"
         />
 

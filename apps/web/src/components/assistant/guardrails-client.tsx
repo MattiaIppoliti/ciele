@@ -300,7 +300,7 @@ function GuardrailForm({
 
       {problem && <p className="text-destructive text-xs">{problem}</p>}
       <div className="flex gap-2">
-        <Button size="sm" onClick={onSave} disabled={saving || problem !== null}>
+        <Button loading={saving} size="sm" onClick={onSave} disabled={saving || problem !== null}>
           <RollInText text={saving ? "Saving…" : saveLabel} />
         </Button>
         <Button size="sm" variant="ghost" onClick={onCancel} disabled={saving}>
@@ -376,9 +376,7 @@ export function GuardrailsClient({
   return (
     <div className="pt-6 pb-24">
       <p className="text-muted-foreground mb-8 text-sm">
-        Visitor message checks run top to bottom before any Flow sees the message, and the first
-        that blocks answers with its reply. Answer stream checks rewrite the answer while it is
-        written. Changes apply in the Preview now and in the widget from the next publish.
+        First blocking check wins. Stream checks rewrite answers as they are generated. Publish to update live chats.
       </p>
       <SectionTimeline>
         {GUARDRAIL_TYPES.map((type) => {

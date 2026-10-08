@@ -33,7 +33,7 @@ export function ConversationDepthCard({
   const questions = series.find((s) => s.key === "Questions / Conversation")?.values;
   return (
     <AnalyticsCard title="Conversation depth"
-      description="How long conversations last and how many questions Visitors ask in each, by the day the conversation started"
+      description="Grouped by conversation start date."
       contentClassName="grid gap-6 @3xl:grid-cols-2">
         <Panel
           title="Average conversation time"
@@ -54,7 +54,6 @@ export function ConversationDepthCard({
     </AnalyticsCard>
   );
 }
-
 
 function Panel({
   title,
@@ -79,7 +78,7 @@ function Panel({
       <p className="text-3xl font-semibold tracking-tight tabular-nums">{headline}</p>
       <p className="text-muted-foreground mb-3 text-xs">{caption}</p>
       {empty ? (
-        <EmptyState size="sm" className="min-h-44" title="No conversations in this range" description="Choose a wider date range or wait for new conversations." />
+        <EmptyState size="sm" className="min-h-44" title="No conversations in this range"  />
       ) : (
         <ArcFrame><LineChart data={data} series={[{ key: "value", label: title, area: true }]}
           label={title} height={160} legend={false} formatValue={format} formatTick={format} /></ArcFrame>

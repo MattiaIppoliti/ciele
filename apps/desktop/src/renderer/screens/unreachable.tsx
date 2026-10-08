@@ -66,11 +66,6 @@ export function UnreachableScreen({ state }: { state: AppState }): ReactNode {
           </div>
         </Card>
 
-        <p className="text-xs text-ink-muted">
-          {isLocal
-            ? "Your local stack may still be starting. The stack screen shows what it is doing."
-            : "If your organization runs its own Ciele, set its address in settings."}
-        </p>
       </div>
     </div>
   );

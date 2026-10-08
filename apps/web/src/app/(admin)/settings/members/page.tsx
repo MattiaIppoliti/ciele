@@ -22,7 +22,7 @@ export default async function MembersPage() {
     <SettingsPanel
       icon={Users}
       title="Members"
-      description={`People in ${session.organization.name} and their roles.`}
+
     >
       <MembersClient
         members={members}

@@ -1,5 +1,7 @@
 "use client";
 
+import { DatePicker } from "@/components/ui/date-picker";
+
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import type {
   ApiRequestAuthType,
@@ -30,12 +32,12 @@ import {
   respondSettingsIssue,
 } from "@agent-hub/core";
 
-import { Braces, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Braces, Plus, Trash2 } from "lucide-react";
 import { ChevronDown, AlertCircle, ChevronRight, CircleMinus, CirclePlus, Info, Lightbulb } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { testApiRequestAction } from "@/app/actions";
 import { httpFlowRunsAction } from "@/app/(admin)/assistants/[id]/flows/flows-agent-actions";
-import { Badge } from "@agent-hub/ui";
+import { DialogBody, DialogSection, Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -116,8 +118,6 @@ export interface FaqOption {
   id: string;
   question: string;
 }
-
-
 
 const NOTIFICATION_TITLE_LIMIT = 100;
 const NOTIFICATION_CONTENT_LIMIT = 5000;
@@ -304,7 +304,7 @@ function ExampleGroup({
           />
         ))}
         <div className="flex justify-end">
-          <button
+          <Button variant="ghost" size="sm"
             type="button"
             onClick={() =>
               onChange([...examples, { message: "", note: "", shouldTrigger }])
@@ -312,7 +312,7 @@ function ExampleGroup({
             className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs font-medium transition-colors"
           >
             Add example <Plus className="size-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </details>
@@ -501,13 +501,8 @@ function ScheduleBound({
         {label} {required && <span className="text-destructive">*</span>}
       </Label>
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="date"
-          value={day}
-          onChange={(e) => onDateChange(compose(e.target.value, time))}
-          aria-label={`${label} date`}
-          className="h-9 w-40"
-        />
+        <DatePicker value={day} onChange={day => onDateChange(compose(day, time))}
+          label={`${label} date`} allowClear={!required} className="w-40" />
         <span className="text-muted-foreground text-sm">at</span>
         <Input
           type="time"
@@ -639,7 +634,7 @@ function SearchKnowledgeAdvanced({
 
   return (
     <div className="space-y-3">
-      <button
+      <Button variant="ghost" size="sm"
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
@@ -652,7 +647,7 @@ function SearchKnowledgeAdvanced({
           )}
         />
         Advanced settings
-      </button>
+      </Button>
 
       {open && (
         <div className="space-y-4">
@@ -892,30 +887,43 @@ function TemplateVariablesDialog() {
         <DialogHeader>
           <DialogTitle>Using template variables</DialogTitle>
         </DialogHeader>
-        <p className="text-muted-foreground text-sm">
-          Template variables in any field below are filled in when the request is sent.
-        </p>
-        <ul className="space-y-1 text-sm">
-          {TEMPLATE_VARIABLES.map((v) => (
-            <li key={v.token} className="flex flex-col">
-              <code className="text-primary text-xs">{v.token}</code>
-              <span className="text-muted-foreground text-xs">{v.description}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="border-warning/40 bg-warning/10 text-warning-foreground flex items-center gap-2 rounded-md border p-2 text-xs">
-          <Info className="size-4 shrink-0" />
-          This is an experimental feature.
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Example</Label>
-          <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
-{`{
+        <DialogBody>
+          <DialogSection>
+            <p className="text-muted-foreground text-sm">
+              Template variables in any field below are filled in when the
+              request is sent.
+            </p>
+          </DialogSection>
+          <DialogSection>
+            <ul className="space-y-1 text-sm">
+              {TEMPLATE_VARIABLES.map((v) => (
+                <li key={v.token} className="flex flex-col">
+                  <code className="text-primary text-xs">{v.token}</code>
+                  <span className="text-muted-foreground text-xs">
+                    {v.description}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </DialogSection>
+          <DialogSection>
+            <div className="border-warning/40 bg-warning/10 text-warning-foreground flex items-center gap-2 rounded-md border p-2 text-xs">
+              <Info className="size-4 shrink-0" />
+              This is an experimental feature.
+            </div>
+          </DialogSection>
+          <DialogSection>
+            <div className="space-y-1">
+              <Label className="text-xs">Example</Label>
+              <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
+                {`{
   "message": "Hi {{user.name}}.",
   "email": "{{user.email}}"
 }`}
-          </pre>
-        </div>
+              </pre>
+            </div>
+          </DialogSection>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );
@@ -1125,7 +1133,6 @@ export function TestRequestControl({ settings }: { settings: ApiRequestSettings 
     </div>
   );
 }
-
 
 type HttpWebhookSettingsShape = NonNullable<FlowActionSettings["http_webhook"]>;
 type WebhookCallShape = NonNullable<HttpWebhookSettingsShape["subscribe"]>;
@@ -1929,9 +1936,7 @@ function FlowButtonConfig({
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold">Show icon</p>
-          <p className="text-muted-foreground text-xs">
-            Display an icon inside the button.
-          </p>
+
         </div>
         <Switch
           checked={showIcon}
@@ -1976,7 +1981,6 @@ function FlowButtonConfig({
   );
 }
 
-
 /* ------------------------------------------------------------------------ */
 /* The three steps, as hosted by the form and by the canvas node panel.      */
 /* ------------------------------------------------------------------------ */
@@ -2009,7 +2013,6 @@ export type FlowStepHandlers = {
   ) => void;
   setCustomMessage: (message: string) => void;
 };
-
 
 /**
  * The inbound-HTTP trigger's own settings (#843): which methods the endpoint
@@ -2485,11 +2488,7 @@ export function FlowActionConfig({
             />
           </div>
           {(settings.follow_up_questions?.mode ?? "ai_generated") === "ai_generated" ? (
-            <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
-              <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-              The AI will use the conversation context to generate relevant
-              follow-up questions automatically.
-            </p>
+            null
           ) : (
             <FollowUpManualConfig
               questions={settings.follow_up_questions?.questions ?? []}

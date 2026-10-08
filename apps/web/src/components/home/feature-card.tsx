@@ -78,37 +78,38 @@ export function FeatureCard({ feature }: { feature: Feature }) {
         <MorphingDialogContent
           style={{ borderRadius: "24px" }}
           ariaLabel={feature.title}
-          className="bg-card pointer-events-auto relative flex h-auto w-full flex-col overflow-hidden border sm:w-[500px]"
+          className="pointer-events-auto relative flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-y-auto sm:w-[500px]"
         >
-          <div className="border-b">{feature.visual(true)}</div>
-          <div className="p-6">
-            <MorphingDialogTitle className="text-foreground text-2xl font-semibold">
+          <header className="ui-modal-header">
+            <MorphingDialogTitle className="text-foreground text-xl font-semibold">
               {feature.title}
             </MorphingDialogTitle>
-            <MorphingDialogSubtitle className="text-muted-foreground mt-2">
+            <MorphingDialogSubtitle className="text-muted-foreground mt-2 text-sm">
               {feature.body}
             </MorphingDialogSubtitle>
+          </header>
+          <div className="ui-modal-body space-y-5">
+            <div className="overflow-hidden rounded-xl border">
+              {feature.visual(true)}
+            </div>
             <MorphingDialogDescription
               variants={{
-                initial: { opacity: 0, scale: 0.8, y: 100 },
-                animate: { opacity: 1, scale: 1, y: 0 },
-                exit: { opacity: 0, scale: 0.8, y: 100 },
+                initial: { opacity: 0 },
+                animate: { opacity: 1 },
+                exit: { opacity: 0 },
               }}
             >
               {feature.details.map((paragraph) => (
-                <p
+<p
                   key={paragraph}
                   className="text-muted-foreground mt-4 text-sm leading-relaxed"
                 >
                   {paragraph}
                 </p>
-              ))}
+))}
             </MorphingDialogDescription>
           </div>
-          {/* Screenshots have a light top bar, so a bare white X would
-              vanish, sit it on a dark translucent chip for contrast on any
-              image. */}
-          <MorphingDialogClose className="press-control flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900/50 text-zinc-50 backdrop-blur-sm transition-colors hover:bg-zinc-900/70">
+          <MorphingDialogClose>
             <XIcon size={16} />
           </MorphingDialogClose>
         </MorphingDialogContent>

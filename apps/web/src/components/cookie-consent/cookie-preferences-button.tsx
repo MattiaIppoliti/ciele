@@ -1,6 +1,7 @@
 "use client";
 
 import { openCookiePreferences } from "./open-preferences";
+import { Button } from "@agent-hub/ui";
 
 /**
  * Inline trigger that reopens the cookie preferences modal, used in the
@@ -15,13 +16,13 @@ export function CookiePreferencesButton({
   children?: React.ReactNode;
 }) {
   return (
-    <button
+    <Button variant="ghost" size="sm"
       type="button"
       aria-haspopup="dialog"
       className={className}
       onClick={openCookiePreferences}
     >
       {children}
-    </button>
+    </Button>
   );
 }

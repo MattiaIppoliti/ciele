@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { RollingNumber } from "@/components/motion/rolling-number";
@@ -94,7 +95,7 @@ function PaneHeading({
 }: {
   icon: LucideIcon;
   title: string;
-  description: string;
+  description?: string;
 }) {
   return (
     <SectionHeading
@@ -199,7 +200,7 @@ function AssistantsPane() {
       <PaneHeading
         icon={LayoutGrid}
         title="Assistants"
-        description="Create and manage every assistant your organization runs."
+
       />
 
       <div className="mt-4 flex items-center gap-3">
@@ -207,14 +208,14 @@ function AssistantsPane() {
           <PreviewIcon icon={Search} size={15} />
           Search Assistants…
         </div>
-        <button
+        <CieleButton variant="primary" size="sm"
           type="button"
           onMouseDown={(event) => event.preventDefault()}
           className="bg-primary text-primary-foreground flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
         >
           <PreviewIcon icon={Plus} size={15} />
           Add New…
-        </button>
+        </CieleButton>
       </div>
 
       <div
@@ -248,7 +249,7 @@ function HelpDesksPane() {
       <PaneHeading
         icon={UsersRound}
         title="Help Desks"
-        description="Configure how visitors reach the right person."
+
       />
 
       <div className="mt-4 flex items-center gap-3">
@@ -256,14 +257,14 @@ function HelpDesksPane() {
           <PreviewIcon icon={Search} size={15} />
           Search Help Desks…
         </div>
-        <button
+        <CieleButton variant="primary" size="sm"
           type="button"
           onMouseDown={(event) => event.preventDefault()}
           className="bg-primary text-primary-foreground flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
         >
           <PreviewIcon icon={Plus} size={15} />
           New Help Desk
-        </button>
+        </CieleButton>
       </div>
 
       <div
@@ -317,7 +318,7 @@ function InboxPane() {
         <PaneHeading
           icon={Archive}
           title="Inbox"
-          description="Review conversations, feedback and escalations in one place."
+
         />
       </div>
 
@@ -582,7 +583,7 @@ function LibraryPane() {
       <PaneHeading
         icon={BookText}
         title="Websites"
-        description="Add your organization's main website, or links to additional knowledge bases linked assistants should reference when answering questions."
+
       />
 
       <div className="bg-muted mt-4 flex w-fit items-center gap-1 rounded-full p-1 text-sm">
@@ -622,14 +623,14 @@ function LibraryPane() {
             </span>
           </>
         )}
-        <button
+        <CieleButton variant="primary" size="sm"
           type="button"
           onMouseDown={(event) => event.preventDefault()}
           className="bg-primary text-primary-foreground flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
         >
           <PreviewIcon icon={Plus} size={15} />
           Add
-        </button>
+        </CieleButton>
       </div>
 
       <div className="bg-card mt-4 overflow-hidden rounded-xl border shadow-xs">
@@ -738,7 +739,7 @@ function ImprovementsPane() {
       <PaneHeading
         icon={FlaskConical}
         title="Improvements"
-        description="Turn answer gaps and feedback into trackable work."
+
       />
 
       <div
@@ -832,7 +833,7 @@ function InsightsPane() {
       <PaneHeading
         icon={ChartLine}
         title="Insights"
-        description="See answer quality, engagement and escalation trends."
+
       />
 
       <div className="mt-4 flex items-center gap-2">
@@ -1041,9 +1042,6 @@ export function SetupPane({ slug }: { slug: string }) {
         <h2 className="mt-5 text-xl font-semibold tracking-tight">
           Continue to {section.label}
         </h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Choose an assistant to continue
-        </p>
 
         <div className="bg-background mt-8 w-full rounded-xl p-2">
           <div className="bg-background flex items-center gap-2 rounded-lg border px-3 shadow-xs">
@@ -1109,7 +1107,7 @@ function EvalPane() {
   const compact = useContext(CompactContext);
   return (
     <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
-      <PaneHeading icon={FlaskConical} title="Eval" description="Compare models on the same questions." />
+      <PaneHeading icon={FlaskConical} title="Eval"  />
       <div className="mt-5 overflow-hidden rounded-xl border bg-card">
         <div className="grid grid-cols-[1fr_1fr_1fr_80px] border-b bg-muted/40 px-4 py-3 text-xs text-muted-foreground"><span>Run</span><span>Dataset</span><span>Models</span><span>Accuracy</span></div>
         {[["Answer", "Returns policy", "3 models", "88%"], ["Classifier", "Support routing", "2 models", "94%"], ["Reranker", "Product search", "2 models", "91%"]].map((row) => (

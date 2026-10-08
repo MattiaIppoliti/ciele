@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import type { I18nProviderProps } from 'fumadocs-ui/contexts/i18n';
 import { i18n } from '@/lib/i18n';
+import { DocsSearchDialog } from '@/components/search-dialog';
 
 /**
  * Wraps fumadocs' RootProvider to own what happens when the reader picks a
@@ -43,6 +44,6 @@ export function DocsProviders({
   }
 
   return (
-    <RootProvider i18n={{ ...options, onLocaleChange }}>{children}</RootProvider>
+    <RootProvider i18n={{ ...options, onLocaleChange }} search={{ SearchDialog: DocsSearchDialog }}>{children}</RootProvider>
   );
 }

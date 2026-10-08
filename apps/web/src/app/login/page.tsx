@@ -10,7 +10,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Log in to Ciele"
-      subtitle="Enter your email below to login to your account"
+
     >
       <LoginForm />
     </AuthShell>

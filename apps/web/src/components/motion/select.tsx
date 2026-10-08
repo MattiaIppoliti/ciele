@@ -57,12 +57,14 @@ interface SelectContextValue {
   selectedValues: string[];
   multiple: boolean;
   open: boolean;
-  setOpen: (open: boolean) => void;
+  setOpen: (open: boolean, animate?: boolean) => void;
   select: (value: string) => void;
   register: (value: string, label: string) => void;
   unregister: (value: string) => void;
   labelFor: (value: string | undefined) => string | undefined;
   reduce: boolean;
+  compact: boolean;
+  animatePopup: boolean;
   triggerId: string;
   setTriggerId: (id: string) => void;
   listId: string;
@@ -81,6 +83,8 @@ function useSelectContext(component: string) {
 }
 
 interface SelectSharedProps {
+  /** Fast menus for repeated table filters; the default keeps the unfolding surface. */
+  compact?: boolean;
   disabled?: boolean;
   className?: string;
   children: ReactNode;
@@ -106,6 +110,7 @@ export function Select({
   value,
   onValueChange,
   multiple = false,
+  compact = false,
   disabled = false,
   className,
   children,
@@ -114,6 +119,7 @@ export function Select({
   const baseId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setInternalOpen] = useState(false);
+  const [animatePopup, setAnimatePopup] = useState(false);
   const [internal, setInternal] = useState<string | string[] | undefined>(undefined);
   const [labels, setLabels] = useState<Map<string, string>>(new Map());
   const [placement, setPlacement] = useState<Placement>("bottom");
@@ -138,7 +144,8 @@ export function Select({
   );
   const openChangeFeedback = useOpenChangeFeedback(undefined);
   const setOpen = useCallback(
-    (next: boolean) => {
+    (next: boolean, animate = false) => {
+      setAnimatePopup(animate);
       setInternalOpen(next);
       openChangeFeedback(next);
     },
@@ -227,6 +234,8 @@ export function Select({
       unregister,
       labelFor: (v) => (v === undefined ? undefined : labels.get(v)),
       reduce,
+      compact,
+      animatePopup,
       triggerId,
       setTriggerId,
       listId: `${baseId}-list`,
@@ -246,6 +255,8 @@ export function Select({
       unregister,
       labels,
       reduce,
+      compact,
+      animatePopup,
       baseId,
       triggerId,
       setTriggerId,
@@ -257,7 +268,15 @@ export function Select({
 
   return (
     <SelectContext.Provider value={ctx}>
-      <div ref={rootRef} data-slot="select" className={cn("relative", className)}>
+      <div ref={rootRef} data-slot="select" className={cn("relative", className)}
+        onKeyDown={(event) => {
+          if (open && event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(false);
+            focusTrigger();
+          }
+        }}>
         {children}
       </div>
     </SelectContext.Provider>
@@ -307,7 +326,7 @@ export function SelectTrigger({
       aria-controls={ctx.listId}
       onClick={(event) => {
         onClick?.(event);
-        if (!event.defaultPrevented) ctx.setOpen(!ctx.open);
+        if (!event.defaultPrevented) ctx.setOpen(!ctx.open, event.detail !== 0);
       }}
       onKeyDown={(event) => {
         onKeyDown?.(event);
@@ -323,13 +342,13 @@ export function SelectTrigger({
       // Gooey: the edge facing the panel snaps flat (panel attached) then rounds
       // back once the panel pulls away, the two pinch apart.
       initial={false}
-      animate={{
+      animate={ctx.compact ? undefined : {
         borderTopLeftRadius: isTop ? kf : 12,
         borderTopRightRadius: isTop ? kf : 12,
         borderBottomLeftRadius: isTop ? 12 : kf,
         borderBottomRightRadius: isTop ? 12 : kf,
       }}
-      transition={{
+      transition={ctx.compact ? INSTANT_TRANSITION : {
         borderTopLeftRadius: isTop ? kfT : INSTANT_TRANSITION,
         borderTopRightRadius: isTop ? kfT : INSTANT_TRANSITION,
         borderBottomLeftRadius: isTop ? INSTANT_TRANSITION : kfT,
@@ -347,7 +366,7 @@ export function SelectTrigger({
       <motion.span
         aria-hidden
         animate={{ rotate: ctx.open ? 180 : 0 }}
-        transition={ctx.reduce ? { duration: 0 } : CHEVRON_TRANSITION}
+        transition={ctx.reduce || (ctx.compact && !ctx.animatePopup) ? INSTANT_TRANSITION : ctx.compact ? { duration: 0.15, ease: EASE_OUT } : CHEVRON_TRANSITION}
         className="text-muted-foreground"
       >
         <ChevronDown className="h-4 w-4" />
@@ -576,7 +595,9 @@ export function SelectContent({ className, children, side }: SelectContentProps)
       inert={!open}
       initial={false}
       animate={
-        ctx.reduce
+        ctx.compact
+          ? { opacity: open ? 1 : 0, scale: open ? 1 : 0.98, y: open ? 0 : isTop ? 4 : -4 }
+          : ctx.reduce
           ? { opacity: open ? 1 : 0, height: open ? height : 0 }
           : {
               opacity: open ? 1 : 0,
@@ -592,7 +613,9 @@ export function SelectContent({ className, children, side }: SelectContentProps)
             }
       }
       transition={
-        ctx.reduce
+        ctx.compact
+          ? { duration: ctx.animatePopup && !ctx.reduce ? 0.18 : 0, ease: EASE_OUT }
+          : ctx.reduce
           ? { duration: 0.12 }
           : {
               opacity: open
@@ -610,6 +633,9 @@ export function SelectContent({ className, children, side }: SelectContentProps)
             }
       }
       style={{
+        height: ctx.compact ? open ? height : 0 : undefined,
+        marginTop: ctx.compact && !isTop ? 8 : undefined,
+        marginBottom: ctx.compact && isTop ? 8 : undefined,
         transformOrigin: isTop ? "bottom" : "top",
         overflow: "hidden",
         pointerEvents: open ? "auto" : "none",
@@ -627,7 +653,7 @@ export function SelectContent({ className, children, side }: SelectContentProps)
       <motion.div
         ref={innerRef}
         data-foley-scroll=""
-        variants={ctx.reduce ? undefined : LIST_VARIANTS}
+        variants={ctx.reduce || ctx.compact ? undefined : LIST_VARIANTS}
         initial={false}
         animate={open ? "show" : "hidden"}
         style={{ maxHeight: geometry?.maxHeight }}
@@ -664,7 +690,7 @@ export function SelectItem({
   }, [register, unregister, value, children]);
 
   return (
-    <motion.li role="presentation" variants={ctx.reduce ? undefined : ITEM_VARIANTS}>
+    <motion.li role="presentation" variants={ctx.reduce || ctx.compact ? undefined : ITEM_VARIANTS}>
       <button
         ref={optionRef}
         type="button"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
-import { CopyFeedbackIcon, useCopyFeedback } from '@agent-hub/ui';
+import { Button as CieleButton, CopyFeedbackIcon, useCopyFeedback } from '@agent-hub/ui';
 
 /**
  * Stable 32-bit hash of the chart source.
@@ -167,7 +167,7 @@ export function Mermaid({
       aria-label={title}
       role="group"
     >
-      <button
+      <CieleButton variant="secondary" size="sm"
         type="button"
         onClick={() => void copyText(id, source)}
         // Always reachable by keyboard; only fades in on hover/focus so it does
@@ -180,7 +180,7 @@ export function Mermaid({
       >
         <CopyFeedbackIcon copied={copied} className="size-3.5" />
         <span>Mermaid</span>
-      </button>
+      </CieleButton>
       {/* A diagram wider than the prose column scrolls here rather than
           shrinking; `max-w-none` overrides the prose reset that would scale it
           back down. */}

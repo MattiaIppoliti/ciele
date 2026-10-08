@@ -83,7 +83,7 @@ export function ApplicationConnect({
             <p className="text-sm text-muted-foreground">{organizationName}</p>
             <p className="text-balance text-muted-foreground">
               {configured
-                ? `Continue to ${label} to sign in and choose which access to allow. When you finish, you will return to Ciele.`
+                ? `Sign in to ${label}, approve access, then return to Ciele.`
                 : `This Ciele deployment is not set up to connect to ${label} yet. Ask the person who manages Ciele to enable this connection.`}
             </p>
           </div>
@@ -94,7 +94,7 @@ export function ApplicationConnect({
                 <p className="mt-3 break-all font-mono">{PROVIDER_DESTINATIONS[provider]}</p>
               </details>
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-              <Button className="w-full" onClick={connect} disabled={pending}>
+              <Button loading={pending} className="w-full" onClick={connect} disabled={pending}>
                 {pending && <LoaderCircle className="size-4 animate-spin" />}
                 <RollInText text={pending ? `Opening ${label}…` : "Continue connecting"} />
               </Button>

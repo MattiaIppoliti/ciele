@@ -421,6 +421,28 @@ check("the image's deps stage copies every workspace manifest the app needs", ()
   }
 });
 
+check("the web build has a 4 GiB heap without enlarging the runtime heap", () => {
+  // v1.2.0 exhausted the default ~2 GiB heap during the web build. The fix
+  // belongs before that RUN in the build stage, not in a CI-only environment
+  // (which Docker does not inherit) or the deployed Node process.
+  const dockerfile = read("../apps/web/Dockerfile");
+  const stages = dockerfile.split(/^FROM /m).slice(1);
+  const build = stages.find((stage) => /^deps AS build\s*$/m.test(stage));
+  const runner = stages.find((stage) => /^node:22-alpine AS runner\s*$/m.test(stage));
+  assert.ok(build, "the web image must have its own build stage");
+  assert.ok(runner, "the runtime must start from a fresh Node image");
+  assert.match(
+    build,
+    /^ENV NODE_OPTIONS=--max-old-space-size=4096\s*$[\s\S]*?^RUN pnpm --filter @agent-hub\/web build\s*$/m,
+    "the Docker web build must receive its larger heap before compilation"
+  );
+  assert.doesNotMatch(
+    runner,
+    /^ENV\s+[^\n]*NODE_OPTIONS/m,
+    "the build heap override must not be copied into the runtime stage"
+  );
+});
+
 // --- image mode (#686) ------------------------------------------------------
 //
 // The overlay is the whole switch: adding it to COMPOSE_FILE runs published

@@ -5,7 +5,7 @@ import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import type { Profile, Role } from "@agent-hub/core";
 import { ArrowUpRight, Fingerprint, House, LogOut, Settings, X, type LucideIcon } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
-import { Hint } from "@agent-hub/ui";
+import { Button, Hint } from "@agent-hub/ui";
 import { signOutAction } from "@/app/actions";
 import { CieleAiPeek } from "@/components/teammates/ciele-ai-logo";
 import { useShell } from "@/components/shell/shell-provider";
@@ -188,37 +188,17 @@ export function NewChatButton({
     () => "⌘O"
   );
   const link = (
-    <Link
-      href="/teammates"
+    <Button variant="secondary" size={collapsed ? "icon-sm" : "sm"}
+      render={<Link href="/teammates" />}
       // The URL alone misses a first message that has no `?c=` yet.
       onClick={chatSession.requestNewChat}
       aria-label="New chat"
       aria-keyshortcuts="Meta+O Control+O"
-      // Grey at rest and greyer on hover, so it reads as the sidebar's own
-      // control rather than a primary call to action.
-      // `overflow-hidden` is what cuts the peeking mark off at the bottom edge.
-      // Grows a touch on hover. `scale` rather than `transform`, so it composes
-      // with `press`'s own scale on :active, and its transition is set inline
-      // because `.press` is unlayered and would win over a utility.
-      style={{
-        transition:
-          "scale 200ms cubic-bezier(0, 0, 0.2, 1), transform 100ms cubic-bezier(0, 0, 0.2, 1), color 150ms, background-color 150ms, border-color 150ms",
-      }}
-      className={`press group border-foreground/10 bg-foreground/[0.07] text-muted-foreground hover:bg-foreground/[0.14] hover:text-foreground motion-safe:hover:scale-[1.02] @container relative flex h-9 items-center justify-center overflow-hidden rounded-full border text-sm font-medium ${
-        collapsed ? "w-9" : "min-w-0 flex-1 px-3"
-      }`}
+      icon={<CieleAiPeek className="size-full" />}
+      className={collapsed ? "@container" : "@container min-w-0 flex-1"}
     >
-      {/* One centred group, Notion's: the mark, the label and the shortcut
-          side by side. The mark keeps peeking up from the bottom edge, so its
-          slot is the button's full height and the svg overflows it. */}
-      <span className="flex h-full min-w-0 items-center gap-2">
-        {/* Wider than its slot and set low, so only the head and the eyes
-            show and the button's bottom edge cuts the body off. */}
-        <span className={`relative h-full shrink-0 ${collapsed ? "w-9" : "w-8"}`}>
-          <CieleAiPeek className="absolute top-1.5 left-[calc(50%-2px)] w-12 -translate-x-1/2" />
-        </span>
         {!collapsed && (
-          <>
+          <span className="flex min-w-0 items-center gap-2">
             <span className="whitespace-nowrap">New chat</span>
             {/* Quieter than the label: the shortcut is a hint, not the action.
                 Shown only while the button is wide enough for the label, the
@@ -229,10 +209,9 @@ export function NewChatButton({
             <kbd className="border-foreground/10 text-muted-foreground/55 hidden rounded-md border px-1.5 font-sans text-2xs leading-5 whitespace-nowrap @[9rem]:inline-block">
               {chord}
             </kbd>
-          </>
+          </span>
         )}
-      </span>
-    </Link>
+    </Button>
   );
   return (
     <div

@@ -120,9 +120,7 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
             <AnimatedIcon icon={Layers3} size={16} />
             Ciele model catalog
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Find a model in the Vercel AI Gateway catalog and add it for use across Ciele. Its official name and estimated token prices come from AI Gateway and are filled in automatically.
-          </p>
+
         </div>
         <Badge variant="outline" className="shrink-0 rounded-full">Platform admin</Badge>
       </div>
@@ -164,7 +162,7 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
             />
           </div>
           <p id="catalog-search-help" className="text-xs text-muted-foreground">
-            Select a model from the verified catalog. You don’t need to enter pricing or its display name.
+            Verified models only.
           </p>
         </div>
 
@@ -219,7 +217,7 @@ export function PlatformModelCatalogCard({ models }: { models: PlatformEvalModel
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <p className="max-w-sm text-xs text-muted-foreground">
-            Adding a model does not connect a provider. Each organization still needs its own provider access.
+            Organizations still need their own provider access.
           </p>
           <Button type="submit" disabled={!selected || busy}>
             <RollInText text={busy ? "Verifying…" : "Add model"} />

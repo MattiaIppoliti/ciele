@@ -1,4 +1,6 @@
 
+
+import { Button as CieleButton } from "@agent-hub/ui";
 import { RollInText } from "@/components/motion/roll-in-text";
 import dynamic from "next/dynamic";
 import { GraduationCap, LoaderCircle } from "lucide-react";
@@ -137,14 +139,14 @@ function TableComponent({
                         // they read it before they send it; a button reading
                         // "Ask" would send words they never saw. Same contract
                         // as the follow-up questions under an answer.
-                        <button
+                        <CieleButton variant="secondary" size="sm" wrap
                           type="button"
                           onClick={() => onAsk(ask)}
                           title={ask}
                           className="text-muted-foreground max-w-[14rem] truncate rounded-md border px-2 py-1 text-left text-xs transition-colors hover:bg-muted hover:text-foreground"
                         >
                           {ask}
-                        </button>
+                        </CieleButton>
                       )}
                     </td>
                   )}

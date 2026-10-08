@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { FileText, Upload, X } from "lucide-react";
 import { Image as ImageIcon, Loader2 } from "lucide-react";
 import { isImageAttachment } from "@/lib/attachment-policy";
@@ -64,14 +65,14 @@ export function AttachmentChips({
                 />
               )}
             </span>
-            <button
+            <CieleButton variant="ghost" size="icon-sm"
               type="button"
               aria-label={`Remove ${entry.name}`}
               onClick={() => onRemove(entry.id)}
               className="hover:text-foreground shrink-0 cursor-pointer [&_svg]:size-3.5"
             >
               <X />
-            </button>
+            </CieleButton>
           </li>
         );
       })}

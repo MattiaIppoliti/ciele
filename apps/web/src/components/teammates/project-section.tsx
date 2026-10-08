@@ -114,7 +114,7 @@ export function ProjectSection({
             {unreadable ? (
               <p className="text-muted-foreground">
                 Could not read this project.{" "}
-                <button
+                <Button variant="primary" size="sm"
                   type="button"
                   className="text-primary font-medium hover:underline"
                   onClick={() => {
@@ -123,7 +123,7 @@ export function ProjectSection({
                   }}
                 >
                   Try again
-                </button>
+                </Button>
               </p>
             ) : attached === null ? (
               // Nothing until the read lands: "No summary yet" flashed for a
@@ -134,10 +134,9 @@ export function ProjectSection({
               </>
             ) : (
               <>
-                <p className="text-muted-foreground">
-                  {attached.description ||
-                    "No summary yet. Open the project to say what it is about."}
-                </p>
+                {attached.description && (
+                  <p className="text-muted-foreground">{attached.description}</p>
+                )}
                 <p className="text-muted-foreground mt-1 text-xs">
                   {attached.decisions === 0 ? (
                     "No decisions recorded yet."

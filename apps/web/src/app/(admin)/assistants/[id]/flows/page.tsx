@@ -25,7 +25,7 @@ export default async function FlowsPage({
       <SectionHeading
         icon={Workflow}
         title="Flows"
-        description="Drag flows, or use the arrow keys on a handle, to set priority. The first matching flow wins."
+        description="First matching flow wins."
       />
       <FlowsList assistantId={id} flows={flows} trust={trust} studyMode={assistant.tools.studyMode} />
     </div>

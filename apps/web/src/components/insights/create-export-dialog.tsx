@@ -5,7 +5,7 @@ import { RollInText } from "@/components/motion/roll-in-text";
 import { useState, useTransition } from "react";
 import { Download } from "lucide-react";
 import type { ExportJobFormat, ExportJobKind, InsightsFilter } from "@agent-hub/core";
-import {
+import { DialogBody, DialogSection,
   Button,
   Dialog,
   DialogContent,
@@ -144,108 +144,142 @@ export function CreateExportDialog({
         <form onSubmit={submit} className="grid gap-5">
           <DialogHeader>
             <DialogTitle className="text-lg">Create export</DialogTitle>
-            <DialogDescription>Exports build in the background and appear in the list when ready.</DialogDescription>
+            <DialogDescription>Runs in the background.</DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="export-name">
-              Export name <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="export-name"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (error) setError("");
-              }}
-              placeholder="Enter your export name"
-              autoComplete="off"
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? "export-name-error" : undefined}
-            />
-            {error && (
-              <p id="export-name-error" className="text-destructive text-xs">
-                {error}
-              </p>
-            )}
-          </div>
+          <DialogBody>
+            <DialogSection>
+              <div className="grid gap-1.5">
+                <Label htmlFor="export-name">
+                  Export name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="export-name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (error) setError("");
+                  }}
+                  placeholder="Enter your export name"
+                  autoComplete="off"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "export-name-error" : undefined}
+                />
+                {error && (
+                  <p
+                    id="export-name-error"
+                    className="text-destructive text-xs"
+                  >
+                    {error}
+                  </p>
+                )}
+              </div>
+            </DialogSection>
 
-          <fieldset className="grid gap-3">
-            <legend className="text-muted-foreground mb-2 text-sm">These filters will be applied in your report:</legend>
-            <div className="flex flex-wrap gap-2">
-              <DateRangeDropdown
-                from={filter.from}
-                to={filter.to}
-                onChange={(from, to) => setFilter({ ...filter, from, to })}
-              />
-              <AssistantFilterDropdown
-                assistants={assistants}
-                value={filter.assistantId}
-                onChange={(assistantId) => setFilter({ ...filter, assistantId, channel: "" })}
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Choice
-                label="Aggregated"
-                value={filter.aggregate}
-                options={[
-                  { value: "daily", label: "Daily" },
-                  { value: "weekly", label: "Weekly" },
-                  { value: "monthly", label: "Monthly" },
-                ]}
-                onChange={(aggregate) => setFilter({ ...filter, aggregate: aggregate as InsightsFilter["aggregate"] })}
-              />
-              <Choice
-                label="Feedback"
-                value={filter.feedback}
-                options={[
-                  { value: "", label: "All feedback" },
-                  { value: "up", label: "Positive" },
-                  { value: "down", label: "Negative" },
-                ]}
-                onChange={(feedback) => setFilter({ ...filter, feedback: feedback as InsightsFilter["feedback"] })}
-              />
-              <Choice
-                label="Escalated"
-                value={filter.escalation}
-                options={[
-                  { value: "", label: "All escalations" },
-                  { value: "escalated", label: "Escalated" },
-                  { value: "not_escalated", label: "Not escalated" },
-                ]}
-                onChange={(escalation) =>
-                  setFilter({ ...filter, escalation: escalation as InsightsFilter["escalation"] })
-                }
-              />
-            </div>
-          </fieldset>
+            <DialogSection>
+              <fieldset className="grid gap-3">
+                <legend className="text-muted-foreground mb-2 text-sm">
+                  These filters will be applied in your report:
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  <DateRangeDropdown
+                    from={filter.from}
+                    to={filter.to}
+                    onChange={(from, to) => setFilter({ ...filter, from, to })}
+                  />
+                  <AssistantFilterDropdown
+                    assistants={assistants}
+                    value={filter.assistantId}
+                    onChange={(assistantId) =>
+                      setFilter({ ...filter, assistantId, channel: "" })
+                    }
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Choice
+                    label="Aggregated"
+                    value={filter.aggregate}
+                    options={[
+                      { value: "daily", label: "Daily" },
+                      { value: "weekly", label: "Weekly" },
+                      { value: "monthly", label: "Monthly" },
+                    ]}
+                    onChange={(aggregate) =>
+                      setFilter({
+                        ...filter,
+                        aggregate: aggregate as InsightsFilter["aggregate"],
+                      })
+                    }
+                  />
+                  <Choice
+                    label="Feedback"
+                    value={filter.feedback}
+                    options={[
+                      { value: "", label: "All feedback" },
+                      { value: "up", label: "Positive" },
+                      { value: "down", label: "Negative" },
+                    ]}
+                    onChange={(feedback) =>
+                      setFilter({
+                        ...filter,
+                        feedback: feedback as InsightsFilter["feedback"],
+                      })
+                    }
+                  />
+                  <Choice
+                    label="Escalated"
+                    value={filter.escalation}
+                    options={[
+                      { value: "", label: "All escalations" },
+                      { value: "escalated", label: "Escalated" },
+                      { value: "not_escalated", label: "Not escalated" },
+                    ]}
+                    onChange={(escalation) =>
+                      setFilter({
+                        ...filter,
+                        escalation: escalation as InsightsFilter["escalation"],
+                      })
+                    }
+                  />
+                </div>
+              </fieldset>
+            </DialogSection>
 
-          <div className="grid gap-2">
-            <span className="text-sm font-medium">Select export type</span>
-            <RadioGroup
-              aria-label="Export type"
-              value={kind}
-              onValueChange={(value) => setKind(value as ExportJobKind)}
-              options={KIND_OPTIONS}
-            />
-          </div>
+            <DialogSection>
+              <div className="grid gap-2">
+                <span className="text-sm font-medium">Select export type</span>
+                <RadioGroup
+                  aria-label="Export type"
+                  value={kind}
+                  onValueChange={(value) => setKind(value as ExportJobKind)}
+                  options={KIND_OPTIONS}
+                />
+              </div>
+            </DialogSection>
 
-          <div className="grid gap-2">
-            <span className="text-sm font-medium">Select file type</span>
-            <RadioGroup
-              aria-label="File type"
-              value={format}
-              onValueChange={(value) => setFormat(value as ExportJobFormat)}
-              options={FORMAT_OPTIONS}
-              className="flex flex-wrap gap-6"
-            />
-          </div>
+            <DialogSection>
+              <div className="grid gap-2">
+                <span className="text-sm font-medium">Select file type</span>
+                <RadioGroup
+                  aria-label="File type"
+                  value={format}
+                  onValueChange={(value) => setFormat(value as ExportJobFormat)}
+                  options={FORMAT_OPTIONS}
+                  className="flex flex-wrap gap-6"
+                />
+              </div>
+            </DialogSection>
+          </DialogBody>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button loading={pending} type="submit" disabled={pending}>
               <RollInText text={pending ? "Creating…" : "Create"} />
             </Button>
           </DialogFooter>

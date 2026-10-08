@@ -43,7 +43,7 @@ export function SettingsScreen({ state }: { state: AppState }): ReactNode {
         <Card className="flex flex-col gap-4 p-6">
           <Field
             label="Server address"
-            hint="Where “Sign in to your organization” connects. Point it at your own server to use this app with a self-hosted Ciele."
+            hint="Hosted or self-hosted server URL."
             error={error}
           >
             <Input
@@ -76,9 +76,7 @@ export function SettingsScreen({ state }: { state: AppState }): ReactNode {
           <label className="flex items-center justify-between gap-4 text-sm">
             <span className="flex flex-col gap-1">
               <span className="font-medium text-ink">Interface sounds</span>
-              <span className="text-xs text-ink-muted">
-                Soft cues on buttons, switches and outcomes, here and in the console.
-              </span>
+
             </span>
             <input
               type="checkbox"
@@ -96,10 +94,10 @@ export function SettingsScreen({ state }: { state: AppState }): ReactNode {
             <h2 className="text-sm font-semibold">This session</h2>
             <p className="text-xs text-ink-muted">
               {state.settings.mode === null
-                ? "No mode chosen yet."
+                ? "No session."
                 : state.settings.mode === "saas"
-                  ? "Signed in to your organization. Signing out clears this app's stored session for it."
-                  : "Using the local stack. Signing out returns to the welcome screen; the stack keeps running."}
+                  ? "Signing out clears this app's session."
+                  : "Signing out leaves the local stack running."}
             </p>
           </div>
           <div className="flex gap-3">

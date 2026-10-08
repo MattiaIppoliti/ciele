@@ -345,7 +345,7 @@ export function TodoList({
             </AnimatePresence>
             </ol>
           ) : (
-            <EmptyState size="sm" title="No tasks yet" description="Tasks appear here when your teammate creates a plan." icon={<ListTodo size={24} />} />
+            <EmptyState size="sm" title="No tasks yet"  icon={<ListTodo size={24} />} />
           )}
         </div>
       </AgentDisclosure>

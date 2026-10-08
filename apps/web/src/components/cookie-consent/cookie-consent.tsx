@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
+import { usePathname, useSelectedLayoutSegments } from "next/navigation";
 import { isConsolePath } from "@/lib/console-routes";
 
 /* Lazy so the ~30 KB of consent plugin + stylesheet never enters the shared
@@ -19,6 +19,7 @@ const CookieConsentUi = dynamic(
  */
 export function CookieConsent() {
   const pathname = usePathname();
+  const segments = useSelectedLayoutSegments();
 
   /* The published widget renders inside our customers' pages. Consent there is
      the host site's to collect under its own notice; showing ours in an iframe
@@ -33,7 +34,9 @@ export function CookieConsent() {
      which is where the trackers are; a signed-in admin should not be asked
      about cookies while working, and the preferences entry is off the account
      menu for the same reason (see components/app-sidebar.tsx). */
-  if (pathname && isConsolePath(pathname)) return null;
+  // / serves the public home through a rewrite for anonymous visitors and the
+  // dashboard for Members. The active route group distinguishes those views.
+  if (pathname && isConsolePath(pathname) && !segments.includes("(marketing)")) return null;
 
   return <CookieConsentUi />;
 }

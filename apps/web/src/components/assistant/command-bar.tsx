@@ -2,6 +2,8 @@
 
 // Adapted from Bencho Command bar (MIT), copyright (c) 2026 Lorenzo Cabra.
 // https://bencho.dev/licence — see command-bar.LICENSE.
+
+import { Button as CieleButton } from "@agent-hub/ui";
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Liquid } from "liquid-gooey";
 import { ArrowUp, Zap } from "lucide-react";
@@ -205,7 +207,7 @@ export function CommandBar({
                 belongs to the field, the send button is what
                 the field produces — so the mic sits still and
                 simply goes. */}
-            <button
+            <CieleButton variant="ghost" size="icon-sm"
               type="button"
               disabled={disabled}
               className="cmd-mic press-control"
@@ -218,7 +220,7 @@ export function CommandBar({
             >
               {/* Ciele: keep the Flows Agent lightning bolt in place of voice input. */}
               <Zap size={18} strokeWidth={2} aria-hidden="true" />
-            </button>
+            </CieleButton>
           </div>
         </Liquid.Item>
 
@@ -237,7 +239,7 @@ export function CommandBar({
           {/* only ever Send. At rest it is tucked inside the
               bar with nothing drawn in it — a body for the goo
               to split from, and nothing else. */}
-          <button
+          <CieleButton variant="primary" size="icon"
             type="button"
             disabled={disabled || !q.trim()}
             className="cmd-go press-control"
@@ -252,7 +254,7 @@ export function CommandBar({
             aria-label="Send to the Flows Agent"
           >
             <ArrowUp size={20} strokeWidth={2} aria-hidden="true" />
-          </button>
+          </CieleButton>
         </Liquid.Item>
       </Liquid>
 

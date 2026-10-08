@@ -20,7 +20,6 @@ import type {
 import {
   feedbackReactionById,
   feedbackReactionScore,
-  isoDay,
   messageText,
   type FeedbackReactionId,
 } from "@agent-hub/core";
@@ -28,7 +27,7 @@ import { useExitTransition } from "@/components/motion/use-exit-transition";
 
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { CirclePlay, Download, ExternalLink, MessageSquareDashed, Search, ShieldCheck, SquareCheck, WandSparkles, Wrench, X } from "lucide-react";
-import { Calendar as CalendarIcon, ChevronLeft, Headphones, HelpCircle, Info, ListFilter, Radio, ShieldAlert } from "lucide-react";
+import { ChevronLeft, Headphones, HelpCircle, Info, ListFilter, Radio, ShieldAlert } from "lucide-react";
 import { ReactionRecord } from "@/components/chat/reaction-record";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 import { toast } from "@/lib/toast";
@@ -66,7 +65,7 @@ import {
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,28 +113,10 @@ const ImproveAnswerDialog = dynamic(() =>
     (module) => module.ImproveAnswerDialog,
   ),
 );
-// The date picker's calendar carries react-day-picker (about 5 KB gzip, the
-// difference between the Inbox route passing and failing its 50 KB budget)
-// and opens only from the Filters popover, so it loads on demand. Through
-// the component's own module path: a dynamic import of the `@agent-hub/ui`
-// barrel this file already imports statically would defer nothing.
-// `ssr: false` because a popover is never open on the server.
-const Calendar = dynamic(
-  () => import("@agent-hub/ui/calendar").then((module) => module.Calendar),
-  { ssr: false },
-);
 
 interface AssistantOption {
   id: string;
   title: string;
-}
-
-/**
- * A stored yyyy-mm-dd filter bound. Pinned to UTC noon: a bare local "T12:00"
- * lands on the previous UTC day east of UTC+12.
- */
-function filterDayLabel(day: string): string {
-  return formatDay(`${day}T12:00:00Z`);
 }
 
 /** Tailwind's `lg`: below it the list and the thread share one pane. */
@@ -180,15 +161,6 @@ function traceNote(trace: {
   return notes.length > 0 ? `${notes.join("; ")}.` : undefined;
 }
 
-/** Parse a yyyy-mm-dd string to a local Date (no timezone shift). */
-function parseIsoDay(iso: string): Date | undefined {
-  if (!iso) return undefined;
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return undefined;
-  return new Date(y, m - 1, d);
-}
-
-/** shadcn Date Picker: Popover + Calendar, storing a yyyy-mm-dd string. */
 function conversationHref(id: string): string {
   return `/inbox?conversation=${encodeURIComponent(id)}`;
 }
@@ -206,51 +178,10 @@ function replaceConversationParam(id: string | null) {
   );
 }
 
-function DateField({
-  value,
-  onChange,
-  className,
-  label,
-  compact = false,
-}: {
-  compact?: boolean;
-  value: string;
-  onChange: (iso: string) => void;
-  className?: string;
-  /** Names the trigger, whose own text is only the date or "Pick a date". */
-  label: string;
+function DateField({ value, onChange, className, label, compact = false }: {
+  value: string; onChange: (iso: string) => void; className?: string; label: string; compact?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const selected = parseIsoDay(value);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button
-            variant="outline"
-            data-empty={!selected}
-            aria-label={selected ? `${label}: ${filterDayLabel(value)}` : `${label}: not set`}
-            className={`justify-start px-3 font-normal data-[empty=true]:text-muted-foreground ${className ?? ""}`}
-          />
-        }
-      >
-        <CalendarIcon className="size-4" />
-        <span className={compact ? "hidden lg:inline" : undefined}>
-          {selected ? filterDayLabel(value) : "Pick a date"}
-        </span>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={(date) => {
-            onChange(date ? isoDay(date) : "");
-            setOpen(false);
-          }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
+  return <DatePicker value={value} onChange={onChange} label={label} compact={compact} className={className} allowClear />;
 }
 
 function subjectInitials(c: InboxConversation): string {
@@ -448,15 +379,13 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
   }
   if (part.type === "button") {
     return (
-      <a
-        href={part.url}
-        target="_blank"
-        rel="noopener noreferrer"
+      <Button variant="primary" size="sm" wrap render={<a href={part.url} target="_blank" rel="noopener noreferrer" />}
+
         className="bg-primary focus-visible:ring-ring inline-flex max-w-[85%] items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
         <span className="min-w-0 [overflow-wrap:anywhere]">{part.label}</span>
         <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
-      </a>
+      </Button>
     );
   }
   if (part.type === "component") {
@@ -1098,13 +1027,13 @@ export function InboxClient({
               >
                 Filters
               </h2>
-              <button
+              <Button variant="ghost" size="sm"
                 type="button"
                 onClick={closeFilters}
                 className="text-primary hover:bg-primary/10 focus-visible:ring-ring flex items-center gap-1 rounded-md px-2 py-1 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
                 <X aria-hidden="true" className="size-4" /> Close
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-4">
@@ -1300,7 +1229,7 @@ export function InboxClient({
               size="sm"
               title="No conversations"
               icon={<MessageSquareDashed size={24} />}
-              description="Try another search or reset the filters to see recent conversations."
+
               action={<Button variant="outline" size="sm" onClick={() => { setSearch(""); setFilters(defaultInboxFilters()); }}>Reset filters</Button>}
             />
           )}
@@ -1377,7 +1306,7 @@ export function InboxClient({
           }`}
         >
           {!selected && (
-            <EmptyState className="h-full justify-center" icon={<MessageSquareDashed size={24} />} title="Select a conversation" description="Pick one from the list to view its details, or search for a specific conversation." />
+            <EmptyState className="h-full justify-center" icon={<MessageSquareDashed size={24} />} title="Select a conversation"  />
           )}
 
           {selected && (
@@ -1473,7 +1402,7 @@ export function InboxClient({
                   size="sm"
                   title="No messages"
                   icon={<MessageSquareDashed size={24} />}
-                  description="This conversation has no stored messages. Select another conversation from the list."
+
                 />
               )}
 
@@ -1533,13 +1462,13 @@ export function InboxClient({
                     </div>
                     <div className="flex flex-wrap items-center gap-2 pt-0.5">
                       {canEdit && (
-                        <button
+                        <Button variant="primary" size="sm"
                           type="button"
                           onClick={() => setImproveMessageId(m.id)}
                           className="text-primary hover:bg-primary/15 bg-primary/10 focus-visible:ring-ring inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         >
                           <WandSparkles aria-hidden="true" className="size-3.5" /> Improve Answer
-                        </button>
+                        </Button>
                       )}
                       {(m.content as ChatReplyPart[]).some(
                         (p) => p.type === "text" && p.action === "refusal"
@@ -1671,14 +1600,14 @@ export function InboxClient({
               >
                 Conversation
               </h2>
-              <button
+              <Button variant="ghost" size="icon-sm"
                 type="button"
                 aria-label="Close details"
                 onClick={dismissDetails}
                 className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex size-9 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
                 <X aria-hidden="true" className="size-4" />
-              </button>
+              </Button>
             </div>
             <Card size="sm" className="gap-3 p-4">
               <h3 className="font-semibold">Conversation details</h3>

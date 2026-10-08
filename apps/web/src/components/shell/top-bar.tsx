@@ -4,7 +4,7 @@ import { prefetchFind } from "@/lib/find-client";
 import { useState, useSyncExternalStore } from "react";
 import { Search } from "lucide-react";
 import { Badge } from "@agent-hub/ui";
-import { Hint } from "@agent-hub/ui";
+import { Button as CieleButton, Hint } from "@agent-hub/ui";
 import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import {
@@ -65,7 +65,7 @@ export function TopBar({ demo }: { demo: boolean }) {
       {/* The controls share one group. Touch styles hide the sidebar toggles
           and keep Find visible with a 44 px target on phones and tablets. */}
       <div className="flex shrink-0 items-center gap-0.5">
-        <button
+        <CieleButton variant="ghost" size="icon-sm"
           type="button"
           aria-label="Open navigation"
           data-desktop-nav-toggle
@@ -78,10 +78,10 @@ export function TopBar({ demo }: { demo: boolean }) {
           className="press-control text-muted-foreground hover:bg-muted hover:text-foreground z-10 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors md:hidden"
         >
           <SidebarToggleIcon isOpen={toggleHovered ? !navDrawerOpen : navDrawerOpen} className="size-4" />
-        </button>
+        </CieleButton>
         {navInBar && (
           <Hint label={onRail ? "Expand sidebar" : "Show sidebar"}>
-            <button
+            <CieleButton variant="ghost" size="icon-sm"
               type="button"
               aria-label={onRail ? "Expand sidebar" : "Show sidebar"}
               data-desktop-nav-toggle
@@ -96,11 +96,11 @@ export function TopBar({ demo }: { demo: boolean }) {
               className="press-control text-muted-foreground hover:bg-muted hover:text-foreground z-10 hidden size-8 shrink-0 items-center justify-center rounded-lg transition-colors md:flex"
             >
               <SidebarToggleIcon isOpen={toggleHovered} className="size-4" />
-            </button>
+            </CieleButton>
           </Hint>
         )}
         <Hint label="Find… (F)">
-          <button
+          <CieleButton variant="ghost" size="icon-sm"
             type="button"
             aria-label="Find"
             aria-keyshortcuts="F Meta+K"
@@ -112,7 +112,7 @@ export function TopBar({ demo }: { demo: boolean }) {
             }`}
           >
             <AnimatedIcon icon={Search} size={16} />
-          </button>
+          </CieleButton>
         </Hint>
       </div>
       {navInBar && (

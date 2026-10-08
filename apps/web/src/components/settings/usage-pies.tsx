@@ -32,7 +32,7 @@ function Donut({
   slices,
 }: {
   title: string;
-  description: string;
+  description?: string;
   slices: UsageSlice[];
 }) {
   const total = slices.reduce((sum, slice) => sum + slice.credits, 0);
@@ -43,7 +43,7 @@ function Donut({
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        {description && (<CardDescription>{description}</CardDescription>)}
       </CardHeader>
       <CardContent>
         {total === 0 ? (
@@ -116,7 +116,7 @@ export function UsagePies({
     <div className="mt-4 grid gap-4 @md/settings:grid-cols-2">
       <Donut
         title="Credits by resource"
-        description="Answering, indexing, and crawling, priced through one conversion."
+
         slices={byResource}
       />
       <Donut

@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@agent-hub/ui/button.css";
+@import "@agent-hub/ui/dialog.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "../components/motion/transitions.css";
@@ -84,6 +86,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-table-frame: var(--table-frame);
+  --color-table-sheet: var(--table-sheet);
   /* 4 / 6 / 8 / 12 / 16 at the base 8px: Linear's chip, tag, control, card
      and panel radii. They used to be 0.6/0.8/1.4/1.8 multiples, which put the
      card at 11.2px and the panel at 14.4px, close to a scale but on none. */
@@ -188,12 +191,9 @@
   --rail: #ededed;
   --foreground: oklch(0.145 0 0);
   --card: #f1f1f1;
-  /* The frame a table card draws its heading band and its footer on, a step
-     *darker* than the sheet the rows sit on. It cannot be `--muted`: that
-     token is the same value as `--card` in every theme here, so a tint made
-     from it composites to within a few values of the sheet and the inset
-     never reads. */
-  --table-frame: #dcdcdc;
+  /* Table chrome sits on a neutral tray; headings and cells share a lifted sheet. */
+  --table-frame: #eeeeee;
+  --table-sheet: #ffffff;
   --card-foreground: oklch(0.145 0 0);
   /* Card sheen (see the .bg-card rule below). The light theme needs a fully
      opaque white to read at all against #f1f1f1, and gets a faint bottom
@@ -308,6 +308,7 @@
   --card: #191919;
   /* Darker than the sheet, and not so dark it merges with --background. */
   --table-frame: #101010;
+  --table-sheet: #191919;
   --card-foreground: oklch(0.985 0 0);
   --card-sheen-line: rgba(255, 255, 255, 0.16);
   --card-sheen-glow: rgba(255, 255, 255, 0.07);
@@ -379,12 +380,9 @@
   --rail: #ededed;
   --foreground: oklch(0.145 0 0);
   --card: #f1f1f1;
-  /* The frame a table card draws its heading band and its footer on, a step
-     *darker* than the sheet the rows sit on. It cannot be `--muted`: that
-     token is the same value as `--card` in every theme here, so a tint made
-     from it composites to within a few values of the sheet and the inset
-     never reads. */
-  --table-frame: #dcdcdc;
+  /* Table chrome sits on a neutral tray; headings and cells share a lifted sheet. */
+  --table-frame: #eeeeee;
+  --table-sheet: #ffffff;
   --card-foreground: oklch(0.145 0 0);
   --card-sheen-line: rgba(255, 255, 255, 1);
   --card-sheen-glow: rgba(255, 255, 255, 0.7);
@@ -452,7 +450,8 @@
   --rail: #f4f5f7;
   --foreground: #17191d;
   --card: #f7f8fa;
-  --table-frame: #e8ebef;
+  --table-frame: #f0f2f5;
+  --table-sheet: #ffffff;
   --card-foreground: #17191d;
   --card-sheen-line: rgba(255, 255, 255, 0.9);
   --card-sheen-glow: rgba(255, 255, 255, 0.7);
@@ -488,6 +487,7 @@
   --foreground: oklch(0.985 0 0);
   --card: #202830;
   --table-frame: #18212b;
+  --table-sheet: #202b3a;
   --card-foreground: oklch(0.985 0 0);
   --card-sheen-line: rgba(255, 255, 255, 0.035);
   --card-sheen-glow: rgba(255, 255, 255, 0.02);
@@ -564,6 +564,7 @@ html.dark[data-app-surface="admin"]:not([data-color-palette="mist-blue"]) {
   --rail: #18191a;
   /* A table card's band stays a step below the rows it frames. */
   --table-frame: #0b0c0d;
+  --table-sheet: #141516;
   --foreground: #f7f8f8;
   --card-foreground: #f7f8f8;
   --popover-foreground: #f7f8f8;
@@ -771,14 +772,14 @@ html[data-app-surface="admin"] svg[viewBox="0 0 24 24"][fill="none"][stroke-widt
 
 /* Same contract for a small control that is not a <Button> (icon buttons made
    of a bare <button>, chips, tabs). Matches the button's own press depth. */
-.press,
-.press-control {
+.press:not(.ui-button),
+.press-control:not(.ui-button) {
   transition-property: transform, color, background-color, border-color, opacity;
   transition-duration: 100ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
-.press:active:not([data-static]):not(:focus-visible) {
+.press:not(.ui-button):active:not([data-static]):not(:focus-visible) {
   transform: scale(0.985);
 }
 
@@ -786,15 +787,15 @@ html[data-app-surface="admin"] svg[viewBox="0 0 24 24"][fill="none"][stroke-widt
    reflows against its neighbours and reads as a wobble rather than a press.
    A tonal dip is the press feedback text can actually take, and it is the
    only feedback a link gets on touch, where the hover colour never fires. */
-.press-text {
+.press-text:not(.ui-button) {
   transition: opacity 100ms ease-out, color 100ms ease-out;
 }
 
-.press-text:active {
+.press-text:not(.ui-button):active {
   opacity: 0.55;
 }
 
-.press-control:active:not([data-static]):not(:focus-visible) {
+.press-control:not(.ui-button):active:not([data-static]):not(:focus-visible) {
   transform: scale(0.96);
 }
 
@@ -802,8 +803,8 @@ html[data-app-surface="admin"] svg[viewBox="0 0 24 24"][fill="none"][stroke-widt
    removing the feedback altogether: a press that does nothing is the problem
    this utility exists to fix. */
 @media (prefers-reduced-motion: reduce) {
-  .press:active:not([data-static]):not(:focus-visible),
-  .press-control:active:not([data-static]):not(:focus-visible) {
+  .press:not(.ui-button):active:not([data-static]):not(:focus-visible),
+  .press-control:not(.ui-button):active:not([data-static]):not(:focus-visible) {
     transform: none;
     opacity: 0.7;
   }
@@ -1653,70 +1654,11 @@ scritto-text:not(:defined) {
 /* one slot, two faces, stacked so neither one moves the other */
 /* Inside the bar, and it does not travel. Fading is the whole
    of what it does — see the note in the component. */
-.command-bar .cmd-mic {
-  flex: none;
-  display: grid; place-items: center;
-  width: 36px; height: 36px;
-  border: 0; border-radius: 999px;
-  background: none;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  /* it only fades. No scale, no travel — the one thing it does
-     is stop being there. */
-  opacity: 0;
-  transition: opacity 150ms ease;}
-
+/* Liquid owns the surrounding motion; the shared button owns its paint and press. */
+.command-bar .cmd-mic { opacity: 0; }
 .command-bar .cmd-mic[data-show="true"] { opacity: 1; }
-
-.command-bar .cmd-mic:hover { color: var(--foreground); }
-
-.command-bar .cmd-go {
-  position: relative;
-  flex: none;
-  width: 38px; height: 38px;
-  border: 0; border-radius: 999px;
-  /* NOTHING AT REST. Tucked inside the bar it is a body for
-     the goo to split from and nothing more — no disc, and its
-     glyph is hidden too, so what you see is one bar. */
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-  display: grid; place-items: center;
-  opacity: 0;
-  transition:
-    background 220ms ease, color 220ms ease, opacity 160ms ease,
-    width 340ms cubic-bezier(0.24, 1.34, 0.38, 1),
-    height 340ms cubic-bezier(0.24, 1.34, 0.38, 1),
-    transform 320ms cubic-bezier(0.24, 1.34, 0.38, 1);}
-
-/* it arrives at full size, into the room the bar just made */
-.command-bar .cmd-go[data-on="true"] { opacity: 1; width: 46px; height: 46px; }
-
-/* ── THE SAME MATERIAL AS THE BAR ───────────────────────────
-   It was an ink disc with a light glyph, which made the thing
-   that splits off a different object from the thing it split
-   FROM — and the goo's whole claim is that they are one body
-   separating. Same fill as the field, ink glyph, and the seam
-   between them while they neck is now continuous. */
-.command-bar .cmd-go[data-on="true"] {
-  background: var(--muted);
-  color: var(--foreground);}
-
-/* ── TWO STATES, AND NEITHER HAS AN EDGE ────────────────────
-   Focused with an empty field, the button is the same material
-   as the bar it just split out of: present and offered, asking
-   for nothing. The first character makes it the thing you are
-   about to press, and it says so by filling — the only solid
-   object in the component, which is what a primary action is.
-
-   Filled, not outlined, in both: the only edge either state
-   can ever have is the hairline the Stroke switch draws
-   below. */
-.command-bar .cmd-go[data-armed="true"] {
-  background: var(--foreground);
-  color: var(--muted);}
-
-.command-bar .cmd-go:active { transform: scale(0.92); }
+.command-bar .cmd-go { opacity: 0; }
+.command-bar .cmd-go[data-on="true"] { opacity: 1; }
 
 /* ── the rim ─────────────────────────────────────────────────
    Every glass surface already drew a 1px ring in one flat
@@ -1812,6 +1754,48 @@ scritto-text:not(:defined) {
 .command-bar[data-reduced-motion="true"] * { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .command-bar * { transition: none; }
+}
+
+/* During a touch drag, keep the pending destination visible. */
+[data-table-drop-preview="true"] { outline: 2px solid var(--ring); outline-offset: -2px; }
+@media (pointer: coarse) {
+  [data-slot="column-drag-handle"] { min-height: 32px; min-width: 32px; }
+}
+
+/* Table controls acknowledge a pointer press without delaying keyboard work. */
+[data-slot="table-card"] .press-control:not(.ui-button) {
+  transition-property: background-color, border-color, color, opacity, scale;
+  transition-duration: 100ms, 100ms, 100ms, 100ms, 150ms;
+  transition-timing-function: ease-out;
+}
+[data-slot="table-card"] .press-control:not(.ui-button):active:not([data-static]):not(:focus-visible) {
+  transform: none;
+  translate: none;
+  scale: 0.96;
+}
+[data-slot="table-card"] .press-control:not(.ui-button):focus-visible {
+  transition-duration: 0ms;
+  scale: 1;
+}
+[data-slot="table-head"][data-column-dragging="true"] {
+  background-color: var(--table-frame);
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+[data-slot="table-cell"][data-column-dragging="true"] {
+  background-color: var(--alpha-light);
+}
+[data-table-filter-active="true"] {
+  border-color: var(--alpha-strong);
+  background-color: var(--alpha-light);
+  color: var(--foreground);
+}
+[data-slot="table-search"] input::-webkit-search-cancel-button { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="table-card"] .press-control:not(.ui-button):active:not([data-static]):not(:focus-visible) {
+    scale: 1;
+    opacity: 0.7;
+  }
 }
 
 /* Selection remains centered in the native header and body cells. */
@@ -2008,7 +1992,7 @@ scritto-text:not(:defined) {
 
 /* Overview and analytics share the theme surface ladder, including Mist Blue.
    The inset has its own fill; one outer hairline defines the card. */
-.assistant-overview, .analytics-card {
+:is(.assistant-overview, .overview-panels), .analytics-card {
   --overview-frame: var(--muted);
   --overview-frame-hover: color-mix(in oklab, var(--muted), var(--foreground) 4%);
   --overview-border: var(--alpha-medium);
@@ -2020,7 +2004,7 @@ scritto-text:not(:defined) {
   --overview-inset-gap: 0.5rem;
   --overview-inset-radius: max(0px, calc(var(--overview-radius) - var(--overview-inset-gap)));
 }
-.assistant-overview .overview-card {
+:is(.assistant-overview, .overview-panels) .overview-card {
   position: relative;
   isolation: isolate;
   padding: var(--overview-inset-gap);
@@ -2030,14 +2014,15 @@ scritto-text:not(:defined) {
   box-shadow: none;
   transition: background-color 150ms cubic-bezier(.23,1,.32,1), border-color 150ms cubic-bezier(.23,1,.32,1), transform 100ms ease-out, opacity 100ms ease-out;
 }
-.assistant-overview .overview-card-content {
+:is(.assistant-overview, .overview-panels) .overview-card-content {
   position: relative;
   isolation: isolate;
   border: 0;
   border-radius: var(--overview-inset-radius);
 }
-.assistant-overview .overview-card-content::before {
-  /* Keep paint separate so filtering the surface cannot soften the text. */
+:is(.assistant-overview, .overview-panels) .overview-card-content::before {
+  /* The outlined inset needs one contour for its border and fill. An SVG
+     squircle on the fill alone separates the two curves at the corners. */
   content: "";
   position: absolute;
   inset: 0;
@@ -2047,54 +2032,62 @@ scritto-text:not(:defined) {
   pointer-events: none;
   transition: background-color 150ms cubic-bezier(.23,1,.32,1);
 }
-.assistant-overview .overview-card-icon {
+:is(.assistant-overview, .overview-panels) .overview-card-icon {
   border: 1px solid var(--overview-border);
   background: var(--overview-icon);
   color: var(--foreground);
 }
-.assistant-overview .overview-card:focus-within {
+:is(.assistant-overview, .overview-panels) .overview-card:focus-within {
   border-color: var(--overview-border-hover);
   background-color: var(--overview-frame-hover);
 }
-.assistant-overview .overview-card:focus-within > .overview-card-content::before {
+:is(.assistant-overview, .overview-panels) .overview-card:focus-within > .overview-card-content::before {
   background-color: var(--overview-inset-hover);
 }
-.assistant-overview .overview-card-arrow {
+:is(.assistant-overview, .overview-panels) .overview-card-arrow {
   flex-shrink: 0;
   opacity: .5;
   transform: rotate(0deg);
   transition: transform 150ms cubic-bezier(.23,1,.32,1), opacity 150ms ease, color 150ms ease;
 }
-.assistant-overview .overview-card:focus-within > .overview-card-caption .overview-card-link,
-.assistant-overview .overview-card:focus-within > .overview-card-link { color: var(--foreground); }
-.assistant-overview .overview-card:focus-within > .overview-card-caption .overview-card-arrow {
+:is(.assistant-overview, .overview-panels) .overview-card:focus-within > .overview-card-caption .overview-card-link,
+:is(.assistant-overview, .overview-panels) .overview-card:focus-within > .overview-card-link { color: var(--foreground); }
+:is(.assistant-overview, .overview-panels) .overview-card:focus-within > .overview-card-caption .overview-card-arrow {
   color: var(--foreground);
   opacity: 1;
   transform: rotate(45deg);
 }
+/* A desk is one keyboard stop; focus feedback should be immediate. */
+.overview-panels .overview-card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.overview-panels .overview-card:is(:focus-visible, :has(:focus-visible)),
+.overview-panels .overview-card:is(:focus-visible, :has(:focus-visible)) > .overview-card-content::before,
+.overview-panels .overview-card:is(:focus-visible, :has(:focus-visible)) .overview-card-arrow { transition: none; }
 @media (hover: hover) {
-  .assistant-overview .overview-card:hover {
+  :is(.assistant-overview, .overview-panels) .overview-card:hover {
     border-color: var(--overview-border-hover);
     background-color: var(--overview-frame-hover);
   }
-  .assistant-overview .overview-card:hover > .overview-card-content::before { background-color: var(--overview-inset-hover); }
-  .assistant-overview .overview-card:hover > .overview-card-caption .overview-card-link,
-  .assistant-overview .overview-card:hover > .overview-card-link { color: var(--foreground); }
-  .assistant-overview .overview-card:hover > .overview-card-caption .overview-card-arrow { color: var(--foreground); opacity: 1; transform: rotate(45deg); }
+  :is(.assistant-overview, .overview-panels) .overview-card:hover > .overview-card-content::before { background-color: var(--overview-inset-hover); }
+  :is(.assistant-overview, .overview-panels) .overview-card:hover > .overview-card-caption .overview-card-link,
+  :is(.assistant-overview, .overview-panels) .overview-card:hover > .overview-card-link { color: var(--foreground); }
+  :is(.assistant-overview, .overview-panels) .overview-card:hover > .overview-card-caption .overview-card-arrow { color: var(--foreground); opacity: 1; transform: rotate(45deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .assistant-overview .overview-card,
-  .assistant-overview .overview-card-content::before,
-  .assistant-overview .overview-card-arrow { transition: none; }
+  :is(.assistant-overview, .overview-panels) .overview-card,
+  :is(.assistant-overview, .overview-panels) .overview-card-content::before,
+  :is(.assistant-overview, .overview-panels) .overview-card-arrow { transition: none; }
 }
 @media (forced-colors: active) {
-  .assistant-overview .overview-card,
-  .assistant-overview .overview-card-content,
-  .assistant-overview .overview-card-icon {
+  :is(.assistant-overview, .overview-panels) .overview-card,
+  :is(.assistant-overview, .overview-panels) .overview-card-content,
+  :is(.assistant-overview, .overview-panels) .overview-card-icon {
     background: Canvas;
     border-color: CanvasText;
   }
-  .assistant-overview .overview-card-content::before { background: Canvas; }
+  :is(.assistant-overview, .overview-panels) .overview-card-content::before { background: Canvas; }
 }
 
 /* A single visual caret follows the focused native editor without changing
@@ -2139,37 +2132,52 @@ scritto-text:not(:defined) {
 
 /* Skiper UI squicircle — gxuri, https://skiper-ui.com/v1/skiper63.
    Filter paint layers only: labels, icons, focus rings and resize edges stay
-   outside the SVG filter. The 4px inset compensates for the expanded alpha. */
+   outside the SVG filter. Frame and fill share that filter, one pixel apart;
+   an unfiltered border/ring would retain the old rounded-rectangle contour.
+   The 4px fill inset compensates for the expanded alpha. */
 html[data-app-surface="admin"][data-squircle-ready] :is(
   [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card,
-  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)
+  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto),
+  .canvas-toolbar .bar-rail
 ) {
   isolation: isolate;
   background-color: transparent;
   background-image: none;
+  border-color: transparent;
+  --squircle-frame: var(--tw-ring-color, var(--border));
 }
 html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card) {
   position: relative;
-  border-color: transparent;
 }
-/* The frame and fill need the same filtered contour. A native border or
-   Tailwind ring keeps rounded-rectangle corners around the squircle paint. */
-html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card):not(:focus-visible) {
-  --tw-ring-color: transparent;
+/* Keep intentional keyboard focus indicators, suppress only the resting ring. */
+html[data-app-surface="admin"][data-squircle-ready] :is(
+  [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card,
+  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)
+):not(:focus-visible) {
+  --tw-ring-shadow: 0 0 transparent;
 }
-html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::before {
+html[data-app-surface="admin"][data-squircle-ready] :is(
+  [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card,
+  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto),
+  .canvas-toolbar .bar-rail
+):not([data-squircle-frame="none"])::before {
   content: "";
   position: absolute;
-  inset: 2px;
+  inset: 3px;
   z-index: -2;
   border-radius: inherit;
-  background: var(--border);
+  /* Composite translucent ring colours on an opaque surface before filtering:
+     the alpha threshold otherwise leaves their old corner untouched. */
+  background:
+    linear-gradient(var(--squircle-frame), var(--squircle-frame)),
+    var(--squircle-ground, var(--card));
   filter: url(#SquiCircleFilter);
   pointer-events: none;
 }
 html[data-app-surface="admin"][data-squircle-ready] :is(
   [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card,
-  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)
+  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto),
+  .canvas-toolbar .bar-rail
 )::after {
   content: "";
   position: absolute;
@@ -2181,34 +2189,35 @@ html[data-app-surface="admin"][data-squircle-ready] :is(
   pointer-events: none;
 }
 html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::after {
-  inset: 5px;
-  background-image:
+  background-image: var(--squircle-fill-image,
     linear-gradient(90deg, transparent 25%, var(--card-sheen-line) 63%, transparent 92%),
     radial-gradient(90% 55% at 63% -5%, var(--card-sheen-glow), transparent 70%),
-    linear-gradient(180deg, transparent 45%, var(--card-sheen-shade));
-  background-size: 100% 1px, 100% 100%, 100% 100%;
+    linear-gradient(180deg, transparent 45%, var(--card-sheen-shade)));
+  background-size: var(--squircle-fill-size, 100% 1px, 100% 100%, 100% 100%);
   background-repeat: no-repeat;
 }
+html[data-app-surface="admin"][data-squircle-ready] [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto) { --squircle-ground: var(--popover); }
 html[data-app-surface="admin"][data-squircle-ready] [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)::after { background-color: var(--popover); }
-html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-rail { background: transparent; }
+/* Flush footer fills must not repaint the old bottom corners over the contour.
+   Their structural top dividers and layout remain on the content layer. */
+html[data-app-surface="admin"][data-squircle-ready] :is(
+  [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto),
+  [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto)
+) > :is([data-slot="card-footer"], [data-slot="dialog-footer"]) {
+  background-color: transparent;
+}
 html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-rail::after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  z-index: -1;
-  border-radius: inherit;
   background: var(--pane);
-  filter: url(#SquiCircleFilter);
-  pointer-events: none;
 }
 html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::before {
   inset: 4px;
   filter: url(#SquiCircleFilter);
 }
+/* Borderless bento cards keep their dotted texture without a frame or sheen,
+   including the server-painted state before the squircle filter is ready. */
+[data-slot="card"][data-squircle-frame="none"] { background-image: none; }
 @media (forced-colors: active) {
-  html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::before,
-  html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content::after { content: none; }
-  html[data-app-surface="admin"][data-squircle-ready] .assistant-overview .overview-card-content { border-color: CanvasText; }
+  html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card, [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto), .canvas-toolbar .bar-rail)::before { content: none; }
   html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card, [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto), .canvas-toolbar .bar-rail)::after {
     inset: 0;
     filter: none;
@@ -2217,6 +2226,21 @@ html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::b
   }
   html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::before { inset: 0; filter: none; }
 }
+
+/* Pastel categories from the table reference, with legible dark-theme counterparts. */
+[data-slot="table-category"][data-tone="purple"] { color: #8755ff; background: #f5f0ff; border-color: #e6dcff; }
+[data-slot="table-category"][data-tone="blue"] { color: #346bff; background: #eef3ff; border-color: #dbe5ff; }
+[data-slot="table-category"][data-tone="gray"] { color: #555; background: #f5f5f5; border-color: #e9e9e9; }
+[data-slot="table-category"][data-tone="green"] { color: #13883b; background: #eefaf3; border-color: #cef2df; }
+[data-slot="table-category"][data-tone="pink"] { color: #f01980; background: #fff0f6; border-color: #ffdaeb; }
+.dark [data-slot="table-category"][data-tone="purple"] { color: #ba9cff; background: #8755ff1a; border-color: #8755ff40; }
+.dark [data-slot="table-category"][data-tone="blue"] { color: #94b4ff; background: #346bff1a; border-color: #346bff40; }
+.dark [data-slot="table-category"][data-tone="gray"] { color: #ccc; background: #ffffff0a; border-color: #ffffff20; }
+.dark [data-slot="table-category"][data-tone="green"] { color: #85dca5; background: #13883b1a; border-color: #13883b40; }
+.dark [data-slot="table-category"][data-tone="pink"] { color: #ff92c5; background: #f019801a; border-color: #f0198040; }
+
+[data-table-option-current="true"] { color: #346bff; }
+.dark [data-table-option-current="true"] { color: #94b4ff; }
 
 /* Shared touch controls cover every console route and portal, including
    Personal/Organization Settings and Assistant configuration. Keep variants,
@@ -2473,4 +2497,80 @@ html[data-app-surface="admin"] [data-foley-scroll] {
   .find-dialog [role="option"] { min-height: 56px; padding-block: 12px; font-size: 16px; }
   .find-dialog [role="option"] > span { white-space: normal; overflow-wrap: anywhere; }
   .find-dialog [role="option"] > span > .text-xs { display: block; font-size: 13px; }
+}
+
+/* BoardUI date picker: an inset month sheet, connected range bands and editable chips. */
+.date-picker-trigger {
+  display: inline-flex; align-items: center; justify-content: flex-start; gap: 0.5rem;
+  height: 2.5rem; min-width: 0; max-width: 100%; padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border); border-radius: 0.875rem;
+  background: var(--card); color: var(--foreground); font-size: 0.875rem;
+  font-weight: 500; white-space: nowrap; cursor: pointer; outline: none;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.date-picker-trigger:hover:not(:disabled) { background: var(--muted); }
+.date-picker-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.date-picker-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.date-picker-popover {
+  max-width: calc(100vw - 1.5rem); max-height: min(48rem, var(--available-height, 80dvh));
+  overflow: auto; overscroll-behavior: contain; border-radius: 1.5rem;
+  background: var(--muted); border: 1px solid var(--border); box-shadow: var(--shadow-strong);
+}
+.date-picker-layout { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; }
+.date-picker-months { display: flex; gap: 0.5rem; }
+.date-picker-month { width: 20.375rem; padding: 1rem; border-radius: 1rem; background: var(--background); }
+.date-picker-grid { width: 100%; border-collapse: separate; border-spacing: 0 0.625rem; }
+.date-picker-grid td { text-align: center; }
+.date-picker-day { width: 2.25rem; height: 2.25rem; margin: auto; }
+.date-picker-day-face { position: relative; display: flex; height: 100%; align-items: center; justify-content: center; border-radius: 0.5rem; font-size: 0.875rem; transition: background-color 100ms ease-out; }
+.date-picker-day-hover { background: var(--muted); }
+.date-picker-day-focus { outline: 2px solid var(--ring); outline-offset: 1px; }
+.date-picker-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, #346bff 18%, transparent); opacity: 0; transition: opacity 100ms ease-out; }
+.date-picker-band-selected { opacity: 1; }
+.date-picker-day-edge { background: #346bff; color: white; }
+.date-picker-day-edge[data-start]:not([data-single]) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.date-picker-day-edge[data-end]:not([data-single]) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.date-picker-nav { display: flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.5rem; cursor: pointer; }
+.date-picker-nav[data-hovered] { background: var(--muted); }
+.date-picker-nav[data-focus-visible] { outline: 2px solid var(--ring); }
+.date-picker-nav[data-disabled] { opacity: 0.4; }
+.date-picker-presets { display: flex; width: 8.75rem; flex-shrink: 0; flex-direction: column; gap: 0.375rem; padding-top: 0.25rem; }
+.date-picker-preset { border-radius: 0.625rem; padding: 0.5rem 0.625rem; text-align: left; font-size: 0.875rem; white-space: nowrap; cursor: pointer; transition: background-color 100ms ease-out; }
+.date-picker-preset:hover, .date-picker-preset[aria-pressed=true] { background: var(--alpha-light); }
+.date-picker-preset:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.date-picker-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; padding: 0.25rem 0.75rem 0.75rem; }
+.date-picker-chip { width: 7.5rem; min-width: 0; border: 1px solid var(--border); border-radius: 0.625rem; padding: 0.5rem; font-size: 0.8125rem; font-variant-numeric: tabular-nums; background: var(--background); outline: none; }
+.date-picker-chip:focus-visible { border-color: var(--ring); outline: 2px solid var(--ring); outline-offset: 1px; }
+.date-picker-chip[aria-invalid=true] { border-color: var(--destructive); }
+html[data-app-surface="admin"] .date-picker-panel [role="button"] { min-width: 0; min-height: 0; }
+@media (max-width: 760px) {
+  .date-picker-layout, .date-picker-months { flex-direction: column; }
+  .date-picker-month { width: min(20.375rem, calc(100vw - 3.25rem)); }
+  .date-picker-presets { width: 100%; flex-direction: row; flex-wrap: wrap; }
+  .date-picker-preset { flex: 1 0 auto; }
+  .date-picker-day { width: 36px; height: 36px; }
+  .date-picker-footer { max-width: min(21.875rem, calc(100vw - 1.5rem)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .date-picker-trigger, .date-picker-day-face, .date-picker-band, .date-picker-preset { transition: none; }
+}
+
+/* Table filters and page-size controls keep the shared pill shape in every surface. */
+html[data-app-surface="admin"] [data-slot="table-card"] [data-slot="select-trigger"] {
+  border-radius: 9999px;
+}
+@media (min-width: 1024px) and (pointer: fine) {
+  .members-invite-form .ui-button { --h: 2.25rem; }
+}
+
+/* A single native contour avoids alpha-filter halos on shared cards. */
+html[data-app-surface="admin"][data-squircle-ready] [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto) {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  --tw-ring-shadow: 0 0 transparent;
+}
+html[data-app-surface="admin"][data-squircle-ready] [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto)::before,
+html[data-app-surface="admin"][data-squircle-ready] [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto)::after {
+  content: none !important;
+  filter: none;
 }

@@ -33,6 +33,19 @@ If the columns do not fit the panel, use the horizontal scrollbar to reach them.
 
 All data columns have the same minimum width of 120 pixels. The console keeps the width you select after you release the resize handle and reload the page. Selection checkboxes use the same position in the heading and every row.
 
+**Total Results** shows the number of items that match the filters. Search and the table's filters sit on its right, alongside **Undo** / **Redo**. Use **Previous**, a page number or **Next** below the table to change pages. Where available, the page-size control changes how many rows appear at once. The total counts matching items across all pages.
+
+These controls also appear on Settings usage tables, Insights data tables and Eval results. Imported documents can be filtered by file type. Recent Eval runs can be filtered by stage, assistant and dataset. Document tables have a visible **Actions** column for opening a document, copying its ID and, where permitted, excluding or restoring it.
+
+In narrow panels, filters move below the result count and history controls. Active filters keep a visible highlight. The search field has a clear button. It keeps focus in the field after you clear the query.
+
+Drag a heading handle to move a data column. Its heading and values stay highlighted while you drag. The checkbox gutter and Actions column keep their positions. Column order is saved only in your browser, separately for each member, organization and table. It does not change the server’s order. Clearing this site’s browser data resets it. Rows follow the table's sorting and pagination and cannot be reordered by dragging. Sorting applies to the result set before pagination.
+
+Focus a column drag handle and use **Alt + Left/Right** to move it. Keyboard moves apply immediately. Click a cell, then Shift-click another cell to select a rectangle. Arrow keys move between cells. Hold Shift to extend the selection. **Copy** copies selected cells as tab-separated text. **Escape** clears the cell selection.
+
+**Undo** and **Redo** restore view changes during the current visit: dragging, widths, supported sorting, column filters and selections. **Cmd/Ctrl + Z** undoes a change. **Cmd/Ctrl + Shift + Z** or **Ctrl + Y** redoes it. These shortcuts leave text fields' own editing history intact. Double-click an editable cell (or press Enter/F2) to change its value. Single-line editors keep the row height stable. **Escape** cancels the edit and returns focus to the cell. Names, linked assistants, FAQ content and alert category/issue/status use the existing permissions and save actions. Crawl URLs, source status and timestamps remain read-only. Members’ roles appear as colored categories and can be changed by authorized admins or owners. Ownership changes retain their confirmation. Record editing, deletion, ingestion and bulk actions retain their workflows and confirmations.
+
+
 ## Text changes
 
 Dashboard counters and changing action labels use Torph to keep text continuous when values change. Text remains readable before the animation library loads. The operating system's reduced-motion setting turns off these transitions.

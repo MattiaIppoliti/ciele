@@ -342,12 +342,14 @@ export interface DbTableListOptions<K extends DbTableName> {
 }
 
 /**
- * The five operations every mapped table shares. Filters and patches are
+ * The operations every mapped table shares. Filters and patches are
  * expressed in domain field names; `null` filter values match SQL NULL.
  * `update` rejects when the id doesn't exist; `delete` of a missing id is a
  * no-op (both adapters, pinned by the contract suite).
  */
 export interface DbTableAccessor<K extends DbTableName> {
+  /** Count matching rows without transferring their potentially large bodies. */
+  count(filter?: Partial<DbTableRow<K>>): Promise<number>;
   list(
     filter?: Partial<DbTableRow<K>>,
     options?: DbTableListOptions<K>

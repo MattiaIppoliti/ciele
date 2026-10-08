@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@agent-hub/ui";
 import { type CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
 import { HeroGhost } from "@/components/home/hero-ghost";
@@ -68,17 +69,11 @@ export function HeroSection() {
 
       <div className="mx-auto max-w-7xl px-6 pb-8 pt-36 md:pt-44">
         <div className="text-center">
-          <Link
-            href="/contact/sales"
-            className="press bg-background/60 hover:bg-background group mx-auto flex w-fit items-center gap-3 rounded-full border p-1 pl-4 shadow-md shadow-zinc-950/5 backdrop-blur transition-colors duration-150"
-          >
-            <span className="text-foreground text-sm">
-              Introducing Ciele, AI Teammates for your business
-            </span>
-            <span className="bg-background flex size-6 items-center justify-center rounded-full duration-300 group-hover:translate-x-0.5">
-              <ArrowRight className="size-3" />
-            </span>
-          </Link>
+          <Button variant="secondary" size="sm" wrap
+            render={<Link href="/contact/sales" />}
+            iconRight={<ArrowRight className="size-4" />} className="mx-auto max-w-full">
+            Introducing Ciele, AI Teammates for your business
+          </Button>
 
           {/* Keep the fade on static text. Animated shadow-root glyphs inside
               a background-clip:text ancestor can leave stray paint at the

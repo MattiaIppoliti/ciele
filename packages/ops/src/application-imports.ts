@@ -308,7 +308,7 @@ export interface ApplicationImportDocumentRow {
  *
  * Composed from reads both Db implementations already satisfy rather than a
  * new cross-Source query: the Import's mappings name its Sources, and the page
- * bounds the per-Source reads to 25. `assistantId` scopes it the way the
+ * bounds the per-Source reads to the selected page size. `assistantId` scopes it the way the
  * editor scopes a Source: an Import this Assistant does not answer from reads
  * as not found there.
  */
@@ -320,6 +320,8 @@ export const listApplicationImportDocumentsOp = defineOperation({
     importId: z.string().min(1),
     assistantId: z.string().min(1).optional(),
     page: z.number().int().min(1).optional(),
+    pageSize: z.union([z.literal(10), z.literal(25), z.literal(50), z.literal(100)]).optional(),
+    mimeType: z.string().max(200).optional(),
   }),
   entities: () => [],
   run: async (ctx, input) => {
@@ -330,10 +332,15 @@ export const listApplicationImportDocumentsOp = defineOperation({
     // The same rule `listApplicationOperationalState` counts by (a tombstoned
     // item has lost its Source), so the Configured imports table's "N
     // Documents" and this table's total are one number.
-    const sourceIds = (await ctx.db.listApplicationSources(applicationImport.id))
-      .map((mapping) => mapping.sourceId)
+    const mappings = (await ctx.db.listApplicationSources(applicationImport.id)).filter(mapping => mapping.sourceId);
+    const fileTypes = [...new Set(mappings.map(mapping => mapping.remoteMimeType || "__unknown"))].sort();
+    // Filter the complete lightweight mapping set before paging. Document
+    // bodies and memory counts are still read only for the selected page.
+    const sourceIds = mappings
+      .filter(mapping => !input.mimeType || (mapping.remoteMimeType || "__unknown") === input.mimeType)
+      .map(mapping => mapping.sourceId)
       .filter((sourceId): sourceId is string => Boolean(sourceId));
-    const pageSize = APPLICATION_IMPORT_DOCUMENTS_PAGE_SIZE;
+    const pageSize = input.pageSize ?? APPLICATION_IMPORT_DOCUMENTS_PAGE_SIZE;
     const total = sourceIds.length;
     const lastPage = Math.max(1, Math.ceil(total / pageSize));
     const page = Math.min(input.page ?? 1, lastPage);
@@ -384,6 +391,7 @@ export const listApplicationImportDocumentsOp = defineOperation({
       total,
       page,
       pageSize,
+      fileTypes,
     };
   },
 });

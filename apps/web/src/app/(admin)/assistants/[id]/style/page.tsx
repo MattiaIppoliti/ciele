@@ -17,7 +17,7 @@ export default async function StylePage({ params }: { params: Promise<{ id: stri
       <SectionHeading
         icon={PenTool}
         title="Style"
-        description="Change the look and feel of your assistant. Changes take effect on the next publish."
+        description="Publish to apply changes."
       />
       <div className="mt-6">
         <StyleForm assistant={assistant} canEdit={canEdit(role)} />

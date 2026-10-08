@@ -1,281 +1,156 @@
 "use client";
 
+import { SortableItem } from "./sortable-list";
 import * as React from "react";
-
+import { Redo2, Undo2 } from "lucide-react";
+import { Button } from "@agent-hub/ui";
 import { cn } from "@/lib/utils";
+import { countLabel } from "@/lib/pagination";
+import { RollInText } from "@/components/motion/roll-in-text";
+import { TableHistoryContext, useTableHistory } from "./table-history";
+import {
+  HeaderContext, ColumnDragHandle, TableViewProvider,
+  TableRowsProvider, TableCellsProvider, TableColumnsGroup, RowPosition, CellPosition, TableViewContext, useCellSelection,
+} from "./table-view";
 
-/**
- * The card a table lives in: a tinted frame with the rows as a rounded panel
- * inset in it.
- *
- * The card used to be one flat surface with a tinted band at each end, which
- * made the header and the footer read as parts of the rows rather than as the
- * chrome around them. Here the tint is the frame: the column headings and the
- * pagination sit directly on it, on all four sides, and what it wraps is the
- * data. The rows are the only thing drawn on the card surface, and they are
- * rounded, so the table reads as a sheet held in a frame.
- *
- * The frame is its own token. It was `bg-muted/40`, which cannot work: `--muted`
- * and `--card` are the same value in every theme here, so the tint composited
- * to within a few values of the sheet and the heading band, the footer and the
- * rows all read as one surface. `--table-frame` is a step *darker* than the
- * sheet in dark mode and a darker grey than it in light mode, which is what
- * makes the inset visible at all.
- *
- * Every table in the console uses it, so the frame tone, the inset and the
- * row rhythm are decided once here instead of per page.
- */
+/** Shared tray, sheet and history for every console table. */
 function TableCard({
-  footer,
-  className,
-  children,
-  ...props
-}: React.ComponentProps<"div"> & { footer?: React.ReactNode }) {
+  footer, title, results, filters, className, children, onKeyDown, ...props
+}: Omit<React.ComponentProps<"div">, "title" | "results"> & {
+  footer?: React.ReactNode;
+  title?: React.ReactNode;
+  results?: { total: number; noun: string; pluralNoun?: string };
+  filters?: React.ReactNode;
+}) {
+  const history = useTableHistory();
   return (
-    <div
-      data-slot="table-card"
-      // The padding is the frame, so how wide it is *is* how thick the band
-      // down each side reads. Keep enough room around the lighter sheet for
-      // the dark frame to read clearly, including on narrow tables.
-      className={cn(
-        "bg-table-frame w-full overflow-hidden rounded-xl border-[1.5px] p-3",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      {footer ? (
-        <div data-slot="table-card-footer">{footer}</div>
-      ) : null}
-    </div>
+    <TableHistoryContext value={history}>
+      <div data-slot="table-card" role="region" aria-label={typeof title === "string" ? title : "Results"}
+        className={cn("@container/table-card bg-table-frame relative flex w-full flex-col rounded-3xl border",
+          "[&>[data-slot=table-container]]:order-1 [&>[data-slot=table-bulk-bar]]:order-2 [&>[data-slot=table-view-footer]]:order-3 [&>[data-slot=table-card-footer]]:order-4", className)}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          if (event.defaultPrevented || !(event.metaKey || event.ctrlKey) || event.altKey) return;
+          if (event.target instanceof HTMLElement && event.target.closest("input, textarea, [contenteditable=true]")) return;
+          if (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y") {
+            event.preventDefault();
+            if (event.shiftKey || event.key.toLowerCase() === "y") history.redo();
+            else history.undo();
+          }
+        }} {...props}>
+        <div data-slot="table-toolbar" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 px-5 py-4 @3xl/table-card:grid-cols-[minmax(8rem,1fr)_auto_auto]">
+          <div className="min-w-0" data-slot="table-results">
+            <p className="text-muted-foreground text-xs font-medium">Total Results</p>
+            <p className="mt-0.5 text-sm font-medium">
+              {results ? <RollInText entrance={false} text={countLabel(results.total, results.noun, results.pluralNoun)} /> : title ?? "Results"}
+            </p>
+          </div>
+          {filters && <div data-slot="table-filters" className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 @3xl/table-card:col-span-1 @3xl/table-card:col-start-2 @3xl/table-card:row-start-1 @3xl/table-card:justify-end">{filters}</div>}
+          <div data-slot="table-history" role="group" aria-label="Table history" className="col-start-2 row-start-1 flex items-center gap-1 @3xl/table-card:col-start-3">
+            <Button variant="ghost" size="icon" aria-label="Undo table change"
+              title={history.undoLabel ? "Undo: " + history.undoLabel : "Undo table change"}
+              disabled={!history.undoLabel} onClick={history.undo}><Undo2 className="size-4" /></Button>
+            <Button variant="ghost" size="icon" aria-label="Redo table change"
+              title={history.redoLabel ? "Redo: " + history.redoLabel : "Redo table change"}
+              disabled={!history.redoLabel} onClick={history.redo}><Redo2 className="size-4" /></Button>
+          </div>
+        </div>
+        {children}
+        {/* The sheet already has a rounded border; a full-width footer rule squares its lower corners. */}
+        {footer && <div data-slot="table-card-footer" className="px-2">{footer}</div>}
+      </div>
+    </TableHistoryContext>
   );
 }
 
-/**
- * The table itself.
- *
- * Two things here are the "cells, not rows" half of the console's tables.
- * Every cell draws its right border, so a row reads as a run of cells the way
- * it does in a spreadsheet rather than as one long line of text; and `fixed`
- * switches the layout to `table-fixed`, which is what makes a `<colgroup>`
- * mean anything. In `auto` layout the browser re-measures against the content
- * on every render and a dragged width is a suggestion it ignores, so a
- * resizable table passes `fixed` and renders `useColumnWidths`'s `colGroup`.
- */
-function Table({
-  className,
-  fixed,
-  empty,
-  ...props
-}: React.ComponentProps<"table"> & {
+function Table({ className, fixed, empty, ...props }: React.ComponentProps<"table"> & {
   fixed?: boolean;
-  /**
-   * No rows. Hide column chrome and fill the panel so the empty state's
-   * guidance stays reachable on narrow screens. Saved column widths and
-   * resize handles return when there are rows again.
-   */
   empty?: boolean;
 }) {
-  return (
-    <div
-      data-slot="table-container"
-      style={{ scrollbarWidth: "auto", scrollbarColor: "auto" }}
-      // Keep the native column layout and its resize grips at every width.
-      // A visible scrollbar exposes columns that do not fit the panel.
-      className="relative w-full overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
-    >
-      <table
-        role="table"
-        data-slot="table"
-        data-empty={empty ? "true" : undefined}
+  const history = React.useContext(TableHistoryContext);
+  const sheet = (
+    <TableViewProvider empty={empty} headingType={TableHeader} bodyType={TableBody}>
+      <table role="table" data-slot="table" data-empty={empty ? "true" : undefined}
         className={cn(
           "w-[var(--table-width,100%)] caption-bottom text-sm",
           "[&:has(col[data-column=actions])_td:not([colspan]):last-child>div]:w-max [&:has(col[data-column=actions])_td:not([colspan]):last-child>div]:ml-auto",
-          // The last cell has no neighbour to divide it from, and the border
-          // would sit on the card's own edge.
           "[&_td:not(:last-child)]:border-r [&_th:not(:last-child)]:border-r",
           "data-[empty=true]:w-full data-[empty=true]:[&_col]:!w-auto data-[empty=true]:[&_thead]:hidden",
-          fixed && "table-fixed",
-          className,
-        )}
-        {...props}
-      />
-    </div>
+          fixed && "table-fixed", className,
+        )} {...props} />
+    </TableViewProvider>
   );
+  const body = React.Children.toArray(props.children).find((child) => React.isValidElement(child) && child.type === TableBody);
+  const total = !empty && React.isValidElement<{ children?: React.ReactNode }>(body) ? React.Children.toArray(body.props.children).length : 0;
+  return history ? sheet : <TableCard title={props["aria-label"]} results={{ total, noun: "result" }}>{sheet}</TableCard>;
 }
 
-/**
- * The column headings, on the card's frame rather than on a band of their own.
- *
- * They keep a rule under them, and that is not a leftover. The frame is
- * `bg-muted/40` and the sheet below it is `bg-card`, which would be the whole
- * separation if those were two colours, and they are not: `--card` and
- * `--muted` are the same value in both themes (`#191919` dark, `#f1f1f1`
- * light), so the tint composites to within a few values of the sheet and the
- * inset never reads. Without the rule there is nothing at all between the
- * headings and the first row. Change this only after the two tokens differ.
- */
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return (
-    <thead
-      role="rowgroup"
-      data-slot="table-header"
-      // The rule goes on the cells rather than on the row, beside the `border-r`
-      // dividers they already carry, so both edges of a heading come from one
-      // element and cannot disagree about colour.
-      //
-      // `bg-transparent` on the cells, explicitly: `TableRow` paints the card
-      // surface onto every cell it has, and the heading row is a `TableRow`
-      // too, so without this the headings sit on the panel instead of on the
-      // frame. It wins on specificity (`thead tr > *` over `tr > *`).
-      className={cn(
-        "[&_tr]:border-b-0 [&_tr>*]:bg-transparent",
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <HeaderContext value={true}>
+    <thead role="rowgroup" data-slot="table-header" className={cn("[&_tr>*]:bg-table-sheet", className)} {...props} />
+  </HeaderContext>;
 }
 
-/**
- * The rows, as the inset panel.
- *
- * The rounding is on the four corner *cells*, not on this element: a `tbody`
- * ignores `border-radius` under `border-collapse: collapse`, and
- * `overflow-hidden` on it clips nothing. A cell rounds when it carries its
- * own background, which is why `TableRow` paints the card surface onto its
- * cells rather than onto itself.
- *
- * `xl`, the card's own radius, rather than the `lg` that was here. A sheet
- * cornered tighter than the frame holding it reads as square next to it, and
- * the two corners are 8px apart on screen with nothing between them to
- * explain the difference.
- */
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
-  return (
-    <tbody
-      role="rowgroup"
-      data-slot="table-body"
-      className={cn(
-        "[&_tr:last-child]:border-0",
-        "[&>tr:first-child>*:first-child]:rounded-tl-xl",
-        "[&>tr:first-child>*:last-child]:rounded-tr-xl",
-        "[&>tr:last-child>*:first-child]:rounded-bl-xl",
-        "[&>tr:last-child>*:last-child]:rounded-br-xl",
-        // The rule between the headings and the sheet, drawn on the sheet's
-        // own top edge as an inset shadow rather than as the header's
-        // `border-bottom`. The table is `border-collapse: collapse`, where a
-        // border ignores `border-radius`: the straight rule ran on past the
-        // corner while the sheet curved away underneath it, leaving a 11px
-        // stub over the frame at each end. A shadow is clipped to the
-        // border-box shape, so it follows the corner round.
-        "[&>tr:first-child>*]:shadow-[inset_0_1px_0_0_var(--border)]",
-        className,
-      )}
-      {...props}
-    />
-  );
+function TableBody({ className, children, ...props }: React.ComponentProps<"tbody">) {
+  return <TableRowsProvider role="rowgroup" data-slot="table-body" className={cn("[&_tr:last-child]:border-0", className)} {...props}>{children}</TableRowsProvider>;
 }
 
-/**
- * A row.
- *
- * Its surface is painted on its **cells**, not on the row: the panel's corners
- * are rounded by the corner cells, and a cell only rounds when the colour it
- * is clipping is its own. Hover and selection follow the same route, or they
- * would paint under a `bg-card` cell and never be seen.
- */
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
-  return (
-    <tr
-      role="row"
-      data-slot="table-row"
-      // `group/row` is what the hover controls inside a cell hang off, chiefly
-      // `TableOpenCell`: they answer the row being hovered, not the cell.
-      className={cn(
-        "group/row border-b transition-colors",
-        "[&>*]:bg-card [&>*]:transition-colors",
-        "hover:[&>*]:bg-muted/50 has-aria-expanded:[&>*]:bg-muted/50",
-        "data-[state=selected]:[&>*]:bg-muted",
-        className,
-      )}
-      {...props}
-    />
-  );
+function TableRow({ className, children, ...props }: React.ComponentProps<"tr">) {
+  const row = React.useContext(RowPosition);
+  const header = React.useContext(HeaderContext);
+  const rowProps = { role: "row", "data-slot": "table-row", "data-table-row-id": row?.id,
+    className: cn("group/row border-b transition-colors [&>*]:bg-table-sheet [&>*]:transition-colors",
+      "hover:[&>*]:bg-accent has-aria-expanded:[&>*]:bg-accent data-[state=selected]:[&>*]:bg-ring/5", className), ...props };
+  const cells = <TableCellsProvider>{children}</TableCellsProvider>;
+  if (header) return <TableColumnsGroup {...rowProps}>{cells}</TableColumnsGroup>;
+  return <tr {...rowProps}>{cells}</tr>;
 }
 
-/**
- * A column header.
- *
- * It carried a per-column glyph for a while. Twelve columns each with a small
- * grey icon is twelve things competing with the words next to them, and none
- * of the icons said anything the word did not; the row now reads as a row.
- * What a header carries instead is behaviour, see `TableColumnHeader`.
- */
 function TableHead({ className, children, ...props }: React.ComponentProps<"th">) {
-  return (
-    <th
-      role="columnheader"
-      data-slot="table-head"
-      // `relative` so a column's resize handle can sit on its right border.
-      className={cn(
-        "text-muted-foreground relative h-11 px-4 text-left align-middle text-xs font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0",
-        className,
-      )}
-      {...props}
-    >
-      <div data-table-value>{children}</div>
-    </th>
-  );
+  const position = React.useContext(CellPosition);
+  const view = React.useContext(TableViewContext);
+  const headProps = { role: "columnheader", "data-slot": "table-head",
+    "data-table-column-index": position?.movable ? position.original : undefined,
+    "data-column-dragging": position && view?.draggingColumn === position.original || undefined,
+    className: cn("text-muted-foreground relative h-12 px-4 text-left align-middle text-sm font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0", className), ...props };
+  const value = <div data-table-value className={cn("flex items-center gap-2", className?.includes("text-right") && "justify-end")}>
+    <ColumnDragHandle />{children}
+  </div>;
+  if (position?.movable) return <SortableItem as="th" value={String(position.original)} animateLayout={view?.animateColumns} {...headProps} onDragStart={() => view?.beginColumnDrag(position.original)} onDragEnd={view?.endColumnDrag}>{value}</SortableItem>;
+  return <th {...headProps}>{value}</th>;
 }
 
-function TableCell({ className, children, ...props }: React.ComponentProps<"td">) {
-  return (
-    <td
-      role="cell"
-      data-slot="table-cell"
-      // `relative` for the hover controls a cell can carry (the Open pill),
-      // `overflow-hidden` because a fixed-layout column that its content can
-      // push wider is not a column the reader resized.
-      className={cn(
-        "relative overflow-hidden text-ellipsis px-3 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
-        className,
-      )}
-      {...props}
-    >
-      <div data-table-value>{children}</div>
-    </td>
-  );
+function TableCell({ className, children, onPointerDown, onPointerEnter, onKeyDown, onDoubleClick, onEdit, ...props }: React.ComponentProps<"td"> & { onEdit?: () => void }) {
+  const selection = useCellSelection((props.colSpan ?? 1) > 1);
+  return <td role="cell" data-slot="table-cell"
+    data-cell-selected={selection.selected || undefined} data-cell-focus={selection.focus || undefined}
+    data-column-dragging={selection.dragging || undefined}
+    data-cell-editable={onEdit ? "true" : undefined}
+    tabIndex={selection.selectable || onEdit ? 0 : undefined}
+    onDoubleClick={(event) => {
+      onDoubleClick?.(event);
+      if (!event.defaultPrevented && !(event.target instanceof Element && event.target.closest("a, button, input, textarea, select, [role=checkbox], [role=switch]"))) onEdit?.();
+    }}
+    onPointerDown={(event) => { onPointerDown?.(event); if (!event.defaultPrevented) selection.onPointerDown(event); }}
+    onPointerEnter={(event) => { onPointerEnter?.(event); if (!event.defaultPrevented) selection.onPointerEnter(event); }}
+    onKeyDown={(event) => { onKeyDown?.(event);
+      if (!event.defaultPrevented && event.target === event.currentTarget && onEdit && ["Enter", "F2"].includes(event.key)) { event.preventDefault(); onEdit(); }
+      if (!event.defaultPrevented) selection.onKeyDown(event); }}
+    className={cn(
+      "relative overflow-hidden text-ellipsis px-4 py-3.5 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 outline-none",
+      "data-[cell-selected=true]:!bg-ring/5 data-[cell-focus=true]:shadow-[inset_0_0_0_2px_var(--ring)] focus-visible:shadow-[inset_0_0_0_2px_var(--ring)]",
+      className,
+    )} {...props}>
+    <div data-table-value>{children}</div>
+  </td>;
 }
 
-/**
- * The row of controls in a table's trailing Actions cell.
- *
- * Filled circles rather than bare ghost icons. At the right edge of a wide
- * table these are the only controls a reader aims at without a label to read,
- * and an icon drawn straight onto the sheet gives the pointer nothing to land
- * on: the target is the glyph, which is 16px, instead of the 32px the button
- * actually accepts. The circle draws the target it already has.
- *
- * A control marked `data-destructive` is tinted before it is pressed. Delete
- * is the one action in the row that cannot be undone, and telling the reader
- * that after the click is telling them too late.
- */
 function TableActions({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="table-actions"
       className={cn(
         "flex items-center justify-end gap-1.5",
-        // The caller owns the buttons; this is what makes them read as one set.
-        "[&_button]:text-foreground/70 [&_button]:size-8 [&_button]:rounded-full",
-        "[&_button]:bg-foreground/[0.06] [&_button:hover]:bg-foreground/[0.12]",
-        "[&_button:hover]:text-foreground",
-        "[&_button[data-destructive]]:bg-destructive/10",
-        "[&_button[data-destructive]]:text-destructive",
-        "[&_button[data-destructive]:hover]:bg-destructive/20",
-        // A disabled control keeps its circle but stops claiming to be one.
-        "[&_button:disabled]:bg-foreground/[0.03] [&_button:disabled]:text-foreground/30",
         className,
       )}
       {...props}
@@ -283,13 +158,4 @@ function TableActions({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-export {
-  Table,
-  TableActions,
-  TableCard,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-};
+export { Table, TableActions, TableCard, TableHeader, TableBody, TableHead, TableRow, TableCell };

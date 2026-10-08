@@ -12,10 +12,9 @@ import { createApiKeyAction, deleteApiKeyAction, revokeApiKeyAction } from "@/ap
 import { MorphingModal } from "@/components/motion/morphing-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { Table, type TableColumn } from "@/components/motion/table";
-import { TablePagination } from "@/components/ui/table-pagination";
 import { capitalize, formatDay } from "@/lib/format";
 import { canAssignApiKeyRole } from "@/lib/rbac";
-import {
+import { DialogBody, DialogFooter,
   Badge,
   Button,
   CopyFeedbackIcon,
@@ -134,7 +133,7 @@ export function ApiKeysClient({
           <span className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-full">
             <KeyRound className="text-foreground/70 size-4" />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate font-medium"><RollInText text={key.name} /></p>
             <p className="text-muted-foreground truncate font-mono text-xs">
               <RollInText text={`${key.secretHint}…`} />
@@ -145,6 +144,8 @@ export function ApiKeysClient({
     },
     {
       key: "role",
+      filterOptions: ALL_ROLES.map((value) => ({ value, label: capitalize(value) })),
+      filterLabel: "Role",
       header: "Role",
       accessor: (key) => key.role,
       sortable: true,
@@ -181,6 +182,9 @@ export function ApiKeysClient({
     },
     {
       key: "status",
+      filterOptions: [{ value: "active", label: "Active" }, { value: "revoked", label: "Revoked" }],
+      filterLabel: "Status",
+      filterAnyLabel: "All statuses",
       header: "Status",
       accessor: (key) => (key.revokedAt ? "revoked" : "active"),
       sortable: true,
@@ -194,7 +198,7 @@ export function ApiKeysClient({
     },
     {
       key: "actions",
-      header: <span className="sr-only">Actions</span>,
+      header: "Actions",
       align: "right",
       width: "12%",
       cell: (key) =>
@@ -230,78 +234,82 @@ export function ApiKeysClient({
   return (
     <div className={`mt-8 ${isPending ? "opacity-70" : ""}`}>
       <SectionTimeline>
-      <TimelineSection title="API keys">
-<div className="space-y-4">
-      <Button
-        variant="outline"
-        render={
-          <a href={apiDocumentationUrl} target="_blank" rel="noopener noreferrer" />
-        }
-      >
-        <BookOpen className="size-4" /> API Documentation
-      </Button>
-      {demo && (
-        <Badge variant="secondary" className="text-muted-foreground">
-          Demo mode, API keys are not persisted
-        </Badge>
-      )}
-
-      <Table
-        data={keys}
-        columns={columns}
-        getRowId={(key) => key.id}
-        emptyState="No API keys yet, you'll need one to call the API, CLI or MCP server."
-        footer={<TablePagination total={keys.length} noun="API key" />}
-      />
-</div>
-      </TimelineSection>
-
-      <TimelineSection title="Create key" boxed>
-        <p className="text-muted-foreground text-sm">
-          The secret is shown only once. Store it somewhere safe.
-        </p>
-        <form onSubmit={handleCreate} className="mt-3 flex flex-wrap gap-2">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Key name (e.g. CI deploy)"
-            aria-label="Key name"
-            autoComplete="off"
-            className="w-64"
-            required
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger
+        <TimelineSection title="API keys">
+          <div className="space-y-4">
+            <Button
+              variant="outline"
               render={
-                <Button
-                  type="button"
-                  variant="outline"
-                  aria-label={`Role: ${role}`}
+                <a
+                  href={apiDocumentationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 />
               }
             >
-              <RollInText text={capitalize(role)} />
-              <ChevronDown className="size-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {assignable.map((r) => (
-                <DropdownMenuItem
-                  key={r}
-                  className="capitalize"
-                  onClick={() => setRole(r)}
-                >
-                  {r}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button type="submit" disabled={isPending}>
-            <Plus className="size-4" />
-            <RollInText text={isPending ? "Creating…" : "Create key"} />
-          </Button>
-        </form>
-      </TimelineSection>
+              <BookOpen className="size-4" /> API Documentation
+            </Button>
+            {demo && (
+              <Badge variant="secondary" className="text-muted-foreground">
+                Demo mode, API keys are not persisted
+              </Badge>
+            )}
 
+            <Table
+              title="API keys"
+              data={keys}
+              columns={columns}
+              getRowId={(key) => key.id}
+              emptyState="No API keys yet, you'll need one to call the API, CLI or MCP server."
+              noun="API key"
+            />
+          </div>
+        </TimelineSection>
+
+        <TimelineSection title="Create key" boxed>
+          <p className="text-muted-foreground text-sm">
+            The secret is shown only once. Store it somewhere safe.
+          </p>
+          <form onSubmit={handleCreate} className="mt-3 flex flex-wrap gap-2">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Key name (e.g. CI deploy)"
+              aria-label="Key name"
+              autoComplete="off"
+              className="w-64"
+              required
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-label={`Role: ${role}`}
+                  />
+                }
+              >
+                <RollInText text={capitalize(role)} />
+                <ChevronDown className="size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {assignable.map((r) => (
+                  <DropdownMenuItem
+                    key={r}
+                    className="capitalize"
+                    onClick={() => setRole(r)}
+                  >
+                    {r}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button loading={isPending} type="submit" disabled={isPending}>
+              <Plus className="size-4" />
+              <RollInText text={isPending ? "Creating…" : "Create key"} />
+            </Button>
+          </form>
+        </TimelineSection>
       </SectionTimeline>
 
       {/* The one and only time the plaintext secret exists client-side. */}
@@ -314,57 +322,67 @@ export function ApiKeysClient({
         }}
         placement="bottom"
       >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+        <div className="ui-modal-stack">
+          <div className="ui-modal-header flex items-start gap-3">
             <div className="bg-muted rounded-full p-2">
               <AnimatedIcon icon={KeyRound} size={20} />
             </div>
             <div>
               <h3 className="text-base font-semibold">Your new API key</h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                Copy it now: this is the only time it will be shown. Only a
-                hash is stored on our side.
-              </p>
             </div>
           </div>
-          <button
-            type="button"
-            aria-label="Copy API key"
-            onClick={() =>
-              mintedSecret &&
-              void copyText("minted", mintedSecret).then((ok) => {
-                if (ok) {
-                  setSecretCopied(true);
-                  setConfirmingClose(false);
-                  toast.success("API key copied");
-                } else {
-                  toast.error("Could not copy the key");
-                }
-              })
-            }
-            className="press-control bg-muted hover:bg-muted/70 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left font-mono text-sm break-all transition-colors"
-          >
-            {mintedSecret}
-            <CopyFeedbackIcon copied={isCopied("minted")} className="size-4 shrink-0" />
-          </button>
-          {confirmingClose && (
-            <p role="alert" className="text-destructive text-sm">
-              You have not copied this key. Once you close this, it cannot be
-              shown again.
+          <DialogBody>
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+              Copy it now: this is the only time it will be shown. Only a hash
+              is stored on our side.
             </p>
-          )}
-          <div className="flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              wrap
+              type="button"
+              aria-label="Copy API key"
+              onClick={() =>
+                mintedSecret &&
+                void copyText("minted", mintedSecret).then((ok) => {
+                  if (ok) {
+                    setSecretCopied(true);
+                    setConfirmingClose(false);
+                    toast.success("API key copied");
+                  } else {
+                    toast.error("Could not copy the key");
+                  }
+                })
+              }
+              className="bg-muted hover:bg-muted/70 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left font-mono text-sm break-all transition-colors"
+            >
+              {mintedSecret}
+              <CopyFeedbackIcon
+                copied={isCopied("minted")}
+                className="size-4 shrink-0"
+              />
+            </Button>
+            {confirmingClose && (
+              <p role="alert" className="text-destructive text-sm">
+                You have not copied this key. Once you close this, it cannot be
+                shown again.
+              </p>
+            )}
+          </DialogBody>
+          <DialogFooter className="flex justify-end">
             {secretCopied || confirmingClose ? (
               <Button
                 variant={secretCopied ? "default" : "destructive"}
                 onClick={closeSecret}
               >
-                <RollInText text={secretCopied ? "Done" : "Close without copying"} />
+                <RollInText
+                  text={secretCopied ? "Done" : "Close without copying"}
+                />
               </Button>
             ) : (
               <Button onClick={() => setConfirmingClose(true)}>Done</Button>
             )}
-          </div>
+          </DialogFooter>
         </div>
       </MorphingModal>
 
@@ -375,21 +393,25 @@ export function ApiKeysClient({
         placement="bottom"
       >
         {dialog && (
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
+          <div className="ui-modal-stack">
+            <div className="ui-modal-header flex items-start gap-3">
               <div className="bg-destructive/10 text-destructive rounded-full p-2">
                 <AnimatedIcon icon={dialog.icon} size={20} />
               </div>
               <div>
                 <h3 className="text-base font-semibold">
-                  {dialog.verb} &ldquo;<RollInText text={dialog.name} />&rdquo;?
+                  {dialog.verb} &ldquo;
+                  <RollInText text={dialog.name} />
+                  &rdquo;?
                 </h3>
-                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                  {dialog.body}
-                </p>
               </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <DialogBody>
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                {dialog.body}
+              </p>
+            </DialogBody>
+            <DialogFooter className="flex justify-end gap-2">
               <Button
                 variant="ghost"
                 onClick={() => setPending(null)}
@@ -398,13 +420,14 @@ export function ApiKeysClient({
                 Cancel
               </Button>
               <Button
+                loading={isPending}
                 variant="destructive"
                 onClick={handleConfirm}
                 disabled={isPending}
               >
                 <dialog.buttonIcon className="size-4" /> {dialog.verb} key
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         )}
       </MorphingModal>

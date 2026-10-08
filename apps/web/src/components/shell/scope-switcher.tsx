@@ -12,7 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@agent-hub/ui";
-import { Hint } from "@agent-hub/ui";
+import { Button as CieleButton, Hint } from "@agent-hub/ui";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
 import { useShellAssistants } from "@/components/shell/shell-provider";
@@ -177,13 +177,13 @@ export function ScopeSwitcher() {
         <>
           <div className="bg-border h-5 w-px shrink-0" />
           <Hint label="Back to all assistants">
-            <Link
-              href="/"
+            <CieleButton variant="ghost" size="icon-sm" render={<Link href="/" />}
+
               aria-label="Back to all assistants"
               className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
             >
               <AnimatedIcon icon={X} size={16} />
-            </Link>
+            </CieleButton>
           </Hint>
         </>
       )}

@@ -15,7 +15,7 @@ import {
   sourceDocumentStatus,
   sourceDocumentStatusLabel,
 } from "@agent-hub/core";
-import { Badge } from "@agent-hub/ui";
+import { Button as CieleButton, Badge } from "@agent-hub/ui";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { CopyIdButton } from "@/components/assistant/copy-id-button";
@@ -165,15 +165,13 @@ export function DocumentView({
             {tab === "content" && (
               <div className="space-y-3">
                 {source.originalObjectPath && (
-                  <a
-                    href={`/api/knowledge/originals/${encodeURIComponent(source.id)}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <CieleButton variant="secondary" size="sm" render={<a href={`/api/knowledge/originals/${encodeURIComponent(source.id)}`} target="_blank" rel="noreferrer" />}
+
                     className="hover:bg-accent press inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
                   >
                     <Download className="size-4" />
                     Download original
-                  </a>
+                  </CieleButton>
                 )}
                 <DocumentContent
                   {...contentHead(document.body)}

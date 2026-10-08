@@ -226,9 +226,7 @@ function ConfigFields({
         <p className="font-semibold">
           Destination email <span className="text-destructive">*</span>
         </p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Escalation emails will be sent to this address.
-        </p>
+
         <Input
           value={config.destinationEmail ?? ""}
           onChange={(e) => onChange({ destinationEmail: e.target.value })}
@@ -250,9 +248,7 @@ function ConfigFields({
     return (
       <div>
         <p className="font-semibold">Phone number</p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Users will be offered this number for direct support.
-        </p>
+
         {/* A country name plus a phone number do not share a phone-width row:
             the country picker takes its own row until there is space. */}
         <div className="mt-2 grid gap-3 sm:grid-cols-[11rem_1fr]">
@@ -303,9 +299,7 @@ function ConfigFields({
     return (
       <div>
         <p className="font-semibold">Live chat URL</p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Users will be connected to this live chat.
-        </p>
+
         <Input
           {...primary}
           value={config.url ?? ""}
@@ -350,9 +344,7 @@ function ConfigFields({
           <p className="font-semibold">
             API Endpoint URL <span className="text-destructive">*</span>
           </p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            The URL where the form data will be sent
-          </p>
+
           <Input
             {...primary}
             value={config.url ?? ""}
@@ -677,7 +669,6 @@ function FieldEditor({
 
 /** "Conversation Data" tab: which conversation details ride along the escalation. */
 function ConversationDataTab({
-  kind,
   data,
   onChange,
 }: {
@@ -688,9 +679,7 @@ function ConversationDataTab({
   return (
     <div className="mt-8">
       <p className="font-semibold">Conversation data to include</p>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Directly add conversation details to your {CHANNEL_KINDS[kind].label}.
-      </p>
+
       <div className="mt-4 space-y-3">
         {CONVERSATION_DATA_ITEMS.map((item) => (
           <Label
@@ -727,9 +716,7 @@ function AvailabilityTab({
     <div className="mt-8 space-y-5">
       <div>
         <p className="font-semibold">Availability</p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Customize weekly hours and special dates when availability changes.
-        </p>
+
       </div>
 
       <div
@@ -821,15 +808,18 @@ export function ChannelPanel({
 }) {
   const [state, setState] = useState<ChannelPanelState>(initial);
   const [tab, setTab] = useState<EditTab>("setup");
-  const slideDirection = useSlidingDirection(tab, ALL_EDIT_TABS.map((tab) => tab.key));
+  const slideDirection = useSlidingDirection(
+    tab,
+    ALL_EDIT_TABS.map((tab) => tab.key),
+  );
   // Create-step draft
   const [name, setName] = useState(
-    initial.mode === "new" ? CHANNEL_KINDS[initial.kind].defaultName : ""
+    initial.mode === "new" ? CHANNEL_KINDS[initial.kind].defaultName : "",
   );
   const [config, setConfig] = useState<SupportChannelConfig>({});
   // Edit-step draft
   const [channel, setChannel] = useState<SupportChannel | null>(
-    initial.mode === "edit" ? initial.channel : null
+    initial.mode === "edit" ? initial.channel : null,
   );
   // The open field editor's working copy; its id is the field being edited.
   const [fieldDraft, setFieldDraft] = useState<ChannelFormField | null>(null);
@@ -841,12 +831,18 @@ export function ChannelPanel({
   const baseId = useId();
   const nameInputId = `${baseId}-name`;
   const configInputId = `${baseId}-config`;
-  const { width, resizing, beginResize, resizeTo, widthTransition, containerRef } =
-    useResizableWidth({
-      defaultWidth: PANEL_MIN_WIDTH,
-      minWidth: PANEL_MIN_WIDTH,
-      maxWidth: PANEL_MAX_WIDTH,
-    });
+  const {
+    width,
+    resizing,
+    beginResize,
+    resizeTo,
+    widthTransition,
+    containerRef,
+  } = useResizableWidth({
+    defaultWidth: PANEL_MIN_WIDTH,
+    minWidth: PANEL_MIN_WIDTH,
+    maxWidth: PANEL_MAX_WIDTH,
+  });
 
   useModalFocus(true, containerRef);
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
@@ -856,7 +852,7 @@ export function ChannelPanel({
   const newKind = state.mode === "new" ? state.kind : null;
   const defaultForm = useMemo(
     () => (newKind ? defaultFormFor(newKind) : []),
-    [newKind]
+    [newKind],
   );
 
   // The form as it would be saved: an open field editor's draft counts.
@@ -879,7 +875,9 @@ export function ChannelPanel({
     state.mode === "new" &&
     (name !== CHANNEL_KINDS[state.kind].defaultName ||
       Object.values(config).some((value) =>
-        Array.isArray(value) ? value.length > 0 : value !== undefined && value !== ""
+        Array.isArray(value)
+          ? value.length > 0
+          : value !== undefined && value !== "",
       ));
   const dirty = editDirty || newDirty;
 
@@ -913,7 +911,10 @@ export function ChannelPanel({
       if (event.key !== "Escape" || event.defaultPrevented) return;
       // The discard confirm is a dialog of its own: Escape there closes it,
       // and must not also reach the panel underneath.
-      if (document.querySelectorAll('[role="dialog"], [role="alertdialog"]').length > 1) {
+      if (
+        document.querySelectorAll('[role="dialog"], [role="alertdialog"]')
+          .length > 1
+      ) {
         return;
       }
       onEscape();
@@ -928,7 +929,9 @@ export function ChannelPanel({
     if (state.mode === "edit") setTab("setup");
     // After the commit, so a tab switched just now has mounted the input.
     requestAnimationFrame(() => {
-      document.getElementById(target === "name" ? nameInputId : configInputId)?.focus();
+      document
+        .getElementById(target === "name" ? nameInputId : configInputId)
+        ?.focus();
     });
   }
 
@@ -942,7 +945,7 @@ export function ChannelPanel({
     const meta = CHANNEL_KINDS[kind];
     if (meta.requiresTicketing) {
       toast.info(
-        `${meta.label} requires the ticketing integration, coming in a later iteration.`
+        `${meta.label} requires the ticketing integration, coming in a later iteration.`,
       );
       return;
     }
@@ -1031,7 +1034,7 @@ export function ChannelPanel({
 
   const { props: nameErrorProps, text: nameError } = fieldError(
     nameInputId,
-    error?.target === "name" ? error.message : null
+    error?.target === "name" ? error.message : null,
   );
   const configError = error?.target === "config" ? error.message : null;
 
@@ -1039,7 +1042,7 @@ export function ChannelPanel({
     <>
       {confirmDeleteModal}
       <div
-        className="fixed inset-0 z-40 bg-black/20"
+        className="ui-modal-overlay fixed inset-0 z-40"
         onClick={requestClose}
         aria-hidden
       />
@@ -1051,7 +1054,7 @@ export function ChannelPanel({
         aria-busy={isPending || undefined}
         tabIndex={-1}
         style={{ width }}
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l bg-background shadow-strong ${widthTransition} ${
+        className={`ui-modal ui-modal-drawer fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col ${widthTransition} ${
           isPending ? "opacity-70" : ""
         }`}
       >
@@ -1070,23 +1073,26 @@ export function ChannelPanel({
             Inert while a create or save is in flight, so the draft cannot
             change under the request carrying it. */}
         <div
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className="channel-modal-content min-h-0 flex-1 overflow-y-auto overscroll-contain"
           inert={isPending}
         >
           {/* ---- Select channel type ---- */}
           {state.mode === "select" && (
-            <div className="p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold">
-                  Select channel type
-                </h2>
+            <div className="ui-modal-stack">
+              <div className="ui-modal-header flex items-center justify-between">
+                <h2 className="text-2xl font-semibold">Select channel type</h2>
                 <Hint label="Close">
-                  <Button variant="ghost" size="icon" aria-label="Close" onClick={requestClose}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Close"
+                    onClick={requestClose}
+                  >
                     <X className="size-5" />
                   </Button>
                 </Hint>
               </div>
-              <div className="mt-6 space-y-3">
+              <div className="ui-modal-body space-y-3">
                 {CHANNEL_KIND_ORDER.map((kind) => {
                   const meta = CHANNEL_KINDS[kind];
                   const Icon = meta.icon;
@@ -1117,15 +1123,17 @@ export function ChannelPanel({
 
           {/* ---- New channel (setup step) ---- */}
           {state.mode === "new" && (
-            <div className="flex min-h-full flex-col p-6">
-              <div className="flex items-center gap-3">
-                <button
+            <div className="ui-modal-stack min-h-full">
+              <div className="ui-modal-header flex items-center gap-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
                   type="button"
                   onClick={requestBack}
                   className="text-primary flex shrink-0 items-center gap-1 text-sm font-semibold hover:opacity-70"
                 >
                   <ChevronLeft className="size-4" /> Back
-                </button>
+                </Button>
                 <h2 className="min-w-0 text-2xl font-semibold break-words">
                   New {CHANNEL_KINDS[state.kind].label} channel
                 </h2>
@@ -1142,55 +1150,54 @@ export function ChannelPanel({
                 </Hint>
               </div>
 
-              {/* Library's pill rail, so a section switcher looks the same
+              <div className="ui-modal-body">
+                {/* Library's pill rail, so a section switcher looks the same
                   everywhere; it scrolls with edge chevrons when the drawer is
                   narrower than its tabs. */}
-              <Tabs value="setup" className="mt-6">
-                <TabsList aria-label="Channel setup mode">
-                  {tabsForKind(state.kind).map((t) => (
-                    <TabsTrigger
-                      key={t.key}
-                      value={t.key}
-                      disabled={t.key !== "setup"}
-                    >
-                      {t.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+                <Tabs value="setup" className="mt-6">
+                  <TabsList aria-label="Channel setup mode">
+                    {tabsForKind(state.kind).map((t) => (
+                      <TabsTrigger
+                        key={t.key}
+                        value={t.key}
+                        disabled={t.key !== "setup"}
+                      >
+                        {t.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
 
-              <div className="mt-8 space-y-6">
-                <div>
-                  <p className="font-semibold">Channel name</p>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    The button label in the escalation menu.
-                  </p>
-                  <Input
-                    {...nameErrorProps}
-                    value={name}
-                    aria-label="Channel name"
-                    autoComplete="off"
-                    onChange={(e) => {
-                      setName(e.target.value);
+                <div className="mt-8 space-y-6">
+                  <div>
+                    <p className="font-semibold">Escalation button label</p>
+
+                    <Input
+                      {...nameErrorProps}
+                      value={name}
+                      aria-label="Channel name"
+                      autoComplete="off"
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        clearError();
+                      }}
+                      className="mt-2 h-11"
+                    />
+                    {nameError}
+                  </div>
+                  <ConfigFields
+                    kind={state.kind}
+                    config={config}
+                    primaryId={configInputId}
+                    error={configError}
+                    onChange={(patch) => {
+                      setConfig({ ...config, ...patch });
                       clearError();
                     }}
-                    className="mt-2 h-11"
                   />
-                  {nameError}
                 </div>
-                <ConfigFields
-                  kind={state.kind}
-                  config={config}
-                  primaryId={configInputId}
-                  error={configError}
-                  onChange={(patch) => {
-                    setConfig({ ...config, ...patch });
-                    clearError();
-                  }}
-                />
               </div>
-
-              <div className="mt-auto pt-10">
+              <div className="ui-modal-footer mt-auto">
                 {defaultForm.length > 0 && (
                   <div className="text-muted-foreground mb-6 text-sm">
                     <p>Default fields that will be created:</p>
@@ -1208,11 +1215,14 @@ export function ChannelPanel({
                   </div>
                 )}
                 <Button
+                  loading={isPending}
                   className="h-11 w-full rounded-xl font-semibold"
                   onClick={() => create(state.kind)}
                   disabled={isPending}
                 >
-                  <RollInText text={isPending ? "Creating…" : "Create channel"} />
+                  <RollInText
+                    text={isPending ? "Creating…" : "Create channel"}
+                  />
                 </Button>
               </div>
             </div>
@@ -1220,8 +1230,8 @@ export function ChannelPanel({
 
           {/* ---- Edit channel ---- */}
           {state.mode === "edit" && channel && (
-            <div className="p-6">
-              <div className="flex items-start justify-between gap-3">
+            <div className="ui-modal-stack">
+              <div className="ui-modal-header flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
                     {canEdit ? "Edit escalation channel" : "Escalation channel"}
@@ -1233,180 +1243,207 @@ export function ChannelPanel({
                 <div className="flex shrink-0 items-center gap-2">
                   {canEdit && (
                     <Button
+                      loading={isPending}
                       className="h-10 rounded-xl px-4 font-semibold"
                       onClick={saveAndClose}
                       disabled={isPending}
                     >
-                      <RollInText text={isPending ? "Saving…" : "Save & Close"} />
+                      <RollInText
+                        text={isPending ? "Saving…" : "Save & Close"}
+                      />
                     </Button>
                   )}
                   <Hint label="Close">
-                    <Button variant="ghost" size="icon" aria-label="Close" onClick={requestClose}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Close"
+                      onClick={requestClose}
+                    >
                       <X className="size-5" />
                     </Button>
                   </Hint>
                 </div>
               </div>
-              <span className="bg-primary/10 text-primary mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold">
-                {(() => {
-                  const Icon = CHANNEL_KINDS[channel.kind].icon;
-                  return <Icon className="size-4" />;
-                })()}
-                {CHANNEL_KINDS[channel.kind].label}
-              </span>
+              <div className="ui-modal-body">
+                <span className="bg-primary/10 text-primary mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold">
+                  {(() => {
+                    const Icon = CHANNEL_KINDS[channel.kind].icon;
+                    return <Icon className="size-4" />;
+                  })()}
+                  {CHANNEL_KINDS[channel.kind].label}
+                </span>
 
-              <Tabs
-                value={tab}
-                onValueChange={(value) => setTab(value as EditTab)}
-                className="mt-5"
-              >
-                <TabsList aria-label="Channel settings section">
-                  {tabsForKind(channel.kind).map((t) => (
-                    <TabsTrigger key={t.key} value={t.key}>
-                      {t.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+                <Tabs
+                  value={tab}
+                  onValueChange={(value) => setTab(value as EditTab)}
+                  className="mt-5"
+                >
+                  <TabsList aria-label="Channel settings section">
+                    {tabsForKind(channel.kind).map((t) => (
+                      <TabsTrigger key={t.key} value={t.key}>
+                        {t.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
 
-              {/* A Viewer can open a channel to read it; the fieldset disables
+                {/* A Viewer can open a channel to read it; the fieldset disables
                   every native control under it, so nothing looks editable. */}
-              <SlidingPanel activeKey={tab} direction={slideDirection} sizing="flow"><fieldset disabled={!canEdit} className="min-w-0">
-                {tab === "setup" && (
-                  <div className="mt-8 space-y-6">
-                    <div>
-                      <p className="font-semibold">Channel name</p>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        The button label in the escalation menu.
-                      </p>
-                      <Input
-                        {...nameErrorProps}
-                        value={channel.name}
-                        aria-label="Channel name"
-                        autoComplete="off"
-                        onChange={(e) => {
-                          patchChannel({ name: e.target.value });
-                          clearError();
-                        }}
-                        className="mt-2 h-11"
-                      />
-                      {nameError}
-                    </div>
-                    <ConfigFields
-                      kind={channel.kind}
-                      config={channel.config}
-                      primaryId={configInputId}
-                      error={configError}
-                      onChange={(patch) => {
-                        patchChannel({ config: { ...channel.config, ...patch } });
-                        clearError();
-                      }}
-                    />
-                  </div>
-                )}
+                <SlidingPanel
+                  activeKey={tab}
+                  direction={slideDirection}
+                  sizing="flow"
+                >
+                  <fieldset disabled={!canEdit} className="min-w-0">
+                    {tab === "setup" && (
+                      <div className="mt-8 space-y-6">
+                        <div>
+                          <p className="font-semibold">Escalation button label</p>
 
-                {tab === "form" && (
-                  <div className="mt-6 rounded-xl border bg-card p-4">
-                    <input
-                      value={channel.formTitle}
-                      onChange={(e) => patchChannel({ formTitle: e.target.value })}
-                      aria-label="Form title"
-                      autoComplete="off"
-                      className="focus:ring-ring/50 -mx-2 w-full rounded-lg px-2 py-1 text-2xl font-semibold outline-none focus:ring-2"
-                    />
-
-                    <div className="mt-5 space-y-5">
-                      {channel.form.map((field) =>
-                        fieldDraft?.id === field.id ? (
-                          <FieldEditor
-                            key={field.id}
-                            draft={fieldDraft}
-                            setDraft={setFieldDraft}
-                            onCancel={() => setFieldDraft(null)}
-                            onUpdate={() => {
-                              patchChannel({ form });
-                              setFieldDraft(null);
+                          <Input
+                            {...nameErrorProps}
+                            value={channel.name}
+                            aria-label="Channel name"
+                            autoComplete="off"
+                            onChange={(e) => {
+                              patchChannel({ name: e.target.value });
+                              clearError();
                             }}
-                            onDelete={() => {
-                              patchChannel({
-                                form: channel.form.filter((f) => f.id !== field.id),
-                              });
-                              setFieldDraft(null);
-                            }}
+                            className="mt-2 h-11"
                           />
-                        ) : (
-                          <button
-                            key={field.id}
-                            type="button"
-                            aria-label={`Edit ${field.label} field`}
-                            onClick={() => openField(field)}
-                            className="hover:bg-muted/40 -m-2 block w-[calc(100%+1rem)] rounded-xl p-2 text-left transition-colors"
-                          >
-                            <FieldPreview field={field} />
-                          </button>
-                        )
-                      )}
-                    </div>
-
-                    {canEdit && (
-                      <div className="mt-5 flex justify-end">
-                        <Button
-                          variant="outline"
-                          className="h-9 px-4 font-semibold"
-                          onClick={() => {
-                            const field = newFormField();
-                            patchChannel({ form: [...form, field] });
-                            setFieldDraft(field);
+                          {nameError}
+                        </div>
+                        <ConfigFields
+                          kind={channel.kind}
+                          config={channel.config}
+                          primaryId={configInputId}
+                          error={configError}
+                          onChange={(patch) => {
+                            patchChannel({
+                              config: { ...channel.config, ...patch },
+                            });
+                            clearError();
                           }}
-                        >
-                          Add field +
-                        </Button>
+                        />
                       </div>
                     )}
 
-                    <div className="bg-foreground/90 text-background mt-6 rounded-xl py-3 text-center text-base font-semibold">
-                      Submit
-                    </div>
+                    {tab === "form" && (
+                      <div className="mt-6 rounded-xl border bg-card p-4">
+                        <input
+                          value={channel.formTitle}
+                          onChange={(e) =>
+                            patchChannel({ formTitle: e.target.value })
+                          }
+                          aria-label="Form title"
+                          autoComplete="off"
+                          className="focus:ring-ring/50 -mx-2 w-full rounded-lg px-2 py-1 text-2xl font-semibold outline-none focus:ring-2"
+                        />
 
-                    <div className="mt-6">
-                      <p className="font-semibold">Message shown after submission</p>
-                      <Textarea
-                        value={channel.confirmationMessage}
-                        aria-label="Message shown after submission"
-                        onChange={(e) =>
-                          patchChannel({ confirmationMessage: e.target.value })
+                        <div className="mt-5 space-y-5">
+                          {channel.form.map((field) =>
+                            fieldDraft?.id === field.id ? (
+                              <FieldEditor
+                                key={field.id}
+                                draft={fieldDraft}
+                                setDraft={setFieldDraft}
+                                onCancel={() => setFieldDraft(null)}
+                                onUpdate={() => {
+                                  patchChannel({ form });
+                                  setFieldDraft(null);
+                                }}
+                                onDelete={() => {
+                                  patchChannel({
+                                    form: channel.form.filter(
+                                      (f) => f.id !== field.id,
+                                    ),
+                                  });
+                                  setFieldDraft(null);
+                                }}
+                              />
+                            ) : (
+                              <button
+                                key={field.id}
+                                type="button"
+                                aria-label={`Edit ${field.label} field`}
+                                onClick={() => openField(field)}
+                                className="hover:bg-muted/40 -m-2 block w-[calc(100%+1rem)] rounded-xl p-2 text-left transition-colors"
+                              >
+                                <FieldPreview field={field} />
+                              </button>
+                            ),
+                          )}
+                        </div>
+
+                        {canEdit && (
+                          <div className="mt-5 flex justify-end">
+                            <Button
+                              variant="outline"
+                              className="h-9 px-4 font-semibold"
+                              onClick={() => {
+                                const field = newFormField();
+                                patchChannel({ form: [...form, field] });
+                                setFieldDraft(field);
+                              }}
+                            >
+                              Add field +
+                            </Button>
+                          </div>
+                        )}
+
+                        <div className="bg-foreground/90 text-background mt-6 rounded-xl py-3 text-center text-base font-semibold">
+                          Submit
+                        </div>
+
+                        <div className="mt-6">
+                          <p className="font-semibold">
+                            Message shown after submission
+                          </p>
+                          <Textarea
+                            value={channel.confirmationMessage}
+                            aria-label="Message shown after submission"
+                            onChange={(e) =>
+                              patchChannel({
+                                confirmationMessage: e.target.value,
+                              })
+                            }
+                            placeholder="Thanks! Your request has been sent, we'll get back to you soon."
+                            rows={3}
+                            className="mt-2"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {tab === "conversation" && (
+                      <ConversationDataTab
+                        kind={channel.kind}
+                        data={channel.conversationData}
+                        onChange={(patch) =>
+                          patchChannel({
+                            conversationData: {
+                              ...channel.conversationData,
+                              ...patch,
+                            },
+                          })
                         }
-                        placeholder="Thanks! Your request has been sent, we'll get back to you soon."
-                        rows={3}
-                        className="mt-2"
                       />
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                {tab === "conversation" && (
-                  <ConversationDataTab
-                    kind={channel.kind}
-                    data={channel.conversationData}
-                    onChange={(patch) =>
-                      patchChannel({
-                        conversationData: { ...channel.conversationData, ...patch },
-                      })
-                    }
-                  />
-                )}
-
-                {tab === "availability" && (
-                  <AvailabilityTab
-                    availability={channel.availability}
-                    onChange={(patch) =>
-                      patchChannel({
-                        availability: { ...channel.availability, ...patch },
-                      })
-                    }
-                  />
-                )}
-              </fieldset></SlidingPanel>
+                    {tab === "availability" && (
+                      <AvailabilityTab
+                        availability={channel.availability}
+                        onChange={(patch) =>
+                          patchChannel({
+                            availability: { ...channel.availability, ...patch },
+                          })
+                        }
+                      />
+                    )}
+                  </fieldset>
+                </SlidingPanel>
+              </div>
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { CHAT_CARD, CHAT_CARD_HOVER } from "@/components/chat/chat-card";
@@ -240,16 +241,16 @@ export function WidgetEscalation({
       style={{ ["--brand" as string]: brandColor }}
     >
       <div className="flex items-center justify-between px-4 py-4">
-        <button
+        <CieleButton variant="secondary" size="sm"
           type="button"
           onClick={back}
           className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors hover:bg-muted"
         >
           <ChevronLeft className="size-4" strokeWidth={3} /> Back
-        </button>
-        <button type="button" aria-label="Hide chat" onClick={onHide} className="rounded p-1.5 hover:bg-muted">
+        </CieleButton>
+        <CieleButton variant="ghost" size="icon-sm" type="button" aria-label="Hide chat" onClick={onHide} className="rounded p-1.5 hover:bg-muted">
           <X className="size-5" />
-        </button>
+        </CieleButton>
       </div>
       <div className="flex-1 overflow-y-auto px-5 pb-6">
         {screen === "loading" && (
@@ -309,14 +310,14 @@ export function WidgetEscalation({
                   </div>
                 </div>
               ))}
-              <button
+              <CieleButton loading={submitting} variant="primary" size="sm"
                 type="submit"
                 disabled={submitting}
                 className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                style={{ backgroundColor: brandColor }}
+
               >
                 {submitting ? "Sending…" : "Submit"}
-              </button>
+              </CieleButton>
             </form>
           </>
         )}

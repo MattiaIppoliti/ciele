@@ -1275,3 +1275,20 @@ export const searchKnowledgeOp = defineOperation({
     return { query: input.query, assistantId: input.assistantId ?? null, results };
   },
 });
+
+/** Rename the label without changing crawl identity, state, or indexed content. */
+export const renameSourceOp = defineOperation({
+  name: "knowledge.sources.rename",
+  capability: "edit",
+  effect: "write",
+  input: z.object({ sourceId: z.string().min(1), name: z.string().trim().min(1).max(500), assistantId: z.string().min(1).optional() }),
+  entities: (_input, result: { assistantIds: string[] }) => [{ kind: "knowledgeHub" as const },
+    ...result.assistantIds.map((assistantId) => ({ kind: "assistantEditor" as const, assistantId }))],
+  run: async (ctx, { sourceId, name, assistantId }) => {
+    const { source } = await requireSource(ctx, sourceId);
+    await requireLinkedSource(ctx, source, assistantId);
+    await ctx.db.updateSource(sourceId, { name: name.trim() });
+    const links = await ctx.db.listSourceAssistantLinks(sourceId);
+    return { assistantIds: links.map((link) => link.assistantId) };
+  },
+});

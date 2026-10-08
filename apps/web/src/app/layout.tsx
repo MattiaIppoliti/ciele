@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { devKey } from "@/lib/dev-key";
 import type { Metadata, Viewport } from "next";
-import { Sorts_Mill_Goudy, Host_Grotesk, Geist_Mono } from "next/font/google";
+import { Sorts_Mill_Goudy, Host_Grotesk, Geist_Mono, Inter } from "next/font/google";
 import localFont from "next/font/local";
 import { AuthHintScript } from "@/components/auth-hint-script";
 import { ThemeScript } from "@/components/theme-script";
@@ -21,6 +21,8 @@ const hostGrotesk = Host_Grotesk({
   variable: "--font-host-grotesk",
   subsets: ["latin"],
 });
+
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
 
 // Display / headings. Sorts Mill Goudy ships a single 400 weight (+ italic).
 const sortsMillGoudy = Sorts_Mill_Goudy({
@@ -52,7 +54,7 @@ export const metadata: Metadata = {
     title: "Ciele — AI teammates for your organization",
     description:
       "Build, test and publish AI teammates that answer from your organization's knowledge.",
-    url: "/home",
+    url: "/",
     images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
@@ -95,7 +97,7 @@ export default function RootLayout({
       // next-themes sets the theme class on <html> before hydration (admin
       // shell only), so the server-rendered attribute won't match.
       suppressHydrationWarning
-      className={`${hostGrotesk.variable} ${sortsMillGoudy.variable} ${solitus.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${hostGrotesk.variable} ${inter.variable} ${sortsMillGoudy.variable} ${solitus.variable} ${geistMono.variable} h-full antialiased`}
     >
       {/* `h-dvh`, not `h-screen`: on iOS/Android `100vh` is the *largest*
           viewport (URL bar hidden), so a `h-screen` app shell hides its own

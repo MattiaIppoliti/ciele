@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@agent-hub/ui/button.css";
+@import "@agent-hub/ui/dialog.css";
 
 /*
  * The desktop app owns a small component set of its own rather than importing

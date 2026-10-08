@@ -100,9 +100,7 @@ export function ExportsClient({
       <SlotPortal id={TOP_BAR_SLOT}>
         <CreateExportDialog assistants={assistants} defaultFilter={defaultFilter} />
       </SlotPortal>
-      <p className="text-muted-foreground shrink-0 px-4 pt-4 text-sm sm:px-6">
-        Exports build in the background and appear here when ready.
-      </p>
+
       <p role="status" aria-live="polite" className="sr-only">
         {active > 0
           ? `${formatCount(active)} export${active === 1 ? "" : "s"} in progress…`
@@ -116,7 +114,7 @@ export function ExportsClient({
           <EmptyState
             className="rounded-xl border border-dashed"
             title="No exports yet"
-            description="Request an export to generate a downloadable report of your analytics."
+
           />
         ) : (
           <ul className="divide-border overflow-hidden rounded-xl border divide-y">

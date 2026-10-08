@@ -7,7 +7,7 @@ export default function ThemeSettingsPage() {
     <SettingsPanel
       icon={Palette}
       title="Theme"
-      description="Set the appearance and colors for your Ciele workspace."
+
     >
       <ThemeSettingsClient />
     </SettingsPanel>

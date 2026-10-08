@@ -9,23 +9,20 @@ import { useTheme } from "@/components/theme-provider";
 const NOOP_SUBSCRIBE = () => () => {};
 
 const THEME_OPTIONS = [
-  { value: "light", label: "Light", description: "Use the light appearance.", icon: Sun },
-  { value: "dark", label: "Dark", description: "Use the dark appearance.", icon: Moon },
-  { value: "system", label: "System", description: "Follow your device setting.", icon: Monitor },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
 ] as const;
 
 const PALETTE_OPTIONS = [
   {
     value: "midnight",
     label: "Midnight",
-    description: "Ciele's current neutral dark colors.",
     colors: ["#121212", "#191919"],
   },
   {
     value: "mist-blue",
     label: "Mist Blue",
-    description:
-      "Blue-grey dark surfaces with Midnight contrast and action colors.",
     colors: ["#151B23", "#202830"],
   },
 ] as const;
@@ -76,9 +73,7 @@ export function ThemeSettingsClient() {
     <div className="mt-6">
       <SectionTimeline>
       <TimelineSection title="Theme mode" boxed>
-          <p className="text-muted-foreground mb-4 text-sm">
-          Choose light, dark, or follow your device&apos;s appearance setting.
-          </p>
+
           <div
             className="grid gap-2 @xl/settings:grid-cols-3"
             role="radiogroup"
@@ -87,7 +82,7 @@ export function ThemeSettingsClient() {
               handleRadioKeyDown(event, THEME_OPTIONS, selectedTheme, setTheme)
             }
           >
-            {THEME_OPTIONS.map(({ value, label, description, icon: Icon }) => {
+            {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
               const selected = selectedTheme === value;
               return (
                 <button
@@ -100,7 +95,7 @@ export function ThemeSettingsClient() {
                   tabIndex={selected ? 0 : -1}
                   data-foley-toggle="switch"
                   onClick={() => setTheme(value)}
-                  className={`relative flex min-h-28 flex-col items-start gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+                  className={`relative flex min-h-24 flex-col items-start gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
                     selected
                       ? "border-primary bg-primary/5"
                       : "border-border hover:bg-muted/60"
@@ -114,9 +109,7 @@ export function ThemeSettingsClient() {
                       {label}
                       {selected && <Check className="size-3.5" aria-hidden="true" />}
                     </span>
-                    <span className="text-muted-foreground mt-0.5 block text-xs">
-                      {description}
-                    </span>
+
                   </span>
                 </button>
               );
@@ -125,9 +118,7 @@ export function ThemeSettingsClient() {
         </TimelineSection>
 
       <TimelineSection title="Color palette" boxed>
-          <p className="text-muted-foreground mb-4 text-sm">
-            Mist Blue keeps Midnight text and action contrast over blue-grey dark surfaces.
-          </p>
+
           <div
             className="grid gap-2 @md/settings:grid-cols-2"
             role="radiogroup"
@@ -136,7 +127,7 @@ export function ThemeSettingsClient() {
               handleRadioKeyDown(event, PALETTE_OPTIONS, selectedPalette, setColorPalette)
             }
           >
-            {PALETTE_OPTIONS.map(({ value, label, description, colors }) => {
+            {PALETTE_OPTIONS.map(({ value, label, colors }) => {
               const selected = selectedPalette === value;
               return (
                 <button
@@ -149,7 +140,7 @@ export function ThemeSettingsClient() {
                   tabIndex={selected ? 0 : -1}
                   data-foley-toggle="switch"
                   onClick={() => setColorPalette(value)}
-                  className={`flex min-h-24 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+                  className={`flex min-h-20 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
                     selected
                       ? "border-primary bg-primary/5"
                       : "border-border hover:bg-muted/60"
@@ -169,9 +160,7 @@ export function ThemeSettingsClient() {
                       {label}
                       {selected && <Check className="size-3.5" aria-hidden="true" />}
                     </span>
-                    <span className="text-muted-foreground mt-0.5 block text-xs">
-                      {description}
-                    </span>
+
                   </span>
                 </button>
               );

@@ -39,7 +39,7 @@ export function OnboardingForm() {
           required
         />
       </div>
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button loading={isPending} type="submit" className="w-full" disabled={isPending}>
         {isPending ? "Creating…" : "Create organization"}
       </Button>
       <p className="text-muted-foreground text-center text-xs">

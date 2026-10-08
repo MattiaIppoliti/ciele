@@ -1624,6 +1624,10 @@ export function describeDbContract(
         const finished = await runs.update(run.id, { status: "completed", results: [] });
         expect(finished.datasetName).toBe(dataset.name);
         expect(finished.examples).toEqual(examples);
+        const filter = { organizationId: ctx.organizationId, assistantId: assistant.id, datasetId: dataset.id, stage: "answer" as const };
+        expect(await runs.count(filter)).toBe(1);
+        expect(await runs.count({ ...filter, stage: "classifier" })).toBe(0);
+        expect(await runs.count({ ...filter, error: null })).toBe(1);
         const all = await runs.list({ organizationId: ctx.organizationId }, { orderBy: "createdAt", ascending: true });
         const offset = all.findIndex((item) => item.id === run.id);
         expect(await runs.list({ organizationId: ctx.organizationId }, { orderBy: "createdAt", ascending: true, limit: 1, offset })).toEqual([finished]);
@@ -7640,6 +7644,17 @@ export function describeDbContract(
         expect(raised.type).toBe("knowledge");
       });
 
+      it("edits alert labels and maintains system dates through resolve/reopen", async () => {
+        const original = await db.raiseAlert(ctx.organizationId, { type: "crawl", title: "Original", detail: "Detail", sourceKey: `edit:${shortId()}` });
+        const edited = await db.updateAlert(original.id, { type: "integration", title: "Edited", detail: "Updated detail", status: "resolved" }, ctx.userId);
+        expect(edited).toMatchObject({ type: "integration", title: "Edited", detail: "Updated detail", status: "resolved", detectedAt: original.detectedAt, sourceKey: original.sourceKey, resolvedBy: ctx.userId });
+        expect(edited.resolvedAt).not.toBeNull();
+        const reopened = await db.updateAlert(original.id, { status: "active" }, ctx.userId);
+        expect(reopened).toMatchObject({ status: "active", resolvedAt: null, resolvedBy: null });
+        const pinned = createOrgPinnedDb(db, ctx.foreignOrganizationId);
+        await expect(pinned.updateAlert(original.id, { title: "Foreign" })).rejects.toMatchObject({ reason: "cross_org" });
+      });
+
       it("refreshes the active alert with the same sourceKey instead of duplicating", async () => {
         const sourceKey = `contract-alert:${shortId()}`;
         const activeBefore = await db.countActiveAlerts(ctx.organizationId);
@@ -9002,6 +9017,17 @@ export function describeDbContract(
           { orderBy: "name", ascending: true, limit: 1 }
         );
         expect(limited.map((s) => s.name)).toEqual(["Order A"]);
+      });
+
+      it("counts the complete filtered set and pins counts to the caller's organization", async () => {
+        await newSkill({ name: "Count A", description: "count-fixture" });
+        await newSkill({ name: "Count B", description: "count-fixture" });
+        const filter = { organizationId: ctx.organizationId, description: "count-fixture" };
+        expect(await skills().list(filter, { limit: 1 })).toHaveLength(1);
+        expect(await skills().count(filter)).toBe(2);
+        expect(await skills().count({ organizationId: ctx.missingOrganizationId })).toBe(0);
+        const pinned = createOrgPinnedDb(db, ctx.organizationId).table("skills");
+        expect(await pinned.count({ ...filter, organizationId: ctx.foreignOrganizationId })).toBe(2);
       });
 
       it("gets by id, returning null for a missing id", async () => {

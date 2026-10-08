@@ -12,6 +12,7 @@ import {
   parseColumnWidths,
 } from "@/lib/table-columns";
 import { cn } from "@/lib/utils";
+import { useTableChange } from "./table-history";
 
 /**
  * Resizable columns, the way a spreadsheet-shaped table has them: a handle on
@@ -174,6 +175,7 @@ export function useColumnWidths(
       onResize: (width) => setDraft({ ...widths, [columnKey]: width }),
       onCommit: (width) => commit(columnKey, width),
       onReset: () => commit(columnKey, column.width),
+      resetWidth: column.width,
       onActive: (on: boolean) => setActive(on ? columnKey : null),
     };
   };
@@ -189,7 +191,8 @@ export function useColumnWidths(
       const actionCells = table.querySelectorAll("tbody tr > td:not([colspan]):last-child > div");
       for (const cell of actionCells) observer.observe(cell);
       // Measure controls rather than the allocated cell to avoid width feedback.
-      const actions = Math.max(64, ...Array.from(actionCells, (cell) => {
+      // Keep the heading readable even when a row only offers one icon.
+      const actions = Math.max(MIN_COLUMN_WIDTH, ...Array.from(actionCells, (cell) => {
         const controls = Array.from(cell.querySelectorAll<HTMLElement>("button, a"));
         return controls.reduce((sum, control) => sum + control.offsetWidth, 24)
           + Math.max(0, controls.length - 1) * 6;
@@ -206,11 +209,12 @@ export function useColumnWidths(
   }, [totalWidth]);
 
   const colGroup = (
-    <colgroup ref={measureColumns}>
+    <colgroup ref={measureColumns} data-table-id={tableId}>
       {layout.map((column) => (
         <col
           key={column.key}
           data-column={column.key}
+          data-fixed={column.fixed || column.key === "actions" || undefined}
           style={{ width: `${widths[column.key]}px` }}
           // Deliberately fainter than the 10%-white row divider it sits
           // under. At 10% the tint matched the dividers and the column came
@@ -229,6 +233,7 @@ export function useColumnWidths(
 }
 
 export interface ColumnResizeHandleProps {
+  resetWidth?: number;
   /** Names the column in the handle's accessible label. */
   label: string;
   /** Current width in CSS pixels. */
@@ -265,6 +270,7 @@ export interface ColumnResizeHandleProps {
  * current.
  */
 export function ColumnResizeHandle({
+  resetWidth,
   label,
   value,
   minWidth,
@@ -274,11 +280,13 @@ export function ColumnResizeHandle({
   onReset,
   onActive,
 }: ColumnResizeHandleProps) {
+  const commit = useTableChange(value, onCommit, "Resize " + label + " column");
   const descriptionId = React.useId();
   const grabOffset = React.useRef(0);
   const left = React.useRef(0);
   /** The last width the drag produced, so the release knows what to store. */
   const lastWidth = React.useRef<number | null>(null);
+  const startWidth = React.useRef(value);
   const [dragging, setDragging] = React.useState(false);
   const [tableHeight, setTableHeight] = React.useState<number | null>(null);
 
@@ -307,6 +315,7 @@ export function ColumnResizeHandle({
     const cell = event.currentTarget.closest("th");
     if (!cell) return;
     const rect = cell.getBoundingClientRect();
+    startWidth.current = value;
     left.current = rect.left;
     grabOffset.current = grabOffsetFor(rect.right, event.clientX);
     measure(event);
@@ -338,7 +347,7 @@ export function ColumnResizeHandle({
     onActive(false);
     // A press with no move has nothing to remember, and committing the
     // starting width would write a layout the reader never chose.
-    if (lastWidth.current !== null) onCommit(lastWidth.current);
+    if (lastWidth.current !== null) commit(lastWidth.current, startWidth.current);
     lastWidth.current = null;
   }
 
@@ -368,7 +377,7 @@ export function ColumnResizeHandle({
           event.preventDefault();
           event.stopPropagation();
           onResize(nextWidth);
-          onCommit(nextWidth);
+          commit(nextWidth);
         }}
         onPointerEnter={enter}
         onPointerLeave={leave}
@@ -376,7 +385,7 @@ export function ColumnResizeHandle({
         onPointerMove={move}
         onPointerUp={end}
         onPointerCancel={end}
-        onDoubleClick={onReset}
+        onDoubleClick={() => resetWidth === undefined ? onReset() : commit(resetWidth)}
         className="group/grip absolute inset-y-0 -right-1 z-20 flex w-2 cursor-col-resize touch-none justify-center"
       >
         {/* Taller than its parent, so it needs its own element: the grip keeps

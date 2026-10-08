@@ -1,3 +1,5 @@
+
+import { Button as CieleButton } from "@agent-hub/ui";
 import { memo } from "react";
 import { ArrowUpRight } from "lucide-react";
 import {
@@ -500,7 +502,7 @@ export const PagePreview = memo(function PagePreview({
         className="from-foreground/[0.11] group-hover/page:from-foreground/[0.22] pointer-events-none absolute inset-x-0 top-0 h-11 bg-gradient-to-b to-transparent transition-[height,--tw-gradient-from] duration-300 group-hover/page:h-24 motion-reduce:transition-none"
       />
       <div className="relative h-9">
-        <button
+        <CieleButton variant="ghost" size="icon-sm"
           type="button"
           aria-label="Open"
           onClick={onOpen}
@@ -509,7 +511,7 @@ export const PagePreview = memo(function PagePreview({
           {/* On hover the arrow leaves through the corner and comes back in from
               the opposite one (`find-open-arrow`, globals.css). */}
           <ArrowUpRight aria-hidden className="find-open-arrow size-3.5" />
-        </button>
+        </CieleButton>
       </div>
       <div className="space-y-3.5 px-3.5 pb-4">
         <div className="flex items-start gap-2.5">

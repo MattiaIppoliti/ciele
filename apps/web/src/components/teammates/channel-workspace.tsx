@@ -18,7 +18,7 @@ import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
 import { Trash2 } from "lucide-react";
 import { Settings2 } from "lucide-react";
-import {
+import { DialogBody,
   Button,
   Dialog,
   DialogContent,
@@ -409,8 +409,7 @@ export function ChannelWorkspace({
             aria-label={`Message ${channel.name}`}
           />
           <p className="text-muted-foreground text-center text-xs">
-            Teammates answer when you name them with @. One message runs at most{" "}
-            {CHANNEL_CHAIN_TURN_CAP} teammate replies.
+            Mention @name for a reply. Max {CHANNEL_CHAIN_TURN_CAP} replies per message.
           </p>
         </div>
         </ChatSurface>
@@ -502,150 +501,154 @@ function ChannelSettingsDialog({
 
   return (
     <>
-    {confirmDeleteModal}
-    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Group settings</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="channel-name">Name</Label>
-            <Input
-              id="channel-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={120}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="channel-project">Project</Label>
-            <Select
-              value={projectId || "__no_project__"}
-              onValueChange={(value) =>
-                setProjectId(
-                  value === null || value === "__no_project__" ? "" : value,
-                )
-              }
-            >
-              <SelectTrigger
-                id="channel-project"
-                className="h-10 w-full"
-                aria-label="Project"
+      {confirmDeleteModal}
+      <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Group settings</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="channel-name">Name</Label>
+              <Input
+                id="channel-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={120}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="channel-project">Project</Label>
+              <Select
+                value={projectId || "__no_project__"}
+                onValueChange={(value) =>
+                  setProjectId(
+                    value === null || value === "__no_project__" ? "" : value,
+                  )
+                }
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__no_project__">No project</SelectItem>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-muted-foreground text-xs">
-              Every teammate here reads the project&apos;s decisions, and writes
-              what this channel settles back to them.
-            </p>
-          </div>
-          <Button
-            disabled={isPending || !name.trim() || !dirty}
-            onClick={() => {
-              setSaving(true);
-              run(
-                async () => {
+                <SelectTrigger
+                  id="channel-project"
+                  className="h-10 w-full"
+                  aria-label="Project"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__no_project__">No project</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Teammates read and update this project&apos;s decisions.
+              </p>
+            </div>
+            <Button
+              loading={isPending}
+              disabled={isPending || !name.trim() || !dirty}
+              onClick={() => {
+                setSaving(true);
+                run(async () => {
                   await updateChannelAction(channel.id, {
                     name: name.trim(),
                     projectId: projectId || null,
                   });
-                },
-                "Group saved"
-              );
-            }}
-          >
-            <RollInText text={saving ? "Saving…" : "Save"} />
-          </Button>
-
-          <section className="space-y-2 border-t pt-4">
-            <Label>Who is here</Label>
-            <ul className="space-y-1">
-              {roster.map((entry) => (
-                <li key={entry.id} className="flex items-center gap-3">
-                  <GeneratedAvatar
-                    seed={rosterAvatarSeed(entry, teammates)}
-                    animated={entry.kind === "teammate"}
-                    size="size-7"
-                  />
-                  <p className="min-w-0 flex-1 truncate text-sm">
-                    <RollInText text={entry.name} />
-                    {entry.id === currentUserId && (
-                      <span className="text-muted-foreground"> (you)</span>
-                    )}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={isPending}
-                    aria-label={`Remove ${entry.name}`}
-                    onClick={() => {
-                      const leaving = entry.id === currentUserId;
-                      confirmDelete({
-                        title: leaving
-                          ? "Leave this group?"
-                          : `Remove ${entry.name}?`,
-                        description: leaving
-                          ? "You stop seeing the thread. Someone who manages the group has to add you back."
-                          : `${entry.name} stops seeing the thread and is no longer mentioned in it.`,
-                        confirmLabel: leaving ? "Leave group" : "Remove",
-                        onConfirm: () =>
-                          run(
-                            () =>
-                              entry.kind === "member"
-                                ? removeChannelMemberAction(channel.id, entry.id)
-                                : removeChannelTeammateAction(channel.id, entry.id),
-                            `${entry.name} left the group`,
-                            leaving ? "/teammates" : undefined
-                          ),
-                      });
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="space-y-2 border-t pt-4">
-            <p className="text-muted-foreground text-xs">
-              Closing the group deletes the thread for everybody in it,
-              including its transcript.
-            </p>
-            <Button
-              variant="destructive"
-              disabled={isPending}
-              onClick={() =>
-                confirmDelete({
-                  title: "Close this group?",
-                  description:
-                    "The thread and its transcript are deleted for everybody in it. This cannot be undone.",
-                  confirmLabel: "Close group",
-                  onConfirm: () =>
-                    run(
-                      () => deleteChannelAction(channel.id),
-                      "Group closed",
-                      "/teammates"
-                    ),
-                })
-              }
+                }, "Group saved");
+              }}
             >
-              <Trash2 className="size-4" /> Close group
+              <RollInText text={saving ? "Saving…" : "Save"} />
             </Button>
-          </section>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+            <section className="space-y-2 border-t pt-4">
+              <Label>Who is here</Label>
+              <ul className="space-y-1">
+                {roster.map((entry) => (
+                  <li key={entry.id} className="flex items-center gap-3">
+                    <GeneratedAvatar
+                      seed={rosterAvatarSeed(entry, teammates)}
+                      animated={entry.kind === "teammate"}
+                      size="size-7"
+                    />
+                    <p className="min-w-0 flex-1 truncate text-sm">
+                      <RollInText text={entry.name} />
+                      {entry.id === currentUserId && (
+                        <span className="text-muted-foreground"> (you)</span>
+                      )}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPending}
+                      aria-label={`Remove ${entry.name}`}
+                      onClick={() => {
+                        const leaving = entry.id === currentUserId;
+                        confirmDelete({
+                          title: leaving
+                            ? "Leave this group?"
+                            : `Remove ${entry.name}?`,
+                          description: leaving
+                            ? "You stop seeing the thread. Someone who manages the group has to add you back."
+                            : `${entry.name} stops seeing the thread and is no longer mentioned in it.`,
+                          confirmLabel: leaving ? "Leave group" : "Remove",
+                          onConfirm: () =>
+                            run(
+                              () =>
+                                entry.kind === "member"
+                                  ? removeChannelMemberAction(
+                                      channel.id,
+                                      entry.id,
+                                    )
+                                  : removeChannelTeammateAction(
+                                      channel.id,
+                                      entry.id,
+                                    ),
+                              `${entry.name} left the group`,
+                              leaving ? "/teammates" : undefined,
+                            ),
+                        });
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="space-y-2 border-t pt-4">
+              <p className="text-muted-foreground text-xs">
+                Closing the group deletes the thread for everybody in it,
+                including its transcript.
+              </p>
+              <Button
+                loading={isPending}
+                variant="destructive"
+                disabled={isPending}
+                onClick={() =>
+                  confirmDelete({
+                    title: "Close this group?",
+                    description:
+                      "The thread and its transcript are deleted for everybody in it. This cannot be undone.",
+                    confirmLabel: "Close group",
+                    onConfirm: () =>
+                      run(
+                        () => deleteChannelAction(channel.id),
+                        "Group closed",
+                        "/teammates",
+                      ),
+                  })
+                }
+              >
+                <Trash2 className="size-4" /> Close group
+              </Button>
+            </section>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

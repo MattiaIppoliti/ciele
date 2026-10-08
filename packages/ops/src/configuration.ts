@@ -248,3 +248,22 @@ export const resolveAlertOp = defineOperation({
     return ctx.db.resolveAlert(id, ctx.userId || null);
   },
 });
+
+/** Only operator-editable fields; timestamps and source identity remain system facts. */
+export const updateAlertOp = defineOperation({
+  name: "alerts.update",
+  capability: "edit",
+  effect: "write",
+  input: z.object({ id: idSchema, patch: z.object({
+    type: z.enum(["integration", "crawl", "provider", "ingestion", "knowledge", "system"]).optional(),
+    title: z.string().trim().min(1).max(500).optional(),
+    detail: z.string().max(10000).optional(),
+    status: z.enum(["active", "resolved"]).optional(),
+  }).strict() }),
+  entities: () => [{ kind: "alerts" as const }],
+  run: async (ctx, { id, patch }): Promise<Alert> => {
+    const alert = (await ctx.db.listAlerts(ctx.organizationId)).find((item) => item.id === id);
+    if (!alert) throw new OperationError("not_found", "Alert not found");
+    return ctx.db.updateAlert(id, patch, ctx.userId || null);
+  },
+});

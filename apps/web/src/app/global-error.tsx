@@ -1,9 +1,13 @@
 "use client";
 
+import "@agent-hub/ui/button.css";
+import { Button as CieleButton } from "@agent-hub/ui";
+
 /**
  * Last resort: a throw in the root layout itself, which no other boundary can
  * catch. It replaces the root layout, so it owns `<html>`/`<body>` and cannot
- * rely on the stylesheet the layout would have loaded. Hence inline styles.
+ * rely on the stylesheet the layout would have loaded. The page uses inline
+ * styles and imports the shared button stylesheet directly.
  *
  * Everything else is caught one level down by app/error.tsx.
  */
@@ -36,22 +40,13 @@ export default function GlobalError({
           </p>
           {/* A hard reload, not a Link: a client-side navigation would only
               re-render the tree that just failed. */}
-          <button
+          <CieleButton variant="primary" size="sm"
             type="button"
             onClick={() => window.location.reload()}
-            style={{
-              marginTop: "0.5rem",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "0.375rem",
-              background: "#171717",
-              color: "#fff",
-              fontSize: "0.875rem",
-              cursor: "pointer",
-            }}
+            style={{ marginTop: "0.5rem" }}
           >
             Reload
-          </button>
+          </CieleButton>
           {error.digest && (
             <p
               style={{

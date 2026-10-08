@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { StatusBadge as StatusPill, type StatusBadgeStatus } from "@/components/spaceui/status-badge";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -185,7 +186,7 @@ export function IngestionActivityCard({
         {/* Hides the card, and only that: a 20-minute crawl you are not
             watching should be dismissible, and the poll carries on behind it,
             so the next thing that starts brings the card back. */}
-        <button
+        <CieleButton variant="ghost" size="icon-sm"
           type="button"
           onClick={dismiss}
           aria-label="Hide activity"
@@ -193,8 +194,8 @@ export function IngestionActivityCard({
           className="press-control text-muted-foreground hover:text-foreground focus-visible:ring-ring shrink-0 cursor-pointer rounded-full p-1 outline-none focus-visible:ring-2"
         >
           <X className="size-3.5" aria-hidden="true" />
-        </button>
-        <button
+        </CieleButton>
+        <CieleButton variant="ghost" size="icon-sm"
           type="button"
           onClick={() => setExpanded((open) => !open)}
           aria-expanded={expanded}
@@ -209,7 +210,7 @@ export function IngestionActivityCard({
           >
             <ChevronDown className="size-4" aria-hidden="true" />
           </motion.span>
-        </button>
+        </CieleButton>
       </div>
 
       {/* One hairline of progress. Present only where it can be honest: a

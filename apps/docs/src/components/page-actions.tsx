@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { CopyFeedbackIcon, useCopyFeedback } from '@agent-hub/ui';
+import { Button, CopyFeedbackIcon, useCopyFeedback } from '@agent-hub/ui';
 import {
   ChevronDown,
   ExternalLink,
@@ -105,34 +105,29 @@ export function PageActions({
     },
   ];
 
-  const buttonClass =
-    // `whitespace-nowrap` keeps the icon beside its label on one line; the row
-    // itself is allowed to wrap, but a button never should.
-    'inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap rounded-lg border border-fd-border px-2.5 py-1.5 text-xs font-medium text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground';
   const menuItemClass =
     'flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs text-fd-popover-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground';
 
   return (
     <div className="mb-6 flex flex-row flex-wrap items-center gap-2 border-b border-fd-border pb-4">
-      <button type="button" onClick={copyMarkdown} className={buttonClass}>
+      <Button variant="secondary" size="sm" type="button" onClick={copyMarkdown}>
         <CopyFeedbackIcon copied={copied} className="size-3.5" />
         {/* Label stays put, the icon flipping to a check is the confirmation.
             Swapping in a shorter "Copied" resized the button and shunted the
             rest of the row sideways. */}
         Copy Markdown
-      </button>
+      </Button>
 
       <div ref={menuRef} className="relative">
-        <button
+        <Button variant="secondary" size="sm"
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-haspopup="menu"
           aria-expanded={open}
-          className={buttonClass}
         >
           Open
           <ChevronDown className="size-3.5" />
-        </button>
+        </Button>
 
         {open && (
           <div

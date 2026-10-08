@@ -121,7 +121,7 @@ export function FooterNewsletter() {
               className="pointer-events-none absolute left-[-9999px] h-0 w-0 opacity-0"
               placeholder="leave this empty"
             />
-            <ConfettiButton
+            <ConfettiButton loading={pending}
               celebrateOnClick={false}
               type="submit"
               size="sm"

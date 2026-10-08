@@ -41,10 +41,7 @@ export function StudySettings({
       <div className="flex items-start justify-between gap-4 p-5">
         <div>
           <h3 className="font-semibold">Study Mode</h3>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Let visitors practise your knowledge with up to 5 interactive
-            questions.
-          </p>
+          <p className="text-muted-foreground mt-1 text-sm">Up to 5 questions.</p>
         </div>
         <Switch
           aria-label="Enable Study Mode"
@@ -58,8 +55,7 @@ export function StudySettings({
           <div className="space-y-3 border-t p-5">
             <h4 className="font-medium">Question formats</h4>
             <p className="text-muted-foreground text-sm">
-              Enable at least one format. Visitors can choose from a second
-              button in the chat composer.
+              Enable at least one format.
             </p>
             {STUDY_FORMATS.map((item) => {
               const checked = settings.formats.includes(item.value);
@@ -70,9 +66,7 @@ export function StudySettings({
                 >
                   <div>
                     <p className="text-sm font-medium">{item.label}</p>
-                    <p className="text-muted-foreground text-sm">
-                      {item.description}
-                    </p>
+
                   </div>
                   <Switch
                     aria-label={item.label}
@@ -112,10 +106,7 @@ export function StudySettings({
                   onChange({ instructions: event.target.value });
               }}
             />
-            <p className="text-muted-foreground text-xs">
-              Questions use the assistant’s knowledge. Changes apply to the live
-              widget after publishing.
-            </p>
+            <p className="text-muted-foreground text-xs">Uses this assistant’s knowledge. Publish to update live chats.</p>
           </div>
         </>
       )}

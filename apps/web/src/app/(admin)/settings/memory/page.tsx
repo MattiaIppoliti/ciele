@@ -33,7 +33,7 @@ export default async function MemorySettingsPage() {
     <SettingsPanel
       icon={ScanText}
       title="What your teammates remember"
-      description={`Shared with every AI teammate in ${session.organization.name}. They add to it as they learn how you work, and you can change or undo anything here.`}
+      description="Shared with your AI teammates."
     >
       <MemoryClient
         body={document?.body ?? ""}

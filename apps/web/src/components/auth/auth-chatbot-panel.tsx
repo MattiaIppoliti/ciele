@@ -1,5 +1,6 @@
 "use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { ArrowUp, Mic, Search } from "lucide-react";
 import { AuthGrid } from "@/components/auth/auth-grid";
 import { GhostMark } from "@/components/auth/ghost-mark";
@@ -69,21 +70,21 @@ export function AuthChatbotPanel() {
               />
             </div>
             <div className="mt-4 flex items-center justify-end gap-3">
-              <button
+              <CieleButton variant="ghost" size="icon-sm"
                 type="button"
                 aria-label="Voice input"
                 className="text-gray-400 transition-colors hover:text-gray-300"
               >
                 <Mic className="size-5" />
-              </button>
-              <button
+              </CieleButton>
+              <CieleButton variant="ghost" size="icon-sm"
                 type="button"
                 aria-label="Send"
                 disabled
                 className="rounded-full bg-[#3a3a3a] p-2 text-gray-400"
               >
                 <ArrowUp className="size-5" />
-              </button>
+              </CieleButton>
             </div>
           </div>
         </div>

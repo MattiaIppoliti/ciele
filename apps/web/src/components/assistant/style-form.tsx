@@ -148,13 +148,11 @@ export function StyleForm({
 
       {/* ── Colors ─────────────────────────────────────────────────────── */}
       <TimelineSection title="Colors">
-        <p className="text-muted-foreground -mt-3 text-sm">
-          Customize the colors of your chat widget&apos;s key elements.
-        </p>
+
         <div className="mt-3 grid gap-4 @lg:grid-cols-2">
           <ColorCard
             label="Header"
-            description="Background color of the chat window's top bar."
+
             value={draft.headerColor ?? ""}
             fallback="#F9FAFB"
             canEdit={canEdit}
@@ -163,7 +161,7 @@ export function StyleForm({
           />
           <ColorCard
             label="Text bubble"
-            description="Bubble color for messages sent by the user."
+
             value={draft.bubbleColor ?? ""}
             fallback={resolved.brandColor}
             canEdit={canEdit}
@@ -172,7 +170,7 @@ export function StyleForm({
           />
           <ColorCard
             label="Buttons"
-            description="Color applied to FAQ and action buttons throughout the chat."
+
             value={draft.buttonColor ?? ""}
             fallback={resolved.brandColor}
             canEdit={canEdit}
@@ -184,9 +182,7 @@ export function StyleForm({
 
       {/* ── Launch button design ───────────────────────────────────────── */}
       <TimelineSection title="Launch button design">
-        <p className="text-muted-foreground -mt-3 text-sm">
-          Displayed on the launch button.
-        </p>
+
         <IconUploadCard
           canEdit={canEdit}
           icon={draft.launcherIcon ?? null}
@@ -205,7 +201,7 @@ export function StyleForm({
         <div className="mt-4 grid gap-4 @lg:grid-cols-2">
           <ColorCard
             label="Launch button focus ring"
-            description="Outline color shown around the launcher button when focused via keyboard."
+
             value={draft.focusRingColor ?? ""}
             fallback={resolved.brandColor}
             canEdit={canEdit}
@@ -217,9 +213,7 @@ export function StyleForm({
 
       {/* ── Close icon design ──────────────────────────────────────────── */}
       <TimelineSection title="Close icon design">
-        <p className="text-muted-foreground -mt-3 text-sm">
-          Displayed when the chat window is open.
-        </p>
+
         <IconUploadCard
           canEdit={canEdit}
           icon={draft.closeIcon ?? null}
@@ -239,9 +233,7 @@ export function StyleForm({
 
       {/* ── Mobile ─────────────────────────────────────────────────────── */}
       <TimelineSection title="Mobile">
-        <p className="text-muted-foreground -mt-3 text-sm">
-          Show launch button on small screens.
-        </p>
+
         <Card size="sm" className="mt-3 flex-row items-center justify-between gap-4 p-4">
           <span className="text-sm">Show launch button on mobile screen sizes</span>
           <Switch
@@ -257,9 +249,7 @@ export function StyleForm({
 
       {/* ── Button size ────────────────────────────────────────────────── */}
       <TimelineSection title="Button size" boxed>
-        <p className="text-muted-foreground -mt-3 text-sm">
-          Customize button sizes.
-        </p>
+
         <div className="mt-3 grid gap-4 @lg:grid-cols-2">
           <PxField
             label="Button size"
@@ -282,9 +272,7 @@ export function StyleForm({
 
       {/* ── Button position ────────────────────────────────────────────── */}
       <TimelineSection title="Button position" boxed>
-        <p className="text-muted-foreground -mt-3 text-sm">
-          Customize button position.
-        </p>
+
         <div className="mt-3 grid gap-4 @lg:grid-cols-2">
           <PxField
             label="Bottom Padding"
@@ -348,9 +336,7 @@ export function StyleForm({
 
       {/* ── Typography ─────────────────────────────────────────────────── */}
       <TimelineSection title="Typography/Fonts" boxed>
-        <p className="text-muted-foreground -mt-3 text-sm">
-          Choose a Google font to use on your assistant.
-        </p>
+
         <div className="mt-3 space-y-4">
           <div className="space-y-2">
             <Label htmlFor={`${fieldId}-font-family`}>Font family</Label>
@@ -429,9 +415,7 @@ export function StyleForm({
 
       {/* ── Window size ────────────────────────────────────────────────── */}
       <TimelineSection title="Default assistant window size" boxed>
-        <p className="text-muted-foreground -mt-3 text-sm">
-          Adjust the default window size.
-        </p>
+
         <div className="mt-3 grid gap-4 @lg:grid-cols-2">
           <PxField
             label="Window width"
@@ -474,7 +458,7 @@ function ColorCard({
   onReset,
 }: {
   label: string;
-  description: string;
+  description?: string;
   /** The stored override; empty = fallback in effect. */
   value: string;
   fallback: string;
@@ -500,7 +484,7 @@ function ColorCard({
     <Card size="sm" className="gap-3 p-4">
       <div>
         <p className="text-sm font-medium">{label}</p>
-        <p className="text-muted-foreground mt-0.5 text-sm">{description}</p>
+        {description && <p className="text-muted-foreground mt-0.5 text-sm">{description}</p>}
       </div>
       <div className="flex items-center gap-2">
         <div className="flex h-9 flex-1 items-center overflow-hidden rounded-md border">
@@ -726,14 +710,14 @@ function IconUploadCard({
           <UploadCloud className="size-4" />
         </Button>
         <p className="text-sm">
-          <button
+          <Button variant="secondary" size="sm"
             type="button"
             disabled={!canEdit}
             onClick={() => inputRef.current?.click()}
             className="text-primary font-medium underline-offset-2 hover:underline disabled:cursor-not-allowed"
           >
             Click to upload
-          </button>{" "}
+          </Button>{" "}
           or drag and drop
         </p>
         <p className="text-muted-foreground text-xs">

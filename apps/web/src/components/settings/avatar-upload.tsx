@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { Button as CieleButton } from "@agent-hub/ui";
 import { useRef } from "react";
 import { Button } from "@agent-hub/ui";
 import { Pencil } from "lucide-react";
@@ -87,9 +88,14 @@ export function AvatarUpload({
         </span>
       </button>
       {onRemove && value && (
-        <Button type="button" variant="ghost" onClick={onRemove} disabled={busy}>
+        <CieleButton variant="destructive" size="sm"
+          type="button"
+          onClick={onRemove}
+          disabled={busy}
+          className="press-text text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm text-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-2 disabled:opacity-50"
+        >
           Remove
-        </Button>
+        </CieleButton>
       )}
     </div>
   );

@@ -26,7 +26,6 @@ import {
 import {
   Badge,
   Button,
-  Calendar as SharedCalendar,
   Card,
   CardContent,
   CardDescription,
@@ -418,10 +417,9 @@ function TablePreview() {
 function CalendarPreview() {
   const [day, setDay] = useState("2026-10-04");
   const [range, setRange] = useState({ from: "2026-10-04", to: "2026-10-10" });
-  const [selected, setSelected] = useState<Date | undefined>(new Date(2026, 9, 4));
   return <Stack>
-    <Example title="Single date · Date and ISO adapters"><div className="flex flex-wrap items-start gap-6"><SharedCalendar mode="single" selected={selected} onSelect={setSelected} defaultMonth={new Date(2026, 9)} disabled={{ before: new Date(2026, 9, 1) }} /><Calendar value={day} onSelect={setDay} /></div><p role="status" className="text-xs text-muted-foreground">Date: {selected?.toLocaleDateString("en-GB") || "No date selected"} · ISO: {day || "No date selected"}</p></Example>
-    <Example title="Range · two months" wide><div className="max-w-full overflow-x-auto"><CalendarRange from={range.from} to={range.to} onSelect={(from, to) => setRange({ from, to })} /></div><p role="status" className="text-xs text-muted-foreground">{range.from} — {range.to}</p></Example>
+    <Example title="Single date · Cancel and Apply"><Calendar value={day} onSelect={setDay} /><p role="status" className="text-xs text-muted-foreground">Committed date: {day || "No date selected"}</p></Example>
+    <Example title="Range · two months" wide><CalendarRange from={range.from} to={range.to} onSelect={(from, to) => setRange({ from, to })} /><p role="status" className="text-xs text-muted-foreground">{range.from} — {range.to}</p></Example>
   </Stack>;
 }
 
@@ -693,7 +691,7 @@ function TableSelectionPreview() {
 function MotionTablePreview() {
   const [empty, setEmpty] = useState(false);
   const rows = empty ? [] : TABLE_ROWS;
-  return <Stack><Example title="Read-only sortable data" wide><MotionTable data={rows} getRowId={(row) => row.id} columns={[{ key: "name", header: "Name", accessor: (row) => row.name, sortable: true }, { key: "documents", header: "Documents", accessor: (row) => row.documents, sortable: true, align: "right" }]} emptyState="No assistants match this view." footer={<TablePagination total={rows.length} noun="assistant" />} /><Button variant="outline" size="sm" onClick={() => setEmpty((value) => !value)}>{empty ? "Restore rows" : "Show empty state"}</Button></Example></Stack>;
+  return <Stack><Example title="Read-only sortable data" wide><MotionTable noun="assistant" data={rows} getRowId={(row) => row.id} columns={[{ key: "name", header: "Name", accessor: (row) => row.name, sortable: true }, { key: "documents", header: "Documents", accessor: (row) => row.documents, sortable: true, align: "right" }]} emptyState="No assistants match this view." /><Button variant="outline" size="sm" onClick={() => setEmpty((value) => !value)}>{empty ? "Restore rows" : "Show empty state"}</Button></Example></Stack>;
 }
 
 function AvailabilityPreview() {

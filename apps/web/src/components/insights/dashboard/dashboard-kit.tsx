@@ -277,7 +277,7 @@ export function RateCard({
   variant = "donut",
 }: {
   title: string;
-  description: string;
+  description?: string;
   good: number;
   bad: number;
   goodLabel: string;

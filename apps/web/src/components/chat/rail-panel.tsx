@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronLeft } from "lucide-react";
 import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
-import { Hint } from "@agent-hub/ui";
+import { Button as CieleButton, Hint } from "@agent-hub/ui";
 import { cn } from "@/lib/utils";
 import { SPRING_UNFOLD } from "@/lib/ease";
 import { RAIL_CARD_INSET, ResizeHandle } from "@/components/ui/resizable-panel";
@@ -419,7 +419,7 @@ export function RailToggleButton({ label, onClick }: { label: string; onClick: (
   }, []);
   return (
     <Hint label={label} side="left">
-      <button
+      <CieleButton variant="ghost" size="icon-sm"
         type="button"
         aria-label={label}
         aria-expanded
@@ -433,7 +433,7 @@ export function RailToggleButton({ label, onClick }: { label: string; onClick: (
         className="press-control text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors outline-none focus-visible:ring-2"
       >
         <SidebarToggleIcon isOpen={shown && !hovered} side="right" className="size-4" />
-      </button>
+      </CieleButton>
     </Hint>
   );
 }
