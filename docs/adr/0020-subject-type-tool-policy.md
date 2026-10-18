@@ -2,6 +2,16 @@
 
 Status: accepted · Spec: ciele-org#661 · Tickets: ciele-org#667, ciele-org#668, ciele-org#669
 
+> **Status note (2026-10-12):** Entities were retired in commit `98fe5b51` (2026-09-28). The
+> Shared-Entity and User-scoped-Entity tools, the entity sync job and every Entity surface (console,
+> `/api/v1`, CLI, MCP `manage_entities`) are gone from the code, so the Entity bullets and table rows
+> below describe nothing that runs. The commit shipped no migration: `entities`, `entity_records`,
+> `entity_sync_configs` and `entity_sync_runs` remain in the database, unread;
+> `background_jobs_kind_check` still allows `sync_entity_records`; and a `background_jobs` trigger
+> (`20260829012000_background_job_tenancy.sql`) still validates `payload.entityId` against
+> `public.entities`. The decision, that the subject type decides which tool variants exist, is
+> unchanged.
+
 ## Context
 
 The runtime now generates tools whose *reach* depends on who is asking:

@@ -47,7 +47,7 @@ import {
 } from "@agent-hub/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateTime, formatDay } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import {
   IMPROVEMENT_PRIORITIES,
   IMPROVEMENT_STATUSES,
@@ -77,8 +77,8 @@ function messageSources(content: unknown[]) {
 function DetailRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="truncate text-sm" title={value ?? undefined}>
+      <span className="text-muted-foreground shrink-0 text-xs">{label}</span>
+      <span className="min-w-0 truncate text-right text-sm" title={value ?? undefined}>
         {value || "Unknown"}
       </span>
     </div>
@@ -656,6 +656,282 @@ export function ImprovementDetail({
               </div>
             )}
           </section>
+        </div>
+
+        {/* Side column: properties and linked conversation details. */}
+        <aside className="min-w-0 h-fit space-y-6">
+          <div className="bg-card space-y-1 rounded-xl border p-4">
+            {/* Status */}
+            <FieldPill label="Status">
+              <Popover>
+                <PopoverTrigger
+                  className={PILL}
+                  disabled={!canEdit}
+                  aria-label={`Status: ${statusLabel(status)}`}
+                >
+                  <StatusPill
+                    status={STATUS[status]}
+                    className="bg-transparent px-0 py-0"
+                    primaryText={<RollInText text={statusLabel(status)} />}
+                  />
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-48 p-1">
+                  {IMPROVEMENT_STATUSES.map((s) => (
+                    <PopoverClose
+                      key={s.value}
+                      render={<button type="button" />}
+                      onClick={() => changeStatus(s.value)}
+                      aria-pressed={status === s.value}
+                      className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                    >
+                      <span
+                        className={`flex size-4 items-center justify-center rounded-full border ${
+                          status === s.value ? "border-primary border-4" : ""
+                        }`}
+                      />
+                      {s.label}
+                    </PopoverClose>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            </FieldPill>
+
+            {/* Tags */}
+            <FieldPill label="Tags">
+              <Popover>
+                <PopoverTrigger
+                  className={PILL}
+                  disabled={!canEdit}
+                  aria-label={`Tags: ${tags.length ? tags.join(", ") : "none"}`}
+                >
+                  <RollInText
+                    text={
+                      tags.length
+                        ? `${tags.length} tag${tags.length > 1 ? "s" : ""}`
+                        : "No tags"
+                    }
+                  />
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-64 p-3">
+                  <p className="mb-0.5 text-sm font-medium">Select or add tags</p>
+                  <p className="text-muted-foreground mb-2 text-xs">
+                    Enter to add tags (max 5 tags)
+                  </p>
+                  <div className="focus-within:border-ring focus-within:ring-ring/50 flex flex-wrap items-center gap-1.5 rounded-lg border p-1.5 transition-[border-color,box-shadow] focus-within:ring-3">
+                    {tags.map((t) => (
+                      <span
+                        key={t}
+                        className="bg-muted inline-flex max-w-full min-w-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs"
+                      >
+                        <span className="truncate">{t}</span>
+                        <Button variant="ghost" size="icon-sm"
+                          type="button"
+                          className="shrink-0"
+                          aria-label={`Remove ${t}`}
+                          onClick={() => removeTag(t)}
+                        >
+                          <X className="size-3" />
+                        </Button>
+                      </span>
+                    ))}
+                    <input
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addTag();
+                        }
+                      }}
+                      placeholder={tags.length >= 5 ? "Max reached" : "Search…"}
+                      aria-label="Add a tag"
+                      autoComplete="off"
+                      disabled={tags.length >= 5}
+                      className="min-w-20 flex-1 bg-transparent text-sm outline-none"
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </FieldPill>
+
+            {/* Priority */}
+            <FieldPill label="Priority">
+              <Popover>
+                <PopoverTrigger
+                  className={PILL}
+                  disabled={!canEdit}
+                  aria-label={`Priority: ${pri.label}`}
+                >
+                  <pri.icon className={`size-3.5 ${pri.iconColor}`} />
+                  <RollInText text={pri.label} />
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-40 p-1">
+                  {IMPROVEMENT_PRIORITIES.map((p) => (
+                    <PopoverClose
+                      key={p.value}
+                      render={<button type="button" />}
+                      onClick={() => changePriority(p.value)}
+                      aria-pressed={priority === p.value}
+                      className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                    >
+                      <span
+                        className={`flex size-4 items-center justify-center rounded-full border ${
+                          priority === p.value ? "border-primary border-4" : ""
+                        }`}
+                      />
+                      <p.icon className={`size-3.5 ${p.iconColor}`} />
+                      {p.label}
+                    </PopoverClose>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            </FieldPill>
+
+            {/* Assigned to */}
+            <FieldPill label="Assigned to">
+              <Popover>
+                <PopoverTrigger
+                  className={PILL}
+                  disabled={!canEdit}
+                  aria-label={`Assignee: ${
+                    assigneeEmail ? memberDisplayName(assigneeEmail) : "unassigned"
+                  }`}
+                >
+                  {assigneeEmail ? (
+                    <>
+                      <UserAvatar
+                        userId={assigneeId}
+                        email={assigneeEmail}
+                        size="size-5"
+                      />
+                      {memberDisplayName(assigneeEmail)}
+                    </>
+                  ) : (
+                    "N/A"
+                  )}
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-64 p-2">
+                  <div className="relative mb-2">
+                    <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+                    <Input
+                      value={assigneeSearch}
+                      onChange={(e) => setAssigneeSearch(e.target.value)}
+                      placeholder="Select user"
+                      aria-label="Search members"
+                      autoComplete="off"
+                      className="h-9 pl-8"
+                    />
+                  </div>
+                  <div className="max-h-56 overflow-y-auto">
+                    <PopoverClose
+                      render={<button type="button" />}
+                      onClick={() => changeAssignee(null)}
+                      aria-pressed={assigneeId === null}
+                      className="hover:bg-muted flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground"
+                    >
+                      Unassigned
+                    </PopoverClose>
+                    {filteredMembers.map((m) => (
+                      <PopoverClose
+                        key={m.userId}
+                        render={<button type="button" />}
+                        onClick={() => changeAssignee(m.userId)}
+                        aria-pressed={assigneeId === m.userId}
+                        className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                      >
+                        <UserAvatar
+                          userId={m.userId}
+                          email={m.email}
+                          size="size-6"
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate">
+                            {memberDisplayName(m.email)}
+                          </span>
+                          <span className="text-muted-foreground block truncate text-xs">
+                            {m.email}
+                          </span>
+                        </span>
+                      </PopoverClose>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </FieldPill>
+
+            {/* Project (#771): which piece of work this belongs to. */}
+            <FieldPill label="Project">
+              <Popover>
+                <PopoverTrigger
+                  className={PILL}
+                  disabled={!canEdit}
+                  aria-label={`Project: ${projectName ?? "none"}`}
+                >
+                  <AnimatedGlyph icon={FoldersIcon} size={14} />
+                  {projectName ?? "Add to project"}
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-64 p-1">
+                  <div className="max-h-56 overflow-y-auto">
+                    <PopoverClose
+                      render={<button type="button" />}
+                      onClick={() => changeProject(null)}
+                      aria-pressed={projectId === null}
+                      className="hover:bg-muted text-muted-foreground flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm"
+                    >
+                      No project
+                    </PopoverClose>
+                    {projectOptions.map((project) => (
+                      <PopoverClose
+                        key={project.id}
+                        render={<button type="button" />}
+                        onClick={() => changeProject(project.id)}
+                        aria-pressed={projectId === project.id}
+                        className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                      >
+                        <span
+                          className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                            projectId === project.id ? "border-primary border-4" : ""
+                          }`}
+                        />
+                        <span className="truncate">{project.name}</span>
+                      </PopoverClose>
+                    ))}
+                  </div>
+                  {/* Kept out of the list and behind a rule, so "file this under
+                      something new" never sits one stray click away from "file
+                      this under Atlas". It opens the Project view rather than a
+                      name field, because a project worth creating here is worth
+                      saying what it is about. */}
+                  <div className="mt-1 border-t pt-1">
+                    {projectId && (
+                      <PopoverClose
+                        render={<button type="button" />}
+                        onClick={() => setProjectDialog({ projectId })}
+                        className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                      >
+                        <SquareArrowOutUpRight className="size-3.5" />
+                        Open {projectName}
+                      </PopoverClose>
+                    )}
+                    <PopoverClose
+                      render={<button type="button" />}
+                      onClick={() => setProjectDialog({ projectId: null })}
+                      className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                    >
+                      <Plus className="size-3.5" />
+                      Create new project…
+                    </PopoverClose>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </FieldPill>
+
+            {/* Due Date */}
+            <FieldPill label="Due Date">
+              <DatePicker label="Due date" value={dueDate} disabled={!canEdit} allowClear
+                onChange={value => changeDueDate(value || null)} className="max-w-full" />
+            </FieldPill>
+          </div>
 
           {current && (
             <section className="space-y-4">
@@ -726,280 +1002,6 @@ export function ImprovementDetail({
               </DetailGroup>
             </section>
           )}
-        </div>
-
-        {/* Side column: fields */}
-        <aside className="bg-card h-fit space-y-1 rounded-xl border p-4">
-          {/* Status */}
-          <FieldPill label="Status">
-            <Popover>
-              <PopoverTrigger
-                className={PILL}
-                disabled={!canEdit}
-                aria-label={`Status: ${statusLabel(status)}`}
-              >
-                <StatusPill
-                  status={STATUS[status]}
-                  className="bg-transparent px-0 py-0"
-                  primaryText={<RollInText text={statusLabel(status)} />}
-                />
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-48 p-1">
-                {IMPROVEMENT_STATUSES.map((s) => (
-                  <PopoverClose
-                    key={s.value}
-                    render={<button type="button" />}
-                    onClick={() => changeStatus(s.value)}
-                    aria-pressed={status === s.value}
-                    className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                  >
-                    <span
-                      className={`flex size-4 items-center justify-center rounded-full border ${
-                        status === s.value ? "border-primary border-4" : ""
-                      }`}
-                    />
-                    {s.label}
-                  </PopoverClose>
-                ))}
-              </PopoverContent>
-            </Popover>
-          </FieldPill>
-
-          {/* Tags */}
-          <FieldPill label="Tags">
-            <Popover>
-              <PopoverTrigger
-                className={PILL}
-                disabled={!canEdit}
-                aria-label={`Tags: ${tags.length ? tags.join(", ") : "none"}`}
-              >
-                <RollInText
-                  text={
-                    tags.length
-                      ? `${tags.length} tag${tags.length > 1 ? "s" : ""}`
-                      : "No tags"
-                  }
-                />
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-64 p-3">
-                <p className="mb-0.5 text-sm font-medium">Select or add tags</p>
-                <p className="text-muted-foreground mb-2 text-xs">
-                  Enter to add tags (max 5 tags)
-                </p>
-                <div className="focus-within:border-ring focus-within:ring-ring/50 flex flex-wrap items-center gap-1.5 rounded-lg border p-1.5 transition-[border-color,box-shadow] focus-within:ring-3">
-                  {tags.map((t) => (
-                    <span
-                      key={t}
-                      className="bg-muted inline-flex max-w-full min-w-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs"
-                    >
-                      <span className="truncate">{t}</span>
-                      <Button variant="ghost" size="icon-sm"
-                        type="button"
-                        className="shrink-0"
-                        aria-label={`Remove ${t}`}
-                        onClick={() => removeTag(t)}
-                      >
-                        <X className="size-3" />
-                      </Button>
-                    </span>
-                  ))}
-                  <input
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addTag();
-                      }
-                    }}
-                    placeholder={tags.length >= 5 ? "Max reached" : "Search…"}
-                    aria-label="Add a tag"
-                    autoComplete="off"
-                    disabled={tags.length >= 5}
-                    className="min-w-20 flex-1 bg-transparent text-sm outline-none"
-                  />
-                </div>
-              </PopoverContent>
-            </Popover>
-          </FieldPill>
-
-          {/* Priority */}
-          <FieldPill label="Priority">
-            <Popover>
-              <PopoverTrigger
-                className={PILL}
-                disabled={!canEdit}
-                aria-label={`Priority: ${pri.label}`}
-              >
-                <pri.icon className={`size-3.5 ${pri.iconColor}`} />
-                <RollInText text={pri.label} />
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-40 p-1">
-                {IMPROVEMENT_PRIORITIES.map((p) => (
-                  <PopoverClose
-                    key={p.value}
-                    render={<button type="button" />}
-                    onClick={() => changePriority(p.value)}
-                    aria-pressed={priority === p.value}
-                    className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                  >
-                    <span
-                      className={`flex size-4 items-center justify-center rounded-full border ${
-                        priority === p.value ? "border-primary border-4" : ""
-                      }`}
-                    />
-                    <p.icon className={`size-3.5 ${p.iconColor}`} />
-                    {p.label}
-                  </PopoverClose>
-                ))}
-              </PopoverContent>
-            </Popover>
-          </FieldPill>
-
-          {/* Assigned to */}
-          <FieldPill label="Assigned to">
-            <Popover>
-              <PopoverTrigger
-                className={PILL}
-                disabled={!canEdit}
-                aria-label={`Assignee: ${
-                  assigneeEmail ? memberDisplayName(assigneeEmail) : "unassigned"
-                }`}
-              >
-                {assigneeEmail ? (
-                  <>
-                    <UserAvatar
-                      userId={assigneeId}
-                      email={assigneeEmail}
-                      size="size-5"
-                    />
-                    {memberDisplayName(assigneeEmail)}
-                  </>
-                ) : (
-                  "N/A"
-                )}
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-64 p-2">
-                <div className="relative mb-2">
-                  <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-                  <Input
-                    value={assigneeSearch}
-                    onChange={(e) => setAssigneeSearch(e.target.value)}
-                    placeholder="Select user"
-                    aria-label="Search members"
-                    autoComplete="off"
-                    className="h-9 pl-8"
-                  />
-                </div>
-                <div className="max-h-56 overflow-y-auto">
-                  <PopoverClose
-                    render={<button type="button" />}
-                    onClick={() => changeAssignee(null)}
-                    aria-pressed={assigneeId === null}
-                    className="hover:bg-muted flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground"
-                  >
-                    Unassigned
-                  </PopoverClose>
-                  {filteredMembers.map((m) => (
-                    <PopoverClose
-                      key={m.userId}
-                      render={<button type="button" />}
-                      onClick={() => changeAssignee(m.userId)}
-                      aria-pressed={assigneeId === m.userId}
-                      className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                    >
-                      <UserAvatar
-                        userId={m.userId}
-                        email={m.email}
-                        size="size-6"
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate">
-                          {memberDisplayName(m.email)}
-                        </span>
-                        <span className="text-muted-foreground block truncate text-xs">
-                          {m.email}
-                        </span>
-                      </span>
-                    </PopoverClose>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </FieldPill>
-
-          {/* Project (#771): which piece of work this belongs to. */}
-          <FieldPill label="Project">
-            <Popover>
-              <PopoverTrigger
-                className={PILL}
-                disabled={!canEdit}
-                aria-label={`Project: ${projectName ?? "none"}`}
-              >
-                <AnimatedGlyph icon={FoldersIcon} size={14} />
-                {projectName ?? "Add to project"}
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-64 p-1">
-                <div className="max-h-56 overflow-y-auto">
-                  <PopoverClose
-                    render={<button type="button" />}
-                    onClick={() => changeProject(null)}
-                    aria-pressed={projectId === null}
-                    className="hover:bg-muted text-muted-foreground flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm"
-                  >
-                    No project
-                  </PopoverClose>
-                  {projectOptions.map((project) => (
-                    <PopoverClose
-                      key={project.id}
-                      render={<button type="button" />}
-                      onClick={() => changeProject(project.id)}
-                      aria-pressed={projectId === project.id}
-                      className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                    >
-                      <span
-                        className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                          projectId === project.id ? "border-primary border-4" : ""
-                        }`}
-                      />
-                      <span className="truncate">{project.name}</span>
-                    </PopoverClose>
-                  ))}
-                </div>
-                {/* Kept out of the list and behind a rule, so "file this under
-                    something new" never sits one stray click away from "file
-                    this under Atlas". It opens the Project view rather than a
-                    name field, because a project worth creating here is worth
-                    saying what it is about. */}
-                <div className="mt-1 border-t pt-1">
-                  {projectId && (
-                    <PopoverClose
-                      render={<button type="button" />}
-                      onClick={() => setProjectDialog({ projectId })}
-                      className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                    >
-                      <SquareArrowOutUpRight className="size-3.5" />
-                      Open {projectName}
-                    </PopoverClose>
-                  )}
-                  <PopoverClose
-                    render={<button type="button" />}
-                    onClick={() => setProjectDialog({ projectId: null })}
-                    className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                  >
-                    <Plus className="size-3.5" />
-                    Create new project…
-                  </PopoverClose>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </FieldPill>
-
-          {/* Due Date */}
-          <FieldPill label="Due Date">
-            <DatePicker label="Due date" value={dueDate} disabled={!canEdit} allowClear
-              onChange={value => changeDueDate(value || null)} className="max-w-full" />
-          </FieldPill>
         </aside>
       </div>
 

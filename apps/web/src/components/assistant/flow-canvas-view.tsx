@@ -40,7 +40,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/motion/context-menu";
 import "@xyflow/react/dist/style.css";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ExternalLink, LayoutGrid, MousePointerClick, Plus, RotateCcw, Search, SlidersHorizontal, Trash2, Unplug, Workflow, X, type LucideIcon } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ExternalLink, LayoutGrid, MousePointerClick, Copy, Plus, RotateCcw, Search, SlidersHorizontal, Trash2, Unplug, Workflow, X, type LucideIcon } from "lucide-react";
 import { Brush, Ellipsis, ListFilter, Maximize, Maximize2, Minimize2 } from "lucide-react";
 import { Badge, Button, Hint, Input } from "@agent-hub/ui";
 import {
@@ -54,6 +54,7 @@ import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { useDeferredStoredValue } from "@/components/assistant/use-deferred-stored-value";
 import { FLOW_ACTIONS } from "@/lib/flow-actions";
 import { PromptInput } from "@/components/agents/prompt-input";
+import { ActionNode, type ActionNodeControl, type ActionNodeControlProps } from "@/components/assistant/action-node";
 import { CanvasToolbar } from "@/components/assistant/canvas-toolbar";
 import { CommandBar } from "@/components/assistant/command-bar";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
@@ -62,9 +63,9 @@ import { newFlowCondition } from "@/lib/flow-conditions";
 import type { FlowDraft, FlowDraftStatus } from "@/lib/flow-editor";
 import {
   CANVAS_NODE_WIDTH,
+  CANVAS_NODE_HEIGHT,
   CONDITIONS_NODE_ID,
   TRIGGER_NODE_ID,
-  actionFromNodeId,
   actionNodeId,
   canvasDirectionKey,
   canvasOffsetsKey,
@@ -73,13 +74,11 @@ import {
   flowStepEntries,
   flowStepGroupsOf,
   layoutFlowCanvas,
-  moveAction,
   offsetFor,
   paletteForDraft,
   parseCanvasDirection,
   parseCanvasOffsets,
   projectFlowCanvas,
-  reorderFromDrop,
   type CanvasDirection,
   type CanvasOffsets,
   type FlowCanvasNode,
@@ -88,6 +87,7 @@ import {
   type FlowStepGroup,
 } from "@/lib/flow-canvas";
 import { cn } from "@/lib/utils";
+import { draftActionSteps } from "@/lib/flow-action-editor";
 import {
   FlowActionConfig,
   FlowConditionsConfig,
@@ -137,25 +137,19 @@ const NODE_ICONS: Record<FlowCanvasNode["kind"], typeof MousePointerClick> = {
   action: LayoutGrid,
 };
 
-/**
- * The "Add a step" control every node shows on hover. Built by the canvas,
- * which is where the catalogue and the handlers are, and handed to the node
- * cards through context because React Flow owns their render. A factory rather
- * than one element: each node inserts at its own place in the chain.
- */
-const AddStepContext = createContext<((insertIndex: number) => ReactNode) | null>(null);
+/** React Flow owns node rendering; the canvas supplies each node's real commands. */
+const NodeControlsContext = createContext<((data: CanvasNodeData, card: ReactNode) => ReactNode) | null>(null);
 
 function CanvasNodeCard({ data }: NodeProps<CanvasNode>) {
   const Icon =
     data.kind === "action" && data.action ? FLOW_ACTIONS[data.action].icon : NODE_ICONS[data.kind];
-  const renderAddStep = useContext(AddStepContext);
-  return (
+  const renderControls = useContext(NodeControlsContext);
+  const card = (
     <div
       data-selected={data.selected || undefined}
       className="flow-surface-card press group relative flex items-start gap-3 px-3.5 py-3"
       style={{ width: CANVAS_NODE_WIDTH }}
     >
-      {renderAddStep?.(data.insertIndex)}
       {data.kind !== "trigger" && (
         <Handle
           type="target"
@@ -199,6 +193,7 @@ function CanvasNodeCard({ data }: NodeProps<CanvasNode>) {
       />
     </div>
   );
+  return renderControls?.(data, card) ?? card;
 }
 
 const NODE_TYPES = { flowNode: CanvasNodeCard };
@@ -400,14 +395,14 @@ function FlowCanvasInner({
               selected: node.id === selectedId,
               // After this node: an action's own index plus one, and 0 for the
               // two step nodes, which precede every action.
-              insertIndex: node.action ? draft.actions.indexOf(node.action) + 1 : 0,
+              insertIndex: node.actionIndex !== undefined ? node.actionIndex + 1 : 0,
               direction,
             },
             draggable: !readOnly,
             selectable: true,
           }))
         : [],
-    [projection.nodes, positions, selectedId, readOnly, showChain, draft.actions, direction]
+    [projection.nodes, positions, selectedId, readOnly, showChain, direction]
   );
   // Re-seed the live list whenever the built one changes, during render rather
   // than in an effect, so the graph never paints a stale frame in between.
@@ -458,26 +453,21 @@ function FlowCanvasInner({
     (_event: unknown, node: CanvasNode) => {
       const projected = projection.nodes.find((candidate) => candidate.id === node.id);
       if (!projected) return;
-      const action = actionFromNodeId(node.id);
-      // Dragging an action along the chain reorders; anything else is a nudge.
-      if (action) {
-        const reordered = reorderFromDrop(
-          draft,
-          projection.nodes,
-          positions,
-          action,
-          node.position,
-          direction
-        );
-        if (reordered) {
-          handlers.setActions(reordered);
+      // Reorder by occurrence ID: equally typed copies can carry different settings.
+      if (projected.action && projected.actionIndex !== undefined) {
+        const target = dropIndexAt(projection.nodes, positions,
+          (direction === "vertical" ? node.position.y : node.position.x) +
+            (direction === "vertical" ? CANVAS_NODE_HEIGHT : CANVAS_NODE_WIDTH) / 2,
+          null, direction, node.id);
+        if (target !== projected.actionIndex) {
+          handlers.moveAction(node.id, target);
           resetOffset(node.id);
           return;
         }
       }
       persistOffsets({ ...offsets, [node.id]: offsetFor(projected, node.position, direction) });
     },
-    [draft, projection.nodes, positions, handlers, offsets, persistOffsets, resetOffset, direction]
+    [projection.nodes, positions, handlers, offsets, persistOffsets, resetOffset, direction]
   );
 
   // A palette tile dragged onto the pane inserts at the chain position under
@@ -579,9 +569,9 @@ function FlowCanvasInner({
    * selection.
    */
   const removeStep = useCallback(
-    (action: FlowAction) => {
+    (action: FlowAction, id?: string) => {
       setFullscreen(false);
-      handlers.removeAction(action);
+      handlers.removeAction(action, id);
       deselect();
     },
     [setFullscreen, handlers, deselect]
@@ -590,7 +580,7 @@ function FlowCanvasInner({
   // Delete / Backspace removes the selected step, the shortcut the context
   // menu advertises. Never while a field has focus: the node panel is full of
   // them and Backspace there is a character, not a deletion.
-  const selectedAction = selectedId ? actionFromNodeId(selectedId) : null;
+  const selectedAction = selectedNode?.action ?? null;
   useEffect(() => {
     if (readOnly || !selectedAction) return;
     function onKeyDown(event: KeyboardEvent) {
@@ -598,11 +588,11 @@ function FlowCanvasInner({
       if (!focusOnCanvas()) return;
       if (isTypingTarget(event.target)) return;
       event.preventDefault();
-      removeStep(selectedAction!);
+      removeStep(selectedAction!, selectedId ?? undefined);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [readOnly, selectedAction, removeStep, focusOnCanvas]);
+  }, [readOnly, selectedAction, selectedId, removeStep, focusOnCanvas]);
 
   // Full screen covers the page, so it answers Escape the way a dialog does and
   // takes focus with it: a keyboard user left behind on the canvas would be
@@ -658,21 +648,35 @@ function FlowCanvasInner({
     [draft, palette, isDefaultFlow]
   );
 
-  /**
-   * One of these hangs off every node on hover, at its right edge: adding from
-   * a node in the middle of the chain puts the step between that node and the
-   * next, and adding from the last one puts it at the end.
-   */
-  const renderAddStep = useCallback(
-    (insertIndex: number) =>
-      readOnly ? null : (
-        <AddStepControl
-          entries={entries}
-          onPick={(choice) => addStep(choice, insertIndex)}
-          direction={direction}
-        />
-      ),
-    [entries, addStep, readOnly, direction]
+  // The fan edits one occurrence: copies retain their own configuration and ID.
+  const renderNodeControls = useCallback(
+    (data: CanvasNodeData, card: ReactNode) => {
+      const controls: ActionNodeControl[] = [];
+      if (!readOnly) {
+        controls.push({
+          id: "add", label: "Add a step",
+          render: (props) => <AddStepControl {...props} entries={entries}
+            onPick={(choice) => addStep(choice, data.insertIndex)} />,
+        });
+      }
+      if (data.action && !readOnly) {
+        const index = data.actionIndex ?? -1;
+        if (!status.proactive) controls.push({ id: "copy", label: "Copy step", icon: Copy, disabled: draft.actions.length >= 20,
+          run: () => selectAndOpen(handlers.duplicateAction(data.id)) });
+        const move = (to: number) => {
+          handlers.moveAction(data.id, to);
+          resetOffset(data.id);
+        };
+        if (index > 0) controls.push({ id: "earlier", label: "Move earlier",
+          icon: direction === "vertical" ? ArrowUp : ArrowLeft, run: () => move(index - 1) });
+        if (index >= 0 && index < draft.actions.length - 1) controls.push({ id: "later", label: "Move later",
+          icon: direction === "vertical" ? ArrowDown : ArrowRight, run: () => move(index + 1) });
+      }
+      controls.push({ id: "settings", label: readOnly ? "View settings" : "Edit settings",
+        icon: SlidersHorizontal, run: () => selectAndOpen(data.id) });
+      return <ActionNode controls={controls} selected={data.selected} width={CANVAS_NODE_WIDTH}>{card}</ActionNode>;
+    },
+    [readOnly, entries, addStep, draft.actions.length, handlers, resetOffset, direction, selectAndOpen, status.proactive]
   );
 
   /**
@@ -701,10 +705,10 @@ function FlowCanvasInner({
     // The keyboard's way to reorder, since dragging along the chain is a
     // pointer gesture. A move re-derives the position, so any nudge on the
     // step goes, the same as a drag that reorders.
-    const index = action ? draft.actions.indexOf(action) : -1;
+    const index = node.actionIndex ?? -1;
     if (action && !readOnly && index !== -1) {
       const move = (to: number) => {
-        handlers.setActions(moveAction(draft.actions, action, to));
+        handlers.moveAction(node.id, to);
         if (offsets[node.id]) resetOffset(node.id);
       };
       const vertical = direction === "vertical";
@@ -726,12 +730,14 @@ function FlowCanvasInner({
       }
     }
     if (action && !readOnly) {
+      if (!status.proactive && draft.actions.length < 20) entries.push({ key: "copy", label: "Copy step", icon: Copy,
+        run: () => selectAndOpen(handlers.duplicateAction(node.id)) });
       entries.push({
         key: "remove",
         label: `Remove ${node.title}`,
         icon: Trash2,
         destructive: true,
-        run: () => removeStep(action),
+        run: () => removeStep(action, node.id),
       });
     }
     return entries;
@@ -745,6 +751,8 @@ function FlowCanvasInner({
     removeStep,
     draft.actions,
     direction,
+    status.proactive,
+    selectAndOpen,
   ]);
 
   /** Right-click "Open full screen": select the step, then grow its panel. */
@@ -788,7 +796,7 @@ function FlowCanvasInner({
             round every step. It replaces React Flow's own dotted
             `<Background>`, so the flow above it stays transparent. */}
         <FlowCanvasField root={canvasRef} themeKey={colorMode} />
-        <AddStepContext.Provider value={renderAddStep}>
+        <NodeControlsContext.Provider value={renderNodeControls}>
           <ReactFlow<CanvasNode, Edge>
             colorMode={colorMode}
             nodes={nodes}
@@ -823,7 +831,7 @@ function FlowCanvasInner({
             proOptions={{ hideAttribution: true }}
             className="!bg-transparent"
           />
-        </AddStepContext.Provider>
+        </NodeControlsContext.Provider>
 
         {/* Bencho's toolbar replaces both tool pills at the old view controls' position. */}
         <div className="flow-canvas-tools absolute bottom-3 left-3 z-20">
@@ -1067,7 +1075,7 @@ function CanvasContextMenu({
   /** Opens the step's panel straight into full screen. */
   onFullscreen: (nodeId: string) => void;
   onAddStep: () => void;
-  onRemove: (action: FlowAction) => void;
+  onRemove: (action: FlowAction, id?: string) => void;
   onResetNode: (nodeId: string) => void;
   /** Drops every nudge and re-derives the chain. */
   onTidyUp: () => void;
@@ -1139,7 +1147,7 @@ function CanvasContextMenu({
           <ContextMenuItem
             textValue="Remove step"
             tone="destructive"
-            onSelect={() => onRemove(action)}
+            onSelect={() => onRemove(action, node?.id)}
           >
             <Trash2 className="size-4" /> Remove step
             <ContextMenuShortcut>⌫</ContextMenuShortcut>
@@ -1182,79 +1190,30 @@ function stepIcon(choice: FlowStepChoice) {
   }
 }
 
-/**
- * A node's own Add control: a `+` on the wire just past the card's right edge,
- * revealed by hovering that card.
- *
- * Where it sits is what it means. Adding from a node in the middle of the chain
- * puts the step between that node and the next; adding from the last one puts
- * it at the end. Same catalogue as the bottom bar's, so the position is the
- * only difference between them.
- */
+/** The fan's Add button opens the same catalogue as the canvas toolbar. */
 function AddStepControl({
   entries,
   onPick,
-  direction,
+  className,
+  tabIndex,
+  onOpenChange,
 }: {
   entries: FlowStepEntry[];
   onPick: (choice: FlowStepChoice) => void;
-  /** Which edge of the card it hangs off: the one the next step is on. */
-  direction: CanvasDirection;
-}) {
+} & ActionNodeControlProps) {
   const [open, setOpen] = useState(false);
   return (
-    // Shown on touch, hover of the card (this is its descendant, so hovering the
-    // control keeps the card hovered), on keyboard focus, and while the menu is
-    // open. `nodrag`/`nopan` keep React Flow from reading the press as a drag;
-    // this wrapper is what the drag listener sees, so they go here.
-    <div
-      data-flow-step-action
-      className={cn(
-        "nodrag nopan pointer-events-auto absolute z-10 flex items-center transition-opacity duration-150 motion-reduce:transition-none",
-        direction === "vertical"
-          ? "top-full left-1/2 -translate-x-1/2 pt-2"
-          : "top-1/2 left-full -translate-y-1/2 pl-2",
-        open ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
-      )}
-      // The control sits inside the card, so a press on it would otherwise
-      // also select that node and swap the panel under the menu.
-      onClick={(event) => event.stopPropagation()}
-      onPointerDown={(event) => event.stopPropagation()}
-    >
-      <Popover open={open} onOpenChange={setOpen}>
-        <Hint label="Add a step" side="top">
-          <PopoverTrigger
-            render={
-              <button
-                type="button"
-                aria-label="Add a step"
-                className="press-control flex items-center justify-center rounded-full transition-[filter] hover:brightness-110 bg-primary text-primary-foreground ring-background size-6 shadow-light ring-2"
-              />
-            }
-          >
-            <Plus className="size-3.5" />
-          </PopoverTrigger>
-        </Hint>
-        {/* `overflow-hidden` turns off the popup's own scroller: the list below
-            has one, and two nested scrollers let the outer one carry the inner
-            one's focused row into view, which opened the menu halfway down. */}
-        <PopoverContent
-          side="top"
-          align="center"
-          sideOffset={10}
-          className="w-80 overflow-hidden p-0"
-        >
-          <FlowStepPicker
-            entries={entries}
-            onPick={(choice) => {
-              setOpen(false);
-              onPick(choice);
-            }}
-            autoFocus={open}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <Popover open={open} onOpenChange={(next) => { setOpen(next); onOpenChange(next); }}>
+      <PopoverTrigger render={<button type="button" data-foley-press data-foley-release aria-label="Add a step" title="Add a step"
+        tabIndex={tabIndex} className={className} />}>
+        <Plus className="size-4" />
+      </PopoverTrigger>
+      {/* The list has its own scroller; a second one would carry its focused row out of view. */}
+      <PopoverContent side="top" align="center" sideOffset={10} className="w-80 overflow-hidden p-0">
+        <FlowStepPicker entries={entries} autoFocus={open}
+          onPick={(choice) => { setOpen(false); onOpenChange(false); onPick(choice); }} />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -1447,6 +1406,8 @@ function NodePanel({
 }) {
   const action = node.kind === "action" ? node.action! : null;
   const Icon = action ? FLOW_ACTIONS[action].icon : NODE_ICONS[node.kind];
+  const step = action ? draftActionSteps(draft).find((item) => item.id === node.id) : null;
+  const actionDraft = step ? { ...draft, settings: step.settings, customMessage: step.customMessage ?? "" } : draft;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -1523,14 +1484,14 @@ function NodePanel({
                 <FlowActionConfig
                   action={action}
                   assistantId={assistantId}
-                  settings={draft.settings}
-                  customMessage={draft.customMessage}
+                  settings={actionDraft.settings}
+                  customMessage={actionDraft.customMessage}
                   helpDesks={helpDesks}
                   faqs={faqs}
                   assistants={assistants}
                   connections={connections}
-                  onPatchSettings={handlers.patchSettings}
-                  onCustomMessageChange={handlers.setCustomMessage}
+                  onPatchSettings={(key, patch) => handlers.patchSettings(key, patch, node.id)}
+                  onCustomMessageChange={(message) => handlers.setCustomMessage(message, node.id)}
                 />
               ) : (
                 <p className="text-muted-foreground text-sm">
@@ -1540,7 +1501,7 @@ function NodePanel({
           </fieldset>
         </TabsContent>
         <TabsContent value="run" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4">
-          <RunNode action={action} draft={draft} onOpenPreview={onOpenPreview} />
+          <RunNode action={action} draft={actionDraft} onOpenPreview={onOpenPreview} />
         </TabsContent>
       </Tabs>
     </div>

@@ -273,6 +273,40 @@ export function ingestionActivityBusy(state: IngestionActivityState): boolean {
   );
 }
 
+/** The poll cadence while the work is visibly moving. */
+export const INGESTION_POLL_MS = 2_500;
+/** The ceiling once it has stopped moving. */
+export const INGESTION_STALLED_POLL_MS = 60_000;
+
+/**
+ * Everything the card shows, as one comparable string. Two polls with the same
+ * key saw nothing move.
+ */
+export function ingestionProgressKey(state: IngestionActivityState): string {
+  return JSON.stringify([
+    Object.entries(state.runs)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, run]) => [id, run.done, run.total, run.rowsDone, run.failed]),
+    state.items.map((item) => [item.id, item.status, item.detail ?? ""]),
+  ]);
+}
+
+/**
+ * How long to wait before the next poll of work still in flight, given how
+ * many polls in a row saw nothing move. Doubles from 2.5s to a one-minute cap.
+ *
+ * A provider crawl reports nothing until the finalizer runs, and a scheduled
+ * re-crawl started at 06:00 is only finalized by the next night's cron unless
+ * someone opens the Library. At a flat 2.5s every open console tab spent that
+ * whole day polling one unchanging row.
+ */
+export function ingestionPollDelay(unchangedPolls: number): number {
+  return Math.min(
+    INGESTION_STALLED_POLL_MS,
+    INGESTION_POLL_MS * 2 ** Math.max(0, unchangedPolls),
+  );
+}
+
 export interface IngestionActivityCardModel {
   title: string;
   /** "261/291" (grouped, "1,204/2,310"), or null with no denominator worth showing. */

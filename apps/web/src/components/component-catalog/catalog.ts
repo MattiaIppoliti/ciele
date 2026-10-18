@@ -17,6 +17,8 @@ export interface ComponentFamily {
 }
 
 export const COMPONENT_FAMILIES: readonly ComponentFamily[] = [
+  {slug:"status-bars",kind:"component",title:"Status bars",description:"Daily endpoint availability samples, unknown days and accessible incident details.",group:"Data display",preview:"platform",variants:["Daily samples"],sources:["apps/web/src/components/block/status-bars.tsx","apps/web/src/components/insights/dashboard/assistant-availability-card.tsx"],usage:`import { StatusBars } from "@/components/block/status-bars";
+export default function Example() { return <StatusBars label="Support Assistant" days={[{date:"2026-10-08",status:"up",checks:12,failedChecks:0,degradedChecks:0,incidents:[]}]} />; }`,notes:"Shows up to 90 days, stepping down to 60 or 30 in narrower containers. Hover, tap or use arrow keys. Percentages describe observed checks; no samples means unknown, never operational."},
   {
     slug: "arc-picker", kind: "component", title: "Arc picker",
     description: "One selection control arranged along a draggable arc.",
@@ -2072,11 +2074,11 @@ export default function Example() {
     slug: "sound-switcher",
     kind: "component",
     title: "Sound switcher",
-    description: "A compact device preference for interface audio.",
+    description: "A device preference for interface audio, with an animated active or muted volume button.",
     group: "Foundations",
     preview: "primitive",
     variants: ["On", "Off"],
-    sources: ["apps/web/src/components/sound-switcher.tsx", "packages/ui/src/feedback/provider.tsx"],
+    sources: ["apps/web/src/components/sound-switcher.tsx", "apps/web/src/components/ui/icons/volume.tsx", "packages/ui/src/feedback/provider.tsx"],
     usage: `"use client";
 
 import { SoundSwitcher } from "@/components/sound-switcher";

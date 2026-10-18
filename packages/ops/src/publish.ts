@@ -5,6 +5,7 @@ import {
   connectorAction,
   connectorConnectionIssue,
   connectorSettingsIssue,
+  flowActionSteps,
 } from "@agent-hub/core";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
@@ -22,9 +23,11 @@ export async function assertConnectorFlowsPublishable(
   ctx: OperationContext,
   flows: readonly Flow[]
 ): Promise<void> {
-  for (const flow of flows) {
-    if (!flow.enabled || !flow.actions.includes("connector")) continue;
-    const settings = flow.actionSettings?.connector;
+  const connectors = flows.filter((flow) => flow.enabled).flatMap((flow) =>
+    flowActionSteps(flow).filter((step) => step.action === "connector")
+      .map((step) => ({ flow, settings: step.settings.connector }))
+  );
+  for (const { flow, settings } of connectors) {
     const settingsIssue = connectorSettingsIssue(settings);
     if (settingsIssue) {
       throw new OperationError(

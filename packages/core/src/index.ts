@@ -25,6 +25,8 @@
 
 // The domain vocabulary: every noun in CONTEXT.md, as a type.
 export * from "./types";
+export { assistantAvailabilityDays, availabilitySummary, currentAssistantAvailability } from "./assistant-availability";
+export type { AssistantAvailabilityStatus, AssistantAvailabilityIssue, AssistantAvailabilityTarget, AssistantAvailabilityCheck, AssistantAvailabilityFact, AssistantStatusDay } from "./assistant-availability";
 export {
   FEEDBACK_REACTIONS,
   feedbackReactionById,
@@ -251,7 +253,7 @@ export {
 } from "./http-flow";
 // Human review before a Connector write (#841): the Flows Agent's default as a
 // rule rather than a sentence in its persona.
-export { withReviewBeforeConnectorWrites } from "./review-gate";
+export { withReviewBeforeConnectorWrites, withReviewBeforeConnectorWriteSteps } from "./review-gate";
 export type { FlowTriggerKind, HttpFlowMethod, HttpFlowRequest } from "./http-flow";
 
 // Teammate action grants (#770): a grant row is the grant, the ceiling caps
@@ -567,3 +569,6 @@ export {
 } from "./attachments";
 export type { ChatAttachment } from "./attachments";
 export { teammateRuntimeConfig } from "./teammate-runtime";
+
+// Individually configured Flow action occurrences and legacy settings projection.
+export { flowActionSteps, flowForActionStep } from "./flow-actions";

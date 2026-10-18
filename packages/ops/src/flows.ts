@@ -1,12 +1,12 @@
 import { z } from "zod";
-import type { Flow, FlowAction, FlowTrigger } from "@agent-hub/core";
+import type { Flow, FlowAction, FlowActionSettings, FlowTrigger } from "@agent-hub/core";
 import {
   actionAllowedForTrigger,
   flowTriggerKind,
   mergeFlowSecrets,
   redactFlowSecrets,
   redactFlowsSecrets,
-  withReviewBeforeConnectorWrites,
+  withReviewBeforeConnectorWriteSteps,
 } from "@agent-hub/core";
 import {
   FLOW_ACTIONS_WITH_SETTINGS,
@@ -48,6 +48,17 @@ export function assertTriggerActions(
       "invalid_input",
       `The "${invalid}" action cannot run on the "${trigger}" trigger.`
     );
+  }
+}
+
+/** The action list is authoritative; instance settings cannot add hidden actions. */
+function assertActionSteps(actions: FlowAction[] | undefined, settings: FlowActionSettings | undefined) {
+  if (!settings?.steps) return;
+  if (
+    settings.steps.length !== (actions ?? []).length ||
+    settings.steps.some((step, index) => step.action !== actions?.[index])
+  ) {
+    throw new OperationError("invalid_input", "Action steps must match the Flow actions in order.");
   }
 }
 
@@ -99,7 +110,7 @@ export const flowCatalogOp = defineOperation({
     actionsWithSettings: [...FLOW_ACTIONS_WITH_SETTINGS],
     notes: [
       "url and schedule conditions are hard gates applied before intent classification; conversation_context is few-shot context for the classifier.",
-      "actionSettings is keyed by action name; only the actions listed in actionsWithSettings appear in it.",
+      "actionSettings is keyed by action name. Its optional steps array carries independent settings for each action instance, in the same order as actions.",
       "Objects are loose: unknown keys pass through rather than being stripped, so an older client patching one field cannot drop a newer build's key.",
       "Field-by-field shapes are in GET /api/v1/openapi.json under POST /assistants/{id}/flows.",
     ],
@@ -136,7 +147,12 @@ export const createFlowOp = defineOperation({
   run: async (ctx, { assistantId, input }) => {
     await requireAssistant(ctx, assistantId);
     assertTriggerActions(input.trigger ?? "message", input.actions);
-    return redactFlowSecrets(await ctx.db.createFlow(assistantId, input));
+    assertActionSteps(input.actions, input.actionSettings);
+    const normalized = input.actionSettings === undefined ? input : {
+      ...input,
+      actionSettings: mergeFlowSecrets(input.actionSettings, {}),
+    };
+    return redactFlowSecrets(await ctx.db.createFlow(assistantId, normalized));
   },
 });
 
@@ -150,6 +166,7 @@ export const updateFlowOp = defineOperation({
   ],
   run: async (ctx, { id, patch }) => {
     const stored = await requireFlow(ctx, id);
+    assertActionSteps(patch.actions ?? stored.actions, patch.actionSettings ?? stored.actionSettings);
     // A patch may move the trigger, the actions, or only one of the two,
     // the rule applies to the pair that will be stored.
     if (patch.trigger !== undefined || patch.actions !== undefined) {
@@ -226,6 +243,7 @@ export const draftFlowOp = defineOperation({
   run: async (_ctx, { summary, currentTrigger, patch: raw }) => {
     // Enabling is the Editor's switch on the list, never part of a draft.
     const { enabled: _enabled, ...patch } = raw;
+    if (patch.actions !== undefined) assertActionSteps(patch.actions, patch.actionSettings);
     if (patch.trigger !== undefined || patch.actions !== undefined) {
       assertTriggerActions(patch.trigger ?? currentTrigger ?? "message", patch.actions);
     }
@@ -234,10 +252,14 @@ export const draftFlowOp = defineOperation({
     // patch carries the actions: a patch to settings alone leaves order alone.
     // An inbound Flow cannot hold the gate, so the rule steps aside there.
     const trigger = patch.trigger ?? currentTrigger ?? "message";
-    const gated =
-      patch.actions && trigger !== "http_request"
-        ? { ...patch, actions: withReviewBeforeConnectorWrites(patch.actions, patch.actionSettings) }
-        : patch;
+    const gate = patch.actions && trigger !== "http_request"
+      ? withReviewBeforeConnectorWriteSteps(patch.actions, patch.actionSettings)
+      : undefined;
+    const gated = gate ? {
+      ...patch,
+      actions: gate.actions,
+      ...(gate.actionSettings === undefined ? {} : { actionSettings: gate.actionSettings }),
+    } : patch;
     return { applied: "draft" as const, summary, patch: gated };
   },
 });
@@ -256,10 +278,15 @@ export const proposeFlowOp = defineOperation({
   run: async (ctx, { assistantId, rationale, flow }) => {
     await requireAssistant(ctx, assistantId);
     assertTriggerActions(flow.trigger ?? "message", flow.actions);
-    const proposal =
-      flow.actions && (flow.trigger ?? "message") !== "http_request"
-        ? { ...flow, actions: withReviewBeforeConnectorWrites(flow.actions, flow.actionSettings) }
-        : flow;
+    assertActionSteps(flow.actions, flow.actionSettings);
+    const gate = flow.actions && (flow.trigger ?? "message") !== "http_request"
+      ? withReviewBeforeConnectorWriteSteps(flow.actions, flow.actionSettings)
+      : undefined;
+    const proposal = gate ? {
+      ...flow,
+      actions: gate.actions,
+      ...(gate.actionSettings === undefined ? {} : { actionSettings: gate.actionSettings }),
+    } : flow;
     return { proposal, rationale, assistantId };
   },
 });

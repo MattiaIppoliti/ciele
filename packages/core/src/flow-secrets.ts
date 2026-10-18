@@ -69,7 +69,8 @@ export function redactFlowSecrets<T extends { actionSettings?: FlowActionSetting
 ): T {
   const api = flow.actionSettings?.api_request;
   const webhook = flow.actionSettings?.http_webhook;
-  if (!api && !webhook) return flow;
+  const steps = flow.actionSettings?.steps;
+  if (!api && !webhook && !steps) return flow;
 
   const redactedAuth = redactAuth(api?.auth);
 
@@ -77,6 +78,10 @@ export function redactFlowSecrets<T extends { actionSettings?: FlowActionSetting
     ...flow,
     actionSettings: {
       ...flow.actionSettings,
+      ...(steps ? { steps: steps.map(step => ({
+        ...step,
+        settings: redactFlowSecrets({ actionSettings: step.settings }).actionSettings,
+      })) } : {}),
       ...(api
         ? {
             api_request: {
@@ -210,6 +215,20 @@ export function mergeFlowSecrets(
     };
   }
 
+  if (incoming.steps) {
+    merged = {
+      ...merged,
+      steps: incoming.steps.map(step => {
+        const { copiedFromId, ...saved } = step;
+        const previous = stored?.steps?.find(candidate => candidate.id === step.id)
+          ?? stored?.steps?.find(candidate => candidate.id === copiedFromId);
+        return {
+          ...saved,
+          settings: mergeFlowSecrets(step.settings, previous?.settings ?? (stored?.steps ? undefined : stored)) ?? {},
+        };
+      }),
+    };
+  }
   return merged;
 }
 

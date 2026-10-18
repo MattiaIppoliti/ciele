@@ -26,7 +26,7 @@ export function ThemeSwitcher() {
         aria-label="Dark theme"
         title={`Switch to ${nextTheme} theme`}
         data-foley-toggle="switch"
-        className="press flex size-9 items-center justify-center rounded-full border text-xl text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="press flex size-9 shrink-0 items-center justify-center rounded-full border text-xl text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       />
     </div>
   );

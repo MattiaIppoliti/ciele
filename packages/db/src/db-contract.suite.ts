@@ -916,6 +916,27 @@ export function describeDbContract(
       });
     });
 
+    describe("assistant availability", () => {
+      it("monitors only published targets and deduplicates five-minute samples", async () => {
+        const assistant=await newAssistant();
+        expect((await db.listPublishedAvailabilityTargets(ctx.organizationId)).some(a=>a.id===assistant.id)).toBe(false);
+        await db.createPublication(assistant.id,buildPublicationConfig(assistant,await db.listFlows(assistant.id),[]));
+        expect(await db.listPublishedAvailabilityTargets(ctx.organizationId)).toContainEqual({id:assistant.id,organizationId:ctx.organizationId,title:assistant.title});
+        const now=new Date(), base=Math.floor(now.getTime()/300000)*300000;
+        const check={assistantId:assistant.id,organizationId:ctx.organizationId,checkedAt:new Date(base).toISOString(),status:"up" as const,latencyMs:120,issue:null};
+        await systemDb.recordAssistantAvailability([check]);
+        await systemDb.recordAssistantAvailability([{...check,checkedAt:new Date(base+1000).toISOString(),status:"down",issue:"timeout"}]);
+        await systemDb.recordAssistantAvailability([{...check,checkedAt:new Date(base-300000).toISOString(),status:"degraded",issue:"slow_response"}]);
+        const from=new Date(base-600000).toISOString(), to=new Date(base+300000).toISOString();
+        const facts=(await db.getAssistantAvailability(ctx.organizationId,from,to)).filter(f=>f.assistantId===assistant.id);
+        expect(facts.map(f=>[f.status,f.checks]).sort()).toEqual([["degraded",1],["up",1]]);
+        expect((await db.getAssistantAvailability(ctx.foreignOrganizationId,from,to)).some(f=>f.assistantId===assistant.id)).toBe(false);
+        await expect(systemDb.recordAssistantAvailability([{...check,checkedAt:new Date(base-900000).toISOString(),organizationId:ctx.foreignOrganizationId}])).rejects.toBeDefined();
+        await db.deletePublications(assistant.id);
+        expect((await db.listPublishedAvailabilityTargets(ctx.organizationId)).some(a=>a.id===assistant.id)).toBe(false);
+      });
+    });
+
     describe("publications", () => {
       it("versions monotonically and serves the latest snapshot", async () => {
         const assistant = await newAssistant();
@@ -2868,6 +2889,15 @@ export function describeDbContract(
           priority: "high",
           title: "Patch me",
         });
+
+        // Clearing a priority writes "none", the column's own default. The
+        // column is `not null`, so a null here was a constraint error on
+        // Postgres that the mock never raised (#1043).
+        const cleared = await db.updateImprovement(improvement.id, {
+          priority: "none",
+        });
+        expect(cleared.priority).toBe("none");
+        expect((await db.getImprovement(improvement.id))?.priority).toBe("none");
       });
 
       it("files an improvement under a project, and detaches on delete", async () => {

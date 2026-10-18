@@ -703,6 +703,8 @@ export interface ActionContext {
    * a public Assistant gets. Absent on Assistant turns.
    */
   persona?: string;
+  /** Canonical complete Flow for durable gate checkpoints; flow is the active step projection. */
+  sourceFlow?: Flow;
   flow: Flow;
   message: string;
   history: HistoryMessage[];

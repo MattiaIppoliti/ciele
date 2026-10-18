@@ -311,8 +311,27 @@ const flowActionSettingsObject = z.looseObject({
     .optional(),
 });
 
-export const flowActionSettingsSchema =
-  flowActionSettingsObject as unknown as z.ZodType<FlowActionSettings>;
+const flowActionStepSchema = z.looseObject({
+  id: z.string().min(1).max(200),
+  action: flowActionSchema,
+  // An instance carries the same settings as a legacy Flow, without another
+  // instance list nested inside it.
+  settings: flowActionSettingsObject.extend({ steps: z.never().optional() }),
+  customMessage: z.string().max(10000).optional(),
+  copiedFromId: z.string().min(1).max(200).optional(),
+});
+
+export const flowActionSettingsSchema = flowActionSettingsObject.extend({
+  steps: z.array(flowActionStepSchema).max(20).superRefine((steps, ctx) => {
+    const ids = new Set<string>();
+    steps.forEach((step, index) => {
+      if (ids.has(step.id)) {
+        ctx.addIssue({ code: "custom", path: [index, "id"], message: "Action step ids must be unique." });
+      }
+      ids.add(step.id);
+    });
+  }).optional(),
+}) as unknown as z.ZodType<FlowActionSettings>;
 
 /** The actions that carry configuration, for `flows.catalog` to name. */
 export const FLOW_ACTIONS_WITH_SETTINGS = Object.keys(

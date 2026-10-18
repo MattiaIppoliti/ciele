@@ -116,13 +116,17 @@ export function TeammateComputer({
     files: configured.files && (status?.permissions.files ?? true),
     terminal: configured.terminal && (status?.permissions.terminal ?? true),
   };
+  // Without the service the turn is offered no computer tools, so a request
+  // from here could only be answered "I can't".
   const mayAsk =
     !busy &&
     !retired &&
+    status?.state !== "not_configured" &&
     (tab !== "terminal" || teammate.capabilityCeiling === "edit");
 
-  const refresh = useEffectEvent(async (signal: AbortSignal) => {
-    if (pending) return;
+  /** Resolves to the state it read, or null when it read nothing. */
+  const refresh = useEffectEvent(async (signal: AbortSignal): Promise<ComputerStatus["state"] | null> => {
+    if (pending) return null;
     const version = epoch.current;
     try {
       const response = await fetch(endpoint, { signal, cache: "no-store" });
@@ -131,7 +135,7 @@ export function TeammateComputer({
           "Cannot connect to this teammate's workspace. Try again.",
         );
       const next = computerStatusSchema.parse(await response.json());
-      if (signal.aborted || version !== epoch.current) return;
+      if (signal.aborted || version !== epoch.current) return null;
       setStatus(next);
       setError(null);
       if (!next.permissions.files) {
@@ -145,7 +149,7 @@ export function TeammateComputer({
           setFiles(null);
           setFile(null);
         }
-        return;
+        return next.state;
       }
       try {
         const capture = await fetch(`${endpoint}?view=screen`, {
@@ -169,6 +173,7 @@ export function TeammateComputer({
           );
         }
       }
+      return next.state;
     } catch (cause) {
       if (!signal.aborted && version === epoch.current) {
         setStatus(null);
@@ -179,6 +184,7 @@ export function TeammateComputer({
           cause instanceof Error ? cause.message : "Workspace unavailable",
         );
       }
+      return null;
     }
   });
   useEffect(() => {
@@ -192,8 +198,15 @@ export function TeammateComputer({
         (cardRef.current &&
           cardRef.current.getBoundingClientRect().bottom > 0 &&
           cardRef.current.getBoundingClientRect().top < window.innerHeight);
-      if (document.visibilityState === "visible" && visible)
-        await refresh(controller.signal);
+      if (document.visibilityState === "visible" && visible) {
+        const state = await refresh(controller.signal);
+        // Nothing changes on its own while the service is missing or the
+        // computer is off and no turn is running: only a turn or Reconnect can
+        // start it, and both re-run this effect. Polling every 2.5s there
+        // billed a function call per tick for a screen that stays blank.
+        if (state === "not_configured") return;
+        if (state === "stopped" && !busy) return;
+      }
       if (!controller.signal.aborted) timer = setTimeout(poll, 2500);
     };
     void poll();
@@ -201,7 +214,7 @@ export function TeammateComputer({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [enabled, open, screenExpanded, teammate.id, reconnect, latestActivityId]);
+  }, [enabled, open, screenExpanded, teammate.id, reconnect, latestActivityId, busy]);
 
   async function lifecycle(action: "start" | "stop") {
     epoch.current++;

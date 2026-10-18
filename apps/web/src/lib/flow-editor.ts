@@ -25,6 +25,7 @@ import {
   actionsFitTrigger,
   partitionActionsForTrigger,
 } from "@/lib/flow-actions";
+import { draftActionSteps, replaceDraftActions } from "./flow-action-editor";
 import {
   cleanFlowConditions,
   flowConditionDescription,
@@ -186,7 +187,7 @@ export function flowDraftStatus(
   draft: FlowDraft,
   options: { isDefaultFlow: boolean; isEdit: boolean }
 ): FlowDraftStatus {
-  const { trigger, dwell, actions, settings, customMessage, conditions, name } =
+  const { trigger, dwell, actions, conditions, name } =
     draft;
   const saveLabel = options.isEdit ? "Save changes" : "Create flow";
 
@@ -197,14 +198,14 @@ export function flowDraftStatus(
   const triggerOk = options.isDefaultFlow || (trigger !== null && dwellOk);
   const proactive = trigger !== null && isProactiveTrigger(trigger);
   const inbound = trigger !== null && isHttpTrigger(trigger);
-  const configuredActions = actions.every((action) =>
-    actionConfigured(action, settings, customMessage)
+  const configuredActions = draftActionSteps(draft).every((step) =>
+    actionConfigured(step.action, step.settings, step.customMessage ?? "")
   );
   // Belt to the braces in triggerChangePlan: the runtime refuses an action its
   // trigger may not run, so the editor must never offer to save that pair, a
   // refused save has to be a disabled button with a reason, never a 500.
   const actionsMatchTrigger = actionsFitTrigger(actions, trigger);
-  const responseOk = actions.length > 0 && configuredActions && actionsMatchTrigger;
+  const responseOk = actions.length > 0 && actions.length <= 20 && configuredActions && actionsMatchTrigger;
   const nameOk = name.trim().length > 0;
   // An incomplete objective condition would reach the runtime as a condition
   // the gate has to ignore, refuse it here instead (spec #550).
@@ -217,7 +218,9 @@ export function flowDraftStatus(
       ? `Set a trigger to enable ${saveLabel}`
       : actions.length === 0
         ? `Add a response action to enable ${saveLabel}`
-        : !actionsMatchTrigger
+        : actions.length > 20
+          ? "A flow can contain at most 20 response actions"
+          : !actionsMatchTrigger
           ? `Remove the actions this trigger cannot run: ${partitionActionsForTrigger(
               actions,
               trigger ?? "message"
@@ -293,12 +296,10 @@ export function applyTriggerChange(draft: FlowDraft, next: FlowTrigger): FlowDra
     ? draft.settings
     : { ...draft.settings, notification: undefined };
   return {
-    ...draft,
+    ...replaceDraftActions({ ...draft, settings }, kept),
     trigger: next,
-    actions: kept,
     conditions: triggerHasConditions(next) ? draft.conditions : [],
     customMessage: dropsMessage ? "" : draft.customMessage,
-    settings,
   };
 }
 

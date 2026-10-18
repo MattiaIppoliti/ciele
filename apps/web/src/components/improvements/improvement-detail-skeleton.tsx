@@ -6,7 +6,7 @@ import { Skeleton } from "@agent-hub/ui";
  * arrives, and the drawer while it fetches the record. Measured against the
  * rendered detail: key badge, 29px title and meta line (the page adds the
  * breadcrumb above them), then the description, the Associated Messages card
- * and, from the `@5xl` container width, the 320px properties rail beside them
+ * and, from the `@5xl` container width, the 320px properties and Details rail beside them
  * (below them in a narrow drawer).
  */
 export function ImprovementDetailSkeleton({ variant }: { variant: "page" | "drawer" }) {
@@ -43,13 +43,29 @@ export function ImprovementDetailSkeleton({ variant }: { variant: "page" | "draw
             </div>
           </div>
         </div>
-        <div className="rounded-xl border px-4 py-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex h-10.5 items-center justify-between gap-3">
-              <Skeleton className="h-5 w-16" />
-              <Skeleton className="h-6 w-16" />
-            </div>
-          ))}
+        <div className="min-w-0 h-fit space-y-6">
+          <div className="rounded-xl border px-4 py-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex h-10.5 items-center justify-between gap-3">
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-6 w-16" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-16" />
+            {[3, 3, 1, 6].map((rows, group) => (
+              <div key={group} className="rounded-xl border p-4">
+                <Skeleton className="mb-2 h-5 w-24" />
+                {Array.from({ length: rows }).map((_, row) => (
+                  <div key={row} className="flex items-center justify-between gap-3 py-1">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-5 w-24" />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

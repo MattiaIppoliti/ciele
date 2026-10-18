@@ -14,6 +14,7 @@ import {
   type AssistantOption,
 } from "./dashboard-kit";
 
+import { AssistantAvailabilityCard } from "./assistant-availability-card";
 import { LatencyCard, RatesComparisonCard, FlowRankingCard } from "./dashboard-blocks";
 
 /**
@@ -59,6 +60,8 @@ export function ObservabilityDashboard({
       }
     >
       <DashboardStatCards specs={observabilityStats(dashboard, view.previous)} loading={stale} />
+
+      {assistantScoped && <AssistantAvailabilityCard filter={filter} />}
 
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-12 @5xl:col-span-6"><LatencyCard dashboard={dashboard} /></div>

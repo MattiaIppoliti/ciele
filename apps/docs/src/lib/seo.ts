@@ -12,11 +12,24 @@ function languageNeutralPath(url: string, language: string): string {
   return url.replace(new RegExp(`^/${language}(?=/|$)`), '') || '/';
 }
 
+/**
+ * A translated API-reference page is the English operation schema with its
+ * summaries translated. Readers keep it, but Google treats ~700 of them as
+ * near-duplicates and leaves them "Discovered, not indexed", which also slows
+ * the crawl of the guides. So they stay out of the sitemap and the hreflang
+ * sets, and carry `noindex, follow`.
+ */
+function isTranslatedApiReference(url: string, language: string): boolean {
+  return language !== i18n.defaultLanguage
+    && /^\/api-reference(?:\/|$)/.test(languageNeutralPath(url, language));
+}
+
 function localizedUrls() {
   const result = new Map<string, Record<string, string>>();
 
   for (const [language, pages] of pagesByLanguage) {
     for (const page of pages) {
+      if (isTranslatedApiReference(page.url, language)) continue;
       const key = languageNeutralPath(page.url, language);
       const urls = result.get(key) ?? {};
       urls[language] = new URL(page.url, DOCS_ORIGIN).toString();
@@ -40,6 +53,10 @@ export function docsAlternates(url: string, language: string) {
       ...(english ? { 'x-default': english } : {}),
     },
   };
+}
+
+export function docsRobots(url: string, language: string) {
+  return isTranslatedApiReference(url, language) ? { index: false, follow: true } : undefined;
 }
 
 export function docsOpenGraph(url: string, title: string, description: string) {

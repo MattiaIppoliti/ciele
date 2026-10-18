@@ -22,6 +22,7 @@ import {
   type FlowConditionKind,
   type FlowConditionKindMeta,
 } from "@/lib/flow-conditions";
+import { draftActionSteps } from "./flow-action-editor";
 import { actionConfigured, triggerHasConditions, type FlowDraft } from "@/lib/flow-editor";
 import { countLabel } from "@/lib/pagination";
 
@@ -57,6 +58,8 @@ export interface FlowCanvasNode {
   kind: FlowCanvasNodeKind;
   /** Set for `action` nodes only. */
   action?: FlowAction;
+  /** Position among action occurrences, independent of the node kind prefix. */
+  actionIndex?: number;
   title: string;
   subtitle: string;
   status: FlowCanvasNodeStatus;
@@ -150,25 +153,27 @@ export function projectFlowCanvas(
     });
   }
 
-  for (const action of draft.actions) {
+  for (const [actionIndex, step] of draftActionSteps(draft).entries()) {
+    const action = step.action;
     const meta = FLOW_ACTIONS[action];
     const fits = trigger === null || actionAllowedForTrigger(action, trigger);
     // A Connector node is titled after what it does, not after its kind: the
     // catalogued action's title, and the provider as the subtitle.
     const catalogued =
-      action === "connector" ? connectorAction(draft.settings.connector?.action) : null;
-    const provider = draft.settings.connector?.provider ?? catalogued?.provider;
+      action === "connector" ? connectorAction(step.settings.connector?.action) : null;
+    const provider = step.settings.connector?.provider ?? catalogued?.provider;
     nodes.push({
-      id: actionNodeId(action),
+      id: step.id,
       kind: "action",
       action,
+      actionIndex,
       title: catalogued ? catalogued.title : meta.label,
       subtitle: !fits
         ? "This trigger cannot run it"
         : action === "connector" && provider
           ? CONNECTOR_PROVIDER_LABELS[provider]
           : meta.subtitle,
-      status: !(fits && actionConfigured(action, draft.settings, draft.customMessage))
+      status: !(fits && actionConfigured(action, step.settings, step.customMessage ?? ""))
         ? "needs_setup"
         : action === "connector" && provider && connectorRunsInternalOnly(provider)
           ? "preview_only"
@@ -281,12 +286,13 @@ export function dropIndexAt(
   positions: Record<string, CanvasPoint>,
   at: number,
   except: FlowAction | null = null,
-  direction: CanvasDirection = "horizontal"
+  direction: CanvasDirection = "horizontal",
+  exceptId?: string
 ): number {
   let index = 0;
   const half = nodeExtent(direction) / 2;
   for (const node of nodes) {
-    if (node.kind !== "action" || node.action === except) continue;
+    if (node.kind !== "action" || node.id === exceptId || (exceptId === undefined && node.action === except)) continue;
     const position = positions[node.id] ?? derivedPosition(node.index, direction);
     if (along(position, direction) + half < at) index += 1;
   }
@@ -325,7 +331,9 @@ export function moveAction(
   action: FlowAction,
   toIndex: number
 ): FlowAction[] {
-  const without = actions.filter((candidate) => candidate !== action);
+  const from = actions.indexOf(action);
+  if (from === -1) return actions;
+  const without = [...actions.slice(0, from), ...actions.slice(from + 1)];
   const index = Math.max(0, Math.min(toIndex, without.length));
   return [...without.slice(0, index), action, ...without.slice(index)];
 }

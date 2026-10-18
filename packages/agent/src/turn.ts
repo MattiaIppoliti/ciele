@@ -26,6 +26,7 @@ import type {
 } from "@agent-hub/core";
 import {
   attachmentContextSection,
+  flowForActionStep,
   type ChatAttachment,
   foldPreflightSignals,
   messageText,
@@ -1921,8 +1922,8 @@ function resumeCursor(
     };
   }
   if (input.resumeWebhook) {
-    const settings = flows.find((flow) => flow.id === input.resumeWebhook!.flowId)
-      ?.actionSettings?.http_webhook;
+    const flow = flows.find((flow) => flow.id === input.resumeWebhook!.flowId);
+    const settings = flow ? flowForActionStep(flow, input.resumeWebhook.actionIndex).actionSettings.http_webhook : undefined;
     return {
       flowId: input.resumeWebhook.flowId,
       actionIndex: input.resumeWebhook.actionIndex,

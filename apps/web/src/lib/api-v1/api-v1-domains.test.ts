@@ -343,6 +343,27 @@ describe("improvements over /api/v1 (#625)", () => {
     // The web kanban reads the same row.
     const direct = await getMockDb().getImprovement(id);
     expect(direct?.priority).toBe("high");
+
+    // "none" clears it; null and an unknown value are refused before the Db,
+    // which would otherwise answer Postgres's constraint error as a 500 (#1043).
+    const cleared = await patchImprovement(
+      req(`/api/v1/improvements/${id}`, editor, {
+        method: "PATCH",
+        body: { priority: "none" },
+      }),
+      params(id)
+    );
+    expect(cleared.status).toBe(200);
+    expect((await cleared.json()).priority).toBe("none");
+    for (const body of [{ priority: null }, { priority: "urgent" }, { status: "blocked" }]) {
+      const refused = await patchImprovement(
+        req(`/api/v1/improvements/${id}`, editor, { method: "PATCH", body }),
+        params(id)
+      );
+      expect(refused.status).toBe(422);
+      expect((await refused.json()).error.code).toBe("invalid_input");
+    }
+    expect((await getMockDb().getImprovement(id))?.priority).toBe("none");
   });
 });
 

@@ -7,6 +7,7 @@ import type {
 } from "@agent-hub/core";
 import {
   expireWebhook,
+  flowForActionStep,
   receiveWebhook,
   webhookHaltMessage,
   webhookTemplateVariables,
@@ -182,7 +183,7 @@ async function unsubscribe(db: Db, subscription: WebhookSubscription): Promise<v
   if (!subscription.unsubscribeUrl || subscription.unsubscribedAt) return;
   try {
     const flow = await db.getFlow(subscription.flowId).catch(() => null);
-    const configured = flow?.actionSettings?.http_webhook?.unsubscribe;
+    const configured = flow ? flowForActionStep(flow, subscription.actionIndex).actionSettings.http_webhook?.unsubscribe : undefined;
     await executeApiRequest(
       {
         method: (subscription.unsubscribeMethod ?? "DELETE") as WebhookCall["method"],

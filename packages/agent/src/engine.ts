@@ -14,6 +14,7 @@ import type {
 } from "@agent-hub/core";
 import {
   basicInteractionFlow,
+  flowForActionStep,
   studyModeFlow,
   studyRequestFormat,
   STUDY_MODE_FLOW_ID,
@@ -299,6 +300,8 @@ async function dispatchActions(options: {
   const startIndex = options.startIndex ?? 0;
   let handoverTo: string | null = null;
   const effectKeyPrefix = ctx.idempotencyKey;
+  const sourceFlow = ctx.flow;
+  ctx.sourceFlow = sourceFlow;
   // Built-in catch-alls (Default behavior, Assistant Information, …) ship with
   // no actions. Rather than dead-end on the "no actions configured" fallback,
   // an unconfigured built-in flow generatively answers from the assistant's
@@ -313,6 +316,7 @@ async function dispatchActions(options: {
     if (actionIndex < startIndex) continue;
     if (signal?.aborted) break;
     await ctx.checkContinuation?.();
+    ctx.flow = flowForActionStep(sourceFlow, actionIndex);
     ctx.actionIndex = actionIndex;
     ctx.idempotencyKey = effectKeyPrefix
       ? `${effectKeyPrefix}/action-${actionIndex}`
@@ -430,7 +434,10 @@ export async function runProactiveFlows(options: {
       signal,
       previewSurface: isOperatorSurface(keyResolution),
     };
-    for (const action of flow.actions) {
+    for (const [actionIndex, action] of flow.actions.entries()) {
+      ctx.sourceFlow = flow;
+      ctx.flow = flowForActionStep(flow, actionIndex);
+      ctx.actionIndex = actionIndex;
       if (signal?.aborted) break;
       const handler = ACTION_HANDLERS[action];
       if (!handler) continue;

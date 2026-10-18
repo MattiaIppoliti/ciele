@@ -1,5 +1,6 @@
 import { connectorAction } from "./connector-catalog";
-import type { FlowAction, FlowActionSettings } from "./types";
+import { flowActionSteps } from "./flow-actions";
+import type { FlowAction, FlowActionSettings, FlowActionStep } from "./types";
 
 /**
  * Human review before a Connector write (#841).
@@ -19,14 +20,32 @@ export function withReviewBeforeConnectorWrites(
   actions: readonly FlowAction[],
   settings: FlowActionSettings | undefined
 ): FlowAction[] {
-  const index = actions.indexOf("connector");
-  if (index < 0) return [...actions];
-  if (actions.slice(0, index).includes("human_review")) return [...actions];
-  const action = connectorAction(settings?.connector?.action);
-  if (action?.effect === "read") return [...actions];
-  // One Human review per Flow: a Flow that already has the gate after the
-  // write moves it before, rather than gaining a second.
-  const without = actions.filter((entry) => entry !== "human_review");
-  const at = without.indexOf("connector");
-  return [...without.slice(0, at), "human_review", ...without.slice(at)];
+  return withReviewBeforeConnectorWriteSteps(actions, settings).actions;
+}
+
+/** Keeps independently configured instances aligned when an agent adds the gate. */
+export function withReviewBeforeConnectorWriteSteps(
+  actions: readonly FlowAction[],
+  settings: FlowActionSettings | undefined
+): { actions: FlowAction[]; actionSettings: FlowActionSettings | undefined } {
+  const steps = flowActionSteps({ actions: [...actions], actionSettings: settings ?? {}, customMessage: "" });
+  const index = steps.findIndex((step) =>
+    step.action === "connector" && connectorAction(step.settings.connector?.action)?.effect !== "read"
+  );
+  if (index < 0 || steps.slice(0, index).some((step) => step.action === "human_review")) {
+    return { actions: [...actions], actionSettings: settings };
+  }
+  const existing = steps.find((step) => step.action === "human_review");
+  let id = "action:human_review";
+  for (let suffix = 1; !existing && steps.some((step) => step.id === id); suffix += 1) {
+    id = `action:human_review:${suffix}`;
+  }
+  const gate: FlowActionStep = existing ?? { id, action: "human_review", settings: settings?.human_review ? { human_review: settings.human_review } : {} };
+  // Move one existing gate, preserving its configuration and any other copied gates.
+  const reordered = steps.filter((step) => step !== existing);
+  reordered.splice(index, 0, gate);
+  return {
+    actions: reordered.map((step) => step.action),
+    actionSettings: settings?.steps ? { ...settings, steps: reordered } : settings,
+  };
 }

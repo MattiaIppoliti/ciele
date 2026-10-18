@@ -646,8 +646,22 @@ export interface NotificationButton {
   text?: string;
 }
 
-/** Per-action settings, keyed by action type (each type appears at most once). */
+export type FlowActionStepSettings = Omit<FlowActionSettings, "steps">;
+
+/** One independently configured occurrence of an action in a Flow. */
+export interface FlowActionStep {
+  id: string;
+  action: FlowAction;
+  settings: FlowActionStepSettings;
+  customMessage?: string;
+  /** Same-Flow source for preserving masked credentials when copying; removed on save. */
+  copiedFromId?: string;
+}
+
+/** Legacy settings by action type, optionally overridden by individual occurrences. */
 export interface FlowActionSettings {
+  /** In the same order as Flow.actions; legacy Flows omit this. */
+  steps?: FlowActionStep[];
   search_knowledge?: {
     /** Offer the help-desk escalation button when no answer is found. */
     escalatePrompt?: boolean;
@@ -3658,6 +3672,17 @@ export const IMPROVEMENT_STATUS_VALUES: readonly ImprovementStatus[] = [
 ];
 
 export type ImprovementPriority = "high" | "medium" | "low" | "none";
+
+/**
+ * Every Improvement priority. "none" is the cleared state and the column's
+ * default; the column is `not null`, so there is no null priority.
+ */
+export const IMPROVEMENT_PRIORITY_VALUES: readonly ImprovementPriority[] = [
+  "high",
+  "medium",
+  "low",
+  "none",
+];
 
 /**
  * An AI-answer-quality tracker item (the Improvements Kanban). Created from the

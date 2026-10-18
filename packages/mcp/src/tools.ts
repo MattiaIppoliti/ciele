@@ -639,7 +639,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_improvements",
       description:
-        "The answer-quality kanban: `list` items, `get` one (with the flagged messages and any drafted fix), `update` status/priority/tags/assigneeId/dueDate/title/description via `patch`, e.g. move a card to in_progress or done.",
+        "The answer-quality kanban: `list` items, `get` one (with the flagged messages and any drafted fix), `update` status/priority/tags/assigneeId/dueDate/title/description via `patch`, e.g. move a card to in_progress or done. Priority is high, medium, low or none; send \"none\" to clear it, never null.",
       schema: {
         action: z.enum(["list", "get", "update"]),
         id: z.string().optional().describe("Improvement id (get/update)"),

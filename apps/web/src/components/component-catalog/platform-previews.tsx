@@ -1,4 +1,5 @@
 "use client";
+import { StatusBars } from "@/components/block/status-bars";
 
 import { useId, useRef, useState, type ReactNode } from "react";
 import { BookOpen, FileText, Folder, Search, RotateCcw, Rows3 } from "lucide-react";
@@ -271,6 +272,7 @@ function VoicePreview({ slug }: { slug: string }) {
 
 export default function PlatformPreview({ slug }: { slug: string }) {
   switch (slug) {
+    case "status-bars": return <div className="w-full max-w-2xl space-y-8"><p className="text-xs text-muted-foreground">Illustrative samples for the component preview</p><StatusBars label="Support Assistant" current="up" days={Array.from({length:90},(_,i)=>({date:new Date(Date.UTC(2026,6,11+i)).toISOString().slice(0,10),status:i<4?"none":i===18?"down":i===38?"degraded":"up",checks:i<4?0:288,failedChecks:i===18?2:0,degradedChecks:i===38?3:0,incidents:i===18?[{title:"Endpoint timed out",checks:2}]:i===38?[{title:"Slow configuration response",checks:3}]:[]}))}/></div>;
     case "charts": case "bar-chart": case "donut-chart": case "waffle-chart": case "streamgraph": case "bump-chart": case "slope-chart": case "ridgeline": case "treemap": case "brush-chart": case "activity-heatmap": case "sparkline": case "chart-container": case "arc-frame": return <ChartsPreview slug={slug} />;
     case "metric-cards": case "insights-stat-card": case "animated-counter": case "analytics-card": case "dashboard-stat-cards": return <MetricCardsPreview slug={slug} />;
     case "gauges": case "radial-gauge": return <GaugesPreview slug={slug} />;

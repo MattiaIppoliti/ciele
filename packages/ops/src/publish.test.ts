@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Role } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import { createAssistantOp } from "./assistants";
-import { createFlowOp } from "./flows";
+import { createFlowOp, updateFlowOp } from "./flows";
 import { OperationError, type OperationContext } from "./operation";
 import { publishAssistantOp } from "./publish";
 
@@ -145,5 +145,32 @@ describe("publishing Flows with a Connector action", () => {
       .catch((e: unknown) => e);
     expect(error).toBeInstanceOf(OperationError);
     expect((error as Error).message).toMatch(/choose a connector action before publishing/);
+  });
+
+  it("checks each copied Connector and freezes its independent configuration", async () => {
+    const db = getMockDb();
+    const connection = await db.createApplicationConnection({
+      organizationId: DEMO_ORG.id, provider: "slack", name: "Slack",
+      sealedCredentials: "sealed", scopes: ["chat:write"],
+    });
+    const assistant = await createAssistantOp.run(ctx(db), { title: "Copies" });
+    const settings = { connector: {
+      provider: "slack" as const, connectionId: connection.id,
+      action: "slack.message.post", params: { channel: "C1", text: "first" },
+    } };
+    const flow = await createFlowOp.run(ctx(db), { assistantId: assistant.id, input: {
+      name: "Two posts", actions: ["connector", "connector"], actionSettings: { steps: [
+        { id: "first", action: "connector", settings },
+        { id: "copy", action: "connector", settings: { connector: { ...settings.connector, connectionId: "missing" } } },
+      ] },
+    } });
+    await expect(publishAssistantOp.run(ctx(db), { assistantId: assistant.id })).rejects.toThrow(/connection no longer exists/);
+    await updateFlowOp.run(ctx(db), { id: flow.id, patch: { actionSettings: { steps: [
+      { id: "first", action: "connector", settings },
+      { id: "copy", action: "connector", settings: { connector: { ...settings.connector, params: { channel: "C2", text: "second" } } } },
+    ] } } });
+    await publishAssistantOp.run(ctx(db), { assistantId: assistant.id });
+    const frozen = (await db.getLatestPublication(assistant.id))?.config.flows.find((item) => item.id === flow.id);
+    expect(frozen?.actionSettings.steps?.map((step) => step.settings.connector?.params?.text)).toEqual(["first", "second"]);
   });
 });

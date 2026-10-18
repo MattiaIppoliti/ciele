@@ -1,3 +1,4 @@
+import type { AssistantAvailabilityFact } from "@agent-hub/core";
 import type { PostgrestSingleResponse, SupabaseClient } from "@supabase/supabase-js";
 import type { MessageReaction } from "@agent-hub/core";
 import {
@@ -6161,6 +6162,68 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }));
     },
 
+    async listPublishedAvailabilityTargets(organizationId, limit = 200) {
+      const { data, error } = await client.rpc("published_availability_targets", {
+        p_organization_id: organizationId,
+        p_limit: limit,
+      });
+      if (error) throw error;
+      return (data ?? []).map(
+        (row: { id: string; organization_id: string; title: string }) => ({
+          id: row.id,
+          organizationId: row.organization_id,
+          title: row.title,
+        }),
+      );
+    },
+    async recordAssistantAvailability(checks) {
+      if (checks.length) {
+        const { error } = await client
+          .from("assistant_availability_checks")
+          .upsert(
+            checks.map((c) => ({
+              assistant_id: c.assistantId,
+              organization_id: c.organizationId,
+              checked_at: c.checkedAt,
+              status: c.status,
+              latency_ms: c.latencyMs,
+              issue: c.issue,
+            })),
+            { onConflict: "assistant_id,slot", ignoreDuplicates: true },
+          );
+        if (error) throw error;
+      }
+      const { error } = await client
+        .from("assistant_availability_checks")
+        .delete()
+        .lt("checked_at", new Date(Date.now() - 400 * 86400000).toISOString());
+      if (error) throw error;
+    },
+    async getAssistantAvailability(organizationId, from, to) {
+      const { data, error } = await client.rpc("org_assistant_availability", {
+        p_organization_id: organizationId,
+        p_from: from,
+        p_to: to,
+      });
+      if (error) throw error;
+      return (data ?? []).map(
+        (row: {
+          assistant_id: string;
+          day: string;
+          status: AssistantAvailabilityFact["status"];
+          issue: AssistantAvailabilityFact["issue"];
+          checks: number | string;
+          last_checked_at: string;
+        }) => ({
+          assistantId: row.assistant_id,
+          day: row.day,
+          status: row.status,
+          issue: row.issue,
+          checks: Number(row.checks),
+          lastCheckedAt: row.last_checked_at,
+        }),
+      );
+    },
     async getOrgDashboardFacts(organizationId, from, to) {
       const args = { p_organization_id: organizationId, p_from: from, p_to: to };
       // Four independent reads over the same window; none depends on another.

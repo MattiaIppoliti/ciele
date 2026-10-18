@@ -5,6 +5,7 @@ import type { Assistant, FlowAction, FlowActionSettings } from "@agent-hub/core"
 import {
   CONNECTOR_PROVIDER_LABELS,
   connectorAction,
+  flowForActionStep,
   DEFAULT_BASIC_REPLY,
   STUDY_MODE_FLOW_ID,
   DEFAULT_REVIEW_WAITING_MESSAGE,
@@ -998,6 +999,7 @@ const basicReply: ActionHandler = async ({
  */
 const humanReview: ActionHandler = async ({
   flow,
+  sourceFlow,
   message,
   history,
   emit,
@@ -1046,7 +1048,7 @@ const humanReview: ActionHandler = async ({
           // `FlowActionSettings` is a partial record, so this reads what the
           // Editor configured for the step and nothing about any other one.
           arguments: JSON.stringify(
-            (flow.actionSettings as Record<string, unknown> | undefined)?.[next] ?? {}
+            (flowForActionStep(sourceFlow ?? flow, index + 1).actionSettings as Record<string, unknown> | undefined)?.[next] ?? {}
           ),
         }).catch(() => null)
       : null;
@@ -1076,7 +1078,7 @@ const humanReview: ActionHandler = async ({
     inputs: settings.inputs ?? [],
     expiresAt: reviewExpiresAt(now, reviewTimeoutHours(settings)),
     haltMessage: settings.haltMessage ?? "",
-  }, { flow, variables: ctx, message });
+  }, { flow: sourceFlow ?? flow, variables: ctx, message });
   const card: ChatReplyPart = {
     type: "human_review",
     action: "human_review",
@@ -1108,6 +1110,7 @@ const humanReview: ActionHandler = async ({
  */
 const httpWebhook: ActionHandler = async ({
   flow,
+  sourceFlow,
   message,
   emit,
   signal,
@@ -1155,7 +1158,7 @@ const httpWebhook: ActionHandler = async ({
     unsubscribeBody: null,
     expiresAt: webhookExpiresAt(now, timeout),
     haltMessage: settings.haltMessage ?? "",
-  }, { flow, variables: ctx, message });
+  }, { flow: sourceFlow ?? flow, variables: ctx, message });
 
   // The one variable the subscribe call exists to carry.
   const subscribeCtx = {

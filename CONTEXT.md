@@ -166,6 +166,12 @@ _Avoid_: event (alone), hook
 One step a matched Flow executes: search knowledge, custom message, basic reply, suggest help desk, follow-up questions, notification, and the doing actions (API request, Connector Action, send email, improvement), the two gates (**Human Review**, **HTTP Webhook**) and **Response**. Which actions a trigger may run is one rule (`actionAllowedForTrigger`), applied at save and again at dispatch.
 _Avoid_: step, tool
 
+**Flow Action Step**:
+An individually configured occurrence of a Flow Action, with its own stable identity. Copying it preserves its configuration and creates another identity; legacy Flows share settings by action type until individual occurrences are materialized.
+
+**Assistant Availability Check**:
+An independent request to a published Assistant's configuration endpoint. Observed uptime is the proportion of checks that return a valid configuration. Slow responses remain available but degraded. Unmeasured intervals are unknown. This does not measure generative-answer availability.
+
 **Basic Interaction**:
 The built-in Flow, first in priority, that answers conversational courtesy, a greeting, a thanks, a farewell, an acknowledgement, rather than an information need. Its single Flow Action, **Basic reply**, produces one generated sentence or two with no retrieval, no tools and no citations; a configured message pins the wording and skips the model. Counted as an AI answer, never graded (nothing was cited, so there is nothing to grade against).
 _Avoid_: small talk (in UI), chitchat, greeting flow
@@ -262,7 +268,7 @@ cannot cite.
 _Avoid_: knowledge base, binding
 
 **Action Grant**:
-One row saying an AI Teammate may act in one domain (improvements, knowledge, inbox). The row *is*
+One row saying an AI Teammate may act in one domain (improvements, knowledge, inbox, flows). The row *is*
 the grant: there is no enabled flag, absence is refusal, and revoking deletes. Written by admins
 only, one rung above the Editor who may edit the Teammate's persona.
 _Avoid_: permission, scope (that is the Knowledge Scope), capability (that is the ceiling), role

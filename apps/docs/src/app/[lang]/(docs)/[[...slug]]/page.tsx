@@ -11,7 +11,7 @@ import { PageActions } from '@/components/page-actions';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { DOCS_REPO_URL } from '@/lib/repo';
-import { docsAlternates, docsOpenGraph } from '@/lib/seo';
+import { docsAlternates, docsOpenGraph, docsRobots } from '@/lib/seo';
 import { OpenAPIPage } from '@/components/openapi-page';
 import { apiOperationSlug } from '@/lib/api-operation-slug';
 import Link from 'next/link';
@@ -143,6 +143,7 @@ export async function generateMetadata(
     title,
     description,
     alternates: docsAlternates(pageUrl, params.lang),
+    robots: docsRobots(pageUrl, params.lang),
     openGraph: docsOpenGraph(pageUrl, title, description),
     twitter: {
       card: 'summary_large_image',

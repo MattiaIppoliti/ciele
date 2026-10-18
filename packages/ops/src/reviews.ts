@@ -4,6 +4,7 @@ import {
   REVIEW_MAIL_SCOPE,
   REVIEW_SLACK_SCOPE,
   decideReview,
+  flowActionSteps,
   humanReviewSettingsIssue,
   normalizeAssignees,
 } from "@agent-hub/core";
@@ -155,8 +156,11 @@ export async function assertHumanReviewFlowsPublishable(
   if (gated.length === 0) return;
   const members = await ctx.db.listMembers(ctx.organizationId);
   const memberEmails = new Set(members.map((member) => member.email.trim().toLowerCase()));
-  for (const flow of gated) {
-    const settings = flow.actionSettings?.human_review;
+  const reviews = gated.flatMap((flow) =>
+    flowActionSteps(flow).filter((step) => step.action === "human_review")
+      .map((step) => ({ flow, settings: step.settings.human_review }))
+  );
+  for (const { flow, settings } of reviews) {
     const issue = humanReviewSettingsIssue(settings);
     if (issue || !settings) {
       throw new OperationError(

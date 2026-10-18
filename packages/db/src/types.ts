@@ -13,6 +13,7 @@
  * longer means depending on a Supabase adapter.
  */
 
+import type { AssistantAvailabilityCheck, AssistantAvailabilityFact, AssistantAvailabilityTarget } from "@agent-hub/core";
 import type {
   MessageReaction,
   AiUsageInput,
@@ -160,6 +161,10 @@ import type {
 import type { DbTableAccessor, DbTableName } from "./table-access";
 
 export interface Db {
+  listPublishedAvailabilityTargets(organizationId: string | null, limit?: number): Promise<AssistantAvailabilityTarget[]>;
+  recordAssistantAvailability(checks: AssistantAvailabilityCheck[]): Promise<void>;
+  getAssistantAvailability(organizationId: string, from: string, to: string): Promise<AssistantAvailabilityFact[]>;
+
   getChannelMessage(id: string): Promise<ChannelMessage | null>;
   listMessageReactions(organizationId: string, messageId: string): Promise<MessageReaction[]>;
   setMessageReaction(reaction: MessageReaction, selected: boolean): Promise<void>;

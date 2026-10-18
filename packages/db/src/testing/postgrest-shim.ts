@@ -399,7 +399,7 @@ type Mode =
   | { op: "select" }
   | { op: "insert"; values: Row | Row[] }
   | { op: "update"; values: Row }
-  | { op: "upsert"; values: Row | Row[]; onConflict: string }
+  | { op: "upsert"; values: Row | Row[]; onConflict: string; ignoreDuplicates?: boolean }
   | { op: "delete" };
 
 class ShimQueryBuilder implements PromiseLike<{
@@ -443,11 +443,11 @@ class ShimQueryBuilder implements PromiseLike<{
     return this;
   }
 
-  upsert(values: Row | Row[], options?: { onConflict?: string }): this {
+  upsert(values: Row | Row[], options?: { onConflict?: string; ignoreDuplicates?: boolean }): this {
     if (!options?.onConflict) {
       throw new Error("postgrest-shim: upsert requires onConflict");
     }
-    this.mode = { op: "upsert", values, onConflict: options.onConflict };
+    this.mode = { op: "upsert", values, onConflict: options.onConflict, ignoreDuplicates: options.ignoreDuplicates };
     return this;
   }
 
@@ -841,7 +841,7 @@ class ShimQueryBuilder implements PromiseLike<{
         const updates = keys
           .filter((k) => !conflictCols.includes(k))
           .map((k) => `${quoteIdent(k)} = excluded.${quoteIdent(k)}`);
-        sql += ` on conflict (${conflictCols.map(quoteIdent).join(", ")}) do update set ${updates.join(", ")}`;
+        sql += ` on conflict (${conflictCols.map(quoteIdent).join(", ")}) ${this.mode.ignoreDuplicates ? "do nothing" : `do update set ${updates.join(", ")}`}`;
       }
       if (this.selectStr !== null) sql += " returning *";
       const res = await this.pg.query<Row>(sql, params);

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { mergeFlowSecrets, redactFlowSecrets, shortId } from "@agent-hub/core";
-import type { Assistant, Flow, FlowContinuation, SkillSnapshot } from "@agent-hub/core";
+import type { Assistant, Flow, FlowActionSettings, FlowContinuation, SkillSnapshot } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
 export interface GateCheckpointInput {
@@ -64,31 +64,41 @@ export async function admitFlowContinuations(input: {
  */
 export function opaqueRequestDigest(admitted: Flow, current: Flow, salt: string): string {
   const pairs = (before: import("@agent-hub/core").KeyValuePair[] | undefined, now: import("@agent-hub/core").KeyValuePair[] | undefined) => now?.filter(pair => before?.some(slot => slot.name === pair.name)).map(pair => [pair.name, pair.value]) ?? [];
-  const old = admitted.actionSettings;
-  const live = current.actionSettings;
-  return createHash("sha256").update(salt).update(JSON.stringify([
-    pairs(old?.api_request?.headers, live?.api_request?.headers),
-    pairs(old?.api_request?.queryParams, live?.api_request?.queryParams),
-    pairs(old?.http_webhook?.subscribe?.headers, live?.http_webhook?.subscribe?.headers),
-    pairs(old?.http_webhook?.unsubscribe?.headers, live?.http_webhook?.unsubscribe?.headers),
-  ])).digest("hex");
+  const slots = (old: FlowActionSettings, live: FlowActionSettings | undefined): unknown[] => [
+    pairs(old.api_request?.headers, live?.api_request?.headers),
+    pairs(old.api_request?.queryParams, live?.api_request?.queryParams),
+    pairs(old.http_webhook?.subscribe?.headers, live?.http_webhook?.subscribe?.headers),
+    pairs(old.http_webhook?.unsubscribe?.headers, live?.http_webhook?.unsubscribe?.headers),
+    ...(old.steps?.map(step => [step.id, slots(step.settings, live?.steps?.find(currentStep => currentStep.id === step.id)?.settings)]) ?? []),
+  ];
+  return createHash("sha256").update(salt).update(JSON.stringify(slots(admitted.actionSettings, current.actionSettings))).digest("hex");
 }
 
 /** Called only after the opaque-slot fingerprint matched. Duplicate pairs and
  * their order survive; the editor's merge helper matches only the first name.
  */
 export function restoreContinuationCredentials(admitted: Flow, current: Flow): Flow {
-  const settings = mergeFlowSecrets(structuredClone(admitted.actionSettings), current.actionSettings) ?? {};
+  return { ...admitted, actionSettings: restoreSettings(admitted.actionSettings, current.actionSettings) };
+}
+
+function restoreSettings(admitted: FlowActionSettings, current: FlowActionSettings | undefined): FlowActionSettings {
+  const settings = mergeFlowSecrets(structuredClone(admitted), current) ?? {};
   const pairs = (before: import("@agent-hub/core").KeyValuePair[] | undefined, now: import("@agent-hub/core").KeyValuePair[] | undefined) => now?.filter(pair => before?.some(slot => slot.name === pair.name)).map(pair => ({ ...pair })) ?? [];
-  if (settings.api_request && admitted.actionSettings.api_request) {
-    settings.api_request = { ...settings.api_request, headers: pairs(admitted.actionSettings.api_request.headers, current.actionSettings.api_request?.headers), queryParams: pairs(admitted.actionSettings.api_request.queryParams, current.actionSettings.api_request?.queryParams) };
+  if (settings.api_request && admitted.api_request) {
+    settings.api_request = { ...settings.api_request, headers: pairs(admitted.api_request.headers, current?.api_request?.headers), queryParams: pairs(admitted.api_request.queryParams, current?.api_request?.queryParams) };
   }
   if (settings.http_webhook) {
     settings.http_webhook = { ...settings.http_webhook };
     for (const kind of ["subscribe", "unsubscribe"] as const) {
       const call = settings.http_webhook[kind];
-      if (call) settings.http_webhook[kind] = { ...call, headers: pairs(admitted.actionSettings.http_webhook?.[kind]?.headers, current.actionSettings.http_webhook?.[kind]?.headers) };
+      if (call) settings.http_webhook[kind] = { ...call, headers: pairs(admitted.http_webhook?.[kind]?.headers, current?.http_webhook?.[kind]?.headers) };
     }
   }
-  return { ...admitted, actionSettings: settings };
+  if (admitted.steps) {
+    settings.steps = admitted.steps.map(step => ({
+      ...step,
+      settings: restoreSettings(step.settings, current?.steps?.find(candidate => candidate.id === step.id)?.settings),
+    }));
+  }
+  return settings;
 }

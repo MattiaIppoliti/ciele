@@ -700,7 +700,7 @@ describe("conversations commands", () => {
 });
 
 describe("improvements commands", () => {
-  it("update maps flags to the patch (none/empty → null, tags split)", async () => {
+  it("update maps flags to the patch (empty → null, tags split)", async () => {
     const { deps, calls } = harness(() => ({ json: { id: "i1" } }));
     await runCli(
       [
@@ -714,9 +714,11 @@ describe("improvements commands", () => {
       deps
     );
     expect(calls[0].method).toBe("PATCH");
+    // "none" is the cleared priority, a value the column holds. Sending null
+    // for it hit the column's `not null` and came back as a 500 (#1043).
     expect(JSON.parse(calls[0].body!)).toEqual({
       status: "in_progress",
-      priority: null,
+      priority: "none",
       tags: ["billing", "urgent"],
       assigneeId: null,
       dueDate: "2026-09-01",

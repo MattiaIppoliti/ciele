@@ -139,8 +139,10 @@ Local needs no credential and is always available. Crawl4AI worker-side config
 runbook §2–§4.
 
 Cron schedules (`vercel.json`): `finalize-crawls` daily `0 3 * * *` (closed-tab
-backstop), `sweep-recrawls` daily `0 6 * * *` (due re-crawls). The client poll
-covers the common tab-open case; tighten these on a paid plan if needed.
+backstop), `sweep-recrawls` daily `0 2 * * *` (due re-crawls). The sweep runs an
+hour before the finalizer on purpose: at `0 6` a scheduled re-crawl stayed
+`processing` until the next night. The Library's own poll covers the tab-open
+case; tighten these on a paid plan if needed.
 
 ---
 

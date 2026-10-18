@@ -18,7 +18,7 @@ import type {
   FlowTrust,
 } from "@agent-hub/core";
 import { MousePointerClick, Trash2, Workflow, type LucideIcon } from "lucide-react";
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronLeft, Info, LayoutList, ListFilter, MessageSquareReply, Redo2, Undo2, Zap } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Check, ChevronDown, ChevronLeft, Info, LayoutList, ListFilter, MessageSquareReply, Redo2, Undo2, Zap } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import {
@@ -70,12 +70,11 @@ import {
 } from "@/lib/flow-draft-history";
 import {
   flowViewKey,
-  insertActionAt,
-  moveAction,
   parseFlowView,
   type FlowView,
 } from "@/lib/flow-canvas";
 import { cn } from "@/lib/utils";
+import { draftActionSteps, duplicateActionStep, insertDraftAction, moveActionStep, patchDraftActionSettings, patchDraftCustomMessage, removeActionStep, replaceDraftActions } from "@/lib/flow-action-editor";
 import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-panel";
 import { isTypingTarget } from "@/lib/typing-target";
 import { TrustBadge } from "@/components/assistant/trust-badge";
@@ -400,7 +399,10 @@ export function FlowBuilder({
           );
           next.actions = kept;
         }
-        return settings ? { ...next, settings } : next;
+        const patched = settings ? { ...current, ...next, settings } : { ...current, ...next };
+        return next.actions && !patch.actionSettings?.steps
+          ? replaceDraftActions({ ...patched, actions: current.actions }, next.actions)
+          : patched;
       }),
     [update]
   );
@@ -422,12 +424,10 @@ export function FlowBuilder({
   // Keyed by the fields the patch touches, so typing in one field coalesces
   // while toggling a switch and then typing next to it stay two steps.
   const patchSettings = useCallback<FlowStepHandlers["patchSettings"]>(
-    (key, patch) =>
+    (key, patch, id) =>
       update(
-        (current) => ({
-          settings: { ...current.settings, [key]: { ...current.settings[key], ...patch } },
-        }),
-        `settings.${key}.${Object.keys(patch).sort().join(",")}`
+        (current) => patchDraftActionSettings(current, key, patch, id),
+        `settings.${id ?? key}.${Object.keys(patch).sort().join(",")}`
       ),
     [update]
   );
@@ -593,19 +593,18 @@ export function FlowBuilder({
           { conditions },
           conditions.length === draft.conditions.length ? "conditions" : undefined
         ),
-      addAction: (action, index) =>
-        update((current) => ({
-          actions: insertActionAt(
-            current.actions,
-            action,
-            index === undefined ? current.actions.length : index
-          ),
-        })),
-      removeAction: (action) =>
-        update((current) => ({ actions: current.actions.filter((a) => a !== action) })),
-      setActions: (actions) => update({ actions }),
+      addAction: (action, index) => update((current) => insertDraftAction(current, action, index)),
+      removeAction: (action, id) => update((current) => removeActionStep(current,
+        id ?? draftActionSteps(current).find((step) => step.action === action)?.id ?? "")),
+      duplicateAction: (id) => {
+        const copyId = `action:copy:${crypto.randomUUID()}`;
+        update((current) => duplicateActionStep(current, id, copyId));
+        return copyId;
+      },
+      moveAction: (id, to) => update((current) => moveActionStep(current, id, to)),
+      setActions: (actions) => update((current) => replaceDraftActions(current, actions)),
       patchSettings,
-      setCustomMessage: (customMessage) => update({ customMessage }, "customMessage"),
+      setCustomMessage: (customMessage, id) => update((current) => patchDraftCustomMessage(current, customMessage, id), `customMessage.${id ?? "legacy"}`),
     }),
     [chooseTrigger, update, patchSettings, draft.conditions.length]
   );
@@ -965,11 +964,12 @@ export function FlowBuilder({
           defaultOpen={!responseOk}
         >
           <div className="space-y-3">
-            {draft.actions.map((action, index) => {
+            {draftActionSteps(draft).map((step, index) => {
+              const action = step.action;
               const meta = FLOW_ACTIONS[action];
               const Icon = meta.icon;
               return (
-                <div key={action} className="space-y-3 rounded-lg border bg-background p-3">
+                <div key={step.id} className="space-y-3 rounded-lg border bg-background p-3">
                   <div className="flex items-start gap-3">
                     <Icon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -998,7 +998,7 @@ export function FlowBuilder({
                             aria-label={`Move ${meta.label} earlier`}
                             disabled={index === 0}
                             onClick={() =>
-                              stepHandlers.setActions(moveAction(draft.actions, action, index - 1))
+                              stepHandlers.moveAction(step.id, index - 1)
                             }
                           >
                             <ArrowUp className="size-4" />
@@ -1012,13 +1012,19 @@ export function FlowBuilder({
                             aria-label={`Move ${meta.label} later`}
                             disabled={index === draft.actions.length - 1}
                             onClick={() =>
-                              stepHandlers.setActions(moveAction(draft.actions, action, index + 1))
+                              stepHandlers.moveAction(step.id, index + 1)
                             }
                           >
                             <ArrowDown className="size-4" />
                           </Button>
                         </Hint>
                       </div>
+                    )}
+                    {canEdit && !proactive && (
+                      <Hint label={`Copy ${meta.label}`}>
+                        <Button type="button" variant="ghost" size="icon" disabled={draft.actions.length >= 20} aria-label={`Copy ${meta.label}`}
+                          onClick={() => stepHandlers.duplicateAction(step.id)}><Copy className="size-4" /></Button>
+                      </Hint>
                     )}
                     {canEdit && (
                       <Hint label={`Remove ${meta.label}`}>
@@ -1027,7 +1033,7 @@ export function FlowBuilder({
                           variant="outline"
                           size="icon"
                           aria-label={`Remove ${meta.label}`}
-                          onClick={() => stepHandlers.removeAction(action)}
+                          onClick={() => stepHandlers.removeAction(action, step.id)}
                         >
                           <AnimatedIcon icon={Trash2} size={16} />
                         </Button>
@@ -1038,14 +1044,14 @@ export function FlowBuilder({
                     <FlowActionConfig
                       action={action}
                       assistantId={assistantId}
-                      settings={draft.settings}
-                      customMessage={draft.customMessage}
+                      settings={step.settings}
+                      customMessage={step.customMessage ?? ""}
                       helpDesks={helpDesks}
                       faqs={faqs}
                       assistants={assistants}
                       connections={connections}
-                      onPatchSettings={patchSettings}
-                      onCustomMessageChange={stepHandlers.setCustomMessage}
+                      onPatchSettings={(key, patch) => patchSettings(key, patch, step.id)}
+                      onCustomMessageChange={(message) => stepHandlers.setCustomMessage(message, step.id)}
                     />
                   )}
                 </div>

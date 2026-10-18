@@ -94,6 +94,30 @@ describe("flow input schema", () => {
     expect(flowPatchSchema.parse({ enabled: false })).toEqual({ enabled: false });
     expect(flowPatchSchema.safeParse({ trigger: "nope" }).success).toBe(false);
   });
+
+  it("validates independent action instances and copy provenance", () => {
+    const input = {
+      name: "Links",
+      actions: ["show_button", "show_button"],
+      actionSettings: {
+        steps: [
+          { id: "first", action: "show_button", settings: { show_button: { label: "Fees" } } },
+          { id: "copy", copiedFromId: "first", action: "show_button", settings: { show_button: { label: "Dates" } } },
+        ],
+      },
+    };
+    expect(flowInputSchema.parse(input)).toEqual(input);
+    expect(flowInputSchema.safeParse({ ...input, actionSettings: { steps: [
+      ...input.actionSettings.steps,
+      { id: "copy", action: "show_button", settings: {} },
+    ] } }).success).toBe(false);
+    expect(flowInputSchema.safeParse({ name: "x", actionSettings: { steps: [
+      { id: "one", action: "api_request", settings: { api_request: { method: "FETCH" } } },
+    ] } }).success).toBe(false);
+    expect(flowInputSchema.safeParse({ name: "x", actionSettings: { steps: [
+      { id: "one", action: "show_button", settings: { steps: [] } },
+    ] } }).success).toBe(false);
+  });
 });
 
 describe("the webhook's calls and the Response's status", () => {

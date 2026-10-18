@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Concept, Role } from "@agent-hub/core";
+import {
+  IMPROVEMENT_PRIORITY_VALUES,
+  IMPROVEMENT_STATUS_VALUES,
+} from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import { createAssistantOp } from "./assistants";
 import {
@@ -791,5 +795,26 @@ describe("improvements operations (#625)", () => {
         patch: { priority: "low" },
       })
     ).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  // The mock Db stores whatever it is handed, so this schema is the only
+  // gate the demo and every mock-backed test have. Postgres also refuses an
+  // unknown value and a null priority (`not null`, #1043), but only after the
+  // request is already in flight, and as a 500.
+  it("accepts only the lanes and priorities the board has", () => {
+    const patch = (value: Record<string, unknown>) =>
+      updateImprovementOp.input.safeParse({ id: "i1", patch: value }).success;
+
+    for (const status of IMPROVEMENT_STATUS_VALUES) {
+      expect(patch({ status })).toBe(true);
+    }
+    for (const priority of IMPROVEMENT_PRIORITY_VALUES) {
+      expect(patch({ priority })).toBe(true);
+    }
+    // "none" is the cleared priority; null is not a value the column holds.
+    expect(patch({ priority: null })).toBe(false);
+    expect(patch({ priority: "urgent" })).toBe(false);
+    expect(patch({ status: "blocked" })).toBe(false);
+    expect(patch({ status: null })).toBe(false);
   });
 });

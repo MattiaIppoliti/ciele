@@ -244,6 +244,15 @@ export async function evaluateCase(input: {
       const safeFlows = flows.map((flow) => ({
         ...flow,
         actions: flow.actions.filter((action) => SAFE_ACTIONS.has(action)),
+        actionSettings: {
+          ...flow.actionSettings,
+          ...(flow.actionSettings.steps ? {
+            steps: flow.actionSettings.steps.filter((_step, index) => {
+              const action = flow.actions[index];
+              return action !== undefined && SAFE_ACTIONS.has(action);
+            }),
+          } : {}),
+        },
       }));
       const syntheticAssistant = {
         ...assistant,

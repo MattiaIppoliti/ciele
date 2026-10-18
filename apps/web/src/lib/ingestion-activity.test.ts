@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  INGESTION_POLL_MS,
+  INGESTION_STALLED_POLL_MS,
   SETTLED_LINGER_MS,
   VISIBLE_ITEM_LIMIT,
   dismissIngestionActivity,
@@ -7,6 +9,8 @@ import {
   expireIngestionActivity,
   ingestionActivityBusy,
   ingestionActivityCard,
+  ingestionPollDelay,
+  ingestionProgressKey,
   mergeIngestionSnapshot,
   orderIngestionItems,
   trackedIngestionIds,
@@ -295,5 +299,30 @@ describe("the card", () => {
 
   it("says nothing at all when there is nothing to follow", () => {
     expect(ingestionActivityCard(emptyIngestionActivity())).toBeNull();
+  });
+});
+
+describe("poll cadence", () => {
+  it("polls fast while the work moves, and backs off to a minute once it stops", () => {
+    expect(ingestionPollDelay(0)).toBe(INGESTION_POLL_MS);
+    expect(ingestionPollDelay(1)).toBe(INGESTION_POLL_MS * 2);
+    expect(ingestionPollDelay(3)).toBe(INGESTION_POLL_MS * 8);
+    expect(ingestionPollDelay(50)).toBe(INGESTION_STALLED_POLL_MS);
+  });
+
+  it("keys a poll on what the card shows, so a stalled crawl reads as unchanged", () => {
+    const first = mergeIngestionSnapshot(
+      emptyIngestionActivity(),
+      snapshot([crawl("a", "running")]),
+      T0,
+    );
+    const same = mergeIngestionSnapshot(first, snapshot([crawl("a", "running")]), T0 + 2_500);
+    const moved = mergeIngestionSnapshot(
+      first,
+      snapshot([crawl("a", "running", { done: 10, total: 20 })]),
+      T0 + 2_500,
+    );
+    expect(ingestionProgressKey(same)).toBe(ingestionProgressKey(first));
+    expect(ingestionProgressKey(moved)).not.toBe(ingestionProgressKey(first));
   });
 });

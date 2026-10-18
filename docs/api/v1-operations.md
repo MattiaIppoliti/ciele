@@ -203,9 +203,14 @@ Member's own screen and which no route reaches.
 
 | Operation | Capability | Route | Beyond Db |
 |---|---|---|---|
-| `improvements.list` | member | `GET /api/v1/improvements` | |
+| `improvements.listPage` | member | `GET /api/v1/improvements` | |
 | `improvements.get` | member | `GET /api/v1/improvements/{id}` | |
 | `improvements.update` | edit | `PATCH /api/v1/improvements/{id}` | assignment/closure emails via `notifyImprovementUpdate` port |
 
 Creation (`Improve Answer` flows) stays web-only for now, it fans out into
 graph feedback and Suggested-Fix drafting.
+
+The update body takes `status` and `priority` as their enums only. A priority
+is cleared by sending `"none"`, the column's default; `null` is refused with
+422, because the column is `not null` and Postgres would refuse it anyway, as a
+500 (#1043).

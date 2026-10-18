@@ -14,6 +14,7 @@ import {
   finalizePage,
   normalizeImprovementPageInput,
 } from "./improvement-pagination";
+import type { AssistantAvailabilityCheck, AssistantAvailabilityFact } from "@agent-hub/core";
 import type {
   MessageReaction,
   AiUsageInput,
@@ -189,6 +190,7 @@ const DEMO_TEAMMATES: Member[] = [
 interface MockStore {
   organization: Organization;
   profiles: Map<string, Profile>;
+  availabilityChecks: Map<string, AssistantAvailabilityCheck>;
   assistants: Map<string, Assistant>;
   flows: Map<string, Flow>;
   helpDesks: Map<string, HelpDesk>;
@@ -550,6 +552,7 @@ function emptyStore(): MockStore {
         } satisfies Profile,
       ] as const)
     ),
+    availabilityChecks: new Map(),
     assistants: new Map(),
     flows: new Map(),
     helpDesks: new Map(),
@@ -7187,6 +7190,73 @@ export const mockDb: Db = {
     return [...rows.values()];
   },
 
+  async listPublishedAvailabilityTargets(organizationId, limit = 200) {
+    const store = getStore();
+    const latest = (id: string) =>
+      Math.max(
+        0,
+        ...[...store.availabilityChecks.values()]
+          .filter((c) => c.assistantId === id)
+          .map((c) => Date.parse(c.checkedAt)),
+      );
+    const targets = [...store.assistants.values()]
+      .filter(
+        (a) =>
+          (organizationId === null || a.organizationId === organizationId) &&
+          [...store.publications.values()].some((p) => p.assistantId === a.id),
+      )
+      .sort((a, b) => latest(a.id) - latest(b.id) || a.id.localeCompare(b.id))
+      .map((a) => ({
+        id: a.id,
+        organizationId: a.organizationId,
+        title: a.title,
+      }));
+    return organizationId === null
+      ? targets.slice(0, Math.min(200, Math.max(1, limit)))
+      : targets;
+  },
+  async recordAssistantAvailability(checks) {
+    const store = getStore();
+    // Validate the whole batch before mutating, like a single database insert.
+    for (const check of checks) {
+      if (store.assistants.get(check.assistantId)?.organizationId !== check.organizationId)
+        throw new Error("Assistant organization mismatch");
+      if (!Number.isFinite(Date.parse(check.checkedAt))) throw new Error("Invalid check timestamp");
+    }
+    for (const check of checks) {
+      const key = `${check.assistantId}:${Math.floor(Date.parse(check.checkedAt) / 300000)}`;
+      if (!store.availabilityChecks.has(key))
+        store.availabilityChecks.set(key, { ...check, checkedAt: new Date(check.checkedAt).toISOString() });
+    }
+    const cutoff = Date.now() - 400 * 86400000;
+    for (const [key, c] of store.availabilityChecks)
+      if (Date.parse(c.checkedAt) < cutoff) store.availabilityChecks.delete(key);
+  },
+  async getAssistantAvailability(organizationId, from, to) {
+    const grouped = new Map<string, AssistantAvailabilityFact>();
+    for (const c of getStore().availabilityChecks.values()) {
+      if (
+        c.organizationId !== organizationId ||
+        Date.parse(c.checkedAt) < Date.parse(from) ||
+        Date.parse(c.checkedAt) >= Date.parse(to)
+      )
+        continue;
+      const day = c.checkedAt.slice(0, 10),
+        key = `${c.assistantId}:${day}:${c.status}:${c.issue}`;
+      const fact = grouped.get(key) ?? {
+        assistantId: c.assistantId,
+        day,
+        status: c.status,
+        issue: c.issue,
+        checks: 0,
+        lastCheckedAt: c.checkedAt,
+      };
+      fact.checks++;
+      if (c.checkedAt > fact.lastCheckedAt) fact.lastCheckedAt = c.checkedAt;
+      grouped.set(key, fact);
+    }
+    return [...grouped.values()];
+  },
   async getOrgDashboardFacts(organizationId, from, to) {
     const store = getStore();
     const fromMs = Date.parse(from);

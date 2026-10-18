@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withReviewBeforeConnectorWrites } from "./review-gate";
+import { withReviewBeforeConnectorWrites, withReviewBeforeConnectorWriteSteps } from "./review-gate";
 
 /**
  * Human review before a Connector write (#841), as the rule the Flows Agent's
@@ -44,5 +44,14 @@ describe("withReviewBeforeConnectorWrites", () => {
 
   it("does nothing without a Connector", () => {
     expect(withReviewBeforeConnectorWrites(["search_knowledge"], {})).toEqual(["search_knowledge"]);
+  });
+
+  it("gates a copied Connector write after an independently configured read", () => {
+    const read = { id: "read", action: "connector", settings: { connector: { action: "slack.channel.list" } } } as const;
+    const write = { id: "write", action: "connector", settings: { connector: { action: "slack.message.post" } } } as const;
+    const gate = { id: "review", action: "human_review", settings: { human_review: { title: "Approve post" } } } as const;
+    const result = withReviewBeforeConnectorWriteSteps(["connector", "connector", "human_review"], { steps: [read, write, gate] });
+    expect(result.actions).toEqual(["connector", "human_review", "connector"]);
+    expect(result.actionSettings?.steps).toEqual([read, gate, write]);
   });
 });

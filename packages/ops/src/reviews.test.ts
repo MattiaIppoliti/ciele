@@ -238,4 +238,20 @@ describe("assertHumanReviewFlowsPublishable", () => {
       ])
     ).rejects.toBeInstanceOf(OperationError);
   });
+
+  it("validates every independently configured copy of Human review", async () => {
+    const db = getMockDb();
+    const sender = await db.createApplicationConnection({
+      organizationId: DEMO_ORG.id, ownerMemberId: DEMO_MEMBER.userId,
+      provider: "microsoft_mail", name: "Review sender", sealedCredentials: "sealed", scopes: ["Mail.Send"],
+    });
+    await db.updateApplicationConnection(sender.id, { status: "connected" });
+    const valid = { ...settings, senderConnectionId: sender.id };
+    await expect(assertHumanReviewFlowsPublishable(ctx(db), [flow({
+      actions: ["human_review", "human_review"], actionSettings: { steps: [
+        { id: "first", action: "human_review", settings: { human_review: valid } },
+        { id: "copy", action: "human_review", settings: { human_review: { ...valid, assignees: ["stranger@example.com"] } } },
+      ] },
+    })])).rejects.toThrow(/stranger@example.com is not a member/);
+  });
 });

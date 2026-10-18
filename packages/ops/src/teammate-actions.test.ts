@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import type { Role } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, createOrgPinnedDb, getMockDb } from "@agent-hub/db";
 import type { Db } from "@agent-hub/db";
@@ -11,6 +12,7 @@ import {
   TEAMMATE_ACTION_CATALOG,
   runTeammateAction,
   teammateActions,
+  teammateMemoryActions,
 } from "./teammate-actions";
 import {
   listTeammateGrantsOp,
@@ -133,6 +135,23 @@ describe("the action catalogue", () => {
           spec.operation.capability
         );
       }
+    }
+  });
+
+  it("offers only inputs the model can be shown as JSON Schema", () => {
+    // The AI SDK converts every offered tool with these options, and without
+    // `unrepresentable: "any"`, before the first token. One `z.custom` in one
+    // granted input failed every turn of that Teammate with "Custom types
+    // cannot be represented in JSON Schema".
+    const offered = [
+      ...Object.values(TEAMMATE_ACTION_CATALOG).flat(),
+      ...teammateMemoryActions(actor({ projectId: "p-1" })),
+    ];
+    for (const spec of offered) {
+      expect(
+        () => z.toJSONSchema(spec.operation.input, { target: "draft-7", io: "input" }),
+        spec.operation.name
+      ).not.toThrow();
     }
   });
 

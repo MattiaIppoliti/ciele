@@ -8,6 +8,7 @@ import type {
 } from "@agent-hub/core";
 import {
   AUTO_IMPROVEMENT_LABEL,
+  IMPROVEMENT_PRIORITY_VALUES,
   IMPROVEMENT_STATUS_VALUES,
   dedupCandidates,
   dedupMatch,
@@ -46,10 +47,9 @@ export const improvementPatchSchema = z
   .object({
     title: z.string().min(1).max(300),
     description: z.string().max(10000),
-    status: z.custom<Improvement["status"]>((v) => typeof v === "string"),
-    priority: z.custom<Improvement["priority"]>(
-      (v) => typeof v === "string" || v === null
-    ),
+    status: z.enum(IMPROVEMENT_STATUS_VALUES),
+    // "none" clears a priority. Not nullable: the column is `not null` (#1043).
+    priority: z.enum(IMPROVEMENT_PRIORITY_VALUES),
     tags: z.array(z.string().max(100)).max(50),
     assigneeId: z.string().nullable(),
     dueDate: z.string().nullable(),

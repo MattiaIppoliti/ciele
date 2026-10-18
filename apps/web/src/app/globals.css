@@ -1482,6 +1482,77 @@ html[data-app-surface="admin"] svg[viewBox="0 0 24 24"][fill="none"][stroke-widt
     0 0 0 1.5px color-mix(in oklab, var(--foreground) 55%, transparent),
     0 0 0 5px color-mix(in oklab, var(--foreground) 7%, transparent);
 }
+
+/* Bencho Action node (MIT), copyright (c) 2026 Lorenzo Cabra.
+   The controls come from the node's own corner. The existing flow face and
+   foreground replace Bencho's fill-slab/fill-on/ink tokens; the console font
+   is inherited. Demo marks, descriptions and avatars stay with the demo. */
+.flow-action-node {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+/* The fan paints UNDER the card. A folded button needs no fade to hide it:
+   the card's own material conceals it until it travels beyond the corner. */
+.flow-action-node > .flow-surface-card {
+  position: relative;
+  z-index: 1;
+}
+.flow-action-node-fan {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 0;
+  width: 0;
+  height: 0;
+}
+/* Invisible air between the card and the buttons is a reachable part of the
+   fan only while it is open. Its outline follows the geometry in ActionNode. */
+.flow-action-node-reach {
+  position: absolute;
+  pointer-events: none;
+}
+.flow-action-node-reach[data-on] { pointer-events: auto; }
+.flow-action-node-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.flow-action-node-button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--flow-ring-top);
+  border-radius: 999px;
+  background: var(--flow-card-face);
+  color: var(--foreground);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* Two writers, one scale: Motion owns the slot's travel and growth,
+     this button owns hover and press. No CSS transition smooths spring frames. */
+  transition: scale 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* One cue, the size. Keep the same fill rather than inverting four controls
+   into the darkest thing on the canvas as the pointer comes near them. */
+@media (hover: hover) {
+  .flow-action-node-button:hover { scale: 1.12; }
+}
+.flow-action-node-button:active { scale: 0.96; }
+.flow-action-node-button:disabled { opacity: 0.45; cursor: default; }
+.flow-action-node-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+/* The whole node, including its fan, sits above a neighbouring step while
+   it is being used. Raising only the button cannot escape a node's stacking. */
+.flow-canvas .react-flow__node:has(.flow-action-node[data-on]) { z-index: 1001 !important; }
+@media (prefers-reduced-motion: reduce) {
+  .flow-action-node-button { transition: opacity 100ms ease; }
+  .flow-action-node-button:hover { scale: 1; }
+  .flow-action-node-button:active { scale: 1; opacity: 0.7; }
+}
 /* A card being carried floats: the chrome's cast, not the resting one. */
 .react-flow__node.dragging .flow-surface-card {
   box-shadow: var(--flow-selection), var(--flow-shadow-lift);
@@ -2306,7 +2377,7 @@ html[data-app-surface="admin"][data-squircle-ready] .canvas-toolbar .bar-tool::b
     padding-right: 4.5rem;
   }
   html[data-app-surface="admin"] [data-slot="table-open-cell"] > :first-child { min-width: 0; }
-  html[data-app-surface="admin"] :is([data-slot="table-open-action"], [data-slot="table-open-fade"], [data-resource-actions], [data-flow-step-action]) { opacity: 1; }
+  html[data-app-surface="admin"] :is([data-slot="table-open-action"], [data-slot="table-open-fade"], [data-resource-actions]) { opacity: 1; }
   html[data-app-surface="admin"] [data-slot="table-actions"] button { flex-shrink: 0; }
   html[data-app-surface="admin"] [data-slot="calendar"] {
     --cell-size: min(44px, calc((100vw - 4rem) / 7));

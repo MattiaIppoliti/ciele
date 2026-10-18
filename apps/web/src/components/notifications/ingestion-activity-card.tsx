@@ -17,6 +17,8 @@ import {
   expireIngestionActivity,
   ingestionActivityBusy,
   ingestionActivityCard,
+  ingestionPollDelay,
+  ingestionProgressKey,
   ingestionStatusLabel,
   mergeIngestionSnapshot,
   trackedIngestionIds,
@@ -43,8 +45,6 @@ import { RollingNumber } from "@/components/motion/rolling-number";
  * `@/lib/ingestion-activity`, which is where it is tested.
  */
 
-/** While something is in flight. Fast enough to feel live, slow enough to be free. */
-const POLL_MS = 2_500;
 /** After a poll that found nothing: the run may still be starting up. */
 const IDLE_MS = 6_000;
 /** Idle polls before the card gives up on work that never appeared. */
@@ -87,6 +87,8 @@ export function IngestionActivityCard({
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     let idle = 0;
+    let unchanged = 0;
+    let lastKey = "";
 
     const poll = async (): Promise<IngestionActivitySnapshot | null> => {
       const tracked = trackedIngestionIds(stateRef.current);
@@ -140,7 +142,10 @@ export function IngestionActivityCard({
         // be dismissed) stay exactly as they are.
         return;
       }
-      timer = setTimeout(tick, busy ? POLL_MS : IDLE_MS);
+      const key = ingestionProgressKey(next);
+      unchanged = key === lastKey ? unchanged + 1 : 0;
+      lastKey = key;
+      timer = setTimeout(tick, busy ? ingestionPollDelay(unchanged) : IDLE_MS);
     };
 
     void tick();

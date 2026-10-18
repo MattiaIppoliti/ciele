@@ -2324,6 +2324,24 @@
             "actionSettings": {
               "type": "object",
               "properties": {
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {},
+                      "action": {},
+                      "settings": {},
+                      "customMessage": {},
+                      "copiedFromId": {}
+                    },
+                    "required": [
+                      "id",
+                      "action",
+                      "settings"
+                    ]
+                  }
+                },
                 "search_knowledge": {
                   "type": "object",
                   "properties": {
@@ -2927,6 +2945,24 @@
             "actionSettings": {
               "type": "object",
               "properties": {
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {},
+                      "action": {},
+                      "settings": {},
+                      "customMessage": {},
+                      "copiedFromId": {}
+                    },
+                    "required": [
+                      "id",
+                      "action",
+                      "settings"
+                    ]
+                  }
+                },
                 "search_knowledge": {
                   "type": "object",
                   "properties": {
@@ -3603,6 +3639,231 @@
       "actionSettings": {
         "type": "object",
         "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "action": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "const": "improvement"
+                    },
+                    {
+                      "type": "string",
+                      "const": "search_knowledge"
+                    },
+                    {
+                      "type": "string",
+                      "const": "custom_message"
+                    },
+                    {
+                      "type": "string",
+                      "const": "suggest_help_desk"
+                    },
+                    {
+                      "type": "string",
+                      "const": "follow_up_questions"
+                    },
+                    {
+                      "type": "string",
+                      "const": "show_button"
+                    },
+                    {
+                      "type": "string",
+                      "const": "iframe"
+                    },
+                    {
+                      "type": "string",
+                      "const": "api_request"
+                    },
+                    {
+                      "type": "string",
+                      "const": "send_email"
+                    },
+                    {
+                      "type": "string",
+                      "const": "handover"
+                    },
+                    {
+                      "type": "string",
+                      "const": "basic_reply"
+                    },
+                    {
+                      "type": "string",
+                      "const": "notification"
+                    },
+                    {
+                      "type": "string",
+                      "const": "connector"
+                    },
+                    {
+                      "type": "string",
+                      "const": "human_review"
+                    },
+                    {
+                      "type": "string",
+                      "const": "http_webhook"
+                    },
+                    {
+                      "type": "string",
+                      "const": "respond"
+                    }
+                  ]
+                },
+                "settings": {
+                  "type": "object",
+                  "properties": {
+                    "search_knowledge": {
+                      "type": "object",
+                      "properties": {
+                        "escalatePrompt": {},
+                        "improvementItems": {},
+                        "searchGuidelines": {},
+                        "answeringStyle": {},
+                        "overrideAnsweringStyle": {}
+                      }
+                    },
+                    "follow_up_questions": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {},
+                        "questions": {}
+                      }
+                    },
+                    "show_button": {
+                      "type": "object",
+                      "properties": {
+                        "label": {},
+                        "type": {},
+                        "url": {},
+                        "helpDeskId": {},
+                        "text": {},
+                        "faqId": {},
+                        "faqQuestion": {},
+                        "showIcon": {},
+                        "icon": {}
+                      }
+                    },
+                    "iframe": {
+                      "type": "object",
+                      "properties": {
+                        "url": {},
+                        "title": {},
+                        "lightbox": {},
+                        "height": {},
+                        "heightUnit": {}
+                      }
+                    },
+                    "api_request": {
+                      "type": "object",
+                      "properties": {
+                        "endpoint": {},
+                        "swaggerUrl": {},
+                        "operationId": {},
+                        "method": {},
+                        "url": {},
+                        "auth": {},
+                        "headers": {},
+                        "queryParams": {},
+                        "bodyTemplate": {},
+                        "jsonPaths": {}
+                      }
+                    },
+                    "send_email": {
+                      "type": "object",
+                      "properties": {
+                        "to": {}
+                      }
+                    },
+                    "handover": {
+                      "type": "object",
+                      "properties": {
+                        "assistantId": {}
+                      }
+                    },
+                    "basic_reply": {
+                      "type": "object",
+                      "properties": {
+                        "message": {}
+                      }
+                    },
+                    "notification": {
+                      "type": "object",
+                      "properties": {
+                        "title": {},
+                        "content": {},
+                        "deliveryRule": {},
+                        "allowReplies": {},
+                        "buttons": {}
+                      }
+                    },
+                    "connector": {
+                      "type": "object",
+                      "properties": {
+                        "provider": {},
+                        "connectionId": {},
+                        "action": {},
+                        "params": {},
+                        "successMessage": {},
+                        "failureMessage": {}
+                      }
+                    },
+                    "human_review": {
+                      "type": "object",
+                      "properties": {
+                        "title": {},
+                        "message": {},
+                        "assignees": {},
+                        "channel": {},
+                        "senderConnectionId": {},
+                        "slackTarget": {},
+                        "inputs": {},
+                        "timeoutHours": {},
+                        "haltMessage": {},
+                        "waitingMessage": {},
+                        "mode": {}
+                      }
+                    },
+                    "http_webhook": {
+                      "type": "object",
+                      "properties": {
+                        "subscribe": {},
+                        "unsubscribe": {},
+                        "timeoutMinutes": {},
+                        "waitingMessage": {},
+                        "haltMessage": {},
+                        "jsonPaths": {}
+                      }
+                    },
+                    "respond": {
+                      "type": "object",
+                      "properties": {
+                        "status": {},
+                        "headers": {},
+                        "bodyTemplate": {}
+                      }
+                    }
+                  }
+                },
+                "customMessage": {
+                  "type": "string"
+                },
+                "copiedFromId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "action",
+                "settings"
+              ]
+            }
+          },
           "search_knowledge": {
             "type": "object",
             "properties": {
@@ -4802,6 +5063,66 @@
           "actionSettings": {
             "type": "object",
             "properties": {
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "oneOf": [
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {}
+                      ]
+                    },
+                    "settings": {
+                      "type": "object",
+                      "properties": {
+                        "search_knowledge": {},
+                        "follow_up_questions": {},
+                        "show_button": {},
+                        "iframe": {},
+                        "api_request": {},
+                        "send_email": {},
+                        "handover": {},
+                        "basic_reply": {},
+                        "notification": {},
+                        "connector": {},
+                        "human_review": {},
+                        "http_webhook": {},
+                        "respond": {}
+                      }
+                    },
+                    "customMessage": {
+                      "type": "string"
+                    },
+                    "copiedFromId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "action",
+                    "settings"
+                  ]
+                }
+              },
               "search_knowledge": {
                 "type": "object",
                 "properties": {
@@ -10099,6 +10420,231 @@
       "actionSettings": {
         "type": "object",
         "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "action": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "const": "improvement"
+                    },
+                    {
+                      "type": "string",
+                      "const": "search_knowledge"
+                    },
+                    {
+                      "type": "string",
+                      "const": "custom_message"
+                    },
+                    {
+                      "type": "string",
+                      "const": "suggest_help_desk"
+                    },
+                    {
+                      "type": "string",
+                      "const": "follow_up_questions"
+                    },
+                    {
+                      "type": "string",
+                      "const": "show_button"
+                    },
+                    {
+                      "type": "string",
+                      "const": "iframe"
+                    },
+                    {
+                      "type": "string",
+                      "const": "api_request"
+                    },
+                    {
+                      "type": "string",
+                      "const": "send_email"
+                    },
+                    {
+                      "type": "string",
+                      "const": "handover"
+                    },
+                    {
+                      "type": "string",
+                      "const": "basic_reply"
+                    },
+                    {
+                      "type": "string",
+                      "const": "notification"
+                    },
+                    {
+                      "type": "string",
+                      "const": "connector"
+                    },
+                    {
+                      "type": "string",
+                      "const": "human_review"
+                    },
+                    {
+                      "type": "string",
+                      "const": "http_webhook"
+                    },
+                    {
+                      "type": "string",
+                      "const": "respond"
+                    }
+                  ]
+                },
+                "settings": {
+                  "type": "object",
+                  "properties": {
+                    "search_knowledge": {
+                      "type": "object",
+                      "properties": {
+                        "escalatePrompt": {},
+                        "improvementItems": {},
+                        "searchGuidelines": {},
+                        "answeringStyle": {},
+                        "overrideAnsweringStyle": {}
+                      }
+                    },
+                    "follow_up_questions": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {},
+                        "questions": {}
+                      }
+                    },
+                    "show_button": {
+                      "type": "object",
+                      "properties": {
+                        "label": {},
+                        "type": {},
+                        "url": {},
+                        "helpDeskId": {},
+                        "text": {},
+                        "faqId": {},
+                        "faqQuestion": {},
+                        "showIcon": {},
+                        "icon": {}
+                      }
+                    },
+                    "iframe": {
+                      "type": "object",
+                      "properties": {
+                        "url": {},
+                        "title": {},
+                        "lightbox": {},
+                        "height": {},
+                        "heightUnit": {}
+                      }
+                    },
+                    "api_request": {
+                      "type": "object",
+                      "properties": {
+                        "endpoint": {},
+                        "swaggerUrl": {},
+                        "operationId": {},
+                        "method": {},
+                        "url": {},
+                        "auth": {},
+                        "headers": {},
+                        "queryParams": {},
+                        "bodyTemplate": {},
+                        "jsonPaths": {}
+                      }
+                    },
+                    "send_email": {
+                      "type": "object",
+                      "properties": {
+                        "to": {}
+                      }
+                    },
+                    "handover": {
+                      "type": "object",
+                      "properties": {
+                        "assistantId": {}
+                      }
+                    },
+                    "basic_reply": {
+                      "type": "object",
+                      "properties": {
+                        "message": {}
+                      }
+                    },
+                    "notification": {
+                      "type": "object",
+                      "properties": {
+                        "title": {},
+                        "content": {},
+                        "deliveryRule": {},
+                        "allowReplies": {},
+                        "buttons": {}
+                      }
+                    },
+                    "connector": {
+                      "type": "object",
+                      "properties": {
+                        "provider": {},
+                        "connectionId": {},
+                        "action": {},
+                        "params": {},
+                        "successMessage": {},
+                        "failureMessage": {}
+                      }
+                    },
+                    "human_review": {
+                      "type": "object",
+                      "properties": {
+                        "title": {},
+                        "message": {},
+                        "assignees": {},
+                        "channel": {},
+                        "senderConnectionId": {},
+                        "slackTarget": {},
+                        "inputs": {},
+                        "timeoutHours": {},
+                        "haltMessage": {},
+                        "waitingMessage": {},
+                        "mode": {}
+                      }
+                    },
+                    "http_webhook": {
+                      "type": "object",
+                      "properties": {
+                        "subscribe": {},
+                        "unsubscribe": {},
+                        "timeoutMinutes": {},
+                        "waitingMessage": {},
+                        "haltMessage": {},
+                        "jsonPaths": {}
+                      }
+                    },
+                    "respond": {
+                      "type": "object",
+                      "properties": {
+                        "status": {},
+                        "headers": {},
+                        "bodyTemplate": {}
+                      }
+                    }
+                  }
+                },
+                "customMessage": {
+                  "type": "string"
+                },
+                "copiedFromId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "action",
+                "settings"
+              ]
+            }
+          },
           "search_knowledge": {
             "type": "object",
             "properties": {
@@ -11349,6 +11895,231 @@
       "actionSettings": {
         "type": "object",
         "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "action": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "const": "improvement"
+                    },
+                    {
+                      "type": "string",
+                      "const": "search_knowledge"
+                    },
+                    {
+                      "type": "string",
+                      "const": "custom_message"
+                    },
+                    {
+                      "type": "string",
+                      "const": "suggest_help_desk"
+                    },
+                    {
+                      "type": "string",
+                      "const": "follow_up_questions"
+                    },
+                    {
+                      "type": "string",
+                      "const": "show_button"
+                    },
+                    {
+                      "type": "string",
+                      "const": "iframe"
+                    },
+                    {
+                      "type": "string",
+                      "const": "api_request"
+                    },
+                    {
+                      "type": "string",
+                      "const": "send_email"
+                    },
+                    {
+                      "type": "string",
+                      "const": "handover"
+                    },
+                    {
+                      "type": "string",
+                      "const": "basic_reply"
+                    },
+                    {
+                      "type": "string",
+                      "const": "notification"
+                    },
+                    {
+                      "type": "string",
+                      "const": "connector"
+                    },
+                    {
+                      "type": "string",
+                      "const": "human_review"
+                    },
+                    {
+                      "type": "string",
+                      "const": "http_webhook"
+                    },
+                    {
+                      "type": "string",
+                      "const": "respond"
+                    }
+                  ]
+                },
+                "settings": {
+                  "type": "object",
+                  "properties": {
+                    "search_knowledge": {
+                      "type": "object",
+                      "properties": {
+                        "escalatePrompt": {},
+                        "improvementItems": {},
+                        "searchGuidelines": {},
+                        "answeringStyle": {},
+                        "overrideAnsweringStyle": {}
+                      }
+                    },
+                    "follow_up_questions": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {},
+                        "questions": {}
+                      }
+                    },
+                    "show_button": {
+                      "type": "object",
+                      "properties": {
+                        "label": {},
+                        "type": {},
+                        "url": {},
+                        "helpDeskId": {},
+                        "text": {},
+                        "faqId": {},
+                        "faqQuestion": {},
+                        "showIcon": {},
+                        "icon": {}
+                      }
+                    },
+                    "iframe": {
+                      "type": "object",
+                      "properties": {
+                        "url": {},
+                        "title": {},
+                        "lightbox": {},
+                        "height": {},
+                        "heightUnit": {}
+                      }
+                    },
+                    "api_request": {
+                      "type": "object",
+                      "properties": {
+                        "endpoint": {},
+                        "swaggerUrl": {},
+                        "operationId": {},
+                        "method": {},
+                        "url": {},
+                        "auth": {},
+                        "headers": {},
+                        "queryParams": {},
+                        "bodyTemplate": {},
+                        "jsonPaths": {}
+                      }
+                    },
+                    "send_email": {
+                      "type": "object",
+                      "properties": {
+                        "to": {}
+                      }
+                    },
+                    "handover": {
+                      "type": "object",
+                      "properties": {
+                        "assistantId": {}
+                      }
+                    },
+                    "basic_reply": {
+                      "type": "object",
+                      "properties": {
+                        "message": {}
+                      }
+                    },
+                    "notification": {
+                      "type": "object",
+                      "properties": {
+                        "title": {},
+                        "content": {},
+                        "deliveryRule": {},
+                        "allowReplies": {},
+                        "buttons": {}
+                      }
+                    },
+                    "connector": {
+                      "type": "object",
+                      "properties": {
+                        "provider": {},
+                        "connectionId": {},
+                        "action": {},
+                        "params": {},
+                        "successMessage": {},
+                        "failureMessage": {}
+                      }
+                    },
+                    "human_review": {
+                      "type": "object",
+                      "properties": {
+                        "title": {},
+                        "message": {},
+                        "assignees": {},
+                        "channel": {},
+                        "senderConnectionId": {},
+                        "slackTarget": {},
+                        "inputs": {},
+                        "timeoutHours": {},
+                        "haltMessage": {},
+                        "waitingMessage": {},
+                        "mode": {}
+                      }
+                    },
+                    "http_webhook": {
+                      "type": "object",
+                      "properties": {
+                        "subscribe": {},
+                        "unsubscribe": {},
+                        "timeoutMinutes": {},
+                        "waitingMessage": {},
+                        "haltMessage": {},
+                        "jsonPaths": {}
+                      }
+                    },
+                    "respond": {
+                      "type": "object",
+                      "properties": {
+                        "status": {},
+                        "headers": {},
+                        "bodyTemplate": {}
+                      }
+                    }
+                  }
+                },
+                "customMessage": {
+                  "type": "string"
+                },
+                "copiedFromId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "action",
+                "settings"
+              ]
+            }
+          },
           "search_knowledge": {
             "type": "object",
             "properties": {
@@ -12964,6 +13735,66 @@
           "actionSettings": {
             "type": "object",
             "properties": {
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "oneOf": [
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {},
+                        {}
+                      ]
+                    },
+                    "settings": {
+                      "type": "object",
+                      "properties": {
+                        "search_knowledge": {},
+                        "follow_up_questions": {},
+                        "show_button": {},
+                        "iframe": {},
+                        "api_request": {},
+                        "send_email": {},
+                        "handover": {},
+                        "basic_reply": {},
+                        "notification": {},
+                        "connector": {},
+                        "human_review": {},
+                        "http_webhook": {},
+                        "respond": {}
+                      }
+                    },
+                    "customMessage": {
+                      "type": "string"
+                    },
+                    "copiedFromId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "action",
+                    "settings"
+                  ]
+                }
+              },
               "search_knowledge": {
                 "type": "object",
                 "properties": {

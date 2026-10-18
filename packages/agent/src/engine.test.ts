@@ -620,6 +620,51 @@ describe("dispatchActions (via runAssistantChat, no-model path)", () => {
     expect(seenTemplateContexts[0]).toMatchObject({ api: { status: 200 } });
   });
 
+  it("executes copied messages and buttons with their own configuration", async () => {
+    mocked.handlers.custom_message = async (ctx) => ({
+      parts: [{ type: "text", action: "custom_message", text: ctx.flow.customMessage }],
+    });
+    mocked.handlers.show_button = async (ctx) => ({
+      parts: [{ type: "text", action: "show_button", text: ctx.flow.actionSettings.show_button?.label ?? "" }],
+    });
+    const { result } = await run(makeFlow({
+      isDefault: true,
+      customMessage: "Legacy",
+      actions: ["custom_message", "custom_message", "show_button", "show_button"],
+      actionSettings: { steps: [
+        { id: "message-a", action: "custom_message", settings: {}, customMessage: "First" },
+        { id: "message-b", action: "custom_message", settings: {}, customMessage: "Second" },
+        { id: "button-a", action: "show_button", settings: { show_button: { label: "One" } } },
+        { id: "button-b", action: "show_button", settings: { show_button: { label: "Two" } } },
+      ] },
+    }));
+    expect(result.parts.map(part => "text" in part ? part.text : "")).toEqual(["First", "Second", "One", "Two"]);
+  });
+
+  it("resumes at the copied occurrence after a gate, with the full checkpoint Flow", async () => {
+    let checkpointFlow: Flow | undefined;
+    mocked.handlers.human_review = async (ctx) => {
+      checkpointFlow = ctx.sourceFlow;
+      return { parts: [{ type: "text", action: "human_review", text: "Waiting" }], halt: true };
+    };
+    mocked.handlers.custom_message = async (ctx) => ({
+      parts: [{ type: "text", action: "custom_message", text: ctx.flow.customMessage }],
+    });
+    const flow = makeFlow({ isDefault: true, actions: ["custom_message", "human_review", "custom_message"], actionSettings: { steps: [
+      { id: "message-a", action: "custom_message", settings: {}, customMessage: "Before" },
+      { id: "review", action: "human_review", settings: { human_review: { title: "Check" } } },
+      { id: "message-b", action: "custom_message", settings: {}, customMessage: "After" },
+    ] } });
+    await run(flow);
+    expect(checkpointFlow).toBe(flow);
+    const resumed = await runAssistantChat({
+      assistant: makeAssistant(), flows: [flow], connections: [], message: "hello", history: [],
+      session: createTurnSession("conv-1", {}), emit: () => {},
+      resumeFrom: { flowId: flow.id, actionIndex: 1, action: "human_review", templatePatch: {} },
+    });
+    expect(resumed.parts).toEqual([{ type: "text", action: "custom_message", text: "After" }]);
+  });
+
   it("halts on halt and captures handoverTo", async () => {
     const ran: string[] = [];
     mocked.handlers["handover"] = async () => {

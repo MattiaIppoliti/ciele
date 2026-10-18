@@ -172,3 +172,27 @@ describe("the webhook's two calls (#842)", () => {
     expect(mergeFlowSecrets(redacted, stored)).toEqual(stored);
   });
 });
+
+
+describe("per-occurrence credentials", () => {
+  it("redacts, preserves and copies credentials by stable step identity", () => {
+    const stored: FlowActionSettings = { steps: [
+      { id: "first", action: "api_request", settings: settings() },
+      { id: "second", action: "api_request", settings: settings({ auth: { type: "bearer", token: "second-secret" } }) },
+    ] };
+    const shown = redactFlowSecrets({ actionSettings: stored }).actionSettings;
+    expect(JSON.stringify(shown)).not.toContain("sk-live-abc123");
+    expect(JSON.stringify(shown)).not.toContain("second-secret");
+    expect(JSON.stringify(shown)).not.toContain("acme-secret");
+    const first = shown.steps?.[0];
+    const second = shown.steps?.[1];
+    if (!first || !second) throw new Error("Missing steps");
+    const merged = mergeFlowSecrets({ steps: [second, first, { ...first, id: "copy", copiedFromId: "first" }] }, stored);
+    expect(merged?.steps?.map(step => step.settings.api_request?.auth)).toEqual([
+      { type: "bearer", token: "second-secret" },
+      { type: "bearer", token: "sk-live-abc123" },
+      { type: "bearer", token: "sk-live-abc123" },
+    ]);
+    expect(merged?.steps?.[2]).not.toHaveProperty("copiedFromId");
+  });
+});

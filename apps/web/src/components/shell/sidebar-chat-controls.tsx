@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import type { Profile, Role } from "@agent-hub/core";
-import { ArrowUpRight, Fingerprint, House, LogOut, Settings, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, Fingerprint, House, LogOut, Settings, X, type LucideIcon } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { Button, Hint } from "@agent-hub/ui";
 import { signOutAction } from "@/app/actions";
@@ -13,18 +13,19 @@ import { ROW_IDLE } from "@/components/shell/sidebar-row";
 import { SoundSwitcher } from "@/components/sound-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MessageCircleIcon } from "@/components/ui/icons/message-circle";
 import { UserRoundCogIcon } from "@/components/ui/icons/user-round-cog";
 import { SPRING_LAYOUT } from "@/lib/ease";
 import { chatSession } from "@/lib/chat-session";
+import { profileSetup } from "@/lib/profile-setup";
 import { navItem, navItemActive } from "@/components/shell/nav";
 
 /**
@@ -237,8 +238,8 @@ export function NewChatButton({
 /**
  * The round button beside New chat (Notion's): a chevron that turns into an X
  * while open, over who is signed in, profile, theme, sounds and Sign out. It
- * replaced the account row at the foot of the sidebar, which carried the same. Organization
- * settings stay in the top row and the account row keeps Sign out.
+ * replaced the account row at the foot of the sidebar. Organization settings
+ * stay in the top row; personal preferences and Logout live in this card.
  */
 function ProfileQuickMenu({
   profile,
@@ -254,6 +255,7 @@ function ProfileQuickMenu({
   collapsed: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const setup = profileSetup(profile, email, demo);
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       {/* The tooltip names it (Notion's "New…"); it stays quiet while the
@@ -291,48 +293,81 @@ function ProfileQuickMenu({
         </AnimatePresence>
       </DropdownMenuTrigger>
       </Hint>
-      {/* Notion's creation menu: a roomier panel, larger rows. */}
       <DropdownMenuContent
         side={collapsed ? "right" : "top"}
         align="end"
         sideOffset={8}
-        className="w-60 rounded-xl p-1.5 [&_[data-slot=dropdown-menu-item]]:gap-3 [&_[data-slot=dropdown-menu-item]]:px-3 [&_[data-slot=dropdown-menu-item]]:py-2.5 [&_[data-slot=dropdown-menu-item]]:text-base"
+        className="bg-shell w-80 rounded-[22px] p-1.5 ring-0"
       >
-        {/* Who is signed in: the account row this menu replaced said it at
-            the foot of the sidebar, and it has to be said somewhere. */}
-        <DropdownMenuLabel>
-          <p className="truncate font-semibold">{profileDisplayName(profile, email)}</p>
-          <p className="text-muted-foreground truncate text-xs font-normal">
-            {demo ? "Demo mode, no login" : email}
-            {role ? ` · ${role}` : ""}
-          </p>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="group/profile" render={<Link href="/settings/profile" />}>
-          <AnimatedIcon icon={Fingerprint} size={18} /> Profile
-          {/* It opens elsewhere (the Settings dialog), so it says so on the
-              right, and the arrow leans the way it goes while the row is
-              hovered. CSS, not an animated glyph: the icon set has no
-              diagonal arrow. */}
-          <span
-            aria-hidden
-            className="bg-foreground/[0.08] text-muted-foreground group-hover/profile:text-foreground ml-auto flex size-6 items-center justify-center rounded-md transition-colors"
+        {/* Keep this wrapper unpositioned: the menu's sliding highlight and
+            its rows share the popup as their offset parent. */}
+        <div className="bg-popover border-foreground/10 text-muted-foreground shadow-light rounded-2xl border px-2 pt-4 pb-2 [&_[data-slot=dropdown-menu-item]]:gap-3 [&_[data-slot=dropdown-menu-item]]:rounded-xl [&_[data-slot=dropdown-menu-item]]:px-3 [&_[data-slot=dropdown-menu-item]]:py-2.5 [&_[data-slot=dropdown-menu-item]]:text-sm [&_[data-animate-group]>span]:text-sm [&_[data-animate-group]>label]:text-sm">
+          <DropdownMenuLabel className="flex items-center gap-3 px-3 pt-0 pb-3">
+            <UserAvatar
+              avatarUrl={profile?.avatarUrl}
+              userId={profile?.userId}
+              email={demo ? undefined : email}
+              size="size-11"
+              className="bg-tone-blue text-tone-blue-ink [&_svg]:text-tone-blue-ink"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-foreground truncate text-base font-medium">
+                {profileDisplayName(profile, email)}
+              </p>
+              <p className="text-muted-foreground mt-0.5 truncate text-xs font-normal" title={demo ? undefined : email}>
+                {demo ? "Demo mode, no login" : email}
+                {role ? ` · ${role}` : ""}
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuItem className="group/profile press-control" render={<Link href="/settings/profile" />}>
+            <AnimatedIcon icon={Fingerprint} size={18} /> Profile
+            <span className="ml-auto flex size-9 shrink-0 items-center justify-center">
+              <ArrowUpRight aria-hidden className="size-4 transition-transform duration-150 group-hover/profile:translate-x-0.5 group-hover/profile:-translate-y-0.5 motion-reduce:transition-none" />
+            </span>
+          </DropdownMenuItem>
+          <ThemeSwitcher />
+          <SoundSwitcher />
+          <DropdownMenuItem
+            className="press-control"
+            disabled={demo}
+            title={demo ? "No active session in demo mode" : undefined}
+            onClick={() => signOutAction()}
           >
-            <ArrowUpRight className="size-3.5 transition-transform duration-200 group-hover/profile:translate-x-0.5 group-hover/profile:-translate-y-0.5 motion-reduce:transition-none" />
-          </span>
+            <LogOut className="size-4.5" /> Logout
+          </DropdownMenuItem>
+        </div>
+        <div className="px-3 pt-3 pb-1">
+          <div className="text-muted-foreground flex items-center justify-between gap-3 text-sm">
+            <span>Profile setup</span>
+            <span className="tabular-nums">{setup.done}/{setup.total}</span>
+          </div>
+          <div
+            role="progressbar"
+            aria-label="Profile setup"
+            aria-valuemin={0}
+            aria-valuemax={setup.total}
+            aria-valuenow={setup.done}
+            aria-valuetext={`${setup.done} of ${setup.total} completed`}
+            className="bg-foreground/10 mt-2 h-1 overflow-hidden rounded-full"
+          >
+            <div className="bg-tone-blue-ink h-full rounded-full" style={{ width: `${setup.percent}%` }} />
+          </div>
+        </div>
+        <DropdownMenuItem
+          render={<Link href="/settings/profile" />}
+          className="press-control mx-1 mt-1 gap-1 rounded-xl px-2 py-2.5 text-sm"
+        >
+          {setup.done === setup.total ? (
+            <>Profile complete <Check aria-hidden className="text-tone-blue-ink ml-auto size-4" /></>
+          ) : (
+            <>
+              <span className="text-muted-foreground">Next:</span>
+              <span className="truncate">{setup.next ?? "Review your profile"}</span>
+              <ArrowRight aria-hidden className="text-muted-foreground ml-auto size-4 shrink-0" />
+            </>
+          )}
         </DropdownMenuItem>
-        {/* No rule between Profile and the preferences: they are one group,
-            the things that are yours. */}
-        <ThemeSwitcher />
-        <SoundSwitcher />
-        {!demo && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOutAction()}>
-              <LogOut className="size-[18px]" /> Sign out
-            </DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

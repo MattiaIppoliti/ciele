@@ -48,9 +48,7 @@ export async function improvements(
       if (title !== undefined) patch.title = title;
       if (description !== undefined) patch.description = description;
       if (status !== undefined) patch.status = status as ImprovementPatch["status"];
-      if (priority !== undefined) {
-        patch.priority = (priority === "none" ? null : priority) as ImprovementPatch["priority"];
-      }
+      if (priority !== undefined) patch.priority = priority as ImprovementPatch["priority"];
       if (tags !== undefined) patch.tags = tags ? tags.split(",") : [];
       if (flags.assignee !== undefined) {
         patch.assigneeId = str(flags.assignee) || null;

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Assistant, Flow, FlowAction } from "@agent-hub/core";
 import {
   actionAllowedForTrigger,
+  flowForActionStep,
   httpFlowMethods,
   httpFlowRequestVariables,
   type HttpFlowRequest,
@@ -155,6 +156,8 @@ export async function runHttpFlow(options: {
     if (!actionAllowedForTrigger(action, "http_request")) continue;
     const handler = ACTION_HANDLERS[action];
     if (!handler) continue;
+    ctx.sourceFlow = flow;
+    ctx.flow = flowForActionStep(flow, actionIndex);
     ctx.actionIndex = actionIndex;
     ran.push(action);
     try {

@@ -652,6 +652,8 @@ check("GoTrue never receives an empty SMTP port", () => {
  * deployment. Listed here by name so another exception cannot spread quietly.
  */
 const SCHEDULE_EXCEPTIONS = new Set([
+  // Endpoint uptime sampling; Vercel Hobby is limited to one daily sample.
+  "/api/cron/check-assistant-availability",
   "/api/cron/finalize-crawls",
   "/api/cron/run-routines",
   // Human review expiry (#841) is measured in hours, so the self-host ticks

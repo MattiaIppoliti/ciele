@@ -127,8 +127,27 @@ function isFlowDraft(value: unknown): value is FlowDraft {
     draft.actions.every((action) => typeof action === "string") &&
     typeof draft.settings === "object" &&
     draft.settings !== null &&
+    validActionSteps(draft.settings.steps, draft.actions) &&
     typeof draft.customMessage === "string"
   );
+}
+
+/** Reject a stale or malformed occurrence list rather than editing another copy's settings. */
+function validActionSteps(value: unknown, actions: unknown[]): boolean {
+  if (value === undefined) return true;
+  if (!Array.isArray(value) || value.length !== actions.length) return false;
+  const ids = new Set<string>();
+  return value.every((step: unknown, index) => {
+    if (typeof step !== "object" || step === null || !("id" in step) ||
+      typeof step.id !== "string" || step.id.length === 0 || ids.has(step.id) ||
+      !("action" in step) || step.action !== actions[index] ||
+      !("settings" in step) || typeof step.settings !== "object" || step.settings === null ||
+      Array.isArray(step.settings) || "steps" in step.settings) return false;
+    if ("customMessage" in step && step.customMessage !== undefined && typeof step.customMessage !== "string") return false;
+    if ("copiedFromId" in step && step.copiedFromId !== undefined && typeof step.copiedFromId !== "string") return false;
+    ids.add(step.id);
+    return true;
+  });
 }
 
 /** "Draft saved 3 minutes ago", for the header's quiet reassurance. */

@@ -6,6 +6,7 @@ import type {
 } from "@agent-hub/core";
 import {
   expireReview,
+  flowForActionStep,
   normalizeAssignees,
   REVIEW_MAIL_SCOPE,
   reviewHaltMessage,
@@ -415,7 +416,7 @@ export const deliverReviewRequestHandler: JobHandler = {
     const { continuation } = await deps.db.readFlowContinuation(`review:${review.id}`);
     if (continuation?.stoppedAt) return;
     const flow = continuation?.snapshot.flow ?? await deps.db.getFlow(review.flowId);
-    const settings = flow?.actionSettings?.human_review;
+    const settings = flow ? flowForActionStep(flow, review.actionIndex).actionSettings.human_review : undefined;
     await stampDelivery(deps.db, review.id, {
       deliveryAttemptedAt: new Date().toISOString(),
     });

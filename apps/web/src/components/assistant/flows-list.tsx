@@ -35,13 +35,13 @@ import { moveOrderedId } from "@/lib/list-order";
 function ActionChips({ flow }: { flow: Flow }) {
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {flow.actions.map((action) => {
+      {flow.actions.map((action, index) => {
         const meta = FLOW_ACTIONS[action];
         if (!meta) return null;
         const Icon = meta.icon;
         return (
           <Badge
-            key={action}
+            key={`${action}:${index}`}
             variant="outline"
             className="text-foreground/80 h-7 rounded-md px-2.5 font-medium"
           >

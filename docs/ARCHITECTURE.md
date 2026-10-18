@@ -375,7 +375,7 @@ degrades to a fallback part instead of killing the turn.
 | `improvement` | Silent: requests a `create_improvement` **effect** (creates + links an Improvement to the persisted answer) |
 | `api_request` | Full request core (`api-request.ts`): auth (bearer/api-key/basic), headers, query params, body template, template-vars (origin locked to config-time host), JSON-path extraction → template patch, egress-guarded, 10s timeout |
 | `send_email` | Requests a `send_email` **effect** delivered through the one email transport (`email.ts` `sendEmail`, Resend HTTP API via `RESEND_API_KEY`+`EMAIL_FROM`; also used by Improvement notifications and the escalation email channel). Reports `{delivered}`/`{reason}`; when unconfigured the handler emits honest "couldn't forward" copy and requests no effect |
-| `handover` | Acknowledges + **halts** the flow. Continuing inside the target Assistant is a follow-up (#314) |
+| `handover` | Acknowledges + **halts** the origin Flow and returns `handoverTo`; `streamConversationTurn` then runs the same message once through the target Assistant's latest Publication (`runHandoverContinuation` in `handover.ts`, #314) and merges both into one reply. Same Organization only; an unpublished or missing target leaves the ack alone; a handover the target returns is ignored, so it is one hop. The Conversation stays on the origin Assistant |
 
 **Deferred effects** (`ActionEffect` in `types.ts`): handlers stay pure, they *request* effects
 (`create_improvement`, `send_email`); the **route** applies them via `applyEffects` (`effects.ts`)
@@ -839,7 +839,8 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   adapter; queue adapter is a later swap). The Knowledge UI polls Source status while processing.
 - **Flow Actions**, all 11 now dispatch through the handler registry (`actions.ts`): `improvement`
   (creates + links an Improvement, via a deferred effect), `api_request` (full config: auth/headers/
-  query/body/JSON-path/template-vars, egress-guarded), `handover` (acknowledge + halt),
+  query/body/JSON-path/template-vars, egress-guarded), `handover` (acknowledge + halt, then one
+  hop into the target Assistant's latest Publication for the same message, `handover.ts`),
   `send_email` (deferred effect via the **Resend** email transport; honest copy when unconfigured).
 - **Basic Interaction** (#565): a built-in Flow, first in priority, whose one action `basic_reply`
   answers conversational courtesy in a single model call, no retrieval, no tools, no trace, so no
@@ -859,14 +860,20 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   `DEFAULT_FLOWS`; the migration backfills existing Assistants.
 - **Escalation & desks**: the escalation email channel sends for real and reports non-delivery to
   the widget (mailto fallback); **"AI recommended help desk"** is live, the turn resolves the
-  selected desks and a cached classifier pick attaches `helpDeskId` to escalation chips.
+  selected desks and a cached classifier pick attaches `helpDeskId` to escalation chips. The
+  `api_endpoint` channel submits its form too: `escalateConversation` (`apps/web/src/lib/escalation.ts`)
+  POSTs it to the configured URL through the egress-guarded request core in
+  `packages/agent/src/api-request.ts`. Of a channel's Conversation Data toggles only `fullChatHistory`
+  is read; `chatSummary`, `userData` and `metadata` are stored and shown but inert.
 - **FAQ quick replies** answer with the curated FAQ Concept body **verbatim** (no model call,
   cited), via `Db.findFaqConcept` + a Conversation Turn short-circuit.
 - **Retrieval hardening**: `searchChunks` tops up partial vector results with lexical matches
   (null-embedding chunks are never masked); `match_chunks_linked` filters `concepts.excluded` in SQL.
-- **[partial]**: `handover` doesn't yet continue inside the target Assistant (#314); embedding
-  failures still degrade silently to null embeddings with no Alert/backfill (#312); ticket/
-  salesforce/api_endpoint channels render info-only in the widget (#315).
+- **[partial]**: `handover` lasts one turn, the Conversation stays on the origin Assistant; embedding
+  failures still degrade silently to null embeddings with no Alert/backfill (#312); `ticket` and
+  `salesforce_chat` channels render info-only in the widget (`toEscalationChannel` in
+  `apps/web/src/lib/escalation-desks.ts` returns no target for them), and no ticket is created on
+  escalation.
 - **[stored-but-inert]**: non-message triggers; rich condition types (role/url/course/schedule).
 - **⬜ out of scope**: the reference's education modules, AI Tutor and AI Feedback have no SETUP
   section and no `study_mode`/`h5p` flow actions. (Style and Authentication, previously listed here as

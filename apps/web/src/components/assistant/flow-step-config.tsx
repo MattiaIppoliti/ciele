@@ -7,6 +7,7 @@ import type {
   ApiRequestAuthType,
   FlowAction,
   FlowActionSettings,
+  FlowActionStepSettings,
   FlowButtonIcon as FlowButtonIconName,
   FlowButtonType,
   FlowCondition,
@@ -2005,13 +2006,16 @@ export type FlowStepHandlers = {
   setConditions: (conditions: FlowCondition[]) => void;
   /** Appends when `index` is omitted; inserts at a chain position otherwise. */
   addAction: (action: FlowAction, index?: number) => void;
-  removeAction: (action: FlowAction) => void;
+  removeAction: (action: FlowAction, id?: string) => void;
+  duplicateAction: (id: string) => string;
+  moveAction: (id: string, to: number) => void;
   setActions: (actions: FlowAction[]) => void;
-  patchSettings: <K extends keyof FlowActionSettings>(
+  patchSettings: <K extends keyof FlowActionStepSettings>(
     key: K,
-    patch: NonNullable<FlowActionSettings[K]>
+    patch: NonNullable<FlowActionStepSettings[K]>,
+    id?: string
   ) => void;
-  setCustomMessage: (message: string) => void;
+  setCustomMessage: (message: string, id?: string) => void;
 };
 
 /**
