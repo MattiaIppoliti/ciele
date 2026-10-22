@@ -1,9 +1,14 @@
 import {
+  TASK_PRIORITY_LABELS,
+  TASK_STATUS_LABELS,
   messageText,
+  taskKey,
   type Assistant,
   type InsightsOverview,
   type OrgApiKey,
+  type Project,
   type Role,
+  type Task,
   type Teammate,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
@@ -54,6 +59,12 @@ export interface FindReadContext {
    * Goes through its operation, which owns that rule.
    */
   listApiKeys: () => Promise<OrgApiKey[] | null>;
+  /**
+   * Projects and their Tasks this Member may read (#1072). Goes through the
+   * work operations, which own the private-Project rule. Absent, the two
+   * kinds are empty.
+   */
+  listWork?: () => Promise<{ projects: Project[]; tasks: Task[] }>;
   /** The Insights overview for the default window, from the app's shared cache. */
   insights: () => Promise<InsightsOverview | null>;
   /** Where a failed read is reported. Defaults to the server log. */
@@ -248,6 +259,53 @@ const RECORD_READERS: Record<FindKind, (ctx: FindReadContext, r: Reader) => Prom
         { label: "Assistant", value: c.assistantTitle },
         { label: "Messages", value: String(c.messageCount) },
         ...(c.collectionName ? [{ label: "Collection", value: c.collectionName }] : []),
+      ],
+    }));
+  },
+  task: async (ctx, r) => {
+    if (!ctx.listWork) return [];
+    const work = await r.settle("tasks", ctx.listWork);
+    const projects = new Map((work?.projects ?? []).map((p) => [p.id, p]));
+    return newest(work?.tasks ?? []).flatMap((t): FindRecord[] => {
+      const project = projects.get(t.projectId);
+      if (!project) return [];
+      const key = taskKey(project.key, t.seq);
+      return [
+        {
+          key: `task:${t.id}`,
+          id: t.id,
+          kind: "task",
+          title: t.title,
+          subtitle: `${key} · ${project.name}`,
+          snippet: clip(t.description),
+          href: href("task", t.id),
+          updatedAt: t.updatedAt,
+          facts: [
+            { label: "Key", value: key },
+            { label: "Status", value: TASK_STATUS_LABELS[t.status] },
+            { label: "Priority", value: TASK_PRIORITY_LABELS[t.priority] },
+            ...(t.dueDate ? [{ label: "Due", value: t.dueDate }] : []),
+          ],
+        },
+      ];
+    });
+  },
+  project: async (ctx, r) => {
+    if (!ctx.listWork) return [];
+    const work = await r.settle("projects", ctx.listWork);
+    return newest(work?.projects ?? []).map((p): FindRecord => ({
+      key: `project:${p.id}`,
+      id: p.id,
+      kind: "project",
+      title: p.name,
+      subtitle: p.key,
+      snippet: clip(p.description),
+      href: href("project", p.id),
+      updatedAt: p.updatedAt,
+      facts: [
+        { label: "Key", value: p.key },
+        { label: "Status", value: words(p.status) },
+        { label: "Visibility", value: p.visibility === "private" ? "Private" : "Organization" },
       ],
     }));
   },

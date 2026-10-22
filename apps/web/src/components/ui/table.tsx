@@ -1,6 +1,5 @@
 "use client";
 
-import { SortableItem } from "./sortable-list";
 import * as React from "react";
 import { Redo2, Undo2 } from "lucide-react";
 import { Button } from "@agent-hub/ui";
@@ -38,19 +37,19 @@ function TableCard({
             else history.undo();
           }
         }} {...props}>
-        <div data-slot="table-toolbar" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 px-5 py-4 @3xl/table-card:grid-cols-[minmax(8rem,1fr)_auto_auto]">
+        <div data-slot="table-toolbar" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-2.5 @3xl/table-card:grid-cols-[minmax(8rem,1fr)_auto_auto]">
           <div className="min-w-0" data-slot="table-results">
             <p className="text-muted-foreground text-xs font-medium">Total Results</p>
-            <p className="mt-0.5 text-sm font-medium">
+            <p className="text-sm font-medium">
               {results ? <RollInText entrance={false} text={countLabel(results.total, results.noun, results.pluralNoun)} /> : title ?? "Results"}
             </p>
           </div>
           {filters && <div data-slot="table-filters" className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 @3xl/table-card:col-span-1 @3xl/table-card:col-start-2 @3xl/table-card:row-start-1 @3xl/table-card:justify-end">{filters}</div>}
           <div data-slot="table-history" role="group" aria-label="Table history" className="col-start-2 row-start-1 flex items-center gap-1 @3xl/table-card:col-start-3">
-            <Button variant="ghost" size="icon" aria-label="Undo table change"
+            <Button variant="ghost" size="icon-sm" aria-label="Undo table change"
               title={history.undoLabel ? "Undo: " + history.undoLabel : "Undo table change"}
               disabled={!history.undoLabel} onClick={history.undo}><Undo2 className="size-4" /></Button>
-            <Button variant="ghost" size="icon" aria-label="Redo table change"
+            <Button variant="ghost" size="icon-sm" aria-label="Redo table change"
               title={history.redoLabel ? "Redo: " + history.redoLabel : "Redo table change"}
               disabled={!history.redoLabel} onClick={history.redo}><Redo2 className="size-4" /></Button>
           </div>
@@ -75,6 +74,15 @@ function Table({ className, fixed, empty, ...props }: React.ComponentProps<"tabl
           "w-[var(--table-width,100%)] caption-bottom text-sm",
           "[&:has(col[data-column=actions])_td:not([colspan]):last-child>div]:w-max [&:has(col[data-column=actions])_td:not([colspan]):last-child>div]:ml-auto",
           "[&_td:not(:last-child)]:border-r [&_th:not(:last-child)]:border-r",
+          // The first two columns stay in view while the sheet scrolls sideways:
+          // a checkbox gutter or a tag, then the name. The second sits right of
+          // the first (`--table-sticky-left`, measured by the view). A spanning
+          // cell (the empty state) is never pinned.
+          "[&_tr>*:first-child:not([colspan])]:sticky [&_tr>*:first-child:not([colspan])]:left-0 [&_tr>*:first-child:not([colspan])]:z-[2]",
+          "[&_tr>*:nth-child(2):not([colspan])]:sticky [&_tr>*:nth-child(2):not([colspan])]:left-[var(--table-sticky-left,0px)] [&_tr>*:nth-child(2):not([colspan])]:z-[2]",
+          // A column being moved rides the pointer, header and cells alike,
+          // above its neighbours and the pinned columns.
+          "[&_[data-column-dragging=true]]:!z-30 [&_[data-column-dragging=true]]:[transform:translateX(var(--column-drag-x,0px))] [&_th[data-column-dragging=true]]:shadow-[var(--elevation-strong)] [&_td[data-column-dragging=true]]:shadow-[inset_1px_0_0_var(--border),inset_-1px_0_0_var(--border)]",
           "data-[empty=true]:w-full data-[empty=true]:[&_col]:!w-auto data-[empty=true]:[&_thead]:hidden",
           fixed && "table-fixed", className,
         )} {...props} />
@@ -100,7 +108,10 @@ function TableRow({ className, children, ...props }: React.ComponentProps<"tr">)
   const header = React.useContext(HeaderContext);
   const rowProps = { role: "row", "data-slot": "table-row", "data-table-row-id": row?.id,
     className: cn("group/row border-b transition-colors [&>*]:bg-table-sheet [&>*]:transition-colors",
-      "hover:[&>*]:bg-accent has-aria-expanded:[&>*]:bg-accent data-[state=selected]:[&>*]:bg-ring/5", className), ...props };
+      "hover:[&>*]:bg-accent has-aria-expanded:[&>*]:bg-accent",
+      // A tint, not a colour: a pinned cell must stay opaque over the cells
+      // that scroll beneath it, so the selection goes on as an image.
+      "data-[state=selected]:[&>*]:bg-[image:linear-gradient(color-mix(in_oklab,var(--ring)_5%,transparent),color-mix(in_oklab,var(--ring)_5%,transparent))]", className), ...props };
   const cells = <TableCellsProvider>{children}</TableCellsProvider>;
   if (header) return <TableColumnsGroup {...rowProps}>{cells}</TableColumnsGroup>;
   return <tr {...rowProps}>{cells}</tr>;
@@ -112,11 +123,12 @@ function TableHead({ className, children, ...props }: React.ComponentProps<"th">
   const headProps = { role: "columnheader", "data-slot": "table-head",
     "data-table-column-index": position?.movable ? position.original : undefined,
     "data-column-dragging": position && view?.draggingColumn === position.original || undefined,
-    className: cn("text-muted-foreground relative h-12 px-4 text-left align-middle text-sm font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0", className), ...props };
+    // The work Table's measures (DESIGN.md §4): 34px headers in `text-xs`,
+    // 36px rows, 10px gutters, so a Library sheet and a Tasks sheet read alike.
+    className: cn("text-muted-foreground relative h-[34px] px-2.5 text-left align-middle text-xs font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0", className), ...props };
   const value = <div data-table-value className={cn("flex items-center gap-2", className?.includes("text-right") && "justify-end")}>
     <ColumnDragHandle />{children}
   </div>;
-  if (position?.movable) return <SortableItem as="th" value={String(position.original)} animateLayout={view?.animateColumns} {...headProps} onDragStart={() => view?.beginColumnDrag(position.original)} onDragEnd={view?.endColumnDrag}>{value}</SortableItem>;
   return <th {...headProps}>{value}</th>;
 }
 
@@ -137,8 +149,8 @@ function TableCell({ className, children, onPointerDown, onPointerEnter, onKeyDo
       if (!event.defaultPrevented && event.target === event.currentTarget && onEdit && ["Enter", "F2"].includes(event.key)) { event.preventDefault(); onEdit(); }
       if (!event.defaultPrevented) selection.onKeyDown(event); }}
     className={cn(
-      "relative overflow-hidden text-ellipsis px-4 py-3.5 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 outline-none",
-      "data-[cell-selected=true]:!bg-ring/5 data-[cell-focus=true]:shadow-[inset_0_0_0_2px_var(--ring)] focus-visible:shadow-[inset_0_0_0_2px_var(--ring)]",
+      "relative h-9 overflow-hidden text-ellipsis px-2.5 py-1.5 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 outline-none",
+      "data-[cell-selected=true]:bg-[image:linear-gradient(color-mix(in_oklab,var(--ring)_5%,transparent),color-mix(in_oklab,var(--ring)_5%,transparent))] data-[cell-focus=true]:shadow-[inset_0_0_0_2px_var(--ring)] focus-visible:shadow-[inset_0_0_0_2px_var(--ring)]",
       className,
     )} {...props}>
     <div data-table-value>{children}</div>

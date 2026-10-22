@@ -1427,6 +1427,12 @@ export interface Db {
    * retention window. At most `limit` per call, oldest first.
    */
   deleteExpiredMemories(organizationId: string, cutoffIso: string, limit?: number): Promise<number>;
+  /**
+   * Deletes this organization's Work Activity created before the cutoff
+   * (#1051): the log follows the transcript retention window. At most `limit`
+   * per call, oldest first.
+   */
+  deleteExpiredWorkActivity(organizationId: string, cutoffIso: string, limit?: number): Promise<number>;
 
   // Insights (org-wide analytics)
   /**
@@ -1450,6 +1456,12 @@ export interface Db {
     organizationId: string,
     input: { limit: number; cursor?: string | null; status?: ImprovementStatus }
   ): Promise<{ items: ImprovementListItem[]; nextCursor: string | null }>;
+  /**
+   * The Improvements assigned to one Member, archived ones left out: the half
+   * of My Tasks that is not Tasks (ADR-0027). Its own read rather than a
+   * filter over `listImprovements`, which returns the whole tracker.
+   */
+  listImprovementsAssignedTo(organizationId: string, assigneeId: string): Promise<Improvement[]>;
   /** Authoritative lane sizes, every status present even when zero. */
   countImprovementsByStatus(
     organizationId: string
@@ -1513,6 +1525,14 @@ export interface Db {
     id: string,
     input: { status: RoutineRunStatus; detail: string }
   ): Promise<void>;
+
+  /**
+   * The next Task number in a Project (#1049): the per-Project counter behind
+   * `WEB-12`. Behavioural because it is a compare-and-increment the generic
+   * accessor cannot express; the database refuses a caller who cannot write
+   * the Project.
+   */
+  nextTaskSeq(projectId: string): Promise<number>;
 
   // Memory documents (#771): the three prompt-injected layers and their
   // history. Behavioural rather than a mapped table, because a write is an
@@ -1650,6 +1670,18 @@ export interface Db {
    * the table has no delete policy. Returns how many rows went.
    */
   purgeExpiredObjectAccessEvents(cutoffIso: string): Promise<number>;
+  /**
+   * Deletes Member Notifications created before the cutoff, oldest first, at
+   * most `limit` per call (#1067). Cross-org, the nightly retention sweep's
+   * write path (service role only). Returns how many rows went.
+   */
+  purgeExpiredMemberNotifications(cutoffIso: string, limit?: number): Promise<number>;
+  /**
+   * Hard-deletes Task comments soft-deleted before the cutoff (#1055), every
+   * organization at once, oldest first, at most `limit` per call: the ten-minute
+   * Undo is over, and this is what makes a delete final. Service role only.
+   */
+  purgeDeletedTaskComments(cutoffIso: string, limit?: number): Promise<number>;
   /** Input+output tokens the organization consumed today (UTC), the budget pre-turn check. */
   getOrgTokensUsedToday(organizationId: string): Promise<number>;
   /** Estimated EUR cost (see pricing.ts) of today's (UTC) usage, the euro budget pre-turn check. */

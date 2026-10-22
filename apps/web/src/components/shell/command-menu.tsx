@@ -8,11 +8,12 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { SPRING_PANEL } from "@/lib/ease";
-import { PanelRight, Search, Type, X } from "lucide-react";
+import { History, Keyboard, Monitor, Moon, PanelLeft, PanelRight, Plus, Search, Sun, Type, X } from "lucide-react";
 import { Button as CieleButton, Dialog, DialogContent, DialogTitle } from "@agent-hub/ui";
 import { findStore, useFindSnapshot } from "@/lib/find-client";
 import { createPointerAim, WARM_LIMIT } from "@/lib/find-store";
@@ -26,6 +27,8 @@ import {
   detailRequest,
   FIND_UPDATED_LABELS,
   filterFindRecords,
+  matchExcerpt,
+  matchFindRecord,
   opensInNewTab,
   pageContent,
   recencyGroup,
@@ -36,6 +39,10 @@ import {
   type FindUpdated,
 } from "@/lib/find-index";
 import { fuzzyMatch } from "@/lib/fuzzy";
+import { pushRecentSearch, readRecentSearches, writeRecentSearches } from "@/lib/find-recent";
+import { isApplePlatform, requestCreate } from "@/components/shell/shell-hotkeys";
+import { useShell } from "@/components/shell/shell-provider";
+import { useTheme } from "@/components/theme-provider";
 import {
   GLOBAL_NAV,
   SETUP_SECTIONS,
@@ -57,6 +64,8 @@ const AIM_HOLD_MS = 140;
 
 /** Rows either side of the active one whose detail is warmed with it. */
 const WARM_NEIGHBOURS = 2;
+
+const noSubscription = () => () => {};
 
 /**
  * "Find…" palette. Type to search across assistants, conversations,
@@ -104,7 +113,24 @@ export function CommandMenu({
     [uid],
   );
   const reduceMotion = useReducedMotion();
+  // The footer's modifier as this platform spells it; the server says ⌘.
+  const modKey = useSyncExternalStore(
+    noSubscription,
+    () => (isApplePlatform(navigator.platform) ? "⌘" : "Ctrl"),
+    () => "⌘"
+  );
   const query = filters.query;
+  const { openShortcuts, sidebarDocked, setSidebarDocked } = useShell();
+  const { setTheme } = useTheme();
+  // The last five queries something was opened from, per Organization and
+  // Member, read again each time the palette opens and after each new one.
+  const [recentVersion, setRecentVersion] = useState(0);
+  const recent = useMemo(
+    () => (open ? readRecentSearches(scope) : []),
+    // `recentVersion` is the signal that storage changed under the same scope.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [open, scope, recentVersion]
+  );
 
   // The list and the details live in the shared store (`lib/find-store.ts`):
   // kept between openings, shown stale while they refresh, fetched once.
@@ -130,24 +156,40 @@ export function CommandMenu({
 
   const items = useMemo<FindItem[]>(() => {
     const now = new Date();
+    const q = query.trim();
     // Sorted newest first, so each recency group is already one run of rows.
     const recordItems: FindItem[] = recentsView(
       filterFindRecords(records ?? [], filters, now),
       filters,
-    ).map((record) => ({
-      key: record.key,
-      label: record.title,
-      hint: record.subtitle,
-      group: recencyGroup(record.updatedAt, now),
-      icon: KIND_ICONS[record.kind],
-      href: record.href,
-      record,
-    }));
+    ).map((record) => {
+      // The same match the filter kept it for, so the row marks the reason.
+      const match = q ? matchFindRecord(record, q, filters.titleOnly) : null;
+      // Listed for its body alone: the row quotes the body around the match.
+      const excerpt =
+        match?.snippet?.length && !match.title?.length && !match.subtitle?.length
+          ? matchExcerpt(record.snippet, match.snippet)
+          : undefined;
+      return {
+        key: record.key,
+        label: record.title,
+        hint: record.subtitle,
+        group: recencyGroup(record.updatedAt, now),
+        icon: KIND_ICONS[record.kind],
+        href: record.href,
+        record,
+        matches: match ? { label: match.title, hint: match.subtitle } : undefined,
+        excerpt,
+      };
+    });
 
     // Pages and SETUP sections have no date and no kind, so they only join in
     // when nothing narrows the search by either.
     const includeStatic = filters.kind === null && filters.updated === "any";
-    const q = query.trim();
+    // A static row is listed for its label alone, which is what it marks.
+    const byLabel = (item: FindItem): FindItem[] => {
+      const label = fuzzyMatch(q, item.label);
+      return label ? [{ ...item, matches: { label, hint: null } }] : [];
+    };
     const staticItems: FindItem[] = includeStatic
       ? [
           ...GLOBAL_NAV.map((item) => ({
@@ -168,11 +210,66 @@ export function CommandMenu({
             href: setupHref(scopedId, section.slug),
             record: null,
           })),
-        ].filter((item) => fuzzyMatch(q, item.label))
+        ].flatMap(byLabel)
       : [];
 
-    return [...recordItems, ...staticItems];
-  }, [records, filters, query, scopedId, scopedTitle]);
+    // Commands, not places (#1072): they join the static rows on the same terms.
+    const action = (key: string, label: string, icon: FindItem["icon"], run: () => void): FindItem => ({
+      key: `action:${key}`,
+      label,
+      hint: "",
+      group: "Actions",
+      icon,
+      href: "",
+      record: null,
+      run,
+    });
+    const actionItems: FindItem[] = includeStatic
+      ? [
+          action("new-task", "New task", Plus, () => {
+            if (!requestCreate("task")) router.push("/tasks?new=task");
+          }),
+          action("new-project", "New project", Plus, () => {
+            if (!requestCreate("project")) router.push("/projects?new=project");
+          }),
+          action("shortcuts", "Keyboard shortcuts", Keyboard, openShortcuts),
+          action("sidebar", "Toggle sidebar", PanelLeft, () => setSidebarDocked(!sidebarDocked)),
+          action("theme-light", "Theme: Light", Sun, () => setTheme("light")),
+          action("theme-dark", "Theme: Dark", Moon, () => setTheme("dark")),
+          action("theme-system", "Theme: System", Monitor, () => setTheme("system")),
+        ].flatMap(byLabel)
+      : [];
+
+    // With nothing typed, the last searches come first, each refilling the box.
+    const recentItems: FindItem[] =
+      !q && includeStatic && !filters.titleOnly
+        ? recent.map((entry) => ({
+            key: `recent:${entry}`,
+            label: entry,
+            hint: "",
+            group: "Recent searches",
+            icon: History,
+            href: "",
+            record: null,
+            keepOpen: true,
+            run: () => {
+              hoverIntent.cancel();
+              setFilters((current) => ({ ...current, query: entry }));
+              setActive(0);
+            },
+          }))
+        : [];
+
+    return [...recentItems, ...recordItems, ...staticItems, ...actionItems];
+  }, [records, filters, query, scopedId, scopedTitle, recent, router, openShortcuts, sidebarDocked, setSidebarDocked, setTheme, hoverIntent]);
+
+  // How many results each Type would leave, given everything else (#1072).
+  const kindCounts = useMemo(() => {
+    const now = new Date();
+    return Object.fromEntries(
+      FIND_KINDS.map((kind) => [kind, filterFindRecords(records ?? [], { ...filters, kind }, now).length])
+    ) as Record<FindKind, number>;
+  }, [records, filters]);
 
   // The store reads a row's detail as data (`detailRequest`): the active row a
   // beat after it is looked at, and the rows around it and the first screenful
@@ -225,6 +322,7 @@ export function CommandMenu({
     setActive(0);
   }
 
+
   useEffect(() => {
     listRef.current
       ?.querySelector(`[data-index="${active}"]`)
@@ -267,6 +365,16 @@ export function CommandMenu({
   }, [active, items, measurePill]);
 
   function select(item: FindItem, newTab = false) {
+    if (item.run) {
+      if (!item.keepOpen) handleOpenChange(false);
+      item.run();
+      return;
+    }
+    // Opening something from a query is what makes it a recent search.
+    if (query.trim()) {
+      writeRecentSearches(scope, pushRecentSearch(recent, query));
+      setRecentVersion((v) => v + 1);
+    }
     if (newTab) {
       window.open(item.href, "_blank", "noopener,noreferrer");
       return;
@@ -357,8 +465,8 @@ export function CommandMenu({
             value={query}
             onChange={(e) => updateFilters({ query: e.target.value })}
             onKeyDown={onKeyDown}
-            placeholder="Search assistants, conversations, improvements…"
-            aria-label="Search assistants, conversations, improvements, help desks, teammates and pages"
+            placeholder="Search tasks, projects, assistants, conversations…"
+            aria-label="Search tasks, projects, assistants, conversations, improvements, help desks, teammates, pages and actions"
             autoComplete="off"
             spellCheck={false}
             role="combobox"
@@ -412,6 +520,7 @@ export function CommandMenu({
                 key: kind,
                 label: FIND_KIND_INFO[kind].plural,
                 selected: filters.kind === kind,
+                count: kindCounts[kind],
               })),
             ]}
             onSelect={(key) =>
@@ -563,10 +672,10 @@ export function CommandMenu({
 
         <div className="ui-modal-footer text-muted-foreground flex shrink-0 items-center gap-4 text-xs">
           <span className="hidden items-center gap-1.5 sm:flex">
-            <kbd className="rounded border px-1 font-sans">↵</kbd> Open
+            <kbd className="rounded-sm border px-1 font-sans">↵</kbd> Open
           </span>
           <span className="hidden items-center gap-1.5 sm:flex">
-            <kbd className="rounded border px-1 font-sans">⌘ ↵</kbd> Open in new
+            <kbd className="rounded-sm border px-1 font-sans">{modKey} ↵</kbd> Open in new
             tab
           </span>
           {records !== null &&

@@ -22,9 +22,15 @@ Use these terms in English public documentation. Preserve exact interface labels
 | Help Desk | A configured group of human contact channels. | support desk |
 | Improvement | A tracked answer-quality work item. | issue, task |
 | Goal | A scheduled deterministic answer check. | evaluation |
-| Guardrail | A check on each Visitor message or streamed answer. | filter, policy |
+| Guardrail | A check on each Visitor message, on the text that goes to a model, or on a streamed answer. | filter, policy |
 | Alert | A detected problem that requires review. | warning |
 | Notification | A proactive, verbatim Assistant message. | nudge, announcement |
+| Member Notification | A message to one member about a Task, on the Notifications page. | notification, alert |
+| Project | The container of Tasks, milestones, and files. | workspace, board |
+| Task | One item of work in a Project. Its key is the Project key and a number, for example `WEB-12`. | ticket, issue, Improvement |
+| Label | An Organization-wide tag on Tasks. | tag |
+| milestone | A named date in a Project. | deadline |
+| saved view | Saved filters, sort, group, and layout, shown as a tab of a Project. | filter, preset |
 | API key | An Organization-scoped programmatic credential. | token |
 | provider connection | A configured model-provider access path. | integration |
 

@@ -3,16 +3,16 @@ title: Servidor MCP de Ciele
 description: Concede a un cliente MCP acceso controlado a las operaciones de administración de Ciele.
 ---
 
-El servidor del Protocolo de Contexto de Modelo (MCP) de Ciele expone las
-operaciones de administración a un agente de IA. Cuenta con dos transportes, y
-ambos registran las mismas herramientas.
+El servidor del Model Context Protocol (MCP) de Ciele expone las operaciones de
+administración a un agente de IA. Cuenta con dos transportes, y ambos registran
+las mismas herramientas.
 
 - El **hosted endpoint** es `POST /api/mcp` en tu implementación. Úsalo para un
   cliente que se conecta a través de HTTP.
-- El **local server** es un proceso `stdio` que inicias a partir de una copia
-  local del repositorio.
+- El **local server** es un proceso `stdio` que inicias a partir de una
+  clonación del repositorio.
 
-Cada llamada a una herramienta llega a la Organización a través de `/api/v1`,
+Cada llamada a una herramienta llega a la organización a través de `/api/v1`,
 por lo que una operación tiene una única ruta de ejecución, independientemente
 del transporte que la haya solicitado.
 
@@ -75,7 +75,7 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 | `CIELE_MCP_MODERN_ONLY` | Opcional | Rechaza a los clientes de la revisión 2025 cuando el valor es `1`. |
 
 La comprobación de solo lectura se realiza dentro del proceso MCP. Una mutación
-rechazada no realiza una solicitud a la API.
+rechazada no realiza ninguna solicitud a la API.
 
 <Callout type="warn" title="These variables apply to the local server only">
 A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
@@ -87,27 +87,28 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 ## Herramientas disponibles
 
-| Tool | Operaciones actuales |
+| Herramienta | Operaciones actuales |
 | --- | --- |
 | `ciele_identity` | Lee la información de la implementación, de la organización y de los roles. |
 | `manage_assistants` | Haz una pregunta a un asistente y, a continuación, enumera, lee, crea, actualiza, duplica o elimina asistentes. |
 | `manage_flows` | Lee el catálogo de Flows, comprueba un Flow sin guardarlo, lee las ejecuciones de un HTTP Flow y, a continuación, lista, lee, crea, actualiza, reordena o elimina Flows. |
-| `manage_knowledge` | Busca en la base de conocimientos y, a continuación, gestiona Collections, Sources y FAQs. |
-| `publish_assistant` | Consulta el estado, publica, cancela la publicación o restaura una publicación. |
+| `manage_knowledge` | Busca en el conocimiento y, a continuación, gestiona Collections, Sources y FAQs. |
+| `publish_assistant` | Consulta el estado, publica, despublica o restaura una publicación. |
 | `read_inbox` | Enumera, lee, exporta, ancla, anota, valora o elimina conversaciones. Enumera, lee y decide las solicitudes de revisión humana. |
-| `manage_improvements` | Lista, lee o actualiza Improvements. |
+| `manage_improvements` | Enumera, lee o actualiza Improvements. |
 | `manage_memories` | Revisa la configuración y realiza un borrado de memoria con ámbito definido. |
 | `manage_sso` | Gestiona las reclamaciones de identidad y la conexión SSO de la organización. |
 | `manage_help_desks` | Gestiona los Help Desks, los canales, la organización y ServiceNow. |
-| `manage_teammates` | Gestiona a los AI Teammates, sus grants, sus Routines y su memoria. `provision` realiza la configuración completa en una sola acción. |
-| `manage_projects` | Gestiona los Projects y el documento de memoria de cada Project. |
+| `manage_teammates` | Gestiona los AI Teammates, sus grants, sus Routines y su memoria. `provision` realiza la configuración completa en una sola acción. |
+| `manage_projects` | Gestiona los Projects, sus milestones y el documento de memoria de cada Project. |
+| `manage_tasks` | Enumera, lee, crea, modifica y elimina Tasks. Comenta las tareas y gestiona las etiquetas de las tareas. |
 | `manage_channels` | Lee y da forma a los canales de compañeros de equipo en los que participas. |
 | `manage_configuration` | Gestiona Skills, la selección de Assistant Skills, Goals y Alerts. |
-| `manage_organization` | Gestiona la configuración de la organización, los miembros, las invitaciones y las claves API. Consulta los medidores de uso y los elementos generadores de gasto del plan. |
+| `manage_organization` | Gestiona la configuración de la organización, los Members, las Invites y las API keys. Consulta los medidores de uso y los elementos de gasto del plan. |
 | `manage_integrations` | Gestiona las integraciones de la API del asistente y los proveedores de modelos. |
 
-El servidor registra dieciséis herramientas: una herramienta de identidad y
-quince herramientas de dominio. Cada herramienta de dominio utiliza un campo
+El servidor registra diecisiete herramientas: una herramienta de identidad y
+dieciséis herramientas de dominio. Cada herramienta de dominio utiliza un campo
 `action` para sus operaciones.
 
 El modo de solo lectura clasifica cada acción. Permite las acciones list, read,
@@ -115,8 +116,8 @@ status, query, search y export, pero rechaza las mutaciones.
 
 ## Busca en la base de conocimientos
 
-La acción `search` de `manage_knowledge` busca los pasajes que coinciden con una
-pregunta. Cada resultado proporciona el texto del pasaje, el título del
+La acción `search` de `manage_knowledge` encuentra los pasajes que coinciden con
+una pregunta. Cada resultado muestra el texto del pasaje, el título del
 documento, el nombre de la fuente y, cuando existe, su URL. Ciele no genera una
 respuesta. Tu cliente de IA redacta la respuesta y cita las fuentes.
 
@@ -141,12 +142,12 @@ cliente deba mostrar la respuesta de Ciele, no su propia respuesta.
 { "action": "ask", "id": "<assistant-id>", "question": "How do I connect Salesforce?" }
 ```
 
-El asistente responde como lo hace su widget publicado, con sus Flows y su
-búsqueda de conocimiento. Si el asistente no está publicado, la acción falla.
-Envía el `conversationId` de una respuesta junto con la siguiente pregunta para
-continuar la misma Conversation. Solo la clave API que inició una Conversation
-puede continuarla. Con un ID diferente, la pregunta inicia una nueva
-Conversation.
+El Asistente responde como lo hace su widget publicado, con sus Flows y su
+búsqueda en la base de conocimientos. Si el Assistant no está publicado, la
+acción falla. Envía el `conversationId` de una respuesta junto con la siguiente
+pregunta para continuar la misma Conversation. Solo la clave API que inició una
+Conversation puede continuarla. Con un ID diferente, la pregunta inicia una
+nueva Conversation.
 
 Cada pregunta crea una Conversation. Insights no lo contabiliza. La bandeja de
 entrada lo muestra con la etiqueta **API key** cuando estableces el filtro
@@ -154,7 +155,7 @@ entrada lo muestra con la etiqueta **API key** cuando estableces el filtro
 utiliza un turno de modelo en las Provider Connections de la Organization. Por
 este motivo, el modo de solo lectura rechaza `ask`. Cada clave API puede
 formular 20 preguntas en un minuto. Una respuesta puede tardar cierto tiempo, ya
-que el asistente puede realizar búsquedas más de una vez.
+que el Asistente puede realizar la búsqueda más de una vez.
 
 Consulta [AI clients](/developers/ai-clients) para conocer la configuración de
 cada cliente compatible.

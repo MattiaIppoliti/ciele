@@ -27,8 +27,8 @@
  * `interface.test.ts`; the getter stays internal, because nothing outside the
  * runtime reads these ports.
  */
-
 import type { Db } from "@agent-hub/db";
+import { outsidePiiMasking } from "./pii-masking";
 
 export interface RuntimeHost {
   /**
@@ -202,7 +202,16 @@ const slot: HostSlot = (slots[HOST_SLOT] ??= { current: DEFAULTS });
  * startup by the hosting app.
  */
 export function registerRuntimeHost(overrides: Partial<RuntimeHost>): void {
-  slot.current = { ...slot.current, ...overrides };
+  const schedule = overrides.scheduleAfterResponse;
+  slot.current = {
+    ...slot.current,
+    ...overrides,
+    // Work after a response belongs to no turn. A host's `after()` snapshots
+    // the caller's async context, which would run it under that turn's PII
+    // masking scope (`pii-masking.ts`), drains of other Conversations' jobs
+    // included.
+    ...(schedule ? { scheduleAfterResponse: (work: () => unknown) => schedule(() => outsidePiiMasking(work)) } : {}),
+  };
 }
 
 /** The active host, defaults unless the hosting app registered overrides. */

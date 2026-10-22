@@ -101,6 +101,8 @@ import type {
   TeammateGrant,
   TeammateRosterHidden,
   TeammateRoutine,
+  Task,
+  TaskComment,
   TicketingIntegration,
   TrustSignal,
   UsageDailyRow,
@@ -130,6 +132,7 @@ import {
   monotonicNow,
   nextCrawlDue,
   okfActor,
+  parseMentionTokens,
   capMemoryDocument,
   compareOrgKnowledgeSources,
   compareSourceDocuments,
@@ -221,6 +224,23 @@ interface MockStore {
   channelMessages: Map<string, ChannelMessage>;
   messageReactions: Map<string, MessageReaction>;
   projects: Map<string, Project>;
+  /** The work domain (#1061); one map per mapped table, cascades in MOCK_CASCADES. */
+  projectMembers: Map<string, import("@agent-hub/core").ProjectMember>;
+  projectMilestones: Map<string, import("@agent-hub/core").ProjectMilestone>;
+  tasks: Map<string, import("@agent-hub/core").Task>;
+  taskDependencies: Map<string, import("@agent-hub/core").TaskDependency>;
+  taskLabels: Map<string, import("@agent-hub/core").TaskLabel>;
+  taskLabelLinks: Map<string, import("@agent-hub/core").TaskLabelLink>;
+  savedViews: Map<string, import("@agent-hub/core").SavedView>;
+  workFavorites: Map<string, import("@agent-hub/core").WorkFavorite>;
+  projectFiles: Map<string, import("@agent-hub/core").ProjectFile>;
+  taskComments: Map<string, import("@agent-hub/core").TaskComment>;
+  taskCommentReactions: Map<string, import("@agent-hub/core").TaskCommentReaction>;
+  workActivity: Map<string, import("@agent-hub/core").WorkActivity>;
+  memberNotifications: Map<string, import("@agent-hub/core").MemberNotification>;
+  notificationPreferences: Map<string, import("@agent-hub/core").NotificationPreferences>;
+  /** projectId -> the next Task number, the mock's `task_counters`. */
+  taskCounters: Map<string, number>;
   memoryDocuments: Map<string, MemoryDocument>;
   memoryDocumentEntries: Map<string, MemoryDocumentEntry>;
   conversations: Map<string, Conversation>;
@@ -578,6 +598,21 @@ function emptyStore(): MockStore {
     channelMessages: new Map(),
     messageReactions: new Map(),
     projects: new Map(),
+    projectMembers: new Map(),
+    projectMilestones: new Map(),
+    tasks: new Map(),
+    taskDependencies: new Map(),
+    taskLabels: new Map(),
+    taskLabelLinks: new Map(),
+    savedViews: new Map(),
+    workFavorites: new Map(),
+    projectFiles: new Map(),
+    taskComments: new Map(),
+    taskCommentReactions: new Map(),
+    workActivity: new Map(),
+    memberNotifications: new Map(),
+    notificationPreferences: new Map(),
+    taskCounters: new Map(),
     memoryDocuments: new Map(),
     memoryDocumentEntries: new Map(),
     conversations: new Map(),
@@ -888,8 +923,105 @@ function createStore(): MockStore {
   seedKnowledgeDemo(store);
   seedSkillsDemo(store);
   seedPublications(store);
+  // Work demo data (#1063) for the demo build. Not under the test runner: the
+  // operation and contract suites assert exact Project keys and task counts
+  // against an empty work domain.
+  if (!process.env.VITEST) seedWorkDemo(store);
 
   return store;
+}
+
+/**
+ * Two Projects with a spread of Tasks (every status, priority and due bucket,
+ * subtasks, a dependency, Labels, a Milestone), so the demo's work views are
+ * not empty. Dates are relative to the day the store is built.
+ */
+function seedWorkDemo(store: MockStore): void {
+  const now = new Date();
+  const iso = now.toISOString();
+  const day = (offset: number) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + offset));
+    return d.toISOString().slice(0, 10);
+  };
+  const org = DEMO_ORG.id;
+  const projects = [
+    { id: "prj-web", key: "WEB", name: "Website relaunch", icon: "globe", color: "blue" as const, status: "active" as const,
+      description: "The new public site: content, design and the launch itself.", leadId: "u-martina", start: day(-21), due: day(30) },
+    { id: "prj-ops", key: "OPS", name: "Support operations", icon: "briefcase", color: "green" as const, status: "planning" as const,
+      description: "How the help desk runs: rotas, macros and the escalation rules.", leadId: DEMO_MEMBER.userId, start: day(-3), due: day(60) },
+  ];
+  for (const p of projects) {
+    store.projects.set(p.id, {
+      id: p.id, organizationId: org, name: p.name, description: p.description, archived: false,
+      createdBy: DEMO_MEMBER.userId, createdAt: iso, updatedAt: iso, key: p.key, status: p.status,
+      leadId: p.leadId, startDate: p.start, dueDate: p.due, color: p.color, icon: p.icon, visibility: "organization",
+    });
+  }
+  const labels = [
+    ["lbl-bug", "Bug", "red"], ["lbl-design", "Design", "purple"], ["lbl-content", "Content", "amber"],
+  ] as const;
+  for (const [id, name, color] of labels) {
+    store.taskLabels.set(id, { id, organizationId: org, name, color, createdAt: iso, updatedAt: iso });
+  }
+  type Seed = [string, string, string, import("@agent-hub/core").TaskStatus, import("@agent-hub/core").TaskPriority, string | null, number | null, string | null, string[]];
+  const tasks: Seed[] = [
+    ["tsk-1", "prj-web", "Write the launch brief", "in_progress", "high", DEMO_MEMBER.userId, 0, null, ["lbl-content"]],
+    ["tsk-2", "prj-web", "Review the pricing page copy", "in_review", "medium", "u-martina", 1, null, ["lbl-content"]],
+    ["tsk-3", "prj-web", "Fix the broken footer links", "to_do", "urgent", DEMO_MEMBER.userId, -2, null, ["lbl-bug"]],
+    ["tsk-4", "prj-web", "Design the new hero", "done", "medium", "u-valeria", -5, null, ["lbl-design"]],
+    ["tsk-5", "prj-web", "Collect partner logos", "backlog", "low", null, null, null, []],
+    ["tsk-6", "prj-web", "Pick the hero photo", "to_do", "none", "u-valeria", 3, "tsk-4", ["lbl-design"]],
+    ["tsk-7", "prj-ops", "Draft the weekend rota", "to_do", "medium", DEMO_MEMBER.userId, 4, null, []],
+    ["tsk-8", "prj-ops", "Write the refund macro", "in_progress", "high", "u-andrea", 7, null, ["lbl-content"]],
+    ["tsk-9", "prj-ops", "Agree the escalation rules", "to_do", "medium", DEMO_MEMBER.userId, null, null, []],
+  ];
+  const seqs = new Map<string, number>();
+  tasks.forEach(([id, projectId, title, status, priority, assignee, dueOffset, parentId, labelIds], index) => {
+    const seq = (seqs.get(projectId) ?? 0) + 1;
+    seqs.set(projectId, seq);
+    store.tasks.set(id, {
+      id, organizationId: org, projectId, parentId, seq, title, description: "", status, priority,
+      assigneeMemberId: assignee, assigneeTeammateId: null,
+      startDate: dueOffset !== null && dueOffset > 2 ? day(dueOffset - 2) : null,
+      dueDate: dueOffset === null ? null : day(dueOffset), estimateMinutes: index % 3 === 0 ? 240 : null,
+      recurrence: id === "tsk-7" ? "weekly" : null, rank: `${String.fromCharCode(65 + index)}V`, improvementId: null,
+      completedAt: status === "done" ? iso : null, archivedAt: null, createdBy: DEMO_MEMBER.userId, createdAt: iso, updatedAt: iso,
+    });
+    for (const labelId of labelIds) {
+      const linkId = `${id}-${labelId}`;
+      store.taskLabelLinks.set(linkId, { id: linkId, organizationId: org, projectId, taskId: id, labelId, createdAt: iso });
+    }
+  });
+  for (const [projectId, seq] of seqs) store.taskCounters.set(projectId, seq + 1);
+  store.taskDependencies.set("dep-1", {
+    id: "dep-1", organizationId: org, projectId: "prj-web", taskId: "tsk-1", blockedById: "tsk-2", createdAt: iso,
+  });
+  store.projectMilestones.set("ms-1", {
+    id: "ms-1", organizationId: org, projectId: "prj-web", name: "Content freeze", date: day(14), createdAt: iso, updatedAt: iso,
+  });
+  store.workFavorites.set("fav-1", {
+    id: "fav-1", organizationId: org, userId: DEMO_MEMBER.userId, projectId: "prj-web", taskId: null, createdAt: iso,
+  });
+  // A comment naming the demo Member and the notifications it and two other
+  // changes raised, so the Notifications page has something to triage (#1067).
+  const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+  store.taskComments.set("cmt-1", {
+    id: "cmt-1", organizationId: org, projectId: "prj-web", taskId: "tsk-1", authorMemberId: "u-martina", authorTeammateId: null,
+    body: `Can you add the launch date before Friday, @[demo](member:${DEMO_MEMBER.userId})?`, mentions: [DEMO_MEMBER.userId],
+    createdAt: ago(25), editedAt: null, deletedAt: null,
+  });
+  const notifications: [string, "mentioned" | "assigned" | "status_changed", string, string, string | null, number][] = [
+    ["ntf-1", "mentioned", "prj-web", "tsk-1", "cmt-1", 25],
+    ["ntf-2", "assigned", "prj-ops", "tsk-9", null, 60 * 5],
+    ["ntf-3", "status_changed", "prj-web", "tsk-3", null, 60 * 30],
+  ];
+  for (const [id, kind, projectId, taskId, commentId, minutes] of notifications) {
+    store.memberNotifications.set(id, {
+      id, organizationId: org, recipientId: DEMO_MEMBER.userId, kind, projectId, taskId, commentId,
+      actorMemberId: kind === "assigned" ? "u-andrea" : "u-martina", actorTeammateId: null,
+      createdAt: ago(minutes), readAt: kind === "status_changed" ? ago(60) : null, archivedAt: null, snoozedUntil: null,
+    });
+  }
 }
 
 /**
@@ -2135,6 +2267,20 @@ const MOCK_TABLE_STORES: {
   teammateChannelParticipants: () =>
     getStore().teammateChannelParticipants,
   projects: () => getStore().projects,
+  projectMembers: () => getStore().projectMembers,
+  projectMilestones: () => getStore().projectMilestones,
+  tasks: () => getStore().tasks,
+  taskDependencies: () => getStore().taskDependencies,
+  taskLabels: () => getStore().taskLabels,
+  taskLabelLinks: () => getStore().taskLabelLinks,
+  savedViews: () => getStore().savedViews,
+  workFavorites: () => getStore().workFavorites,
+  projectFiles: () => getStore().projectFiles,
+  taskComments: () => getStore().taskComments,
+  taskCommentReactions: () => getStore().taskCommentReactions,
+  workActivity: () => getStore().workActivity,
+  memberNotifications: () => getStore().memberNotifications,
+  notificationPreferences: () => getStore().notificationPreferences,
   localConnectorPairings: () => getStore().localConnectorPairings,
   localConnectorDevices: () => getStore().localConnectorDevices,
   localInferenceJobs: () => getStore().localInferenceJobs,
@@ -2164,6 +2310,11 @@ const MOCK_CASCADES: Partial<
       column: string;
       /** `delete` mirrors `on delete cascade`; `null` mirrors `set null`. */
       onDelete?: "delete" | "null";
+      /**
+       * The mapped table the child rows belong to, when their own children
+       * must go too: Postgres cascades transitively, so the mock recurses.
+       */
+      table?: DbTableName;
     }[]
   >
 > = {
@@ -2234,6 +2385,36 @@ const MOCK_CASCADES: Partial<
       column: "projectId",
       onDelete: "null",
     },
+    // The work domain (#1046): deleting a Project deletes its work. `table`
+    // makes the cascade recurse, so a Task's own children go with it.
+    { rows: () => getStore().tasks as Map<string, unknown>, column: "projectId", table: "tasks" },
+    { rows: () => getStore().projectMembers as Map<string, unknown>, column: "projectId" },
+    { rows: () => getStore().projectMilestones as Map<string, unknown>, column: "projectId" },
+    { rows: () => getStore().savedViews as Map<string, unknown>, column: "projectId" },
+    { rows: () => getStore().workFavorites as Map<string, unknown>, column: "projectId" },
+    { rows: () => getStore().workActivity as Map<string, unknown>, column: "projectId" },
+    { rows: () => getStore().projectFiles as Map<string, unknown>, column: "projectId" },
+  ],
+  tasks: [
+    // Subtasks go with their parent (`parent_id ... on delete cascade`).
+    { rows: () => getStore().tasks as Map<string, unknown>, column: "parentId", table: "tasks" },
+    { rows: () => getStore().taskDependencies as Map<string, unknown>, column: "taskId" },
+    { rows: () => getStore().taskDependencies as Map<string, unknown>, column: "blockedById" },
+    { rows: () => getStore().taskLabelLinks as Map<string, unknown>, column: "taskId" },
+    { rows: () => getStore().taskComments as Map<string, unknown>, column: "taskId", table: "taskComments" },
+    { rows: () => getStore().projectFiles as Map<string, unknown>, column: "taskId" },
+    { rows: () => getStore().workFavorites as Map<string, unknown>, column: "taskId" },
+    { rows: () => getStore().memberNotifications as Map<string, unknown>, column: "taskId" },
+    // The activity outlives the Task (`on delete set null (task_id)`); its
+    // `data` still names what the Task was.
+    { rows: () => getStore().workActivity as Map<string, unknown>, column: "taskId", onDelete: "null" },
+  ],
+  taskComments: [
+    { rows: () => getStore().taskCommentReactions as Map<string, unknown>, column: "commentId" },
+    { rows: () => getStore().memberNotifications as Map<string, unknown>, column: "commentId" },
+  ],
+  taskLabels: [
+    { rows: () => getStore().taskLabelLinks as Map<string, unknown>, column: "labelId" },
   ],
 };
 
@@ -2444,6 +2625,8 @@ function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
         ...defined(values as unknown as Record<string, unknown>),
         id: newTableRowId(spec),
       } as unknown as DbTableRow<K> & { id: string };
+      if (name === "tasks") requireParentInProject(row as unknown as Task);
+      if (name === "taskComments") deriveMentions(row as unknown as TaskComment);
       store().set(row.id, row);
       return row;
     },
@@ -2456,22 +2639,85 @@ function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
         ...defined(patch),
         ...(spec.touchesUpdatedAt ? { updatedAt: new Date().toISOString() } : {}),
       } as DbTableRow<K>;
+      if (name === "tasks") requireParentInProject(updated as unknown as Task);
+      if (name === "taskComments") deriveMentions(updated as unknown as TaskComment);
       store().set(id, updated);
+      const before = (current as unknown as Record<string, unknown>).projectId;
+      const after = (updated as unknown as Record<string, unknown>).projectId;
+      if (name === "tasks" && before !== after) moveTaskChildren(id, after as string);
       return updated;
     },
 
     async delete(id) {
       store().delete(id);
-      for (const { rows, column, onDelete = "delete" } of MOCK_CASCADES[name] ?? []) {
-        for (const [childId, child] of rows()) {
-          const record = child as Record<string, unknown>;
-          if (record[column] !== id) continue;
-          if (onDelete === "null") rows().set(childId, { ...record, [column]: null });
-          else rows().delete(childId);
-        }
-      }
+      cascadeMockDelete(name, id);
     },
   };
+}
+
+/**
+ * Mirrors `private.enforce_task_parent_same_project`: a subtask lives in its
+ * parent's Project, checked on the row being written, so moving a subtask
+ * before its parent is refused here exactly as Postgres refuses it.
+ */
+function requireParentInProject(task: Task): void {
+  if (!task.parentId) return;
+  const parent = getStore().tasks.get(task.parentId);
+  if (!parent || parent.projectId !== task.projectId) {
+    throw new Error("A subtask lives in its parent's Project.");
+  }
+}
+
+/** Mirrors `private.guard_task_comment`: a comment's mentions are its body's tokens. */
+function deriveMentions(comment: TaskComment): void {
+  comment.mentions = parseMentionTokens(comment.body);
+}
+
+/**
+ * Mirrors `on update cascade` on `(task_id, project_id)`: a Task that moves to
+ * another Project carries its labels, comments, reactions, activity and
+ * notifications with it, so no child row's visibility asks about the old one.
+ */
+function moveTaskChildren(taskId: string, projectId: string): void {
+  const store = getStore();
+  const commentIds = new Set<string>();
+  for (const rows of [
+    store.taskLabelLinks,
+    store.taskComments,
+    store.workActivity,
+    store.memberNotifications,
+    store.projectFiles,
+  ] as Map<string, { taskId: string | null; projectId: string; id: string }>[]) {
+    for (const [id, row] of rows) {
+      if (row.taskId !== taskId) continue;
+      rows.set(id, { ...row, projectId });
+      if (rows === (store.taskComments as unknown)) commentIds.add(id);
+    }
+  }
+  for (const [id, reaction] of store.taskCommentReactions) {
+    if (commentIds.has(reaction.commentId)) store.taskCommentReactions.set(id, { ...reaction, projectId });
+  }
+}
+
+/**
+ * Mirrors the database's `on delete` rules for one deleted mapped row,
+ * recursively where an entry names its child table (a Project takes its Tasks,
+ * a Task its subtasks and comments, a comment its reactions).
+ */
+function cascadeMockDelete(name: DbTableName, id: string): void {
+  for (const { rows, column, onDelete = "delete", table } of MOCK_CASCADES[name] ?? []) {
+    for (const [childId, child] of [...rows()]) {
+      const record = child as Record<string, unknown>;
+      if (record[column] !== id) continue;
+      if (onDelete === "null") {
+        rows().set(childId, { ...record, [column]: null });
+        continue;
+      }
+      if (!rows().has(childId)) continue;
+      rows().delete(childId);
+      if (table) cascadeMockDelete(table, childId);
+    }
+  }
 }
 
 /** Whether a stored document belongs to the owner a read named (#771). */
@@ -2922,6 +3168,12 @@ export const mockDb: Db = {
       store.memoryDocuments.delete(id);
       for (const [entryId, entry] of store.memoryDocumentEntries) {
         if (entry.documentId === id) store.memoryDocumentEntries.delete(entryId);
+      }
+    }
+    // Mirrors organization_members_unassign_tasks (20261009100000, #1047).
+    for (const [id, task] of store.tasks) {
+      if (task.organizationId === orgId && task.assigneeMemberId === userId) {
+        store.tasks.set(id, { ...task, assigneeMemberId: null });
       }
     }
   },
@@ -6039,6 +6291,16 @@ export const mockDb: Db = {
     return deleted;
   },
 
+  async deleteExpiredWorkActivity(organizationId, cutoffIso, limit = Infinity) {
+    const rows = getStore().workActivity;
+    const expired = [...rows.values()]
+      .filter((row) => row.organizationId === organizationId && row.createdAt < cutoffIso)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+      .slice(0, Math.max(limit, 1));
+    for (const row of expired) rows.delete(row.id);
+    return expired.length;
+  },
+
   async deleteExpiredMemories(organizationId, cutoffIso, limit = Infinity) {
     const store = getStore();
     const cutoff = Date.parse(cutoffIso);
@@ -6087,6 +6349,12 @@ export const mockDb: Db = {
           (l) => l.improvementId === i.id
         ).length,
       }))
+      .sort((a, b) => b.seq - a.seq);
+  },
+
+  async listImprovementsAssignedTo(organizationId, assigneeId) {
+    return [...getStore().improvements.values()]
+      .filter((i) => i.organizationId === organizationId && i.assigneeId === assigneeId && i.status !== "archived")
       .sort((a, b) => b.seq - a.seq);
   },
 
@@ -6220,6 +6488,14 @@ export const mockDb: Db = {
       lastStatus: input.status,
       lastDetail: input.detail.slice(0, 1000),
     });
+  },
+
+  async nextTaskSeq(projectId) {
+    const store = getStore();
+    if (!store.projects.has(projectId)) throw new Error("not found");
+    const seq = store.taskCounters.get(projectId) ?? 1;
+    store.taskCounters.set(projectId, seq + 1);
+    return seq;
   },
 
   async getMemoryDocument(organizationId, owner) {
@@ -7397,6 +7673,29 @@ export const mockDb: Db = {
       )
       .reverse()
       .slice(offset, offset + (options?.limit ?? 100));
+  },
+
+  async purgeExpiredMemberNotifications(cutoffIso, limit = 5000) {
+    const rows = getStore().memberNotifications;
+    const expired = [...rows.values()]
+      .filter((row) => row.createdAt < cutoffIso)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+      .slice(0, Math.max(limit, 1));
+    for (const row of expired) rows.delete(row.id);
+    return expired.length;
+  },
+
+  async purgeDeletedTaskComments(cutoffIso, limit = 5000) {
+    const store = getStore();
+    const purged = [...store.taskComments.values()]
+      .filter((row) => row.deletedAt !== null && row.deletedAt < cutoffIso)
+      .sort((a, b) => a.deletedAt!.localeCompare(b.deletedAt!) || a.id.localeCompare(b.id))
+      .slice(0, Math.max(limit, 1));
+    for (const row of purged) {
+      store.taskComments.delete(row.id);
+      cascadeMockDelete("taskComments", row.id);
+    }
+    return purged.length;
   },
 
   async purgeExpiredObjectAccessEvents(cutoffIso) {

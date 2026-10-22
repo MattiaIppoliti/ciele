@@ -1,4 +1,5 @@
 import { TablePreferenceScope } from "@/components/ui/table-preferences";
+import { sidebarWork } from "@/lib/work/sidebar-work";
 import { Suspense, cache } from "react";
 import { devKey } from "@/lib/dev-key";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -8,6 +9,7 @@ import { findScopeKey } from "@/lib/find-index";
 import { ThreadPreferencesProvider } from "@/components/thread-preferences";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PendingActivationBanner } from "@/components/shell/pending-activation-banner";
+import { OfflineBanner } from "@/components/shell/offline-banner";
 import { TopBar } from "@/components/shell/top-bar";
 import { DeveloperPanelLauncher } from "@/components/developer-panel/developer-panel-launcher";
 import { PortalSlot, RIGHT_RAIL_SLOT } from "@/components/shell/slot-portal";
@@ -16,8 +18,9 @@ import { TooltipProvider } from "@agent-hub/ui";
 import { FeedbackProvider } from "@agent-hub/ui/feedback";
 import { requirePageMember } from "@/lib/authz";
 import { runOperation } from "@/lib/operations";
-import { listChannelMentionsOp } from "@ciele/ops";
+import { listChannelMentionsOp, notificationTriageOp } from "@ciele/ops";
 import type { AssistantSummary } from "@/components/shell/nav";
+import type { Role } from "@agent-hub/core";
 
 /**
  * Groups where somebody named this Member (#778), read once per request.
@@ -90,6 +93,8 @@ export default function AdminLayout({
     ""
   );
 
+  const role: Promise<Role | null> = shellRead("Role", ({ session }) => session.role ?? null, null);
+
   const tableScope = shellRead("Table preferences", ({ organizationId, session }) => `${organizationId}:${session.userId}`, "");
 
   return (
@@ -100,7 +105,7 @@ export default function AdminLayout({
           root, and that placement is what keeps it silent. */}
       <FeedbackProvider soundSet="bencho">
       <TooltipProvider delay={300}>
-        <ShellProvider assistants={assistants} findScope={findScope}>
+        <ShellProvider assistants={assistants} findScope={findScope} role={role}>
         <ThreadPreferencesProvider scope={findScope}>
           {/* The siblings below are keyed in development only, for the root
               layout's reason (lib/dev-key.ts). */}
@@ -137,6 +142,7 @@ export default function AdminLayout({
                 <Suspense key={devKey("activation-banner")} fallback={null}>
                   <ActivationBannerLoader />
                 </Suspense>
+                <OfflineBanner />
                 {/* The workspace. The right rail has one occupant at a time
                     (#754): the Developer Panel, docked outside this panel on
                     the frame, or the Assistant editor's live Preview, which
@@ -173,9 +179,10 @@ export default function AdminLayout({
 
 async function SidebarLoader() {
   const { session, organizationId, reads } = await requirePageMember();
-  const [alertCount, mentions] = await Promise.all([
+  const [alertCount, mentions, work] = await Promise.all([
     reads.activeAlertCount(),
     channelMentions(),
+    sidebarWork(),
   ]);
   return (
     <AppSidebar
@@ -189,6 +196,7 @@ async function SidebarLoader() {
       profile={session.profile}
       alertCount={alertCount}
       mentionCount={mentions.length}
+      work={work}
     />
   );
 }
@@ -205,17 +213,21 @@ async function ActivationBannerLoader() {
 
 async function NotificationDockLoader() {
   const { reads } = await requirePageMember();
-  const [alerts, totalAlertCount, mentions, ingestionActive] = await Promise.all([
+  const [alerts, totalAlertCount, mentions, ingestionActive, work] = await Promise.all([
     reads.activeAlerts(),
     reads.activeAlertCount(),
     channelMentions(),
     reads.ingestionInFlight(),
+    // Best effort: the shell must not fall over in the deploy window before
+    // the work migration lands, or for a session that has no Member row.
+    runOperation(notificationTriageOp, { unreadOnly: true, limit: 20 }).catch(() => []),
   ]);
   return (
     <NotificationDock
       alerts={alerts}
       totalAlertCount={totalAlertCount}
       mentions={mentions}
+      work={work}
       ingestionActive={ingestionActive}
     />
   );

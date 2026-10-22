@@ -6,6 +6,7 @@ import type { ImprovementListItem, ImprovementStatus } from "@agent-hub/core";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
+import { SPRING_REFLOW } from "@/lib/ease";
 import { formatDay } from "@/lib/format";
 import { memberDisplayName } from "@/lib/members";
 import {
@@ -13,13 +14,6 @@ import {
   improvementKeyClass,
   priorityMeta,
 } from "@/lib/improvements";
-
-export const GROUPED_TABLE_SPRING = {
-  type: "spring",
-  stiffness: 420,
-  damping: 28,
-  mass: 0.8,
-} as const;
 
 /** Stable elements change their grid positions, rather than fading between copies. */
 export function ImprovementGroupedRow({
@@ -36,7 +30,7 @@ export function ImprovementGroupedRow({
   const reduce = useReducedMotion();
   const columns = width >= 768;
   const expanded = width >= 896;
-  const transition = reduce ? { duration: 0 } : GROUPED_TABLE_SPRING;
+  const transition = reduce ? { duration: 0 } : SPRING_REFLOW;
   const priority = priorityMeta(item.priority);
   const date = item.dueDate ?? item.createdAt;
   const animate = {

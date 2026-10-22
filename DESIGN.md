@@ -341,9 +341,12 @@ Two exemptions, both deliberate:
 - **lucide-react** is the icon set. A few have a motion-drawn twin in `components/ui/icons/`
   (Telescope for Eval, UsersRound for Help Desks), looked up through `localGlyphFor` in
   `ui/icons/local-glyphs.ts`, so a row renders the twin without an `Icon === X` branch of its own.
-  Help Desks is the two-figure UsersRound, not a question mark: a help desk is people. Sounds is
-  a local Volume2 whose waves pulse on hover; a row that is not a `menuitem` plays its icon by
-  carrying `data-animate-group`. Buttons carry 16 / 18 / 20px icons for `sm` / `md` / `lg`,
+  Help Desks is the two-figure UsersRound, not a question mark: a help desk is people. The Work
+  rows have twins too (CircleCheckBig for My Tasks, FolderKanban for Projects, ListChecks for All
+  tasks), Notifications takes the bell and Alerts a CCTV camera that pans. A row that is not a
+  `menuitem` plays its icon by carrying `data-animate-group`. Sounds is the exception that is a
+  state, not a hover: `motion/sound-icon.tsx` draws its waves out when sound is on and strikes a
+  cross when it is off, on an interruptible spring. Buttons carry 16 / 18 / 20px icons for `sm` / `md` / `lg`,
   menu rows 16px (`size-4`), badges 12px.
 - **Stroke 1.75 in the console**, not lucide's 2, for Linear's lighter line. One rule in
   `globals.css` matches the icon signature (24-unit viewBox, no fill, the default width), so it
@@ -369,7 +372,8 @@ Constants live in `lib/ease.ts`. Use them, do not write a new bezier or spring i
 | `SPRING_PRESS` | Press feedback in motion components |
 | `SPRING_SWAP` | Label or icon slots trading places inside a control |
 | `SPRING_PANEL` | Modal and sheet entrances, critically damped |
-| `SPRING_THROW` | The only spring allowed to overshoot, and only after a gesture threw something. Pass the release velocity |
+| `SPRING_THROW` | Overshoots, and only after a gesture threw something (a swipe released, a flick). Pass the release velocity |
+| `SPRING_REFLOW` | The other spring that overshoots: fields springing to a new place while the layout reflows under the person's hand (a column comes or goes, a panel or table column is dragged wider). The Improvements grouped table and the task views, through `SpringSpan` in `motion/layout-spring.tsx` |
 | `SPRING_UNFOLD` / `SPRING_REFOLD` | A side panel opening and closing by width: the left sidebar, the Preview rail, the Developer Panel. Opening overshoots a little, closing settles with less. All three use the same pair, so a panel on either side feels the same |
 
 **Action button contract** (`packages/ui/src/button.tsx` and `button.css`):
@@ -468,6 +472,29 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
 | Code or a snippet | `ui/code-block` | |
 | A chart | `packages/charts` + `ui/chart` | a raw Recharts palette |
 | Width a user can drag | `use-resizable-width` / `resizable-panel` | |
+| A detail docked beside its list (resizable, full screen in a narrow container) | `ui/workspace-panel` (`flush` for a full-bleed view: no page padding, a ruled column instead of a floating card) | a custom split pane |
+| Markdown with a formatting toolbar | `ui/markdown-editor` (`MARKDOWN_TOOLBAR_BASIC` / `_FULL` / `_COMPACT`, optional `history`) | a second copy of the toolbar buttons |
+| A Task's status or priority glyph | `TaskStatusIcon`, `PriorityIcon` in `components/work/work-icons.tsx` | a coloured dot or a `Badge` per status |
+| A label beside its picker in a properties grid | `PropertyField` in `components/work/task-pickers.tsx`, the picker's `trigger` being a `PillButton` | a hand-aligned label column |
+| Rows that act on a horizontal swipe (archive, snooze, delete) | `motion/swipe-actions` (`SwipeActions` + `SwipeActionsRow`): one row open at a time, a full swipe commits the outermost action, a More actions menu is the keyboard path. Make the full swipe the reversible action and put a destructive one behind `confirm-delete-modal` (`keepRow`) | a drag handler on a list item |
+| Fields that should spring into place when their layout reflows | `SpringSpan` in `motion/layout-spring.tsx`, with the width or column list as its `dependency` | a `motion` element with an inline spring |
+| "Done, and you can take it back" feedback | `toast.undo(message, revert)`: the button runs once, and a revert answering `{ ok: false }` becomes an error toast | a success toast plus a separate Undo button |
+| A single choice whose options are drawings (a colour, an icon, a layout pill) | `SwatchRadioGroup` in `components/work/work-ui.tsx`, styled with `data-[checked]:`. A labelled list of options is `ui/radio-group` | `role="radio"` buttons without arrow keys |
+
+**The Work section's own parts** (`components/work/work-ui.tsx`, #1064). The Projects and Tasks
+views share one set of dense measures, expressed on these tokens: `WorkBar` (the full-width
+toolbar row, `min-h-11`, ruled below, on the 24px gutter), `PillButton` (the borderless 28px pill
+every cell picker opens from), `WorkAvatar` and `AvatarStack` (initials on a per-person tone,
+dashed when unassigned), `LabelChip` (a bordered 20px chip with a round dot, the radius scale having nothing below 4px) and `Segmented` (the
+small switch for Month / Week and the layouts). The Table layout (`task-table.tsx`) is the one
+deliberate exception to `ui/table`: a full-bleed sheet with a sticky header and a sticky first
+column, 36px rows ruled on both edges. The shared table now uses the same measures (34px headers
+in `text-xs`, 36px rows, 10px gutters) and keeps its first two columns in view when it scrolls
+sideways (a checkbox gutter or a tag, then the name). A row's selection is a tint over the opaque
+sheet, never a translucent colour, so a pinned cell hides what scrolls under it. Moving a column
+drags the whole column, header and cells, one to one with the pointer; its neighbours take their
+new place when its centre passes theirs, with no spring to wait for. Reach for these only
+inside the work views; elsewhere the table above still holds.
 
 ---
 
@@ -486,9 +513,10 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
   while the sidebar is hidden. As it narrows, the org switcher gives way in order: the name
   truncates, then the role badge goes, then the chevron. The hidden sidebar's hover-peek lands on
   the panel's own inset and radius, so it covers the panel's edge instead of doubling it.
-- **Sidebar groups.** Three captions (`NavSection`): "Workspace" (Assistants through Library),
-  "Observability" (Improvements, Insights, Eval: how the Assistants are doing) and "Options"
-  (Alerts, Support, Settings). A caption is plain text at `text-xs`, 70% of the rows' muted tone,
+- **Sidebar groups.** Four captions (`NavSection`): "Workspace" (Assistants through Library),
+  "Observability" (Improvements, Insights, Eval: how the Assistants are doing), "Work" (My Tasks,
+  Notifications, Projects with the starred ones under it, All tasks) and "Options" (Alerts,
+  Support, Settings). A caption is plain text at `text-xs`, 70% of the rows' muted tone,
   so it reads as secondary; it neither navigates nor folds, and it carries
   `data-highlight-clear`, which takes the sliding hover pill off the row above it (otherwise
   the pill stayed there and looked like a second hover). On the rail a caption becomes a rule.
@@ -539,6 +567,25 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
 - **The account menu** (the round button beside New chat) lists Profile, Theme and Sounds as one
   group, no rule between them, each with an 18px animated icon at the item's padding. A row that
   leaves the menu for another surface ends in a small `ArrowUpRight` tile that leans on hover.
+  Every row's right-hand control (that tile, the theme button, the sound switch, the `?` of
+  Keyboard shortcuts) sits centred in one 44px `PreferenceSlot`, so they share a vertical axis
+  whatever their width.
+- **The chat composer** (`agents/prompt-input.tsx`). An empty Teammate or Ciele AI chat opens on
+  the `agent` variant: the box sits in a `bg-muted` tray one step rounder than itself (32px around
+  26px), the text has two lines to itself, + sits bottom left and the model picker with send bottom
+  right. The tray's lower strip holds the Teammate picker (face, name, a menu of the roster that
+  opens the picked Teammate's empty chat and carries the draft there) and History (recent
+  conversations, always shown). Its pills are tight on the icon side, so the icon sits 18px in from
+  the tray's edge. The Organization's Skill opening lines sit under the tray as pills that fade once
+  there is a draft. The first message
+  carries the composer to the bottom (`useDockGlide`: a 480ms `DOCK_GLIDE` tween on its top edge, played by the browser) while the
+  face and the question go at once. From there the conversation keeps the `default` composer, the
+  one every other chat panel uses. Both variants share one tree, so the switch never drops the
+  caret. An unsent draft is kept per conversation in the browser, and a message typed while a
+  reply streams waits in a queue above the box.
+- **The `?` dialog** (`shell/shortcuts-dialog.tsx`) is generated from the binding table in
+  `shell-hotkeys.ts`, so it cannot list a key that does nothing. It stays mounted while closed,
+  like every dialog, so closing plays the same path as opening.
   New chat shows its `⌘O` chip only while its container is at least `9rem` wide, so the label
   never wraps.
 - **Sticky footers** (a form's save bar) take `z-10` and an opaque ground, or a focused select

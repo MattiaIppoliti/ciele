@@ -20,6 +20,8 @@ import type { Db } from "./types";
 
 // The seam itself.
 export type { Db } from "./types";
+// What a generic table write takes, for the ports that hand a row to the host.
+export type { DbTableInsert } from "./table-access";
 
 // Raising an Improvement is one policy over the seam, so it lives with the
 // seam rather than in the domain package: it takes a `Db`.

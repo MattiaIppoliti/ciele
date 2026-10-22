@@ -3,6 +3,8 @@ import {
   detailRequest,
   EMPTY_FIND_FILTERS,
   filterFindRecords,
+  matchExcerpt,
+  matchFindRecord,
   pageContent,
   RECENTS_LIMIT,
   recentsView,
@@ -81,6 +83,60 @@ describe("filterFindRecords", () => {
     expect(
       filterFindRecords(records, { ...EMPTY_FIND_FILTERS, updated: "week" }, NOW).map((r) => r.key)
     ).toEqual(["c", "a"]);
+  });
+});
+
+describe("matchFindRecord (#1072)", () => {
+  const conversation = record({
+    key: "c",
+    title: "Weekly review",
+    subtitle: "Support bot",
+    snippet: "the bot answered support questions",
+  });
+
+  it("returns where the query landed in each field", () => {
+    expect(matchFindRecord(conversation, "support", false)).toEqual({
+      title: null,
+      subtitle: [[0, 7]],
+      snippet: [[17, 24]],
+    });
+  });
+
+  it("marks a title matched with a typo, so the row shows why it is listed", () => {
+    // The swapped `y` is the typo; the five letters around it are marked.
+    expect(matchFindRecord(conversation, "weekyl", false)?.title).toEqual([[0, 5]]);
+  });
+
+  it("leaves the body unmarked with Title only, and is null when nothing matched", () => {
+    expect(matchFindRecord(conversation, "support", true)).toBeNull();
+    expect(matchFindRecord(conversation, "review", true)).toEqual({ title: [[7, 13]], subtitle: null, snippet: null });
+    expect(matchFindRecord(conversation, "invoice", false)).toBeNull();
+  });
+
+  it("is what the filter keeps", () => {
+    const records = [conversation, record({ key: "x", title: "Elsewhere" })];
+    for (const query of ["support", "weekyl", "bot answered", "invoice"]) {
+      const kept = filterFindRecords(records, { ...EMPTY_FIND_FILTERS, query }, NOW).map((r) => r.key);
+      expect(kept).toEqual(records.filter((r) => matchFindRecord(r, query, false)).map((r) => r.key));
+    }
+  });
+});
+
+describe("matchExcerpt", () => {
+  it("keeps a body whose match is near its start", () => {
+    expect(matchExcerpt("answers billing questions", [[8, 15]])).toEqual({
+      text: "answers billing questions",
+      ranges: [[8, 15]],
+    });
+  });
+
+  it("starts a long body on a word just before the match, and moves the marks with it", () => {
+    const text = "The assistant reads the handbook first and then answers billing questions";
+    const at = text.indexOf("billing");
+    const excerpt = matchExcerpt(text, [[at, at + 7]]);
+    expect(excerpt.text).toBe("…first and then answers billing questions");
+    const [[from, to]] = excerpt.ranges as [[number, number]];
+    expect(excerpt.text.slice(from, to)).toBe("billing");
   });
 });
 

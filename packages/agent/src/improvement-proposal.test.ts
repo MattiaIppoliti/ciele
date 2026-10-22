@@ -86,6 +86,8 @@ function fakeDb(over: Partial<Db> = {}): Db {
     getAssistant: vi
       .fn()
       .mockResolvedValue({ id: "a1", organizationId: "org1" }),
+    // Read for the PII masking guardrail (#1080); none here.
+    getLatestPublication: vi.fn().mockResolvedValue(null),
     listMessages: vi
       .fn()
       .mockResolvedValue([msg("u1", "user", "how do I reset?"), msg("m1", "assistant", "bad answer")]),
@@ -328,5 +330,17 @@ describe("draftGoalProposal (#903)", () => {
     });
     expect(db.createImprovementProposal).not.toHaveBeenCalled();
     expect(errors).toEqual([]);
+  });
+});
+
+describe("draftImprovementProposal when the PII masking guardrail cannot be read (#1080)", () => {
+  it("drafts nothing, rather than draft from unmasked text", async () => {
+    const db = fakeDb({
+      getLatestPublication: vi.fn().mockRejectedValue(new Error("db down")),
+    } as Partial<Db>);
+    await draftImprovementProposal({ db, improvementId: "imp1", messageId: "m1" });
+    expect(mocks.generateObject).not.toHaveBeenCalled();
+    expect(db.createImprovementProposal).not.toHaveBeenCalled();
+    expect(errors.join("\n")).toContain("masking could not be read");
   });
 });

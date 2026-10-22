@@ -352,7 +352,8 @@ export function EyeTracker({
       const dy = e.clientY - (r.top + r.height / 2);
       const d = Math.hypot(dx, dy) || 1;
       const reach = Math.max(60, Math.min(f.width, f.height) * 0.28);
-      const far = Math.min(ghost ? 0.26 : 0.85, Math.tanh(d / reach) * (clamp(knobs.current.follow, 0, 100) / 100) * 1.5);
+      // The ghost's eyes stop a touch short of the cloud's edge.
+      const far = Math.min(ghost ? 0.21 : 0.85, Math.tanh(d / reach) * (clamp(knobs.current.follow, 0, 100) / 100) * 1.5);
       t.tx = (dx / d) * far;
       t.ty = (dy / d) * far;
     };

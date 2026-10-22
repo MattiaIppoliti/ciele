@@ -614,3 +614,46 @@ describe("granting", () => {
     expect(seen.domains).toEqual(["inbox"]);
   });
 });
+
+describe("the tasks grant (#1069)", () => {
+  it("offers reads, create, update and comments, never delete or archive", () => {
+    const offered = teammateActions(actor({ grants: ["tasks"] })).map((spec) => spec.operation.name);
+    expect(offered).toEqual(["tasks.list", "tasks.get", "tasks.create", "tasks.update", "tasks.comments.list", "tasks.comments.create"]);
+    expect(offered).not.toContain("tasks.delete");
+    expect(offered).not.toContain("tasks.archive");
+    // Read only: the reads and the comment thread stay, the writes go.
+    expect(teammateActions(actor({ grants: ["tasks"], ceiling: "member" })).map((spec) => spec.operation.name)).toEqual([
+      "tasks.list",
+      "tasks.get",
+      "tasks.comments.list",
+      "tasks.comments.create",
+    ]);
+  });
+
+  it("creates and updates a Task as the Teammate, for the Member who asked", async () => {
+    const activity: { verb: string; actorMemberId?: string | null; actorTeammateId?: string | null }[] = [];
+    const run = ctx({
+      teammate: actor({ grants: ["tasks"] }),
+      ports: {
+        workLog: {
+          recordActivity: async (rows) => void activity.push(...rows),
+          notify: async () => undefined,
+        },
+      },
+    });
+    const project = await getMockDb().table("projects").insert({
+      organizationId: DEMO_ORG.id,
+      name: "Teammate work",
+      key: "TMW",
+      createdBy: DEMO_MEMBER.userId,
+    });
+    const created = await runTeammateAction(run, "tasks.create", { projectId: project.id, title: "Draft the rota" });
+    const task = created.result as { id: string; title: string };
+    await runTeammateAction(run, "tasks.update", { id: task.id, patch: { status: "in_progress" } });
+    await expect(runTeammateAction(run, "tasks.delete", { id: task.id })).rejects.toThrow(OperationError);
+    expect(activity.map((row) => [row.verb, row.actorMemberId, row.actorTeammateId])).toEqual([
+      ["task.created", DEMO_MEMBER.userId, "tm-1"],
+      ["task.status", DEMO_MEMBER.userId, "tm-1"],
+    ]);
+  });
+});

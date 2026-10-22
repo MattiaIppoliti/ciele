@@ -12,6 +12,7 @@ import {
 import { getClassifierModel } from "./models";
 import { createTurnSession, MEMORY_FACT_MAX } from "./session";
 import { meterUsage, usageTotals } from "./usage";
+import { postTurnPiiMasker, withPiiMasking } from "./pii-masking";
 
 /**
  * Long-term memory promotion (#664): the background half of the memory loop.
@@ -152,11 +153,15 @@ export async function promoteConversationMemories(
     conversation.sessionState
   ).memory();
 
+  // Masked as the Conversation's turns were (#1080). The facts come back with
+  // their values, since they are this Visitor's own and stay in this Db.
+  const masker = await postTurnPiiMasker(db, conversation.assistantId, async () => messages);
+
   // The transcript is Visitor-authored text going to a model that will act on
   // what it reads, so it is fenced here exactly as it is in a turn (#801,
   // CYB-07/CYB-13). A triple-quote is a delimiter the transcript can write.
   const nonce = mintUntrustedNonce();
-  const { object, usage } = await generateObject({
+  const { object, usage } = await withPiiMasking(masker, () => generateObject({
     model: extractor.model,
     schema: FACTS_SCHEMA,
     system: `${EXTRACT_SYSTEM}\n\n${untrustedContentPolicy(nonce)}`,
@@ -170,7 +175,7 @@ export async function promoteConversationMemories(
         nonce
       ),
     ].join("\n"),
-  });
+  }));
   await meterUsage(db, [
     {
       organizationId,
@@ -200,14 +205,16 @@ export async function promoteConversationMemories(
     .slice(0, MAX_FACTS_PER_EXTRACTION);
   if (facts.length === 0) return { promoted: 0, skipped: "nothing-durable" };
 
-  const embeddings = await embedTexts(facts, connections, {
-    db,
-    organizationId,
-    assistantId: conversation.assistantId,
-    conversationId,
-    // Same job as the extraction above, so the same surface (#849).
-    surface: "scheduled",
-  });
+  const embeddings = await withPiiMasking(masker, () =>
+    embedTexts(facts, connections, {
+      db,
+      organizationId,
+      assistantId: conversation.assistantId,
+      conversationId,
+      // Same job as the extraction above, so the same surface (#849).
+      surface: "scheduled",
+    })
+  );
   const promoted = await db.upsertMemories(
     { organizationId, subjectId: conversation.subjectId },
     facts.map((text, i) => ({

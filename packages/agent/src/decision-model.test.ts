@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Experimental_EvaluationMockModelV4 } from "ai/test";
-import { creditsFor, type Provider, type ProviderConnection } from "@agent-hub/core";
+import { createPiiMasker, creditsFor, PII_DETECTORS, type Provider, type ProviderConnection } from "@agent-hub/core";
+import { withPiiMasking } from "./pii-masking";
 import {
   JEV_DIRECT_MODEL_ID,
   JEV_GATEWAY_MODEL_ID,
@@ -211,6 +212,25 @@ describe("decide", () => {
     // Sonnet 5's input rate (Anthropic's classifier tier), not Jev's:
     // €2.80 per million → 280 credits.
     expect(creditsFor([{ kind: "model", ...decision.usage }])).toBeCloseTo(280, 6);
+  });
+
+  it("sends Jev the state and questions masked under a PII masking scope (#1078)", async () => {
+    let request = "";
+    const model = new Experimental_EvaluationMockModelV4({
+      doEvaluate: async (options) => {
+        request = JSON.stringify(options);
+        return { answers: { ok: { type: "boolean", probability: 0.8 } }, usage: { inputTokens: 1, outputTokens: 0 }, warnings: [] };
+      },
+    });
+    await withPiiMasking(createPiiMasker(PII_DETECTORS), () =>
+      decide(resolvedOn(model), {
+        state: "Visitor: my card is 4111 1111 1111 1111, mail jane@example.com",
+        questions: { ok: { type: "boolean", instructions: "Is jane@example.com the account owner?" } },
+      })
+    );
+    expect(request).not.toContain("jane@example.com");
+    expect(request).not.toContain("4111 1111 1111 1111");
+    expect(request).toContain("[CARD_1], mail [EMAIL_1]");
   });
 
   it("a provider failure propagates to the caller, which owns the fallback", async () => {

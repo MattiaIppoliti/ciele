@@ -110,6 +110,12 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpPrompt:
       "List this Organization's Projects and tell me which ones have no memory document written yet.",
   },
+  tasks: {
+    title: "Tasks API",
+    mcpTool: "manage_tasks",
+    mcpPrompt:
+      "List the open tasks in this Organization's projects and tell me which ones are overdue and who they are assigned to.",
+  },
   channels: {
     title: "Channels API",
     mcpTool: "manage_channels",

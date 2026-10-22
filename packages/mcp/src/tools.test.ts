@@ -76,6 +76,8 @@ describe("ciele MCP tools", () => {
       "manage_organization",
       "manage_projects",
       "manage_sso",
+      // The work inside Projects (#1069).
+      "manage_tasks",
       "manage_teammates",
       "publish_assistant",
       "read_inbox",

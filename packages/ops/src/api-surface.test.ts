@@ -20,6 +20,10 @@ import {
   searchKnowledgeOp,
 } from "./knowledge";
 import { readUsageMetersOp, readUsageSpendersOp } from "./usage";
+import { createTaskOp, deleteTaskOp, getTaskOp, listTasksOp, updateTaskOp } from "./tasks";
+import { createTaskCommentOp, listTaskCommentsOp } from "./task-comments";
+import { createTaskLabelOp, listTaskLabelsOp } from "./task-labels";
+import { listMilestonesOp, setMilestonesOp } from "./projects-work";
 import { askAssistantOp, createAssistantOp } from "./assistants";
 import {
   createFlowOp,
@@ -40,15 +44,17 @@ import {
   updateRoutineOp,
 } from "./routines";
 import {
-  createProjectOp,
-  deleteProjectOp,
-  getProjectOp,
   getTeammateMemoryOp,
-  listProjectsOp,
-  updateProjectOp,
   writeProjectDocumentOp,
   writeTeammateMemoryOp,
 } from "./memory";
+import {
+  createProjectOp,
+  deleteProjectOp,
+  getProjectOp,
+  listProjectsOp,
+  updateProjectOp,
+} from "./projects-work";
 import {
   addChannelMembersOp,
   addChannelTeammatesOp,
@@ -392,6 +398,39 @@ describe("Projects and the Agent memory layer over an API key", () => {
       (await updateProjectOp.run(ctx, { id: project.id, patch: { archived: true } }))
         .archived
     ).toBe(true);
+    await deleteProjectOp.run(ctx, { id: project.id });
+  });
+
+  it("runs every Task endpoint's operation on the pinned Db (#1069)", async () => {
+    const ctx = keyContext(pinned());
+    const project = await createProjectOp.run(ctx, { name: "Website", description: "" });
+    const milestones = await setMilestonesOp.run(ctx, {
+      id: project.id,
+      milestones: [{ name: "Launch", date: "2026-11-02" }],
+    });
+    expect(milestones.map((m) => m.name)).toEqual(["Launch"]);
+    expect(await listMilestonesOp.run(ctx, { id: project.id })).toHaveLength(1);
+
+    const label = await createTaskLabelOp.run(ctx, { name: "Bug", color: "red" });
+    expect((await listTaskLabelsOp.run(ctx, {})).map((l) => l.id)).toContain(label.id);
+
+    const blocker = await createTaskOp.run(ctx, { projectId: project.id, title: "Write the brief" });
+    const task = await createTaskOp.run(ctx, { projectId: project.id, title: "Ship the page", labelIds: [label.id] });
+    const updated = await updateTaskOp.run(ctx, {
+      id: task.id,
+      patch: { status: "in_progress" },
+      blockedBy: [blocker.id],
+    });
+    expect(updated.status).toBe("in_progress");
+    const detail = await getTaskOp.run(ctx, { id: task.id });
+    expect(detail.labelIds).toEqual([label.id]);
+    expect(detail.blockedBy.map((t) => t.id)).toEqual([blocker.id]);
+    expect((await listTasksOp.run(ctx, { projectId: project.id, status: ["in_progress"] })).items.map((t) => t.id)).toEqual([task.id]);
+
+    await createTaskCommentOp.run(ctx, { taskId: task.id, body: "Ready for review" });
+    expect(await listTaskCommentsOp.run(ctx, { taskId: task.id })).toHaveLength(1);
+
+    expect(await deleteTaskOp.run(ctx, { id: task.id })).toEqual({ deleted: 1, improvementId: null });
     await deleteProjectOp.run(ctx, { id: project.id });
   });
 

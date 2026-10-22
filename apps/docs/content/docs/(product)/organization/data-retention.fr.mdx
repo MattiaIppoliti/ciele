@@ -12,18 +12,17 @@ tant qu'un administrateur n'a pas sélectionné une fenêtre.
 | Paramètre | Ce que le nettoyage nocturne effectue après la période définie |
 | --- | --- |
 | **Reasoning trace retention** | Supprime le panneau Thinking des anciens messages. Les messages sont conservés. |
-| **Conversation retention** | Supprime l'ensemble de la conversation, transcription comprise. Il supprime également les mémoires à long terme concernant un Visitor qui n'ont pas été mises à jour pendant la fenêtre. |
+| **Conversation retention** | Supprime l'ensemble de la conversation, transcription comprise. Il supprime également les mémoires à long terme concernant un Visiteur qui n'ont pas été mises à jour pendant la fenêtre. Il supprime également l'activité des Projects et des Tasks qui est antérieure à la fenêtre. |
 
-Les deux fenêtres sont indépendantes. Une organisation peut définir l'une ou
-l'autre de ces options, les deux, ou aucune. Par exemple, conservez les
-transcriptions pendant un an, mais supprimez les traces de raisonnement au bout
-de 30 jours.
+Les deux fenêtres sont indépendantes. Une organisation peut définir l'une, les
+deux ou aucune de ces options. Par exemple, conservez les transcriptions pendant
+un an, mais supprimez les traces de raisonnement après 30 jours.
 
-Un nettoyage est exécuté une fois par nuit. Il calcule la fenêtre à partir du
+Un nettoyage s'exécute une fois par nuit. Il calcule la fenêtre à partir du
 dernier message de la conversation, et non du premier. Une conversation encore
 en cours d'utilisation n'est pas supprimée, quelle que soit la date à laquelle
-elle a débuté. Le nettoyage est définitif : une conversation supprimée n'est pas
-placée dans une corbeille.
+elle a commencé. Le nettoyage est définitif : une conversation supprimée n'est
+pas transférée dans une corbeille.
 
 <Callout type="warn" title="Conversation retention deletes data">
 After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
@@ -43,25 +42,25 @@ plus anciennes.
 
 Seul un membre autorisé à gérer les membres peut modifier ces paramètres.
 
-## Mise en suspens pour motif juridique
+## Mise en suspens pour raisons juridiques
 
-Une mise en suspens légale (legal hold) exempte une conversation du processus de
-nettoyage de conservation des conversations. Utilisez-la lorsqu'une obligation
-de conservation s'applique à une conversation, sans désactiver la conservation
-pour toutes les autres conversations.
+Une mise en suspens pour raisons juridiques (legal hold) exempte une
+conversation du nettoyage de conservation des conversations. Utilisez-la
+lorsqu'une obligation de conservation s'applique à une conversation, sans
+désactiver la conservation pour toutes les autres conversations.
 
 1. Ouvrez **Inbox** et sélectionnez la conversation.
-2. Ouvrez le panneau Details.
+2. Ouvrez le panneau details.
 3. Sélectionnez **Place legal hold** dans la carte **Retention**.
 
-La suspension reste en place jusqu'à ce qu'un membre sélectionne **Release legal
-hold**. Chaque membre voit le statut de mise en attente. Seul un membre autorisé
-à gérer les membres peut placer ou lever une mise en attente.
+La suspension reste en vigueur jusqu'à ce qu'un membre sélectionne **Release
+legal hold**. Chaque membre voit le statut de suspension. Seul un membre
+autorisé à gérer les membres peut placer ou lever une mise en attente.
 
 Une conversation mise en attente ne peut pas être supprimée. Cela s'applique à
 l'Inbox, à l'API, au nettoyage de rétention et à la suppression de l'assistant
 propriétaire de la conversation. Pour supprimer une conversation mise en attente
-ou son assistant, levez d'abord l'attente.
+ou son assistant, levez d'abord la mise en attente.
 
 ## Installations auto-hébergées
 

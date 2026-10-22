@@ -12,20 +12,40 @@ description: Legen Sie fest, wer eine Organisation lesen, bearbeiten, veröffent
 | Admin | Veröffentlicht Assistants und verwaltet Mitglieder sowie API-Schlüssel. |
 | Owner | Ändert Roles und verwaltet Owner. |
 
-Die Anwendung führt bei einzelnen Operationen spezifischere
+Die Anwendung führt für einzelne Operationen spezifischere
 Berechtigungsprüfungen durch.
 
-## Ein Mitglied einladen
+Der Abschnitt **Roles** unten auf **Settings > Members** enthält eine Tabelle,
+die darstellt, was jede Rolle tun kann.
+
+## Mitglieder einladen
 
 1. Öffnen Sie **Settings > Members**.
-2. Wählen Sie **Invite member** aus.
-3. Geben Sie die E-Mail-Adresse ein.
-4. Wählen Sie die minimal erforderliche Role aus.
-5. Senden Sie die Einladung.
+2. Geben Sie in **Invite people** eine oder mehrere E-Mail-Adressen ein. Trennen
+   Sie die Adressen durch Kommas, Leerzeichen oder Zeilenumbrüche.
+3. Wählen Sie die minimal erforderliche Role aus.
+4. Wählen Sie **Create invite** aus.
+
+Ciele erstellt für jede Adresse einen eigenen Beitrittslink. Sie können maximal
+20 Personen gleichzeitig einladen. Senden Sie jeden Link an die entsprechende
+Person. Um einen Link erneut zu kopieren, wählen Sie **Copy invite link** in der
+Mitgliederliste aus.
+
+Wenn Sie eine Adresse eingeben oder keine Adresse angeben, kopiert Ciele den
+Link in Ihre Zwischenablage.
+
+Wenn eine Adresse nicht korrekt ist, zeigt Ciele diese Adresse an und erstellt
+keine Einladungen.
+
+Ciele erstellt keine zweite Einladung für eine Adresse, für die bereits eine
+offene Einladung besteht oder die einem Mitglied gehört. Diese Adressen werden
+angezeigt, nachdem Sie sie übermittelt haben. Wenn Ciele keine Einladung
+erstellen kann, bleibt die Adresse im Feld stehen. Wählen Sie **Create invite**
+erneut aus, um diese Adressen noch einmal zu versuchen.
 
 ## Ein Mitglied ändern
 
-Ein Admin kann Mitglieder unterhalb der Stufe Owner verwalten. Ein Owner kann
+Ein Admin kann Mitglieder unterhalb der Owner-Stufe verwalten. Ein Owner kann
 alle Tiers verwalten.
 
 Ein Mitglied kann seine eigene Zeile in der Mitgliederliste weder bearbeiten
@@ -34,10 +54,11 @@ Mitglied.
 
 ## API-Schlüssel-Rollen
 
-Ein Admin oder ein Owner kann einen Organization API key erstellen. Die
-ausgewählte Role darf nicht höher sein als die Role des Erstellers.
+Ein Admin oder ein Owner kann einen API-Schlüssel für die Organisation
+erstellen. Die ausgewählte Role darf nicht höher sein als die Role des
+Erstellers.
 
 Widerrufen Sie einen Schlüssel, wenn der zugehörige Client keinen Zugriff mehr
 benötigt. Ciele bewahrt den Datensatz eines widerrufenen Schlüssels zu
-Prüfzwecken auf. Ein Admin oder Owner kann einen widerrufenen Schlüssel löschen,
-um dessen Datensatz zu entfernen.
+Audit-Zwecken auf. Ein Admin oder Owner kann einen widerrufenen Schlüssel
+löschen, um dessen Datensatz zu entfernen.

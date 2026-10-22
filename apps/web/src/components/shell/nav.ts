@@ -1,7 +1,11 @@
 import {
   Mailbox,
   Bell,
+  Cctv,
   BookText,
+  CircleCheckBig,
+  FolderKanban,
+  ListChecks,
   ChartLine,
   Compass,
   FlaskConical,
@@ -50,6 +54,10 @@ export type NavId =
   | "insights"
   | "eval"
   | "library"
+  | "my-tasks"
+  | "projects"
+  | "tasks"
+  | "notifications"
   | "alerts"
   | "settings";
 
@@ -116,18 +124,12 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     // `MousePointerClick`: a Teammate is a colleague you talk to, not a robot.
     icon: MousePointerClick,
     href: "/teammates",
-    // Three domains, because the page renders two rosters and owns a third
-    // noun: the Teammates, the channels they share with the team (#778), and
-    // the Projects a Teammate attaches to (#771), which are created and edited
-    // from here. A channel page nests under this prefix, so it answers with all
-    // three as well.
+    // Three domains: the Teammates, the channels they share with the team
+    // (#778), and the Projects a Teammate attaches to (#771). Projects also
+    // have their own pages since the work section (#1053). A channel page
+    // nests under this prefix, so it answers with all three as well.
     apiDomains: ["teammates", "channels", "projects"],
   },
-  // Projects deliberately have no nav entry: a Project is only ever read by
-  // one Teammate (#771), so it is created, attached and edited from the
-  // Teammate's own configuration panel rather than a page of its own. The
-  // Developer Panel still has to reach the domain from somewhere, which is why
-  // the Teammates entry above claims it.
   {
     id: "improvements",
     label: "Improvements",
@@ -146,10 +148,42 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     href: "/library",
     apiDomains: ["knowledge"],
   },
+  // The work section (#1053): its own "Work" group, below Observability.
+  // Every work entry claims both work domains (#1051): the task views list
+  // Tasks inside Projects, and a Project page is its Tasks.
+  {
+    id: "my-tasks",
+    label: "My Tasks",
+    icon: CircleCheckBig,
+    href: "/my-tasks",
+    apiDomains: ["tasks", "projects"],
+  },
+  // A Member's own notifications (#1048), second as #1053 orders
+  // the group: no API domain, they are not in /api/v1.
+  {
+    id: "notifications",
+    label: "Notifications",
+    icon: Bell,
+    href: "/notifications",
+  },
+  {
+    id: "projects",
+    label: "Projects",
+    icon: FolderKanban,
+    href: "/projects",
+    apiDomains: ["tasks", "projects"],
+  },
+  {
+    id: "tasks",
+    label: "All tasks",
+    icon: ListChecks,
+    href: "/tasks",
+    apiDomains: ["tasks", "projects"],
+  },
   {
     id: "alerts",
     label: "Alerts",
-    icon: Bell,
+    icon: Cctv,
     href: "/alerts",
     bottom: true,
     apiDomains: ["alerts"],

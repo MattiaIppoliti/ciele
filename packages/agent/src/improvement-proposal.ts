@@ -24,6 +24,7 @@ import { buildKnowledgeSearcher } from "./retrieval";
 import { getClassifierModel } from "./models";
 import type { KnowledgeSearcher } from "./types";
 import { meterUsage } from "./usage";
+import { withPostTurnMasking } from "./pii-masking";
 
 const PROPOSAL_SCHEMA = z.object({
   draftQuestion: z
@@ -193,7 +194,19 @@ export async function draftImprovementProposal(deps: {
       return null;
     }
   );
-  if (ctx) await draftFrom(deps.db, deps.improvementId, ctx);
+  if (!ctx) return;
+  // A draft a Member accepts becomes an FAQ any Visitor can retrieve, so the
+  // Visitor's values never come back into it: the drafter sees placeholders
+  // and the Member reads neutral wording in their place (#1080). A value from
+  // knowledge comes back as it is, since knowledge already holds it. With no
+  // reading of the guardrail there is no draft, never an unmasked one.
+  await withPostTurnMasking(
+    deps.db,
+    ctx.assistantId,
+    () => deps.db.listMessages(ctx.conversationId!),
+    () => draftFrom(deps.db, deps.improvementId, ctx),
+    { restore: "descriptions" }
+  ).catch((error) => console.error("[proposal] masking could not be read, no draft:", error));
 }
 
 /** The Goal producer's entry point (#903). Same drafting, same draft status. */

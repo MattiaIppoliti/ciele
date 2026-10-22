@@ -30,6 +30,7 @@ import type {
 import type { Db } from "@agent-hub/db";
 import { createEmbedder, embeddingSpaceId } from "./embeddings";
 import { createReranker, RERANK_CANDIDATES, type Reranker } from "./rerank";
+import { seedOutbound } from "./pii-masking";
 import type { KnowledgeSearcher } from "./types";
 
 /** How many chunks one search pass returns, the one top-k for knowledge. */
@@ -80,6 +81,8 @@ export function buildKnowledgeSearcher(opts: {
       // The query's space: the matcher compares only within it (#801, CYB-14).
       embeddingSpace: embeddingSpaceId(opts.connections),
     });
+    // Before the reranker or any model reads them (#1079).
+    seedOutbound(candidates, "knowledge");
     return reranked(query, candidates, KNOWLEDGE_SEARCH_LIMIT);
   };
   if (!opts.waitForIndexing) return search;

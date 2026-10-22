@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import {
   isCieleAi,
   isTeammateRetired,
+  rosterTeammates,
   visibleTeammates,
   type Teammate,
 } from "@agent-hub/core";
@@ -47,7 +48,7 @@ export async function TeammateChat({
   // Routines belong to `/teammates/{id}/settings` and no longer load on every
   // chat open. What stayed are four small reads the composer cannot draw
   // itself without.
-  const [thread, connections, personalAllowed, roster, orgSkills] =
+  const [thread, connections, personalAllowed, roster, orgSkills, hiddenRows] =
     await Promise.all([
     db.listTeammateConversations(teammate.id, session.userId),
     db.listProviderConnections(organizationId),
@@ -67,6 +68,9 @@ export async function TeammateChat({
     // Assistant. For `/` the Skill is only an opening line, so every one the
     // Organization wrote is offerable.
     db.table("skills").list({ organizationId }),
+    // The empty chat's Teammate picker is a list of the roster, so it leaves
+    // out who this Member hid from it, as the sidebar does.
+    db.table("teammateRosterHidden").list({ organizationId, userId: session.userId }),
   ]);
 
   const skills = starterSkills(orgSkills);
@@ -78,6 +82,27 @@ export async function TeammateChat({
       name: candidate.name,
       title: candidate.title,
     }));
+
+  // Ciele AI first, then the roster by name, as the sidebar orders its faces.
+  // The open Teammate stays in even when hidden: it was opened by URL.
+  const cieleAi = isCieleAi(teammate)
+    ? teammate
+    : roster.find((row) => isCieleAi(row) && !isTeammateRetired(row));
+  const onRoster = rosterTeammates(
+    roster,
+    viewer,
+    hiddenRows.map((row) => row.teammateId)
+  ).sort((a, b) => a.name.localeCompare(b.name));
+  if (!isCieleAi(teammate) && !onRoster.some((row) => row.id === teammate.id)) {
+    onRoster.push(teammate);
+  }
+  const pickableTeammates = [...(cieleAi ? [cieleAi] : []), ...onRoster].map((row) => ({
+    id: row.id,
+    name: row.name,
+    title: row.title,
+    avatarSeed: row.avatarSeed,
+    systemKind: row.systemKind,
+  }));
 
   // Capability, resolved server-side: this page is already dynamic and
   // authenticated, so unlike the widget there is nothing to fetch later.
@@ -118,6 +143,7 @@ export async function TeammateChat({
       personalSubscriptionsAllowed={personalAllowed}
       channelCandidates={channelCandidates}
       skills={skills}
+      pickableTeammates={pickableTeammates}
     />
     </>
   );

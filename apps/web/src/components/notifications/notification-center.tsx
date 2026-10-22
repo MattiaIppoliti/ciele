@@ -3,14 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Alert } from "@agent-hub/core";
-import type { ChannelMention } from "@ciele/ops";
+import type { ChannelMention, NotificationItem } from "@ciele/ops";
 import { useFeedback } from "@agent-hub/ui/feedback";
 import { NotificationStack } from "@/components/motion/notification-stack";
 import {
   alertNotification,
   mentionNotification,
   visibleNotifications,
+  workNotification,
 } from "@/lib/notifications";
+import { notificationText } from "@/lib/work/notification-groups";
 import { formatCount } from "@/lib/format";
 
 /** Cards the banner shows at once; the rest wait behind the count badge. */
@@ -23,12 +25,18 @@ const VISIBLE_LIMIT = 3;
  *   admin resolves them, and clicking through opens `/alerts`.
  * - **Mentions** that point to a group where this Member was named.
  *
- * Alert cards step aside on `/alerts` itself (the page already lists them).
+ * - **Work** notifications (#1067): unread Member Notifications that arrived
+ *   after the page loaded. The sidebar badge already counts the older ones,
+ *   so a card is news, not a backlog; "View all" opens `/notifications`.
+ *
+ * Alert cards step aside on `/alerts` itself (the page already lists them),
+ * work cards on `/notifications`.
  */
 export function NotificationCenter({
   alerts,
   totalAlertCount,
   mentions = [],
+  work = [],
 }: {
   alerts: Alert[];
   totalAlertCount: number;
@@ -39,12 +47,16 @@ export function NotificationCenter({
    * transcript is the notification.
    */
   mentions?: ChannelMention[];
+  /** Unread Member Notifications, newest first (#1067). */
+  work?: NotificationItem[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  // Rows already there when the shell loaded are the badge's to count.
+  const [loadedAt] = useState(() => Date.now());
 
   // A new Alert or mention *arriving* while the page is open gets one `chime`
   // (#817). The initial render is not an arrival, and neither is a re-render
@@ -59,6 +71,7 @@ export function NotificationCenter({
       // One card per group, so a *new* mention in an already-mentioned group
       // shows as the same card with a newer `at`; the key carries it.
       ...mentions.map((mention) => `mention:${mention.channelId}:${mention.at}`),
+      ...work.map((item) => `work:${item.id}`),
     ];
     if (seen.current === null) {
       seen.current = new Set(ids);
@@ -74,9 +87,10 @@ export function NotificationCenter({
           ? totalAlertCount
           : 0,
         mentionCount: fresh.filter((id) => id.startsWith("mention:")).length,
+        workCount: fresh.filter((id) => id.startsWith("work:")).length,
       }),
     );
-  }, [alerts, mentions, play, totalAlertCount]);
+  }, [alerts, mentions, work, play, totalAlertCount]);
 
   const onAlertsPage = pathname.startsWith("/alerts");
 
@@ -89,11 +103,25 @@ export function NotificationCenter({
         (mention) => !pathname.startsWith(`/teammates/channels/${mention.channelId}`)
       )
       .map(mentionNotification);
-    return visibleNotifications([...alertItems, ...mentionItems], {
+    const workItems = pathname.startsWith("/notifications")
+      ? []
+      : work
+          .filter((item) => Date.parse(item.createdAt) >= loadedAt)
+          .map((item) =>
+            workNotification({
+              id: item.id,
+              kind: item.kind,
+              createdAt: item.createdAt,
+              text: notificationText(item),
+              taskTitle: item.task.title,
+              excerpt: item.excerpt,
+            }),
+          );
+    return visibleNotifications([...alertItems, ...mentionItems, ...workItems], {
       limit: VISIBLE_LIMIT,
       dismissed,
     });
-  }, [alerts, mentions, dismissed, onAlertsPage, pathname]);
+  }, [alerts, mentions, work, loadedAt, dismissed, onAlertsPage, pathname]);
 
   // Mounted before anything arrives: a live region that appears together with
   // its text is not announced.
@@ -106,6 +134,9 @@ export function NotificationCenter({
   if (items.length === 0) return liveRegion;
 
   const shownAlerts = items.filter((item) => item.source === "alert").length;
+  const shownWork = items.filter((item) => item.source === "work").length;
+  // Alerts outrank notifications for where "View all" goes, as they do for order.
+  const viewAllHref = shownAlerts > 0 ? "/alerts" : shownWork > 0 ? "/notifications" : undefined;
   const hiddenAlerts = onAlertsPage ? 0 : totalAlertCount - shownAlerts;
 
   const closeAll = () => {
@@ -140,12 +171,14 @@ export function NotificationCenter({
             ? hiddenAlerts > 0
               ? `View all ${totalAlertCount}`
               : "View all"
-            : "Dismiss"
+            : shownWork > 0
+              ? "View all"
+              : "Dismiss"
         }
-        onViewAll={shownAlerts > 0 ? () => router.push("/alerts") : closeAll}
+        onViewAll={viewAllHref ? () => router.push(viewAllHref) : closeAll}
         // A real link under the pointer, so Cmd-click and middle-click open
-        // the Alerts page in a new tab. The keyboard keeps `onViewAll`.
-        viewAllHref={shownAlerts > 0 ? "/alerts" : undefined}
+        // the page in a new tab. The keyboard keeps `onViewAll`.
+        viewAllHref={viewAllHref}
         onClose={closeAll}
         className="pointer-events-auto shadow-strong"
       />
@@ -164,9 +197,11 @@ function collapsedLabel(alertCount: number, itemCount: number): string {
 function arrivalAnnouncement({
   alertCount,
   mentionCount,
+  workCount,
 }: {
   alertCount: number;
   mentionCount: number;
+  workCount: number;
 }): string {
   const parts: string[] = [];
   if (alertCount > 0) {
@@ -181,6 +216,13 @@ function arrivalAnnouncement({
       mentionCount === 1
         ? "1 new mention"
         : `${formatCount(mentionCount)} new mentions`,
+    );
+  }
+  if (workCount > 0) {
+    parts.push(
+      workCount === 1
+        ? "1 new notification"
+        : `${formatCount(workCount)} new notifications`,
     );
   }
   return parts.join(". ");

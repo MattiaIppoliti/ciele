@@ -24,7 +24,7 @@ import {
   updateChannelOp,
 } from "./channels";
 import { createTeammateOp, deleteTeammateOp, updateTeammateOp } from "./teammates";
-import { createProjectOp } from "./memory";
+import { createProjectOp } from "./projects-work";
 import { runTeammateAction } from "./teammate-actions";
 
 /**
@@ -198,6 +198,7 @@ describe("channel CRUD and membership", () => {
     const project = await db.table("projects").insert({
       organizationId: DEMO_ORG.id,
       name: "Migration",
+      key: "MIG",
     });
     const bound = await updateChannelOp.run(owner, {
       id: channel.id,

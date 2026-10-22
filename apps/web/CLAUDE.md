@@ -73,7 +73,7 @@ Per-page CLI/cURL/MCP snippets (#754/#755). Three conventions decide whether it 
 - **One list.** `EndpointSpec` in `src/lib/api-v1/openapi.ts` carries `domain`, `capability`, `cli`
   and `mcp` beside the fields the OpenAPI document already read (the document builder ignores the new
   four). The MCP *tool name* lives on the domain in `src/lib/developer-panel/domains.ts`, because the
-  16 coarse tools map onto the 23 domains (`API_V1_DOMAINS` in `src/lib/api-v1/meta.ts`)
+  17 coarse tools map onto the 24 domains (`API_V1_DOMAINS` in `src/lib/api-v1/meta.ts`)
   many-to-one; only the `action` is per-endpoint. Per-domain
   copy (titles, agent prompts, docs links) lives there too, so `buildOpenApiDocument` never carries
   UI strings.
@@ -103,7 +103,9 @@ had to be a shared seam rather than a sweep:
   damping ratio of every token: nothing may ship overdamped (ζ > 1.1, which settles *slower* than
   critical damping and still never overshoots), and only `SPRING_THROW` may overshoot at all,
   because overshoot belongs to motion a gesture actually threw. Pass a release velocity with it
-  (`{ ...SPRING_THROW, velocity }`) or the bounce is arbitrary.
+  (`{ ...SPRING_THROW, velocity }`) or the bounce is arbitrary. The one asked-for exception is
+  `SPRING_REFLOW`, fields springing into place while the person resizes the layout (the
+  Improvements grouped table and the task views, through `SpringSpan`); it is named in the test.
   The rule covers `components/motion`, `components/shell`, `components/agents` and the admin
   surfaces. It deliberately does **not** cover `components/home`, `components/core` and
   `components/marketing`: those are one-off marketing flourishes whose feel is the point (the home

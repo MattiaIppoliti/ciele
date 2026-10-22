@@ -1,12 +1,17 @@
+import { PII_DETECTORS, type PiiDetector } from "./pii";
+
 /**
  * Guardrails: per-Assistant checks an organization puts around every Visitor
- * turn. Four read the Visitor's message before any Flow routes it, and one
- * rewrites the answer while it streams:
+ * turn. Four read the Visitor's message before any Flow routes it, one
+ * rewrites what models see, and one rewrites the answer while it streams:
  *
  * - `input_length_limit`: the message is longer than a character or token cap.
  * - `moderation`: a moderation model flags the message.
  * - `regexp_guardrail`: the message matches a regular expression.
  * - `restrict_to_topic`: the message's main topic is none of the listed ones.
+ * - `pii_masking`: personal data is replaced with placeholders in everything a
+ *   turn sends to a model provider, and restored in what comes back (pii.ts).
+ *   It neither blocks nor logs a message.
  * - `sensitive_content_stream`: text the model writes between a start and a
  *   stop marker never reaches the Visitor; one safe message stands in for it.
  *
@@ -14,17 +19,19 @@
  * their validation, the two deterministic input checks, and the marker
  * suppressor, which is a state machine precisely so the streamed text and the
  * persisted text are the same function of the model's output. The two
- * model-backed checks run in `@agent-hub/agent`.
+ * model-backed checks and the masking run in `@agent-hub/agent`.
  */
 
 /**
  * In run order: the Guardrails page groups by type in this order and saves the
  * list the same way, so the two exact checks, which cost nothing, run before
- * the two that call a model.
+ * the two that call a model. Masking sits between them because it is what
+ * those two, and every later model call, receive.
  */
 export const GUARDRAIL_TYPES = [
   "input_length_limit",
   "regexp_guardrail",
+  "pii_masking",
   "moderation",
   "restrict_to_topic",
   "sensitive_content_stream",
@@ -122,13 +129,30 @@ export type AssistantGuardrail =
       onError: GuardrailFailureMode;
     })
   | (GuardrailCommon & {
+      type: "pii_masking";
+      /** What to mask, a subset of {@link PII_DETECTORS}. `message` is unused. */
+      detectors: PiiDetector[];
+    })
+  | (GuardrailCommon & {
       type: "sensitive_content_stream";
       startMarker: string;
       stopMarker: string;
     });
 
-export type InputGuardrail = Exclude<AssistantGuardrail, { type: "sensitive_content_stream" }>;
+export type InputGuardrail = Exclude<
+  AssistantGuardrail,
+  { type: "sensitive_content_stream" | "pii_masking" }
+>;
 export type StreamGuardrail = Extract<AssistantGuardrail, { type: "sensitive_content_stream" }>;
+export type MaskingGuardrail = Extract<AssistantGuardrail, { type: "pii_masking" }>;
+
+/**
+ * Whether a guardrail reads the Visitor's message and can block or log it.
+ * The other two rewrite text instead: they have no action and no reply.
+ */
+export function isInputGuardrail(guardrail: AssistantGuardrail): guardrail is InputGuardrail {
+  return guardrail.type !== "sensitive_content_stream" && guardrail.type !== "pii_masking";
+}
 
 export const GUARDRAIL_LABELS: Record<GuardrailType, { title: string; summary: string }> = {
   input_length_limit: {
@@ -146,6 +170,10 @@ export const GUARDRAIL_LABELS: Record<GuardrailType, { title: string; summary: s
   restrict_to_topic: {
     title: "Restrict to topic",
     summary: "Blocks a message whose main topic is not in your list.",
+  },
+  pii_masking: {
+    title: "PII masking",
+    summary: "Replaces personal data with placeholders before any model sees it.",
   },
   sensitive_content_stream: {
     title: "Sensitive content in stream",
@@ -195,6 +223,8 @@ export function defaultGuardrail(type: GuardrailType, id: string): AssistantGuar
         onError: "allow",
         message: "I can only help with the topics this assistant covers.",
       };
+    case "pii_masking":
+      return { ...common, type, detectors: [...PII_DETECTORS], message: "" };
     case "sensitive_content_stream":
       return {
         ...common,
@@ -211,7 +241,7 @@ export function guardrailProblem(guardrail: AssistantGuardrail): string | null {
   if (!guardrail.name.trim()) return "Give the guardrail a name.";
   if (guardrail.name.length > 100) return "Use a name of 100 characters or fewer.";
   if (guardrail.message.length > 1000) return "Use a message of 1000 characters or fewer.";
-  if (guardrail.type !== "sensitive_content_stream") {
+  if (isInputGuardrail(guardrail)) {
     if (guardrail.action !== "block" && guardrail.action !== "log") return "Choose block or log only.";
     if (!guardrail.message.trim()) return "Write the message the visitor sees when the guardrail blocks.";
   }
@@ -237,6 +267,16 @@ export function guardrailProblem(guardrail: AssistantGuardrail): string | null {
       if (topics.length > GUARDRAIL_TOPIC_CAP) return `Use ${GUARDRAIL_TOPIC_CAP} topics or fewer.`;
       return topics.every((t) => t.length <= 200) ? null : "Keep each topic to 200 characters.";
     }
+    case "pii_masking":
+      if (!Array.isArray(guardrail.detectors) || guardrail.detectors.length === 0) {
+        return "Pick at least one kind of data to mask.";
+      }
+      if (!guardrail.detectors.every((d) => (PII_DETECTORS as readonly string[]).includes(d))) {
+        return "Pick from the listed kinds of data.";
+      }
+      return new Set(guardrail.detectors).size === guardrail.detectors.length
+        ? null
+        : "Pick each kind of data once.";
     case "sensitive_content_stream":
       if (!guardrail.startMarker || !guardrail.stopMarker) return "Set both markers.";
       if (guardrail.startMarker.length > 100 || guardrail.stopMarker.length > 100) {
@@ -259,6 +299,11 @@ export function orderGuardrails(guardrails: readonly AssistantGuardrail[]): Assi
 export function guardrailListProblem(guardrails: readonly AssistantGuardrail[]): string | null {
   if (guardrails.length > GUARDRAIL_CAP) return `Use ${GUARDRAIL_CAP} guardrails or fewer.`;
   if (new Set(guardrails.map((g) => g.id)).size !== guardrails.length) return "Guardrail ids must be unique.";
+  // Two masking guardrails would have to agree on one placeholder map; one
+  // with the union of their detectors says the same thing.
+  if (guardrails.filter((g) => g.type === "pii_masking").length > 1) {
+    return "Use one PII masking guardrail per assistant.";
+  }
   for (const guardrail of guardrails) {
     const problem = guardrailProblem(guardrail);
     if (problem) return `${guardrail.name || GUARDRAIL_LABELS[guardrail.type].title}: ${problem}`;
@@ -268,9 +313,12 @@ export function guardrailListProblem(guardrails: readonly AssistantGuardrail[]):
 
 /** The enabled input checks, in run order (see {@link orderGuardrails}). */
 export function inputGuardrails(guardrails: readonly AssistantGuardrail[] | undefined): InputGuardrail[] {
-  return orderGuardrails(guardrails ?? []).filter(
-    (g): g is InputGuardrail => g.enabled && g.type !== "sensitive_content_stream"
-  );
+  return orderGuardrails(guardrails ?? []).filter((g): g is InputGuardrail => g.enabled && isInputGuardrail(g));
+}
+
+/** The enabled masking guardrail, or null. A list holds at most one. */
+export function maskingGuardrail(guardrails: readonly AssistantGuardrail[] | undefined): MaskingGuardrail | null {
+  return (guardrails ?? []).find((g): g is MaskingGuardrail => g.enabled && g.type === "pii_masking") ?? null;
 }
 
 /** The enabled stream rules, in the admin's order. */

@@ -5,6 +5,7 @@ import {
   SPRING_MOUSE,
   SPRING_PANEL,
   SPRING_PRESS,
+  SPRING_REFLOW,
   SPRING_SWAP,
   SPRING_THROW,
 } from "./ease";
@@ -45,6 +46,7 @@ const ALL = {
   SPRING_MOUSE,
   SPRING_CARET,
   SPRING_THROW,
+  SPRING_REFLOW,
 };
 
 describe("spring tokens", () => {
@@ -65,12 +67,14 @@ describe("spring tokens", () => {
     }
   });
 
-  it("reserves overshoot for SPRING_THROW", () => {
+  it("reserves overshoot for SPRING_THROW and the reflow bounce", () => {
     // Everything else settles without bouncing, because nothing else follows a
-    // gesture that carried momentum.
+    // gesture that carried momentum. SPRING_REFLOW is the asked-for exception:
+    // fields that spring into place while the person resizes the layout.
     expect(dampingRatio(SPRING_THROW)).toBeLessThan(0.9);
+    expect(dampingRatio(SPRING_REFLOW)).toBeLessThan(0.9);
     for (const [name, spring] of Object.entries(ALL)) {
-      if (name === "SPRING_THROW") continue;
+      if (name === "SPRING_THROW" || name === "SPRING_REFLOW") continue;
       expect(dampingRatio(spring), name).toBeGreaterThan(0.85);
     }
   });

@@ -1,4 +1,5 @@
 import type { AssistantGuardrail, GuardrailTraceEntry } from "./guardrails";
+import type { PiiMaskingTrace } from "./pii";
 import type { TriageEvidence } from "./document-triage";
 import type { Reversibility } from "./approval-gate";
 import type { EvaluationCandidate, EvaluationStage } from "./evaluation";
@@ -1986,7 +1987,7 @@ export interface Teammate {
  * here, one row in the action catalogue, and the check constraint, which is the
  * point of keeping the mapping data rather than code.
  */
-export type TeammateGrantDomain = "improvements" | "knowledge" | "inbox" | "flows";
+export type TeammateGrantDomain = "improvements" | "knowledge" | "inbox" | "flows" | "tasks";
 
 export const TEAMMATE_GRANT_DOMAINS: readonly TeammateGrantDomain[] = [
   "improvements",
@@ -1997,6 +1998,11 @@ export const TEAMMATE_GRANT_DOMAINS: readonly TeammateGrantDomain[] = [
    * to the open one, propose another. Never delete or reorder.
    */
   "flows",
+  /**
+   * Projects' Tasks (#1051, #1069): read them, create and update them, and
+   * comment. Never delete or archive one.
+   */
+  "tasks",
 ];
 
 /**
@@ -2102,22 +2108,77 @@ export type TeammateRoutinePatch = Partial<
   Pick<TeammateRoutine, "instruction" | "cadence" | "hour" | "enabled">
 >;
 
+/** A Project's reported state (#1046). A report: it changes nothing else. */
+export const PROJECT_STATUSES = [
+  "planning",
+  "active",
+  "at_risk",
+  "on_hold",
+  "completed",
+] as const;
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+
 /**
- * A **Project** (#771): the durable home for decisions that belong to the work
- * rather than to one conversation. Lightweight on purpose, a name, a
- * description, an archived flag, and one document; everything richer (per-
- * project Improvements, per-project conversations) is out of scope in #767.
+ * The colour a Project or a Label may carry: one of the console's six tag
+ * tones (DESIGN.md §2.3), by name, never hex, so a theme or a palette change
+ * recolours every one of them and a dot can take the tone's ink.
+ */
+export const WORK_COLORS = ["gray", "blue", "green", "amber", "red", "purple"] as const;
+export type WorkColor = (typeof WORK_COLORS)[number];
+
+/** The icons a Project may pick, as Lucide names. */
+export const PROJECT_ICONS = [
+  "folder",
+  "globe",
+  "smartphone",
+  "megaphone",
+  "rocket",
+  "component",
+  "building",
+  "layout-grid",
+  "palette",
+  "code",
+  "briefcase",
+  "target",
+  "layers",
+  "zap",
+  "heart",
+  "sparkles",
+] as const;
+export type ProjectIcon = (typeof PROJECT_ICONS)[number];
+
+/** Who can see a Project: the whole Organization, or its listed Members (#1047). */
+export type ProjectVisibility = "organization" | "private";
+
+/**
+ * A **Project**: the container of a piece of work (#1046), its Tasks, files,
+ * Milestones and Saved Views, plus the one Memory Document that keeps the
+ * decisions made about it (#771). Teammates, Channels and Improvements may
+ * point at one.
  */
 export interface Project {
   id: string;
   organizationId: string;
   name: string;
   description: string;
-  /** Archived keeps the decisions readable and stops them reaching a prompt. */
+  /**
+   * Archived hides the Project and everything in it, and stops its decisions
+   * reaching a prompt. Distinct from `status`, which is only a report.
+   */
   archived: boolean;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  /** 2-5 characters, `^[A-Z][A-Z0-9]{1,4}$`, unique in the Organization. Prefixes Task keys. */
+  key: string;
+  status: ProjectStatus;
+  /** The Member who answers for the Project. Informational; grants nothing. */
+  leadId: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+  color: WorkColor;
+  icon: string;
+  visibility: ProjectVisibility;
 }
 
 export interface ProjectInput {
@@ -2125,11 +2186,385 @@ export interface ProjectInput {
   name: string;
   description?: string;
   createdBy?: string | null;
+  key: string;
+  status?: ProjectStatus;
+  leadId?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  color?: WorkColor;
+  icon?: string;
+  visibility?: ProjectVisibility;
 }
 
 export type ProjectPatch = Partial<
-  Pick<Project, "name" | "description" | "archived">
+  Pick<
+    Project,
+    | "name"
+    | "description"
+    | "archived"
+    | "key"
+    | "status"
+    | "leadId"
+    | "startDate"
+    | "dueDate"
+    | "color"
+    | "icon"
+    | "visibility"
+  >
 >;
+
+/** One Member seated on a private Project (#1047). */
+export interface ProjectMember {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  userId: string;
+  addedBy: string | null;
+  createdAt: string;
+}
+
+/** A named date on a Project, drawn on its Timeline (#1046). */
+export interface ProjectMilestone {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  name: string;
+  /** `YYYY-MM-DD`. */
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The Task workflow (#1049): fixed, spelled like the Improvement's shared four. */
+export const TASK_STATUSES = [
+  "backlog",
+  "to_do",
+  "in_progress",
+  "in_review",
+  "done",
+] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const TASK_PRIORITIES = ["urgent", "high", "medium", "low", "none"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
+export const TASK_RECURRENCES = ["daily", "weekly", "biweekly", "monthly"] as const;
+export type TaskRecurrence = (typeof TASK_RECURRENCES)[number];
+
+/**
+ * A **Task** (#1049): a unit of work inside exactly one Project. Its key is the
+ * Project's key and `seq` (`WEB-12`), derived at read time, never stored.
+ */
+export interface Task {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  /** One level deep: a subtask's parent has no parent. */
+  parentId: string | null;
+  seq: number;
+  title: string;
+  /** Markdown with mention tokens (#1041). */
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  /** At most one of the two is set; v1 writes only Members (#1051). */
+  assigneeMemberId: string | null;
+  assigneeTeammateId: string | null;
+  /** `YYYY-MM-DD`. */
+  startDate: string | null;
+  dueDate: string | null;
+  estimateMinutes: number | null;
+  recurrence: TaskRecurrence | null;
+  /** Fractional order inside the Project (`rankBetween`). */
+  rank: string;
+  /** The Improvement this Task resolves (#1044, ADR-0027). */
+  improvementId: string | null;
+  /** Set exactly when `status` is `done`. */
+  completedAt: string | null;
+  archivedAt: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskInput {
+  organizationId: string;
+  projectId: string;
+  parentId?: string | null;
+  seq: number;
+  title: string;
+  description?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assigneeMemberId?: string | null;
+  assigneeTeammateId?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  estimateMinutes?: number | null;
+  recurrence?: TaskRecurrence | null;
+  rank: string;
+  improvementId?: string | null;
+  completedAt?: string | null;
+  createdBy?: string | null;
+}
+
+export type TaskPatch = Partial<
+  Pick<
+    Task,
+    | "projectId"
+    | "parentId"
+    | "seq"
+    | "title"
+    | "description"
+    | "status"
+    | "priority"
+    | "assigneeMemberId"
+    | "assigneeTeammateId"
+    | "startDate"
+    | "dueDate"
+    | "estimateMinutes"
+    | "recurrence"
+    | "rank"
+    | "improvementId"
+    | "completedAt"
+    | "archivedAt"
+  >
+>;
+
+/** "Blocked by": `taskId` cannot finish before `blockedById`. Same Project. */
+export interface TaskDependency {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  taskId: string;
+  blockedById: string;
+  createdAt: string;
+}
+
+/** An Organization-wide Label (#1049). */
+export interface TaskLabel {
+  id: string;
+  organizationId: string;
+  name: string;
+  color: WorkColor;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskLabelLink {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  taskId: string;
+  labelId: string;
+  createdAt: string;
+}
+
+/** The fields the view engine filters on (#1050). */
+export type WorkFilterField =
+  | "status"
+  | "assignee"
+  | "priority"
+  | "label"
+  | "project"
+  | "due"
+  | "created"
+  | "updated"
+  | "starred";
+
+export interface WorkFilter {
+  field: WorkFilterField;
+  /** Values OR inside one filter; filters AND together. */
+  op: "is" | "not";
+  values: string[];
+}
+
+export type WorkSortField =
+  | "manual"
+  | "title"
+  | "due"
+  | "start"
+  | "priority"
+  | "status"
+  | "assignee"
+  | "created"
+  | "updated"
+  | "estimate"
+  | "project";
+
+export type WorkGroupField = "status" | "priority" | "assignee" | "project" | "due" | "none";
+
+export type WorkLayout = "list" | "board" | "table";
+
+/** One view's query: the URL's shareable state and a Saved View's body. */
+export interface WorkViewQuery {
+  filters: WorkFilter[];
+  sort: { field: WorkSortField; direction: "asc" | "desc" };
+  group: WorkGroupField;
+  text: string;
+}
+
+/** A named query on a Project, a tab for everyone who can see it (#1050). */
+export interface SavedView {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  name: string;
+  layout: WorkLayout;
+  query: WorkViewQuery;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A Member's star on a Project or a Task, exactly one of the two. */
+export interface WorkFavorite {
+  id: string;
+  organizationId: string;
+  userId: string;
+  projectId: string | null;
+  taskId: string | null;
+  createdAt: string;
+}
+
+/** A markdown note on a Task (#1055). */
+/**
+ * A file kept on a Project (#1049, #1068). An attachment is one whose `taskId`
+ * is set, so a Project's Files view and a Task's drawer read one table.
+ */
+export interface ProjectFile {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  taskId: string | null;
+  /** The name shown and offered on download; renaming changes only this. */
+  name: string;
+  /** The object's key in the `work-files` bucket; never changes. */
+  storagePath: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskComment {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  taskId: string;
+  authorMemberId: string | null;
+  authorTeammateId: string | null;
+  body: string;
+  /** Member ids, derived from the body's mention tokens at every write. */
+  mentions: string[];
+  createdAt: string;
+  editedAt: string | null;
+  deletedAt: string | null;
+}
+
+export interface TaskCommentReaction {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  commentId: string;
+  userId: string;
+  emoji: string;
+  createdAt: string;
+}
+
+/** What a Work Activity entry records (#1051). A closed union, so a reader can render each. */
+export const WORK_ACTIVITY_VERBS = [
+  "task.created",
+  "task.completed",
+  "task.reopened",
+  "task.status",
+  "task.assigned",
+  "task.priority",
+  "task.due",
+  "task.start",
+  "task.estimate",
+  "task.labels",
+  "task.dependencies",
+  "task.recurrence",
+  "task.renamed",
+  "task.description",
+  "task.moved",
+  "task.improvement",
+  /** The Task's completion moved the Improvement it resolves to In Review (ADR-0027 rule 3). */
+  "improvement.review",
+  "task.archived",
+  "task.restored",
+  "task.deleted",
+  "subtask.added",
+  "subtask.converted",
+  "file.added",
+  "file.removed",
+  "comment.added",
+  "project.created",
+  "project.updated",
+  "project.status",
+  "project.milestones",
+  "project.members",
+  "project.archived",
+  "project.restored",
+] as const;
+export type WorkActivityVerb = (typeof WORK_ACTIVITY_VERBS)[number];
+
+/** What a verb needs to read back, including the Task as it was then. */
+export type WorkActivityData = Record<string, string | number | boolean | null | string[]>;
+
+export interface WorkActivity {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  /** Null once the Task is deleted; `data.taskKey` / `data.taskTitle` still say which. */
+  taskId: string | null;
+  /** The Member the write is attributed to; empty for unattended work. */
+  actorMemberId: string | null;
+  /** The Teammate that made the write, when one did. */
+  actorTeammateId: string | null;
+  verb: WorkActivityVerb;
+  data: WorkActivityData;
+  createdAt: string;
+}
+
+export const MEMBER_NOTIFICATION_KINDS = [
+  "assigned",
+  "mentioned",
+  "commented",
+  "status_changed",
+] as const;
+export type MemberNotificationKind = (typeof MEMBER_NOTIFICATION_KINDS)[number];
+
+/** A notice addressed to one Member about the work (#1048). */
+export interface MemberNotification {
+  id: string;
+  organizationId: string;
+  recipientId: string;
+  kind: MemberNotificationKind;
+  projectId: string;
+  taskId: string;
+  commentId: string | null;
+  actorMemberId: string | null;
+  actorTeammateId: string | null;
+  createdAt: string;
+  readAt: string | null;
+  /** Put away by its recipient; kept until the retention sweep. */
+  archivedAt: string | null;
+  /** Hidden until this moment, then back in the list on its own. */
+  snoozedUntil: string | null;
+}
+
+export interface NotificationPreferences {
+  id: string;
+  organizationId: string;
+  userId: string;
+  emailAssigned: boolean;
+  emailMentioned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /**
  * Which of the three memory layers a document is (#771). Derived from which
@@ -3451,6 +3886,12 @@ export interface StoredTurnTrace {
    * learn which rule fired or that one was watching.
    */
   guardrails?: GuardrailTraceEntry[];
+  /**
+   * What the PII masking guardrail replaced in what this turn sent to model
+   * providers: counts per detector and origin, never a value (#1078). Absent
+   * when the guardrail is off or nothing was masked.
+   */
+  piiMasking?: PiiMaskingTrace;
 }
 
 /**
@@ -4437,7 +4878,7 @@ export type RuntimeEventSurface = "preview" | "widget" | "teammate";
 export type ObjectAccessActorKind = "member" | "api_key" | "visitor" | "unknown";
 
 /** Which private object was reached for. */
-export type ObjectAccessObjectKind = "knowledge_original" | "analytics_export";
+export type ObjectAccessObjectKind = "knowledge_original" | "analytics_export" | "work_file";
 
 /**
  * `served` means bytes reached the caller and the transfer completed.

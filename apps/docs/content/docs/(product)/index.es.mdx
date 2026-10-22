@@ -15,7 +15,7 @@ cambios antes de crear una Publication.
 ## Navegación en teléfonos y tabletas
 
 En teléfonos y tabletas, la consola oculta la barra lateral. Tres iconos
-permanecen en la parte inferior izquierda: **Home**, **Chat** y **Settings**.
+permanecen en la esquina inferior izquierda: **Home**, **Chat** y **Settings**.
 
 **Home** abre un selector de navegación a pantalla completa. Arrastra
 verticalmente, desplázate o usa las teclas de dirección para seleccionar un
@@ -26,13 +26,13 @@ El selector contiene las páginas del espacio de trabajo y las secciones del
 Asistente disponibles para tu rol. También incluye los ajustes de la
 organización para administradores y los ajustes personales.
 
-El icono Search de la esquina superior izquierda abre **Find** en teléfonos y
+El icono Search de la parte superior izquierda abre **Find** en teléfonos y
 tabletas. Sigue estando disponible cuando **Home** está abierto.
 
 Selecciona el nombre de la organización en la parte superior de **Home** para
 ver las organizaciones a las que puedes cambiar.
 
-**Chat** abre el espacio de trabajo del chat. **Settings** abre una vista a
+**Chat** abre el espacio de trabajo del chat. **Settings** abre una vista en
 pantalla completa en teléfonos y tabletas táctiles, con controles más grandes.
 Los tres iconos siguen estando disponibles en Settings. Settings sigue
 preguntándote antes de que abandones cambios sin guardar. En un editor de
@@ -53,9 +53,64 @@ Si las columnas no caben en el panel, usa la barra de desplazamiento horizontal
 para acceder a ellas. Los valores permanecen en sus propias columnas.
 
 Todas las columnas de datos tienen el mismo ancho mínimo de 120 píxeles. La
-consola mantiene el ancho que selecciones después de soltar el control de
+consola conserva el ancho que selecciones después de soltar el control de
 redimensionamiento y volver a cargar la página. Las casillas de verificación de
 selección ocupan la misma posición en el encabezado y en cada fila.
+
+**Total Results** muestra el número de elementos que cumplen los filtros. La
+búsqueda y los filtros de la tabla se encuentran a su derecha, junto a **Undo**
+/ **Redo**. Utiliza **Previous**, un número de página o **Next** debajo de la
+tabla para cambiar de página. Cuando está disponible, el control del tamaño de
+página modifica cuántas filas se muestran a la vez. El total indica el número de
+elementos que cumplen los filtros en todas las páginas.
+
+Estos controles también aparecen en las tablas de uso de Settings, en las tablas
+de datos de Insights y en los resultados de Eval. Puedes filtrar los documentos
+importados por tipo de archivo. Puedes filtrar las ejecuciones recientes de Eval
+por stage, assistant y dataset. Las tablas de documentos incluyen una columna
+**Actions** visible para abrir un documento, copiar su ID y, cuando esté
+permitido, excluirlo o restaurarlo.
+
+En paneles estrechos, los filtros se desplazan por debajo del recuento de
+resultados y de los controles del historial. Los filtros activos mantienen un
+resaltado visible. El campo de búsqueda tiene un botón para borrar. Mantiene el
+foco en el campo después de que borres la consulta.
+
+Arrastra el control de encabezado para mover una columna de datos. La columna
+completa se desplaza con el puntero, y las demás columnas se apartan de su
+trayectoria al instante. Cuando desplazas una tabla hacia un lado, las dos
+primeras columnas permanecen visibles. La franja de casillas de verificación y
+la columna Actions mantienen sus posiciones. El orden de las columnas se guarda
+únicamente en tu navegador, de forma independiente para cada miembro,
+organización y tabla. No cambia el orden del servidor. Al borrar los datos del
+navegador de este sitio, se restablece el orden. Las filas siguen el orden y la
+paginación de la tabla y no se pueden reordenar arrastrándolas. La ordenación se
+aplica al conjunto de resultados antes de la paginación.
+
+Sitúa el foco en el control de arrastre de una columna y usa **Alt +
+Left/Right** para moverla. Los movimientos con el teclado se aplican al
+instante. Haz clic en una celda y, a continuación, haz clic en otra celda
+manteniendo pulsada la tecla Mayús para seleccionar un rectángulo. Las teclas de
+dirección te permiten moverte entre las celdas. Mantén pulsada la tecla Mayús
+para ampliar la selección. **Copy** copia las celdas seleccionadas como texto
+separado por tabuladores. **Escape** elimina la selección de celdas.
+
+**Undo** y **Redo** restauran los cambios de vista realizados durante la visita
+actual: arrastre, anchos, ordenación admitida, filtros de columna y selecciones.
+**Cmd/Ctrl + Z** deshace un cambio. **Cmd/Ctrl + Shift + Z** o **Ctrl + Y** lo
+rehace. Estos atajos dejan intacto el historial de edición propio de los campos
+de texto. Haz doble clic en una celda editable (o pulsa Intro/F2) para cambiar
+su valor. Los editores de una sola línea mantienen estable la altura de la fila.
+**Escape** cancela la edición y devuelve el foco a la celda. Los nombres, los
+asistentes vinculados, el contenido de las preguntas frecuentes y la
+categoría/el problema/el estado de las alertas utilizan los permisos existentes
+y las acciones de guardar. Las URL de rastreo, el estado de la fuente y las
+marcas de tiempo permanecen en modo solo lectura. Los roles de los miembros se
+muestran como categorías de colores y pueden ser modificados por administradores
+o propietarios autorizados. Los cambios de titularidad conservan su
+confirmación. La edición, la eliminación, la ingesta y las acciones masivas de
+registros conservan sus flujos de trabajo y sus confirmaciones.
+
 
 ## Cambios en el texto
 
@@ -70,18 +125,37 @@ confirmación por correo electrónico del boletín, se muestra el mismo efecto. 
 solicitudes fallidas no muestran confeti. La opción de movimiento reducido
 desactiva el efecto.
 
+## Menú de la cuenta
+
+Abre **Profile and preferences** junto a **New chat** para ver tu tarjeta de
+cuenta. **Profile** abre tu configuración personal. **Theme** cambia entre el
+modo claro y el oscuro. El botón de volumen situado junto a **Sounds** controla
+el audio de la interfaz en este dispositivo. Las ondas sonoras indican que el
+audio está activado. Un altavoz tachado indica que el audio está silenciado.
+
+Selecciona **Logout** para finalizar tu sesión autenticada y volver a la página
+de inicio de sesión. La opción de cerrar sesión está deshabilitada en el modo
+demo, que no tiene sesión de inicio.
+
+**Profile setup** muestra tu nombre, tus apellidos, tu nombre de usuario, tu
+foto y el correo electrónico con el que has iniciado sesión como un contador de
+elementos completados y una barra de progreso. En el modo de demostración, el
+recuento solo incluye los cuatro campos editables del perfil. Selecciona
+**Next** para abrir la configuración del perfil y completar el campo sugerido.
+Un avatar generado no cuenta como una foto subida.
+
 ## Sonidos de la interfaz
 
 La consola, el sitio público y Ciele Desktop reproducen sonidos breves al
-interactuar con botones, interruptores, menús y resultados. Las superficies de
+interactuar con botones, conmutadores, menús y resultados. Las superficies de
 chat de la consola también emiten un sonido cuando envías un mensaje y cuando
-recibes una respuesta. En un teléfono, en los mismos momentos se produce una
-breve vibración háptica.
+llega una respuesta. En un teléfono, en los mismos momentos se produce una breve
+vibración háptica.
 
 Para desactivar los sonidos, abre el menú de la cuenta y desactiva **Sounds**.
-La elección se almacena en este dispositivo. En Ciele Desktop, usa **Interface
-sounds** en **Settings**. La respuesta háptica se ajusta al ajuste de movimiento
-reducido del sistema operativo.
+La configuración se guarda en este dispositivo. En Ciele Desktop, usa
+**Interface sounds** en **Settings**. La respuesta háptica se ajusta al ajuste
+de movimiento reducido del sistema operativo.
 
 WebHaptics proporciona retroalimentación táctil en los dispositivos compatibles.
 Al seleccionar un destino en el selector Home, se produce un breve clic. El
@@ -89,8 +163,8 @@ desplazamiento rápido limita las vibraciones, y la opción de movimiento reduci
 las desactiva.
 
 El widget publicado solo reproduce dos sonidos. Un Visitor oye un sonido cuando
-se envía el mensaje y otro sonido cuando llega la respuesta. No hay nada en un
-asistente ni en una organización que los configure.
+se envía el mensaje y otro cuando llega la respuesta. No hay nada en un
+Assistant ni en una Organization que los configure.
 
 ## Secciones de la documentación
 
@@ -106,13 +180,13 @@ asistente ni en una organización que los configure.
 - Crea un asistente y selecciona su modelo.
 - Añade sitios web, archivos, texto y preguntas frecuentes a Knowledge.
 - Importa Records estructurados y conéctalos a un asistente.
-- Recuerda hechos duraderos para los Visitors que hayan iniciado sesión cuando
-  sea necesario.
-- Enruta los mensajes a través de Flows ordenados.
+- Recuerda los datos persistentes de los Visitors que hayan iniciado sesión
+  cuando sea necesario.
+- Dirige los mensajes a través de Flows ordenados.
 - Envía Notificaciones proactivas a partir de eventos de página y de chat.
 - Conecta a los visitantes con un Help Desk.
 - Publica una instantánea de configuración inmutable.
 - Revisa Conversations, Improvements, Insights, Exports, Goals y Alerts.
 
 Empieza por [Getting started](/getting-started). Lee [Editions](/editions) antes
-de elegir una instalación alojada o autohospedada.
+de elegir una instalación alojada o autoalojada.

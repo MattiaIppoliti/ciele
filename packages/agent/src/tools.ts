@@ -9,7 +9,8 @@ import type {
   KnowledgeSearchResult,
   ReferralCandidate,
 } from "@agent-hub/core";
-import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
+import { PROGRESS_MAX_CHARS, type PiiOrigin } from "@agent-hub/core";
+import { seedOutbound } from "./pii-masking";
 import { APPROVAL_PENDING_NOTE } from "./approval-gate";
 import { fencedForTurn } from "./untrusted-content";
 import type { TurnSession } from "./session";
@@ -199,6 +200,12 @@ export interface ToolRuntimeContext {
  */
 export interface RuntimeToolSpec {
   name: string;
+  /**
+   * Where this tool's result comes from, for the PII masking trace (#1079).
+   * Absent: a tool's own result. A knowledge read is `knowledge`; a recall
+   * of what the Visitor said before is `visitor`.
+   */
+  piiOrigin?: PiiOrigin;
   /** Explicitly audited: no shared Sources, session, terminal or reply writes. */
   execution?: "parallel-read";
   mutation?: boolean;
@@ -221,6 +228,7 @@ const EGRESS_BLOCKED_MESSAGE = "This host is not reachable from the assistant";
 
 const searchMemoriesSpec: RuntimeToolSpec = {
   name: "searchMemories",
+  piiOrigin: "visitor",
   execution: "parallel-read",
   description:
     "Search durable facts saved about this signed-in user from earlier conversations.",
@@ -721,6 +729,7 @@ function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool 
       try {
         if (spec.mutation && ctx.uncertainOperations?.has(spec.name)) throw new Error("An earlier operation has an unknown outcome. Check its result before trying again.");
         const output = await spec.execute(input, callCtx);
+        seedOutbound(output, spec.piiOrigin ?? "tool");
         const failed =
           typeof output === "object" &&
           output !== null &&
@@ -739,6 +748,8 @@ function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool 
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Tool call failed";
+        // An upstream error can quote what it was sent.
+        seedOutbound(message, spec.piiOrigin ?? "tool");
         emitToolEnd(ctx, spec.name, callId, {
           ok: false,
           summary: message,

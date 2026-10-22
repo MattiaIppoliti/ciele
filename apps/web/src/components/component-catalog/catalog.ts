@@ -743,6 +743,50 @@ export default function Example() {
     notes: "The shared hook owns drag and keyboard behaviour and supports overdrag collapse thresholds for the shell. The app ResizeHandle paints a handle that sits on the panel border.",
   },
   {
+    slug: "markdown-toolbar",
+    kind: "component",
+    title: "Markdown toolbar",
+    description: "A textarea under a markdown toolbar: the value stays plain markdown, every button rewrites the selection.",
+    group: "Forms",
+    preview: "primitive",
+    variants: ["Basic toolbar", "Full toolbar with history", "Compact"],
+    sources: ["apps/web/src/components/ui/markdown-editor.tsx", "apps/web/src/lib/markdown-toolbar.ts"],
+    usage: `"use client";
+
+import { useState } from "react";
+import { MARKDOWN_TOOLBAR_FULL, MarkdownEditor } from "@/components/ui/markdown-editor";
+
+export default function Example() {
+  const [value, setValue] = useState("**Hello**");
+  return <MarkdownEditor value={value} onChange={setValue} toolbar={MARKDOWN_TOOLBAR_FULL} history rows={6} />;
+}`,
+    notes: "The welcome message, the FAQ answer and a Task's description share it. A wrap keeps the selection selected inside its new markers; history is undo and redo over the editor's own edits.",
+  },
+  {
+    slug: "workspace-panel",
+    kind: "component",
+    title: "Workspace panel",
+    description: "A detail docked beside its list: resizable, full screen on request or in a narrow container, non-modal while docked.",
+    group: "Surfaces",
+    preview: "primitive",
+    variants: ["Docked", "Full screen", "Header actions"],
+    sources: ["apps/web/src/components/ui/workspace-panel.tsx"],
+    usage: `"use client";
+
+import { useState } from "react";
+import { WorkspacePanel } from "@/components/ui/workspace-panel";
+
+export default function Example() {
+  const [open, setOpen] = useState(true);
+  return (
+    <WorkspacePanel open={open} onClose={() => setOpen(false)} label="Task" slot="task" detail={<p className="p-5">Detail</p>}>
+      <ul><li><button type="button" onClick={() => setOpen(true)}>Open the detail</button></li></ul>
+    </WorkspacePanel>
+  );
+}`,
+    notes: "The Improvements board and the task drawer share it. Esc closes and exits full screen; focus returns to the row that opened it.",
+  },
+  {
     slug: "text-motion",
     kind: "component",
     title: "Rolling text",
@@ -2086,6 +2130,52 @@ import { SoundSwitcher } from "@/components/sound-switcher";
 export default function Example() {
   return (
     <SoundSwitcher />
+  );
+}`,
+  },
+  {
+    slug: "layout-spring",
+    kind: "component",
+    title: "Layout spring",
+    description: "Fields that spring to their new place when the layout around them moves.",
+    group: "Motion",
+    preview: "primitive",
+    variants: ["Resize", "Reduced motion"],
+    sources: ["apps/web/src/components/motion/layout-spring.tsx"],
+    usage: `"use client";
+
+import { SpringSpan } from "@/components/motion/layout-spring";
+
+export default function Example({ width }: { width: number }) {
+  return (
+    <div className="flex gap-3">
+      <SpringSpan dependency={width}>Status</SpringSpan>
+      <SpringSpan dependency={width}>Due date</SpringSpan>
+    </div>
+  );
+}`,
+  },
+  {
+    slug: "swipe-actions",
+    kind: "component",
+    title: "Swipe actions",
+    description: "List rows that reveal actions on a horizontal swipe, with a menu for keyboards.",
+    group: "Data display",
+    preview: "primitive",
+    variants: ["Leading and trailing", "Full swipe", "More actions menu"],
+    sources: ["apps/web/src/components/motion/swipe-actions.tsx"],
+    usage: `"use client";
+
+import { Archive } from "lucide-react";
+import { SwipeActions, SwipeActionsRow } from "@/components/motion/swipe-actions";
+
+export default function Example() {
+  return (
+    <SwipeActions label="Inbox">
+      <SwipeActionsRow label="Weekly report" trailing={[{ label: "Archive", icon: <Archive />, tone: "accent", onSelect: () => {} }]}>
+        <p className="px-4 py-3 text-sm">Weekly report</p>
+      </SwipeActionsRow>
+    </SwipeActions>
   );
 }`,
   },

@@ -5,7 +5,8 @@ import { Skeleton } from "@agent-hub/ui";
  * `/improvements/[improvementId]` route boundary, the drawer while its chunk
  * arrives, and the drawer while it fetches the record. Measured against the
  * rendered detail: key badge, 29px title and meta line (the page adds the
- * breadcrumb above them), then the description, the Associated Messages card
+ * breadcrumb above them), then the description, the Suggested fix, the Tasks
+ * section (ADR-0027 rule 2), the Associated Messages card
  * and, from the `@5xl` container width, the 320px properties and Details rail beside them
  * (below them in a narrow drawer).
  */
@@ -32,6 +33,14 @@ export function ImprovementDetailSkeleton({ variant }: { variant: "page" | "draw
           <div className="space-y-2">
             <Skeleton className="h-6 w-40" />
             <Skeleton className="h-5 w-3/4" />
+          </div>
+          {/* Tasks: the heading row holds the Create task button, then a row or the empty line. */}
+          <div className="space-y-2">
+            <div className="flex min-h-8 items-center justify-between gap-2">
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-8 w-28" />
+            </div>
+            <Skeleton className="h-10 w-full rounded-xl" />
           </div>
           <div className="overflow-hidden rounded-xl border">
             <Skeleton className="h-10 w-full rounded-none" />

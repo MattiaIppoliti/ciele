@@ -1,0 +1,85 @@
+---
+title: Tasks and views
+description: Create Tasks and read them as a list, a board, a table, a calendar, or a timeline.
+---
+
+A Task has a title, a status, a priority, an assignee, dates, an estimate, Labels, and a description in Markdown.
+
+| Status | Meaning |
+| --- | --- |
+| Backlog | Not planned yet. |
+| To do | Planned. |
+| In progress | Somebody works on it now. |
+| In review | Waits for a check. |
+| Done | Complete. |
+
+The priority is **Urgent**, **High**, **Medium**, **Low**, or **None**.
+
+## Create a Task
+
+1. Select **New task** in the toolbar.
+2. Type a title.
+3. Select the Project, status, priority, assignee, and due date if necessary.
+4. Select **Create task**.
+
+You can also type a title at the bottom of a group in the List or the Table, or in a column of the Board.
+
+## Open a Task
+
+Select a Task to open it in a panel next to the view. The panel shows its fields, description, subtasks, attachments, comments, and activity. To open the Task on its own page, select the full-page button next to the Task actions. To close the panel, select the close button or press **Esc**.
+
+Ciele keeps the width of the panel in this browser. It also keeps the groups and the Board columns that you collapse.
+
+A Task can wait on other Tasks. Select the Tasks in **Blocked by**. The Timeline shows an arrow from each blocking Task to the Task that waits.
+
+When you complete a Task, select **Undo** in the message to give the Task its previous status again. This also works when you complete many Tasks at the same time.
+
+A Task can repeat. When you complete a repeating Task, Ciele creates the next copy with new dates. If you select **Undo**, Ciele also deletes that copy and the Task repeats again. If somebody already started the copy, Ciele keeps it.
+
+To change the order of Tasks without drag and drop, select a Task and push **Alt+Up** or **Alt+Down**. In the List, you can also select **Move up** or **Move down** in the menu of the Task.
+
+## Resolve an Improvement
+
+A Task can resolve one Improvement. Select the Improvement in the **Resolves** field of the Task. To remove the link, select **None**.
+
+You can also open the Improvement and select **Create task**. The new Task gets the title and the Project of the Improvement, and the link.
+
+When all the Tasks that resolve an Improvement are complete, Ciele moves the Improvement to **In review**. A person then closes it. The activity of the Task shows this change.
+
+## The toolbar
+
+Each view has the same toolbar:
+
+- **Search tasks** finds Tasks by title or key.
+- **Filter** shows only the Tasks that match your filters.
+- **Sort** changes the order. **Manual** keeps the order that you set with drag and drop.
+- **Group** puts the Tasks in groups by status, priority, assignee, project, or due date.
+
+The address of the page keeps your filters, sort, and group. You can share the address.
+
+## The views
+
+| View | Use |
+| --- | --- |
+| List | Read Tasks in groups. Drag a row to change its order or its group. Select rows to change many Tasks at the same time. |
+| Board | Drag a card to another status column. Use the column menu to add a Task, collapse the column, or mark all Tasks as done. |
+| Table | Change each field in its cell. Select **Columns** to show, hide, or reset columns. Drag the edge of a column header to resize it. |
+| Calendar | See Tasks on their due dates by month or by week. Drag a Task to another day. The Task keeps its length. Select **+** on a day to create a Task for that day. |
+| Timeline | See Tasks as bars by week or by month. Drag a bar to move it. Drag an end of a bar to change a date. |
+
+The Timeline shows only Tasks with a due date. It counts the other Tasks as unscheduled.
+
+Each drag action also has a keyboard path. Open the Task and change its status or its dates in the panel.
+
+## Saved views
+
+On a Project, you can save the current filters, sort, group, and layout as a saved view. Select **Save view** in the toolbar. The saved view shows as a tab for all members who can see the Project.
+
+The creator of a saved view and the Admins can rename it, update it, or delete it.
+
+## Archive or delete a Task
+
+Open the Task menu.
+
+- Select **Archive** to hide the Task and its subtasks. Select **Undo** in the message to restore it at once.
+- Select **Delete** to delete the Task, its subtasks, its comments, and its files. You cannot undo this action.

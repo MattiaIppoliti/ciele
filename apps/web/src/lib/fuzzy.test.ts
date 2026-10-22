@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NO_MATCH, fuzzyFilter, fuzzyMatch, fuzzyScore, typoSubsequenceCost } from "./fuzzy";
+import { NO_MATCH, fuzzyFilter, fuzzyMatch, fuzzyScore, substringMatch, typoSubsequenceCost } from "./fuzzy";
 
 describe("typoSubsequenceCost", () => {
   it("costs nothing when the needle is a subsequence of the hay", () => {
@@ -14,27 +14,78 @@ describe("typoSubsequenceCost", () => {
 });
 
 describe("fuzzyMatch", () => {
+  const matches = (needle: string, hay: string) => fuzzyMatch(needle, hay) !== null;
+
   it("matches out-of-order-free subsequences", () => {
-    expect(fuzzyMatch("mrc", "Marco Iecher")).toBe(true);
-    expect(fuzzyMatch("iech", "Marco Iecher")).toBe(true);
+    expect(matches("mrc", "Marco Iecher")).toBe(true);
+    expect(matches("iech", "Marco Iecher")).toBe(true);
   });
 
   it("is case insensitive and matches everything on an empty needle", () => {
-    expect(fuzzyMatch("MARCO", "marco iecher")).toBe(true);
-    expect(fuzzyMatch("", "whatever")).toBe(true);
+    expect(matches("MARCO", "marco iecher")).toBe(true);
+    expect(fuzzyMatch("", "whatever")).toEqual([]);
   });
 
   it("tolerates typos in proportion to the needle's length", () => {
     // <=3 chars: no error budget, so one wrong character rules it out.
-    expect(fuzzyMatch("mrx", "Marco Iecher")).toBe(false);
+    expect(fuzzyMatch("mrx", "Marco Iecher")).toBeNull();
     // 4-6 chars: one typo forgiven.
-    expect(fuzzyMatch("marko", "Marco Iecher")).toBe(true);
+    expect(matches("marko", "Marco Iecher")).toBe(true);
     // 7+ chars: two.
-    expect(fuzzyMatch("martinna binacci", "Martina Binacci")).toBe(true);
+    expect(matches("martinna binacci", "Martina Binacci")).toBe(true);
   });
 
   it("still rejects a name the needle cannot reach", () => {
-    expect(fuzzyMatch("valeria", "Marco Iecher")).toBe(false);
+    expect(fuzzyMatch("valeria", "Marco Iecher")).toBeNull();
+  });
+});
+
+describe("fuzzyMatch ranges (#1072)", () => {
+  it("marks a literal run whole, wherever it sits", () => {
+    expect(fuzzyMatch("brief", "Write the launch brief")).toEqual([[17, 22]]);
+    expect(fuzzyMatch("  Launch ", "Write the launch brief")).toEqual([[10, 16]]);
+  });
+
+  it("marks the letters of a subsequence, merged into runs", () => {
+    expect(fuzzyMatch("wlb", "Write the launch brief")).toEqual([[0, 1], [10, 11], [17, 18]]);
+    expect(fuzzyMatch("web 3", "WEB-3 footer")).toEqual([[0, 3], [4, 5]]);
+  });
+
+  it("marks what a typo'd needle got right, not nothing", () => {
+    // `k` is the typo: Mar and o are the letters the match stands on.
+    expect(fuzzyMatch("marko", "Marco Iecher")).toEqual([[0, 3], [4, 5]]);
+    // `o` for `u` marks nothing; Camp and s are marked.
+    expect(fuzzyMatch("campos", "Campus Wayfinder")).toEqual([[0, 4], [5, 6]]);
+    // A surplus key is dropped, and the rest is one run.
+    expect(fuzzyMatch("marcoo", "Marco Iecher")).toEqual([[0, 5]]);
+  });
+
+  it("only marks letters that are in the hay, in order", () => {
+    for (const [needle, hay] of [
+      ["marko", "Marco Iecher"],
+      ["martinna binacci", "Martina Binacci"],
+      ["supprot", "Ciele Support Assistant"],
+    ] as const) {
+      const ranges = fuzzyMatch(needle, hay)!;
+      let previous = -1;
+      for (const [start, end] of ranges) {
+        expect(start).toBeGreaterThan(previous);
+        expect(end).toBeGreaterThan(start);
+        expect(end).toBeLessThanOrEqual(hay.length);
+        previous = end - 1;
+      }
+    }
+  });
+});
+
+describe("substringMatch", () => {
+  it("marks every verbatim occurrence, ignoring case", () => {
+    expect(substringMatch("ab", "Ab cab xab")).toEqual([[0, 2], [4, 6], [8, 10]]);
+  });
+
+  it("is null without one, and empty for an empty needle", () => {
+    expect(substringMatch("sprt", "Support desk")).toBeNull();
+    expect(substringMatch(" ", "Support desk")).toEqual([]);
   });
 });
 

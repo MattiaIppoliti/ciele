@@ -106,6 +106,11 @@ const READ_ACTIONS = new Set([
   // mutated entities, so read-only has nothing to refuse.
   "oversight",
   "oversight_read",
+  // The work domain (#1069): a task's thread, the Labels and a Project's
+  // milestones are reads.
+  "list_comments",
+  "labels",
+  "list_milestones",
 ]);
 
 const byAction = (args: Record<string, unknown>) =>
@@ -798,15 +803,19 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_projects",
       description:
-        "Projects: the shared workspace an AI Teammate attaches to, and the owner of the Project memory layer. `get` returns the Project with its memory document and that document's history; `set_document` replaces the body and keeps the previous one, so a revert is a restore. Delete cascades the Project's decisions and detaches its Teammates: archive (`update` with `{\"archived\":true}`) is the move that keeps the record.",
+        "Projects: the container of the work (its Tasks, milestones and files), the shared workspace an AI Teammate attaches to, and the owner of the Project memory layer. `set_milestones` replaces the whole list, so send back every milestone to keep with its id. `get` returns the Project with its memory document and that document's history; `set_document` replaces the body and keeps the previous one, so a revert is a restore. Delete cascades the Project's Tasks, files and decisions and detaches its Teammates: archive (`update` with `{\"archived\":true}`) is the move that keeps the record.",
       schema: {
-        action: z.enum(["list", "get", "create", "update", "delete", "set_document"]),
+        action: z.enum(["list", "get", "create", "update", "delete", "set_document", "list_milestones", "set_milestones"]),
         id: z.string().optional().describe("Project id"),
         name: z.string().optional().describe("Project name (create)"),
         description: z.string().optional(),
         patch: z.record(z.string(), z.unknown()).optional().describe("Fields to change (update)"),
         body: z.string().optional().describe("Whole document (set_document)"),
         note: z.string().optional().describe("Why it changed, shown in history"),
+        milestones: z
+          .array(z.object({ id: z.string().optional(), name: z.string(), date: z.string() }))
+          .optional()
+          .describe("The whole milestone list, dates YYYY-MM-DD (set_milestones)"),
       },
       mutates: byAction,
       run: async (args) => {
@@ -830,6 +839,100 @@ export function buildTools(client: CieleClient): CieleTool[] {
               body: need(args, "body"),
               note: optStr(args, "note"),
             });
+          case "list_milestones": return client.projects.milestones(id());
+          case "set_milestones":
+            if (!args.milestones) throw new ToolInputError('"milestones" is required for set_milestones');
+            return client.projects.setMilestones(id(), args.milestones as { id?: string; name: string; date: string }[]);
+          default: throw unknownAction(args);
+        }
+      },
+    },
+    {
+      name: "manage_tasks",
+      description:
+        "Tasks: the work inside Projects. `list` narrows by `projectId`, `assignee` (a userId), `status` (comma-separated: backlog, to_do, in_progress, in_review, done), `label`, `dueFrom`/`dueTo` (YYYY-MM-DD), `q` (text) and `improvementId`, and pages with `cursor`. `update` takes `patch` with any of title, description, status, priority (urgent/high/medium/low/none), assigneeMemberId, startDate, dueDate (YYYY-MM-DD), plus `labelIds` and `blockedBy` to replace those lists, `position` ({afterId, beforeId}) to reorder, `projectId` to move it, and `archived` to archive or restore it. `comment` posts as the key's Member; mention someone as @[Name](member:<userId>). `delete` takes the task's subtasks, comments and files with it. `labels` lists the Labels; `set_label` creates one (no `id`), changes one (`id`), or deletes one (`id` and `delete: true`).",
+      schema: {
+        action: z.enum(["list", "get", "create", "update", "delete", "list_comments", "comment", "labels", "set_label"]),
+        id: z.string().optional().describe("Task id, or Label id for set_label"),
+        projectId: z.string().optional().describe("Project id (list, create; update moves the task)"),
+        assignee: z.string().optional().describe("Assignee userId (list)"),
+        status: z.string().optional().describe("Comma-separated statuses (list)"),
+        label: z.string().optional().describe("Label id (list)"),
+        dueFrom: z.string().optional().describe("YYYY-MM-DD (list)"),
+        dueTo: z.string().optional().describe("YYYY-MM-DD (list)"),
+        q: z.string().optional().describe("Text in the title or description (list)"),
+        improvementId: z.string().optional().describe("Tasks resolving this Improvement (list)"),
+        cursor: z.string().optional().describe("nextCursor from the previous page (list)"),
+        title: z.string().optional().describe("Task title (create)"),
+        description: z.string().optional(),
+        priority: z.string().optional(),
+        assigneeMemberId: z.string().optional(),
+        dueDate: z.string().optional().describe("YYYY-MM-DD"),
+        patch: z.record(z.string(), z.unknown()).optional().describe("Fields to change (update)"),
+        labelIds: z.array(z.string()).optional().describe("Replaces the task's labels (create, update)"),
+        blockedBy: z.array(z.string()).optional().describe("Replaces what blocks the task (update)"),
+        position: z
+          .object({ afterId: z.string().nullable().optional(), beforeId: z.string().nullable().optional() })
+          .optional()
+          .describe("Where the task goes in the order (update)"),
+        archived: z.boolean().optional().describe("Archive (true) or restore (false) (update)"),
+        delete: z.boolean().optional().describe("Delete the Label (set_label with id)"),
+        body: z.string().optional().describe("Comment text (comment)"),
+        name: z.string().optional().describe("Label name (set_label)"),
+        color: z.string().optional().describe("Label color: gray, blue, green, amber, red, purple"),
+      },
+      mutates: byAction,
+      run: async (args) => {
+        const id = () => need(args, "id");
+        switch (args.action) {
+          case "list":
+            return client.tasks.list({
+              projectId: optStr(args, "projectId"),
+              assignee: optStr(args, "assignee"),
+              status: optStr(args, "status"),
+              label: optStr(args, "label"),
+              dueFrom: optStr(args, "dueFrom"),
+              dueTo: optStr(args, "dueTo"),
+              q: optStr(args, "q"),
+              improvementId: optStr(args, "improvementId"),
+              cursor: optStr(args, "cursor"),
+            });
+          case "get": return client.tasks.get(id());
+          case "create":
+            return client.tasks.create({
+              projectId: need(args, "projectId"),
+              title: need(args, "title"),
+              description: optStr(args, "description"),
+              priority: optStr(args, "priority") as never,
+              assigneeMemberId: optStr(args, "assigneeMemberId"),
+              dueDate: optStr(args, "dueDate"),
+              labelIds: args.labelIds as string[] | undefined,
+            });
+          case "update":
+            if (!args.patch && !args.labelIds && !args.blockedBy && !args.position && !args.projectId && args.archived === undefined) {
+              throw new ToolInputError('"patch", "labelIds", "blockedBy", "position", "projectId" or "archived" is required for update');
+            }
+            return client.tasks.update(id(), {
+              patch: args.patch as never,
+              labelIds: args.labelIds as string[] | undefined,
+              blockedBy: args.blockedBy as string[] | undefined,
+              position: args.position as never,
+              projectId: optStr(args, "projectId"),
+              archived: args.archived as boolean | undefined,
+            });
+          case "delete": return client.tasks.delete(id());
+          case "list_comments": return client.tasks.comments(id());
+          case "comment": return client.tasks.comment(id(), need(args, "body"));
+          case "labels": return client.tasks.labels();
+          case "set_label": {
+            const labelId = optStr(args, "id");
+            if (!labelId) return client.tasks.createLabel({ name: need(args, "name"), color: optStr(args, "color") as never });
+            if (args.delete === true) return client.tasks.deleteLabel(labelId);
+            const name = optStr(args, "name");
+            const color = optStr(args, "color");
+            if (!name && !color) throw new ToolInputError('"name", "color" or "delete" is required to change a Label');
+            return client.tasks.updateLabel(labelId, { ...(name ? { name } : {}), ...(color ? { color: color as never } : {}) });
+          }
           default: throw unknownAction(args);
         }
       },

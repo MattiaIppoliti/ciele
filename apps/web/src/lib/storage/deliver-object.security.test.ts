@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@agent-hub/db";
 import type { ObjectAccessEventInput } from "@agent-hub/core";
-import { deliverObject, recordObjectAccess } from "./deliver-object";
+import { attachmentDisposition, deliverObject, recordObjectAccess } from "./deliver-object";
 
 /**
  * #801, CYB-05. Issuing a signed URL is not evidence a download happened, so
@@ -184,6 +184,16 @@ describe("deliverObject", () => {
 
     expect(await deliverObject(base(db))).toBeNull();
     expect(rows[0]).toMatchObject({ result: "failed" });
+  });
+});
+
+describe("attachmentDisposition", () => {
+  it("strips what could end the header and keeps every letter", () => {
+    // A hand-copied pattern once escaped the backslash instead of CR, so it
+    // ate every letter r and let a carriage return through.
+    expect(attachmentDisposition('report\r\n"x\\y.pdf')).toBe('attachment; filename="reportxy.pdf"');
+    expect(attachmentDisposition("roadmap.pdf")).toBe('attachment; filename="roadmap.pdf"');
+    expect(attachmentDisposition(undefined)).toBe('attachment; filename="download"');
   });
 });
 

@@ -5,7 +5,7 @@ import Link, { useLinkStatus } from "next/link";
 import { useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
 import { Bot, ChevronsUpDown, LifeBuoy, Search, Settings, type LucideIcon } from "lucide-react";
-import { BookOpen, Check, Loader2, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
+import { BookOpen, Check, Keyboard, Loader2, Map as MapIcon, MessageCircleQuestion, Ticket } from "lucide-react";
 import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
 import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
 import { localGlyphFor } from "@/components/ui/icons/local-glyphs";
@@ -33,6 +33,8 @@ import {
   setupHref,
 } from "@/components/shell/nav";
 import { NavFoldGroup, NavSection } from "@/components/shell/nav-tree";
+import { projectIcon } from "@/components/work/work-icons";
+import type { SidebarWork } from "@/lib/work/sidebar-work";
 import { useUnderlyingPathname } from "@/components/shell/use-underlying-pathname";
 import {
   PERSONAL_SETTINGS_HOME,
@@ -76,6 +78,11 @@ interface AppSidebarProps {
    * single conversation.
    */
   mentionCount: number;
+  /**
+   * The Work group's extras (#1053): the My Tasks badge (open Tasks due today
+   * or overdue) and the Member's starred Projects under Projects.
+   */
+  work?: SidebarWork;
 }
 
 const ROW_ACTIVE = "bg-muted text-foreground";
@@ -385,6 +392,7 @@ function SidebarContent({
   profile,
   alertCount,
   mentionCount,
+  work,
   collapsed,
   onToggle,
   toggleLabel,
@@ -398,16 +406,24 @@ function SidebarContent({
   // The page under an open Settings dialog, not the dialog's URL: Settings
   // opened from the Chat keeps the Chat lit and the chat sidebar in place.
   const pathname = useUnderlyingPathname();
-  const { openFind } = useShell();
+  const { openFind, openShortcuts } = useShell();
   const [toggleHovered, setToggleHovered] = useState(false);
 
   const assistantsNav = navItem("assistants");
   // What watches the Assistants rather than configures them, under its own
   // caption below the daily destinations.
   const OBSERVABILITY: NavId[] = ["improvements", "insights", "eval"];
+  // The work section (#1053), its own group after Workspace and Observability.
+  const WORK: NavId[] = ["my-tasks", "notifications", "projects", "tasks"];
   const primaryNav = GLOBAL_NAV.filter(
-    (item) => !item.bottom && item.id !== "assistants" && !OBSERVABILITY.includes(item.id)
+    (item) =>
+      !item.bottom &&
+      item.id !== "assistants" &&
+      !OBSERVABILITY.includes(item.id) &&
+      !WORK.includes(item.id)
   );
+  const workNav = WORK.map((id) => navItem(id));
+  const starred = work?.starredProjects ?? [];
   const observabilityNav = GLOBAL_NAV.filter((item) => OBSERVABILITY.includes(item.id));
   const alertsNav = navItem("alerts");
   const settingsNav = navItem("settings");
@@ -618,6 +634,54 @@ function SidebarContent({
           ))}
         </NavSection>
 
+        {/* My Tasks, Projects (with the starred ones under it) and All tasks:
+            the work, after the Workspace and Observability groups. */}
+        <NavSection label="Work" collapsed={collapsed}>
+          {workNav.map((item) =>
+            item.id === "projects" && starred.length > 0 ? (
+              <NavFoldGroup
+                key={item.id}
+                name="projects"
+                label="starred projects"
+                collapsed={collapsed}
+                row={
+                  <NavRow
+                    icon={item.icon}
+                    label={item.label}
+                    href={item.href}
+                    collapsed={collapsed}
+                    active={navItemActive(item, pathname)}
+                  />
+                }
+                items={starred.map((project) => ({
+                  label: project.name,
+                  href: `/projects/${project.id}/list`,
+                  icon: projectIcon(project.icon),
+                }))}
+                activeIndex={starred.findIndex((project) =>
+                  pathname.startsWith(`/projects/${project.id}`)
+                )}
+              />
+            ) : (
+              <NavRow
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                href={item.href}
+                collapsed={collapsed}
+                active={navItemActive(item, pathname)}
+                badge={
+                  item.id === "my-tasks"
+                    ? (work?.myTasksDue ?? 0)
+                    : item.id === "notifications"
+                      ? (work?.unreadNotifications ?? 0)
+                      : 0
+                }
+              />
+            )
+          )}
+        </NavSection>
+
         {/* What is not a daily destination sits under its own caption. */}
         <NavSection label="Options" collapsed={collapsed}>
           {alertsNav && (
@@ -646,6 +710,10 @@ function SidebarContent({
               {!collapsed && <span className="truncate">Support</span>}
             </DropdownMenuTrigger>
             <DropdownMenuContent side="right" align="start" className="w-52">
+              <DropdownMenuItem onClick={() => openShortcuts()}>
+                <Keyboard className="size-4" /> Keyboard shortcuts
+                <kbd className="text-muted-foreground ml-auto font-sans text-xs">?</kbd>
+              </DropdownMenuItem>
               {SUPPORT_LINKS.map((link) =>
                 "href" in link && link.href ? (
                   <DropdownMenuItem

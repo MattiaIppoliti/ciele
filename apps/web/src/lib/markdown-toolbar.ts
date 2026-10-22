@@ -1,8 +1,8 @@
 /**
  * One markdown-toolbar command over a textarea's value: wrap the selection,
- * prefix the line the selection starts on, or rewrite the selection. The
- * General section's welcome message and the FAQ answer editor share it; each
- * keeps its own focus and caret handling.
+ * prefix the line the selection starts on, or rewrite the selection.
+ * `MarkdownEditor` (components/ui/markdown-editor.tsx) is its one caller and
+ * owns the focus and caret handling around it.
  */
 export type MarkdownCommand =
   | { wrap: string; wrapEnd?: string }

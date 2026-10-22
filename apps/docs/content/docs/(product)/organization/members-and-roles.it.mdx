@@ -5,7 +5,7 @@ description: Controlla chi può leggere, modificare, pubblicare e amministrare u
 
 ## Ruoli
 
-| Role | Livello di autorizzazione corrente |
+| Role | Livello di autorizzazione attuale |
 | --- | --- |
 | Viewer | Legge i dati dell'organizzazione e del prodotto. |
 | Editor | Modifica i contenuti e la configurazione dell'Assistente. |
@@ -15,13 +15,31 @@ description: Controlla chi può leggere, modificare, pubblicare e amministrare u
 L'applicazione applica controlli delle funzionalità più specifici alle singole
 operazioni.
 
-## Invita un membro
+La sezione **Roles** nella parte inferiore di **Settings > Members** mostra una
+tabella delle autorizzazioni di ciascun Role.
+
+## Invita i membri
 
 1. Apri **Settings > Members**.
-2. Seleziona **Invite member**.
-3. Inserisci l'indirizzo email.
-4. Seleziona il Role minimo richiesto.
-5. Invia l'invito.
+2. In **Invite people**, inserisci uno o più indirizzi email. Separa gli
+   indirizzi con virgole, spazi o nuove righe.
+3. Seleziona il Role minimo necessario.
+4. Seleziona **Create invite**.
+
+Ciele crea un link di accesso per ogni indirizzo. Puoi invitare al massimo 20
+persone alla volta. Invia ogni link alla persona corrispondente. Per copiare
+nuovamente un link, seleziona **Copy invite link** nell'elenco dei membri.
+
+Se inserisci un solo indirizzo o nessun indirizzo, Ciele copia il link negli
+appunti.
+
+Se un indirizzo non è corretto, Ciele mostra quell'indirizzo e non crea alcun
+invito.
+
+Ciele non crea un secondo invito per un indirizzo che ha già un invito aperto o
+che appartiene a un membro. Dopo l'invio, ti mostra questi indirizzi. Se Ciele
+non riesce a creare un invito, l'indirizzo rimane nel campo. Seleziona di nuovo
+**Create invite** per riprovare con quegli indirizzi.
 
 ## Modifica un membro
 
@@ -29,7 +47,7 @@ Un Admin può gestire i membri al di sotto del livello Owner. Un Owner può
 gestire tutti i livelli.
 
 Un membro non può modificare né rimuovere la propria riga dall'elenco dei
-membri. Per quell'operazione, utilizza un altro membro autorizzato.
+membri. Usa un altro membro autorizzato per quell'operazione.
 
 ## Ruoli delle chiavi API
 
@@ -38,4 +56,4 @@ selezionato non può essere di livello superiore rispetto al Role del creatore.
 
 Revoca una chiave quando il suo client non ha più bisogno dell'accesso. Ciele
 conserva il record revocato per le informazioni di audit. Un Admin o un Owner
-può eliminare una chiave revocata per rimuoverne la registrazione.
+può eliminare una chiave revocata per rimuoverne la voce nel registro.

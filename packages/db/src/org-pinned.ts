@@ -45,6 +45,7 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "getInboxFacets",
   "listImprovements",
   "listImprovementsPage",
+  "listImprovementsAssignedTo",
   "getMemoryEnabled",
   "setMemoryEnabled",
   "listMemorySubjects",
@@ -244,6 +245,9 @@ const supportChannelOwner: OwnerResolver = async (
  * Organization must be the pinned one, otherwise `cross_org`.
  */
 const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
+  // projectId-addressed (#1061)
+  nextTaskSeq: async (inner, id) =>
+    (await inner.table("projects").get(id))?.organizationId ?? null,
   // assistantId-addressed
   listFlows: assistantOwner,
   createFlow: assistantOwner,
@@ -380,6 +384,29 @@ export const TABLE_EXPOSURE: TableExposureMap = {
   },
   skills: "pinned",
   projects: "pinned",
+  // The work domain (#1061). `/api/v1/projects` reaches two of its tables
+  // already: who sits on a private Project (the visibility check every
+  // Project read makes) and the activity a Project write records. The rest
+  // stay hidden until `/api/v1/tasks` ships (#1069): a table earns "pinned"
+  // from a route, never from being adjacent to one.
+  projectMembers: "pinned",
+  // The tasks domain on /api/v1 and the Teammate `tasks` grant (#1069).
+  projectMilestones: "pinned",
+  // `DELETE /projects/{id}` reports how many Tasks went with the Project.
+  tasks: "pinned",
+  taskDependencies: "pinned",
+  taskLabels: "pinned",
+  taskLabelLinks: "pinned",
+  taskComments: "pinned",
+  // `DELETE /projects/{id}` collects the objects of the files that go with it (#1068).
+  projectFiles: "pinned",
+  workActivity: "pinned",
+  savedViews: { hidden: "Console-only: a Saved View is a tab in the Project page, no API-key surface (#1051)." },
+  workFavorites: { hidden: "A Member's own stars; an Organization key has no Member to star for." },
+  // Read with a comment thread (tasks.comments.list); reacting stays console-only.
+  taskCommentReactions: "pinned",
+  memberNotifications: { hidden: "Addressed to one Member and written only by the system Db (#1048)." },
+  notificationPreferences: { hidden: "A Member's own email switches; no API-key caller has a reason to see them." },
   // AI Teammates (#768), their governance (#770), their routines (#772) and
   // their channels (#778). Grants and routines earned exposure when
   // `/teammates/{id}/grants` and `/teammates/{id}/routines` shipped.

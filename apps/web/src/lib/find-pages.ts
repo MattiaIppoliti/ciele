@@ -114,6 +114,22 @@ const entries = {
       ],
     },
   },
+  my_tasks: {
+    blurb: "Everything assigned to you, in every project, by when it is due.",
+    wireframe: "list",
+  },
+  projects: {
+    blurb: "Every project you can see, with its progress, status and target date.",
+    wireframe: "cards",
+  },
+  all_tasks: {
+    blurb: "Every task in every project you can see, filtered, sorted and grouped.",
+    wireframe: "list",
+  },
+  notifications: {
+    blurb: "Tasks assigned to you, mentions, comments on your tasks and status changes, to read and answer.",
+    wireframe: "list",
+  },
   alerts: {
     blurb: "Problems that need attention, such as an integration whose credentials stopped working.",
     wireframe: "list",
@@ -218,6 +234,10 @@ const ROUTES: Array<[RegExp, PageTopic]> = [
   [under("insights"), "insights"],
   [under("eval"), "eval"],
   [under("library"), "library"],
+  [under("my-tasks"), "my_tasks"],
+  [under("projects"), "projects"],
+  [under("tasks"), "all_tasks"],
+  [under("notifications"), "notifications"],
   [under("alerts"), "alerts"],
   [under("settings"), "settings"],
 ];

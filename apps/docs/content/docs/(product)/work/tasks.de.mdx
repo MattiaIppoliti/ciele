@@ -1,0 +1,120 @@
+---
+title: Aufgaben und Ansichten
+description: Erstellen Sie Tasks und zeigen Sie sie als Liste, Board, Tabelle, Kalender oder Zeitleiste an.
+---
+
+Eine Aufgabe hat einen Titel, einen Status, eine Priorität, einen
+Verantwortlichen, Termine, eine Schätzung, Labels und eine Beschreibung in
+Markdown.
+
+| Status | Bedeutung |
+| --- | --- |
+| Backlog | Noch nicht geplant. |
+| To do | Geplant. |
+| In progress | Jemand arbeitet gerade daran. |
+| In review | Wartet auf eine Überprüfung. |
+| Done | Abgeschlossen. |
+
+Die Priorität ist **Urgent**, **High**, **Medium**, **Low** oder **None**.
+
+## Eine Aufgabe erstellen
+
+1. Wählen Sie **New task** in der Toolbar aus.
+2. Geben Sie einen Titel ein.
+3. Wählen Sie bei Bedarf das Projekt, den Status, die Priorität, die
+   verantwortliche Person und das Fälligkeitsdatum aus.
+4. Wählen Sie **Create task** aus.
+
+Sie können einen Titel auch unten in einer Gruppe in der List oder der Table
+bzw. in einer Spalte des Board eingeben.
+
+## Eine Aufgabe öffnen
+
+Wählen Sie eine Aufgabe aus, um sie in einem Bereich neben der Ansicht zu
+öffnen. Der Bereich zeigt seine Felder, die Beschreibung, Unteraufgaben,
+Anhänge, Kommentare und Aktivitäten an. Um die Aufgabe auf einer eigenen Seite
+zu öffnen, wählen Sie die Schaltfläche „full-page“ neben den Task-Aktionen aus.
+Um den Bereich zu schließen, wählen Sie die Schaltfläche „Close“ aus oder
+drücken Sie **Esc**.
+
+Ciele speichert die Breite des Panels in diesem Browser. Außerdem werden die
+Gruppen und die Board-Spalten, die Sie einklappen, beibehalten.
+
+Eine Aufgabe kann auf andere Aufgaben warten. Wählen Sie die Tasks in **Blocked
+by** aus. Die Timeline zeigt einen Pfeil von jeder blockierenden Task zu der
+Task, die wartet.
+
+Wenn Sie eine Aufgabe erledigt haben, wählen Sie **Undo** in der Nachricht aus,
+um der Aufgabe wieder ihren vorherigen Status zuzuweisen. Dies funktioniert
+auch, wenn Sie viele Tasks gleichzeitig erledigen.
+
+Eine Task kann sich wiederholen. Wenn Sie eine sich wiederholende Aufgabe
+erledigen, erstellt Ciele die nächste Kopie mit neuen Terminen. Wenn Sie
+**Undo** auswählen, löscht Ciele auch diese Kopie, und die Aufgabe wird erneut
+wiederholt. Wenn jemand die Kopie bereits begonnen hat, behält Ciele sie bei.
+
+Um die Reihenfolge der Tasks ohne Drag-and-Drop zu ändern, wählen Sie einen Task
+aus und drücken Sie **Alt+Up** oder **Alt+Down**. In der Liste können Sie auch
+**Move up** oder **Move down** im Menü der Task auswählen.
+
+## Eine Verbesserung abschließen
+
+Eine Task kann eine Improvement lösen. Wählen Sie die Verbesserung im Feld
+**Resolves** der Task aus. Um die Verknüpfung zu entfernen, wählen Sie **None**
+aus.
+
+Sie können die Verbesserung auch öffnen und **Create task** auswählen. Die neue
+Task erhält den Titel und das Project der Improvement sowie den Link.
+
+Wenn alle Tasks, die eine Verbesserung lösen, abgeschlossen sind, verschiebt
+Ciele die Verbesserung nach **In review**. Anschließend schließt eine Person
+sie. Die Aktivität der Task zeigt diese Änderung an.
+
+## Die Symbolleiste
+
+Jede Ansicht verfügt über dieselbe Symbolleiste:
+
+- **Search tasks** findet Tasks nach Titel oder Schlüssel.
+- **Filter** zeigt nur die Aufgaben an, die Ihren Filtern entsprechen.
+- **Sort** ändert die Reihenfolge. **Manual** behält die Reihenfolge bei, die
+  Sie per Drag & Drop festgelegt haben.
+- **Group** gruppiert die Tasks nach Status, Priorität, Verantwortlichem,
+  Projekt oder Fälligkeitsdatum.
+
+Die Adresse der Seite speichert Ihre Filter, die Sortierung und die Gruppierung.
+Sie können die Adresse teilen.
+
+## Die Ansichten
+
+| View | Verwendung |
+| --- | --- |
+| List | Lesen Sie Aufgaben in Gruppen. Ziehen Sie eine Zeile, um ihre Reihenfolge oder ihre Gruppe zu ändern. Wählen Sie Zeilen aus, um mehrere Aufgaben gleichzeitig zu ändern. |
+| Board | Ziehen Sie eine Karte in eine andere Statusspalte. Verwenden Sie das Spaltenmenü, um eine Aufgabe hinzuzufügen, die Spalte einzuklappen oder alle Aufgaben als erledigt zu markieren. |
+| Table | Ändern Sie jedes Feld in seiner Zelle. Wählen Sie **Columns**, um Spalten ein- oder auszublenden oder zurückzusetzen. Ziehen Sie den Rand einer Spaltenüberschrift, um ihre Größe zu ändern. |
+| Calendar | Zeigen Sie Aufgaben an ihren Fälligkeitsterminen nach Monat oder nach Woche an. Ziehen Sie eine Aufgabe auf einen anderen Tag. Die Aufgabe behält ihre Dauer bei. Wählen Sie **+** an einem Tag aus, um eine Aufgabe für diesen Tag zu erstellen. |
+| Timeline | Zeigen Sie Aufgaben als Balken nach Woche oder nach Monat an. Ziehen Sie einen Balken, um ihn zu verschieben. Ziehen Sie ein Ende eines Balkens, um ein Datum zu ändern. |
+
+Die Timeline zeigt nur Tasks mit einem Fälligkeitsdatum an. Es zählt die anderen
+Aufgaben als nicht terminiert.
+
+Jede Drag-Aktion verfügt auch über einen Tastatur-Shortcut. Öffnen Sie die
+Aufgabe und ändern Sie im Panel ihren Status oder ihre Termine.
+
+## Gespeicherte Ansichten
+
+In einem Projekt können Sie die aktuellen Filter, die Sortierung, die
+Gruppierung und das Layout als gespeicherte Ansicht speichern. Wählen Sie **Save
+view** in der Toolbar aus. Die gespeicherte Ansicht wird als Tab für alle
+Mitglieder angezeigt, die das Projekt sehen können.
+
+Der Ersteller einer gespeicherten Ansicht und die Admins können sie umbenennen,
+aktualisieren oder löschen.
+
+## Eine Aufgabe archivieren oder löschen
+
+Öffnen Sie das Task-Menü.
+
+- Wählen Sie **Archive** aus, um die Task und ihre Unteraufgaben auszublenden.
+  Wählen Sie **Undo** in der Nachricht aus, um sie sofort wiederherzustellen.
+- Wählen Sie **Delete** aus, um die Task, ihre Unteraufgaben, ihre Kommentare
+  und ihre Dateien zu löschen. Sie können diese Aktion nicht rückgängig machen.

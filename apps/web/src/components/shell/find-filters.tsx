@@ -47,7 +47,8 @@ export function FilterMenu({
   label: string;
   /** The chosen option's label, or null while the filter is off. */
   value: string | null;
-  options: Array<{ key: string; label: string; selected: boolean }>;
+  /** `count`: how many results the option would leave (#1072). */
+  options: Array<{ key: string; label: string; selected: boolean; count?: number }>;
   onSelect: (key: string) => void;
 }) {
   return (
@@ -72,6 +73,9 @@ export function FilterMenu({
         {options.map((option) => (
           <DropdownMenuItem key={option.key} onClick={() => onSelect(option.key)}>
             <span className="flex-1">{option.label}</span>
+            {option.count !== undefined && (
+              <span className="text-muted-foreground text-xs tabular-nums">{option.count}</span>
+            )}
             {option.selected && <Check aria-hidden className="size-3.5" />}
           </DropdownMenuItem>
         ))}

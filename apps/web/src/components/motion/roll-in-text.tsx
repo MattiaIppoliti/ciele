@@ -131,10 +131,26 @@ export function RollInText({
             const style = getComputedStyle(container);
             // A tag or an inline label owns its intrinsic width. Use the
             // enclosing slot's room so a longer value can grow before fitting.
+            // In a column flex (a name under an avatar) the label owns the
+            // column's width and shares no row with its siblings, so it is not
+            // shrink-wrapped: fit it to itself, or the avatar's width gets
+            // subtracted as if the two sat side by side and the name became "…".
+            const parentStyle = parent ? getComputedStyle(parent) : null;
+            const rowFlex = !!parentStyle?.display.includes("flex") && !parentStyle.flexDirection.startsWith("column");
             const intrinsic = parent && (style.display === "inline" ||
               style.display === "inline-block" ||
-              (getComputedStyle(parent).display.includes("flex") && style.flexGrow === "0"));
+              (rowFlex && style.flexGrow === "0"));
             const slot = intrinsic ? parent : container;
+            // A shrink-wrapped slot is as wide as the text it shows, so its own
+            // width is circular: an entrance from "" measures 0 and fits the
+            // value to nothing. Its room is its parent's width, capped by its
+            // own max-width (a chip's max-w-56).
+            const room = intrinsic && slot.parentElement ? slot.parentElement : slot;
+            const slotWidth = () => {
+              if (room === slot) return slot.clientWidth;
+              const max = parseFloat(getComputedStyle(slot).maxWidth);
+              return Number.isNaN(max) ? room.clientWidth : Math.min(room.clientWidth, max);
+            };
             displayText.current = (value) => {
               if (!container.matches(".truncate")) return value;
               const style = getComputedStyle(span);
@@ -144,7 +160,7 @@ export function RollInText({
               const containerStyle = getComputedStyle(slot);
               const labelStyle = getComputedStyle(container);
               const siblings = intrinsic ? Array.from(slot.children).filter((child) => child !== container) : [];
-              const width = slot.clientWidth -
+              const width = slotWidth() -
                 (parseFloat(containerStyle.paddingLeft) || 0) -
                 (parseFloat(containerStyle.paddingRight) || 0) -
                 siblings.reduce((total, child) => total + child.getBoundingClientRect().width, 0) -
@@ -153,13 +169,13 @@ export function RollInText({
                   (parseFloat(labelStyle.borderLeftWidth) || 0) + (parseFloat(labelStyle.borderRightWidth) || 0) : 0);
               return fitRollingText(value, width, (glyph) => context.measureText(glyph).width + spacing);
             };
-            let width = slot.clientWidth;
+            let width = slotWidth();
             observer = new ResizeObserver(() => {
-              if (width === slot.clientWidth) return;
-              width = slot.clientWidth;
+              if (width === slotWidth()) return;
+              width = slotWidth();
               el.update(displayText.current(latest.current), false);
             });
-            observer.observe(slot);
+            observer.observe(room);
             if (document.fonts.status === "loading") void document.fonts.ready.then(() => {
               if (!cancelled) el.update(displayText.current(latest.current), false);
             });

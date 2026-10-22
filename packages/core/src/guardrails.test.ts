@@ -7,13 +7,16 @@ import {
   guardrailListProblem,
   guardrailProblem,
   inputGuardrails,
+  maskingGuardrail,
   orderGuardrails,
   streamGuardrails,
   suppressMarkedContent,
   type AssistantGuardrail,
   type InputGuardrail,
+  type MaskingGuardrail,
   type StreamGuardrail,
 } from "./guardrails";
+import type { PiiDetector } from "./pii";
 
 function rule(start: string, stop: string, message = "[removed]"): StreamGuardrail {
   return { ...(defaultGuardrail("sensitive_content_stream", start) as StreamGuardrail), startMarker: start, stopMarker: stop, message };
@@ -30,11 +33,28 @@ describe("defaultGuardrail + guardrailProblem", () => {
     expect(problems.regexp_guardrail).toBe("Write a pattern.");
     expect(problems.restrict_to_topic).toBe("Add at least one topic.");
     expect(problems.sensitive_content_stream).toBe("Set both markers.");
+    // Masking needs no reply: it never answers the Visitor in place of a turn.
+    expect(problems.pii_masking).toBeNull();
+  });
+
+  it("refuses a masking guardrail with no detector, an unknown one or a repeat", () => {
+    const masking = defaultGuardrail("pii_masking", "p") as MaskingGuardrail;
+    expect(guardrailProblem({ ...masking, detectors: [] })).toBe("Pick at least one kind of data to mask.");
+    expect(guardrailProblem({ ...masking, detectors: ["passport" as PiiDetector] })).toBe(
+      "Pick from the listed kinds of data."
+    );
+    expect(guardrailProblem({ ...masking, detectors: ["email", "email"] })).toBe("Pick each kind of data once.");
   });
 
   it("refuses a pattern that does not compile", () => {
     const g = { ...defaultGuardrail("regexp_guardrail", "r"), pattern: "(unclosed" } as AssistantGuardrail;
     expect(guardrailProblem(g)).toBe("The pattern is not a valid regular expression.");
+  });
+
+  it("allows one masking guardrail per assistant", () => {
+    expect(
+      guardrailListProblem([defaultGuardrail("pii_masking", "a"), defaultGuardrail("pii_masking", "b")])
+    ).toBe("Use one PII masking guardrail per assistant.");
   });
 
   it("refuses duplicate ids and names the failing guardrail", () => {
@@ -70,6 +90,15 @@ describe("inputGuardrails / streamGuardrails", () => {
     expect(inputGuardrails(list).map((g) => g.id)).toEqual(["l", "m"]);
     expect(streamGuardrails(list).map((g) => g.id)).toEqual(["<s>"]);
     expect(inputGuardrails(undefined)).toEqual([]);
+  });
+
+  it("never treat masking as an input check, and find the enabled one", () => {
+    const masking = defaultGuardrail("pii_masking", "p");
+    expect(inputGuardrails([masking])).toEqual([]);
+    expect(streamGuardrails([masking])).toEqual([]);
+    expect(maskingGuardrail([defaultGuardrail("moderation", "m"), masking])?.id).toBe("p");
+    expect(maskingGuardrail([{ ...masking, enabled: false }])).toBeNull();
+    expect(maskingGuardrail(undefined)).toBeNull();
   });
 });
 

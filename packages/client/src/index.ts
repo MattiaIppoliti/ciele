@@ -17,7 +17,13 @@ import type {
   MemoryDocument,
   MemoryDocumentEntry,
   Project,
+  ProjectMilestone,
   ProjectPatch,
+  Task,
+  TaskComment,
+  TaskCommentReaction,
+  TaskLabel,
+  TaskPatch,
   Flow,
   FlowInput,
   FlowPatch,
@@ -174,6 +180,52 @@ export interface ApiChannelView {
   roster: ChannelRosterEntry[];
   messages: ChannelMessage[];
   canManage: boolean;
+}
+
+/** A Task as `GET /tasks/{id}` serves it (#1069). */
+export interface ApiTaskDetail {
+  task: Task;
+  project: Project;
+  subtasks: Task[];
+  parent: Task | null;
+  labelIds: string[];
+  blockedBy: Task[];
+  blocking: Task[];
+  improvement: { id: string; seq: number; title: string; status: string } | null;
+  memberIds: string[];
+}
+
+/** `POST /tasks`: a title and a Project, everything else optional. */
+export type ApiTaskInput = { projectId: string; title: string; labelIds?: string[] } & Partial<
+  Pick<Task, "description" | "status" | "priority" | "assigneeMemberId" | "startDate" | "dueDate" | "estimateMinutes" | "recurrence" | "parentId">
+>;
+
+/** `PATCH /tasks/{id}`. */
+export interface ApiTaskUpdate {
+  patch?: Partial<TaskPatch>;
+  labelIds?: string[];
+  blockedBy?: string[];
+  position?: { afterId?: string | null; beforeId?: string | null };
+  /** Move it to another Project, which re-numbers it there. */
+  projectId?: string;
+  /** Archive (true) or restore (false), with its subtasks. */
+  archived?: boolean;
+}
+
+/** `GET /tasks` filters (#1051). */
+export interface ApiTaskListParams {
+  projectId?: string;
+  assignee?: string;
+  /** Comma-separated statuses. */
+  status?: string;
+  label?: string;
+  dueFrom?: string;
+  dueTo?: string;
+  q?: string;
+  improvementId?: string;
+  includeArchived?: boolean;
+  limit?: number;
+  cursor?: string;
 }
 
 /** A memory document with its append-only history (#771). */
@@ -916,7 +968,7 @@ export class CieleClient {
     ): Promise<{ project: Project } & ApiMemoryDocumentView> =>
       this.request("GET", p`/projects/${id}`),
     create: (
-      input: { name: string; description?: string },
+      input: { name: string; description?: string } & Partial<Omit<ProjectPatch, "archived">>,
       opts: { idempotencyKey?: string } = {}
     ): Promise<Project> =>
       this.request("POST", "/projects", { body: input, ...opts }),
@@ -933,6 +985,54 @@ export class CieleClient {
       this.request("PUT", p`/projects/${id}/document`, {
         body: input,
       }),
+    /** A Project's milestones, oldest date first (#1069). */
+    milestones: (id: string): Promise<{ data: ProjectMilestone[] }> =>
+      this.request("GET", p`/projects/${id}/milestones`),
+    /** Replaces the list: send back every milestone to keep, with its id. */
+    setMilestones: (
+      id: string,
+      milestones: { id?: string; name: string; date: string }[]
+    ): Promise<{ data: ProjectMilestone[] }> =>
+      this.request("PUT", p`/projects/${id}/milestones`, { body: { milestones } }),
+  };
+
+  /**
+   * Tasks (#1069): the work inside Projects. A key reads the Projects its
+   * Member can read, and comments as that Member.
+   */
+  readonly tasks = {
+    list: (params: ApiTaskListParams = {}): Promise<{ data: Task[]; nextCursor: string | null }> =>
+      this.request("GET", "/tasks", {
+        query: {
+          projectId: params.projectId,
+          assignee: params.assignee,
+          status: params.status,
+          label: params.label,
+          dueFrom: params.dueFrom,
+          dueTo: params.dueTo,
+          q: params.q,
+          improvementId: params.improvementId,
+          includeArchived: params.includeArchived ? "true" : undefined,
+          limit: params.limit,
+          cursor: params.cursor,
+        },
+      }),
+    get: (id: string): Promise<ApiTaskDetail> => this.request("GET", p`/tasks/${id}`),
+    create: (input: ApiTaskInput, opts: { idempotencyKey?: string } = {}): Promise<Task> =>
+      this.request("POST", "/tasks", { body: input, ...opts }),
+    update: (id: string, body: ApiTaskUpdate): Promise<Task> =>
+      this.request("PATCH", p`/tasks/${id}`, { body }),
+    delete: (id: string): Promise<{ deleted: number }> => this.request("DELETE", p`/tasks/${id}`),
+    comments: (id: string): Promise<{ data: (TaskComment & { reactions: TaskCommentReaction[] })[] }> =>
+      this.request("GET", p`/tasks/${id}/comments`),
+    comment: (id: string, body: string): Promise<TaskComment> =>
+      this.request("POST", p`/tasks/${id}/comments`, { body: { body } }),
+    labels: (): Promise<{ data: TaskLabel[] }> => this.request("GET", "/task-labels"),
+    createLabel: (input: { name: string; color?: TaskLabel["color"] }): Promise<TaskLabel> =>
+      this.request("POST", "/task-labels", { body: input }),
+    updateLabel: (id: string, patch: { name?: string; color?: TaskLabel["color"] }): Promise<TaskLabel> =>
+      this.request("PATCH", p`/task-labels/${id}`, { body: patch }),
+    deleteLabel: (id: string): Promise<{ deleted: string }> => this.request("DELETE", p`/task-labels/${id}`),
   };
 
   /**

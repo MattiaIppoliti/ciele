@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { SortableHandle, SortableList } from "./sortable-list";
 import { useTableOrder } from "./table-preferences";
 import { GripVertical } from "lucide-react";
 import { reconcileTableOrder, moveTableColumn, tableRangeContains, tableRangeSize, type TableCellRange } from "@/lib/table-view";
@@ -29,11 +28,9 @@ interface TableView {
   range: TableCellRange | null;
   setRange: React.Dispatch<React.SetStateAction<TableCellRange | null>>;
   beginSelection: () => void;
-  reorderColumns: (next: string[]) => void;
   draggingColumn: number | null;
-  animateColumns: boolean;
-  beginColumnDrag: (column: number) => void;
-  endColumnDrag: () => void;
+  /** Starts moving a column from its handle; the whole column follows the pointer. */
+  startColumnDrag: (event: React.PointerEvent<HTMLElement>, column: number) => void;
 }
 export const TableViewContext = React.createContext<TableView | null>(null);
 
@@ -85,7 +82,7 @@ export function TableViewProvider({ children, empty, headingType, bodyType }: {
   const preferenceId = pathname + ":" + (React.isValidElement<{ "data-table-id"?: string }>(group) ? group.props["data-table-id"] : labels.join("-"));
   const [savedColumns, saveColumns] = useTableOrder(preferenceId);
   const [draggingColumn, setDraggingColumn] = React.useState<number | null>(null);
-  const [animateColumns, setAnimateColumns] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const movable = reconcileTableOrder(savedColumns, labels.filter((_, index) => !fixed.includes(index)));
   let cursor = 0;
   const order = labels.map((_, index) => fixed.includes(index) ? index : labels.indexOf(movable[cursor++]));
@@ -100,7 +97,7 @@ export function TableViewProvider({ children, empty, headingType, bodyType }: {
   const moveColumn = (from: number, to: number) => {
     const next = moveTableColumn(order, from, to, fixed);
     if (next.every((key, index) => key === order[index])) return;
-    const apply = (order: number[]) => { setAnimateColumns(false); saveColumns(order.filter((index) => !fixed.includes(index)).map((index) => labels[index])); setRange(null); };
+    const apply = (order: number[]) => { saveColumns(order.filter((index) => !fixed.includes(index)).map((index) => labels[index])); setRange(null); };
     apply(next);
     history?.record({ label: "Move column", undo: () => apply(order), redo: () => apply(next) });
   };
@@ -112,25 +109,95 @@ export function TableViewProvider({ children, empty, headingType, bodyType }: {
       history?.record({ label: "Select cells", undo: () => setRange(before), redo: () => setRange(range) });
     }
   };
-  const columnDragStart = React.useRef<number[] | null>(null);
-  const applyColumns = (next: number[], animate = false) => { setAnimateColumns(animate); saveColumns(next.filter((index) => !fixed.includes(index)).map((index) => labels[index])); setRange(null); };
-  const view: TableView = { order, fixed, labels, moveColumn, range, setRange, draggingColumn, animateColumns,
-    reorderColumns: (next) => {
-      const keys = next.map(Number).filter((key) => !fixed.includes(key));
-      let i = 0;
-      applyColumns(order.map((key) => fixed.includes(key) ? key : keys[i++]), true);
-    },
-    beginColumnDrag: (column) => { columnDragStart.current = order; setDraggingColumn(column); setAnimateColumns(true); },
-    endColumnDrag: () => {
+  const applyColumns = (next: number[]) => { saveColumns(next.filter((index) => !fixed.includes(index)).map((index) => labels[index])); setRange(null); };
+
+  // Moving a column: the whole column (its header and every cell) follows the
+  // pointer one to one through `--column-drag-x`, written straight to the
+  // container so a pointer move costs no render. The order changes the moment
+  // the column's centre crosses into a neighbour, and the neighbours take their
+  // new place at once, with no layout spring to wait for.
+  const orderRef = React.useRef(order);
+  // Declared before the placing effect below, so it runs first and the
+  // placement reads this render's order.
+  React.useLayoutEffect(() => {
+    orderRef.current = order;
+  });
+  const columnDrag = React.useRef<{ column: number; startX: number; startLeft: number; lastX: number; before: number[] } | null>(null);
+  const headerCell = (column: number) =>
+    containerRef.current?.querySelector<HTMLElement>(`thead th[data-table-column-index="${column}"]`) ?? null;
+  const placeDraggedColumn = () => {
+    const drag = columnDrag.current;
+    const container = containerRef.current;
+    const cell = drag ? headerCell(drag.column) : null;
+    if (!drag || !container || !cell) return;
+    const left = drag.startLeft + drag.lastX - drag.startX;
+    container.style.setProperty("--column-drag-x", `${left - cell.offsetLeft}px`);
+    // A neighbour gives way once the column's centre passes the neighbour's
+    // centre, not its edge: against a wider neighbour an edge rule would swap
+    // the two back and forth on every frame. The farthest one passed wins, so
+    // a fast drag crosses several columns in one move.
+    const centre = left + cell.offsetWidth / 2;
+    const middle = (other: HTMLElement) => other.offsetLeft + other.offsetWidth / 2;
+    const movable = Array.from(container.querySelectorAll<HTMLElement>("thead th[data-table-column-index]")).filter((other) => other !== cell);
+    const target =
+      movable.filter((other) => other.offsetLeft > cell.offsetLeft && centre > middle(other)).at(-1) ??
+      movable.find((other) => other.offsetLeft < cell.offsetLeft && centre < middle(other));
+    if (!target) return;
+    const next = moveTableColumn(orderRef.current, drag.column, Number(target.dataset.tableColumnIndex), fixed);
+    if (next.some((key, index) => key !== orderRef.current[index])) applyColumns(next);
+  };
+  // After a crossing re-renders the order, the dragged column sits in a new
+  // slot: re-anchor it to the pointer before the frame paints, or it jumps.
+  React.useLayoutEffect(placeDraggedColumn);
+  const startColumnDrag = (event: React.PointerEvent<HTMLElement>, column: number) => {
+    const cell = headerCell(column);
+    if (!cell || event.button !== 0 || !event.isPrimary) return;
+    event.preventDefault();
+    columnDrag.current = { column, startX: event.clientX, startLeft: cell.offsetLeft, lastX: event.clientX, before: orderRef.current };
+    containerRef.current?.style.setProperty("--column-drag-x", "0px");
+    setDraggingColumn(column);
+    const move = (moved: PointerEvent) => {
+      if (!columnDrag.current) return;
+      columnDrag.current.lastX = moved.clientX;
+      placeDraggedColumn();
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      const before = columnDrag.current?.before;
+      columnDrag.current = null;
+      containerRef.current?.style.removeProperty("--column-drag-x");
       setDraggingColumn(null);
-      const before = columnDragStart.current; columnDragStart.current = null;
-      if (before && before.some((key, index) => key !== order[index])) history?.record({ label: "Move column", undo: () => applyColumns(before), redo: () => applyColumns(order) });
-    },
+      const after = orderRef.current;
+      if (before && before.some((key, index) => key !== after[index])) {
+        history?.record({ label: "Move column", undo: () => applyColumns(before), redo: () => applyColumns(after) });
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  };
+
+  // The second column sticks just right of the first, so the first's width
+  // is the offset; measured, because it can be a checkbox gutter or a tag.
+  React.useLayoutEffect(() => {
+    const container = containerRef.current;
+    const first = container?.querySelector<HTMLElement>("thead tr > th:first-child");
+    if (!container || !first) return;
+    const measure = () => container.style.setProperty("--table-sticky-left", `${first.offsetWidth}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(first);
+    return () => observer.disconnect();
+  });
+
+  const view: TableView = { order, fixed, labels, moveColumn, range, setRange, draggingColumn, startColumnDrag,
     beginSelection: () => { startRange.current = range; selecting.current = true; } };
   const count = tableRangeSize(range);
   return (
     <TableViewContext value={view}>
-      <div data-slot="table-container"
+      <div data-slot="table-container" ref={containerRef}
         className="relative w-full overflow-x-auto rounded-3xl border bg-table-sheet shadow-light"
         onPointerUp={finishSelection} onPointerLeave={finishSelection}
         onCopy={(event) => {
@@ -169,8 +236,7 @@ export function TableRowsProvider({ children, ...props }: React.ComponentProps<"
 }
 
 export function TableColumnsGroup({ children, ...props }: React.ComponentProps<"tr">) {
-  const view = React.useContext(TableViewContext);
-  return <SortableList as="tr" axis="x" values={view?.order.map(String) ?? []} onReorder={(next) => view?.reorderColumns(next)} {...props}>{children}</SortableList>;
+  return <tr {...props}>{children}</tr>;
 }
 
 export function TableCellsProvider({ children }: { children: React.ReactNode }) {
@@ -191,8 +257,9 @@ export function ColumnDragHandle() {
   const position = React.useContext(CellPosition);
   const view = React.useContext(TableViewContext);
   if (!position?.movable) return null;
-  return <SortableHandle data-slot="column-drag-handle"
+  return <button type="button" data-slot="column-drag-handle"
     aria-label={"Move " + position.label + " column"} title="Drag to move column. Alt + arrow keys to move."
+    onPointerDown={(event) => view?.startColumnDrag(event, position.original)}
     onKeyDown={(event) => {
       if (!event.altKey || !["ArrowLeft", "ArrowRight"].includes(event.key) || !view) return;
       event.preventDefault();
@@ -200,9 +267,9 @@ export function ColumnDragHandle() {
       const target = movable[movable.indexOf(position.original) + (event.key === "ArrowLeft" ? -1 : 1)];
       if (target !== undefined) view.moveColumn(position.original, target);
     }}
-    className="press-control touch-none -ml-1 inline-flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground/60 hover:bg-alpha-light hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring active:cursor-grabbing">
+    className="press-control touch-none -ml-1 inline-flex size-6 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground/60 hover:bg-alpha-light hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring active:cursor-grabbing">
     <GripVertical aria-hidden="true" className="pointer-events-none size-4" />
-  </SortableHandle>;
+  </button>;
 }
 
 export function useCellSelection(spanned: boolean) {

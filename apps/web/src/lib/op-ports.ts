@@ -33,13 +33,16 @@ import {
 } from "@/lib/evaluation-models";
 import { listPlatformEvalModels } from "@/lib/platform";
 import { improvementAssignedEmail, improvementClosedEmail } from "@/lib/notify";
+import { raiseWorkNotifications, recordWorkActivity } from "@/lib/work-notify";
 import { getWidgetDb, invalidatePublication } from "@/lib/widget-db";
 import { getSsoProvider } from "@/lib/sso";
 import { discoverScopesKeepingCredentials } from "@/lib/application-discovery";
 import { removeKnowledgeOriginals } from "@/lib/storage/assets";
+import { removeWorkFiles } from "@/lib/storage/work-files";
 import {
   createSupabaseServiceClient,
   isSupabaseServiceConfigured,
+  objectStorageClient,
 } from "@/lib/supabase/service";
 
 /**
@@ -247,13 +250,17 @@ export function webOperationPorts(
      * a triage run is unattended, and a board that stops being filed because a
      * backend had a bad minute is worse than one filed the old way.
      */
-    triageDecisions: async ({ evidence, candidates }) => {
+    triageDecisions: async ({ evidence, candidates, conversation }) => {
       try {
         const { runTriageDecision } = await import("@agent-hub/agent");
         return await runTriageDecision({
           evidence,
           candidates,
           connections: await db.listProviderConnections(opts.organizationId),
+          // A guardrail that cannot be read throws into the null below: the
+          // routine then dedups on titles and calls no model (#1080).
+          db,
+          conversation,
         });
       } catch {
         return null;
@@ -402,6 +409,50 @@ export function webOperationPorts(
     // open-source deployment, this answers null and the read says "unmetered".
     readUsageLimits: (organizationId) =>
       getEnterpriseCapabilities().metering.getUsageLimits(organizationId),
+    // The work domain's ledger writes run on the system Db (activity and
+    // notifications have no member insert policy), so each row's Organization
+    // is re-asked here, as every other system-Db port in this file does.
+    workLog: {
+      recordActivity: (rows) =>
+        recordWorkActivity(getWidgetDb(), rows.filter((row) => row.organizationId === opts.organizationId)),
+      notify: (rows) =>
+        raiseWorkNotifications(
+          getWidgetDb(),
+          rows.filter((row) => row.organizationId === opts.organizationId),
+          sendEmail
+        ),
+    },
+    // Work files sit under `org/{organizationId}/projects/...`; only this
+    // Organization's prefix is removed, whatever path a row carried.
+    workFiles: {
+      remove: (paths) =>
+        removeWorkFiles(
+          objectStorageClient(),
+          paths.filter((path) => path.startsWith(`org/${opts.organizationId}/`))
+        ),
+    },
+    // ADR-0027 rule 3 on the system Db: the caller completed a Task, which an
+    // Editor-only Improvement write must not stop, and "every linked Task"
+    // counts the ones in private Projects they cannot read. Both halves
+    // re-ask the Organization on the Db that bypasses RLS.
+    improvementSettlement: {
+      read: async (improvementId) => {
+        const system = getWidgetDb();
+        const improvement = await system.getImprovement(improvementId);
+        if (!improvement || improvement.organizationId !== opts.organizationId) return null;
+        const linkedTasks = await system.table("tasks").list({ improvementId });
+        return {
+          improvement,
+          linkedTasks: linkedTasks.filter((task) => task.organizationId === opts.organizationId),
+        };
+      },
+      setStatus: async (improvementId, status) => {
+        const system = getWidgetDb();
+        const improvement = await system.getImprovement(improvementId);
+        if (improvement?.organizationId !== opts.organizationId) return;
+        await system.updateImprovement(improvementId, { status });
+      },
+    },
     notifyImprovementUpdate: async ({ before, updated, patch }) => {
       const key = `IMP-${updated.seq}`;
       const members = await db.listMembers(opts.organizationId);

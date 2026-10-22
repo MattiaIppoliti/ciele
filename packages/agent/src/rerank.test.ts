@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MockRerankingModelV4 } from "ai/test";
-import type { AiUsageInput, KnowledgeSearchResult, ProviderConnection } from "@agent-hub/core";
+import { createPiiMasker, PII_DETECTORS, type AiUsageInput, type KnowledgeSearchResult, type ProviderConnection } from "@agent-hub/core";
+import { withPiiMasking } from "./pii-masking";
 import type { Db } from "@agent-hub/db";
 import {
   RERANK_CANDIDATES,
@@ -72,6 +73,26 @@ afterEach(() => {
 });
 
 describe("createReranker", () => {
+  it("sends the query and the passages masked under a PII masking scope (#1078)", async () => {
+    const { db } = stubDb();
+    let request = "";
+    const model = new MockRerankingModelV4({
+      doRerank: async (options) => {
+        request = JSON.stringify(options);
+        return { ranking: [{ index: 1, relevanceScore: 1 }, { index: 0, relevanceScore: 0.5 }] };
+      },
+    });
+    const rerank = createReranker({ attribution: attribution(db), resolveModel: () => model });
+    const passages = [hit(0), { ...hit(1), content: "Escalate to jane@example.com" }];
+    const results = await withPiiMasking(createPiiMasker(PII_DETECTORS), () =>
+      rerank("orders for jane@example.com", passages, 2)
+    );
+    expect(request).not.toContain("jane@example.com");
+    expect(request).toContain("orders for [EMAIL_1]");
+    // Ranking reorders the originals; the passage handed back is untouched.
+    expect(results[0]!.content).toBe("Escalate to jane@example.com");
+  });
+
   it("reorders the candidates and keeps the top six", async () => {
     const { db } = stubDb();
     const rerank = createReranker({ attribution: attribution(db), resolveModel: reversingModel });
@@ -265,6 +286,39 @@ describe("platformRerankingModel", () => {
 });
 
 describe("buildKnowledgeSearcher with the rerank stage", () => {
+  it("counts the passages it sends the reranker as knowledge under PII masking (#1079)", async () => {
+    const { db: meterDb } = stubDb();
+    let request = "";
+    const model = new MockRerankingModelV4({
+      doRerank: async (options) => {
+        request = JSON.stringify(options);
+        return { ranking: [{ index: 0, relevanceScore: 1 }, { index: 1, relevanceScore: 0.5 }] };
+      },
+    });
+    const passages = [
+      { ...hit(0), content: "Escalations go to escalations@example.org" },
+      { ...hit(1), content: "Desk phone +39 06 1234 5678" },
+    ];
+    const search = buildKnowledgeSearcher({
+      db: { searchChunks: async () => passages } as unknown as Db,
+      connections: [],
+      assistant: { id: "assistant-1", organizationId: "org-1" },
+      collectionId: "col-1",
+      conversationId: "conv-1",
+      reranker: createReranker({ attribution: attribution(meterDb), resolveModel: () => model }),
+    });
+    const masker = createPiiMasker(PII_DETECTORS);
+    const results = await withPiiMasking(masker, () => search("who handles escalations"));
+    expect(request).not.toContain("escalations@example.org");
+    expect(request).not.toContain("+39 06 1234 5678");
+    expect(masker.report()).toEqual([
+      { detector: "email", origin: "knowledge", count: 1 },
+      { detector: "phone", origin: "knowledge", count: 1 },
+    ]);
+    // What the searcher hands back is the index's own text.
+    expect(results[0]!.content).toBe("Escalations go to escalations@example.org");
+  });
+
   it("asks the index for twenty candidates and returns the reranker's six", async () => {
     const searchChunks = vi.fn(async () => candidates);
     const reranker = vi.fn(async (_q: string, hits: KnowledgeSearchResult[], limit: number) =>

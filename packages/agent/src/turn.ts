@@ -58,6 +58,7 @@ import {
 } from "./approval-gate";
 import { resolveDecisionModel } from "./decision-model";
 import { runInputGuardrails, suppressPart, suppressingEmit } from "./guardrails";
+import { piiMaskingTrace, seedOutbound, turnPiiMasking, withPiiMasking } from "./pii-masking";
 import { contactLabel, faqAnswerParts } from "./actions";
 import type { UntrustedEnvelope } from "./untrusted-content";
 import { summarizeTurnUsage, turnUsageAttribution } from "./usage";
@@ -994,6 +995,12 @@ export async function streamConversationTurn(
     conversation.id,
     RECENT_HISTORY_LIMIT
   );
+  // PII masking (#1078): active for every model call below, the first-turn
+  // memory recall and everything inside the stream. Seeded from what the
+  // Visitor wrote, so their values carry the first placeholders. A Teammate
+  // turn has no guardrails, so `input.assistant` is the whole test.
+  const piiMasking = turnPiiMasking(input.assistant?.guardrails, stored, message, input.attachments);
+  const piiMasker = piiMasking?.masker ?? null;
 
   // Long-term memory (#664): the org toggle was read in the gate wave above;
   // the searcher exists only for enabled SSO subjects.
@@ -1116,15 +1123,17 @@ export async function streamConversationTurn(
           role: "user",
           content: [{ type: "text", text: message }],
         }),
-    (async () => {
+    withPiiMasking(piiMasker, async () => {
       if (!searchMemories || stored.length !== 0) return;
       try {
         const recalled = await searchMemories(message);
         if (recalled.length > 0) longTermMemory = recalled.map((r) => r.text);
+        // Facts about this Visitor from earlier conversations (#1079).
+        seedOutbound(longTermMemory, "visitor");
       } catch (error) {
         console.error("[runtime] long-term memory recall failed:", error);
       }
-    })(),
+    }),
   ]);
 
   const spendAdmission = await admitAiSpend({
@@ -1136,7 +1145,9 @@ export async function streamConversationTurn(
 
   const conversationId = conversation.id;
   const encoder = new TextEncoder();
-  return new ReadableStream({
+  // `start` runs inside the constructor, so everything the turn does from here
+  // on inherits the masking scope.
+  return withPiiMasking(piiMasker, () => new ReadableStream({
     async start(controller) {
       const forward = (event: RuntimeEvent) => {
         controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
@@ -1205,10 +1216,17 @@ export async function streamConversationTurn(
           : observedTrace;
         // Guardrail hits make a trace the same way, and for the same reason:
         // a turn a guardrail blocked did no agentic work, and the record of
-        // which one fired must not go missing with the empty trace.
+        // which one fired must not go missing with the empty trace. Masking
+        // counts too: a blocked message was still masked for the moderation
+        // or topic check that blocked it.
+        const piiTrace = piiMaskingTrace(piiMasking);
         const storedTrace =
-          guardrailTrace.length > 0
-            ? { ...(withPreflight ?? { steps: [], searchCount: 0 }), guardrails: guardrailTrace }
+          guardrailTrace.length > 0 || piiTrace
+            ? {
+                ...(withPreflight ?? { steps: [], searchCount: 0 }),
+                ...(guardrailTrace.length > 0 ? { guardrails: guardrailTrace } : {}),
+                ...(piiTrace ? { piiMasking: piiTrace } : {}),
+              }
             : withPreflight;
 
         // The Conversation's running pre-flight signals (#956), folded from
@@ -1502,6 +1520,10 @@ export async function streamConversationTurn(
         });
 
         const turnOperationKey = `conversation-turn/${conversationId}/${requestId}`;
+        // A resumed Flow carries what its API request, connector and callback
+        // steps returned, which later actions may hand a model (#1079).
+        const resumeFrom = resumeCursor(input, input.flows ?? []);
+        seedOutbound(resumeFrom?.templatePatch, "tool");
         const admittedContinuation = "continuation" in input ? input.continuation : undefined;
         const answerTurn = {
           effectKeyPrefix: turnOperationKey,
@@ -1591,7 +1613,7 @@ export async function streamConversationTurn(
           // rest of the turn's accounting, so one insert covers the turn rather
           // than one per outbound call.
           countOperation: (event) => operationCounts.push(event),
-          resumeFrom: resumeCursor(input, input.flows ?? []),
+          resumeFrom,
           checkContinuation: admittedContinuation ? async () => {
             const admitted = await systemDb.readFlowContinuation(admittedContinuation.id);
             if (!admitted.continuation || admitted.continuation.stoppedAt) throw new Error("This Flow continuation was stopped.");
@@ -1615,7 +1637,11 @@ export async function streamConversationTurn(
           loadPreflightCatalogue: async () => {
             const selected = assistant.helpDeskSettings?.selectedIds ?? [];
             const [faqs, desks] = await Promise.all([
-              db.listAssistantFaqOptions(assistant.id).catch(() => []),
+              db.listAssistantFaqOptions(assistant.id).catch(() => []).then((options) => {
+                // The FAQ questions the pre-flight weighs are knowledge (#1079).
+                seedOutbound(options, "knowledge");
+                return options;
+              }),
               escalationDesks.length > 0 || selected.length === 0
                 ? Promise.resolve(escalationDesks)
                 : listSelectedDesks(selected).catch(() => []),
@@ -1896,7 +1922,7 @@ export async function streamConversationTurn(
         controller.close();
       }
     },
-  });
+  }));
 }
 
 /**

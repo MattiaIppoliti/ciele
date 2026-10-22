@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore, type CSSProperties } from "react";
 import type { Profile, Role } from "@agent-hub/core";
-import { ArrowRight, ArrowUpRight, Check, Fingerprint, House, LogOut, Settings, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, Fingerprint, House, Keyboard, LogOut, Settings, X, type LucideIcon } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { Button, Hint } from "@agent-hub/ui";
 import { signOutAction } from "@/app/actions";
@@ -195,7 +195,17 @@ export function NewChatButton({
       onClick={chatSession.requestNewChat}
       aria-label="New chat"
       aria-keyshortcuts="Meta+O Control+O"
-      icon={<CieleAiPeek className="size-full" />}
+      // The ghost peeks over the button's lower edge: drawn at 164% of the
+      // icon slot and anchored so the bottom of its eyes sits about 2px above
+      // the edge. The button clips, so the lower quarter of the body is cut
+      // off and only the head and the eyes show.
+      icon={
+        <span className="relative block size-full">
+          <CieleAiPeek className="absolute top-[13%] left-1/2 w-[164%] max-w-none -translate-x-1/2" />
+        </span>
+      }
+      // A larger icon slot for the ghost (the button sizes it from `--icon`).
+      style={{ "--icon": "1.7rem" } as CSSProperties}
       className={collapsed ? "@container" : "@container min-w-0 flex-1"}
     >
         {!collapsed && (
@@ -255,6 +265,7 @@ function ProfileQuickMenu({
   collapsed: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const { openShortcuts } = useShell();
   const setup = profileSetup(profile, email, demo);
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -328,6 +339,12 @@ function ProfileQuickMenu({
           </DropdownMenuItem>
           <ThemeSwitcher />
           <SoundSwitcher />
+          <DropdownMenuItem className="press-control" onClick={() => openShortcuts()}>
+            <Keyboard className="size-4.5" /> Keyboard shortcuts
+            <span className="ml-auto flex size-9 shrink-0 items-center justify-center">
+              <kbd className="text-muted-foreground font-sans text-xs">?</kbd>
+            </span>
+          </DropdownMenuItem>
           <DropdownMenuItem
             className="press-control"
             disabled={demo}

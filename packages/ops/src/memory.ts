@@ -1,13 +1,9 @@
 import { z } from "zod";
-import type {
-  MemoryDocument,
-  MemoryDocumentEntry,
-  Project,
-  ProjectPatch,
-} from "@agent-hub/core";
+import type { MemoryDocument, MemoryDocumentEntry, Project } from "@agent-hub/core";
 import { MEMORY_DOCUMENT_MAX_CHARS } from "@agent-hub/core";
 import { MemoryDocumentConflictError } from "@agent-hub/db";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
+import { requireReadableProject } from "./work-access";
 import {
   requireEditableTeammate,
   requireReadableTeammate,
@@ -15,7 +11,8 @@ import {
 } from "./teammate-access";
 
 /**
- * Memory documents and Projects (#771).
+ * Memory documents (#771). The Project itself, its fields and its lifecycle,
+ * lives in `projects-work.ts`; its decisions document lives here.
  *
  * Three layers, three different answers to "who may change this", and the
  * differences are the whole design:
@@ -37,23 +34,9 @@ import {
 const bodySchema = z.string().max(MEMORY_DOCUMENT_MAX_CHARS * 2);
 const noteSchema = z.string().max(300).default("");
 
-export const projectPatchSchema = z
-  .object({
-    name: z.string().min(1).max(120),
-    description: z.string().max(2000),
-    archived: z.boolean(),
-  })
-  .partial() satisfies z.ZodType<ProjectPatch, ProjectPatch>;
-
-async function requireProject(
-  ctx: OperationContext,
-  id: string
-): Promise<Project> {
-  const project = await ctx.db.table("projects").get(id);
-  if (!project || project.organizationId !== ctx.organizationId) {
-    throw new OperationError("not_found", "Project not found");
-  }
-  return project;
+/** A Project the caller can see, for the reads and the document writes. */
+async function requireProject(ctx: OperationContext, id: string): Promise<Project> {
+  return (await requireReadableProject(ctx, id)).project;
 }
 
 /** A document plus its history: what every read surface renders. */
@@ -62,7 +45,7 @@ export interface MemoryDocumentView {
   entries: MemoryDocumentEntry[];
 }
 
-async function readWithHistory(
+export async function readWithHistory(
   ctx: OperationContext,
   document: MemoryDocument | null
 ): Promise<MemoryDocumentView> {
@@ -75,92 +58,6 @@ async function readWithHistory(
     ),
   };
 }
-
-// ── Projects ────────────────────────────────────────────────────────────────
-
-export const listProjectsOp = defineOperation({
-  name: "projects.list",
-  capability: "member",
-  effect: "read",
-  input: z.object({}),
-  entities: () => [],
-  run: (ctx): Promise<Project[]> =>
-    ctx.db.table("projects").list({ organizationId: ctx.organizationId }),
-});
-
-export const getProjectOp = defineOperation({
-  name: "projects.get",
-  capability: "member",
-  effect: "read",
-  input: z.object({ id: z.string().min(1) }),
-  entities: () => [],
-  run: async (
-    ctx,
-    { id }
-  ): Promise<{ project: Project } & MemoryDocumentView> => {
-    const project = await requireProject(ctx, id);
-    const document = await ctx.db.getMemoryDocument(ctx.organizationId, {
-      scope: "project",
-      projectId: id,
-    });
-    return { project, ...(await readWithHistory(ctx, document)) };
-  },
-});
-
-export const createProjectOp = defineOperation({
-  name: "projects.create",
-  capability: "edit",
-  effect: "write",
-  input: z.object({
-    name: z.string().min(1).max(120),
-    description: z.string().max(2000).default(""),
-  }),
-  entities: () => [{ kind: "projectList" as const }],
-  run: (ctx, input): Promise<Project> =>
-    ctx.db.table("projects").insert({
-      organizationId: ctx.organizationId,
-      name: input.name,
-      description: input.description,
-      createdBy: ctx.userId || null,
-    }),
-});
-
-export const updateProjectOp = defineOperation({
-  name: "projects.update",
-  capability: "edit",
-  effect: "write",
-  input: z.object({ id: z.string().min(1), patch: projectPatchSchema }),
-  entities: ({ id }) => [
-    { kind: "project" as const, id },
-    { kind: "projectList" as const },
-  ],
-  run: async (ctx, { id, patch }): Promise<Project> => {
-    await requireProject(ctx, id);
-    return ctx.db.table("projects").update(id, patch);
-  },
-});
-
-export const deleteProjectOp = defineOperation({
-  name: "projects.delete",
-  capability: "edit",
-  effect: "consequential",
-  input: z.object({ id: z.string().min(1) }),
-  entities: ({ id }) => [
-    { kind: "project" as const, id },
-    { kind: "projectList" as const },
-    // Every attached Teammate loses its Project layer next turn, and every
-    // Improvement filed under it detaches.
-    { kind: "teammateList" as const },
-    { kind: "improvementList" as const },
-  ],
-  run: async (ctx, { id }): Promise<void> => {
-    await requireProject(ctx, id);
-    // The decisions go with it (FK cascade) and attached Teammates detach
-    // (`set null`), which is why deleting is offered at all: archiving is the
-    // move that keeps the record.
-    await ctx.db.table("projects").delete(id);
-  },
-});
 
 /**
  * Every memory write goes through here, so a lost update surfaces as the

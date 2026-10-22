@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Assistant, Flow, FlowAction, KnowledgeSearchResult } from "@agent-hub/core";
-import { DEFAULT_BASIC_REPLY } from "@agent-hub/core";
+import { createPiiMasker, DEFAULT_BASIC_REPLY, PII_DETECTORS } from "@agent-hub/core";
+import { withPiiMasking } from "./pii-masking";
 import type { ChatReplyPart } from "./types";
 import { simulateReadableStream } from "ai";
 import type { LanguageModel } from "ai";
@@ -1833,6 +1834,22 @@ describe("api_request", () => {
     });
     const result = await ACTION_HANDLERS.api_request(ctx);
     expect(result.templatePatch).toEqual({ userName: "Ada", secondId: "20" });
+  });
+
+  it("counts a value it extracts as a tool's under PII masking (#1079)", async () => {
+    egressFetchMock.mockResolvedValueOnce(okJson('{"owner":{"email":"owner@example.org"}}') as never);
+    const { ctx } = makeContext({
+      flow: apiFlow({
+        url: "https://api.example.com/",
+        jsonPaths: [{ id: "j1", path: "$.owner.email", variable: "ownerEmail" }],
+      }),
+    });
+    const masker = createPiiMasker(PII_DETECTORS);
+    const result = await withPiiMasking(masker, () => ACTION_HANDLERS.api_request(ctx));
+    // Later actions get the real value; a model given it gets the placeholder.
+    expect(result.templatePatch).toEqual({ ownerEmail: "owner@example.org" });
+    expect(masker.mask("owner@example.org")).toBe("[EMAIL_1]");
+    expect(masker.report()).toEqual([{ detector: "email", origin: "tool", count: 1 }]);
   });
 
   it("binds the whole response body when the path is blank", async () => {

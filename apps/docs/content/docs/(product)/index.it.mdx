@@ -19,7 +19,7 @@ basso a sinistra: **Home**, **Chat** e **Settings**.
 
 **Home** apre un selettore di navigazione a schermo intero. Trascina
 verticalmente, scorri o usa i tasti freccia per selezionare una destinazione.
-Tocca una destinazione oppure seleziona **Open** per accedervi. Scorrere non
+Tocca una destinazione o seleziona **Open** per accedervi. Lo scorrimento non
 apre le pagine.
 
 Il selettore contiene le pagine dell'area di lavoro e le sezioni di Assistant
@@ -29,8 +29,8 @@ per gli amministratori e le impostazioni personali.
 L'icona Search in alto a sinistra apre **Find** su telefoni e tablet. Rimane
 disponibile quando **Home** è aperto.
 
-Seleziona il nome dell'organizzazione nella parte superiore di **Home** per
-visualizzare le organizzazioni a cui puoi passare.
+Seleziona il nome dell'Organization nella parte superiore di **Home** per
+visualizzare le Organization a cui puoi passare.
 
 **Chat** apre l'area di lavoro della chat. **Settings** apre una visualizzazione
 a schermo intero su telefoni e tablet touch, con controlli più grandi. Le tre
@@ -48,7 +48,7 @@ Trascina il bordo di una colonna per modificarne la larghezza. I controlli di
 ridimensionamento rimangono disponibili anche nei pannelli stretti. Le
 intestazioni mantengono i relativi controlli di ordinamento e filtro.
 
-Se le colonne non rientrano nel pannello, usa la barra di scorrimento
+Se le colonne non rientrano nel pannello, utilizza la barra di scorrimento
 orizzontale per raggiungerle. I valori rimangono nelle rispettive colonne.
 
 Tutte le colonne di dati hanno la stessa larghezza minima di 120 pixel. La
@@ -57,6 +57,62 @@ quadratino di ridimensionamento e aver ricaricato la pagina. Le caselle di
 spunta per la selezione occupano la stessa posizione nell'intestazione e in ogni
 riga.
 
+**Total Results** mostra il numero di elementi che corrispondono ai filtri. La
+funzione Search e i filtri della tabella si trovano sulla destra, accanto a
+**Undo** / **Redo**. Usa **Previous**, un numero di pagina o **Next** sotto la
+tabella per cambiare pagina. Ove disponibile, il controllo della dimensione
+della pagina modifica il numero di righe visualizzate contemporaneamente. Il
+totale indica il numero di elementi corrispondenti in tutte le pagine.
+
+Questi controlli sono presenti anche nelle tabelle di utilizzo di Settings,
+nelle tabelle dei dati di Insights e nei risultati di Eval. I documenti
+importati possono essere filtrati per tipo di file. Le esecuzioni recenti di
+Eval possono essere filtrate per stage, assistant e dataset. Le tabelle dei
+documenti presentano una colonna **Actions** visibile per aprire un documento,
+copiarne l'ID e, ove consentito, escluderlo o ripristinarlo.
+
+Nei pannelli stretti, i filtri si spostano sotto al conteggio dei risultati e ai
+controlli della cronologia. I filtri attivi mantengono un'evidenziazione
+visibile. Il campo di ricerca dispone di un pulsante Clear. Mantiene il focus
+sul campo dopo che hai cancellato la query.
+
+Trascina l'handle dell'intestazione per spostare una colonna di dati. L'intera
+colonna si sposta con il puntatore e le altre colonne si spostano immediatamente
+fuori dalla sua traiettoria. Quando scorri una tabella lateralmente, le prime
+due colonne rimangono visibili. La barra laterale delle caselle di spunta e la
+colonna Actions mantengono le loro posizioni. L'ordine delle colonne viene
+salvato solo nel tuo browser, separatamente per ogni membro, organizzazione e
+tabella. Non modifica l'ordine del server. La cancellazione dei dati del browser
+di questo sito li ripristina. Le righe seguono l'ordinamento e la paginazione
+della tabella e non possono essere riordinate trascinandole. L'ordinamento viene
+applicato al set di risultati prima della paginazione.
+
+Seleziona la maniglia di trascinamento di una colonna e usa **Alt + Left/Right**
+per spostarla. Gli spostamenti tramite tastiera vengono applicati
+immediatamente. Clicca su una cella, quindi premi Shift e clicca su un'altra
+cella per selezionare un rettangolo. I tasti freccia ti consentono di spostarti
+tra le celle. Tieni premuto Shift per estendere la selezione. **Copy** copia le
+celle selezionate come testo separato da tabulazioni. **Escape** deseleziona le
+celle.
+
+**Undo** e **Redo** ripristinano le modifiche alla visualizzazione durante la
+sessione corrente: trascinamento, larghezze, ordinamento supportato, filtri
+delle colonne e selezioni. **Cmd/Ctrl + Z** annulla una modifica. **Cmd/Ctrl +
+Shift + Z** o **Ctrl + Y** la ripete. Queste scorciatoie lasciano intatto lo
+storico delle modifiche dei singoli campi di testo. Fai doppio clic su una cella
+modificabile (oppure premi Enter/F2) per cambiarne il valore. Gli editor a riga
+singola mantengono stabile l'altezza della riga. **Escape** annulla la modifica
+e riporta il focus sulla cella. I nomi, gli assistenti collegati, i contenuti
+delle FAQ e la categoria/il problema/lo stato degli avvisi utilizzano le
+autorizzazioni esistenti e le azioni di salvataggio. Gli URL di scansione, lo
+stato della fonte e i timestamp rimangono in sola lettura. I ruoli dei membri
+vengono visualizzati come categorie colorate e possono essere modificati dagli
+amministratori autorizzati o dai proprietari. I passaggi di proprietà mantengono
+la relativa conferma. Le operazioni di modifica, eliminazione, importazione dei
+record e le azioni in blocco mantengono i rispettivi workflow e le relative
+conferme.
+
+
 ## Modifiche al testo
 
 I contatori della dashboard e le etichette delle azioni che cambiano utilizzano
@@ -64,21 +120,39 @@ Torph per mantenere il testo continuo quando i valori variano. Il testo rimane
 leggibile prima del caricamento della libreria di animazioni. L'impostazione di
 riduzione dei movimenti del sistema operativo disattiva queste transizioni.
 
-Una Publication andata a buon fine e una richiesta di conferma della newsletter
-andata a buon fine mostrano coriandoli. Quando completi la conferma via email
-per la newsletter, viene visualizzato lo stesso effetto. Le richieste non andate
-a buon fine non mostrano coriandoli. L'impostazione Reduced motion disattiva
-l'effetto.
+Una Publication riuscita e una richiesta di conferma della newsletter andata a
+buon fine mostrano i coriandoli. Quando completi la conferma via email per la
+newsletter, viene visualizzato lo stesso effetto. Le richieste non andate a buon
+fine non mostrano coriandoli. L'impostazione Reduced motion disattiva l'effetto.
+
+## Menu dell'account
+
+Apri **Profile and preferences** accanto a **New chat** per visualizzare la tua
+scheda account. **Profile** apre le tue impostazioni personali. **Theme**
+consente di passare dalla modalità chiara a quella scura e viceversa. Il
+pulsante del volume accanto a **Sounds** controlla l'audio dell'interfaccia su
+questo dispositivo. Le onde sonore indicano che l'audio è abilitato. Un
+altoparlante barrato indica che l'audio è disattivato.
+
+Seleziona **Logout** per terminare la tua sessione autenticata e tornare alla
+pagina di accesso. La funzione Logout è disabilitata in modalità demo, che non
+prevede alcuna sessione di accesso.
+
+**Profile setup** mostra il tuo nome, cognome, username, foto e indirizzo email
+di accesso salvati, sotto forma di conteggio di completamento e barra di
+avanzamento. In modalità demo, il conteggio include solo i quattro campi del
+profilo modificabili. Seleziona **Next** per aprire Profile settings e compilare
+il campo suggerito. Un avatar generato non conta come una foto caricata.
 
 ## Suoni dell'interfaccia
 
 La console, il sito pubblico e Ciele Desktop riproducono brevi suoni per
 pulsanti, interruttori, menu e risultati. Anche le aree di chat nella console
 emettono un suono quando invii un messaggio e quando arriva una risposta. Su un
-telefono, negli stessi momenti viene emesso un breve feedback tattile.
+telefono, negli stessi momenti viene emesso un breve feedback aptico.
 
 Per disattivare i suoni, apri il menu Account e imposta **Sounds** su off. La
-scelta viene memorizzata su questo dispositivo. In Ciele Desktop, usa
+scelta viene memorizzata su questo dispositivo. In Ciele Desktop, utilizza
 **Interface sounds** in **Settings**. Il feedback tattile segue l'impostazione
 di riduzione dei movimenti del sistema operativo.
 
@@ -87,7 +161,7 @@ selezioni una destinazione nel Home picker, senti un breve clic. Lo scorrimento
 rapido limita i tick, mentre l'impostazione di movimento ridotto li disattiva.
 
 Il widget pubblicato riproduce solo due suoni. Un Visitor sente un suono quando
-il messaggio viene inviato e un altro quando arriva la risposta. Nessun elemento
+il messaggio viene inviato e un suono quando arriva la risposta. Nessun elemento
 in un Assistant o in un'Organization li configura.
 
 ## Sezioni della documentazione
@@ -101,15 +175,15 @@ in un Assistant o in un'Organization li configura.
 
 ## Attività principali
 
-- Crea un Assistente e seleziona il suo modello.
-- Aggiungi siti web, file, testo e FAQ a Knowledge.
+- Crea un Assistant e seleziona il suo modello.
+- Aggiungi siti web, file, testo e FAQ alla Knowledge.
 - Importa Records strutturati e collegali a un Assistant.
 - Quando necessario, ricorda i fatti permanenti per i Visitor connessi.
 - Instrada i messaggi attraverso Flows ordinati.
-- Invia notifiche proattive dagli eventi di pagina e di chat.
+- Invia Notifications proattive da eventi di pagina e di chat.
 - Collega i Visitor a un Help Desk.
-- Pubblica uno snapshot di configurazione immutabile.
-- Rivedi Conversations, Improvements, Insights, Exports, Goals e Alerts.
+- Pubblica un'istantanea di configurazione immutabile.
+- Esamina Conversations, Improvements, Insights, Exports, Goals e Alerts.
 
 Inizia con [Getting started](/getting-started). Leggi [Editions](/editions)
 prima di scegliere un'installazione hosted o self-hosted.

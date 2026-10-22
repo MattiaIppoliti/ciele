@@ -9,19 +9,15 @@ import {
 import type { Db } from "@agent-hub/db";
 import { OperationError, type OperationContext, type TeammateActor } from "./operation";
 import {
-  createProjectOp,
-  deleteProjectOp,
-  getProjectOp,
   getTeammateMemoryOp,
-  listProjectsOp,
   recordProjectDecisionOp,
   rememberAboutMemberOp,
   revertMyMemoryOp,
-  updateProjectOp,
   writeMyMemoryOp,
   writeProjectDocumentOp,
   writeTeammateMemoryOp,
 } from "./memory";
+import { createProjectOp, deleteProjectOp, getProjectOp, listProjectsOp, updateProjectOp } from "./projects-work";
 import { teammateMemoryActions } from "./teammate-actions";
 import {
   createTeammateOp,

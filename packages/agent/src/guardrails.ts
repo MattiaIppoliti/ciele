@@ -13,6 +13,7 @@ import {
 } from "@agent-hub/core";
 import { decide, type ResolvedDecisionModel } from "./decision-model";
 import { resolveProviderCredential, type KeyResolution } from "./models";
+import { maskOutbound } from "./pii-masking";
 import { raceTimeout } from "./preflight-shadow";
 import type { ChatReplyPart, RuntimeEvent, UsageEvent } from "./types";
 
@@ -121,7 +122,7 @@ async function moderationBlocks(
   const response = await (deps.fetch ?? fetch)(OPENAI_MODERATION_URL, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: guardrail.model, input: message }),
+    body: JSON.stringify({ model: guardrail.model, input: maskOutbound(message) }),
     signal,
   });
   if (!response.ok) return { kind: "unavailable", detail: `Moderation returned ${response.status}` };

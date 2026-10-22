@@ -5,13 +5,24 @@ import { TableCategory, type TableCategoryTone } from "@/components/ui/table-edi
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useMemo, useState, useTransition } from "react";
 import type { Invite, Member, Role } from "@agent-hub/core";
-import { Plus, Trash2 } from "lucide-react";
+import { Check, Minus, Plus, Trash2 } from "lucide-react";
 import { ChevronDown, Link2 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { createInviteAction, updateMemberRoleAction } from "@/app/actions";
+import { createInvitesAction, updateMemberRoleAction } from "@/app/actions";
+import { MAX_INVITES_PER_SUBMIT, describeInviteOutcome, parseInviteEmails } from "@/lib/invite-emails";
+import { MATRIX_ROLES, roleMatrix } from "@/lib/role-matrix";
 import { Table, type TableColumn } from "@/components/motion/table";
+import {
+  Table as SheetTable,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { RemoveMemberModal } from "@/components/settings/remove-member-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
@@ -41,6 +52,57 @@ function inviteUrl(token: string): string {
   return `${window.location.origin}/join/${token}`;
 }
 
+const ROLE_TONES = {
+  owner: "purple",
+  admin: "blue",
+  editor: "green",
+  viewer: "gray",
+} as const satisfies Record<Role, TableCategoryTone>;
+
+/**
+ * What each Role may do (#1074), asked of the predicate the operations use.
+ * On the shared table, read-only: a fixed reference, so no search or sort.
+ */
+function RolesMatrix() {
+  const rows = useMemo(() => roleMatrix(), []);
+  return (
+    <TableCard title="Roles" results={{ total: rows.length, noun: "permission" }}>
+      <SheetTable aria-label="What each role can do" className="min-w-[34rem]">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Permission</TableHead>
+            {MATRIX_ROLES.map((role) => (
+              <TableHead key={role} className="w-28 text-center [&>[data-table-value]]:justify-center">
+                <TableCategory tone={ROLE_TONES[role]}>{capitalize(role)}</TableCategory>
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.capability}>
+              <TableCell className="whitespace-normal">
+                <span className="block font-medium">{row.label}</span>
+                <span className="text-muted-foreground block text-xs">{row.detail}</span>
+              </TableCell>
+              {MATRIX_ROLES.map((role) => (
+                <TableCell key={role} className="text-center">
+                  {row.allowed[role] ? (
+                    <Check aria-hidden className="text-foreground mx-auto size-4" />
+                  ) : (
+                    <Minus aria-hidden className="text-muted-foreground/50 mx-auto size-4" />
+                  )}
+                  <span className="sr-only">{row.allowed[role] ? "Allowed" : "Not allowed"}</span>
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </SheetTable>
+    </TableCard>
+  );
+}
+
 export function MembersClient({
   members,
   invites,
@@ -60,7 +122,13 @@ export function MembersClient({
   canInvite: boolean;
   demo: boolean;
 }) {
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteEmails, setInviteEmails] = useState("");
+  const parsedEmails = useMemo(() => parseInviteEmails(inviteEmails), [inviteEmails]);
+  const inviteProblem = parsedEmails.invalid.length
+    ? `Not an email address: ${parsedEmails.invalid.join(", ")}`
+    : parsedEmails.tooMany
+      ? `Invite at most ${MAX_INVITES_PER_SUBMIT} people at a time`
+      : null;
   const [inviteRole, setInviteRole] = useState<Role>("editor");
   const [pendingRemoval, setPendingRemoval] = useState<MemberRow | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -89,20 +157,33 @@ export function MembersClient({
 
   function handleInvite(e: React.FormEvent) {
     e.preventDefault();
+    if (inviteProblem) return;
     startInvite(async () => {
-      let invite: Invite;
+      let outcome: Awaited<ReturnType<typeof createInvitesAction>>;
       try {
-        invite = await createInviteAction(inviteRole, inviteEmail || undefined);
+        outcome = await createInvitesAction(inviteRole, inviteEmails);
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Could not create the invite",
         );
         return;
       }
-      const copied = await copyText(invite.id, inviteUrl(invite.token));
+      // Only what failed stays in the box, so a second submit retries those.
+      const summary = describeInviteOutcome(outcome);
+      setInviteEmails(summary.keep);
+      const [only] = outcome.created;
+      const single =
+        only && outcome.created.length === 1 && !outcome.failed.length &&
+        !outcome.alreadyInvited.length && !outcome.alreadyMembers.length;
+      if (!single) {
+        if (summary.tone === "error") toast.error(summary.message);
+        else if (outcome.created.length > 1) toast.success(`${summary.message}. Copy each link from the list`);
+        else toast.success(summary.message);
+        return;
+      }
+      const copied = await copyText(only.id, inviteUrl(only.token));
       if (copied) toast.success("Invite created, link copied to clipboard");
       else toast.success("Invite created, use Copy link to copy it");
-      setInviteEmail("");
     });
   }
 
@@ -213,7 +294,7 @@ export function MembersClient({
         options: assignableRoles(canManageOwners).map((value) => ({ value, label: capitalize(value) })),
         onSave: (value) => changeRole(row, value as Role),
       } : undefined,
-      cell: (row) => <TableCategory tone={({ owner: "purple", admin: "blue", editor: "green", viewer: "gray" } satisfies Record<Role, TableCategoryTone>)[row.role]}>{capitalize(row.role)}</TableCategory>,
+      cell: (row) => <TableCategory tone={ROLE_TONES[row.role]}>{capitalize(row.role)}</TableCategory>,
     },
     {
       key: "actions",
@@ -290,18 +371,22 @@ export function MembersClient({
       {canInvite && (
         <TimelineSection title="Invite people" boxed>
           <p className="text-muted-foreground text-sm">
-            Creates a join link you can share. Email is optional (just a note).
+            Creates a join link for each address. Separate several with commas,
+            spaces or new lines. Leave it empty for one link you share yourself.
           </p>
           <form onSubmit={handleInvite} className="members-invite-form mt-3 flex flex-wrap items-center gap-2">
             <Input
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="email (optional)"
-              aria-label="Invite email (optional)"
-              type="email"
+              value={inviteEmails}
+              onChange={(e) => setInviteEmails(e.target.value)}
+              placeholder="ada@example.com, grace@example.com"
+              aria-label="Emails to invite (optional)"
+              aria-invalid={inviteProblem ? true : undefined}
+              aria-describedby={inviteProblem ? "invite-emails-problem" : undefined}
+              type="text"
+              inputMode="email"
               autoComplete="off"
               spellCheck={false}
-              className="h-9 w-full sm:w-64"
+              className="h-9 w-full sm:w-80"
             />
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -329,13 +414,31 @@ export function MembersClient({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button type="submit" className="h-9" disabled={inviting}>
+            <Button type="submit" className="h-9" disabled={inviting || inviteProblem !== null}>
               <Plus className="size-4" />
-              <RollInText text={inviting ? "Creating…" : "Create invite"} />
+              <RollInText
+                text={
+                  inviting
+                    ? "Creating…"
+                    : parsedEmails.emails.length > 1
+                      ? `Create ${parsedEmails.emails.length} invites`
+                      : "Create invite"
+                }
+              />
             </Button>
           </form>
+          {inviteProblem && (
+            // Read with the field through `aria-describedby`; an alert here
+            // would interrupt on every keystroke of an address still being typed.
+            <p id="invite-emails-problem" className="text-destructive mt-2 text-sm">
+              {inviteProblem}
+            </p>
+          )}
         </TimelineSection>
       )}
+      <TimelineSection title="Roles">
+        <RolesMatrix />
+      </TimelineSection>
       </SectionTimeline>
       {confirmDeleteModal}
     </div>

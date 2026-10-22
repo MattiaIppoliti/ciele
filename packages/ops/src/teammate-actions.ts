@@ -36,6 +36,8 @@ import {
   updateOrgFaqOp,
 } from "./knowledge";
 import { draftFlowOp, getFlowOp, listFlowsOp, proposeFlowOp } from "./flows";
+import { createTaskOp, getTaskOp, listTasksOp, updateTaskOp } from "./tasks";
+import { createTaskCommentOp, listTaskCommentsOp } from "./task-comments";
 
 /**
  * What a granted domain actually lets an AI Teammate do (#770).
@@ -325,6 +327,57 @@ const FLOWS: TeammateActionSpec[] = [
   },
 ];
 
+/**
+ * Projects' Tasks (#1069). Reads, create, update and a comment; `tasks.delete`,
+ * `tasks.archive` and the bulk update are left out by name, because the
+ * ceiling cannot keep them out (both are `edit`, like the update an agent
+ * legitimately needs) and a hard delete takes subtasks, comments and files
+ * with it. A write here records the Teammate as the actor and the Member who
+ * asked as the one it acted for, so Activity reads "Teammate for Member".
+ */
+const TASKS: TeammateActionSpec[] = [
+  {
+    operation: listTasksOp,
+    label: "List tasks",
+    domain: "tasks",
+    description:
+      "List tasks in the projects you can see: one project's or every project's, optionally only one person's or only some statuses.",
+  },
+  {
+    operation: getTaskOp,
+    label: "Read a task",
+    domain: "tasks",
+    description: "Read one task in full: its fields, subtasks, labels and what blocks it.",
+  },
+  {
+    operation: createTaskOp,
+    label: "Create a task",
+    domain: "tasks",
+    description:
+      "Create a task in a project, with a title and, if you know them, a description, an assignee, a priority and dates.",
+  },
+  {
+    operation: updateTaskOp,
+    label: "Update a task",
+    domain: "tasks",
+    description:
+      "Change a task: its status, assignee, priority, dates, title or description, its labels, or what blocks it.",
+  },
+  {
+    operation: listTaskCommentsOp,
+    label: "Read a task's comments",
+    domain: "tasks",
+    description: "Read the comments on one task, oldest first.",
+  },
+  {
+    operation: createTaskCommentOp,
+    label: "Comment on a task",
+    domain: "tasks",
+    description:
+      "Leave a comment on a task. Mention a colleague as @[Name](member:<id>) to notify them.",
+  },
+];
+
 export const TEAMMATE_ACTION_CATALOG: Record<
   TeammateGrantDomain,
   readonly TeammateActionSpec[]
@@ -333,6 +386,7 @@ export const TEAMMATE_ACTION_CATALOG: Record<
   knowledge: KNOWLEDGE,
   inbox: INBOX,
   flows: FLOWS,
+  tasks: TASKS,
 };
 
 /**

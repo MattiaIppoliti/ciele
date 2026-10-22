@@ -11,6 +11,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { VoiceBeam } from "voice-glow";
 import {
   Fragment,
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -103,6 +104,15 @@ export interface PromptInputProps extends Omit<
    * colour and weight-free decoration are safe; boxes with padding are not.
    */
   highlight?: ReactNode;
+  /**
+   * `agent` is the composer an empty chat opens on: the box sits in a tray
+   * whose lower strip holds `footer`, and the model picker moves to the right,
+   * beside send. `default` is the composer a conversation keeps once it has
+   * started, and the one every other panel uses.
+   */
+  variant?: "default" | "agent";
+  /** The tray's lower strip, in `agent` only: controls about the chat, not the message. */
+  footer?: ReactNode;
   className?: string;
 }
 
@@ -136,6 +146,8 @@ export function PromptInput({
   leadingAction,
   voiceInput,
   highlight,
+  variant = "default",
+  footer,
   className,
   disabled,
   placeholder = "Ask the agent to do something…",
@@ -239,210 +251,261 @@ export function PromptInput({
     submit();
   };
 
-  const form = (
-    <form
-      data-slot="prompt-input"
-      onSubmit={submit}
+  const measurementLayer = (
+    <div
+      ref={measurementRef}
+      aria-hidden="true"
       className={cn(
-        "relative w-full rounded-2xl border border-border/80 bg-background p-2 transition-colors focus-within:border-foreground/25",
-        disabled && "opacity-60",
-        className,
+        "pointer-events-none invisible absolute inset-x-2 top-0",
+        TEXT_LAYER,
       )}
     >
-      <div
-        ref={measurementRef}
-        aria-hidden="true"
-        className={cn(
-          "pointer-events-none invisible absolute inset-x-2 top-0",
-          TEXT_LAYER,
-        )}
-      >
-        {`${currentValue}\u200b`}
-      </div>
-      <div className="relative">
-        {highlight ? (
-          <div
-            ref={highlightRef}
-            aria-hidden="true"
-            // Same box as the textarea, minus the scrollbar: it scrolls in step
-            // with it (see the effect below) rather than showing its own. This
-            // layer paints every glyph, which is why it carries the text colour
-            // and the textarea gives its own up.
-            className={cn(
-              "pointer-events-none absolute inset-0 overflow-hidden text-foreground",
-              TEXT_LAYER,
-            )}
-          >
-            {highlight}
-          </div>
-        ) : null}
-        <textarea
-          ref={textareaRef}
-          value={currentValue}
-          disabled={disabled}
-          placeholder={placeholder}
-          aria-label={ariaLabel}
-          rows={minRows}
-          {...textareaProps}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={handleKeyDown}
-          onScroll={syncHighlightScroll}
-          // 16px below `md`: iOS Safari zooms the page in when a focused field
-          // is smaller than that, and never zooms back out, on the chat
-          // composer, the one control every mobile visitor touches.
-          // The app-wide focused-field painter owns the smooth caret.
+      {`${currentValue}\u200b`}
+    </div>
+  );
+
+  const textareaBlock = (
+    <div className="relative">
+      {highlight ? (
+        <div
+          ref={highlightRef}
+          aria-hidden="true"
+          // Same box as the textarea, minus the scrollbar: it scrolls in step
+          // with it (see the effect below) rather than showing its own. This
+          // layer paints every glyph, which is why it carries the text colour
+          // and the textarea gives its own up.
           className={cn(
-            "scrollbar-hide relative block w-full resize-none overflow-y-auto bg-transparent caret-foreground outline-none placeholder:text-muted-foreground/55",
+            "pointer-events-none absolute inset-0 overflow-hidden text-foreground",
             TEXT_LAYER,
-            // With a highlight layer under it the glyphs come from there, and
-            // this element contributes only the selection.
-            highlight
-              ? "text-transparent selection:bg-primary/30 selection:text-transparent"
-              : "text-foreground",
           )}
-        />
-      </div>
+        >
+          {highlight}
+        </div>
+      ) : null}
+      <textarea
+        ref={textareaRef}
+        value={currentValue}
+        disabled={disabled}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        rows={minRows}
+        {...textareaProps}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={handleKeyDown}
+        onScroll={syncHighlightScroll}
+        // 16px below `md`: iOS Safari zooms the page in when a focused field
+        // is smaller than that, and never zooms back out, on the chat
+        // composer, the one control every mobile visitor touches.
+        // The app-wide focused-field painter owns the smooth caret.
+        className={cn(
+          "scrollbar-hide relative block w-full resize-none overflow-y-auto bg-transparent caret-foreground outline-none placeholder:text-muted-foreground/55",
+          TEXT_LAYER,
+          // With a highlight layer under it the glyphs come from there, and
+          // this element contributes only the selection.
+          highlight
+            ? "text-transparent selection:bg-primary/30 selection:text-transparent"
+            : "text-foreground",
+        )}
+      />
+    </div>
+  );
 
-      <div className="mt-1 flex min-h-8 items-center gap-1">
-        {actions.length ? (
-          <MorphPopover open={actionsOpen} onOpenChange={setActionsOpen}>
-            <MorphPopoverTrigger>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={disabled || inputBusy}
-                aria-label="Add to prompt"
-                className="size-8 rounded-full"
-              >
-                <motion.span
-                  aria-hidden="true"
-                  animate={{ rotate: actionsOpen ? 45 : 0 }}
-                  transition={reduce ? { duration: 0 } : SPRING_SWAP}
-                >
-                  <Plus className="size-4" />
-                </motion.span>
-              </Button>
-            </MorphPopoverTrigger>
-
-            <MorphPopoverContent
-              side="top"
-              align="start"
-              className="w-56 p-1.5"
+  const plusMenu = (
+    <>
+      {actions.length ? (
+        <MorphPopover open={actionsOpen} onOpenChange={setActionsOpen}>
+          <MorphPopoverTrigger>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={disabled || inputBusy}
+              aria-label="Add to prompt"
+              className="size-8 rounded-full"
             >
-              {actions.map((action) => (
-                <CieleButton variant="ghost" size="sm" wrap
-                  key={action.value}
-                  type="button"
-                  disabled={action.disabled}
-                  onClick={() => {
-                    onAction?.(action.value);
-                    setActionsOpen(false);
-                  }}
-                  className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left outline-none transition-colors hover:bg-muted focus-visible:bg-muted disabled:pointer-events-none disabled:opacity-50"
-                >
-                  {action.icon ? (
-                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center text-muted-foreground [&_svg]:size-4">
-                      {action.icon}
+              <motion.span
+                aria-hidden="true"
+                animate={{ rotate: actionsOpen ? 45 : 0 }}
+                transition={reduce ? { duration: 0 } : SPRING_SWAP}
+              >
+                <Plus className="size-4" />
+              </motion.span>
+            </Button>
+          </MorphPopoverTrigger>
+
+          <MorphPopoverContent
+            side="top"
+            align="start"
+            className="w-56 p-1.5"
+          >
+            {actions.map((action) => (
+              <CieleButton variant="ghost" size="sm" wrap
+                key={action.value}
+                type="button"
+                disabled={action.disabled}
+                // A menu row, not a button: the icon starts at the row's
+                // inset. Inline, because button.css centres its content
+                // unlayered, above any Tailwind utility.
+                style={{ justifyContent: "flex-start", "--radius": "0.5rem" } as CSSProperties}
+                onClick={() => {
+                  onAction?.(action.value);
+                  setActionsOpen(false);
+                }}
+                className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left outline-none transition-colors hover:bg-muted focus-visible:bg-muted disabled:pointer-events-none disabled:opacity-50"
+              >
+                {action.icon ? (
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center text-muted-foreground [&_svg]:size-4">
+                    {action.icon}
+                  </span>
+                ) : null}
+                <span className="min-w-0">
+                  <span className="block text-sm text-foreground">
+                    {action.label}
+                  </span>
+                  {action.description ? (
+                    <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">
+                      {action.description}
+                    </span>
+                  ) : null}
+                </span>
+              </CieleButton>
+            ))}
+          </MorphPopoverContent>
+        </MorphPopover>
+      ) : null}
+    </>
+  );
+
+  const modelPicker = (
+    <>
+      {models.length ? (
+        <Select
+          value={currentModelValue}
+          onValueChange={setModel}
+          disabled={disabled || inputBusy}
+          className={variant === "agent" ? "min-w-0" : "min-w-0 flex-1"}
+        >
+          <SelectTrigger className="h-8 max-w-52 rounded-xl border-0 bg-transparent px-2 py-0 text-xs hover:bg-muted focus-visible:ring-2">
+            <span className="flex min-w-0 items-center gap-1.5">
+              {currentModel?.icon ? (
+                <span className="grid size-4 shrink-0 place-items-center text-muted-foreground [&_svg]:size-3.5">
+                  {currentModel.icon}
+                </span>
+              ) : null}
+              <span className="truncate text-muted-foreground">
+                {typeof currentModel?.label === "string" ? <RollInText text={currentModel.label} truncate={false} /> : currentModel?.label ?? "Choose model"}
+              </span>
+            </span>
+          </SelectTrigger>
+          <SelectContent side="top" className="right-auto w-64 shadow-none">
+            {models.map((option) => (
+              <Fragment key={option.value}>
+              <SelectItem
+                value={option.value}
+                disabled={option.disabled}
+                className="py-2"
+              >
+                <span className={cn("flex min-w-0 gap-2", option.description ? "items-start" : "items-center")}>
+                  {option.icon ? (
+                    <span className="grid size-5 shrink-0 place-items-center text-muted-foreground [&_svg]:size-4">
+                      {option.icon}
                     </span>
                   ) : null}
                   <span className="min-w-0">
-                    <span className="block text-sm text-foreground">
-                      {action.label}
+                    <span className="block truncate text-sm text-foreground">
+                      {option.label}
                     </span>
-                    {action.description ? (
-                      <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">
-                        {action.description}
+                    {option.description ? (
+                      <span className="mt-0.5 block text-xs leading-4 whitespace-normal text-muted-foreground">
+                        {option.description}
                       </span>
                     ) : null}
                   </span>
-                </CieleButton>
-              ))}
-            </MorphPopoverContent>
-          </MorphPopover>
-        ) : null}
-        {leadingAction}
-        {models.length ? (
-          <Select
-            value={currentModelValue}
-            onValueChange={setModel}
-            disabled={disabled || inputBusy}
-            className="min-w-0 flex-1"
-          >
-            <SelectTrigger className="h-8 max-w-52 rounded-xl border-0 bg-transparent px-2 py-0 text-xs hover:bg-muted focus-visible:ring-2">
-              <span className="flex min-w-0 items-center gap-1.5">
-                {currentModel?.icon ? (
-                  <span className="grid size-4 shrink-0 place-items-center text-muted-foreground [&_svg]:size-3.5">
-                    {currentModel.icon}
-                  </span>
-                ) : null}
-                <span className="truncate text-muted-foreground">
-                  {typeof currentModel?.label === "string" ? <RollInText text={currentModel.label} truncate={false} /> : currentModel?.label ?? "Choose model"}
                 </span>
-              </span>
-            </SelectTrigger>
-            <SelectContent side="top" className="right-auto w-64 shadow-none">
-              {models.map((option) => (
-                <Fragment key={option.value}>
-                <SelectItem
-                  value={option.value}
-                  disabled={option.disabled}
-                  className="py-2"
-                >
-                  <span className={cn("flex min-w-0 gap-2", option.description ? "items-start" : "items-center")}>
-                    {option.icon ? (
-                      <span className="grid size-5 shrink-0 place-items-center text-muted-foreground [&_svg]:size-4">
-                        {option.icon}
-                      </span>
-                    ) : null}
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm text-foreground">
-                        {option.label}
-                      </span>
-                      {option.description ? (
-                        <span className="mt-0.5 block text-xs leading-4 whitespace-normal text-muted-foreground">
-                          {option.description}
-                        </span>
-                      ) : null}
-                    </span>
-                  </span>
-                </SelectItem>
-                {option.separatorAfter ? <SelectSeparator /> : null}
-                </Fragment>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
+              </SelectItem>
+              {option.separatorAfter ? <SelectSeparator /> : null}
+              </Fragment>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
 
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-        {voiceInput ? (
-          <VoiceInputButton
-            {...voiceInput}
-            disabled={disabled || inputBusy}
-            onBusyChange={setVoiceBusy}
-            onStreamChange={setVoiceStream}
-            onTranscript={(text) => {
-              setValue(`${currentValue}${currentValue && !/\s$/.test(currentValue) ? " " : ""}${text}`);
-              textareaRef.current?.focus({ preventScroll: true });
-            }}
-          />
-        ) : null}
-        <Button
-          type={loading ? "button" : "submit"}
-          disabled={loading ? !onStop : !canSubmit}
-          aria-label={loading ? stopLabel : "Send prompt"}
-          title={loading ? stopLabel : undefined}
-          onClick={loading ? onStop : undefined}
-          className="size-8 rounded-full"
-        >
-          <MorphIcon
-            icon={loading ? StopData : ArrowUpData}
-            size={16}
-            fill={loading ? "currentColor" : "none"}
-          />
-        </Button>
-        </div>
+    </>
+  );
+
+  const sendActions = (
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+      {voiceInput ? (
+        <VoiceInputButton
+          {...voiceInput}
+          disabled={disabled || inputBusy}
+          onBusyChange={setVoiceBusy}
+          onStreamChange={setVoiceStream}
+          onTranscript={(text) => {
+            setValue(`${currentValue}${currentValue && !/\s$/.test(currentValue) ? " " : ""}${text}`);
+            textareaRef.current?.focus({ preventScroll: true });
+          }}
+        />
+      ) : null}
+      <Button
+        type={loading ? "button" : "submit"}
+        disabled={loading ? !onStop : !canSubmit}
+        aria-label={loading ? stopLabel : "Send prompt"}
+        title={loading ? stopLabel : undefined}
+        onClick={loading ? onStop : undefined}
+        className="size-8 rounded-full"
+      >
+        <MorphIcon
+          icon={loading ? StopData : ArrowUpData}
+          size={16}
+          fill={loading ? "currentColor" : "none"}
+        />
+      </Button>
       </div>
-    </form>
+  );
+
+  const agent = variant === "agent";
+  // One tree for both variants, so switching (an empty chat's first message)
+  // keeps the textarea, and the caret in it, instead of rebuilding the box.
+  // Outside `agent` the tray and the right-hand group are `display: contents`.
+  const form = (
+    // The tray is one step rounder than the box it holds (its padding wider),
+    // so the two corners stay concentric.
+    <div
+      data-slot="prompt-input-tray"
+      className={
+        agent
+          ? cn("flex w-full min-w-0 flex-col rounded-[2rem] bg-muted p-1.5 dark:bg-muted/60", className)
+          : "contents"
+      }
+    >
+      <form
+        data-slot="prompt-input"
+        onSubmit={submit}
+        className={cn(
+          "relative w-full border border-border/80 bg-background p-2 transition-colors focus-within:border-foreground/25",
+          agent ? "rounded-[1.625rem] dark:bg-input/30" : "rounded-2xl",
+          disabled && "opacity-60",
+          !agent && className,
+        )}
+      >
+        {measurementLayer}
+        {textareaBlock}
+
+        <div className="mt-1 flex min-h-8 items-center gap-1">
+          {plusMenu}
+          {leadingAction}
+          <div className={agent ? "ml-auto flex min-w-0 items-center gap-1" : "contents"}>
+            {modelPicker}
+            {sendActions}
+          </div>
+        </div>
+      </form>
+      {agent && footer ? (
+        <div className="flex min-h-9 min-w-0 items-center gap-0.5 px-1.5 pt-1.5 text-muted-foreground">
+          {footer}
+        </div>
+      ) : null}
+    </div>
   );
 
   // The beam is an overlay beside the form, not a wrapper around it: it clips

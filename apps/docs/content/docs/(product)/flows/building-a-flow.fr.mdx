@@ -1,6 +1,6 @@
 ---
 title: Créer un flux
-description: Configurez un déclencheur, les conditions disponibles et les actions de réponse dans l'ordre.
+description: Configurez un déclencheur, les conditions disponibles et les actions de réponse dans l’ordre.
 ---
 
 ## Créer le flux
@@ -9,30 +9,29 @@ description: Configurez un déclencheur, les conditions disponibles et les actio
 2. Sélectionnez **Flows**.
 3. Créez un Flow.
 4. Saisissez un nom et une description clairs.
-5. Sélectionnez un déclencheur.
+5. Sélectionnez un trigger.
 
-La description aide la classification des intentions (Intent Classification) à
-sélectionner un flux de messages (Flow). Indiquez l'intention du visiteur et le
-champ d'application requis.
+La description aide Intent Classification à sélectionner un Flow de message.
+Indiquez l’intention du visiteur et le champ d’application requis.
 
-Un Flow se déclenche à la réception d'un message de visiteur, lors d'un
-événement de widget ou à l'arrivée d'une requête HTTP entrante. Les événements
-du widget sont : page load, time on page et chat opens. Le déclencheur détermine
-quelles conditions et quelles actions le Flow peut utiliser. Consultez
+Un Flow se déclenche à la réception d’un message de visiteur, lors d’un
+événement de widget ou à la réception d’une requête HTTP entrante. Les
+événements du widget sont page load, time on page et chat opens. Le déclencheur
+détermine quelles conditions et quelles actions le Flow peut utiliser. Consultez
 [HTTP and webhooks](/flows/http) pour le déclencheur entrant.
 
 ## Ajouter des conditions de message
 
-Les flux de messages prennent en charge les types de conditions suivants :
+Les Message Flows prennent en charge les types de conditions suivants :
 
 | Condition | Comportement actuel |
 | --- | --- |
-| Conversation context | Ajoute des exemples sémantiques à Intent Classification. Il ne s'agit pas d'un filtre strict (hard gate). |
+| Conversation context | Ajoute des exemples sémantiques à Intent Classification. Il ne s’agit pas d’un filtre bloquant (hard gate). |
 | URL | Applique un hard gate de type Matches, Contains ou Regex. |
 | Schedule | Applique un hard gate basé sur une date de début, une date de fin et un fuseau horaire. |
 
 Sélectionnez **Any condition matches** ou **All conditions match** lorsque le
-Flow contient plus d'une condition.
+Flow contient plus d’une condition.
 
 Les conditions URL et Schedule suppriment un Flow non éligible avant la
 classification. Une condition satisfaite n'impose pas au Flow de l'emporter.
@@ -40,19 +39,27 @@ classification. Une condition satisfaite n'impose pas au Flow de l'emporter.
 ## Ajouter des actions de réponse
 
 1. Ajoutez les actions requises.
-2. Placez les actions dans leur ordre d'exécution.
+2. Placez les actions dans leur ordre d’exécution.
 3. Configurez tous les champs obligatoires.
 4. Enregistrez le Flow.
-5. Testez un message correspondant et un message ne correspondant pas.
+5. Testez un message correspondant et un message non correspondant.
 
-L'éditeur limite les Flows proactifs à une seule action Notification. Le serveur
-applique la même règle lorsqu'il enregistre ou envoie un Flow.
+Passez la souris sur un nœud d'action et sélectionnez **Copy step** pour insérer
+une action identique immédiatement après celui-ci. La copie possède ses propres
+paramètres : la modifier, la déplacer ou la supprimer ne modifie pas l’original.
+La fonction Copier est également disponible dans la vue Form et dans le menu
+Step options du nœud. Utilisez **Undo** ou **Redo** pour annuler ou rétablir une
+modification. Un Flow prend en charge jusqu’à 20 actions.
+
+L’éditeur limite les Flows proactifs à une seule action Notification ; par
+conséquent, l’option Copy n’est pas disponible pour ces Flows. Le serveur
+applique la même règle lorsqu’il enregistre ou envoie un Flow.
 
 ## Réorganiser les flux
 
 Faites glisser un Flow pour modifier la priorité de routage des messages. À
-l'aide du clavier, placez le focus sur la poignée d'un Flow, puis appuyez sur la
-touche fléchée vers le haut ou vers le bas. Le flux Default behavior reste en
+l’aide du clavier, placez le focus sur la poignée d’un Flow, puis appuyez sur la
+touche fléchée vers le haut ou vers le bas. Le Flow Default behavior reste en
 dernière position.
 
 Désactivez un Flow lorsque vous devez interrompre son routage sans supprimer sa

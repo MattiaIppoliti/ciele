@@ -1,6 +1,6 @@
 ---
 title: API v1
-description: Llama a la API de administración actual de Ciele con una clave de API de organización.
+description: Llama a la API de administración actual de Ciele con una clave API de organización.
 ---
 
 La API de Ciele utiliza JSON sobre HTTP. Todas las rutas de la versión 1
@@ -36,7 +36,7 @@ Ciele.
 
 ## Errores de respuesta
 
-Los errores utilizan una única envoltura JSON:
+Los errores utilizan una única envolvente JSON:
 
 ```json
 {
@@ -52,7 +52,7 @@ Los códigos de estado más habituales son:
 | Status | Significado |
 | --- | --- |
 | `400` | El cuerpo de la solicitud tiene un formato incorrecto o falta un archivo obligatorio. |
-| `401` | Falta la clave, no es válida o está revocada. |
+| `401` | La clave no existe, no es válida o ha sido revocada. |
 | `403` | El Role de la clave no permite la operación. |
 | `404` | El recurso no existe en la Organization. |
 | `409` | La solicitud entra en conflicto con el estado actual. |
@@ -67,21 +67,22 @@ siguiente solicitud.
 ## Reintentos seguros
 
 Las rutas de mutación pueden aceptar un encabezado `Idempotency-Key`. Reutiliza
-el mismo valor únicamente cuando vuelvas a intentar la misma operación lógica.
+el mismo valor solo cuando vuelvas a intentar la misma operación lógica.
 
 ## Dominios comunes
 
 Estos son ejemplos. La [API reference](/api-reference) enumera el conjunto
 completo y actual de operaciones.
 
-- Assistants: listar, leer, crear, actualizar, duplicar y eliminar.
+- Asistentes: listar, leer, crear, actualizar, duplicar y eliminar.
 - Flujos: listar, leer, crear, actualizar, reordenar y eliminar.
 - Knowledge: gestiona Collections, Sources, FAQs y los enlaces del asistente en
   cada Source.
 - Publicación: consulta el estado, publica, anula la publicación y restaura una
   publicación.
-- Inbox: revisa, exporta, ancla, anota, valora y elimina Conversations.
-- Mejoras: lista, lee y actualiza elementos.
+- Inbox: revisa, exporta, ancla, añade anotaciones, valora y elimina
+  Conversations.
+- Mejoras: enumera, lee y actualiza elementos.
 - Memories: revisa la configuración y realiza el borrado de Memory con un ámbito
   específico.
 - SSO: gestiona las afirmaciones de identidad, la configuración de conexión, la
@@ -90,26 +91,30 @@ completo y actual de operaciones.
   ServiceNow.
 - Teammates: gestiona a los Teammates de IA y lee tus propias conversaciones con
   Teammates.
-- Projects: gestiona los Projects a los que se asocian los Teammates, así como
-  sus documentos de Project.
+- Projects: gestiona los Projects, sus milestones y los documentos del Project
+  que leen los Teammates.
+- Tareas: enumera, lee, crea, modifica, archiva y elimina tareas, comenta sobre
+  ellas y gestiona las etiquetas de las tareas. La lista se filtra por Project,
+  assignee, status, Label, fechas de entrega, text e Improvement, y utiliza un
+  cursor para cada página. Una clave solo lee los Projects que su miembro puede
+  leer. Un comentario indica a ese miembro como su autor.
 - Reviews: enumera, lee y toma decisiones sobre las solicitudes de revisión
   humana.
-- Channels: lee y da forma a los canales de compañeros de equipo en los que
-  participas, así como a sus listas de miembros. No hay ningún endpoint para
-  enviar un mensaje: un mensaje inicia una cadena de respuestas de los
-  compañeros de equipo, y esa cadena se ejecuta en la consola.
+- Channels: lee y configura los canales de compañeros de equipo en los que
+  participas, así como sus listas de miembros. No existe un endpoint para enviar
+  un mensaje: un mensaje inicia una cadena de respuestas de compañeros de
+  equipo, y esa cadena se ejecuta en la consola.
 - Configuration: gestiona Skills, Assistant Goals y Alerts operativas.
 - Organization: gestiona la configuración, los Members, las Invites y las claves
   API.
 - Integrations: gestiona las integraciones de la API del asistente y las
   conexiones con los proveedores de modelos.
 - Uso: consulta los contadores del plan y quién ha gastado los créditos de una
-  ventana. Solo lectura. El desglose del gasto mantiene separadas sus
-  dimensiones. Una respuesta menciona tanto al compañero de equipo que ejecutó
-  la acción como al compañero que la solicitó, por lo que sumar las dimensiones
-  cuenta esa respuesta dos veces. La compra de créditos no tiene un endpoint:
-  una compra corresponde a una pantalla en la que una persona confirma un
-  importe.
+  ventana. Solo lectura. El desglose del gasto mantiene sus dimensiones
+  separadas. Una respuesta menciona tanto al compañero de equipo que ejecutó la
+  tarea como al compañero que la solicitó, por lo que sumar las dimensiones
+  cuenta el caso dos veces. La compra de créditos no tiene endpoint: una compra
+  corresponde a una pantalla en la que una persona confirma un importe.
 
 Utiliza el documento OpenAPI para los campos de las solicitudes, la
 autenticación y los códigos de estado de las respuestas documentados.

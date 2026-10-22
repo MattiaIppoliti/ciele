@@ -199,6 +199,42 @@ Console-only, deliberately: `memory.me.get` / `.write` / `.revert` (the User
 layer, above) and `revertMemoryDocument`, which is a console affordance on a
 Member's own screen and which no route reaches.
 
+## Work: Projects' Tasks (shipped, #1061-#1069)
+
+The Project row itself grew the work fields (key, status, lead, dates, colour,
+icon, visibility) and the routes above carry them. Visibility is the read rule:
+a key acts as the Member who minted it, so a private Project that Member is not
+seated in is absent from every list and `not_found` by id, never "forbidden".
+The Role decides the actions (#1047): a Viewer key reads and comments, an
+Editor key writes.
+
+| Operation | Capability | Route | Beyond Db |
+|---|---|---|---|
+| `projects.milestones.list` | member | `GET /api/v1/projects/{id}/milestones` | |
+| `projects.milestones.set` | edit | `PUT /api/v1/projects/{id}/milestones` | replaces the list; a row sent back with its id is kept and edited |
+| `tasks.list` | member | `GET /api/v1/tasks` | `?projectId`, `?assignee`, `?status=a,b`, `?label`, `?dueFrom`/`?dueTo`, `?q`, `?improvementId`, `?includeArchived`, `?limit`/`?cursor`; `{data, nextCursor}`; subtasks included |
+| `tasks.create` | edit | `POST /api/v1/tasks` | idempotent; numbers the Task through `next_task_seq`; `workLog` port for activity and notifications |
+| `tasks.get` | member | `GET /api/v1/tasks/{id}` | subtasks, labels, blockers, the linked Improvement, the Project's member ids |
+| `tasks.update` | edit | `PATCH /api/v1/tasks/{id}` | `{patch, labelIds, blockedBy, position, projectId, archived}`; a dependency cycle is refused; `projectId` moves and re-keys it; `archived` archives or restores it with its subtasks; a Teammate assignee is refused; completing the last open Task linked to an Improvement moves it to In review through the `improvementSettlement` port |
+| `tasks.delete` | edit | `DELETE /api/v1/tasks/{id}` | consequential: subtasks, comments, files go; the `workFiles` port removes the objects |
+| `tasks.comments.list` | member | `GET /api/v1/tasks/{id}/comments` | with reactions |
+| `tasks.comments.create` | member | `POST /api/v1/tasks/{id}/comments` | mention tokens `@[Name](member:<id>)` notify; authored as the key's Member |
+| `taskLabels.list` | member | `GET /api/v1/task-labels` | |
+| `taskLabels.create` | edit | `POST /api/v1/task-labels` | one name per Organization, case-insensitive |
+| `taskLabels.update` | edit | `PATCH /api/v1/task-labels/{id}` | rename or recolour |
+| `taskLabels.delete` | edit | `DELETE /api/v1/task-labels/{id}` | consequential: every Task loses it, the Tasks stay |
+
+Console-only, deliberately: `tasks.archive` (a machine caller archives through
+`PATCH` with `archived`), `tasks.bulkUpdate` and `tasks.undoComplete` (the
+console's multi-select and Undo affordances), comment edit, delete,
+restore and reactions (a Member's own words and gestures), Saved Views and
+Favorites (a tab and a star in one Member's console), Member Notifications (a
+row addressed to one Member and written only by the system Db), and project
+files (`files.*`: the bytes move through `/api/work-files/{id}` and a signed
+upload, never through a key). The Teammate `tasks` grant offers `tasks.list`,
+`.get`, `.create`, `.update`, `.comments.list` and `.comments.create`, and
+leaves delete, archive and the bulk update out by name.
+
 ## Improvements (shipped, #625)
 
 | Operation | Capability | Route | Beyond Db |
@@ -208,7 +244,7 @@ Member's own screen and which no route reaches.
 | `improvements.update` | edit | `PATCH /api/v1/improvements/{id}` | assignment/closure emails via `notifyImprovementUpdate` port |
 
 Creation (`Improve Answer` flows) stays web-only for now, it fans out into
-graph feedback and Suggested-Fix drafting.
+Suggested-Fix drafting.
 
 The update body takes `status` and `priority` as their enums only. A priority
 is cleared by sending `"none"`, the column's default; `null` is refused with

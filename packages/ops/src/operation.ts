@@ -13,6 +13,7 @@ import type {
   EvaluationStage,
   Improvement,
   ImprovementPatch,
+  ImprovementStatus,
   KnowledgeSearchResult,
   PriorityQuestionId,
   ProviderConnectionProvider,
@@ -22,12 +23,19 @@ import type {
   CrawlerConnectionProvider,
   TeammateCapabilityCeiling,
   TeammateGrantDomain,
+  Task,
   UsageLimitsSnapshot,
 } from "@agent-hub/core";
-import type { Db } from "@agent-hub/db";
+import type { Db, DbTableInsert } from "@agent-hub/db";
 import { observe } from "@agent-hub/diagnostics";
 import type { ZodType } from "zod";
 import type { MutatedEntity } from "./entities";
+
+/** One Work Activity entry as an operation records it (#1051): the table's own insert shape. */
+export type WorkActivityEntry = DbTableInsert<"workActivity">;
+
+/** One Member Notification as an operation raises it (#1048): the table's own insert shape. */
+export type WorkNotificationRow = DbTableInsert<"memberNotifications">;
 
 /**
  * The operations layer (#620): the one seam both admin surfaces stand on.
@@ -224,6 +232,11 @@ export interface OperationPorts {
   triageDecisions?(input: {
     evidence: { title: string; question: string; answer: string };
     candidates: readonly { id: string; title: string }[];
+    /**
+     * The Conversation the evidence came from, so the host can mask its
+     * Visitor's words under its Assistant's PII masking guardrail (#1080).
+     */
+    conversation: { id: string; assistantId: string | null };
   }): Promise<TriageDecisionAnswers | null>;
   /**
    * Grant a system Teammate its one domain at creation (#838). A port because
@@ -341,6 +354,40 @@ export interface OperationPorts {
   restartCrawl?(sourceId: string): Promise<void>;
   /** Tell the widget cache a new latest Publication exists (#623). */
   invalidatePublication?(assistantId: string): Promise<void> | void;
+  /**
+   * The work domain's two system writes (#1051, #1048): the Work Activity log
+   * and Member Notifications. A port because neither table has a member write
+   * policy, on purpose (an activity entry a client could forge would be worth
+   * nothing, and a Member cannot address a notice to somebody else), so the
+   * host writes them with its system Db, and `notify` is also where the host
+   * sends the emails a recipient's preferences allow. Absent, the operations
+   * write through their own Db, which the mock and the contract tests allow.
+   */
+  workLog?: {
+    recordActivity(entries: WorkActivityEntry[]): Promise<void>;
+    notify(rows: WorkNotificationRow[]): Promise<void>;
+  };
+  /**
+   * ADR-0027 rule 3's move, on the system Db (#1044): when every Task that
+   * resolves an Improvement is Done, the Improvement goes to In Review. A port
+   * for two reasons. Improvement writes are Editor-only, and a Member who may
+   * complete a Task must still trigger the move; and "every" has to count the
+   * linked Tasks in private Projects the caller cannot read. The host binds it
+   * to the caller's Organization. Absent (the mock, the contract tests), the
+   * operation reads and writes through its own Db.
+   */
+  improvementSettlement?: {
+    read(improvementId: string): Promise<{ improvement: Improvement; linkedTasks: Task[] } | null>;
+    setStatus(improvementId: string, status: ImprovementStatus): Promise<void>;
+  };
+  /**
+   * The `work-files` bucket (#1068): removing the objects of deleted files,
+   * Tasks and Projects. The rows go by cascade; the objects need the service
+   * role. Absent (tests, a host with no object storage), nothing is removed.
+   */
+  workFiles?: {
+    remove(paths: string[]): Promise<void>;
+  };
   /** Fire assignment/closure notifications after an Improvement update (#625). */
   notifyImprovementUpdate?(args: {
     before: Improvement;

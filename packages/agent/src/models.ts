@@ -24,6 +24,7 @@ import { createGoogleVertexProvider } from "./google-vertex";
 import { currentModelId, gatewayModelId } from "./catalog";
 import { bindModelCapacity, contextBudgetMiddleware } from "./context-budget";
 import { getRuntimeHost } from "./host";
+import { piiMaskingMiddleware } from "./pii-masking";
 import { capacityRetryMiddleware } from "./rate-limit-retry";
 
 export { MODEL_CATALOG } from "./catalog";
@@ -465,6 +466,11 @@ export function providerAvailability(
  * a 429 from a shared platform key is retried with jitter instead of on the
  * SDK's fixed schedule, so a crowd refused together does not return together.
  * A local CLI subscription has no HTTP status and is left as it is.
+ *
+ * Every model, local or hosted, masks personal data under an active PII
+ * masking scope (`pii-masking.ts`). It is the outermost middleware, so a
+ * retried request resends the masked prompt and the context budget measures
+ * what is actually sent.
  */
 export function buildModel(
   provider: Provider,
@@ -499,8 +505,8 @@ export function buildModel(
       ? createLocalSubscriptionModel({ provider: credential.provider, modelId, cliModelId: modelId, run: credential.run })
       : buildHostedModel(provider, modelId, credential),
     middleware: credential.kind === "local_subscription"
-      ? contextBudgetMiddleware(capacity)
-      : [contextBudgetMiddleware(capacity), capacityRetryMiddleware()],
+      ? [piiMaskingMiddleware(), contextBudgetMiddleware(capacity)]
+      : [piiMaskingMiddleware(), contextBudgetMiddleware(capacity), capacityRetryMiddleware()],
   });
   bindModelCapacity(model, capacity);
   return model;

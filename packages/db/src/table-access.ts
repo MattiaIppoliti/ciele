@@ -7,9 +7,25 @@ import type {
   LocalConnectorDevice,
   LocalConnectorPairing,
   LocalInferenceJob,
+  MemberNotification,
+  NotificationPreferences,
   Project,
   ProjectInput,
+  ProjectMember,
+  ProjectMilestone,
   ProjectPatch,
+  SavedView,
+  Task,
+  ProjectFile,
+  TaskComment,
+  TaskCommentReaction,
+  TaskDependency,
+  TaskInput,
+  TaskLabel,
+  TaskLabelLink,
+  TaskPatch,
+  WorkActivity,
+  WorkFavorite,
   ActionApproval,
   ActionApprovalInput,
   ActionApprovalPatch,
@@ -127,6 +143,91 @@ export interface DbTableMap {
     row: Project;
     insert: ProjectInput;
     update: ProjectPatch;
+  };
+  /**
+   * The work domain (map #1039, ticket #1061). Every table is mechanical: the
+   * rules (who may write, the nesting and dependency invariants, ordering,
+   * recurrence, notifications) live in the operations layer and in core, and
+   * the one behavioural write, allocating a Task's number, is `nextTaskSeq`.
+   */
+  projectMembers: {
+    row: ProjectMember;
+    insert: Pick<ProjectMember, "organizationId" | "projectId" | "userId"> &
+      Partial<Pick<ProjectMember, "addedBy">>;
+    update: never;
+  };
+  projectMilestones: {
+    row: ProjectMilestone;
+    insert: Pick<ProjectMilestone, "organizationId" | "projectId" | "name" | "date">;
+    update: Partial<Pick<ProjectMilestone, "name" | "date">>;
+  };
+  tasks: {
+    row: Task;
+    insert: TaskInput;
+    update: TaskPatch;
+  };
+  taskDependencies: {
+    row: TaskDependency;
+    insert: Pick<TaskDependency, "organizationId" | "projectId" | "taskId" | "blockedById">;
+    update: never;
+  };
+  taskLabels: {
+    row: TaskLabel;
+    insert: Pick<TaskLabel, "organizationId" | "name"> & Partial<Pick<TaskLabel, "color">>;
+    update: Partial<Pick<TaskLabel, "name" | "color">>;
+  };
+  taskLabelLinks: {
+    row: TaskLabelLink;
+    insert: Pick<TaskLabelLink, "organizationId" | "projectId" | "taskId" | "labelId">;
+    update: never;
+  };
+  savedViews: {
+    row: SavedView;
+    insert: Pick<SavedView, "organizationId" | "projectId" | "name" | "layout" | "query"> &
+      Partial<Pick<SavedView, "createdBy">>;
+    update: Partial<Pick<SavedView, "name" | "layout" | "query">>;
+  };
+  workFavorites: {
+    row: WorkFavorite;
+    insert: Pick<WorkFavorite, "organizationId" | "userId"> &
+      Partial<Pick<WorkFavorite, "projectId" | "taskId">>;
+    update: never;
+  };
+  projectFiles: {
+    row: ProjectFile;
+    insert: Pick<ProjectFile, "organizationId" | "projectId" | "name" | "storagePath" | "sizeBytes"> &
+      Partial<Pick<ProjectFile, "taskId" | "contentType" | "uploadedBy">>;
+    update: Partial<Pick<ProjectFile, "name">>;
+  };
+  taskComments: {
+    row: TaskComment;
+    insert: Pick<TaskComment, "organizationId" | "projectId" | "taskId" | "body" | "mentions"> &
+      Partial<Pick<TaskComment, "authorMemberId" | "authorTeammateId">>;
+    update: Partial<Pick<TaskComment, "body" | "mentions" | "editedAt" | "deletedAt">>;
+  };
+  taskCommentReactions: {
+    row: TaskCommentReaction;
+    insert: Pick<TaskCommentReaction, "organizationId" | "projectId" | "commentId" | "userId" | "emoji">;
+    update: never;
+  };
+  /** Append-only: `update` is `never`, a history is not rewritten. */
+  workActivity: {
+    row: WorkActivity;
+    insert: Pick<WorkActivity, "organizationId" | "projectId" | "verb"> &
+      Partial<Pick<WorkActivity, "taskId" | "actorMemberId" | "actorTeammateId" | "data">>;
+    update: never;
+  };
+  memberNotifications: {
+    row: MemberNotification;
+    insert: Pick<MemberNotification, "organizationId" | "recipientId" | "kind" | "projectId" | "taskId"> &
+      Partial<Pick<MemberNotification, "commentId" | "actorMemberId" | "actorTeammateId">>;
+    update: Partial<Pick<MemberNotification, "readAt" | "archivedAt" | "snoozedUntil">>;
+  };
+  notificationPreferences: {
+    row: NotificationPreferences;
+    insert: Pick<NotificationPreferences, "organizationId" | "userId"> &
+      Partial<Pick<NotificationPreferences, "emailAssigned" | "emailMentioned">>;
+    update: Partial<Pick<NotificationPreferences, "emailAssigned" | "emailMentioned">>;
   };
   /**
    * Routines (#772). The CRUD half is mechanical; what is NOT here is claiming
@@ -442,7 +543,140 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
   projects: {
     table: "projects",
     id: "shortId",
-    defaults: { description: "", archived: false, createdBy: null },
+    defaults: {
+      description: "",
+      archived: false,
+      createdBy: null,
+      status: "active",
+      leadId: null,
+      startDate: null,
+      dueDate: null,
+      color: "gray",
+      icon: "folder",
+      visibility: "organization",
+    },
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  projectMembers: {
+    table: "project_members",
+    id: "shortId",
+    defaults: { addedBy: null },
+    ascending: true,
+    touchesUpdatedAt: false,
+  },
+  projectMilestones: {
+    table: "project_milestones",
+    id: "shortId",
+    defaults: {},
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  tasks: {
+    table: "tasks",
+    id: "shortId",
+    defaults: {
+      parentId: null,
+      description: "",
+      status: "to_do",
+      priority: "none",
+      assigneeMemberId: null,
+      assigneeTeammateId: null,
+      startDate: null,
+      dueDate: null,
+      estimateMinutes: null,
+      recurrence: null,
+      improvementId: null,
+      completedAt: null,
+      archivedAt: null,
+      createdBy: null,
+    },
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  taskDependencies: {
+    table: "task_dependencies",
+    id: "shortId",
+    defaults: {},
+    ascending: true,
+    touchesUpdatedAt: false,
+  },
+  taskLabels: {
+    table: "task_labels",
+    id: "shortId",
+    defaults: { color: "gray" },
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  taskLabelLinks: {
+    table: "task_label_links",
+    id: "shortId",
+    defaults: {},
+    ascending: true,
+    touchesUpdatedAt: false,
+  },
+  savedViews: {
+    table: "saved_views",
+    id: "shortId",
+    defaults: { createdBy: null },
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  workFavorites: {
+    table: "work_favorites",
+    id: "shortId",
+    defaults: { projectId: null, taskId: null },
+    ascending: true,
+    touchesUpdatedAt: false,
+  },
+  projectFiles: {
+    table: "project_files",
+    id: "shortId",
+    defaults: { taskId: null, contentType: "application/octet-stream", uploadedBy: null },
+    // Newest first: the Files view and the drawer lead with what just arrived.
+    ascending: false,
+    touchesUpdatedAt: true,
+  },
+  taskComments: {
+    table: "task_comments",
+    id: "shortId",
+    defaults: {
+      authorMemberId: null,
+      authorTeammateId: null,
+      mentions: [],
+      editedAt: null,
+      deletedAt: null,
+    },
+    // Oldest first: a comment thread reads top to bottom.
+    ascending: true,
+    touchesUpdatedAt: false,
+  },
+  taskCommentReactions: {
+    table: "task_comment_reactions",
+    id: "shortId",
+    defaults: {},
+    ascending: true,
+    touchesUpdatedAt: false,
+  },
+  workActivity: {
+    table: "work_activity",
+    id: "shortId",
+    defaults: { taskId: null, actorMemberId: null, actorTeammateId: null, data: {} },
+    // Newest first: an activity feed reads from what just happened.
+    ascending: false,
+    touchesUpdatedAt: false,
+  },
+  memberNotifications: {
+    table: "member_notifications",
+    id: "shortId",
+    defaults: { commentId: null, actorMemberId: null, actorTeammateId: null, readAt: null, archivedAt: null, snoozedUntil: null },
+    ascending: false,
+    touchesUpdatedAt: false,
+  },
+  notificationPreferences: {
+    table: "notification_preferences",
+    id: "shortId",
+    defaults: { emailAssigned: true, emailMentioned: true },
     ascending: true,
     touchesUpdatedAt: true,
   },

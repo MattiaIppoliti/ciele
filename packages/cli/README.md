@@ -178,6 +178,30 @@ There is no command for your *own* memory layer, on purpose: a key acts as the
 member who minted it, so an endpoint there would expose that member's private
 document. Edit it in Settings → Memory.
 
+### Tasks
+
+```bash
+ciele tasks list --project <projectId> --status to_do,in_progress
+ciele tasks list --label <labelId> --due-from 2026-11-01 --due-to 2026-11-30 --q "brief"
+ciele tasks list --improvement <improvementId> --cursor <nextCursor>
+ciele tasks create --project <projectId> --title "Draft the launch brief" --due 2026-11-02
+ciele tasks get <id>                          # the task, its subtasks and blockers
+ciele tasks update <id> --status in_review --assignee <userId>
+ciele tasks update <id> --json '{"labelIds":["<labelId>"],"blockedBy":["<taskId>"]}'
+ciele tasks update <id> --archive               # --restore brings it back
+ciele tasks comment <id> --body "Ready for review"
+ciele tasks labels
+ciele tasks create-label --name "Bug" --color red
+ciele tasks update-label <labelId> --color amber
+ciele tasks delete-label <labelId> --yes        # every task loses it; the tasks stay
+ciele projects milestones <projectId>
+ciele projects set-milestones <projectId> --json '[{"name":"Launch","date":"2026-11-02"}]'
+ciele tasks delete <id> --yes                 # takes subtasks, comments and files
+```
+
+A key reads the projects its member can read and comments as that member, so a
+private project's tasks are absent rather than refused.
+
 ### Help desks, reusable configuration, and alerts
 
 ```bash

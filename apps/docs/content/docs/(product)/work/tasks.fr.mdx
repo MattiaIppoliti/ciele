@@ -1,0 +1,117 @@
+---
+title: Tâches et vues
+description: Créez des tâches et consultez-les sous forme de liste, de tableau Kanban, de tableau, de calendrier ou de chronologie.
+---
+
+Une tâche comporte un titre, un statut, une priorité, un responsable, des dates,
+une estimation, des étiquettes et une description en Markdown.
+
+| Status | Signification |
+| --- | --- |
+| Backlog | Pas encore planifié. |
+| To do | Planifié. |
+| In progress | Quelqu’un y travaille actuellement. |
+| In review | En attente d’une vérification. |
+| Done | Terminé. |
+
+La priorité est **Urgent**, **High**, **Medium**, **Low** ou **None**.
+
+## Créer une tâche
+
+1. Sélectionnez **New task** dans la barre d'outils.
+2. Saisissez un titre.
+3. Sélectionnez le Project, le status, la priority, l’assignee et la due date si
+   nécessaire.
+4. Sélectionnez **Create task**.
+
+Vous pouvez également saisir un titre en bas d'un groupe dans la List ou dans la
+Table, ou dans une colonne du Board.
+
+## Ouvrir une tâche
+
+Sélectionnez une tâche pour l'ouvrir dans un panneau situé à côté de la vue. Le
+panneau affiche ses champs, sa description, ses sous-tâches, ses pièces jointes,
+ses commentaires et son activité. Pour ouvrir la tâche sur sa propre page,
+sélectionnez le bouton full-page situé à côté des actions de la tâche. Pour
+fermer le panneau, sélectionnez le bouton **Close** ou appuyez sur **Esc**.
+
+Ciele conserve la largeur du panneau dans ce navigateur. Ciele conserve
+également les groupes et les colonnes du tableau que vous réduisez.
+
+Une tâche peut être en attente d'autres tâches. Sélectionnez les Tasks dans
+**Blocked by**. La Chronologie affiche une flèche partant de chaque tâche
+bloquante vers la tâche qui est en attente.
+
+Lorsque vous terminez une tâche, sélectionnez **Undo** dans le message pour
+rétablir le statut précédent de la tâche. Cela fonctionne également lorsque vous
+terminez plusieurs tâches en même temps.
+
+Une tâche peut se répéter. Lorsque vous terminez une tâche répétitive, Ciele
+crée la copie suivante avec de nouvelles dates. Si vous sélectionnez **Undo**,
+Ciele supprime également cette copie et la tâche se répète à nouveau. Si
+quelqu’un a déjà commencé la copie, Ciele la conserve.
+
+Pour modifier l’ordre des tâches sans utiliser le glisser-déposer, sélectionnez
+une tâche et appuyez sur **Alt+Up** ou **Alt+Down**. Dans la List, vous pouvez
+également sélectionner **Move up** ou **Move down** dans le menu de la Task.
+
+## Résoudre une amélioration
+
+Une Task peut résoudre une Improvement. Sélectionnez l'Improvement dans le champ
+**Resolves** de la Task. Pour supprimer le lien, sélectionnez **None**.
+
+Vous pouvez également ouvrir l’Improvement et sélectionner **Create task**. La
+nouvelle tâche hérite du titre et du projet de l’Improvement, ainsi que du lien.
+
+Lorsque toutes les tâches qui résolvent une amélioration sont terminées, Ciele
+déplace l’amélioration vers **In review**. Une personne la ferme ensuite.
+L’activité de la tâche indique ce changement.
+
+## La barre d’outils
+
+Chaque vue dispose de la même barre d’outils :
+
+- **Search tasks** recherche les tâches par titre ou par clé.
+- **Filter** affiche uniquement les tâches qui correspondent à vos filtres.
+- **Sort** modifie l'ordre. **Manual** conserve l'ordre que vous avez défini par
+  glisser-déposer.
+- **Group** regroupe les tâches par statut, priorité, responsable, projet ou
+  date d’échéance.
+
+L’adresse de la page conserve vos filtres, votre tri et votre regroupement. Vous
+pouvez partager l’adresse.
+
+## Les vues
+
+| View | Utilisation |
+| --- | --- |
+| List | Consultez les tâches par groupes. Faites glisser une ligne pour modifier son ordre ou son groupe. Sélectionnez des lignes pour modifier plusieurs tâches en même temps. |
+| Board | Faites glisser une carte vers une autre colonne de statut. Utilisez le menu de la colonne pour ajouter une tâche, réduire la colonne ou marquer toutes les tâches comme terminées. |
+| Table | Modifiez chaque champ dans sa cellule. Sélectionnez **Columns** pour afficher, masquer ou réinitialiser les colonnes. Faites glisser le bord d'un en-tête de colonne pour le redimensionner. |
+| Calendar | Affichez les tâches à leurs dates d’échéance, par mois ou par semaine. Faites glisser une tâche vers un autre jour. La tâche conserve sa durée. Sélectionnez **+** sur un jour pour créer une tâche pour ce jour. |
+| Timeline | Affichez les tâches sous forme de barres, par semaine ou par mois. Faites glisser une barre pour la déplacer. Faites glisser une extrémité d’une barre pour modifier une date. |
+
+La Chronologie affiche uniquement les tâches ayant une date d'échéance. Il
+considère les autres tâches comme non planifiées.
+
+Chaque action de glissement dispose également d’un raccourci clavier. Ouvrez la
+tâche et modifiez son statut ou ses dates dans le panneau.
+
+## Vues enregistrées
+
+Sur un projet, vous pouvez enregistrer les filtres, le tri, le regroupement et
+la disposition actuels en tant que vue enregistrée. Sélectionnez **Save view**
+dans la barre d’outils. La vue enregistrée s'affiche sous la forme d'un onglet
+pour tous les membres qui peuvent voir le projet.
+
+Le créateur d’une vue enregistrée et les Admins peuvent la renommer, la mettre à
+jour ou la supprimer.
+
+## Archiver ou supprimer une tâche
+
+Ouvrez le menu Task.
+
+- Sélectionnez **Archive** pour masquer la tâche et ses sous-tâches.
+  Sélectionnez **Undo** dans le message pour le restaurer immédiatement.
+- Sélectionnez **Delete** pour supprimer la tâche, ses sous-tâches, ses
+  commentaires et ses fichiers. Vous ne pouvez pas annuler cette action.

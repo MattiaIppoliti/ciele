@@ -1,6 +1,6 @@
 import { playFeedback, type Interaction } from "@agent-hub/ui/feedback";
 import type { NotificationStatus } from "@/lib/notifications";
-import { emitToast, type ToastInput } from "@/lib/toast-events";
+import { emitToast, type ToastAction, type ToastInput } from "@/lib/toast-events";
 
 export type { ToastAction, ToastInput } from "@/lib/toast-events";
 
@@ -36,11 +36,53 @@ function raise(status: NotificationStatus, message: string): void {
   emitToast({ message, state: status });
 }
 
+/**
+ * The button on an Undo toast (#1074). `revert` runs at most once, however
+ * often the button is pressed before the toast leaves, and a refusal reaches
+ * the Member as an error: the work actions answer `{ ok: false, error }`
+ * rather than throwing, so a failed undo would otherwise pass in silence and
+ * leave them believing it worked.
+ */
+export function undoAction(revert: () => unknown, onError: (message: string) => void): ToastAction {
+  let used = false;
+  return {
+    label: "Undo",
+    run: () => {
+      if (used) return;
+      used = true;
+      void Promise.resolve()
+        .then(revert)
+        .then(
+          (result) => {
+            if (result && typeof result === "object" && "ok" in result && result.ok === false) {
+              const error = "error" in result && typeof result.error === "string" ? result.error : null;
+              onError(error ?? "Could not undo");
+            }
+          },
+          (error: unknown) => onError(error instanceof Error ? error.message : "Could not undo")
+        );
+    },
+  };
+}
+
 export const toast = {
   success: (message: string) => raise("success", message),
   error: (message: string) => raise("error", message),
   warning: (message: string) => raise("warning", message),
   info: (message: string) => raise("info", message),
+  /**
+   * Something done that can be taken back: archived, completed, deleted
+   * within a restore window (#1074). A success toast whose button runs
+   * `revert`, up for the action lifetime.
+   */
+  undo: (message: string, revert: () => unknown) => {
+    playFeedback("success");
+    return emitToast({
+      message,
+      state: "success",
+      action: undoAction(revert, (error) => raise("error", error)),
+    });
+  },
   /** Full control for pending messages, action buttons, and custom lifetimes. */
   show: (input: string | ToastInput) => {
     const state = typeof input === "string" ? undefined : input.state;

@@ -34,11 +34,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bold, GripVertical, Heading1, Heading2, Heading3, Heading4, Italic, Plus, X } from "lucide-react";
-import { Link2, List, ListOrdered, Minus } from "lucide-react";
+import { GripVertical, Plus, X } from "lucide-react";
 import { moveOrderedId, reorderItemsByIds } from "@/lib/list-order";
 import { toast } from "@/lib/toast";
-import { applyMarkdownCommand, type MarkdownCommand } from "@/lib/markdown-toolbar";
+import { MARKDOWN_TOOLBAR_BASIC, MarkdownEditor } from "@/components/ui/markdown-editor";
 import { updateAssistantAction, uploadAssistantAvatarAction } from "@/app/actions";
 
 import { Button } from "@agent-hub/ui";
@@ -79,27 +78,6 @@ function quickReplyTypeLabel(type: QuickReplyType): string {
 function StatePill({ on, children }: { on: boolean; children: ReactNode }) {
   return <StatusPill status={on ? "online" : "offline"} primaryText={children} />;
 }
-
-/**
- * Static toolbar spec: kept out of render so the mapped array never captures
- * the textarea ref (the ref is only read inside the click handler).
- */
-const TOOLBAR_BUTTONS: Array<{
-  label: string;
-  Icon: typeof Bold;
-  command: MarkdownCommand;
-}> = [
-  { label: "Bold", Icon: Bold, command: { wrap: "**" } },
-  { label: "Italic", Icon: Italic, command: { wrap: "*" } },
-  { label: "Heading 1", Icon: Heading1, command: { prefix: "# " } },
-  { label: "Heading 2", Icon: Heading2, command: { prefix: "## " } },
-  { label: "Heading 3", Icon: Heading3, command: { prefix: "### " } },
-  { label: "Heading 4", Icon: Heading4, command: { prefix: "#### " } },
-  { label: "Bullet list", Icon: List, command: { prefix: "- " } },
-  { label: "Numbered list", Icon: ListOrdered, command: { prefix: "1. " } },
-  { label: "Divider", Icon: Minus, command: { prefix: "\n---\n" } },
-  { label: "Link", Icon: Link2, command: { wrap: "[", wrapEnd: "](url)" } },
-];
 
 /** `n/max` under a field: only the changing half rolls. */
 function CharCount({ value, max }: { value: number; max: number }) {
@@ -190,7 +168,6 @@ function GeneralFormBody({
   const [attachmentsEnabled, setAttachmentsEnabled] = useState(
     assistant.attachmentsEnabled ?? false
   );
-  const welcomeRef = useRef<HTMLTextAreaElement>(null);
   // The shared sortable primitive makes the complete quick-reply card follow
   // the pointer and swaps it only after it crosses a neighbouring card.
   const [draggedReplyId, setDraggedReplyId] = useState<string | null>(null);
@@ -297,23 +274,6 @@ function GeneralFormBody({
     }
   }
 
-  function applyCommand(command: MarkdownCommand) {
-    const el = welcomeRef.current;
-    if (!el) return;
-    const { selectionStart, selectionEnd, value } = el;
-    setWelcomeMessage(applyMarkdownCommand(value, selectionStart, selectionEnd, command));
-    requestAnimationFrame(() => {
-      el.focus();
-      // A wrap keeps the original selection selected, inside its new markers.
-      if ("wrap" in command) {
-        el.setSelectionRange(
-          selectionStart + command.wrap.length,
-          selectionEnd + command.wrap.length
-        );
-      }
-    });
-  }
-
   return (
     <div className="pt-6 pb-16">
       <SectionTimeline>
@@ -417,34 +377,14 @@ function GeneralFormBody({
           htmlFor={`${fieldId}-welcome`}
 
         />
-        <div className="focus-within:border-ring focus-within:ring-ring/50 rounded-xl border transition-[border-color,box-shadow] focus-within:ring-3">
-          <div className="flex flex-wrap items-center gap-1 border-b px-2 py-1.5">
-            {TOOLBAR_BUTTONS.map((btn) => (
-              <Hint key={btn.label} label={btn.label}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={btn.label}
-                  className="size-8"
-                  onClick={() => applyCommand(btn.command)}
-                >
-                  <btn.Icon className="size-4" />
-                </Button>
-              </Hint>
-            ))}
-          </div>
-          <Textarea
-            id={`${fieldId}-welcome`}
-
-            name="welcomeMessage"
-            ref={welcomeRef}
-            value={welcomeMessage}
-            onChange={(e) => setWelcomeMessage(e.target.value)}
-            rows={5}
-            className="resize-none rounded-t-none border-0 shadow-none focus-visible:ring-0"
-          />
-        </div>
+        <MarkdownEditor
+          id={`${fieldId}-welcome`}
+          name="welcomeMessage"
+          value={welcomeMessage}
+          onChange={setWelcomeMessage}
+          toolbar={MARKDOWN_TOOLBAR_BASIC}
+          rows={5}
+        />
       </div>
 
       {/* AI Disclaimer */}

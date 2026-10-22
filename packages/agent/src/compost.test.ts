@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildPublicationConfig } from "@agent-hub/core";
+import { buildPublicationConfig, defaultGuardrail } from "@agent-hub/core";
 import { getMockDb, DEMO_ORG } from "@agent-hub/db";
 import type { LanguageModel } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { COMPOST_PROPOSAL_TAG, renderDigest, runCompostPass } from "./compost";
+import { maskedModel } from "./testing/masked-model";
 
 /**
  * The compost loop, tested offline through the mock Db with an injected
@@ -213,5 +214,53 @@ describe("getCompostDigest demotions (from the event ledger)", () => {
       (f) => f.flowId === "demoted-then-recovered"
     );
     expect(demotion).toMatchObject({ runs: 25, passes: 20 });
+  });
+});
+
+describe("runCompostPass under PII masking (#1080)", () => {
+  it("masks the exhaust, and restores the values in the proposals a Member reads", async () => {
+    // Masking is on in the Publication the widget runs, and off in the live
+    // config since: the job masks either way, because it cannot tell which a
+    // Conversation saw.
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "Compost Masked Fixture" });
+    const masked = await db.updateAssistant(assistant.id, { guardrails: [defaultGuardrail("pii_masking", "pii")] });
+    await db.createPublication(assistant.id, buildPublicationConfig(masked, await db.listFlows(assistant.id), []));
+    await db.updateAssistant(assistant.id, { guardrails: [] });
+
+    const conversation = await db.createConversation({
+      assistantId: assistant.id,
+      subjectType: "visitor",
+      subjectId: "v-compost-masked",
+      title: "t",
+    });
+    const message = await db.appendMessage({
+      conversationId: conversation.id,
+      role: "assistant",
+      content: [{ type: "text", action: "search_knowledge", text: "A wrong answer." }],
+      flowId: "default",
+      flowName: "Default behavior",
+    });
+    await db.recordAnswerVerdict({
+      messageId: message.id,
+      organizationId: DEMO_ORG.id,
+      assistantId: assistant.id,
+      flowId: "default",
+      verdict: "fail",
+      reason: "promised a refund to jane@example.com without a source",
+      modelId: "test",
+    });
+
+    const seen: string[] = [];
+    const proposals = [
+      { kind: "faq", title: "Refund promised to [EMAIL_1]", rationale: "Recurring.", draft: "Q: Refunds?\nA: See the policy." },
+    ];
+    const model = maskedModel(seen, JSON.stringify({ proposals }));
+    await runCompostPass({ db }, { model });
+
+    const shown = seen.join("\n");
+    expect(shown).toContain("promised a refund to [EMAIL_1]");
+    expect(shown).not.toContain("jane@example.com");
+    const titles = (await db.listImprovements(DEMO_ORG.id)).map((i) => i.title);
+    expect(titles).toContain("[faq] Refund promised to jane@example.com");
   });
 });

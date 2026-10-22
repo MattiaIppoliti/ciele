@@ -568,6 +568,53 @@ export async function sweepExpiredObjectAccess(
   return { objectAccess: { purged } };
 }
 
+/**
+ * How long a Member Notification is kept (#1048, #1067). It points into a Task
+ * whose own history keeps everything it said, so an old one carries nothing
+ * the Task does not.
+ */
+export const MEMBER_NOTIFICATION_RETENTION_DAYS = 90;
+
+export interface SweepMemberNotificationsReport {
+  memberNotifications: { purged: number };
+}
+
+/**
+ * Deletes Member Notifications past the window, every organization at once,
+ * a bounded batch per tick so a backlog drains over a few nights.
+ */
+export async function sweepExpiredMemberNotifications(
+  deps: ScheduledDeps,
+  options: { now?: Date; limit?: number } = {}
+): Promise<SweepMemberNotificationsReport> {
+  const now = options.now ?? new Date();
+  const cutoff = new Date(now.getTime() - MEMBER_NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const purged = await deps.db.purgeExpiredMemberNotifications(cutoff, options.limit ?? 5000);
+  return { memberNotifications: { purged } };
+}
+
+/**
+ * How long a deleted Task comment waits before it is gone for good (#1055).
+ * Undo works for ten minutes; the day after is the margin a support request
+ * about a mistaken delete can still be answered in.
+ */
+export const DELETED_COMMENT_GRACE_DAYS = 1;
+
+export interface SweepDeletedCommentsReport {
+  deletedComments: { purged: number };
+}
+
+/** Hard-deletes Task comments deleted more than a day ago, every organization at once. */
+export async function sweepDeletedTaskComments(
+  deps: ScheduledDeps,
+  options: { now?: Date; limit?: number } = {}
+): Promise<SweepDeletedCommentsReport> {
+  const now = options.now ?? new Date();
+  const cutoff = new Date(now.getTime() - DELETED_COMMENT_GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const purged = await deps.db.purgeDeletedTaskComments(cutoff, options.limit ?? 5000);
+  return { deletedComments: { purged } };
+}
+
 /** One organization's outcome in a transcript-retention tick (#801, CYB-12). */
 export type SweptTranscriptResult =
   | { organizationId: string; retentionDays: number; deleted: number }
@@ -605,14 +652,18 @@ export async function sweepExpiredTranscripts(
     now: options.now ?? new Date(),
     policy: "transcripts",
     errorLabel: "transcript sweep failed",
-    // The Conversations, then the Visitor memories distilled from them, under
-    // the same window; the audit row counts both.
+    // The Conversations, then the Visitor memories distilled from them, then
+    // the Work Activity log (#1051), all under the same window; the audit row
+    // counts them together.
     run: async (organizationId, cutoff) =>
       (await drainRetentionBatches((limit) =>
         db.deleteExpiredConversations(organizationId, cutoff, limit)
       )) +
       (await drainRetentionBatches((limit) =>
         db.deleteExpiredMemories(organizationId, cutoff, limit)
+      )) +
+      (await drainRetentionBatches((limit) =>
+        db.deleteExpiredWorkActivity(organizationId, cutoff, limit)
       )),
   });
   return {

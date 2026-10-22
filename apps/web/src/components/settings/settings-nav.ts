@@ -11,6 +11,7 @@ import {
   Sparkles,
   Users,
   type LucideIcon,
+  BellDot,
 } from "lucide-react";
 
 /**
@@ -98,6 +99,13 @@ export const PERSONAL_SETTINGS_TABS: SettingsTab[] = [
     icon: ScanTextIcon,
     hint: "What your AI teammates remember about you",
   },
+  {
+    label: "Notifications",
+    slug: "notifications",
+    href: "/settings/notifications",
+    icon: BellDot,
+    hint: "Which notifications also arrive by email",
+  },
 ];
 
 /** Where the sidebar's Settings entry lands (Organization scope). */
@@ -152,6 +160,13 @@ export function sidebarSettingsActiveIndex(pathname: string): number {
 export function settingsTabFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/settings\/([^/?#]+)/);
   return match ? match[1] : null;
+}
+
+/** The open Settings tab's name, for the document title (#1073). */
+export function settingsTabLabel(pathname: string): string | null {
+  const slug = settingsTabFromPath(pathname);
+  if (!slug) return null;
+  return [...ORG_SETTINGS_TABS, ...PERSONAL_SETTINGS_TABS].find((tab) => tab.slug === slug)?.label ?? null;
 }
 
 const PERSONAL_SLUGS = new Set(PERSONAL_SETTINGS_TABS.map((tab) => tab.slug));

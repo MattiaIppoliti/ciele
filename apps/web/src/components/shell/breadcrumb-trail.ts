@@ -73,6 +73,15 @@ function below(pathname: string): Step[] {
       return second ? [{ label: "Desk" }] : [];
     case "improvements":
       return second ? [{ label: "Improvement" }] : [];
+    // The work section (#1053). A Project's view is its tab, not a crumb; the
+    // page names the Project with `PageCrumb`.
+    case "projects":
+      return second ? [{ label: "Project" }] : [];
+    case "tasks":
+      if (second === "calendar" || second === "timeline") return [{ label: humanize(second) }];
+      return second ? [{ label: "Task" }] : [];
+    case "my-tasks":
+      return [];
     case "eval":
       return second ? [{ label: "Run" }] : [];
     case "reviews":
@@ -126,6 +135,64 @@ function below(pathname: string): Step[] {
     default:
       return generic(parts, 1);
   }
+}
+
+/**
+ * The open tab of a Project, which the trail leaves to the page's own tabs:
+ * `/projects/<id>/<view>` names a built-in view, `/views/<id>` a saved one.
+ */
+function projectTab(pathname: string): string | null {
+  const [root, project, view, savedView] = pathname.split("/").filter(Boolean);
+  if (root !== "projects" || !project || !view) return null;
+  if (view === "views") return savedView ? "Saved view" : null;
+  return humanize(view);
+}
+
+/**
+ * The record a detail URL opens: its last segment when that is an id, or a
+ * Project's id under one of its tabs. Never an Assistant's, whose name the
+ * title carries already.
+ */
+function recordIdFromPath(pathname: string): string | null {
+  if (assistantIdFromPath(pathname)) return null;
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts[0] === "projects" && parts[1] && isIdLike(parts[1])) return decodeURIComponent(parts[1]);
+  const last = parts[parts.length - 1];
+  return parts.length > 1 && last && isIdLike(last) ? decodeURIComponent(last) : null;
+}
+
+/**
+ * The tab's title for a console page (#1073): the page, then its section, then
+ * the product. Next's route announcer reads `document.title` after every
+ * navigation and speaks it only when it changed, so a console that kept one
+ * title everywhere navigated in silence for a screen reader.
+ *
+ * Two things the trail does not carry go in too, or two pages would share a
+ * title: a Project's open tab, first, and the Assistant a SETUP section
+ * belongs to, after the section (the scope switcher names it, not the trail).
+ * `assistantName` is that Assistant's title, when the shell has it.
+ */
+export function documentTitle(
+  trail: Crumb[],
+  pathname: string,
+  assistantName?: string | null,
+  /**
+   * Whether the page has named its record yet (`PageCrumb`). Until it has,
+   * the record's id stands in: the announcer reads the title at the commit,
+   * before the name arrives, so two Tasks would otherwise share one title
+   * and the second navigation would be silent.
+   */
+  named = true
+): string {
+  const label = trail[trail.length - 1]?.label;
+  const pending = named ? null : recordIdFromPath(pathname);
+  const page = pending && label ? `${label} ${pending}` : label;
+  const sectionLabel = trail[0]?.label;
+  const assistant = assistantIdFromPath(pathname) ? assistantName : null;
+  const names = [projectTab(pathname), page, sectionLabel, assistant].filter(
+    (name, i, all): name is string => Boolean(name) && all.indexOf(name) === i
+  );
+  return [...names, "Ciele"].join(" · ");
 }
 
 /**

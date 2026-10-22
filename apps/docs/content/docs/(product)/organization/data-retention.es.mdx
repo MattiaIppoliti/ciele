@@ -1,22 +1,22 @@
 ---
 title: Conservación de datos
-description: Establece durante cuánto tiempo se conservan las conversaciones y los rastros de razonamiento, y retén una conversación.
+description: Configura cuánto tiempo se conservan las conversaciones y los rastros de razonamiento, y retén una conversación.
 ---
 
 Una organización establece dos períodos de retención en **Settings**, en la
 pestaña **General**. Ambos están desactivados de forma predeterminada: no se
-elimina nada hasta que un administrador selecciona un período.
+elimina nada hasta que un administrador seleccione un período.
 
 ## Los dos períodos de retención
 
 | Ajuste | Qué hace la limpieza nocturna una vez transcurrido el período |
 | --- | --- |
 | **Reasoning trace retention** | Elimina el panel Thinking de los mensajes antiguos. Los mensajes se mantienen. |
-| **Conversation retention** | Elimina toda la conversación, incluida la transcripción. También elimina los recuerdos a largo plazo sobre un Visitor que no se hayan actualizado durante el periodo. |
+| **Conversation retention** | Elimina toda la conversación, incluida la transcripción. También elimina los recuerdos a largo plazo sobre un Visitor que no se hayan actualizado durante el periodo establecido. También elimina la actividad de Projects y Tasks que sea anterior al periodo de la ventana. |
 
-Las dos ventanas son independientes. Una organización puede configurar una de
-ellas, ambas o ninguna. Por ejemplo, puedes conservar las transcripciones
-durante un año, pero eliminar los rastros de razonamiento pasados 30 días.
+Las dos ventanas son independientes. Una organización puede establecer uno,
+ambos o ninguno. Por ejemplo, puedes conservar las transcripciones durante un
+año, pero eliminar los rastros de razonamiento pasados 30 días.
 
 Se ejecuta una limpieza una vez por noche. Calcula el período a partir del
 último mensaje de la conversación, no del primero. Una conversación que aún esté
@@ -31,19 +31,19 @@ After the window, the conversation is gone from the Inbox, from exports, and fro
 
 1. Abre **Settings**.
 2. Quédate en la pestaña **General**.
-3. Selecciona una ventana en **Reasoning trace retention** o **Conversation
+3. Selecciona un intervalo en **Reasoning trace retention** o **Conversation
    retention**.
 4. Selecciona **Save changes**.
 
 Si la nueva ventana es más corta que la ventana actual, Ciele te pide que lo
-confirmes. La siguiente limpieza nocturna eliminará los datos más antiguos.
+confirmes. La próxima limpieza nocturna eliminará los datos más antiguos.
 
 Solo un miembro con permiso para gestionar miembros puede cambiar estos ajustes.
 
 ## Retención legal
 
 Una retención legal exime a una conversación de la limpieza de retención de
-conversaciones. Úsalo cuando exista una obligación de conservación que afecte a
+conversaciones. Úsala cuando exista una obligación de conservación que afecte a
 una conversación concreta, sin desactivar la retención para todas las demás
 conversaciones.
 
@@ -53,15 +53,15 @@ conversaciones.
 
 La retención permanece activa hasta que un miembro seleccione **Release legal
 hold**. Todos los miembros ven el estado de retención. Solo un miembro con
-permiso para gestionar miembros puede aplicar o cancelar una retención.
+permiso para gestionar miembros puede aplicar o retirar una retención.
 
-No puedes eliminar una conversación en espera. Esto se aplica a la bandeja de
+No se puede eliminar una conversación en espera. Esto se aplica a la bandeja de
 entrada (Inbox), a la API, a la limpieza de retención (retention sweep) y a la
 eliminación del asistente propietario de la conversación. Para eliminar una
 conversación retenida o su asistente, primero debes cancelar la retención.
 
 ## Instalaciones autoalojadas
 
-La limpieza nocturna se ejecuta desde el programador incluido. No se requiere
+La limpieza nocturna se ejecuta desde el programador incluido. No se necesita
 ninguna configuración adicional. La limpieza llama a `/api/cron/sweep-retention`
 con la credencial `CRON_SECRET`.

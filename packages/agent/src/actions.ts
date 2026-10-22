@@ -41,6 +41,7 @@ import type { PreflightFaqAnswer } from "./preflight-shadow";
 import { errorMessageOf } from "./telemetry";
 import { usageTotals } from "./usage";
 import { voiceReplyLanguage } from "./voice-language";
+import { seedOutbound } from "./pii-masking";
 
 /**
  * Flow Action handlers: one Adapter per action, dispatched by the live
@@ -671,6 +672,8 @@ const apiRequest: ActionHandler = async ({
     extracted.length > 0
       ? Object.fromEntries(extracted.map((e) => [e.variable, e.value]))
       : undefined;
+  // What later actions can hand a model came from the Organization's API.
+  seedOutbound(templatePatch, "tool");
 
   const part: ChatReplyPart = {
     type: "text",
@@ -735,6 +738,7 @@ const connector: ActionHandler = async ({
     });
   }
   const templatePatch = connectorTemplatePatch(outcome);
+  seedOutbound(templatePatch, "tool");
 
   if (outcome.ok && action.effect === "read") return { parts: [], templatePatch };
   const text = outcome.ok

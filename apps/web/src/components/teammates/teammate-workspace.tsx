@@ -5,6 +5,7 @@ import { TeammateAgentScreen, TeammateComputer } from "@/components/teammates/te
 import { RollInText } from "@/components/motion/roll-in-text";
 
 import {
+  type CSSProperties,
   useEffect,
   useEffectEvent,
   useId,
@@ -14,6 +15,7 @@ import {
   useTransition,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
 import { feedbackReactionScore, type ConversationMetadata, type FeedbackReactionId, type Teammate } from "@agent-hub/core";
 import { isCieleAi } from "@agent-hub/core";
 import { threadEntryLabel } from "@/lib/teammates/thread-label";
@@ -50,6 +52,8 @@ import {
   triggerInputProps,
 } from "@/components/chat/trigger-list";
 import { useAttachments } from "@/components/chat/use-attachments";
+import { storeChatDraft, useChatDraft } from "@/components/chat/use-chat-draft";
+import { useDockGlide } from "@/components/chat/use-dock-glide";
 import {
   AttachmentChips,
   AttachmentDropHint,
@@ -58,6 +62,11 @@ import {
 import { readChatAttachmentAction } from "@/app/actions";
 import { createChannelAction } from "@/app/(admin)/teammates/channels/actions";
 import { ThreadHistoryMenu } from "@/components/teammates/thread-history-menu";
+import {
+  RecentConversationsMenu,
+  TeammatePicker,
+  type PickableTeammate,
+} from "@/components/teammates/empty-chat-footer";
 import { toast } from "@/lib/toast";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
 import { EyeTracker } from "@/components/teammates/eye-tracker";
@@ -98,6 +107,7 @@ export function TeammateWorkspace({
   personalSubscriptionsAllowed,
   channelCandidates,
   skills,
+  pickableTeammates,
 }: {
   teammate: Teammate;
   thread: ThreadEntry[];
@@ -131,15 +141,31 @@ export function TeammateWorkspace({
     description: string;
     starter: string;
   }>;
+  /**
+   * The empty chat's Teammate picker: Ciele AI, then this Member's roster by
+   * name, this Teammate included.
+   */
+  pickableTeammates: PickableTeammate[];
 }) {
   const router = useRouter();
+  const reduceMotion = useReducedMotion() ?? false;
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [pending, setPending] = useState(false);
   // The picker's standing choice for this session; see `models` above.
   const [model, setModel] = useState<string | undefined>();
   const promptModels = toPromptModels(models, autoModel);
-  // Controlled only because `@` edits it from outside the input.
-  const [draft, setDraft] = useState("");
+  // Controlled because `@` edits it from outside the input; kept per
+  // conversation in this browser, so a reload does not lose an unsent message.
+  const draftConversation = useSyncExternalStore(
+    chatSession.subscribe,
+    () => chatSession.getSnapshot().conversationId,
+    () => chatSession.getSnapshot().conversationId
+  );
+  const [draft, setDraft] = useChatDraft(`${teammate.id}:${draftConversation ?? "new"}`);
+  // Messages typed while a reply streams, sent in order once it finishes.
+  const [queue, setQueue] = useState<string[]>([]);
+  const queueRef = useRef<string[]>([]);
+  const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
   /**
    * The Teammate a Ciele AI message is addressed to, from `@`: a tag in the
    * composer, not a navigation. The Member keeps typing, and sending is what
@@ -441,8 +467,16 @@ export function TeammateWorkspace({
       if (outcome.status === "failed") toast.error(outcome.error.message);
     } finally {
       setPending(false);
+      // The next queued message goes once this render settles, through the
+      // latest `send` (this one still sees the turn as pending).
+      const next = queueRef.current.shift();
+      setQueue([...queueRef.current]);
+      if (next) setTimeout(() => void sendRef.current(next), 0);
     }
   }
+  useEffect(() => {
+    sendRef.current = send;
+  });
 
   async function vote(bot: ChatBotMsg, reaction: FeedbackReactionId | null) {
     if (!bot.id) return;
@@ -540,6 +574,37 @@ export function TeammateWorkspace({
   // question and the composer in the middle of the page (Notion's). Only the
   // face changes between Ciele AI and a Teammate.
   const heroEmpty = messages.length === 0 && !fullscreen;
+  // A first message carries the composer from the middle of the page down to
+  // its dock instead of jumping; a new chat carries it back up.
+  const dockRef = useRef<HTMLDivElement>(null);
+  useDockGlide(dockRef, !heroEmpty, reduceMotion);
+  // The empty chat's composer carries a strip under the box: who the chat is
+  // with, and the history the header would otherwise hold (it is not shown
+  // until the first message).
+  const pill = { "--radius": "9999px" } as CSSProperties;
+  const heroFooter = (
+    <>
+      <TeammatePicker
+        current={teammate}
+        teammates={pickableTeammates}
+        onPick={(target) => {
+          // The unsent text goes with the question to the other Teammate.
+          storeChatDraft(`${target.id}:new`, draft);
+          setDraft("");
+          router.push(isCieleAi(target) ? "/teammates" : `/teammates/${target.id}`);
+        }}
+      />
+      <RecentConversationsMenu
+        entries={thread.map((entry) => ({
+          id: entry.id,
+          label: threadEntryLabel(entry),
+          updatedAt: entry.updatedAt,
+        }))}
+        disabled={pending}
+        onPick={(id) => void openConversation(id)}
+      />
+    </>
+  );
 
   return (
     <div data-eye-tracker-frame className="flex h-full flex-col overflow-hidden">
@@ -588,16 +653,26 @@ export function TeammateWorkspace({
         )}
 
         <>
-            {heroEmpty ? (
-              <div className="flex flex-1 flex-col items-center justify-end gap-4 px-4 pb-6 text-center">
+            {/* The face and the question go the moment the thread arrives,
+                so the composer's glide is the only movement; they fade back
+                in when a new chat empties the page again. */}
+            {heroEmpty && (
+              <motion.div
+                key="hero"
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-1 flex-col items-center justify-end gap-4 px-4 pb-6 text-center"
+              >
                 {platformLayer ? (
                   <EyeTracker shape="Ciele" size={64} follow={24} bounce={0} />
                 ) : (
                   <TeammateAvatar teammate={teammate} className="size-16" />
                 )}
                 <h1 className="text-3xl font-bold tracking-tight">What can I do for you?</h1>
-              </div>
-            ) : (
+              </motion.div>
+            )}
+            {heroEmpty ? null : (
             <MessageScroller
               className="min-h-0 flex-1"
               busy={pending}
@@ -643,7 +718,10 @@ export function TeammateWorkspace({
             </MessageScroller>
             )}
 
+            {/* One element in both layouts, so the glide (`useDockGlide`,
+                on its top edge) has a single box to carry. */}
             <div
+              ref={dockRef}
               className={`${WIDEN_TRANSITION} ${
                 fullscreen
                   ? "px-[max(1.5rem,calc((100%-56rem)/2))] pb-6"
@@ -666,6 +744,27 @@ export function TeammateWorkspace({
                   entries={attachments.entries}
                   onRemove={attachments.remove}
                 />
+                {queue.length > 0 && (
+                  <ul aria-label="Queued messages" className="mb-2 flex flex-col gap-1">
+                    {queue.map((queued, index) => (
+                      <li key={`${index}-${queued}`} className="bg-foreground/[0.06] text-muted-foreground flex items-center gap-2 rounded-xl py-1 pr-1 pl-3 text-sm">
+                        <span className="text-2xs shrink-0 font-medium uppercase">Queued</span>
+                        <span className="text-foreground min-w-0 flex-1 truncate">{queued}</span>
+                        <CieleButton variant="ghost" size="icon-sm"
+                          type="button"
+                          aria-label={`Remove queued message: ${queued}`}
+                          onClick={() => {
+                            queueRef.current = queueRef.current.filter((_, at) => at !== index);
+                            setQueue(queueRef.current);
+                          }}
+                          className="press-control text-muted-foreground hover:bg-foreground/10 hover:text-foreground flex size-6 items-center justify-center rounded-full"
+                        >
+                          <X className="size-3" />
+                        </CieleButton>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {addressee && (
                   <div className="mb-2 flex">
                     <span className="bg-foreground/[0.12] text-foreground inline-flex items-center gap-1.5 rounded-full py-1 pr-1 pl-2.5 text-sm font-medium">
@@ -733,16 +832,26 @@ export function TeammateWorkspace({
                       channelTrigger.sync(value);
                       skillTrigger.sync(value);
                     }}
-                    // While a turn streams the composer refuses to submit, so
-                    // Enter keeps the draft instead of clearing it for a
-                    // `send` that would return early and drop it.
                     loading={pending}
                     {...(channelTrigger.open
                       ? triggerInputProps(channelListId, true, channelTrigger.highlighted)
                       : triggerInputProps(skillListId, skillTrigger.open, skillTrigger.highlighted))}
+                    // Typing on while a reply streams queues the message.
+                    allowSubmitWhileLoading
+                    variant={heroEmpty ? "agent" : "default"}
+                    footer={heroEmpty ? heroFooter : undefined}
                     onSubmit={(value) => {
                       // See the widget: a file mid-read would vanish.
-                      if (attachments.busy || pending) return;
+                      if (attachments.busy) return;
+                      if (pending) {
+                        // Queued messages are plain text: a tag or an
+                        // attachment belongs to the turn it was added for.
+                        if (addressee || attachments.entries.length || !value.trim()) return;
+                        queueRef.current = [...queueRef.current, value.trim()];
+                        setQueue(queueRef.current);
+                        setDraft("");
+                        return;
+                      }
                       setDraft("");
                       channelTrigger.reset();
                       skillTrigger.reset();
@@ -791,12 +900,36 @@ export function TeammateWorkspace({
                       models[0]?.selector
                     }
                     onModelChange={setModel}
-                    minRows={1}
+                    minRows={heroEmpty ? 2 : 1}
                     maxRows={6}
                     placeholder={`Ask ${addressee?.name ?? teammate.name}…`}
                     aria-label={`Ask ${addressee?.name ?? teammate.name}`}
                   />
                 </div>
+                {/* Opening lines from the Organization's Skills, under the
+                    empty chat's composer. A pick fills the box rather than
+                    sending, and the row fades once there is a draft. */}
+                {heroEmpty && skills.length > 0 && (
+                  <div
+                    role="group"
+                    aria-label="Suggestions"
+                    aria-hidden={draft ? true : undefined}
+                    inert={Boolean(draft)}
+                    className={`flex flex-wrap justify-center gap-2 pt-3 transition-opacity duration-200 ease-out motion-reduce:transition-none ${draft ? "opacity-0" : ""}`}
+                  >
+                    {skills.slice(0, 3).map((skill) => (
+                      <CieleButton key={skill.id} variant="secondary" size="sm" type="button" style={pill}
+                        icon={<DraftingCompass />}
+                        onClick={() => {
+                          setDraft(skill.starter);
+                          composerTextarea()?.focus();
+                        }}
+                      >
+                        {skill.name}
+                      </CieleButton>
+                    ))}
+                  </div>
+                )}
                 </>
               )}
               {!retired && models.length > 0 && personalSubscriptionsAllowed && (

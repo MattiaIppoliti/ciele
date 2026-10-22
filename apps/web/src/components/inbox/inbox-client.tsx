@@ -21,6 +21,8 @@ import {
   feedbackReactionById,
   feedbackReactionScore,
   messageText,
+  piiMaskingOrigins,
+  piiMaskingSummary,
   type FeedbackReactionId,
 } from "@agent-hub/core";
 import { useExitTransition } from "@/components/motion/use-exit-transition";
@@ -65,6 +67,7 @@ import {
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
+import { Hint } from "@agent-hub/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   DropdownMenu,
@@ -1487,6 +1490,17 @@ export function InboxClient({
                           {hit.name}: {hit.outcome === "unavailable" ? "could not run" : hit.outcome}
                         </span>
                       ))}
+                      {m.trace?.piiMasking && (
+                        // Counts only: the values are in the transcript above,
+                        // and the placeholders were never stored. Where each
+                        // value came from is one hover away.
+                        <Hint label={piiMaskingOrigins(m.trace.piiMasking.masked)} side="top">
+                          <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium">
+                            <ShieldCheck className="size-3.5" />
+                            {m.trace.piiMasking.name}: masked {piiMaskingSummary(m.trace.piiMasking.masked)}
+                          </span>
+                        </Hint>
+                      )}
                       {terminalBadge(trace?.terminal) && (
                         <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium">
                           {terminalBadge(trace?.terminal)}

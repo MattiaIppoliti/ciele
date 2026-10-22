@@ -85,13 +85,14 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_sso` | Manage identity claims and the Organization SSO connection. |
 | `manage_help_desks` | Manage Help Desks, channels, ordering, and ServiceNow. |
 | `manage_teammates` | Manage AI Teammates, their grants, their Routines and their memory. `provision` does the full setup in one action. |
-| `manage_projects` | Manage Projects and the memory document of each Project. |
+| `manage_projects` | Manage Projects, their milestones, and the memory document of each Project. |
+| `manage_tasks` | List, read, create, change, and delete Tasks. Comment on Tasks and manage task Labels. |
 | `manage_channels` | Read and shape the teammate channels you are in. |
 | `manage_configuration` | Manage Skills, Assistant Skill selection, Goals, and Alerts. |
 | `manage_organization` | Manage Organization settings, Members, Invites, and API keys. Read the usage meters and spenders of the plan. |
 | `manage_integrations` | Manage Assistant API integrations and model providers. |
 
-The server registers sixteen tools: one identity tool and fifteen domain tools. Each domain tool uses an `action` field for its operations.
+The server registers seventeen tools: one identity tool and sixteen domain tools. Each domain tool uses an `action` field for its operations.
 
 Read-only mode classifies each action. It permits list, read, status, query, search, and export actions while refusing mutations.
 

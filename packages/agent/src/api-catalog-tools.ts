@@ -417,6 +417,7 @@ const readApiResponseSpec: RuntimeToolSpec = {
 
 export const READ_KNOWLEDGE_SOURCE_SPEC: RuntimeToolSpec = {
   name: "readKnowledgeSource",
+  piiOrigin: "knowledge",
   description:
     "Read a knowledge document in character windows, by the sourceId a knowledge search returned. Use it when a search result is cut off mid-answer and you need the surrounding text. Returns the window plus the document's total length.",
   inputSchema: z.object({

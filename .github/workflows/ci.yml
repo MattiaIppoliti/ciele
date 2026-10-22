@@ -54,4 +54,7 @@ jobs:
         run: pnpm lint
 
       - name: Build
+        env:
+          # The web build's TypeScript worker exceeds Node 22's 2 GiB default.
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm build

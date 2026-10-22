@@ -107,7 +107,35 @@ export async function projects(verb: string | undefined, ctx: CommandContext) {
       emit(`Wrote project memory (${document.body.length} chars)`, document);
       return EXIT.ok;
     }
+    case "milestones": {
+      if (!rest[0]) return usage(deps, "projects milestones <id>");
+      const result = await client.projects.milestones(rest[0]);
+      emit(
+        table(result.data, [
+          { key: "id", header: "ID" },
+          { key: "date", header: "Date" },
+          { key: "name", header: "Name" },
+        ]),
+        result
+      );
+      return EXIT.ok;
+    }
+    case "set-milestones": {
+      // The whole list, as JSON: `[{"name":"Launch","date":"2026-11-02"}]`.
+      // Keep a milestone by sending it back with its id.
+      const file = str(flags.file);
+      const raw = str(flags.json) ?? (file ? readFileSync(file, "utf8") : undefined);
+      if (!rest[0] || raw === undefined) {
+        return usage(deps, "projects set-milestones <id> (--file <milestones.json> | --json '<array>')");
+      }
+      const parsed = JSON.parse(raw) as unknown;
+      const list = Array.isArray(parsed) ? parsed : (parsed as { milestones?: unknown }).milestones;
+      if (!Array.isArray(list)) return usage(deps, "The JSON must be an array of {name, date} or {milestones: [...]}");
+      const result = await client.projects.setMilestones(rest[0], list as { id?: string; name: string; date: string }[]);
+      emit(`Saved ${result.data.length} milestone${result.data.length === 1 ? "" : "s"}`, result);
+      return EXIT.ok;
+    }
     default:
-      return usage(deps, "projects <list|get|create|update|delete|set-document>");
+      return usage(deps, "projects <list|get|create|update|delete|set-document|milestones|set-milestones>");
   }
 }

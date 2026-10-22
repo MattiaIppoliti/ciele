@@ -35,6 +35,12 @@ export type MutatedEntity =
   | { kind: "improvementList" }
   /** One Improvement's detail page. */
   | { kind: "improvement"; id: string }
+  /**
+   * Every Improvement's page, for the Tasks it lists (ADR-0027): a Task write
+   * that links, unlinks or settles one, when the Improvement it left is not in
+   * the input.
+   */
+  | { kind: "improvementTasks" }
   /** The conversation Inbox. */
   | { kind: "inbox" }
   /** The org-level Knowledge hub (PRD #726). */
@@ -51,6 +57,17 @@ export type MutatedEntity =
   | { kind: "projectList" }
   /** One Project's page: its description and its decisions document. */
   | { kind: "project"; id: string }
+  /**
+   * The cross-Project task views (#1050): My Tasks, All tasks and the
+   * Organization calendar and timeline, plus the sidebar's My Tasks badge.
+   */
+  | { kind: "taskList" }
+  /** One Task's full page; its drawer lives on whatever view is open. */
+  | { kind: "task"; id: string }
+  /** The Organization's Labels, shown on every task view. */
+  | { kind: "taskLabels" }
+  /** The signed-in Member's own Notifications page and its badge (#1048). */
+  | { kind: "myNotifications" }
   /** Eval: the dataset library, the run history and every run's dashboard. */
   | { kind: "evaluations" }
   /**

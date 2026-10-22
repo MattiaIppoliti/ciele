@@ -14,7 +14,9 @@ export type FindKind =
   | "conversation"
   | "improvement"
   | "help_desk"
-  | "teammate";
+  | "teammate"
+  | "task"
+  | "project";
 
 export interface FindKindInfo {
   /** What one record is called ("Help desk"). */
@@ -67,6 +69,21 @@ export const FIND_KIND_INFO = {
     wireframe: "chat",
     detail: false,
     href: (id) => `/teammates/${id}`,
+  },
+  // The work section (#1072): a Task opens on its own page, a Project on its list.
+  task: {
+    singular: "Task",
+    plural: "Tasks",
+    wireframe: "detail",
+    detail: false,
+    href: (id) => `/tasks/${id}`,
+  },
+  project: {
+    singular: "Project",
+    plural: "Projects",
+    wireframe: "list",
+    detail: false,
+    href: (id) => `/projects/${id}/list`,
   },
 } as const satisfies Record<FindKind, FindKindInfo>;
 

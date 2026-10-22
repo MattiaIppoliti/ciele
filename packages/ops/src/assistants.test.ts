@@ -234,7 +234,11 @@ describe("Guardrails settings", () => {
   it("accepts a valid list and refuses one a turn could not enforce", () => {
     expect(assistantPatchSchema.safeParse({ guardrails: [regex] }).success).toBe(true);
     expect(assistantPatchSchema.safeParse({ guardrails: [] }).success).toBe(true);
+    const masking = defaultGuardrail("pii_masking", "p1");
+    expect(assistantPatchSchema.safeParse({ guardrails: [regex, masking] }).success).toBe(true);
     for (const invalid of [
+      [masking, { ...masking, id: "p2" }],
+      [{ ...masking, detectors: [] }],
       [{ ...regex, pattern: "(unclosed" }],
       [{ ...regex, type: "jailbreak_detector" }],
       [regex, { ...regex }],

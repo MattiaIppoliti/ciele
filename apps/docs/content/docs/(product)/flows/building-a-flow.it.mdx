@@ -11,8 +11,8 @@ description: Configura un trigger, le condizioni disponibili e le azioni di risp
 4. Inserisci un nome e una descrizione chiari.
 5. Seleziona un trigger.
 
-La descrizione aiuta la classificazione degli intenti a selezionare un Flow di
-messaggi. Indica l'intento del Visitor e l'ambito richiesto.
+La descrizione aiuta Intent Classification a selezionare un Flow di messaggi.
+Indica l'intento del Visitor e lo scope richiesto.
 
 Un Flow si attiva in seguito a un messaggio di un Visitor, a un evento del
 widget o a una richiesta HTTP in entrata. Gli eventi del widget sono page load,
@@ -26,7 +26,7 @@ I Message Flow supportano questi tipi di condizioni:
 
 | Condition | Comportamento attuale |
 | --- | --- |
-| Conversation context | Aggiunge esempi semantici alla classificazione degli intenti. Non è un hard gate. |
+| Conversation context | Aggiunge esempi semantici a Intent Classification. Non è un hard gate. |
 | URL | Applica un hard gate di tipo Matches, Contains o Regex. |
 | Schedule | Applica un hard gate per start, end e timezone. |
 
@@ -34,24 +34,32 @@ Seleziona **Any condition matches** o **All conditions match** quando il Flow
 contiene più di una condizione.
 
 Le condizioni URL e Schedule rimuovono un Flow non idoneo prima della
-classificazione. Una condizione soddisfatta non impone al Flow di prevalere.
+classificazione. Una condizione soddisfatta non impone che il Flow prevalga.
 
-## Aggiungi le azioni di risposta
+## Aggiungi azioni di risposta
 
 1. Aggiungi le azioni richieste.
-2. Ordina le azioni secondo il loro ordine di esecuzione.
+2. Metti le azioni nel loro ordine di esecuzione.
 3. Configura tutti i campi obbligatori.
 4. Salva il Flow.
 5. Esegui il test con un messaggio corrispondente e uno non corrispondente.
 
-L'editor limita i Flussi proattivi a una sola azione di tipo Notification. Il
-server applica la stessa regola quando salva o invia un Flow.
+Passa il puntatore del mouse su un nodo azione e seleziona **Copy step** per
+inserire un'azione identica immediatamente dopo di esso. La copia ha le proprie
+impostazioni: modificarla, spostarla o eliminarla non comporta alcuna modifica
+all'originale. La funzione Copy è disponibile anche nella vista Form e nel menu
+Step options del nodo. Usa **Undo** o **Redo** per annullare o ripristinare una
+modifica. Un Flow supporta fino a 20 azioni.
 
-## Riordina i Flussi
+L'editor limita i Flow proattivi a una sola azione Notification, pertanto
+l'opzione Copy non è disponibile per tali Flow. Il server applica la stessa
+regola quando salva o invia un Flow.
+
+## Riordina i Flow
 
 Trascina un Flow per modificare la priorità di instradamento dei messaggi. Con
 la tastiera, sposta il focus sulla maniglia di un Flow e premi il tasto freccia
-su o giù. Il Flow con comportamento Default rimane l'ultimo.
+su o giù. Il Flow Default behavior rimane l'ultimo.
 
-Disabilita un Flow quando devi interromperne il routing senza eliminarne la
+Disabilita un Flow quando devi interromperne il routing senza eliminare la sua
 configurazione.

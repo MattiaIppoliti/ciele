@@ -317,6 +317,15 @@ only the OSS chain. Grouped:
   layer, ADR-0008), `export_jobs` (async report files), `ai_usage` + `usage_daily` + `org_budgets`
   (the token ledger, its rollup and per-org caps), `runtime_events` (turn-level telemetry,
   ADR-0011).
+- **Work** (map #1039, `20261009100000_work_management.sql` and its follow-ups): `projects` (with
+  the work fields and `visibility`), `project_members` (the seats of a private Project),
+  `project_milestones`, `tasks` (`seq` per Project from `task_counters` / `next_task_seq`, a
+  fractional `rank`, one subtask level), `task_dependencies`, `task_labels` + `task_label_links`,
+  `saved_views`, `work_favorites`, `task_comments` + `task_comment_reactions`, `work_activity`
+  (append-only, system writes only), `member_notifications` + `notification_preferences` (system
+  writes; 90-day sweep), `project_files` (objects in the private `work-files` bucket). Children
+  reference `(task_id, project_id)` with `on update cascade`, so moving a Task carries them. The
+  read rule is `private.can_read_project`, the write rule `private.can_write_project`.
 - **Identity & access**: `sso_connections` (per-org IdP config), `assistant_access` (per-assistant
   grants), `local_connector_devices` / `local_connector_pairings` / `local_inference_jobs`
   (the Preview-only local-CLI relay, ADR-0015).
@@ -887,6 +896,20 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   (three declared `exports` entries make deep imports unresolvable, surface locked by
   `interface.test.ts`: ADR-0005/ADR-0018) are the two modules whose interfaces the tooling enforces;
   the rest of `apps/web` composes over them.
+
+- **Work section** (#1061-#1070): Projects and Tasks run end to end in the console (List, Board,
+  Table, Calendar, Timeline, Saved Views, comments, Member Notifications, files) and over
+  `/api/v1`, `ciele tasks`, the `manage_tasks` MCP tool and the Teammate `tasks` grant. Rules live
+  in `packages/core/src/work.ts` and `work-view.ts`, operations in `packages/ops/src/tasks.ts`,
+  `task-comments.ts`, `project-files.ts`, `projects-work.ts`, `member-notifications.ts` and
+  `work-reads.ts`; the activity log and notifications are written through the `workLog` port,
+  objects removed through the `workFiles` port, and an Improvement whose linked Tasks are all
+  done moves to In review through the `improvementSettlement` port (ADR-0027). The shell
+  patterns of spec #1060 ship beside it (#1071-#1074): the keyboard layer (`?`, `G` sequences,
+  `N`/`P`, `[`, `/`, Cmd/Ctrl+Enter, one binding table in `components/shell/shell-hotkeys.ts`),
+  Find over Tasks and Projects with match highlighting and recent searches, the offline banner,
+  the in-shell 404, a document title per page, Monday weeks, the Roles matrix, multi-address
+  invites and `toast.undo()`.
 
 Keep this section honest: it's the fastest way for a new contributor (human or agent) to know what to
 trust versus what to build.

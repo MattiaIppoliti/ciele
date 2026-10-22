@@ -12,7 +12,7 @@ installations auto-hébergées.
 - Utilisez Node.js 22.6 ou une version ultérieure.
 - Créez une [clé API d'organisation](/developers/api-keys).
 
-## Installer
+## Installation
 
 Compilez et installez le package autonome à partir d'une copie du dépôt :
 
@@ -22,7 +22,7 @@ npm install --global ./packages/cli/dist/ciele-cli-*.tgz
 ciele help
 ```
 
-L'archive tar inclut ses dépendances d'exécution. La commande installée n'a plus
+Le tarball inclut ses dépendances d'exécution. La commande installée n'a plus
 besoin du dépôt.
 
 Une fois que `@ciele/cli` est publié sur npm, `npm install --global @ciele/cli`
@@ -96,8 +96,8 @@ les connaissances à la portée d'un Assistant. Les commandes sont
 
 ### Ajouter des connaissances sans Collection
 
-Un nouvel Assistant n'a pas de Collection, car la liste des Collections
-n'affiche que les Collections qui contiennent ses Sources. Dans ce cas, utilisez
+Un nouvel Assistant n'a pas de Collection, car la liste des Collections affiche
+uniquement les Collections qui contiennent ses Sources. Dans ce cas, utilisez
 `sources add-org`. Cela place la Source dans la Knowledge Library de
 l'Organisation.
 
@@ -133,7 +133,7 @@ fichier original à un Visiteur.
 ### Rechercher dans la base de connaissances
 
 `knowledge search` affiche les passages qui correspondent à une question, avec
-le Document et la Source de chaque passage. Il ne génère pas de réponse.
+le Document et la Source de chaque passage. Cela ne génère pas de réponse.
 
 ```bash
 ciele knowledge search "How do I connect Salesforce?"
@@ -142,8 +142,8 @@ ciele knowledge search "How do I connect Salesforce?" --json
 ```
 
 Avec `--assistant`, la recherche utilise uniquement les Sources liées à cet
-Assistant. Sans cela, la recherche s'appuie sur l'ensemble de la Library.
-`--json` présente les résultats avec leur rang, leur score et leurs ID.
+Assistant. Sans cela, la recherche utilise l'ensemble de la Library. `--json`
+affiche les résultats avec leur rank, leur score et leurs ID.
 
 ### Poser une question à un Assistant
 
@@ -155,7 +155,7 @@ ciele assistants ask <assistant-id> "How do I connect Salesforce?"
 ciele assistants ask <assistant-id> "And ServiceNow?" --conversation <conversation-id>
 ```
 
-Utilisez `--conversation` avec l'ID d'une réponse précédente pour poursuivre
+Utilisez `--conversation` avec l'ID d'une réponse antérieure pour poursuivre
 cette Conversation. Seule la clé API qui a démarré une Conversation peut la
 poursuivre. Avec un ID différent, la question démarre une nouvelle Conversation.
 
@@ -164,19 +164,18 @@ réception l'affiche avec l'étiquette **API key** lorsque vous réglez le filtr
 **Staff conversations** sur **Include staff** ou **Staff only**. La commande se
 termine avec un code d'erreur lorsque l'Assistant n'a pas pu répondre.
 
-## Commandes de Flow
+## Commandes de flux
 
 ### Découvrez ce qu'un Flow peut contenir
 
 `ciele flows catalog` affiche les déclencheurs, les actions et les types de
 conditions de ce déploiement Ciele. Il indique également quelles actions chaque
-déclencheur autorise. Lisez-le avant de rédiger un fichier Flow. Le serveur
-refuse un trigger, une action ou un type de condition qui ne figure pas dans la
-liste.
+déclencheur autorise. Lisez-le avant d'écrire un fichier Flow. Le serveur refuse
+un trigger, une action ou un type de condition qui ne figure pas dans la liste.
 
-C'est le déploiement qui fournit cette réponse, et non la CLI. Une CLI plus
-ancienne utilisée avec une version plus récente de Ciele affiche les nouvelles
-listes.
+C'est le déploiement qui fournit cette réponse, et non la CLI. Une version plus
+ancienne de la CLI utilisée avec une version plus récente de Ciele affiche les
+nouvelles listes.
 
 ```bash
 ciele flows catalog
@@ -214,9 +213,9 @@ une conversation.
 
 ### Attribuer des capacités à un Teammate
 
-Un nouveau Teammate IA peut répondre aux questions. Il ne peut pas agir tant que
-vous ne lui avez pas attribué un domaine, et il n'effectue aucun travail en
-autonomie tant que vous ne lui avez pas assigné une Routine.
+Un nouveau Teammate IA peut répondre aux questions. Il ne peut agir que si vous
+lui attribuez un domaine, et il n'effectue aucun travail en autonomie tant que
+vous ne lui avez pas assigné une Routine.
 
 ```bash
 ciele teammates grants <teammate-id>
@@ -234,7 +233,7 @@ Un Teammate peut avoir un maximum de cinq Routines.
 
 ### Configurer un coéquipier en une seule commande
 
-`teammates create` crée un coéquipier qui répond aux questions. Il ne peut pas
+`teammates create` crée un Teammate qui répond aux questions. Il ne peut pas
 agir et n'effectue aucun travail en mode non supervisé. `teammates provision`
 exécute les trois étapes ensemble.
 
@@ -244,9 +243,9 @@ ciele teammates provision --name "Triage" \
   --routine "Triage new feedback:daily:8"
 ```
 
-L'ordre est : create, puis grant, puis schedule. Si une étape échoue, la
-commande vous indique où elle s'est arrêtée. Le teammate reste utilisable
-jusqu'à ce point.
+L'ordre est le suivant : create, puis grant, puis schedule. Si une étape échoue,
+la commande vous indique où elle s'est arrêtée. Le teammate reste utilisable
+jusqu'à ce stade.
 
 Une clé sans le rôle Admin peut créer le collègue. Elle ne peut pas accorder un
 domaine. La commande indique ensuite qu'elle s'est arrêtée à l'étape grants.
@@ -268,11 +267,39 @@ ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
 `set-document` et `set-memory` remplacent le texte complet. Ciele conserve le
 texte précédent dans l'historique du document.
 
-Il n'existe pas de commande pour votre propre couche de mémoire. Une clé API
+### Tâches
+
+```bash
+ciele tasks list --project <project-id> --status to_do,in_progress
+ciele tasks list --label <label-id> --due-from 2026-11-01 --due-to 2026-11-30 --q "brief"
+ciele tasks list --improvement <improvement-id> --cursor <next-cursor>
+ciele tasks create --project <project-id> --title "Draft the launch brief" --due 2026-11-02
+ciele tasks get <task-id>
+ciele tasks update <task-id> --status in_review --assignee <user-id>
+ciele tasks update <task-id> --json '{"labelIds":["<label-id>"],"blockedBy":["<task-id>"]}'
+ciele tasks update <task-id> --archive
+ciele tasks comment <task-id> --body "Ready for review"
+ciele tasks labels
+ciele tasks create-label --name "Bug" --color red
+ciele tasks update-label <label-id> --color amber
+ciele tasks delete-label <label-id> --yes
+ciele projects milestones <project-id>
+ciele projects set-milestones <project-id> --json '[{"name":"Launch","date":"2026-11-02"}]'
+ciele tasks delete <task-id> --yes
+```
+
+`set-milestones` remplace la liste complète. Pour conserver un jalon, envoyez-le
+à nouveau avec son ID. `tasks delete` supprime également les sous-tâches, les
+commentaires et les fichiers de la tâche. `tasks update --archive` masque la
+tâche et ses sous-tâches. `--restore` les affiche à nouveau. Lorsqu'il y a
+davantage de tâches, `tasks list` affiche le curseur de la page suivante.
+`tasks delete-label` supprime le Label de chaque tâche. Les tâches restent.
+
+Il n'existe aucune commande pour votre propre couche de mémoire. Une clé API
 agit comme le membre qui l'a créée ; ainsi, une commande ici afficherait le
 document privé de ce membre. Dans la console, accédez à Settings, puis à Memory.
 
-## Commandes Operations et Organization
+## Commandes relatives aux opérations et à l'organisation
 
 ```bash
 ciele conversations list --assistant <assistant-id>
@@ -309,5 +336,5 @@ export CIELE_BASE_URL="https://ciele.example.edu"
 ciele publish status "$ASSISTANT_ID" --json
 ```
 
-Stockez toutes les valeurs dans le magasin de secrets CI. N'écrivez pas de clé
+Stockez toutes les valeurs dans le magasin de secrets CI. N'inscrivez pas de clé
 dans un fichier de workflow.

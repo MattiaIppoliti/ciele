@@ -6,6 +6,8 @@ import {
 } from "@/lib/supabase/service";
 import { getWidgetDb } from "@/lib/widget-db";
 import {
+  sweepDeletedTaskComments,
+  sweepExpiredMemberNotifications,
   sweepExpiredObjectAccess,
   sweepExpiredTraces,
   sweepExpiredTranscripts,
@@ -33,16 +35,20 @@ const noOrphans = { knowledgeOrphansScannedOrgs: 0, knowledgeOrphansRemoved: 0 }
 
 export const GET = withCronAuth(async () => {
   const db = getWidgetDb();
-  // Three policies, one tick: the two tenant-set windows (either, both, or
-  // neither, #801/CYB-12) and the fixed operational window on the
-  // object-access ledger (#801/CYB-19). One schedule, one report to read.
+  // Five policies, one tick: the two tenant-set windows (either, both, or
+  // neither, #801/CYB-12; Work Activity rides the transcript one, #1051), the
+  // fixed operational window on the object-access ledger (#801/CYB-19), the
+  // 90 days a Member Notification is kept (#1067) and the day a deleted Task
+  // comment waits before it is gone (#1055). One schedule, one report to read.
   // Plus the storage backstop: knowledge originals no Source names any more
   // (an Organization deleted whole, or files orphaned before Source deletes
   // removed them). Isolated, a storage outage must not fail the row sweeps.
-  const [traces, transcripts, objectAccess, knowledgeOrphans] = await Promise.all([
+  const [traces, transcripts, objectAccess, memberNotifications, deletedComments, knowledgeOrphans] = await Promise.all([
     sweepExpiredTraces({ db }),
     sweepExpiredTranscripts({ db }),
     sweepExpiredObjectAccess({ db }),
+    sweepExpiredMemberNotifications({ db }),
+    sweepDeletedTaskComments({ db }),
     isSupabaseServiceConfigured()
       ? sweepOrphanedKnowledgeOriginals(createSupabaseServiceClient()).catch((error) => {
           console.error("[retention] knowledge orphan sweep failed:", error);
@@ -50,5 +56,12 @@ export const GET = withCronAuth(async () => {
         })
       : noOrphans,
   ]);
-  return Response.json({ ...traces, ...transcripts, ...objectAccess, ...knowledgeOrphans });
+  return Response.json({
+    ...traces,
+    ...transcripts,
+    ...objectAccess,
+    ...memberNotifications,
+    ...deletedComments,
+    ...knowledgeOrphans,
+  });
 });

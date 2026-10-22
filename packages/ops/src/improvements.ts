@@ -384,7 +384,8 @@ export interface FeedbackTriageResult {
 async function triageDecision(
   ctx: OperationContext,
   board: readonly { id: string; title: string; status: ImprovementStatus }[],
-  evidence: { title: string; question: string; answer: string }
+  evidence: { title: string; question: string; answer: string },
+  conversation: { id: string; assistantId: string | null }
 ): Promise<{ matchedId: string | null; priority: ImprovementPriority } | null> {
   const ask = ctx.ports?.triageDecisions;
   if (!ask) return null;
@@ -393,7 +394,7 @@ async function triageDecision(
     .map((item) => ({ id: item.id, title: item.title }));
   const candidates = dedupCandidates(evidence.title, open);
   try {
-    const decision = await ask({ evidence, candidates });
+    const decision = await ask({ evidence, candidates, conversation });
     if (!decision) return null;
     return {
       matchedId: dedupMatch({
@@ -479,11 +480,12 @@ export const triageFeedbackOp = defineOperation({
       const decided =
         title === UNTITLED_TRIAGE_TITLE
           ? null
-          : await triageDecision(ctx, board, {
-              title,
-              question,
-              answer: messageText(flagged[0].content) ?? "",
-            });
+          : await triageDecision(
+              ctx,
+              board,
+              { title, question, answer: messageText(flagged[0].content) ?? "" },
+              { id: conversation.id, assistantId: conversation.assistantId ?? null }
+            );
 
       const twin =
         title === UNTITLED_TRIAGE_TITLE

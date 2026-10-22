@@ -209,6 +209,9 @@ describe("orgMutation", () => {
         ["/teammates", "layout"],
         ["/teammates/[teammateId]", "page"],
         ["/improvements", undefined],
+        ["/projects", "layout"],
+        ["/my-tasks", undefined],
+        ["/tasks", "layout"],
       ],
     ],
     [
@@ -217,8 +220,20 @@ describe("orgMutation", () => {
         ["/teammates", "layout"],
         ["/teammates/[teammateId]", "page"],
         ["/improvements", undefined],
+        ["/projects/prj_1", "layout"],
       ],
     ],
+    // The work views (#1053): every task view and Project page draws Tasks.
+    [
+      { kind: "taskList" },
+      [
+        ["/projects", "layout"],
+        ["/my-tasks", undefined],
+        ["/tasks", "layout"],
+      ],
+    ],
+    [{ kind: "task", id: "tsk_1" }, [["/tasks/tsk_1", undefined]]],
+    [{ kind: "myNotifications" }, [["/notifications", undefined], ["/settings/notifications", undefined]]],
   ] as const)("maps %o to its route(s)", async (entity, expectedCalls) => {
     await orgMutation({ capability: "edit", entities: [entity] }, async () => null);
     expect(revalidatePathMock.mock.calls).toEqual(expectedCalls);
@@ -240,7 +255,7 @@ describe("orgMutation", () => {
 
   it("dedupes the Project pair down to the routes they share", async () => {
     // What `projects.update` declares: one Project changed, and so did the set
-    // of them. Both map to the same two routes, and each is revalidated once.
+    // of them. The routes they share are revalidated once.
     await orgMutation(
       {
         capability: "edit",
@@ -252,6 +267,10 @@ describe("orgMutation", () => {
       ["/teammates", "layout"],
       ["/teammates/[teammateId]", "page"],
       ["/improvements", undefined],
+      ["/projects/prj_1", "layout"],
+      ["/projects", "layout"],
+      ["/my-tasks", undefined],
+      ["/tasks", "layout"],
     ]);
   });
 

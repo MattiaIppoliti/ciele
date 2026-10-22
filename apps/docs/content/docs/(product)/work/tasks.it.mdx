@@ -1,0 +1,116 @@
+---
+title: Attività e viste
+description: Crea attività e visualizzale come elenco, bacheca, tabella, calendario o cronologia.
+---
+
+Un'attività ha un titolo, uno stato, una priorità, un assegnatario, delle date,
+una stima, delle etichette e una descrizione in Markdown.
+
+| Status | Significato |
+| --- | --- |
+| Backlog | Non ancora pianificato. |
+| To do | Pianificato. |
+| In progress | Qualcuno ci sta lavorando adesso. |
+| In review | In attesa di verifica. |
+| Done | Completato. |
+
+La priorità è **Urgent**, **High**, **Medium**, **Low** oppure **None**.
+
+## Crea un'attività
+
+1. Seleziona **New task** nella barra degli strumenti.
+2. Digita un titolo.
+3. Seleziona Project, status, priority, assignee e, se necessario, la data di
+   scadenza.
+4. Seleziona **Create task**.
+
+Puoi anche digitare un titolo nella parte inferiore di un gruppo nell'Elenco o
+nella Tabella, oppure in una colonna della Bacheca.
+
+## Apri un'attività
+
+Seleziona una Task per aprirla in un pannello accanto alla vista. Il pannello
+mostra i suoi campi, la descrizione, le sottoattività, gli allegati, i commenti
+e l'attività. Per aprire l'attività in una pagina dedicata, seleziona il
+pulsante full-page accanto alle azioni dell'attività. Per chiudere il pannello,
+seleziona il pulsante close oppure premi **Esc**.
+
+Ciele memorizza la larghezza del pannello in questo browser. Mantiene inoltre i
+gruppi e le colonne della Board che comprimi.
+
+Un'attività può attendere altre attività. Seleziona le Tasks in **Blocked by**.
+La Timeline mostra una freccia da ogni Task bloccante al Task in attesa.
+
+Quando completi una Task, seleziona **Undo** nel messaggio per ripristinare lo
+stato precedente della Task. Funziona anche quando completi molte attività
+contemporaneamente.
+
+Un'attività può ripetersi. Quando completi una Task ricorrente, Ciele crea la
+copia successiva con nuove date. Se selezioni **Undo**, Ciele elimina anche
+quella copia e l'attività si ripete nuovamente. Se qualcuno ha già avviato la
+copia, Ciele la mantiene.
+
+Per modificare l'ordine delle attività senza usare il trascinamento, seleziona
+un'attività e premi **Alt+Up** o **Alt+Down**. Nell'elenco, puoi anche
+selezionare **Move up** o **Move down** nel menu della Task.
+
+## Risolvi un Improvement
+
+Una Task può risolvere un Improvement. Seleziona l'Improvement nel campo
+**Resolves** della Task. Per rimuovere il collegamento, seleziona **None**.
+
+Puoi anche aprire l'Improvement e selezionare **Create task**. La nuova Task
+eredita il titolo e il Project dell'Improvement, nonché il link.
+
+Quando tutte le Task che risolvono un Improvement sono completate, Ciele sposta
+l'Improvement in **In review**. Quindi una persona lo chiude. L'attività della
+Task mostra questa modifica.
+
+## La barra degli strumenti
+
+Ogni vista ha la stessa barra degli strumenti:
+
+- **Search tasks** trova le attività per titolo o chiave.
+- **Filter** mostra solo le attività che corrispondono ai tuoi filtri.
+- **Sort** modifica l'ordine. **Manual** mantiene l'ordine che hai impostato con
+  il trascinamento.
+- **Group** raggruppa le attività per stato, priorità, assegnatario, progetto o
+  data di scadenza.
+
+L'indirizzo della pagina mantiene i tuoi filtri, l'ordinamento e il
+raggruppamento. Puoi condividere l'indirizzo.
+
+## Le viste
+
+| View | Uso |
+| --- | --- |
+| List | Visualizza le attività raggruppate. Trascina una riga per modificarne l'ordine o il gruppo. Seleziona le righe per modificare più attività contemporaneamente. |
+| Board | Trascina una scheda in un'altra colonna di stato. Usa il menu della colonna per aggiungere una Task, comprimere la colonna o contrassegnare tutte le Task come completate. |
+| Table | Modifica ogni campo nella sua cella. Seleziona **Columns** per mostrare, nascondere o ripristinare le colonne. Trascina il bordo di un'intestazione di colonna per ridimensionarla. |
+| Calendar | Visualizza le attività in base alle loro scadenze, per mese o per settimana. Trascina un'attività su un altro giorno. L'attività mantiene la sua durata. Seleziona **+** su un giorno per creare un'attività per quel giorno. |
+| Timeline | Visualizza le attività come barre per settimana o per mese. Trascina una barra per spostarla. Trascina un'estremità di una barra per modificare una data. |
+
+La Timeline mostra solo le attività con una data di scadenza. Considera le altre
+attività come non programmate.
+
+Ogni azione di trascinamento ha anche una scorciatoia da tastiera. Apri
+l'attività e modifica il suo stato o le sue date nel pannello.
+
+## Viste salvate
+
+In un progetto, puoi salvare i filtri, l'ordinamento, il raggruppamento e il
+layout correnti come una vista salvata. Seleziona **Save view** nella barra
+degli strumenti. La vista salvata viene visualizzata come una scheda per tutti i
+membri che possono vedere il progetto.
+
+L'autore di una vista salvata e gli amministratori possono rinominarla,
+aggiornarla o eliminarla.
+
+## Archivia o elimina un'attività
+
+Apri il menu Task.
+
+- Seleziona **Archive** per nascondere la Task e le sue subtask. Seleziona
+  **Undo** nel messaggio per ripristinarlo immediatamente.
+- Seleziona **Delete** per eliminare la Task, le sue subtask, i suoi commenti e
+  i suoi file. Non puoi annullare questa azione.

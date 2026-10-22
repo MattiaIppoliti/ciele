@@ -32,8 +32,8 @@ import {
 
 import { conceptProvenanceView } from "@/lib/okf-provenance";
 import { assistantDocumentsHref } from "@/lib/source-documents";
-import { Bold, CloudUpload, Download, Copy, ExternalLink, Heading1, Heading2, Heading3, Heading4, Italic, Plus, RefreshCw, RemoveFormatting, TextQuote, Trash2, Unlink } from "lucide-react";
-import { ChevronDown, Code, FileUp, Globe, Info, Link2, List, ListOrdered, Maximize2, Minus, Pencil, Redo2, Undo2 } from "lucide-react";
+import { CloudUpload, Download, Copy, ExternalLink, Plus, RefreshCw, Trash2, Unlink } from "lucide-react";
+import { ChevronDown, FileUp, Globe, Info, Maximize2, Pencil } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import {
   useConfirmDelete,
@@ -137,7 +137,7 @@ import { SlidingPanel, useSlidingDirection } from "@/components/motion/sliding-p
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { canAutoFocus } from "@/lib/auto-focus";
 import { downloadFile } from "@/lib/download";
-import { applyMarkdownCommand, type MarkdownCommand } from "@/lib/markdown-toolbar";
+import { MARKDOWN_TOOLBAR_FULL, MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 
 const MODES: Array<{ id: KnowledgeMode; label: string }> = [
@@ -1756,46 +1756,6 @@ function DeleteSourceButton({
 
 /* -------------------------------- FAQs tab -------------------------------- */
 
-const FAQ_TOOLBAR: Array<
-  Array<{ label: string; Icon: typeof Bold; command: MarkdownCommand }>
-> = [
-  [
-    { label: "Bold", Icon: Bold, command: { wrap: "**" } },
-    { label: "Italic", Icon: Italic, command: { wrap: "*" } },
-    {
-      label: "Clear formatting",
-      Icon: RemoveFormatting,
-      command: {
-        transform: (s) =>
-          s
-            .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-            .replace(/\*\*|\*|`|^#+\s/gm, ""),
-      },
-    },
-    { label: "Code", Icon: Code, command: { wrap: "`" } },
-  ],
-  [
-    { label: "Heading 1", Icon: Heading1, command: { prefix: "# " } },
-    { label: "Heading 2", Icon: Heading2, command: { prefix: "## " } },
-    { label: "Heading 3", Icon: Heading3, command: { prefix: "### " } },
-    { label: "Heading 4", Icon: Heading4, command: { prefix: "#### " } },
-  ],
-  [
-    { label: "Blockquote", Icon: TextQuote, command: { prefix: "> " } },
-    { label: "Divider", Icon: Minus, command: { prefix: "\n---\n" } },
-    { label: "Bullet list", Icon: List, command: { prefix: "- " } },
-    { label: "Numbered list", Icon: ListOrdered, command: { prefix: "1. " } },
-  ],
-  [
-    { label: "Link", Icon: Link2, command: { wrap: "[", wrapEnd: "](url)" } },
-    {
-      label: "Remove link",
-      Icon: Unlink,
-      command: { transform: (s) => s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") },
-    },
-  ],
-];
-
 function FaqDialog({
   assistantId,
   collectionId,
@@ -1818,9 +1778,6 @@ function FaqDialog({
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const questionRef = useRef<HTMLInputElement>(null);
   const answerRef = useRef<HTMLTextAreaElement>(null);
-  // Char-granular undo/redo over the answer, like the reference editor.
-  const undoStack = useRef<string[]>([]);
-  const redoStack = useRef<string[]>([]);
 
   const questionMissing = !question.trim();
   const answerMissing = !answer.trim();
@@ -1839,37 +1796,6 @@ function FaqDialog({
   function requestClose() {
     if (isPending) return;
     leave(onClose);
-  }
-
-  function setAnswerTracked(next: string) {
-    undoStack.current.push(answer);
-    if (undoStack.current.length > 500) undoStack.current.shift();
-    redoStack.current = [];
-    setAnswer(next.slice(0, 20000));
-  }
-
-  function undo() {
-    const previous = undoStack.current.pop();
-    if (previous === undefined) return;
-    redoStack.current.push(answer);
-    setAnswer(previous);
-  }
-
-  function redo() {
-    const next = redoStack.current.pop();
-    if (next === undefined) return;
-    undoStack.current.push(answer);
-    setAnswer(next);
-  }
-
-  function applyCommand(command: MarkdownCommand) {
-    const el = answerRef.current;
-    if (!el) return;
-    const { selectionStart, selectionEnd, value } = el;
-    setAnswerTracked(
-      applyMarkdownCommand(value, selectionStart, selectionEnd, command),
-    );
-    requestAnimationFrame(() => el.focus());
   }
 
   function submit(e: React.FormEvent) {
@@ -1963,62 +1889,19 @@ function FaqDialog({
                     Answer <span className="text-destructive">*</span>
                   </Label>
 
-                  <div className="rounded-xl border focus-within:border-ring focus-within:ring-ring/50 transition-[border-color,box-shadow] focus-within:ring-3">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-2 py-1.5">
-                      {FAQ_TOOLBAR.map((group, g) => (
-                        <span key={g} className="flex items-center gap-0.5">
-                          {group.map((btn) => (
-                            <Button
-                              key={btn.label}
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              title={btn.label}
-                              aria-label={btn.label}
-                              onClick={() => applyCommand(btn.command)}
-                            >
-                              <btn.Icon className="size-4" />
-                            </Button>
-                          ))}
-                        </span>
-                      ))}
-                      <span className="flex items-center gap-0.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          title="Undo"
-                          aria-label="Undo"
-                          onClick={undo}
-                        >
-                          <Undo2 className="size-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          title="Redo"
-                          aria-label="Redo"
-                          onClick={redo}
-                        >
-                          <Redo2 className="size-4" />
-                        </Button>
-                      </span>
-                    </div>
-                    <Textarea
-                      id="faq-a"
-                      ref={answerRef}
-                      value={answer}
-                      onChange={(e) => setAnswerTracked(e.target.value)}
-                      placeholder="Enter your answer or content here.."
-                      aria-invalid={answerInvalid}
-                      aria-describedby={
-                        answerInvalid ? "faq-a-error" : undefined
-                      }
-                      rows={12}
-                      className="resize-none rounded-t-none border-0 shadow-none focus-visible:ring-0"
-                    />
-                  </div>
+                  <MarkdownEditor
+                    id="faq-a"
+                    ref={answerRef}
+                    value={answer}
+                    onChange={setAnswer}
+                    toolbar={MARKDOWN_TOOLBAR_FULL}
+                    history
+                    maxLength={20000}
+                    placeholder="Enter your answer or content here.."
+                    aria-invalid={answerInvalid}
+                    aria-describedby={answerInvalid ? "faq-a-error" : undefined}
+                    rows={12}
+                  />
                   <div className="flex items-center justify-between text-xs">
                     <span id="faq-a-error" className="text-destructive">
                       {answerInvalid ? "Answer is required" : ""}

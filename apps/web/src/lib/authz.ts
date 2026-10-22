@@ -37,6 +37,17 @@ const CAPABILITY_ERRORS: Partial<Record<MemberCapability, string>> = {
   changeRoles: "Only owners can change roles",
 };
 
+/**
+ * The Role does not reach the capability. A type of its own, so a caller that
+ * turns refusals into copy asks what was thrown rather than what it said.
+ */
+export class CapabilityRefusedError extends Error {
+  constructor(readonly capability: MemberCapability) {
+    super(CAPABILITY_ERRORS[capability] ?? "Not allowed");
+    this.name = "CapabilityRefusedError";
+  }
+}
+
 /** Everything an authorized server action starts from. */
 export interface MemberContext {
   session: OrgSession;
@@ -89,7 +100,7 @@ export async function requireMember(
   if (!session.organization) redirect("/onboarding");
   const orgSession = session as OrgSession;
   if (capability !== "member" && !roleAllowsCapability(orgSession.role, capability)) {
-    throw new Error(CAPABILITY_ERRORS[capability] ?? "Not allowed");
+    throw new CapabilityRefusedError(capability);
   }
   return {
     session: orgSession,

@@ -141,9 +141,12 @@ describe("runtime public interface", () => {
       "streamChannelChain",
       "streamConversationTurn",
       "summariseDocument",
+      // The retention drains: deleted Task comments (#1055), traces (#573),
+      // transcripts (CYB-12), the object-access ledger (CYB-19) and Member
+      // Notifications (#1067), all deliberate widenings.
+      "sweepDeletedTaskComments",
       "sweepDueRecrawls",
-      // The retention drains: traces (#573), transcripts (CYB-12), and the
-      // object-access ledger (CYB-19), all deliberate widenings.
+      "sweepExpiredMemberNotifications",
       "sweepExpiredObjectAccess",
       "sweepExpiredTraces",
       "sweepExpiredTranscripts",

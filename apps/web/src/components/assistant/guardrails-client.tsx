@@ -9,14 +9,17 @@ import {
   GUARDRAIL_LABELS,
   GUARDRAIL_TYPES,
   MODERATION_CATEGORIES,
+  PII_DETECTORS,
+  PII_DETECTOR_LABELS,
   defaultGuardrail,
   guardrailProblem,
+  isInputGuardrail,
   orderGuardrails,
   type AssistantGuardrail,
   type GuardrailType,
 } from "@agent-hub/core";
 import { updateAssistantAction } from "@/app/actions";
-import { Badge, Button, Card, Input, Label } from "@agent-hub/ui";
+import { Badge, Button, Card, Hint, Input, Label } from "@agent-hub/ui";
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +50,7 @@ const STAGE: Record<GuardrailType, string> = {
   moderation: "Visitor message",
   regexp_guardrail: "Visitor message",
   restrict_to_topic: "Visitor message",
+  pii_masking: "Text sent to models",
   sensitive_content_stream: "Answer stream",
 };
 
@@ -67,6 +71,8 @@ function summary(guardrail: AssistantGuardrail): string {
       return `Matches /${guardrail.pattern}/${guardrail.caseInsensitive ? "i" : ""}`;
     case "restrict_to_topic":
       return `Topics: ${guardrail.topics.join(", ")}`;
+    case "pii_masking":
+      return `Masks ${guardrail.detectors.map((d) => PII_DETECTOR_LABELS[d].noun.many).join(", ")}`;
     case "sensitive_content_stream":
       return `Hides text between ${guardrail.startMarker} and ${guardrail.stopMarker}`;
   }
@@ -96,6 +102,8 @@ function GuardrailForm({
   const id = useId();
   const problem = guardrailProblem(draft);
   const isStream = draft.type === "sensitive_content_stream";
+  // Masking never answers in place of a turn: no reply, no block-or-log.
+  const isMasking = draft.type === "pii_masking";
 
   return (
     <div className="bg-background/40 grid gap-4 rounded-lg border p-4">
@@ -214,6 +222,40 @@ function GuardrailForm({
         </div>
       )}
 
+      {draft.type === "pii_masking" && (
+        <div className="grid gap-2">
+          <Label>Mask these kinds of data</Label>
+          <p className="text-muted-foreground text-xs">
+            Ciele replaces each value with a placeholder such as [EMAIL_1] in everything this
+            assistant sends to a model, and puts the value back in the answer. The visitor and the
+            transcript keep the real values.
+          </p>
+          <div className="grid gap-2">
+            {PII_DETECTORS.map((detector) => (
+              <label key={detector} className="flex items-start gap-2 text-sm">
+                <Checkbox
+                  className="mt-0.5"
+                  checked={draft.detectors.includes(detector)}
+                  onCheckedChange={(on) =>
+                    setDraft({
+                      ...draft,
+                      detectors:
+                        on === true
+                          ? PII_DETECTORS.filter((d) => d === detector || draft.detectors.includes(d))
+                          : draft.detectors.filter((d) => d !== detector),
+                    })
+                  }
+                />
+                <span>
+                  {PII_DETECTOR_LABELS[detector].title}
+                  <span className="text-muted-foreground block text-xs">{PII_DETECTOR_LABELS[detector].hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       {draft.type === "sensitive_content_stream" && (
         <div className="grid gap-1.5 sm:grid-cols-2">
           <div className="grid gap-1.5">
@@ -248,20 +290,22 @@ function GuardrailForm({
         </div>
       )}
 
-      <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-message`}>
-          {isStream ? "Shown in place of the hidden text" : "Reply when the guardrail blocks"}
-        </Label>
-        <Textarea
-          id={`${id}-message`}
-          rows={2}
-          maxLength={1000}
-          value={draft.message}
-          onChange={(e) => setDraft({ ...draft, message: e.target.value })}
-        />
-      </div>
+      {!isMasking && (
+        <div className="grid gap-1.5">
+          <Label htmlFor={`${id}-message`}>
+            {isStream ? "Shown in place of the hidden text" : "Reply when the guardrail blocks"}
+          </Label>
+          <Textarea
+            id={`${id}-message`}
+            rows={2}
+            maxLength={1000}
+            value={draft.message}
+            onChange={(e) => setDraft({ ...draft, message: e.target.value })}
+          />
+        </div>
+      )}
 
-      {!isStream && (
+      {isInputGuardrail(draft) && (
         <div className="grid gap-1.5 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label htmlFor={`${id}-action`}>When it fires</Label>
@@ -382,6 +426,26 @@ export function GuardrailsClient({
         {GUARDRAIL_TYPES.map((type) => {
           const ofType = guardrails.filter((g) => g.type === type);
           const newKey = `new:${type}`;
+          // One masking guardrail per assistant (`guardrailListProblem`).
+          const maskingTaken = type === "pii_masking" && ofType.length > 0;
+          const addBlocked = full
+            ? `An Assistant can have ${GUARDRAIL_CAP} guardrails.`
+            : maskingTaken
+              ? "An Assistant has one PII masking guardrail. Edit it to change what it masks."
+              : null;
+          // A disabled button takes no pointer events, so the reason sits on
+          // the Hint's own trigger rather than in a `title` (DESIGN.md).
+          const add = (
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              disabled={addBlocked !== null || editing !== null}
+              onClick={() => setEditing({ key: newKey, draft: defaultGuardrail(type, newId()) })}
+            >
+              Add
+            </Button>
+          );
           return (
             <TimelineSection key={type} title={GUARDRAIL_LABELS[type].title}>
               <Card size="sm" className="gap-4 p-4">
@@ -394,18 +458,7 @@ export function GuardrailsClient({
                         ` ${formatCount(ofType.length)} configured, ${formatCount(ofType.filter((g) => g.enabled).length)} active.`}
                     </p>
                   </div>
-                  {canEdit && editing?.key !== newKey && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0"
-                      disabled={full || editing !== null}
-                      title={full ? `An Assistant can have ${GUARDRAIL_CAP} guardrails.` : undefined}
-                      onClick={() => setEditing({ key: newKey, draft: defaultGuardrail(type, newId()) })}
-                    >
-                      Add
-                    </Button>
-                  )}
+                  {canEdit && editing?.key !== newKey && (addBlocked ? <Hint label={addBlocked}>{add}</Hint> : add)}
                 </div>
 
                 {ofType.length > 0 && (
@@ -429,7 +482,7 @@ export function GuardrailsClient({
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="min-w-0 font-medium break-words"><RollInText text={guardrail.name} /></span>
-                              {guardrail.type !== "sensitive_content_stream" && guardrail.action === "log" && (
+                              {isInputGuardrail(guardrail) && guardrail.action === "log" && (
                                 <Badge variant="outline">Log only</Badge>
                               )}
                             </div>

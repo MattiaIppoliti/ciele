@@ -1,7 +1,7 @@
 "use client";
 
 import type { Alert } from "@agent-hub/core";
-import type { ChannelMention } from "@ciele/ops";
+import type { ChannelMention, NotificationItem } from "@ciele/ops";
 import { IngestionActivityCard } from "@/components/notifications/ingestion-activity-card";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { RIGHT_RAIL_TRANSITION_VAR } from "@/components/shell/right-rail";
@@ -39,11 +39,14 @@ export function NotificationDock({
   alerts,
   totalAlertCount,
   mentions,
+  work,
   ingestionActive,
 }: {
   alerts: Alert[];
   totalAlertCount: number;
   mentions?: ChannelMention[];
+  /** Unread Member Notifications (#1067). */
+  work?: NotificationItem[];
   /** Was knowledge already being built when this page rendered? */
   ingestionActive?: boolean;
 }) {
@@ -57,6 +60,7 @@ export function NotificationDock({
         alerts={alerts}
         totalAlertCount={totalAlertCount}
         mentions={mentions}
+        work={work}
       />
       <IngestionActivityCard initialActive={ingestionActive} />
     </div>

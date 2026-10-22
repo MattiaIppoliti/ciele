@@ -1,9 +1,9 @@
 ---
 title: Guardrails
-description: Check what Visitors send and hide marked text in Assistant answers.
+description: Check what Visitors send, mask personal data before a model reads it, and hide marked text in Assistant answers.
 ---
 
-A Guardrail is a check that runs on every Visitor message or on every streamed answer. Each Assistant has its own ordered list of Guardrails.
+A Guardrail is a check that runs on every Visitor message, on the text that goes to a model, or on every streamed answer. Each Assistant has its own ordered list of Guardrails.
 
 ## Guardrail types
 
@@ -12,6 +12,7 @@ A Guardrail is a check that runs on every Visitor message or on every streamed a
 | **Input length limit** | Visitor message | The message has more characters or tokens than the limit. Ciele counts one token for each four characters. |
 | **Regular expression** | Visitor message | The message matches the pattern. |
 | **Moderation** | Visitor message | The OpenAI moderation model flags the message. You can select the categories that block. |
+| **PII masking** | Text sent to models | Personal data changes to a placeholder before a model reads it. The answer shows the real values. |
 | **Restrict to topic** | Visitor message | A model finds that the main topic of the message is not in your list. |
 | **Sensitive content in stream** | Answer | Text between a start marker and a stop marker does not show. |
 
@@ -22,7 +23,7 @@ A Guardrail is a check that runs on every Visitor message or on every streamed a
 3. Find the section for the Guardrail type.
 4. Select **Add** in that section.
 5. Complete the fields for the type.
-6. Write the message that the Visitor sees.
+6. Write the message that the Visitor sees. **PII masking** has no message.
 7. Select **Add guardrail** to save it.
 
 Changes affect Preview immediately. The live widget changes only after publication.
@@ -47,6 +48,54 @@ Set **When it fires** to one of these values:
 
 **Moderation** requires an OpenAI provider connection in the Organization. The form shows a warning when there is no OpenAI provider connection.
 
+## PII masking
+
+**PII masking** keeps personal data away from model providers. This includes data that a Visitor types and data in your knowledge and tool results. An Assistant can have one **PII masking** Guardrail.
+
+Select the types of data to mask:
+
+| Type | Ciele masks |
+| --- | --- |
+| **Email address** | An address with an `@` and a domain. |
+| **Phone number** | A number with its country code, such as `+39 06 1234 5678`. A number that starts with `00` must have groups, such as `0039 06 1234 5678`. A national number that starts with `0` and has groups of digits, such as `06 1234 5678`. A number in the groups 3, 3 and 4, such as `555 123 4567`. |
+| **Payment card number** | 13 to 19 digits that pass the Luhn check. The digits are together or in groups of four. |
+| **IBAN** | An IBAN with correct check digits. |
+| **Italian tax code (codice fiscale)** | A code of 16 characters with a correct check character. Ciele also masks a code that has letters in place of some digits (omocodia). |
+
+Ciele does not mask a number that only looks like personal data. For example, Ciele does not mask a 10-digit order number without spaces, a date, or a list of amounts. Ciele also does not mask names.
+
+When the Guardrail is on, Ciele changes each value to a placeholder, such as `[EMAIL_1]`. The placeholder replaces the value in all text that goes to a model provider during the turn. This includes:
+
+- The Visitor message and the earlier messages in the Conversation.
+- The routing of the message to a Flow, and the knowledge search.
+- The passages that a knowledge search finds, and the Sources that the model reads in sections.
+- The results of **Query API** calls, **API request** actions, and connector actions.
+- The answer, and the **Moderation** and **Restrict to topic** checks.
+
+In one turn, one value always gets the same placeholder. If the Visitor types an email address that is also in a Source, the two get one placeholder. Thus the model can connect the values.
+
+The model writes the placeholder in its answer. Ciele puts back the real value before the Visitor sees the answer. The Visitor and the transcript always show the real values.
+
+When the model calls a tool, Ciele puts back the real values in the tool input before the tool runs. Thus a **Query API** call still sends the real email address to your system.
+
+The **Sources** list under an answer always shows the Source as it is written, without placeholders.
+
+Ciele does not apply this Guardrail to verbatim **Message** actions. That text does not go to a model.
+
+Some work runs after the turn and also sends Conversation text to a model. Ciele masks that text too:
+
+- The answer check that writes the **Verified** or **Failed verification** badge.
+- The draft of a **Suggested Fix** for an Improvement.
+- The weekly Improvements with the **AI proposal** tag.
+- A Teammate routine that sorts the answers that Visitors rated down.
+- The long-term memory of a signed-in Visitor.
+
+In a **Suggested Fix** draft, Ciele does not put back the values of the Visitor. A neutral phrase replaces each value, such as "your email address". When you accept the draft, it becomes an FAQ that all Visitors can find. Values from your knowledge stay in the draft.
+
+If Ciele cannot read the **PII masking** setting of the Assistant, this work does not send the text to a model.
+
+Ciele masks text only. If a Visitor attaches an image, a model reads the image to get its text. That model receives the image before Ciele can mask the text.
+
 ## Stream Guardrails
 
 **Sensitive content in stream** changes the answer while the model writes it. Text between the markers does not go to the Visitor and does not go into the transcript. The Guardrail message shows one time in place of each hidden section.
@@ -58,5 +107,7 @@ Ciele does not apply this Guardrail to verbatim **Message** actions. An administ
 ## Review results
 
 Open the Conversation in **Inbox**. A turn that a Guardrail blocked shows the flow marker `Guardrail:` and the Guardrail name. A badge on the answer shows each Guardrail that blocked, logged, or could not run.
+
+A **PII masking** badge shows how many values of each type Ciele masked in the turn. The badge shows counts only, not the values or the placeholders. Put the pointer on the badge to see where the values came from: the Visitor, knowledge, tool results, or the instructions and earlier answers.
 
 The Visitor does not see which Guardrail fired.

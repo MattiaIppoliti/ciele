@@ -51,16 +51,16 @@ Häufige Statuscodes sind:
 
 | Status | Bedeutung |
 | --- | --- |
-| `400` | Der Request-Body ist fehlerhaft formatiert oder eine erforderliche Datei fehlt. |
+| `400` | Der Request Body ist fehlerhaft formatiert oder eine erforderliche Datei fehlt. |
 | `401` | Der Schlüssel fehlt, ist ungültig oder wurde gesperrt. |
 | `403` | Die Rolle des Schlüssels erlaubt den Vorgang nicht. |
 | `404` | Die Ressource existiert nicht in der Organisation. |
-| `409` | Die Anforderung steht im Konflikt mit dem aktuellen Zustand. |
+| `409` | Die Anfrage steht im Konflikt mit dem aktuellen Zustand. |
 | `422` | Die geparste Eingabe besteht die Validierung nicht. |
 
 ## Paginierung
 
-Verwenden Sie die bei jeder Operation angezeigten Paginierungsparameter.
+Verwenden Sie die bei jeder Operation angezeigten Parameter für die Paginierung.
 Cursorbasierte Listen geben `nextCursor` zurück. Geben Sie es bei der nächsten
 Anfrage als `cursor` weiter.
 
@@ -70,47 +70,52 @@ Mutation-Routen können einen `Idempotency-Key`-Header akzeptieren. Verwenden Si
 denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation
 wiederholen.
 
-## Häufige Domänen
+## Häufig verwendete Domains
 
 Dies sind Beispiele. Die [API-Referenz](/api-reference) listet den
-vollständigen, aktuellen Satz von Operationen auf.
+vollständigen, aktuellen Satz an Operationen auf.
 
 - Assistants: list, read, create, update, duplicate und delete.
 - Flows: list, read, create, update, reorder und delete.
-- Knowledge: Verwalten von Collections, Sources, FAQs und der Assistant-Links
+- Knowledge: Verwalten Sie Collections, Sources, FAQs und die Assistant-Links
   für jede Source.
-- Publication: Status abrufen, veröffentlichen, Veröffentlichung aufheben und
-  eine Veröffentlichung wiederherstellen.
+- Publication: Status lesen, veröffentlichen, Veröffentlichung aufheben und eine
+  Publication wiederherstellen.
 - Inbox: Conversations überprüfen, exportieren, anheften, kommentieren, bewerten
   und löschen.
 - Improvements: Elemente auflisten, lesen und aktualisieren.
 - Memories: Überprüfen Sie die Einstellungen und führen Sie eine
   bereichsbezogene Löschung von Memories durch.
-- SSO: Verwalten Sie Identity Claims, Verbindungseinstellungen, Validierung und
+- SSO: Verwalten von Identity Claims, Verbindungseinstellungen, Validierung und
   Trennung.
 - Help Desks: Verwalten Sie Desks, Eskalationskanäle, die Reihenfolge sowie
   ServiceNow.
 - Teammates: Verwalten Sie AI Teammates und lesen Sie Ihre eigenen
   Teammate-Konversationen.
-- Projects: Verwalten Sie die Projects, denen Teammates zugeordnet sind, sowie
-  deren Project-Dokumente.
-- Reviews: Listen Sie Human Review-Anfragen auf, lesen Sie sie und entscheiden
-  Sie über sie.
-- Channels: Lesen und gestalten Sie die Teammate-Channels, in denen Sie sich
-  befinden, sowie deren Roster. Es gibt keinen Endpunkt, an den eine Nachricht
-  gesendet werden kann: Eine Nachricht löst eine Kette von Antworten von
-  Teammates aus, die in der Konsole abläuft.
+- Projects: Verwalten Sie Projects, deren Meilensteine und die
+  Project-Dokumente, die Teammates lesen.
+- Tasks: Tasks auflisten, lesen, erstellen, ändern, archivieren und löschen, sie
+  kommentieren sowie Task-Labels verwalten. Die Liste wird nach Project,
+  Assignee, Status, Label, Due Dates, Text und Improvement gefiltert und
+  verwendet für jede Seite einen Cursor. Ein Schlüssel liest nur die Projekte,
+  die sein Mitglied lesen darf. Ein Kommentar zeigt dieses Mitglied als Autor
+  an.
+- Reviews: Human Review Requests auflisten, lesen und entscheiden.
+- Channels: Lesen und Gestalten der Teammate-Channels, in denen Sie Mitglied
+  sind, sowie deren Roster. Es gibt keinen Endpunkt, um eine Nachricht zu
+  senden: Eine Nachricht startet eine Kette von Antworten von Teammitgliedern,
+  und diese Kette wird in der Konsole ausgeführt.
 - Configuration: Verwalten Sie Skills, Assistant Goals und betriebliche Alerts.
 - Organization: Verwalten Sie Einstellungen, Members, Invites und API keys.
 - Integrations: Verwalten Sie Assistant-API-Integrationen und
   Modell-Provider-Verbindungen.
-- Usage: Lesen Sie die Zähler des Plans und sehen Sie, wer die Credits eines
+- Usage: Lesen Sie die Zähler des Plans und erfahren Sie, wer die Credits eines
   Fensters verbraucht hat. Schreibgeschützt. Die Aufschlüsselung der Ausgaben
   hält ihre Dimensionen getrennt. In einer Antwort werden sowohl das
   Teammitglied, das den Vorgang ausgeführt hat, als auch der Kollege, der ihn
-  angefordert hat, genannt. Wenn man also die Dimensionen addiert, wird der
-  Vorgang doppelt gezählt. Der Kauf von Credits hat keinen Endpunkt: Ein Kauf
-  gehört auf einen Bildschirm, auf dem eine Person einen Betrag bestätigt.
+  angefordert hat, genannt. Wenn man also die Dimensionen zusammenzählt, wird
+  der Vorgang doppelt gezählt. Der Kauf von Credits hat keinen Endpunkt: Ein
+  Kauf gehört auf einen Bildschirm, auf dem eine Person einen Betrag bestätigt.
 
-Verwenden Sie das OpenAPI-Dokument für Request-Felder, die Authentifizierung und
-die dokumentierten Response-Statuscodes.
+Verwenden Sie das OpenAPI-Dokument für request fields, authentication und die
+dokumentierten response status codes.

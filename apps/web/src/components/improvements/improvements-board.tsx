@@ -56,10 +56,8 @@ import { RollingNumber } from "@/components/motion/rolling-number";
 import { motion, useReducedMotion } from "motion/react";
 import { ImprovementWorkspace } from "./improvement-workspace";
 import { ImprovementGroupedPanel } from "./improvement-grouped-panel";
-import {
-  ImprovementGroupedRow,
-  GROUPED_TABLE_SPRING,
-} from "./improvement-grouped-row";
+import { ImprovementGroupedRow } from "./improvement-grouped-row";
+import { SPRING_REFLOW } from "@/lib/ease";
 
 // Keep task content out of the first bundle; the workspace owns its frame.
 const ImprovementDrawer = dynamic(
@@ -642,7 +640,7 @@ export function ImprovementsBoard({
                               transition={
                                 reduceMotion
                                   ? { duration: 0 }
-                                  : GROUPED_TABLE_SPRING
+                                  : SPRING_REFLOW
                               }
                               className="ml-auto"
                             >
@@ -678,7 +676,7 @@ export function ImprovementsBoard({
                           transition={
                             reduceMotion
                               ? { duration: 0 }
-                              : GROUPED_TABLE_SPRING
+                              : SPRING_REFLOW
                           }
                           style={{ clipPath: "inset(0 -100vw)" }}
                         >

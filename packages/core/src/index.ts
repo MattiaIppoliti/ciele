@@ -49,6 +49,26 @@ export * from "./okf";
 // the shapes, their validation and every check that needs no I/O.
 export * from "./guardrails";
 
+// PII masking (#1078): the detectors, the per-turn placeholder map, and the
+// restore half the runtime puts on every model's output.
+export {
+  PII_DETECTORS,
+  PII_DETECTOR_LABELS,
+  createPiiMasker,
+  piiMaskingOrigins,
+  piiMaskingSummary,
+  transcriptPiiMasker,
+} from "./pii";
+export type {
+  PiiDetector,
+  PiiMaskCount,
+  PiiMasker,
+  PiiMaskerOptions,
+  PiiMaskingTrace,
+  PiiOrigin,
+  PlaceholderRestorer,
+} from "./pii";
+
 // --- Derivations: curated, because these modules have internals ------------
 
 // The deterministic keyword router: the offline/no-model `matchFlow` fallback
@@ -569,6 +589,74 @@ export {
 } from "./attachments";
 export type { ChatAttachment } from "./attachments";
 export { teammateRuntimeConfig } from "./teammate-runtime";
+
+// Work management (map #1039, spec #1059): ordering, keys, the nesting and
+// dependency invariants, estimates, recurrence, progress, the visibility rule,
+// mention tokens, who a change notifies, the Improvement's move to In Review,
+// and the view engine's query language. Pure, so the URL, a Saved View, the
+// server read and the client filter agree by construction.
+export {
+  ESTIMATE_PRESETS,
+  MY_TASK_GROUPS,
+  PROJECT_KEY_PATTERN,
+  TASK_PRIORITY_LABELS,
+  TASK_PRIORITY_WEIGHT,
+  TASK_RECURRENCE_LABELS,
+  TASK_STATUS_LABELS,
+  addDays,
+  canBeAssignee,
+  canNestUnder,
+  canReadProject,
+  canWriteProject,
+  daysBetween,
+  deriveProjectKey,
+  dueBucket,
+  formatEstimate,
+  improvementStatusAfterTasks,
+  isOverdue,
+  mentionToken,
+  mentionTokensToText,
+  myTaskGroup,
+  nextOccurrence,
+  parseEstimate,
+  parseMentionTokens,
+  projectProgress,
+  rankBetween,
+  ranksAfter,
+  splitMentionTokens,
+  statusPatch,
+  taskKey,
+  taskProgress,
+  workNotificationRecipients,
+  wouldCreateCycle,
+} from "./work";
+export type {
+  DueBucket,
+  MentionSegment,
+  MyTaskGroup,
+  ProjectViewer,
+  WorkNotificationEvent,
+  WorkNotificationRecipient,
+} from "./work";
+export {
+  DUE_FILTER_VALUES,
+  RECENCY_FILTER_VALUES,
+  STARRED,
+  UNASSIGNED,
+  WORK_FILTER_FIELDS,
+  WORK_GROUP_FIELDS,
+  WORK_LAYOUTS,
+  WORK_SORT_FIELDS,
+  coerceWorkQuery,
+  compareTasks,
+  defaultWorkQuery,
+  groupPatch,
+  groupTasks,
+  matchesWorkQuery,
+  workQueryFromParams,
+  workQueryToParams,
+} from "./work-view";
+export type { WorkGroup, WorkViewContext } from "./work-view";
 
 // Individually configured Flow action occurrences and legacy settings projection.
 export { flowActionSteps, flowForActionStep } from "./flow-actions";

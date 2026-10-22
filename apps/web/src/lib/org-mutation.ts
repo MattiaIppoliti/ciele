@@ -107,6 +107,11 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
     paths: (entity) => [{ path: `/improvements/${entity.id}` }],
     insights: true,
   },
+  // A Task write names no Improvement it unlinked from, so every page goes.
+  improvementTasks: {
+    paths: () => [{ path: "/improvements/[improvementId]", scope: "page" }],
+    insights: false,
+  },
   // Feedback on a message, a deleted Conversation, an escalation: all of it
   // is what the overview counts.
   inbox: { paths: () => [{ path: "/inbox" }], insights: true },
@@ -137,8 +142,19 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
   // Project change reaches the roster (whose create dialog offers the live
   // Projects), every Teammate page, and the Improvements board, where an
   // Improvement names the Project it belongs to.
-  project: { paths: () => projectPaths(), insights: false },
-  projectList: { paths: () => projectPaths(), insights: false },
+  project: {
+    paths: (entity) => [...projectPaths(), { path: `/projects/${entity.id}`, scope: "layout" }],
+    insights: false,
+  },
+  projectList: { paths: () => [...projectPaths(), ...workPaths()], insights: false },
+  // The cross-Project task views (#1050) and every Project page, whose lists
+  // draw the same Tasks.
+  taskList: { paths: () => workPaths(), insights: false },
+  // A Task's full page; its drawer rides `?task=` on whichever view is open,
+  // which `taskList` already refreshes.
+  task: { paths: (entity) => [{ path: `/tasks/${entity.id}` }], insights: false },
+  taskLabels: { paths: () => workPaths(), insights: false },
+  myNotifications: { paths: () => [{ path: "/notifications" }, { path: "/settings/notifications" }], insights: false },
   myMemory: { paths: () => [{ path: "/settings/memory" }], insights: false },
   // Synthetic runs create no Conversation, so Insights never sees them.
   evaluations: { paths: () => [{ path: "/eval", scope: "layout" }], insights: false },
@@ -153,6 +169,15 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
     insights: false,
   },
 };
+
+/** Every work view (#1053): the Projects pages, My Tasks and the Organization's task views. */
+function workPaths(): Revalidation[] {
+  return [
+    { path: "/projects", scope: "layout" },
+    { path: "/my-tasks" },
+    { path: "/tasks", scope: "layout" },
+  ];
+}
 
 function projectPaths(): Revalidation[] {
   return [

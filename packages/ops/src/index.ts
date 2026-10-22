@@ -223,18 +223,12 @@ export {
   setTeammateGrantsOp,
   type TeammateGovernance,
 } from "./teammate-grants";
-// Memory documents + Projects (#771): the three layers, their history, and
-// the two writes a Teammate performs mid-turn (not grant-gated: acting on the
+// Memory documents (#771): the three layers, their history, and the two
+// writes a Teammate performs mid-turn (not grant-gated: acting on the
 // console's domains is #770's rows, remembering is what makes it a colleague).
 export {
-  createProjectOp,
-  deleteProjectOp,
-  getProjectOp,
   getTeammateMemoryOp,
-  listProjectsOp,
-  projectPatchSchema,
   revertMyMemoryOp,
-  updateProjectOp,
   writeMyMemoryOp,
   writeProjectDocumentOp,
   writeTeammateMemoryOp,
@@ -382,3 +376,101 @@ export {
 export { configureTeammateRuntimeOp, teammateRuntimeSchema } from "./teammate-runtime";
 
 export { listThreadPreferencesOp, setThreadPreferenceOp, deleteThreadOp } from "./thread-preferences";
+
+// Work management (map #1039, spec #1059): Projects as the container of the
+// work, Tasks, Labels, comments, Saved Views, Favorites, Member Notifications,
+// and the reads the work views render from. `workLog` is the port for the two
+// system writes (activity, notifications).
+export {
+  archiveTaskOp,
+  bulkUpdateTasksOp,
+  createTaskOp,
+  deleteTaskOp,
+  getTaskOp,
+  listProjectTasks,
+  listTasksOp,
+  taskUpdateBodySchema,
+  type TaskDetail,
+  type TaskPage,
+  taskFieldsSchema,
+  type TaskUpdateInput,
+  undoCompleteTaskOp,
+  updateTaskOp,
+} from "./tasks";
+export {
+  createProjectOp,
+  deleteProjectOp,
+  duplicateProjectOp,
+  getProjectOp,
+  listMilestonesOp,
+  listProjectsOp,
+  milestonesBodySchema,
+  listProjectMembersOp,
+  projectDeletionSummaryOp,
+  projectPatchSchema,
+  setMilestonesOp,
+  setProjectMembersOp,
+  updateProjectOp,
+} from "./projects-work";
+export {
+  createTaskLabelOp,
+  deleteTaskLabelOp,
+  listTaskLabelsOp,
+  taskLabelPatchSchema,
+  updateTaskLabelOp,
+} from "./task-labels";
+export {
+  COMMENT_RESTORE_WINDOW_MS,
+  createTaskCommentOp,
+  deleteTaskCommentOp,
+  listTaskCommentsOp,
+  reactToTaskCommentOp,
+  restoreTaskCommentOp,
+  updateTaskCommentOp,
+  type CommentView,
+} from "./task-comments";
+export {
+  PROJECT_FILE_MAX_BYTES,
+  createProjectFileOp,
+  deleteProjectFileOp,
+  discardProjectFileUploadOp,
+  getProjectFileOp,
+  listProjectFilesOp,
+  prepareProjectFileOp,
+  projectFileContentType,
+  renameProjectFileOp,
+} from "./project-files";
+export {
+  createSavedViewOp,
+  deleteSavedViewOp,
+  listFavoritesOp,
+  setFavoriteOp,
+  updateSavedViewOp,
+} from "./work-views";
+export {
+  archiveNotificationsOp,
+  countUnreadNotificationsOp,
+  deleteNotificationsOp,
+  getNotificationPreferencesOp,
+  listMemberNotificationsOp,
+  markNotificationsOp,
+  notificationTriageOp,
+  setNotificationPreferencesOp,
+  snoozeNotificationsOp,
+  type NotificationItem,
+} from "./member-notifications";
+export {
+  allTasksOp,
+  myTasksOp,
+  projectWorkspaceOp,
+  workActivityOp,
+  workArchiveOp,
+  workDirectoryOp,
+  type AssignedImprovement,
+  type MyTasks,
+  type ProjectWorkspace,
+  type TaskSet,
+  type WorkDirectory,
+} from "./work-reads";
+export { todayUtc, type WorkPerson } from "./work-access";
+export type { WorkActivityEntry, WorkNotificationRow } from "./operation";

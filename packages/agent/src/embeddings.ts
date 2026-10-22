@@ -14,6 +14,7 @@ import type { Db } from "@agent-hub/db";
 import { canEmbedWithConnection } from "./embedding-capability";
 import { createGoogleVertexProvider } from "./google-vertex";
 import { resolveProviderCredential, type ProviderCredential } from "./models";
+import { maskOutbound } from "./pii-masking";
 import { meterUsage } from "./usage";
 
 export const EMBEDDING_DIMS = 1536;
@@ -249,7 +250,8 @@ export function createEmbedder(
     if (resolved === undefined) resolved = getEmbeddingModel(connections);
     if (!resolved) return null;
     try {
-      const result = await embed({ model: resolved.model, value: text });
+      // A query embedding is a model call like any other (#1078).
+      const result = await embed({ model: resolved.model, value: maskOutbound(text) });
       await recordEmbedUsage(resolved, result.usage?.tokens, attribution);
       return padEmbedding(result.embedding);
     } catch {
@@ -308,7 +310,7 @@ export async function embedTextsWithStatus(
   for (let offset = 0; offset < texts.length; offset += EMBEDDING_BATCH_SIZE) {
     const values = texts.slice(offset, offset + EMBEDDING_BATCH_SIZE);
     try {
-      const result = await embedMany({ model: resolved.model, values });
+      const result = await embedMany({ model: resolved.model, values: values.map((value) => maskOutbound(value)) });
       await recordEmbedUsage(resolved, result.usage?.tokens, attribution);
       embeddings.push(...result.embeddings.map(padEmbedding));
     } catch (error) {

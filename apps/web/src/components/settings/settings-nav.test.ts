@@ -8,6 +8,7 @@ import {
   crossScopeLink,
   settingsScopeFromPath,
   settingsTabFromPath,
+  settingsTabLabel,
   sidebarSettingsActiveIndex,
   tabsForScope,
 } from "./settings-nav";
@@ -72,5 +73,17 @@ describe("settings navigation", () => {
     }
     expect(sidebarSettingsActiveIndex("/insights")).toBe(-1);
     expect(sidebarSettingsActiveIndex("/settings/whatever")).toBe(-1);
+  });
+});
+
+describe("settingsTabLabel (#1073)", () => {
+  it("names the open tab in either scope, for the document title", () => {
+    expect(settingsTabLabel("/settings/members")).toBe("Members");
+    expect(settingsTabLabel("/settings/theme")).toBe("Theme");
+  });
+
+  it("is null outside Settings and for a tab that does not exist", () => {
+    expect(settingsTabLabel("/projects")).toBeNull();
+    expect(settingsTabLabel("/settings/nope")).toBeNull();
   });
 });

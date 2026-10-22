@@ -27,17 +27,93 @@ export function typoSubsequenceCost(needle: string, hay: string): number {
   return prevRow[m];
 }
 
+/** Where a match sits in its text, as `[start, end)` runs, for highlighting. */
+export type MatchRanges = Array<[number, number]>;
+
+/** Consecutive indices as runs: `[0, 1, 2, 7]` is `[[0, 3], [7, 8]]`. */
+function toRanges(indices: readonly number[]): MatchRanges {
+  const ranges: MatchRanges = [];
+  for (const at of indices) {
+    const last = ranges[ranges.length - 1];
+    if (last && last[1] === at) last[1] = at + 1;
+    else ranges.push([at, at + 1]);
+  }
+  return ranges;
+}
+
+/**
+ * The hay characters the needle's cheapest typo-tolerant alignment lands on:
+ * the {@link typoSubsequenceCost} table, kept whole and walked back from the
+ * end. A substituted or dropped needle character marks nothing, so a typo'd
+ * query still highlights the letters it got right.
+ */
+function alignedRanges(needle: string, hay: string): MatchRanges {
+  const n = needle.length;
+  const m = hay.length;
+  const cost: number[][] = [new Array<number>(m + 1).fill(0)];
+  for (let i = 1; i <= n; i++) {
+    const prev = cost[i - 1]!;
+    const row = new Array<number>(m + 1);
+    row[0] = i;
+    for (let j = 1; j <= m; j++) {
+      const subst = needle[i - 1] === hay[j - 1] ? 0 : 1;
+      row[j] = Math.min(row[j - 1]!, prev[j - 1]! + subst, prev[j]! + 1);
+    }
+    cost.push(row);
+  }
+  const hits: number[] = [];
+  let i = n;
+  let j = m;
+  while (i > 0 && j > 0) {
+    const here = cost[i]![j]!;
+    if (needle[i - 1] === hay[j - 1] && cost[i - 1]![j - 1] === here) {
+      hits.push(j - 1);
+      i--;
+      j--;
+    } else if (cost[i]![j - 1] === here) j--;
+    else if (cost[i - 1]![j - 1]! + 1 === here) {
+      i--;
+      j--;
+    } else i--;
+  }
+  return toRanges(hits.reverse());
+}
+
 /**
  * Fuzzy match with typo tolerance: allows a couple of mistyped characters.
  * Shared by the Find palette and the Improvements context menu, so both spell
  * "close enough" the same way.
+ *
+ * Null when the needle does not match; otherwise where it landed (#1072),
+ * empty for an empty needle. A literal substring is marked whole; anything
+ * else marks the letters its alignment used, typos and all, so whatever
+ * matched can be highlighted rather than only what matched without typos.
  */
-export function fuzzyMatch(needle: string, hay: string): boolean {
-  if (!needle) return true;
-  needle = needle.toLowerCase();
-  hay = hay.toLowerCase();
-  const maxErrors = needle.length <= 3 ? 0 : needle.length <= 6 ? 1 : 2;
-  return typoSubsequenceCost(needle, hay) <= maxErrors;
+export function fuzzyMatch(needle: string, hay: string): MatchRanges | null {
+  const query = needle.trim().toLowerCase();
+  if (!query) return [];
+  const haystack = hay.toLowerCase();
+  const maxErrors = query.length <= 3 ? 0 : query.length <= 6 ? 1 : 2;
+  if (typoSubsequenceCost(query, haystack) > maxErrors) return null;
+  const literal = haystack.indexOf(query);
+  if (literal >= 0) return [[literal, literal + query.length]];
+  return alignedRanges(query, haystack);
+}
+
+/**
+ * Every place the needle appears verbatim, ignoring case, or null when it
+ * appears nowhere. The match for body text, where a typo-tolerant subsequence
+ * would match almost any paragraph.
+ */
+export function substringMatch(needle: string, hay: string): MatchRanges | null {
+  const query = needle.trim().toLowerCase();
+  if (!query) return [];
+  const haystack = hay.toLowerCase();
+  const ranges: MatchRanges = [];
+  for (let at = haystack.indexOf(query); at >= 0; at = haystack.indexOf(query, at + query.length)) {
+    ranges.push([at, at + query.length]);
+  }
+  return ranges.length ? ranges : null;
 }
 
 /** {@link fuzzyScore} for a needle that is not a subsequence of the hay. */
@@ -109,7 +185,7 @@ export function fuzzyFilter<T>(
   if (!query) return [...items];
   return items
     .map((item, index) => ({ item, index, text: toText(item) }))
-    .filter((entry) => fuzzyMatch(query, entry.text))
+    .filter((entry) => fuzzyMatch(query, entry.text) !== null)
     .map((entry) => ({ ...entry, score: Math.max(0, fuzzyScore(query, entry.text)) }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.item);

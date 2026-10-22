@@ -1,19 +1,21 @@
 ---
 title: Guardrails
-description: Überprüfen Sie, was Besucher senden, und blenden Sie markierten Text in den Antworten des Assistenten aus.
+description: Überprüfen Sie, was Besucher senden, maskieren Sie personenbezogene Daten, bevor ein Modell sie liest, und blenden Sie markierten Text in den Antworten des Assistenten aus.
 ---
 
-Eine Guardrail ist eine Prüfung, die bei jeder Nachricht eines Visitors oder bei
-jeder gestreamten Antwort ausgeführt wird. Jeder Assistant verfügt über eine
-eigene, geordnete Liste von Guardrails.
+Eine Guardrail ist eine Prüfung, die für jede Nachricht eines Visitors, für den
+Text, der an ein Modell übermittelt wird, oder für jede gestreamte Antwort
+ausgeführt wird. Jeder Assistant verfügt über eine eigene, geordnete Liste von
+Guardrails.
 
 ## Guardrail-Typen
 
 | Type | Runs on | Check |
 | --- | --- | --- |
-| **Input length limit** | Visitor message | Die Nachricht enthält mehr Zeichen oder Tokens als zulässig. Ciele zählt für jeweils vier Zeichen ein Token. |
+| **Input length limit** | Visitor message | Die Nachricht enthält mehr Zeichen oder Token als zulässig. Ciele zählt für jeweils vier Zeichen ein Token. |
 | **Regular expression** | Visitor message | Die Nachricht entspricht dem Muster. |
 | **Moderation** | Visitor message | Das OpenAI-Moderationsmodell meldet die Nachricht. Sie können die Kategorien auswählen, die blockieren. |
+| **PII masking** | Text sent to models | Bevor ein Modell den Text liest, werden personenbezogene Daten durch einen Platzhalter ersetzt. Die Antwort zeigt die tatsächlichen Werte an. |
 | **Restrict to topic** | Visitor message | Ein Modell stellt fest, dass das Hauptthema der Nachricht nicht in Ihrer Liste enthalten ist. |
 | **Sensitive content in stream** | Answer | Text zwischen einem Startmarker und einem Stopmarker wird nicht angezeigt. |
 
@@ -24,13 +26,14 @@ eigene, geordnete Liste von Guardrails.
 3. Suchen Sie den Abschnitt für den Guardrail-Typ.
 4. Wählen Sie **Add** in diesem Abschnitt aus.
 5. Füllen Sie die Felder für den Typ aus.
-6. Verfassen Sie die Nachricht, die der Visitor sieht.
+6. Verfassen Sie die Nachricht, die der Visitor sieht. **PII masking** hat keine
+   Nachricht.
 7. Wählen Sie **Add guardrail** aus, um es zu speichern.
 
 Änderungen wirken sich sofort auf die Vorschau aus. Das Live-Widget ändert sich
 erst nach der Veröffentlichung.
 
-## Eingabe-Guardrails
+## Input Guardrails
 
 Input Guardrails werden ausgeführt, bevor ein Flow die Nachricht erhält. Ciele
 führt sie in der Reihenfolge der Abschnitte auf der Seite aus. Die beiden
@@ -40,37 +43,114 @@ verwenden.
 Verwenden Sie in einem Abschnitt mit mehreren Guardrails die Pfeile, um deren
 Reihenfolge zu ändern.
 
-Die erste Guardrail, die blockiert, stoppt den Turn. Der Visitor sieht die
+Die erste Guardrail, die blockiert, beendet den Turn. Der Visitor sieht die
 Guardrail-Meldung, und es wird kein Flow ausgeführt. Die nachfolgenden Prüfungen
 werden nicht ausgeführt.
 
 Setzen Sie **When it fires** auf einen der folgenden Werte:
 
-- **Block the message** unterbricht den Turn und zeigt die Guardrail-Meldung an.
+- **Block the message** stoppt den Turn und zeigt die Guardrail-Meldung an.
 - **Only log it in the Inbox trace** protokolliert das Ergebnis und setzt den
   Turn fort. Verwenden Sie diesen Wert, um eine neue Guardrail mit echtem
   Traffic zu testen.
 
-**Moderation** und **Restrict to topic** verwenden ein Modell. Legen Sie **If
-the check cannot run** fest, um ein Timeout oder eine fehlende
-Provider-Verbindung zu steuern:
+**Moderation** und **Restrict to topic** verwenden ein Modell. Setzen Sie **If
+the check cannot run**, um ein Timeout oder eine fehlende Provider-Verbindung zu
+steuern:
 
 - **Let the message through** hält den Assistant verfügbar.
 - **Block the message** sorgt dafür, dass die Prüfung streng bleibt.
 
 **Moderation** erfordert eine OpenAI-Provider-Verbindung in der Organisation.
-Das Formular zeigt eine Warnung an, wenn keine OpenAI-Provider-Verbindung
+Das Formular zeigt eine Warnung an, wenn keine Verbindung zum OpenAI-Provider
 besteht.
+
+## Maskierung personenbezogener Daten (PII)
+
+**PII masking** hält personenbezogene Daten von Modellanbietern fern. Dazu
+gehören Daten, die ein Visitor eingibt, sowie Daten in Ihrer Knowledge Base und
+in den Ergebnissen von Tools. Ein Assistant kann eine **PII masking** Guardrail
+haben.
+
+Wählen Sie die zu maskierenden Datentypen aus:
+
+| Typ | Ciele maskiert |
+| --- | --- |
+| **Email address** | Eine Adresse mit einer `@` und einer Domain. |
+| **Phone number** | Eine Nummer mit ihrer Landesvorwahl, wie z. B. `+39 06 1234 5678`. Eine Nummer, die mit `00` beginnt, muss Gruppen aufweisen, beispielsweise `0039 06 1234 5678`. Eine nationale Nummer, die mit `0` beginnt und Zifferngruppen aufweist, wie beispielsweise `06 1234 5678`. Eine Nummer in den Gruppen 3, 3 und 4, wie z. B. `555 123 4567`. |
+| **Payment card number** | 13 bis 19 Ziffern, die die Luhn-Prüfung bestehen. Die Ziffern stehen zusammen oder in Vierergruppen. |
+| **IBAN** | Eine IBAN mit korrekten Prüfziffern. |
+| **Italian tax code (codice fiscale)** | Ein Code aus 16 Zeichen mit einem korrekten Prüfzeichen. Ciele maskiert auch einen Code, bei dem anstelle einiger Ziffern Buchstaben stehen (Omocodia). |
+
+Ciele maskiert keine Zahl, die nur wie personenbezogene Daten aussieht.
+Beispielsweise maskiert Ciele keine 10-stellige Bestellnummer ohne Leerzeichen,
+kein Datum und keine Liste von Beträgen. Ciele maskiert auch keine Namen.
+
+Wenn die Guardrail aktiviert ist, ersetzt Ciele jeden Wert durch einen
+Platzhalter, beispielsweise `[EMAIL_1]`. Der Platzhalter ersetzt den Wert in
+sämtlichem Text, der während des Turns an einen Modellanbieter übermittelt wird.
+Dazu gehören:
+
+- Die Nachricht des Visitors und die früheren Nachrichten in der Conversation.
+- Die Weiterleitung der Nachricht an einen Flow sowie die Wissenssuche.
+- Die Passagen, die eine Wissenssuche findet, und die Sources, die das Modell
+  abschnittsweise liest.
+- Die Ergebnisse von **Query API**-Aufrufen, **API request**-Aktionen und
+  Connector-Aktionen.
+- Die Antwort sowie die Prüfungen **Moderation** und **Restrict to topic**.
+
+In einem Turn erhält ein Wert immer denselben Platzhalter. Wenn der Visitor eine
+E-Mail-Adresse eingibt, die auch in einer Source vorhanden ist, erhalten beide
+denselben Platzhalter. Auf diese Weise kann das Modell die Werte miteinander
+verknüpfen.
+
+Das Modell schreibt den Platzhalter in seine Antwort. Ciele setzt den
+tatsächlichen Wert wieder ein, bevor der Visitor die Antwort sieht. Der Visitor
+und das Transcript zeigen immer die tatsächlichen Werte an.
+
+Wenn das Modell ein Tool aufruft, setzt Ciele die tatsächlichen Werte in der
+Tool-Eingabe wieder ein, bevor das Tool ausgeführt wird. Daher sendet ein
+**Query API**-Aufruf weiterhin die tatsächliche E-Mail-Adresse an Ihr System.
+
+Die **Sources**-Liste unter einer Antwort zeigt die Source immer so an, wie sie
+geschrieben ist, ohne Platzhalter.
+
+Ciele wendet diese Guardrail nicht auf wörtliche **Message**-Aktionen an. Dieser
+Text wird nicht an ein Modell übergeben.
+
+Einige Vorgänge werden nach dem Turn ausgeführt und senden ebenfalls den
+Conversation-Text an ein Modell. Ciele maskiert auch diesen Text:
+
+- Die Antwortprüfung, die das **Verified**- oder **Failed verification**-Badge
+  schreibt.
+- Der Entwurf eines **Suggested Fix** für eine Verbesserung.
+- Die wöchentlichen Verbesserungen mit dem Tag **AI proposal**.
+- Eine Teammate-Routine, die die Antworten sortiert, die von Visitors abgewertet
+  wurden.
+- Das Langzeitgedächtnis eines angemeldeten Visitors.
+
+In einem **Suggested Fix**-Entwurf setzt Ciele die Werte des Visitors nicht
+wieder ein. Jeder Wert wird durch eine neutrale Formulierung ersetzt,
+beispielsweise „Ihre E-Mail-Adresse“. Wenn Sie den Entwurf akzeptieren, wird er
+zu einer FAQ, die alle Besucher finden können. Werte aus Ihrem Wissen bleiben im
+Entwurf erhalten.
+
+Wenn Ciele die Einstellung **PII masking** des Assistants nicht lesen kann, wird
+der Text von dieser Aufgabe nicht an ein Modell gesendet.
+
+Ciele maskiert ausschließlich Text. Wenn ein Visitor ein Bild anhängt, liest ein
+Modell das Bild, um dessen Text zu extrahieren. Dieses Modell erhält das Bild,
+bevor Ciele den Text maskieren kann.
 
 ## Stream Guardrails
 
 **Sensitive content in stream** ändert die Antwort, während das Modell sie
-schreibt. Der Text zwischen den Markern wird weder an den Visitor gesendet noch
-in das Transkript aufgenommen. Die Guardrail-Meldung wird einmal anstelle jedes
+schreibt. Text zwischen den Markern wird weder an den Visitor übermittelt noch
+in das Transcript aufgenommen. Die Guardrail-Meldung wird einmal anstelle jedes
 ausgeblendeten Abschnitts angezeigt.
 
 Wenn das Modell den Stop-Marker nicht schreibt, bleibt der Rest der Antwort
-ausgeblendet.
+verborgen.
 
 Ciele wendet diese Guardrail nicht auf wörtliche **Message**-Aktionen an. Ein
 Administrator schreibt diesen Text.
@@ -79,7 +159,13 @@ Administrator schreibt diesen Text.
 
 Öffnen Sie die Conversation in **Inbox**. Ein Turn, der von einer Guardrail
 blockiert wurde, zeigt den Flow-Marker `Guardrail:` und den Namen der Guardrail
-an. Ein Badge auf der Antwort zeigt jede Guardrail an, die blockiert hat,
-protokolliert wurde oder nicht ausgeführt werden konnte.
+an. Ein Badge bei der Antwort zeigt jede Guardrail an, die blockiert hat,
+protokolliert hat oder nicht ausgeführt werden konnte.
+
+Ein **PII masking**-Badge zeigt an, wie viele Werte jedes Typs Ciele in dem Turn
+maskiert hat. Das Badge zeigt nur die Anzahl an, nicht die Werte oder die
+Platzhalter. Bewegen Sie den Mauszeiger über das Badge, um zu sehen, woher die
+Werte stammen: vom Visitor, aus dem Knowledge, aus Tool-Ergebnissen oder aus den
+Anweisungen und früheren Antworten.
 
 Der Visitor sieht nicht, welche Guardrail ausgelöst wurde.

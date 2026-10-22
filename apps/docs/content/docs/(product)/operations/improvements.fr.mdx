@@ -12,20 +12,38 @@ correction.
 - Une action d'un flux d'amélioration crée un élément.
 - Un Help Desk peut créer un élément après une remontée.
 - Un administrateur peut signaler une réponse depuis l'Inbox.
-- La recherche dans la base de connaissances peut créer un élément pour une
-  requête non résolue lorsque cette fonctionnalité est configurée.
+- Search knowledge peut créer un élément pour une requête non résolue lorsque
+  cette fonctionnalité est configurée.
 - Un Goal permanent qui échoue crée un élément. Les échecs ultérieurs ajoutent
   des éléments de preuve au même élément.
 
 ## Gérer un élément
 
 Ouvrez un élément pour consulter les messages qui lui sont associés et la
-suggestion de correction disponible. Vous pouvez modifier son statut, sa
-priorité, ses balises, son attributaire et sa date d'échéance.
+correction suggérée disponible. Vous pouvez modifier son status, sa priority,
+ses tags, son assignee et sa due date.
 
 L'API, la CLI et le serveur MCP peuvent lister, lire et mettre à jour les
 Improvements existants. La création d'une amélioration reste une opération
 exécutée au moment de l'exécution du produit.
+
+## Planifier le travail sous forme de Tasks
+
+Une Improvement enregistre le problème. Une Task enregistre le travail qui
+permet de le résoudre. La page Improvement affiche les Tasks qui la résolvent.
+
+1. Ouvrez l'Improvement.
+2. Sélectionnez **Create task**. La tâche hérite du titre et du projet de
+   l'amélioration.
+3. Modifiez la tâche si nécessaire, puis sélectionnez **Create task**.
+
+Vous pouvez également associer une Task existante : ouvrez la Task et
+sélectionnez l'Improvement dans son champ **Resolves**.
+
+Lorsque toutes les tâches liées sont terminées, Ciele déplace l'Improvement de
+**To do** ou **In progress** vers **In review**. Une personne examine ensuite la
+réponse et clôt l'Improvement. Si vous rouvrez une Task, l'Improvement ne
+revient pas en arrière.
 
 ## Corriger la réponse
 
@@ -37,5 +55,5 @@ exécutée au moment de l'exécution du produit.
 6. Publiez l'Assistant.
 7. Marquez l'Improvement comme terminé.
 
-Examinez les corrections suggérées générées avant de les appliquer. La
-suggestion enregistrée ne constitue pas une modification de publication.
+Examinez les corrections suggérées générées avant de les utiliser. La suggestion
+enregistrée ne constitue pas une modification de publication.

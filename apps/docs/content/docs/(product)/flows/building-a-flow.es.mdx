@@ -7,17 +7,17 @@ description: Configura un desencadenante, las condiciones disponibles y las acci
 
 1. Abre un asistente.
 2. Selecciona **Flows**.
-3. Crea un flujo.
+3. Crea un Flow.
 4. Introduce un nombre y una descripción claros.
 5. Selecciona un desencadenante.
 
 La descripción ayuda a Intent Classification a seleccionar un Flow de mensajes.
 Indica la intención del visitante y el ámbito requerido.
 
-Un Flow se activa ante un mensaje de un Visitor, ante un evento de widget o ante
-una solicitud HTTP entrante. Los eventos del widget son page load, time on page
-y chat opens. El desencadenante decide qué condiciones y qué acciones puede
-utilizar el Flow. Consulta [HTTP and webhooks](/flows/http) para obtener
+Un Flow se activa ante un mensaje de un visitante, ante un evento de widget o
+ante una solicitud HTTP entrante. Los eventos del widget son page load, time on
+page y chat opens. El desencadenante determina qué condiciones y qué acciones
+puede utilizar el Flow. Consulta [HTTP and webhooks](/flows/http) para obtener
 información sobre el desencadenante de entrada.
 
 ## Añade condiciones de mensaje
@@ -44,15 +44,22 @@ clasificación. El cumplimiento de una condición no obliga al Flow a imponerse.
 4. Guarda el Flow.
 5. Prueba un mensaje que cumpla las condiciones y otro que no las cumpla.
 
-El editor limita los Flujos proactivos a una única acción de Notification. El
-servidor aplica la misma regla cuando guarda o envía un Flow.
+Coloca el puntero sobre un nodo de acción y selecciona **Copy step** para
+insertar una acción idéntica inmediatamente después. La copia tiene su propia
+configuración: editarla, moverla o eliminarla no modifica el original. La copia
+también está disponible en la vista Form y en el menú Step options del nodo. Usa
+**Undo** o **Redo** para deshacer o rehacer una modificación. Un Flow admite
+hasta 20 acciones.
 
-## Reordenar flujos
+El editor limita los Flujos proactivos a una sola acción de Notification, por lo
+que la opción Copy no está disponible para esos Flujos. El servidor aplica la
+misma regla cuando guarda o envía un Flow.
+
+## Reordenar Flows
 
 Arrastra un Flow para cambiar la prioridad de enrutamiento de los mensajes. Con
 el teclado, coloca el foco en el control de un Flow y pulsa la tecla de flecha
-arriba o abajo. El flujo de comportamiento predeterminado (Default behavior
-Flow) se mantiene en último lugar.
+arriba o abajo. El flujo de comportamiento Default permanece en último lugar.
 
 Desactiva un Flow cuando tengas que detener su enrutamiento sin eliminar su
 configuración.

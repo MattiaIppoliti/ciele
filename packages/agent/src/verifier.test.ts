@@ -3,6 +3,9 @@ import { getMockDb, DEMO_ORG } from "@agent-hub/db";
 import type { ChatReplyPart } from "./types";
 import type { LanguageModel } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
+import { defaultGuardrail, type AnswerVerdictInput } from "@agent-hub/core";
+import type { Db } from "@agent-hub/db";
+import { maskedModel } from "./testing/masked-model";
 import { runDueAnswerVerifications } from "./verifier";
 
 /**
@@ -415,5 +418,70 @@ describe("runDueAnswerVerifications", () => {
       { model: verdictModel("pass") }
     );
     expect(retry.verified).toBe(1);
+  });
+});
+
+describe("under PII masking (#1080)", () => {
+  const maskedVerdictModel = (seen: string[], reason: string) =>
+    maskedModel(seen, JSON.stringify({ verdict: "pass", reason }));
+
+  /** A gradable answer in a fresh Assistant, masked or not. */
+  async function sourcedAnswer(masking: boolean) {
+    const collection = await db.createCollection(
+      (await db.createAssistant(DEMO_ORG.id, { title: "Masked KB" })).id,
+      { name: "KB", description: "" }
+    );
+    const concept = await db.createConcept({
+      collectionId: collection.id,
+      sourceId: null,
+      path: "delivery.md",
+      frontmatter: { type: "FAQ", title: "Delivery", description: "", timestamp: "" },
+      body: "We email a tracking link when the order ships.",
+    });
+    const answer = await answered({
+      question: "Will you email jane@example.com when it ships?",
+      parts: [
+        generativeText("Yes, we will email jane@example.com a tracking link."),
+        {
+          type: "sources",
+          action: "search_knowledge",
+          sources: [{ conceptId: concept.id, conceptTitle: "Delivery", collectionName: "KB", sourceName: null, url: null }],
+        },
+      ],
+    });
+    if (masking) await db.updateAssistant(answer.assistantId, { guardrails: [defaultGuardrail("pii_masking", "pii")] });
+    return answer;
+  }
+
+  function recording(): { db: Db; verdicts: AnswerVerdictInput[] } {
+    const verdicts: AnswerVerdictInput[] = [];
+    const spy = Object.assign(Object.create(db) as Db, {
+      recordAnswerVerdict: async (input: AnswerVerdictInput) => {
+        verdicts.push(input);
+        return db.recordAnswerVerdict(input);
+      },
+    });
+    return { db: spy, verdicts };
+  }
+
+  it("grades masked text, and records the reason with the values restored", async () => {
+    const { messageId } = await sourcedAnswer(true);
+    const seen: string[] = [];
+    const { db: spy, verdicts } = recording();
+    await runDueAnswerVerifications({ db: spy }, { model: maskedVerdictModel(seen, "Promises a link to [EMAIL_1].") });
+
+    const shown = seen.join("\n");
+    expect(shown).toContain("we will email [EMAIL_1] a tracking link");
+    expect(shown).not.toContain("jane@example.com");
+    expect(verdicts.find((v) => v.messageId === messageId)?.reason).toBe("Promises a link to jane@example.com.");
+  });
+
+  it("leaves a Conversation whose Assistant masks nothing as it was", async () => {
+    const { messageId } = await sourcedAnswer(false);
+    const seen: string[] = [];
+    const { db: spy, verdicts } = recording();
+    await runDueAnswerVerifications({ db: spy }, { model: maskedVerdictModel(seen, "Fine.") });
+    expect(seen.join("\n")).toContain("jane@example.com");
+    expect(verdicts.find((v) => v.messageId === messageId)?.reason).toBe("Fine.");
   });
 });

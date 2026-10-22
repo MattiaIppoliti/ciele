@@ -25,6 +25,7 @@ import {
   type KeyResolution,
 } from "./models";
 import type { UsageEvent } from "./types";
+import { maskOutboundValue } from "./pii-masking";
 import { usageTotals } from "./usage";
 
 /**
@@ -196,8 +197,11 @@ export async function decide<const Q extends Record<string, Experimental_Evaluat
   if (resolved.backend === "jev" && requestUpperBound(input, 1) > 32000) throw new ContextBudgetError("The decision request exceeds its verified context window.");
   const result = await experimental_evaluate({
     model: resolved.model,
-    state: input.state,
-    questions: input.questions,
+    // Jev is an evaluation model, not a language model, so `buildModel`'s
+    // masking never sees this request (#1078). The answers are choice ids,
+    // scores and booleans: nothing to restore.
+    state: maskOutboundValue(input.state),
+    questions: maskOutboundValue(input.questions),
     abortSignal: input.abortSignal,
   });
   return {

@@ -15,6 +15,7 @@ import type {
 
 import { resolveChatModel } from "./models";
 import { usageTotals } from "./usage";
+import { withPostTurnMasking } from "./pii-masking";
 import {
   admitAiSpend,
   CONVERSATION_SPEND_CAPACITY,
@@ -199,12 +200,19 @@ async function compostOne(
     });
     try {
       if (admission.blocked) throw new Error(admission.blocked.detail);
-      const { object, usage } = await generateObject({
-        model,
-        schema: PROPOSALS_SCHEMA,
-        system: COMPOST_SYSTEM,
-        prompt: `Exhaust for the past week:\n\n${renderDigest(digest)}`,
-      });
+      // The exhaust quotes Visitors from many Conversations, so it goes out
+      // under the Assistant's masking (#1080). There is no one transcript to
+      // seed from: the placeholders are numbered as the exhaust is read, and
+      // the proposals a Member reads come back with the values restored.
+      const proposer = model;
+      const { object, usage } = await withPostTurnMasking(db, entry.assistantId, async () => [], () =>
+        generateObject({
+          model: proposer,
+          schema: PROPOSALS_SCHEMA,
+          system: COMPOST_SYSTEM,
+          prompt: `Exhaust for the past week:\n\n${renderDigest(digest)}`,
+        })
+      );
       proposals = object.proposals.slice(0, 3);
       await admission.settle([
         {

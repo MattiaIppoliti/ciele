@@ -1,5 +1,6 @@
 "use server";
 import { readReactionRecords } from "@/lib/inbox/reaction-records";
+import { MAX_INVITES_PER_SUBMIT, parseInviteEmails, planInvites, type InviteOutcome } from "@/lib/invite-emails";
 
 import { z, ZodError } from "zod";
 import type {
@@ -50,7 +51,7 @@ import type {
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
 import { connectorAction } from "@agent-hub/core";
-import { modelSelector, thrownMessage } from "@agent-hub/core";
+import { modelSelector, roleAllowsCapability, thrownMessage } from "@agent-hub/core";
 import {
   isSupabaseConfigured,
   raiseImprovement,
@@ -186,6 +187,8 @@ import {
   updateAlertOp,
   renameSourceOp,
   createInviteOp,
+  listInvitesOp,
+  listMembersOp,
   createOrgApiKeyOp,
   removeMemberOp,
   revokeInviteOp,
@@ -223,6 +226,8 @@ import {
   getProjectOp,
   updateProjectOp,
   writeProjectDocumentOp,
+  createTaskOp,
+  listTasksOp,
   type MemoryDocumentView,
 } from "@ciele/ops";
 import type { InboxConversationDetail } from "@ciele/ops";
@@ -241,6 +246,7 @@ import { discoverScopesKeepingCredentials } from "@/lib/application-discovery";
 import { saveSlackBotSettings } from "@/lib/slack/settings";
 import { canViewReasoning } from "@/lib/rbac";
 import { canDeleteApplicationConnection } from "@/lib/application-connections";
+import { improvementTaskRows, type ImprovementTaskRow } from "@/lib/work/improvement-tasks";
 import { MAX_AGENT_ITERATIONS } from "@agent-hub/agent/client";
 import {
   INBOX_EXPORT_MAX_CONVERSATIONS,
@@ -416,8 +422,50 @@ export async function removeMemberAction(userId: string) {
   }
 }
 
-export async function createInviteAction(role: Role, email?: string) {
-  return runOperation(createInviteOp, { role, email });
+/**
+ * One invite per address typed into the box, or a single link with no email
+ * when it is empty (#1074). The text is parsed here as well as in the form,
+ * with the operation's own email schema: a bad address refuses the whole
+ * submit before any invite exists.
+ *
+ * Safe to retry. An address with a pending invite or a membership is skipped
+ * and reported, and one that fails does not stop the rest: the outcome names
+ * it, and the form keeps only those in the box for the next attempt.
+ */
+export async function createInvitesAction(role: Role, emailsText: string) {
+  const { emails, invalid, tooMany } = parseInviteEmails(emailsText);
+  if (invalid.length) throw new Error(`Not an email address: ${invalid.join(", ")}`);
+  if (tooMany) throw new Error(`Invite at most ${MAX_INVITES_PER_SUBMIT} people at a time`);
+  const invite = (email?: string) =>
+    runOperation(createInviteOp, email ? { role, email } : { role });
+  const outcome: InviteOutcome<Awaited<ReturnType<typeof invite>>> = {
+    created: [],
+    alreadyInvited: [],
+    alreadyMembers: [],
+    failed: [],
+  };
+  if (!emails.length) {
+    outcome.created.push(await invite());
+    return outcome;
+  }
+  const [invites, members] = await Promise.all([
+    runOperation(listInvitesOp, {}),
+    runOperation(listMembersOp, {}),
+  ]);
+  const plan = planInvites(emails, {
+    invited: invites.map((item) => item.email),
+    members: members.map((member) => member.email),
+  });
+  outcome.alreadyInvited = plan.alreadyInvited;
+  outcome.alreadyMembers = plan.alreadyMembers;
+  for (const email of plan.create) {
+    try {
+      outcome.created.push(await invite(email));
+    } catch (error) {
+      outcome.failed.push({ email, message: thrownMessage(error, "Could not create the invite") });
+    }
+  }
+  return outcome;
 }
 
 export async function revokeInviteAction(inviteId: string) {
@@ -2243,16 +2291,21 @@ export async function getImprovementDetailAction(
   proposal: ImprovementProposal | null;
   /** Live Projects it can be filed under (#771). */
   projects: { id: string; name: string }[];
+  /** The Tasks that resolve it, in Projects the caller can read (ADR-0027 rule 2). */
+  tasks: ImprovementTaskRow[];
+  /** Whether the caller may file one: `tasks.create`'s rank, not the Improvement's. */
+  canCreateTasks: boolean;
 } | null> {
   const { db, session } = await requireMember();
   const improvement = await db.getImprovement(improvementId);
   if (!improvement || improvement.organizationId !== session.organization.id) {
     return null;
   }
-  const [associationPage, proposal, projects] = await Promise.all([
+  const [associationPage, proposal, projects, tasks] = await Promise.all([
     db.getImprovementAssociationPage(improvement.id, { limit: 1 }),
     db.getImprovementProposal(improvement.id),
     db.table("projects").list({ organizationId: session.organization.id }),
+    runOperation(listTasksOp, { improvementId: improvement.id, includeArchived: true }),
   ]);
   return {
     improvement,
@@ -2263,6 +2316,8 @@ export async function getImprovementDetailAction(
       // would file it under something nobody is looking at.
       .filter((project) => !project.archived)
       .map((project) => ({ id: project.id, name: project.name })),
+    tasks: improvementTaskRows(tasks.items, projects),
+    canCreateTasks: roleAllowsCapability(session.role, createTaskOp.capability),
   };
 }
 

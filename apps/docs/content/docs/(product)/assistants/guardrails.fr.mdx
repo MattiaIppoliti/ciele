@@ -1,19 +1,20 @@
 ---
 title: Garde-fous
-description: Vérifiez ce que les visiteurs envoient et masquez le texte marqué dans les réponses de l'assistant.
+description: Vérifiez ce que les Visiteurs envoient, masquez les données personnelles avant qu'un modèle ne les lise et cachez le texte marqué dans les réponses de l'Assistant.
 ---
 
-Un Guardrail est un contrôle qui s'exécute sur chaque message de Visiteur ou sur
-chaque réponse diffusée en flux. Chaque Assistant dispose de sa propre liste
-ordonnée de Guardrails.
+Un Guardrail est un contrôle qui s'exécute sur chaque message de Visiteur, sur
+le texte transmis à un modèle, ou sur chaque réponse diffusée en streaming.
+Chaque Assistant dispose de sa propre liste ordonnée de Guardrails.
 
 ## Types de garde-fous
 
 | Type | S'exécute sur | Vérification |
 | --- | --- | --- |
-| **Input length limit** | Visitor message | Le message comporte plus de caractères ou de tokens que la limite autorisée. Ciele compte un token pour quatre caractères. |
+| **Input length limit** | Visitor message | Le message dépasse la limite de caractères ou de tokens. Ciele compte un token pour quatre caractères. |
 | **Regular expression** | Visitor message | Le message correspond au motif. |
-| **Moderation** | Visitor message | Le modèle de modération d'OpenAI signale le message. Vous pouvez sélectionner les catégories qui entraînent un blocage. |
+| **Moderation** | Visitor message | Le modèle de modération d'OpenAI signale le message. Vous pouvez sélectionner les catégories qui bloquent. |
+| **PII masking** | Text sent to models | Les données personnelles sont remplacées par un espace réservé avant qu'un modèle ne les lise. La réponse affiche les valeurs réelles. |
 | **Restrict to topic** | Visitor message | Un modèle constate que le sujet principal du message ne figure pas dans votre liste. |
 | **Sensitive content in stream** | Answer | Le texte situé entre un marqueur de début et un marqueur de fin n'est pas affiché. |
 
@@ -24,7 +25,8 @@ ordonnée de Guardrails.
 3. Recherchez la section correspondant au type de garde-fou.
 4. Sélectionnez **Add** dans cette section.
 5. Remplissez les champs correspondant au type.
-6. Rédigez le message qui s'affiche pour le Visiteur.
+6. Rédigez le message qui s'affiche pour le Visiteur. **PII masking** n'a pas de
+   message.
 7. Sélectionnez **Add guardrail** pour l'enregistrer.
 
 Les modifications se répercutent immédiatement dans Preview. Le widget en direct
@@ -39,7 +41,7 @@ s'exécutent avant les deux vérifications qui utilisent un modèle.
 Dans une section comportant plusieurs Guardrails, utilisez les flèches pour
 modifier leur ordre.
 
-Le premier Guardrail qui bloque interrompt le tour. Le visiteur voit le message
+Le premier Guardrail qui bloque interrompt le tour. Le Visitor voit le message
 du Guardrail, et aucun Flow ne s'exécute. Les vérifications qui suivent ne
 s'exécutent pas.
 
@@ -50,20 +52,99 @@ Définissez **When it fires** sur l'une de ces valeurs :
   Utilisez cette valeur pour tester un nouveau Guardrail sur du trafic réel.
 
 **Moderation** et **Restrict to topic** utilisent un modèle. Définissez **If the
-check cannot run** pour contrôler un délai d'attente ou une connexion manquante
-au fournisseur :
+check cannot run** pour contrôler un délai d'expiration ou une connexion
+manquante au fournisseur :
 
 - **Let the message through** maintient l'Assistant disponible.
 - **Block the message** maintient la vérification stricte.
 
 **Moderation** nécessite une connexion à un fournisseur OpenAI dans
 l'Organisation. Le formulaire affiche un avertissement lorsqu'il n'y a pas de
-connexion au fournisseur OpenAI.
+connexion à un fournisseur OpenAI.
 
-## Garde-fous en flux continu
+## Masquage des PII
+
+**PII masking** empêche les données personnelles d'être transmises aux
+fournisseurs de modèles. Cela inclut les données saisies par un Visiteur ainsi
+que les données contenues dans votre base de connaissances et dans les résultats
+des outils. Un Assistant peut disposer d'un **PII masking** Guardrail.
+
+Sélectionnez les types de données à masquer :
+
+| Type | Ciele masque |
+| --- | --- |
+| **Email address** | Une adresse comportant un `@` et un domaine. |
+| **Phone number** | Un numéro avec son indicatif de pays, tel que `+39 06 1234 5678`. Un numéro qui commence par `00` doit comporter des groupes, par exemple `0039 06 1234 5678`. Un numéro national qui commence par `0` et comporte des groupes de chiffres, tel que `06 1234 5678`. Un numéro composé de groupes de 3, 3 et 4 chiffres, tel que `555 123 4567`. |
+| **Payment card number** | 13 à 19 chiffres qui satisfont à l'algorithme de Luhn. Les chiffres sont groupés ou en groupes de quatre. |
+| **IBAN** | Un IBAN avec des chiffres de contrôle corrects. |
+| **Italian tax code (codice fiscale)** | Un code de 16 caractères avec un caractère de contrôle correct. Ciele masque également un code comportant des lettres à la place de certains chiffres (omocodia). |
+
+Ciele ne masque pas un nombre qui ressemble uniquement à des données
+personnelles. Par exemple, Ciele ne masque pas un numéro de commande à 10
+chiffres sans espace, une date ou une liste de montants. Ciele ne masque pas non
+plus les noms.
+
+Lorsque le Guardrail est activé, Ciele remplace chaque valeur par un espace
+réservé, tel que `[EMAIL_1]`. L'espace réservé remplace la valeur dans tout le
+texte transmis à un fournisseur de modèle au cours du tour. Cela inclut :
+
+- Le message du visiteur et les messages précédents dans la Conversation.
+- Le routage du message vers un Flow, ainsi que la recherche dans la base de
+  connaissances.
+- Les passages qu'une recherche dans la base de connaissances identifie, ainsi
+  que les Sources que le modèle lit par sections.
+- Les résultats des appels **Query API**, des actions **API request** et des
+  actions de connecteur.
+- La réponse, ainsi que les vérifications **Moderation** et **Restrict to
+  topic**.
+
+Au cours d'un même tour, une même valeur reçoit toujours le même espace réservé.
+Si le Visiteur saisit une adresse e-mail qui figure également dans une Source,
+les deux reçoivent un seul espace réservé. Ainsi, le modèle peut relier les
+valeurs.
+
+Le modèle insère l'espace réservé dans sa réponse. Ciele rétablit la valeur
+réelle avant que le Visiteur ne voie la réponse. Le Visitor et la transcription
+affichent toujours les valeurs réelles.
+
+Lorsque le modèle appelle un outil, Ciele rétablit les valeurs réelles dans
+l'entrée de l'outil avant que celui-ci ne s'exécute. Ainsi, un appel **Query
+API** envoie toujours l'adresse e-mail réelle à votre système.
+
+La liste **Sources** sous une réponse affiche toujours la Source telle qu'elle
+est écrite, sans espaces réservés.
+
+Ciele n'applique pas ce Guardrail aux actions **Message** verbatim. Ce texte
+n'est pas transmis à un modèle.
+
+Certaines tâches s'exécutent après le tour et envoient également le texte de la
+conversation à un modèle. Ciele masque ce texte également :
+
+- La vérification de réponse qui écrit le badge **Verified** ou **Failed
+  verification**.
+- Le brouillon d'un **Suggested Fix** pour une amélioration.
+- Les Improvements hebdomadaires portant la balise **AI proposal**.
+- Une routine Teammate qui trie les réponses que les Visitors ont notées
+  négativement.
+- La mémoire à long terme d'un Visitor connecté.
+
+Dans un brouillon **Suggested Fix**, Ciele ne rétablit pas les valeurs du
+Visiteur. Une expression neutre remplace chaque valeur, par exemple « votre
+adresse e-mail ». Lorsque vous acceptez le brouillon, il devient une FAQ que
+tous les Visiteurs peuvent consulter. Les valeurs issues de votre base de
+connaissances restent dans le brouillon.
+
+Si Ciele ne parvient pas à lire le paramètre **PII masking** de l'Assistant, ce
+travail n'envoie pas le texte à un modèle.
+
+Ciele masque uniquement le texte. Si un Visitor joint une image, un modèle lit
+l'image pour en extraire le texte. Ce modèle reçoit l'image avant que Ciele ne
+puisse masquer le texte.
+
+## Garde-fous de flux
 
 **Sensitive content in stream** modifie la réponse pendant que le modèle
-l'écrit. Le texte situé entre les marqueurs n'est pas transmis au visiteur et
+l'écrit. Le texte situé entre les marqueurs n'est pas transmis au Visiteur et
 n'apparaît pas dans la transcription. Le message Guardrail s'affiche une seule
 fois à la place de chaque section masquée.
 
@@ -78,5 +159,11 @@ administrateur rédige ce texte.
 Ouvrez la Conversation dans **Inbox**. Un tour bloqué par un Guardrail affiche
 le marqueur de flux `Guardrail:` et le nom du Guardrail. Un badge sur la réponse
 indique chaque Guardrail qui a bloqué, enregistré ou n'a pas pu s'exécuter.
+
+Un badge **PII masking** indique le nombre de valeurs de chaque type que Ciele a
+masquées dans le tour. Le badge affiche uniquement les nombres, et non les
+valeurs ni les espaces réservés. Placez le pointeur sur le badge pour voir d'où
+proviennent les valeurs : le Visitor, la base de connaissances, les résultats
+des outils, ou les instructions et les réponses précédentes.
 
 Le Visitor ne voit pas quel Guardrail s'est déclenché.

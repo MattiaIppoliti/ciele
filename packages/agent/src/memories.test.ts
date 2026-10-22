@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ORG, getMockDb } from "@agent-hub/db";
 import type { LanguageModel } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
+import { defaultGuardrail } from "@agent-hub/core";
+import { maskedModel } from "./testing/masked-model";
 import { getClassifierModel } from "./models";
 import { runDueJobs } from "./jobs";
 
@@ -77,6 +79,8 @@ async function seedConversation(options: {
   subjectId?: string;
   /** Extra message appended AFTER the job row (the superseded case). */
   laterMessage?: boolean;
+  /** One more Visitor message, written before the job row like the others. */
+  userText?: string;
 }) {
   const assistant = await db.createAssistant(DEMO_ORG.id, { title: "Memory Fixture" });
   const conversation = await db.createConversation({
@@ -94,6 +98,13 @@ async function seedConversation(options: {
     role: "assistant",
     content: [{ type: "text", text: "Noted, Berlin office it is." }],
   });
+  if (options.userText) {
+    await db.appendMessage({
+      conversationId: conversation.id,
+      role: "user",
+      content: [{ type: "text", text: options.userText }],
+    });
+  }
   const job = await db.createBackgroundJob({
     kind: "promote_memories",
     payload: {
@@ -270,5 +281,27 @@ describe("promote_memories job (registry seam, #664)", () => {
     const result = await runDueJobs({ db }, { kinds: ["promote_memories"] });
     expect(result).toMatchObject({ claimed: 1, succeeded: 1 });
     expect(await db.listMemories(memorySubject(conversation.subjectId))).toHaveLength(0);
+  });
+});
+
+describe("promote_memories under PII masking (#1080)", () => {
+  it("extracts from a masked transcript and keeps the Visitor's own values in the facts", async () => {
+    await db.setMemoryEnabled(DEMO_ORG.id, true);
+    const { assistant, conversation } = await seedConversation({ userText: "Send the invoices to jane@example.com." });
+    await db.updateAssistant(assistant.id, { guardrails: [defaultGuardrail("pii_masking", "pii")] });
+    const seen: string[] = [];
+    classifierMock.mockReturnValue({
+      model: maskedModel(seen, JSON.stringify({ facts: ["Invoices go to [EMAIL_1]"] })),
+      provider: "google",
+      modelId: "fake-small-model",
+      credentialKind: "byok",
+    } as unknown as ReturnType<typeof getClassifierModel>);
+
+    const result = await runDueJobs({ db }, { kinds: ["promote_memories"] });
+    expect(result).toMatchObject({ succeeded: 1 });
+    expect(seen.join("\n")).toContain("Send the invoices to [EMAIL_1].");
+    expect(seen.join("\n")).not.toContain("jane@example.com");
+    const memories = await db.listMemories({ organizationId: DEMO_ORG.id, subjectId: conversation.subjectId });
+    expect(memories.map((m) => m.text)).toEqual(["Invoices go to jane@example.com"]);
   });
 });

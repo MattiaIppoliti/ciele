@@ -1854,7 +1854,16 @@ scritto-text:not(:defined) {
   outline-offset: -2px;
 }
 [data-slot="table-cell"][data-column-dragging="true"] {
-  background-color: var(--alpha-light);
+  /* Opaque, with the tint on top: a moving column passes over the others. */
+  background-color: var(--table-sheet);
+  background-image: linear-gradient(var(--alpha-light), var(--alpha-light));
+}
+/* Icon buttons in a cell take the dense row's size (DESIGN.md §4). Unlayered,
+   like button.css, because only an unlayered rule can set the size variables
+   that a Tailwind utility on the button cannot reach. */
+[data-slot="table-cell"] .ui-button--icon-only {
+  --h: 1.75rem;
+  --icon: 0.875rem;
 }
 [data-table-filter-active="true"] {
   border-color: var(--alpha-strong);

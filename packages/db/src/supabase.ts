@@ -1323,6 +1323,9 @@ function toOrgApiKey(row: OrgApiKeyRow): OrgApiKey {
  * DbTableMap. Filters/patches arrive in domain field names and are rewritten
  * mechanically to columns; RLS still scopes every query to the caller's org.
  */
+/** PostgREST's `max_rows` (supabase/config.toml): the most rows one request returns. */
+const POSTGREST_MAX_ROWS = 1000;
+
 function supabaseTable<K extends DbTableName>(
   client: SupabaseClient,
   name: K
@@ -1341,21 +1344,34 @@ function supabaseTable<K extends DbTableName>(
       return result.count ?? 0;
     },
     async list(filter = {}, options) {
-      let query = client.from(spec.table).select("*");
-      for (const [key, value] of Object.entries(filter)) {
-        if (value === undefined) continue;
-        const column = camelToSnakeKey(key);
-        query = value === null ? query.is(column, null) : query.eq(column, value);
-      }
-      query = query.order(camelToSnakeKey(options?.orderBy ?? "createdAt"), {
-        ascending: options?.ascending ?? spec.ascending,
-      });
+      const select = () => {
+        let query = client.from(spec.table).select("*");
+        for (const [key, value] of Object.entries(filter)) {
+          if (value === undefined) continue;
+          const column = camelToSnakeKey(key);
+          query = value === null ? query.is(column, null) : query.eq(column, value);
+        }
+        return query.order(camelToSnakeKey(options?.orderBy ?? "createdAt"), {
+          ascending: options?.ascending ?? spec.ascending,
+        });
+      };
+      const toRows = (data: unknown[] | null) =>
+        (data ?? []).map((row) => rowToDomain(row as Record<string, unknown>) as unknown as DbTableRow<K>);
       if (options?.offset !== undefined) {
         const pageSize = options.limit ?? 100;
-        query = query.range(options.offset, options.offset + pageSize - 1);
-      } else if (options?.limit !== undefined) query = query.limit(options.limit);
-      const data = must(await query);
-      return (data ?? []).map((row) => rowToDomain(row) as unknown as DbTableRow<K>);
+        return toRows(must(await select().range(options.offset, options.offset + pageSize - 1)));
+      }
+      if (options?.limit !== undefined) return toRows(must(await select().limit(options.limit)));
+      // No limit means every matching row, which is what the mock returns and
+      // what callers assume. PostgREST stops at `max_rows` (1000) without
+      // saying so, so read page by page; `id` breaks ties, or a row whose sort
+      // key equals its neighbour's could land on both pages or on neither.
+      const rows: DbTableRow<K>[] = [];
+      for (let from = 0; ; from += POSTGREST_MAX_ROWS) {
+        const page = toRows(must(await select().order("id", { ascending: true }).range(from, from + POSTGREST_MAX_ROWS - 1)));
+        rows.push(...page);
+        if (page.length < POSTGREST_MAX_ROWS) return rows;
+      }
     },
 
     async get(id) {
@@ -4754,6 +4770,18 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as number) ?? 0;
     },
 
+    async deleteExpiredWorkActivity(organizationId, cutoffIso, limit) {
+      const args = { p_organization_id: organizationId, p_cutoff: cutoffIso };
+      const { data, error } = await client.rpc(
+        "delete_expired_work_activity",
+        limit === undefined ? args : { ...args, p_limit: limit }
+      );
+      // One migration behind (20261009170000): nothing swept yet.
+      if (error && isSchemaLagError(error)) return 0;
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+
     async listTranscriptRetentionPolicies() {
       // Filtered in code for the same reason the trace policies are: one row
       // per organization, and it keeps the query inside the PostgREST subset
@@ -4801,6 +4829,23 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           messageCount: row.improvement_messages?.[0]?.count ?? 0,
         })
       );
+    },
+
+    async listImprovementsAssignedTo(organizationId, assigneeId) {
+      const rows: ImprovementRow[] = [];
+      for (let from = 0; ; from += POSTGREST_MAX_ROWS) {
+        const page = must(await client
+          .from("improvements")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .eq("assignee_id", assigneeId)
+          .order("seq", { ascending: false })
+          .range(from, from + POSTGREST_MAX_ROWS - 1)) as ImprovementRow[];
+        rows.push(...page);
+        if (page.length < POSTGREST_MAX_ROWS) {
+          return rows.map(toImprovement).filter((item) => item.status !== "archived");
+        }
+      }
     },
 
     async listImprovementsPage(organizationId, input) {
@@ -4953,6 +4998,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           last_detail: input.detail.slice(0, 1000),
         })
         .eq("id", id));
+    },
+
+    async nextTaskSeq(projectId) {
+      return must(await client.rpc("next_task_seq", { p_project_id: projectId })) as number;
     },
 
     async getMemoryDocument(organizationId, owner) {
@@ -6383,6 +6432,25 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         requestId: row.request_id ?? null,
         createdAt: String(row.created_at),
       }));
+    },
+
+    async purgeExpiredMemberNotifications(cutoffIso, limit = 5000) {
+      const data = must(await client.rpc("purge_expired_member_notifications", {
+        p_cutoff: cutoffIso,
+        p_limit: limit,
+      }));
+      return (data as number) ?? 0;
+    },
+
+    async purgeDeletedTaskComments(cutoffIso, limit = 5000) {
+      const { data, error } = await client.rpc("purge_deleted_task_comments", {
+        p_cutoff: cutoffIso,
+        p_limit: limit,
+      });
+      // One migration behind (20261009170000): nothing swept yet.
+      if (error && isSchemaLagError(error)) return 0;
+      if (error) throw error;
+      return (data as number) ?? 0;
     },
 
     async purgeExpiredObjectAccessEvents(cutoffIso) {

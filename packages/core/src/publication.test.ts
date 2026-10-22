@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { defaultGuardrail } from "./guardrails";
 import { buildPublicationConfig } from "./publication";
 import type { Assistant, Flow, KnowledgeCollection } from "./types";
 
@@ -76,6 +77,15 @@ describe("buildPublicationConfig", () => {
     expect(Object.keys(config.assistant).sort()).toEqual(EXPECTED_ASSISTANT_KEYS);
     expect(config.assistant).not.toHaveProperty("createdAt");
     expect(config.assistant).not.toHaveProperty("updatedAt");
+  });
+
+  it("freezes the PII masking guardrail with its detectors (#1078)", () => {
+    const masking = { ...defaultGuardrail("pii_masking", "p"), detectors: ["email" as const, "iban" as const] };
+    const assistant = makeAssistant({ guardrails: [masking] });
+    const config = buildPublicationConfig(assistant, [], []);
+    expect(config.assistant.guardrails).toEqual([masking]);
+    // A copy, so a later edit to the live Assistant cannot reach the snapshot.
+    expect(config.assistant.guardrails?.[0]).not.toBe(masking);
   });
 
   it("copies the captured values verbatim", () => {

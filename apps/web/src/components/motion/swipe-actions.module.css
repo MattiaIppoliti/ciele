@@ -1,0 +1,151 @@
+/* Swipe-to-act rows (see swipe-actions.tsx). The row clips its action layers;
+   the content slides over them on an opaque surface, so the row's own tints
+   (unread, selected) belong on the content, not the row. */
+
+.list {
+  outline: none;
+}
+
+.row {
+  /* The ink on a revealed action's solid fill, the same in both themes
+     (the palette's near-white, as `--primary-foreground` is in light). */
+  --swipe-ink: oklch(0.985 0 0);
+  position: relative;
+  overflow: hidden;
+  /* Vertical scroll stays native; the horizontal axis is the swipe's. */
+  touch-action: pan-y;
+}
+
+.row[data-dragging] {
+  user-select: none;
+}
+
+.content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  /* A colour, not the shorthand: a row's tint (unread, selected, hover) goes
+     on as a background image over this opaque ground, so the actions under
+     the row never show through it. */
+  background-color: var(--content);
+}
+
+.body {
+  min-width: 0;
+  flex: 1;
+}
+
+.more {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0.625rem 0.75rem 0 0;
+  border-radius: 0.375rem;
+  color: var(--muted-foreground);
+  opacity: 0;
+  transition: opacity 120ms, background-color 120ms, color 120ms;
+}
+
+.row:hover .more,
+.more:focus-visible,
+.more[data-popup-open] {
+  opacity: 1;
+}
+
+.more:hover {
+  background: var(--alpha-light);
+  color: var(--foreground);
+}
+
+/* Touch has no hover: the button is always there. */
+@media (hover: none) {
+  .more {
+    opacity: 1;
+  }
+}
+
+.itemIcon {
+  display: inline-flex;
+}
+
+.itemIcon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* One revealed action: a full-row band parked just past its edge, slid in by
+   transform. Its inner edge carries the glyph. */
+.layer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  color: var(--swipe-ink);
+  cursor: pointer;
+}
+
+.layer[data-side="leading"] {
+  right: 100%;
+}
+
+.layer[data-side="trailing"] {
+  left: 100%;
+}
+
+.layer[data-tone="neutral"] {
+  background: color-mix(in oklab, var(--tone-amber-ink), black 25%);
+}
+
+.layer[data-tone="accent"] {
+  background: color-mix(in oklab, var(--tone-blue-ink), black 25%);
+}
+
+.layer[data-tone="danger"] {
+  background: color-mix(in oklab, var(--destructive), black 15%);
+}
+
+.anchor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layer[data-side="leading"] .anchor {
+  right: 0;
+}
+
+.layer[data-side="trailing"] .anchor {
+  left: 0;
+}
+
+.glyph {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: var(--swipe-action-width);
+  flex-shrink: 0;
+}
+
+.icon {
+  display: inline-flex;
+}
+
+.icon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}

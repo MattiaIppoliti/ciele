@@ -10,8 +10,8 @@ Ouvrez un Assistant pour utiliser ces sections :
 - **Preview** ouvre le brouillon en direct en page entière, seul aperçu
   disponible sur un petit écran.
 - **General** configure l'identité, le modèle, le style de réponse et les
-  paramètres par défaut du chat.
-- **Knowledge** gère les Sources à partir desquelles cet Assistant fournit ses
+  valeurs par défaut du chat.
+- **Knowledge** gère les Sources à partir desquelles cet Assistant apporte des
   réponses.
 - **Flows** contrôle le routage, les déclencheurs, les conditions et les
   actions.
@@ -31,27 +31,35 @@ Utilisez la navigation principale pour ouvrir **Inbox**, **Improvements**,
 **Insights**, **Library** et **Alerts**.
 
 **Library** est la vue Organisation de Knowledge. Elle répertorie toutes les
-Sources et détermine quels Assistants répondent à partir de chacune d'elles.
-Voir [Library](/knowledge/library).
+Sources et détermine quels Assistants répondent à partir de chacune d'entre
+elles. Voir [Library](/knowledge/library).
 
 ## Rechercher
 
 Sélectionnez l'icône de recherche ou appuyez sur **F** pour ouvrir **Find**.
-Avant que vous ne saisissiez du texte, **Find** affiche vos 12 éléments les plus
-récents, puis les pages de la console et les sections de configuration de
-l'Assistant. Saisissez du texte pour rechercher des Assistants, des
-Conversations, des Améliorations, des Centres d'assistance et des Coéquipiers.
-**Find** répertorie également les pages de la console et les sections de
-configuration des Assistants.
+Vous pouvez également appuyer sur **/**, ou sur **Cmd+K** sur un Mac et sur
+**Ctrl+K** sur les autres ordinateurs. Avant que vous ne saisissiez quoi que ce
+soit, **Find** affiche vos 12 éléments les plus récents, puis les pages de la
+console et les sections de configuration de l'Assistant. Saisissez du texte pour
+rechercher des Tasks, des Projects, des Assistants, des Conversations, des
+Improvements, des Help Desks et des Teammates. **Find** répertorie également les
+pages de la console, les sections de configuration de l'Assistant et des actions
+telles que **New task** et **Keyboard shortcuts**.
+
+**Find** met en évidence le texte qui correspond à votre recherche dans chaque
+résultat. Un titre peut correspondre même avec une ou deux fautes de frappe, et
+la mise en évidence indique les lettres correctes. Lorsqu'un résultat ne
+correspond que par son texte, la ligne affiche la partie du texte qui
+correspond.
 
 Utilisez les filtres situés sous le champ de recherche pour affiner les
 résultats :
 
-- **Title only** recherche dans les titres et ignore le texte de chaque
-  résultat.
+- **Title only** effectue une recherche dans les titres et ignore le texte de
+  chaque résultat.
 - **Type** affiche un seul type de résultat.
-- **Updated** affiche les résultats qui ont été modifiés aujourd'hui, au cours
-  des 7 derniers jours ou au cours des 30 derniers jours.
+- **Updated** affiche les résultats qui ont changé aujourd'hui, au cours des 7
+  derniers jours ou au cours des 30 derniers jours.
 
 Le panneau de droite affiche le résultat sélectionné sous la forme d'une petite
 page. Les informations clés s'affichent à l'intérieur. Par exemple, il affiche
@@ -60,6 +68,32 @@ d'une Conversation. Ciele ne charge pas la page complète. Sélectionnez une car
 ou une ligne dans l'aperçu pour ouvrir cet élément. Appuyez sur **Enter** pour
 l'ouvrir. Appuyez sur **Cmd+Enter** ou **Ctrl+Enter** pour l'ouvrir dans un
 nouvel onglet.
+
+## Raccourcis clavier
+
+Appuyez sur **?** pour afficher tous les raccourcis clavier. Les raccourcis par
+lettre ne fonctionnent pas lorsque vous saisissez du texte dans un champ.
+
+Appuyez sur **G**, puis sur une lettre, en moins d'environ une seconde, pour
+ouvrir une page :
+
+| Touches | Page |
+| --- | --- |
+| **G** puis **H** | Home, la liste des Assistants |
+| **G** puis **T** | My Tasks |
+| **G** puis **P** | Projects |
+| **G** puis **A** | All tasks |
+| **G** puis **I** | Inbox |
+| **G** puis **S** | Settings. Les Owners et les Admins ouvrent les paramètres de l'organisation. Les autres membres ouvrent leurs propres paramètres. |
+| **G** puis **N** | Notifications |
+
+Autres raccourcis :
+
+- **N** crée une tâche et **P** crée un projet.
+- **[** affiche ou masque la barre latérale.
+- **D** ouvre le Developer Panel sur les pages qui en comportent un.
+- **Cmd+Enter** sur un Mac ou **Ctrl+Enter** sur d'autres ordinateurs soumet le
+  formulaire ou le texte que vous saisissez.
 
 ## Paramètres
 

@@ -155,7 +155,7 @@ function TeammateFace({
                 aria-label={teammate.name}
                 aria-current={active ? "page" : undefined}
                 onClick={(event) => guardedClick(event, href)}
-                className="press-control flex w-14 flex-col items-center gap-1.5 rounded-lg py-1"
+                className="press-control flex w-16 flex-col items-center gap-1.5 rounded-lg py-1"
               >
                 <TeammateAvatar
                   teammate={teammate}
@@ -286,7 +286,7 @@ export function ChatSidebarPanel({
   const newTeammate = canEdit ? (
     <div className="flex justify-center">
       <Hint label="New teammate" side={collapsed ? "right" : "bottom"}>
-        <span className="flex w-14 flex-col items-center gap-1.5 py-1">
+        <span className="flex w-16 flex-col items-center gap-1.5 py-1">
           <CieleButton variant="ghost" size={collapsed ? "icon-sm" : "icon"}
             aria-label="New teammate" onClick={onNewTeammate}>
             <Plus className="size-4" />

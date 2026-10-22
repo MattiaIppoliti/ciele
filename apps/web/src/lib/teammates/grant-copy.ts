@@ -42,6 +42,11 @@ export const GRANT_DOMAIN_COPY: readonly GrantDomainCopy[] = [
     detail:
       "Read an assistant's flows and hand back drafts and proposals. It never saves a flow; an editor does, from the Flow Canvas.",
   },
+  {
+    domain: "tasks",
+    label: "Tasks",
+    detail: "Read projects' tasks, create and update them, and comment. It never deletes or archives a task.",
+  },
 ];
 
 export interface CeilingCopy {

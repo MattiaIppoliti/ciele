@@ -1,4 +1,4 @@
-﻿import type { Alert } from "@agent-hub/core";
+﻿import type { Alert, MemberNotificationKind } from "@agent-hub/core";
 
 /**
  * The bottom-right notification banner shows operational **alerts** read from
@@ -15,7 +15,7 @@ export type NotificationStatus = "success" | "error" | "warning" | "info";
  * is nobody else's business and it is not an operational fault, so it never
  * reaches `/alerts`. Opening the group is what clears it.
  */
-export type NotificationSource = "alert" | "mention";
+export type NotificationSource = "alert" | "mention" | "work";
 
 export interface AppNotification {
   id: string;
@@ -83,6 +83,39 @@ export function mentionNotification(mention: {
     tag: "Group",
     createdAt: Date.parse(mention.at),
     source: "mention",
+  };
+}
+
+const WORK_TAGS: Record<MemberNotificationKind, string> = {
+  assigned: "Assigned",
+  mentioned: "Mention",
+  commented: "Comment",
+  status_changed: "Update",
+};
+
+interface WorkCardInput {
+  id: string;
+  kind: MemberNotificationKind;
+  createdAt: string;
+  /** "Ada assigned you WEB-12", from `notificationText`. */
+  text: string;
+  taskTitle: string;
+  excerpt: string | null;
+}
+
+/**
+ * A Member Notification (#1067), the third stream: one card per row, keyed by
+ * the row, so marking it read on the Notifications page is what clears it.
+ */
+export function workNotification(item: WorkCardInput): AppNotification {
+  return {
+    id: `work:${item.id}`,
+    status: "info",
+    title: item.text,
+    description: item.excerpt ? `“${item.excerpt}”` : item.taskTitle,
+    tag: WORK_TAGS[item.kind],
+    createdAt: Date.parse(item.createdAt),
+    source: "work",
   };
 }
 

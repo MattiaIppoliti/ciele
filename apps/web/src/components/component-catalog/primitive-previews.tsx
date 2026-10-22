@@ -2,10 +2,13 @@
 
 import { MorphText } from "@/components/motion/morph-text";
 import { ArcPicker } from "@/components/motion/arc-picker";
+import { SpringSpan } from "@/components/motion/layout-spring";
+import { SwipeActions, SwipeActionsRow } from "@/components/motion/swipe-actions";
 
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
+  Archive,
   ArrowDown,
   ArrowUp,
   ArrowUpRight,
@@ -805,6 +808,18 @@ function ArcPickerPreview() {
   return <Stack><Example title="Drag, scroll or use the arrow keys"><ArcPicker aria-label="Assistant role" value={value} onValueChange={setValue} options={[{ value: "support", label: "Support" }, { value: "research", label: "Research" }, { value: "study", label: "Study" }, { value: "unavailable", label: "Unavailable", disabled: true }]} /><p role="status" className="text-xs text-muted-foreground">Selected: {value}</p></Example></Stack>;
 }
 
+function LayoutSpringPreview() {
+  const [wide, setWide] = useState(true);
+  return <Stack><Example title="Change the width"><div className="flex gap-3 rounded-md border p-3 text-sm transition-[width]" style={{ width: wide ? 420 : 260 }}>{["Status", "Priority", "Due date"].map((label) => <SpringSpan key={label} dependency={wide} className={wide ? "flex-1" : ""}>{label}</SpringSpan>)}</div><Button variant="outline" size="sm" onClick={() => setWide((value) => !value)}>{wide ? "Narrow" : "Widen"}</Button></Example></Stack>;
+}
+
+function SwipeActionsPreview() {
+  const [rows, setRows] = useState(["Weekly report", "Invoice approved", "New comment"]);
+  const [status, setStatus] = useState("Swipe a row, or open its menu.");
+  const remove = (row: string, verb: string) => { setRows((current) => current.filter((r) => r !== row)); setStatus(`${verb} “${row}”.`); };
+  return <Stack><Example title="Swipe left or right"><div className="w-full max-w-md overflow-hidden rounded-md border"><SwipeActions label="Preview inbox">{rows.map((row) => <SwipeActionsRow key={row} label={row} leading={[{ label: "Read", icon: <Check />, tone: "accent", keepRow: true, onSelect: () => setStatus(`Marked “${row}” read.`) }]} trailing={[{ label: "Delete", icon: <Trash2 />, tone: "danger", onSelect: () => remove(row, "Deleted") }, { label: "Archive", icon: <Archive />, tone: "accent", onSelect: () => remove(row, "Archived") }]}><p className="px-4 py-3 text-sm">{row}</p></SwipeActionsRow>)}</SwipeActions></div><p role="status" className="text-xs text-muted-foreground">{status}</p><Button variant="outline" size="sm" onClick={() => setRows(["Weekly report", "Invoice approved", "New comment"])}>Reset</Button></Example></Stack>;
+}
+
 export default function PrimitivePreview({ slug }: { slug: string }) {
   switch (slug) {
     case "buttons": return <ButtonPreview />;
@@ -890,6 +905,8 @@ export default function PrimitivePreview({ slug }: { slug: string }) {
     case "page-reveal": return <PageRevealPreview />;
     case "skeleton-reveal": return <SkeletonRevealPreview />;
     case "sound-switcher": return <SoundPreview />;
+    case "layout-spring": return <LayoutSpringPreview />;
+    case "swipe-actions": return <SwipeActionsPreview />;
     case "appearance-settings": return <AppearancePreview />;
     case "slide-to-confirm": return <SlidePreview />;
     case "magnetic": return <MagneticPreview />;

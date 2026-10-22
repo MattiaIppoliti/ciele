@@ -7,7 +7,10 @@ import {
   type ProviderConnection,
 } from "@agent-hub/core";
 
+import type { Db } from "@agent-hub/db";
+
 import { decide, resolveDecisionModel } from "./decision-model";
+import { withPostTurnMasking } from "./pii-masking";
 
 /**
  * The Improvements board's decisions (#959), as one call the host can make.
@@ -41,19 +44,31 @@ export async function runTriageDecision(input: {
   evidence: { title: string; question: string; answer: string };
   candidates: readonly OpenImprovement[];
   connections: ProviderConnection[];
+  /** Reads the Assistant's PII masking guardrail and the transcript (#1080). */
+  db: Db;
+  /** Where the evidence came from: its words go out masked as its turns did. */
+  conversation: { id: string; assistantId: string | null };
 }): Promise<TriageDecisionResult | null> {
   // Org connections only. A triage run is unattended work and is nobody's
   // personal use, the same rule the Routines effort settled (#772).
   const resolved = resolveDecisionModel("anthropic", input.connections, {});
   if (!resolved) return null;
 
-  const decision = await decide(resolved, {
-    state: "",
-    questions: {
-      ...buildDedupQuestions(input.evidence, input.candidates),
-      ...buildPriorityQuestions(input.evidence),
-    },
-  });
+  // The evidence is a Visitor's question and the answer they flagged, and
+  // the candidates' titles were cut from questions like it (#1080).
+  const decision = await withPostTurnMasking(
+    input.db,
+    input.conversation.assistantId,
+    () => input.db.listMessages(input.conversation.id),
+    () =>
+      decide(resolved, {
+        state: "",
+        questions: {
+          ...buildDedupQuestions(input.evidence, input.candidates),
+          ...buildPriorityQuestions(input.evidence),
+        },
+      })
+  );
 
   const answers = decision.answers as Record<string, unknown>;
   const dedupAnswers: Record<string, { type: "boolean"; probability: number }> = {};

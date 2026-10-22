@@ -3,6 +3,9 @@ import {
   Bell,
   BookText,
   ChartLine,
+  CircleCheckBig,
+  FolderKanban,
+  ListChecks,
   UsersRound,
   Compass,
   FlaskConical,
@@ -20,6 +23,7 @@ import {
   Workflow,
   Wrench,
   type LucideIcon,
+  Cctv,
 } from "lucide-react";
 
 /**
@@ -56,7 +60,11 @@ export const PREVIEW_GLOBAL_NAV: PreviewNavItem[] = [
   { label: "Insights", icon: ChartLine },
   { label: "Eval", icon: Telescope },
   { label: "Library", icon: BookText },
-  { label: "Alerts", icon: Bell, bottom: true },
+  { label: "My Tasks", icon: CircleCheckBig },
+  { label: "Notifications", icon: Bell },
+  { label: "Projects", icon: FolderKanban },
+  { label: "All tasks", icon: ListChecks },
+  { label: "Alerts", icon: Cctv, bottom: true },
   { label: "Settings", icon: Settings, bottom: true },
 ];
 

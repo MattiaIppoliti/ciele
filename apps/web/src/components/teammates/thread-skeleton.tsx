@@ -17,8 +17,10 @@ export function ThreadSkeleton({ variant }: { variant: "teammate" | "channel" | 
               <Skeleton className="size-16 shrink-0 rounded-full" />
               <Skeleton className="h-9 w-80 max-w-full" />
             </div>
+            {/* The empty chat's composer: the tray with its strip (9.75rem,
+                the height it draws at rest), so the switch does not jump. */}
             <div className="px-4 pb-4">
-              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-[9.75rem] w-full rounded-[2rem]" />
             </div>
             <div className="flex-1" />
           </div>
@@ -70,7 +72,7 @@ export function TeammatesIndexSkeleton() {
       <span className="sr-only">Loading…</span>
       <Skeleton className="size-16 rounded-full" />
       <Skeleton className="h-8 w-72 max-w-full" />
-      <Skeleton className="mt-2 h-24 w-full max-w-2xl rounded-2xl" />
+      <Skeleton className="mt-2 h-[9.75rem] w-full max-w-2xl rounded-[2rem]" />
     </div>
   );
 }

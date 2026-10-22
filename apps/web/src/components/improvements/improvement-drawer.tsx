@@ -10,12 +10,15 @@ import { Button } from "@agent-hub/ui";
 import { getImprovementDetailAction } from "@/app/actions";
 import { ImprovementDetail } from "./improvement-detail";
 import { ImprovementDetailSkeleton } from "./improvement-detail-skeleton";
+import type { ImprovementTaskRow } from "@/lib/work/improvement-tasks";
 
 interface Detail {
   improvement: Improvement;
   associationPage: ImprovementAssociationPage;
   proposal: ImprovementProposal | null;
   projects: { id: string; name: string }[];
+  tasks: ImprovementTaskRow[];
+  canCreateTasks: boolean;
 }
 
 /** Loaded task content stays mounted while its workspace panel expands. */
@@ -64,7 +67,9 @@ export function ImprovementDrawer({
           members={members}
           proposal={detail.proposal}
           projects={detail.projects}
+          tasks={detail.tasks}
           canEdit={canEdit}
+          canCreateTasks={detail.canCreateTasks}
           variant="drawer"
           onUpdated={onUpdated}
           onDeleted={onDeleted}

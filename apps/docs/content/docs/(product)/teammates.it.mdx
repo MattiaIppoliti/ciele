@@ -31,13 +31,13 @@ flowchart TB
 
 ## Chat
 
-Seleziona **Chat** nella parte superiore della sidebar oppure apri
+Seleziona **Chat** nella parte superiore della barra laterale oppure apri
 **Teammates**. La barra laterale mostra quindi i tuoi Teammates, i tuoi gruppi e
 le tue conversazioni. La chat si apre al centro della pagina.
 
-- **AI Teammates.** L'immagine del profilo di ogni Teammate. Seleziona un'icona
-  per aprire la relativa chat. Fai clic con il pulsante destro del mouse su un
-  volto per configurarlo, copiarne l'ID, nasconderlo o eliminarlo.
+- **AI Teammates.** L'immagine del profilo di ciascun Teammate. Seleziona
+  un'icona per aprire la relativa chat. Fai clic con il pulsante destro del
+  mouse su un volto per configurarlo, copiarne l'ID, nasconderlo o eliminarlo.
 - **Groups.** I tuoi canali. Seleziona **+** per aprire un nuovo gruppo.
 - **Conversations.** Le tue conversazioni con ogni Teammate, dalla più recente
   alla meno recente, una cartella per ogni giorno.
@@ -46,11 +46,25 @@ Seleziona **New chat** nella parte inferiore della barra laterale per avviare
 una nuova conversazione con Ciele AI. Il pulsante è presente su ogni pagina.
 Puoi anche premere `⌘O` su Mac oppure `Ctrl+O` su Windows e Linux.
 
+In una nuova chat, la casella dei messaggi viene visualizzata al centro della
+pagina. Sotto la casella, il nome del Teammate apre un elenco dei tuoi Teammate.
+Seleziona un Teammate per aprire una nuova chat con lui/lei. Il testo nel
+riquadro ti segue. **History** apre le tue conversazioni precedenti con questo
+Teammate. Le Skills della tua Organization vengono visualizzate sotto il
+riquadro. Seleziona una Skill per scriverne la prima riga nella casella. Quando
+invii il primo messaggio, la casella si sposta nella parte inferiore della chat.
+
+La casella dei messaggi conserva, in questo browser, il testo che non hai
+inviato per ogni conversazione. Se invii un messaggio mentre un Teammate sta
+rispondendo, il messaggio rimane in attesa sopra la casella. Viene inviato
+quando la risposta è completa. Seleziona **X** su un messaggio in attesa per
+rimuoverlo.
+
 ## Ciele AI
 
 Ogni organizzazione ha un **Ciele AI**. È il livello di intelligenza artificiale
-dell'intera console, ed è su di esso che si apre Chat. Ciele lo crea la prima
-volta che un membro apre Chat.
+dell'intera console, e su di esso si apre Chat. Ciele lo crea la prima volta che
+un membro apre Chat.
 
 Ciele AI agisce per conto del membro che chatta con essa, con le autorizzazioni
 di quel membro. Non può fare più di quanto quel membro possa fare nella console.
@@ -63,17 +77,17 @@ Ad esempio, un Viewer non può creare un Assistant con esso.
   chiave API e non può impostare una credenziale. Se una richiesta contiene una
   password, un token o una chiave, Ciele AI interrompe la richiesta. Inserisci
   la credenziale nella console.
-- **Suggested Fixes.** Quando Ciele AI accetta un Suggested Fix, la FAQ ottiene
-  il livello di affidabilità confermato dalla macchina, non quello di revisione
-  umana.
-- **Confirmation.** Alcune azioni sono in attesa di te. Ciele AI mostra una
-  scheda e l'azione viene eseguita solo quando la approvi. Queste azioni sono in
-  attesa:
+- **Suggested Fixes.** Quando Ciele AI accetta un Suggested Fix, le FAQ
+  ottengono il livello di affidabilità confermato dalla macchina, non quello
+  derivante da una revisione umana.
+- **Confirmation.** Alcune azioni sono in attesa di una tua conferma. Ciele AI
+  mostra una scheda e l'azione viene eseguita solo quando la approvi. Queste
+  azioni sono in attesa:
   - Un'azione che elimina, rimuove, revoca o pubblica.
   - Un'azione che modifica l'accesso: una modifica del ruolo, un invito,
     l'identity claim SSO o le autorizzazioni di un Teammate.
   - Un'esecuzione di Eval.
-  - Una modifica alla durata di conservazione delle trascrizioni o delle tracce
+  - Una modifica al periodo di conservazione delle trascrizioni o delle tracce
     da parte dell'organizzazione.
 
 Ciele AI non ha alcun ruolo Standing. Puoi rinominarlo e assegnare un ruolo
@@ -87,10 +101,10 @@ Teammate e si apre la relativa chat.
 
 ## Crea un Teammate
 
-Apri **Chat** e seleziona **New** in **AI Teammates**. Devi avere il ruolo
-Editor o superiore. Il modulo di creazione si apre nel pannello centrale.
-Utilizza la stessa timeline delle sezioni di **Configure**. Seleziona **Create
-teammate** nella barra superiore o alla fine del modulo.
+Apri **Chat** e seleziona **New** sotto **AI Teammates**. Hai bisogno del ruolo
+Editor o di un ruolo di livello superiore. Il modulo di creazione si apre nel
+pannello centrale. Utilizza la stessa timeline delle sezioni di **Configure**.
+Seleziona **Create teammate** nella barra superiore o alla fine del modulo.
 
 Ogni Teammate è composto da tre parti.
 
@@ -115,28 +129,28 @@ stesso volto. Seleziona **Change colour** in **Configure** per ottenerne uno
 diverso; il volto resterà invariato anche dopo una ridenominazione.
 
 I Members funzionano allo stesso modo. Chiunque non abbia caricato una foto
-riceve un'immagine generata. Viene visualizzata nell'elenco dei membri, nella
-barra laterale e accanto a un Improvement a cui sono assegnati. Una riga è
-quindi riconoscibile a colpo d'occhio, e una foto reale prevale sempre
-sull'immagine generata.
+riceve un'immagine generata. Viene mostrata nell'elenco dei membri, nella barra
+laterale e accanto a un Improvement a cui sono assegnati. Una riga è quindi
+riconoscibile a colpo d'occhio, e una foto reale prevale sempre sull'immagine
+generata.
 
 ## Ambito della conoscenza
 
-L'ambito di conoscenza riportato di seguito si applica al Ciele harness. Un
+L'ambito della Knowledge riportato di seguito si applica al Ciele harness. Un
 harness esterno fornisce le proprie conoscenze e i propri strumenti.
 
 Un Teammate cerca solo ciò che selezioni tu. Puoi effettuare la selezione in due
 modi e puoi utilizzare entrambi contemporaneamente.
 
 - **Collections.** Un'intera Knowledge Collection. Usa questa opzione per un
-  argomento che si espande nel tempo.
+  argomento che si amplia nel tempo.
 - **Single items.** Un sito web, un file o una FAQ dalla tua Library. Usa questa
-  opzione per fornire a un Teammate due documenti, anziché l'intera raccolta che
-  li contiene.
+  opzione per fornire a un Teammate due documenti, anziché l'intera raccolta
+  correlata.
 
-Il selettore ha una scheda per **Collections** e una scheda per ciascun tipo di
-Libreria: **Websites**, **Files**, **Applications** e **FAQs**. Il numero su una
-scheda ti indica quanti elementi hai selezionato lì.
+Il selettore dispone di una scheda per **Collections** e di una scheda per
+ciascun tipo di libreria: **Websites**, **Files**, **Applications** e **FAQs**.
+Il numero su una scheda ti indica quanti elementi hai selezionato lì.
 
 Ciele cerca contemporaneamente nelle tue Collections e nei tuoi singoli elementi
 e mostra le risposte migliori provenienti da entrambi. Le risposte citano un
@@ -153,7 +167,7 @@ Collection covers it, so you can leave it clear.
 
 Se elimini una collection o un item che un Teammate sta ancora cercando, Ciele
 crea un Alert di tipo **Knowledge**. Il Teammate continua a rispondere dal suo
-ruolo e non trova nulla lì. Apri **Configure** e rimuovi la voce non più valida
+ruolo e lì non trova nulla. Apri **Configure** e rimuovi la voce non più valida
 dalla sua knowledge per risolvere l'Alert.
 
 <Callout title="Same Knowledge, no copy">
@@ -164,40 +178,40 @@ Collection is available in the next message.
 ## Esecuzione
 
 Un amministratore dell'organizzazione controlla l'esecuzione in **Configure →
-Execution**. I nuovi Teammate utilizzano l'harness di Ciele, con le funzionalità
+Execution**. I nuovi Teammate utilizzano il Ciele harness, con le funzionalità
 Internet e Computer disattivate.
 
-- **Agent harness.** Scegli Ciele o un harness AG-UI esterno registrato dal tuo
-  operatore di deployment.
+- **Agent harness.** Scegli Ciele oppure un harness AG-UI esterno registrato dal
+  tuo operatore di deployment.
 - **Public internet.** Leggi le pagine pubbliche per cercare informazioni
   aggiornate.
 - **Browser.** Naviga con il profilo browser persistente del Teammate. Ciò
   richiede l'accesso a Internet e un servizio computer configurato.
-- **Workspace files.** Mantieni i file nello spazio di lavoro personale del
+- **Workspace files.** Conserva i file nello spazio di lavoro personale del
   Teammate anche dopo i riavvii del computer.
-- **Terminal.** Esegui comandi all'interno del suo computer. Ciò richiede una
+- **Terminal.** Esegui i comandi all'interno del suo computer. Ciò richiede una
   connessione Internet, i file dell'area di lavoro e un limite massimo per la
   funzionalità di modifica.
 
 Le azioni del computer vengono eseguite in modo autonomo con queste
 autorizzazioni. Le operazioni di Ciele mantengono le approvazioni delle azioni
 esistenti. Tutti i membri che possono utilizzare un Teammate condividono il suo
-workspace e il suo profilo browser.
+workspace e il suo profilo del browser.
 
 Seleziona **Check computer**, **Start** o **Stop** per controllare il suo
 computer dopo aver salvato le autorizzazioni. L'annullamento di un'operazione
 del computer in corso arresta il computer. I suoi file rimangono disponibili
-anche dopo un riavvio. Il tuo Deployment Operator deve configurare il servizio
+dopo un riavvio. Il tuo Deployment Operator deve configurare il servizio
 computer prima che questi controlli diventino disponibili.
 
 Un harness AG-UI esterno riceve il ruolo Standing, la memoria consentita e la
-conversazione di testo recente. Controlla i propri strumenti, le proprie
+conversazione di testo recente. Gestisce i propri strumenti, le proprie
 autorizzazioni e la propria fatturazione. Ciele registra la propria risposta e
-le conferme degli strumenti nella transcript. L'ambito Knowledge di Ciele, la
+le conferme degli strumenti nella trascrizione. L'ambito Knowledge di Ciele, la
 selezione del modello, le autorizzazioni del computer e le concessioni di azioni
-non configurano quell'harness esterno. Gli harness esterni attualmente
-supportano le conversazioni di testo. Usa l'harness di Ciele per gli allegati e
-le approvazioni delle azioni native.
+non configurano quell'harness esterno. Gli harness esterni supportano
+attualmente le conversazioni di testo. Utilizza l'harness di Ciele per gli
+allegati e le approvazioni delle azioni native.
 
 ## Altri client e canali di messaggistica
 
@@ -209,12 +223,12 @@ Il tuo operatore di deployment può connettere Slack, Telegram e Microsoft Teams
 tramite gli adattatori Chat SDK. Ogni connessione specifica il Teammate, i
 canali consentiti e gli utenti della piattaforma mappati ai membri Ciele
 esistenti. Un utente non mappato non può avviare una conversazione Teammate. Un
-Teammate privato risponde solo tramite un messaggio diretto. Le risposte
-pubblicate in un gruppo sono visibili ai partecipanti di quel gruppo.
+Teammate privato risponde solo tramite messaggio diretto. Le risposte pubblicate
+in un gruppo sono visibili ai partecipanti di quel gruppo.
 
 Le conversazioni sui canali utilizzano il Ciele harness oppure l'harness esterno
 selezionato. Ciele mantiene una cronologia separata per ciascun Member. Apri
-Ciele per rivedere la trascrizione e decidere in merito alle approvazioni delle
+Ciele per esaminare la trascrizione e decidere in merito alle approvazioni delle
 azioni in sospeso. Gli allegati del canale e i pulsanti di approvazione nativi
 non sono collegati tramite bridge.
 
@@ -223,8 +237,8 @@ non sono collegati tramite bridge.
 La visibilità ha due valori.
 
 - **The whole organization.** Ogni membro vede il Teammate nel roster.
-- **Only me and admins.** Lo vedono l'owner, i membri che l'owner nomina come
-  editor e gli Organization admin.
+- **Only me and admins.** Lo vedono il proprietario, i membri che il
+  proprietario nomina come editor e gli amministratori dell'organizzazione.
 
 Il proprietario, gli editor designati e gli amministratori possono modificare la
 configurazione. Un membro con il ruolo Viewer può chattare con un Teammate, ma
@@ -232,7 +246,7 @@ non può crearne uno né modificarlo.
 
 ### Nascondi un elemento dal tuo roster
 
-Un elenco lungo è un problema che deve risolvere qualcun altro, quindi ogni
+Un roster lungo è un problema che deve risolvere qualcun altro, quindi ogni
 membro può accorciare il proprio. Fai clic con il pulsante destro del mouse su
 un Teammate nella barra laterale e seleziona **Hide from my roster**.
 
@@ -250,20 +264,20 @@ Deleting a Teammate retires it for the whole organization. Hiding shortens one l
 Un nuovo Teammate può solo parlare. Risponde alle domande e non cambia nulla.
 
 Per consentirgli di agire, un **admin** gli assegna uno o più domini.
-Un'autorizzazione è una riga. L'assenza di una riga significa assenza di
+Un'autorizzazione è una riga. L'assenza di una riga significa l'assenza di
 autorizzazioni, e il Teammate non vede nemmeno lo strumento.
 
 | Domain | Cosa consente l'autorizzazione |
 | --- | --- |
 | **Improvements** | Leggi la board, sposta gli elementi e redigi Suggested Fixes per le risposte contrassegnate. |
 | **Knowledge** | Leggi la Library e aggiungi o correggi le FAQ. Non elimina mai una Source. |
-| **Inbox** | Leggi le conversazioni dei Visitor e fissale. Non ne elimina mai nemmeno una. |
-| **Flows** | Leggi i Flow di un Assistente e restituisci bozze e proposte al Flow Canvas. Non salva mai un Flow. La console concede questo permesso al Flows Agent che crea. Consulta [Flow Canvas](/flows/canvas). |
+| **Inbox** | Leggi le conversazioni dei Visitor e appuntale. Non ne elimina mai nemmeno una. |
+| **Flows** | Leggi i Flows di un Assistente e restituisci le bozze e le proposte al Flow Canvas. Non salva mai un Flow. La console concede questo permesso al Flows Agent che crea. Consulta [Flow Canvas](/flows/canvas). |
 
-Apri **Configure** per impostare le concessioni. Solo un admin vede i controlli.
-Tutti gli altri membri vedono una frase che indica cosa può fare il Teammate. Le
-autorizzazioni di un agente non sono un segreto per le persone che lavorano con
-lui.
+Apri **Configure** per impostare le concessioni. Solo un amministratore vede i
+controlli. Tutti gli altri membri vedono una sola frase che indica cosa può fare
+il Teammate. Le autorizzazioni di un agente non sono un segreto per le persone
+che lavorano con lui.
 
 ### Fino a che punto può spingersi
 
@@ -282,10 +296,10 @@ autorizzazioni non esistono per un Teammate.
 Un Teammate con l'autorizzazione **Improvements** può redigere una Suggested
 Fix. Una persona deve accettarlo. Solo dopo diventa knowledge.
 
-Un amministratore può modificare questa impostazione per un singolo Teammate con
-il controllo **Let it accept its own Suggested Fixes**. Il controllo richiede il
-grant **Improvements** e il grant **Knowledge**. Per impostazione predefinita, è
-disattivato.
+Un amministratore può modificare questa impostazione per un singolo Teammate
+tramite il controllo **Let it accept its own Suggested Fixes**. Il controllo
+richiede il grant **Improvements** e il grant **Knowledge**. Per impostazione
+predefinita, è disattivato.
 
 Con il controllo attivo, una correzione redatta dal Teammate diventa una FAQ
 nella tua Knowledge e nessuno la esamina preventivamente. Ciele registra il
@@ -300,7 +314,8 @@ A Teammate that accepts its own fixes writes to your Knowledge with no human rev
 
 Ogni azione viene visualizzata nella conversazione come una card. La scheda
 indica l'operazione e l'elemento che è stato modificato. Ciele registra il
-membro che ha fatto la richiesta, non il Teammate, sulla modifica stessa.
+membro che ha fatto la richiesta, non il Teammate, in relazione alla modifica
+stessa.
 
 ## Cosa ricorda un Teammate
 
@@ -310,7 +325,7 @@ puoi leggere e modificare tutti e tre.
 | Document | Di chi tratta | Chi può modificarlo |
 | --- | --- | --- |
 | **Your profile** | Tu. Un unico documento, condiviso con ogni Teammate con cui parli. | Tu e i Teammate con cui parli. |
-| **What it has learned** | Le note personali del Teammate su come svolge il suo lavoro. | Il proprietario e gli editor del Teammate. |
+| **What it has learned** | Le note personali del Teammate su come svolge il proprio lavoro. | Il proprietario e gli editor del Teammate. |
 | **Decisions** | Ciò che il tuo team ha stabilito. | Membri con il ruolo Editor o superiore. |
 
 Ogni documento ha un limite di 4000 caratteri. Un Teammate legge l'intero
@@ -318,9 +333,9 @@ documento, quindi uno vuoto non costa nulla e non aggiunge nulla.
 
 ### Il tuo profilo
 
-Apri **Settings**, quindi **Memory**. Questo documento descrive come lavori: il
+Apri **Settings**, quindi **Memory**. Questo documento indica come lavori: il
 tuo fuso orario, le parole che usi, ciò che preferisci in forma abbreviata e ciò
-che vuoi per esteso.
+che preferisci per esteso.
 
 Un Teammate vi aggiunge informazioni quando apprende qualcosa su di te. Ogni
 modifica viene visualizzata nell'elenco **History** con il nome del Teammate che
@@ -328,23 +343,24 @@ l'ha apportata e la data. Seleziona **Undo this change** per ripristinare il
 documento allo stato precedente. Nessun altro può leggere questo documento,
 nemmeno un amministratore.
 
-Quando lasci l'Organization o un amministratore ti rimuove, Ciele elimina il tuo
-profilo e la sua cronologia. Se ti iscrivi di nuovo, inizi con un profilo vuoto.
+Quando lasci l'Organizzazione, o un amministratore ti rimuove, Ciele elimina il
+tuo profilo e la sua cronologia. Se ti iscrivi di nuovo, inizi con un profilo
+vuoto.
 
 ### Cosa ha appreso
 
 Al termine di una conversazione, un Teammate decide se ha appreso qualcosa di
-duraturo sul proprio lavoro. La maggior parte delle conversazioni non insegna
-nulla, e in questi casi il Teammate non scrive nulla. Quando scrive, aggiunge
-una riga con una data.
+duraturo relativo al proprio compito. La maggior parte delle conversazioni non
+insegna nulla, e in quei casi il Teammate non scrive nulla. Quando scrive,
+aggiunge una riga con una data.
 
-Un fatto durevole è una convenzione utilizzata dalla tua organizzazione, un nome
+Un fatto duraturo è una convenzione utilizzata dalla tua organizzazione, un nome
 che hai attribuito a qualcosa oppure una correzione apportata da un collega. Non
 si tratta di ciò di cui hai parlato oggi.
 
-Apri **Configure** sul Teammate per leggere queste note. Elimina una riga che è
-sbagliata. Il Teammate legge questo documento a ogni messaggio, quindi una riga
-errata rimane errata finché non la correggi.
+Apri **Configure** sul Teammate per leggere queste note. Elimina una riga
+errata. Il Teammate legge questo documento a ogni messaggio, quindi una riga
+errata rimane tale finché non la correggi.
 
 ### Progetti
 
@@ -353,12 +369,12 @@ Un **Project** è un nome, una descrizione e un documento di decisioni. Apri
 
 Associa un Teammate a un progetto in **Configure**. Un Teammate legge al massimo
 un progetto. A partire dal messaggio successivo, risponde alla domanda "what did
-we decide" attingendo al documento di progetto e può anche aggiungere
-autonomamente una decisione. Ogni scrittura viene visualizzata come una card
-nella conversazione.
+we decide" sulla base del documento di progetto e può aggiungere autonomamente
+una decisione. Ogni scrittura viene visualizzata come una card nella
+conversazione.
 
 Seleziona **Archive** per interrompere un progetto. Le decisioni rimangono
-leggibili e i Teammate collegati smettono di leggerle. Seleziona l'icona Delete
+leggibili e i Teammate collegati smettono di leggerle. Seleziona l'icona delete
 per rimuovere il progetto e le relative decisioni. Archive è la scelta più
 sicura, perché conserva la registrazione.
 
@@ -385,14 +401,14 @@ The other Teammate does not speak in the first conversation, and nothing
 happens until you select the card. You stay in control of the handoff.
 </Callout>
 
-Un Teammate fa riferimento solo ai Teammate visibili a tutta l'organizzazione.
-Non indica mai un Teammate privato e non mostra alcuna scheda quando non c'è
-nessun altro Teammate da suggerire.
+Un Teammate fa riferimento solo ai Teammate che l'intera organizzazione può
+vedere. Non indica mai un Teammate privato e non mostra alcuna scheda quando non
+c'è nessun altro Teammate da suggerire.
 
 ## Canali
 
-Un **channel** è un thread condiviso da più membri e da più Teammate. Usa un
-canale quando un'attività richiede più di uno specialista.
+Un **channel** è un unico thread per più membri e più Teammate. Usa un canale
+quando un'attività richiede più di uno specialista.
 
 Apri **Chat** e seleziona **+** accanto a **Groups**. Assegna un nome al canale,
 quindi aggiungi i Teammate e le persone che desideri. Ogni membro può aprire un
@@ -401,13 +417,13 @@ canale. Non hai bisogno del ruolo Editor.
 Puoi anche avviare un canale da una chat 1:1. Scrivi **@** nella casella del
 messaggio e seleziona un Teammate. Ciele apre un nuovo canale con entrambi i
 Teammate e con te. La conversazione 1:1 non viene spostata. Rimane dov'è e puoi
-rileggerla. Ciele AI non entra nei canali.
+leggerla di nuovo. Ciele AI non entra nei canali.
 
 Un canale è basato su invito. Solo le persone nel canale possono vederlo. Un
-collega che non fa parte del canale non può aprirlo e non lo vede nel roster.
+collega che non è nel canale non può aprirlo e non lo vede nel roster.
 
 L'intestazione di un canale mostra il volto di ciascun membro. Seleziona le
-facce oppure seleziona **Add** per aprire l'elenco dei Teammates e delle persone
+facce oppure seleziona **Add** per aprire l'elenco dei Teammate e delle persone
 che puoi aggiungere. Seleziona un nome per aggiungere quel Teammate o per
 invitare quella persona.
 
@@ -418,22 +434,22 @@ Scrivi `@` e il nome di un Teammate. Quel Teammate risponde nel thread.
 Un Teammate risponde solo quando qualcuno lo menziona. Un Teammate che nessuno
 menziona rimane in silenzio. Non c'è alcun risponditore predefinito.
 
-Un Teammate può menzionare un altro Teammate nella sua risposta. Quel Teammate
-risponde quindi autonomamente, nello stesso thread. Una sola domanda può
-raggiungere l'intero team, e tu leggi un unico thread.
+Un Teammate può menzionare un altro Teammate nella sua risposta. Quindi quel
+Teammate risponde autonomamente, nello stesso thread. Una sola domanda può
+raggiungere l'intero team e tu leggi un unico thread.
 
 Un Teammate può nominare solo i Teammate presenti nel canale. Non può
 raggiungere un Teammate al di fuori del canale e non può raggiungere un
 Assistant.
 
-### Dove si interrompe una chain
+### Dove si interrompe una catena
 
 Una **chain** è tutto ciò che viene avviato da un singolo messaggio. Una chain
 ha due limiti:
 
 | Limite | Valore |
 | --- | --- |
-| Risposte di un Teammate da un unico messaggio | 10 |
+| Risposte di un Teammate da un singolo messaggio | 10 |
 | Risposte da un Teammate | 2 |
 
 La catena si interrompe al raggiungimento di un limite. La conversazione mostra
@@ -468,18 +484,19 @@ canale.
 
 L'elenco mostra i canali con nuovi messaggi. Ciele contrassegna un canale con
 **Mentioned you** solo quando un messaggio ti menziona. I messaggi tra i
-Teammate non lo contrassegnano.
+colleghi del team non lo contrassegnano.
 
 ### Quando qualcuno ti menziona
 
 Se un messaggio ti menziona, Ciele te lo segnala anche al di fuori del canale.
-Visualizzerai una scheda in basso a destra dello schermo e un contatore nella
-riga **Teammates** della barra laterale.
+Ricevi una scheda nell'angolo in basso a destra dello schermo e un conteggio
+nella riga **Teammates** della barra laterale.
 
 **You get one card for each channel, and no more.** Tre colleghi possono
 menzionarti dieci volte nello stesso canale. Si tratta di un unico luogo da
-visitare e controllare, quindi è una sola card. Il numero nella sidebar indica
-quanti canali ti aspettano, non quante volte qualcuno ti ha menzionato.
+visitare e controllare, quindi è una sola card. Il conteggio nella sidebar
+indica il numero di canali che ti aspettano, non il numero di volte in cui
+qualcuno ti ha menzionato.
 
 Apri il canale per eliminare la card e il conteggio. Non c'è nient'altro da
 ignorare.
@@ -493,8 +510,8 @@ A Teammate that you name answers in the channel. The answer is the signal. Cards
 Un Owner o un Admin può leggere tutti i canali dell'organizzazione, anche quelli
 di cui non fa parte. Apri **Inbox**, quindi **Channels**.
 
-I canali sono interni. Non compaiono nell'elenco delle conversazioni dei
-visitatori né in Insights.
+I canali sono interni. Non compaiono nell'elenco delle conversazioni dei Visitor
+e non sono inclusi in Insights.
 
 ## Routine
 
@@ -538,8 +555,8 @@ una card, proprio come in una chat.
 ### Quando un'esecuzione non riesce
 
 Un'esecuzione non riuscita crea un **Alert**. L'avviso indica quale routine ha
-avuto esito negativo e il motivo. La successiva esecuzione riuscita lo cancella.
-Un errore silenzioso è il rischio insito nel lavoro non supervisionato, perciò
+avuto esito negativo e perché. La successiva esecuzione riuscita lo elimina. Un
+errore silenzioso è il rischio insito nel lavoro non supervisionato, perciò
 Ciele rende l'errore evidente.
 
 Se elimini il Teammate, le sue routine si interrompono. Questo non è un errore e
@@ -548,7 +565,7 @@ non genera alcun avviso.
 ### Triage del feedback dei visitatori
 
 La routine più utile esamina le risposte che i tuoi visitatori hanno valutato
-negativamente e archivia i nuovi problemi nella board **Improvements**.
+negativamente e registra i nuovi problemi nella board **Improvements**.
 
 Assegna al Teammate il grant **Improvements**, quindi aggiungi una routine come
 questa:
@@ -558,15 +575,15 @@ questa:
 
 A ogni esecuzione:
 
-- legge le conversazioni con un "thumbs-down" del giorno precedente,
-- collega la risposta a un improvement già aperto per quella conversazione,
-  invece di crearne un secondo,
+- legge le conversazioni con un pollice verso il basso del giorno precedente,
+- collega la risposta a un miglioramento già aperto per quella conversazione,
+  anziché crearne un secondo,
 - crea al massimo 5 nuovi miglioramenti,
 - aggiunge il tag `auto-filed` a ogni nuovo elemento, così puoi filtrare la
   board.
 
-Il limite di 5 si applica solo ai nuovi elementi. A un problema di cui sei già a
-conoscenza vengono sempre aggiunte nuove evidenze.
+Il limite di 5 si applica solo ai nuovi elementi. Un problema di cui sei già a
+conoscenza riceve sempre le nuove evidenze.
 
 ## Organizza le righe della chat
 
@@ -579,24 +596,26 @@ dopo un ricaricamento. L'archiviazione di un gruppo lascia intatti la sua
 trascrizione condivisa e gli elenchi degli altri membri. L'eliminazione di un
 gruppo richiede una conferma e lo rimuove per tutti. Solo il suo creatore o un
 amministratore dell'organizzazione possono eliminarlo. Puoi eliminare solo le
-tue conversazioni con i Teammate. Le azioni sulla riga restano in attesa mentre
+tue conversazioni con i Teammate. Le azioni di riga restano in attesa mentre
 quella chat sta trasmettendo una risposta.
 
 ## Conversazioni
 
-Ogni membro ha un thread privato con ciascun Teammate. Seleziona una
-conversazione sotto **Conversations** nella barra laterale per aprirla di nuovo.
-Puoi anche selezionare **View history** nell'intestazione della chat.
+Ogni membro ha una conversazione privata con ciascun Teammate. Seleziona una
+conversazione sotto **Conversations** nella barra laterale per riaprirla. Puoi
+anche selezionare **View history** nell'intestazione della chat. In una nuova
+chat, seleziona **History** sotto la casella del messaggio.
 
 Per una risposta lunga, apri il menu **More options** nell'intestazione della
-chat e seleziona **Open full screen**. A quel punto la chat riempie la finestra.
-Seleziona **Exit full screen** oppure premi `Escape` per tornare indietro.
+chat e seleziona **Open full screen**. A quel punto la chat occupa l'intera
+finestra. Seleziona **Exit full screen** oppure premi `Escape` per tornare
+indietro.
 
-Le conversazioni con i colleghi del team non compaiono nell'Inbox, perché
-l'Inbox è la coda dedicata alle conversazioni con i visitatori. Inoltre, non
+Le conversazioni con i colleghi del team non compaiono nella Inbox, perché la
+Inbox è la coda dedicata alle conversazioni con i visitatori. Inoltre, non
 compaiono in Insights, perché l'uso interno non deve modificare le metriche del
-tuo widget. I canali si trovano in Inbox, nel loro elenco dedicato, per un Owner
-o un Admin.
+tuo widget. I canali si trovano nella Inbox, nel loro elenco dedicato, per un
+Owner o un Admin.
 
 ## Automazione
 
@@ -632,22 +651,22 @@ il tuo dispositivo, le tue chat con un Teammate possono utilizzare il tuo
 abbonamento. Questo vale solo per le tue chat. Un collega che chatta con lo
 stesso Teammate utilizza le connessioni dell'Organization.
 
-Un canale utilizza sempre le connessioni dell'organizzazione. Un channel include
+Un canale utilizza sempre le connessioni dell'Organization. Un canale include
 più persone, quindi non si tratta di un utilizzo personale.
 
 ### Allega un file
 
 Seleziona **+** nella casella del messaggio, quindi **Attach a file**. Puoi
 anche trascinare un file nella casella del messaggio oppure incollarvi
-un'immagine. Una chat Teammate accetta allegati in qualsiasi momento, perché hai
+un'immagine. Una chat Teammate accetta allegati in ogni momento, perché hai
 effettuato l'accesso.
 
-Ciele converte il file in testo e risponde sulla base di quel testo. Ciele non
-conserva il file. Un'immagine viene inviata al provider di IA della tua
-organizzazione, che la legge. Questo costa una chiamata AI.
+Ciele converte il file in testo e fornisce risposte sulla base di quel testo.
+Ciele non conserva il file. Un'immagine viene inviata al provider di IA della
+tua organizzazione, che la legge. Questo costa una chiamata AI.
 
-L'allegato rimane disponibile per il resto della conversazione. Rimuovilo dalla
-barra sopra la casella del messaggio quando non ne hai più bisogno.
+L'allegato rimane disponibile per il resto della conversazione. Quando non ne
+hai più bisogno, rimuovilo dalla barra sopra il riquadro dei messaggi.
 
 ### Imposta il modello predefinito
 
@@ -655,7 +674,7 @@ Apri **Configure**, quindi **Models** e seleziona il provider e **Default
 model**. Salva le impostazioni. L'impostazione predefinita si applica al
 messaggio successivo e non modifica i modelli aggiuntivi che i colleghi possono
 scegliere. Puoi anche impostare il valore predefinito per Ciele AI nella tua
-Organization.
+Organizzazione.
 
 ### Seleziona un modello per un singolo messaggio
 
@@ -663,16 +682,16 @@ Seleziona **Configure**, quindi seleziona i modelli in **Models it can answer
 with**. Il modello Teammate è sempre disponibile. Ogni modello aggiuntivo che
 selezioni diventa un'opzione nella finestra di chat.
 
-Se non selezioni alcun modello aggiuntivo, la finestra di chat non mostra alcun
-controllo del modello.
+Se non selezioni alcun modello aggiuntivo, nella finestra di chat non viene
+visualizzato alcun controllo del modello.
 
 **Auto** è la prima opzione e quella predefinita. Auto utilizza il modello più
 accurato della tua ultima [Eval](/operations/eval) nella fase di risposta, se
 una connessione della tua organizzazione può utilizzare quel modello. Prima che
 un Eval classifichi i tuoi modelli, Auto utilizza il modello Teammate.
 
-Ciele AI mostra sempre il model control. Elenca tutti i modelli e contrassegna
-quelli non serviti da alcuna connessione come **not connected**.
+Ciele AI mostra sempre il controllo del modello. Elenca tutti i modelli e
+contrassegna quelli non serviti da alcuna connessione come **not connected**.
 
 Il tuo abbonamento AI personale ha la priorità. Se hai associato il tuo
 dispositivo, le tue chat utilizzano il tuo abbonamento. Il modello della
@@ -682,7 +701,7 @@ quindi in **AI**.
 ## Risposte con tabelle interattive
 
 I colleghi del team possono visualizzare le griglie dei record CRM e le tabelle
-delle attività con filtri di stato quando i loro dati supportano queste viste.
+delle attività con i filtri di stato quando i loro dati supportano queste viste.
 Seleziona le righe, ordina o ridimensiona le colonne CRM e utilizza i chip dello
 stato delle attività per filtrare le righe visualizzate.
 
@@ -696,29 +715,29 @@ nei sistemi connessi.
 ## Visualizza l'area di lavoro
 
 Le azioni del computer aggiungono una scheda **Agent screen** all'interno della
-risposta del Teammate mentre è in esecuzione. La scheda mostra le acquisizioni
+risposta del Teammate mentre è in esecuzione. La scheda mostra gli screenshot
 correnti del browser e lo stato dell'operazione. Seleziona **Open** per
 espandere lo schermo. Le azioni del terminale mostrano il comando e il risultato
 registrato sotto la scheda. Chiudendo la schermata, il Teammate continua a
-lavorare. Le risposte precedenti mantengono le loro conferme di esecuzione e il
-collegamento alla schermata corrente. Non contengono una registrazione dello
-schermo dell'esecuzione precedente.
+lavorare. Le risposte precedenti conservano le loro conferme di azione e il link
+alla schermata corrente. Non contengono una registrazione dello schermo
+dell'esecuzione precedente.
 
 Seleziona **Workspace** in una chat di un Teammate per aprire Browser, Terminal
-e Files. Sul desktop, il viewer si apre nella barra laterale destra
+e Files. Sul desktop, il visualizzatore si apre nella barra laterale destra
 ridimensionabile, accanto alla chat. Condivide lo spazio del pannello
 **Developer**. Aprendo uno dei due pannelli, l'altro si chiude. Su telefoni e
-tablet touchscreen, il viewer si apre a schermo intero. Usa il controllo close
-per nascondere il viewer.
+tablet touch, il viewer si apre a schermo intero. Usa il controllo close per
+nascondere il viewer.
 
-**Browser** mostra le ultime acquisizioni del browser del Teammate, il suo URL
-corrente e l'orario di acquisizione. La schermata si aggiorna mentre è visibile.
-L'apertura del viewer non avvia un computer fermo. Se il servizio computer non è
-connesso, Ciele mostra tale stato anziché una schermata di esempio.
+**Browser** mostra le ultime schermate del browser del Teammate, il suo URL
+corrente e l'ora della cattura. Lo schermo si aggiorna mentre è visibile.
+L'apertura del viewer non avvia un computer spento. Se il servizio computer non
+è connesso, Ciele mostra tale stato anziché una schermata di esempio.
 
-**Terminal** mostra i comandi del computer e i loro risultati registrati dalla
-conversazione corrente. Usa **Ask teammate** per richiedere un comando o un URL
-del browser. La richiesta passa attraverso i consueti controlli relativi a chat,
+**Terminal** mostra i comandi del computer e i relativi risultati registrati
+dalla conversazione in corso. Usa **Ask teammate** per richiedere un comando o
+un URL del browser. La richiesta passa attraverso i consueti controlli di chat,
 modello, strumenti e autorizzazioni, e il suo risultato rimane nella
 trascrizione. **Ask teammate** non è disponibile finché il servizio computer non
 è connesso.
@@ -728,7 +747,7 @@ Seleziona **Refresh files**, quindi un file per leggerlo. L'accesso ai file deve
 essere abilitato. File di grandi dimensioni ed elenchi mostrano quando il
 contenuto visualizzato è troncato.
 
-Gli amministratori dell'organizzazione possono **Start computer** oppure **Stop
+Gli amministratori dell'organizzazione possono **Start computer** o **Stop
 computer**. Stop interrompe il lavoro del computer, ma ne conserva i file e il
 profilo del browser. Un computer arrestato deve essere avviato prima di poter
 visualizzare i suoi file o il suo schermo. Concedi l'accesso in **Configure →
@@ -751,16 +770,16 @@ menu delle emoji, oppure usa **Add reaction** su touchscreen e tastiera. Scegli
 un'emoji rapida oppure apri **More emoji** per accedere al selettore completo.
 Il menu compatto apre un selettore completo con categorie e un campo di ricerca.
 La ricerca accetta nomi in inglese, nomi comuni in italiano e piccoli errori di
-battitura. Puoi aggiungere una sola reazione per risposta. Se scegli un altro
-emoji, sostituisci la tua reazione precedente. Clicca di nuovo sulla tua emoji
-per rimuoverla.
+battitura. Puoi aggiungere una sola reazione per ogni risposta. Se scegli un
+altro emoji, la tua reazione precedente viene sostituita. Clicca di nuovo sulla
+tua emoji per rimuoverla.
 
 Le reazioni vengono visualizzate come badge sulla risposta. Passa il mouse o
-sposta lo stato di focus su un badge per vedere chi l'ha aggiunto. Viene
-visualizzato un conteggio quando più membri scelgono la stessa emoji. I gruppi
-condividono queste reazioni con i loro partecipanti. Gli stessi controlli sono
-disponibili in Assistant Preview e nel widget pubblicato. I visitatori anonimi
-del widget vengono visualizzati come "Visitor". Le trascrizioni della Inbox
-mostrano ogni emoji e il suo autore, senza assegnare un punteggio di sentiment o
-di qualità. Le reazioni social non modificano il feedback sulla qualità delle
-risposte né le analisi.
+sposta il focus su un badge per vedere chi l'ha aggiunto. Viene visualizzato un
+conteggio quando più membri scelgono la stessa emoji. I gruppi condividono
+queste reazioni con i loro partecipanti. Gli stessi controlli sono disponibili
+in Assistant Preview e nel widget pubblicato. I visitatori anonimi del widget
+vengono visualizzati come "Visitor". Le trascrizioni della Inbox mostrano ogni
+emoji e il suo autore, senza assegnare un punteggio di sentiment o di qualità.
+Le reazioni social non modificano il feedback sulla qualità delle risposte né le
+analisi.

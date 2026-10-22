@@ -10,23 +10,43 @@ description: Controla quién puede leer, editar, publicar y administrar una orga
 | Viewer | Lee los datos de la organización y del producto. |
 | Editor | Modifica el contenido y la configuración del asistente. |
 | Admin | Publica asistentes y gestiona miembros y claves API. |
-| Owner | Modifica los roles y gestiona a los propietarios. |
+| Owner | Cambia los roles y gestiona a los propietarios. |
 
 La aplicación aplica comprobaciones de capacidades más específicas a operaciones
 individuales.
 
-## Invita a un miembro
+La sección **Roles** situada en la parte inferior de **Settings > Members**
+muestra una tabla con lo que puede hacer cada Role.
+
+## Invita a miembros
 
 1. Abre **Settings > Members**.
-2. Selecciona **Invite member**.
-3. Introduce la dirección de correo electrónico.
-4. Selecciona el Role mínimo requerido.
-5. Envía la invitación.
+2. En **Invite people**, introduce una o varias direcciones de correo
+   electrónico. Separa las direcciones con comas, espacios o saltos de línea.
+3. Selecciona el Role mínimo necesario.
+4. Selecciona **Create invite**.
+
+Ciele crea un enlace de unión para cada dirección. Puedes invitar a un máximo de
+20 personas a la vez. Envía cada enlace a su destinatario correspondiente. Para
+volver a copiar un enlace, selecciona **Copy invite link** en la lista de
+miembros.
+
+Si introduces una sola dirección o ninguna, Ciele copia el enlace en tu
+portapapeles.
+
+Si una dirección no es correcta, Ciele muestra esa dirección y no crea ninguna
+invitación.
+
+Ciele no crea una segunda invitación para una dirección que ya tenga una
+invitación abierta o que pertenezca a un miembro. Muestra estas direcciones
+después de que las envíes. Si Ciele no puede crear una invitación, la dirección
+permanece en el cuadro. Selecciona **Create invite** de nuevo para volver a
+probar esas direcciones.
 
 ## Cambiar un miembro
 
-Un Admin puede gestionar a los miembros que estén por debajo del nivel de Owner.
-Un Owner puede gestionar todos los niveles.
+Un Admin puede gestionar a los miembros por debajo del nivel Owner. Un Owner
+puede gestionar todos los niveles.
 
 Un miembro no puede editar ni eliminar su propia fila de la lista de miembros.
 Utiliza a otro miembro autorizado para esa operación.
@@ -34,7 +54,7 @@ Utiliza a otro miembro autorizado para esa operación.
 ## Roles de claves API
 
 Un Admin o un Owner puede crear una clave API de la organización. El Role
-seleccionado no puede ser de un nivel superior al Role del creador.
+seleccionado no puede ser superior al Role del creador.
 
 Revoca una clave cuando su cliente ya no necesite acceso. Ciele conserva el
 registro revocado para fines de auditoría. Un Admin o un Owner puede eliminar

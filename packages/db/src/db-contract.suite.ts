@@ -18,6 +18,7 @@ import {
   buildPublicationConfig,
   generateApiKeySecret,
   hashApiKeySecret,
+  mentionToken,
   shortId,
 } from "@agent-hub/core";
 import { OrgPinnedDbError, createOrgPinnedDb } from "./org-pinned";
@@ -31,6 +32,11 @@ import type { Db } from "./types";
  * the drift-prone ones: creation defaults, patch semantics, cascades,
  * per-org counters, Publication versioning, metadata merge, lexical search.
  */
+
+/** A fresh Project key (#1046): unique per Organization, and tests share one. */
+function projectKey(): string {
+  return `K${Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, "X")}`;
+}
 
 /**
  * Everything adapter-specific the suite needs. Ids must be well-formed for the
@@ -1227,6 +1233,7 @@ export function describeDbContract(
         projects().insert({
           organizationId: ctx.organizationId,
           name: "Atlas",
+          key: projectKey(),
           ...over,
         });
 
@@ -1332,6 +1339,7 @@ export function describeDbContract(
         const project = await db.table("projects").insert({
           organizationId: ctx.organizationId,
           name: "Lost update",
+          key: projectKey(),
         });
         const owner = { scope: "project" as const, projectId: project.id };
         // Nobody had written it yet, and a writer that saw that goes first.
@@ -2797,6 +2805,16 @@ export function describeDbContract(
         expect(await db.listImprovementMessages(first.id)).toEqual([]);
       });
 
+      it("lists a Member's assigned Improvements, archived ones left out", async () => {
+        const mine = await db.createImprovement(ctx.organizationId, { title: "Mine" });
+        const archived = await db.createImprovement(ctx.organizationId, { title: "Mine, archived" });
+        await db.createImprovement(ctx.organizationId, { title: "Nobody's" });
+        await db.updateImprovement(mine.id, { assigneeId: ctx.userId });
+        await db.updateImprovement(archived.id, { assigneeId: ctx.userId, status: "archived" });
+        const assigned = await db.listImprovementsAssignedTo(ctx.organizationId, ctx.userId);
+        expect(assigned.map((item) => item.id)).toEqual([mine.id]);
+      });
+
       it("pages Improvements by their monotonic sequence", async () => {
         const assistant = await newAssistant();
         const conversation = await db.createConversation({
@@ -2904,6 +2922,7 @@ export function describeDbContract(
         const project = await db.table("projects").insert({
           organizationId: ctx.organizationId,
           name: "Atlas",
+          key: projectKey(),
           description: "",
           createdBy: null,
         });
@@ -8977,6 +8996,7 @@ export function describeDbContract(
         const project = await db.table("projects").insert({
           organizationId: ctx.organizationId,
           name: "Migration",
+          key: projectKey(),
         });
         const channel = await newChannel({
           name: "Bound",
@@ -8988,6 +9008,342 @@ export function describeDbContract(
         const after = await channels().get(channel.id);
         expect(after).not.toBeNull();
         expect(after!.projectId).toBeNull();
+      });
+    });
+
+    describe("work management (#1061)", () => {
+      const newProject = (name = "Website") =>
+        db.table("projects").insert({
+          organizationId: ctx.organizationId,
+          name,
+          key: projectKey(),
+          createdBy: ctx.userId,
+        });
+      const newTask = async (projectId: string, over: Record<string, unknown> = {}) =>
+        db.table("tasks").insert({
+          organizationId: ctx.organizationId,
+          projectId,
+          seq: await db.nextTaskSeq(projectId),
+          title: "Write the brief",
+          rank: "V",
+          createdBy: ctx.userId,
+          ...over,
+        });
+
+      it("gives a new Project the work defaults", async () => {
+        const project = await newProject();
+        expect(project).toMatchObject({
+          status: "active",
+          visibility: "organization",
+          color: "gray",
+          icon: "folder",
+          leadId: null,
+          startDate: null,
+          dueDate: null,
+        });
+        expect(project.key).toMatch(/^[A-Z][A-Z0-9]{1,4}$/);
+      });
+
+      it("numbers Tasks per Project", async () => {
+        const a = await newProject("Alpha");
+        const b = await newProject("Beta");
+        expect(await db.nextTaskSeq(a.id)).toBe(1);
+        expect(await db.nextTaskSeq(a.id)).toBe(2);
+        expect(await db.nextTaskSeq(b.id)).toBe(1);
+      });
+
+      it("creates a Task with its defaults and orders by rank", async () => {
+        const project = await newProject();
+        const late = await newTask(project.id, { rank: "x" });
+        const early = await newTask(project.id, { rank: "M", priority: "urgent" });
+        expect(late).toMatchObject({
+          status: "to_do",
+          priority: "none",
+          parentId: null,
+          assigneeMemberId: null,
+          completedAt: null,
+          archivedAt: null,
+          description: "",
+        });
+        const listed = await db
+          .table("tasks")
+          .list({ projectId: project.id }, { orderBy: "rank", ascending: true });
+        expect(listed.map((t) => t.id)).toEqual([early.id, late.id]);
+      });
+
+      it("deleting a Task takes its subtasks, comments, reactions and links, and detaches activity", async () => {
+        const project = await newProject();
+        const parent = await newTask(project.id);
+        const child = await newTask(project.id, { parentId: parent.id, rank: "W" });
+        const label = await db.table("taskLabels").insert({
+          organizationId: ctx.organizationId,
+          name: `Bug ${projectKey()}`,
+          color: "red",
+        });
+        await db.table("taskLabelLinks").insert({
+          organizationId: ctx.organizationId,
+          projectId: project.id,
+          taskId: parent.id,
+          labelId: label.id,
+        });
+        const comment = await db.table("taskComments").insert({
+          organizationId: ctx.organizationId,
+          projectId: project.id,
+          taskId: parent.id,
+          authorMemberId: ctx.userId,
+          body: `Looks good, ${mentionToken("Me", ctx.userId)}`,
+          // A list the body does not back is replaced by the body's own.
+          mentions: ["00000000-0000-4000-8000-000000000000"],
+        });
+        expect(comment.mentions).toEqual([ctx.userId]);
+        await db.table("taskCommentReactions").insert({
+          organizationId: ctx.organizationId,
+          projectId: project.id,
+          commentId: comment.id,
+          userId: ctx.userId,
+          emoji: "👍",
+        });
+        const entry = await (systemDb ?? db).table("workActivity").insert({
+          organizationId: ctx.organizationId,
+          projectId: project.id,
+          taskId: parent.id,
+          actorMemberId: ctx.userId,
+          verb: "task.created",
+          data: { taskKey: `${project.key}-1`, taskTitle: parent.title },
+        });
+
+        await db.table("tasks").delete(parent.id);
+
+        expect(await db.table("tasks").get(child.id)).toBeNull();
+        expect(await db.table("taskComments").list({ taskId: parent.id })).toEqual([]);
+        expect(await db.table("taskCommentReactions").list({ commentId: comment.id })).toEqual([]);
+        expect(await db.table("taskLabelLinks").list({ taskId: parent.id })).toEqual([]);
+        const activity = await db.table("workActivity").get(entry.id);
+        expect(activity).toMatchObject({ taskId: null, data: { taskTitle: parent.title } });
+        // The label itself is the Organization's and stays.
+        expect(await db.table("taskLabels").get(label.id)).not.toBeNull();
+      });
+
+      it("a subtask is refused in another Project than its parent's, and moves after it", async () => {
+        const from = await newProject("From");
+        const to = await newProject("To");
+        const parent = await newTask(from.id);
+        const child = await newTask(from.id, { parentId: parent.id });
+        // Written first, the subtask would sit in a Project its parent is not in.
+        await expect(
+          db.table("tasks").update(child.id, { projectId: to.id, seq: await db.nextTaskSeq(to.id) })
+        ).rejects.toThrow();
+        await db.table("tasks").update(parent.id, { projectId: to.id, seq: await db.nextTaskSeq(to.id) });
+        const moved = await db.table("tasks").update(child.id, { projectId: to.id, seq: await db.nextTaskSeq(to.id) });
+        expect(moved.projectId).toBe(to.id);
+      });
+
+      it("a list with no limit returns every row, past PostgREST's row cap", async () => {
+        const project = await newProject("Busy");
+        const writer = systemDb ?? db;
+        for (let i = 0; i < 1001; i += 1) {
+          await writer.table("workActivity").insert({
+            organizationId: ctx.organizationId,
+            projectId: project.id,
+            verb: "task.created",
+            data: { taskKey: `${project.key}-${i}`, taskTitle: `Task ${i}` },
+          });
+        }
+        const rows = await writer.table("workActivity").list({ projectId: project.id });
+        expect(rows).toHaveLength(1001);
+        expect(new Set(rows.map((row) => row.id)).size).toBe(1001);
+      });
+
+      it("moving a Task carries its children to the new Project", async () => {
+        const from = await newProject("From");
+        const to = await newProject("To");
+        const task = await newTask(from.id);
+        const label = await db.table("taskLabels").insert({
+          organizationId: ctx.organizationId,
+          name: `Move ${projectKey()}`,
+        });
+        await db.table("taskLabelLinks").insert({
+          organizationId: ctx.organizationId,
+          projectId: from.id,
+          taskId: task.id,
+          labelId: label.id,
+        });
+        await db.table("taskComments").insert({
+          organizationId: ctx.organizationId,
+          projectId: from.id,
+          taskId: task.id,
+          authorMemberId: ctx.userId,
+          body: "Moving",
+          mentions: [],
+        });
+        await db.table("tasks").update(task.id, {
+          projectId: to.id,
+          seq: await db.nextTaskSeq(to.id),
+        });
+        const links = await db.table("taskLabelLinks").list({ taskId: task.id });
+        const comments = await db.table("taskComments").list({ taskId: task.id });
+        expect(links.map((l) => l.projectId)).toEqual([to.id]);
+        expect(comments.map((c) => c.projectId)).toEqual([to.id]);
+      });
+
+      it("deleting a Project deletes its work and detaches its Improvements", async () => {
+        const project = await newProject();
+        const task = await newTask(project.id);
+        await db.table("projectMilestones").insert({
+          organizationId: ctx.organizationId,
+          projectId: project.id,
+          name: "Beta",
+          date: "2026-11-01",
+        });
+        await db.table("savedViews").insert({
+          organizationId: ctx.organizationId,
+          projectId: project.id,
+          name: "Urgent",
+          layout: "list",
+          query: { filters: [], sort: { field: "manual", direction: "asc" }, group: "status", text: "" },
+          createdBy: ctx.userId,
+        });
+        await db.table("workFavorites").insert({
+          organizationId: ctx.organizationId,
+          userId: ctx.userId,
+          taskId: task.id,
+        });
+        await db.table("projects").delete(project.id);
+        expect(await db.table("tasks").get(task.id)).toBeNull();
+        expect(await db.table("projectMilestones").list({ projectId: project.id })).toEqual([]);
+        expect(await db.table("savedViews").list({ projectId: project.id })).toEqual([]);
+        expect(await db.table("workFavorites").list({ taskId: task.id })).toEqual([]);
+      });
+
+      it("deleting a label removes it from every Task", async () => {
+        const project = await newProject();
+        const task = await newTask(project.id);
+        const label = await db.table("taskLabels").insert({
+          organizationId: ctx.organizationId,
+          name: `Gone ${projectKey()}`,
+        });
+        await db.table("taskLabelLinks").insert({
+          organizationId: ctx.organizationId,
+          projectId: project.id,
+          taskId: task.id,
+          labelId: label.id,
+        });
+        await db.table("taskLabels").delete(label.id);
+        expect(await db.table("taskLabelLinks").list({ taskId: task.id })).toEqual([]);
+      });
+
+      it("keeps a file on its Project and drops it with its Task or its Project", async () => {
+        const project = await newProject();
+        const task = await newTask(project.id);
+        const file = (name: string, taskId: string | null) =>
+          db.table("projectFiles").insert({
+            organizationId: ctx.organizationId,
+            projectId: project.id,
+            taskId,
+            name,
+            storagePath: `org/${ctx.organizationId}/projects/${project.id}/${name}-${projectKey()}`,
+            contentType: "application/pdf",
+            sizeBytes: 1024,
+            uploadedBy: ctx.userId,
+          });
+        const attached = await file("brief.pdf", task.id);
+        const loose = await file("plan.pdf", null);
+        expect(attached).toMatchObject({ taskId: task.id, name: "brief.pdf", sizeBytes: 1024 });
+        expect((await db.table("projectFiles").list({ projectId: project.id })).map((f) => f.id).sort()).toEqual(
+          [attached.id, loose.id].sort()
+        );
+        const renamed = await db.table("projectFiles").update(loose.id, { name: "Plan v2.pdf" });
+        expect(renamed.name).toBe("Plan v2.pdf");
+        await db.table("tasks").delete(task.id);
+        expect(await db.table("projectFiles").get(attached.id)).toBeNull();
+        await db.table("projects").delete(project.id);
+        expect(await db.table("projectFiles").get(loose.id)).toBeNull();
+      });
+
+      it("marks a notification read", async () => {
+        const project = await newProject();
+        const task = await newTask(project.id);
+        const writer = systemDb ?? db;
+        const notification = await writer.table("memberNotifications").insert({
+          organizationId: ctx.organizationId,
+          recipientId: ctx.userId,
+          kind: "assigned",
+          projectId: project.id,
+          taskId: task.id,
+        });
+        expect(notification.readAt).toBeNull();
+        const readAt = new Date().toISOString();
+        const read = await db.table("memberNotifications").update(notification.id, { readAt });
+        expect(read.readAt).not.toBeNull();
+      });
+
+      it("purges notifications older than the cutoff, a bounded batch at a time", async () => {
+        const project = await newProject();
+        const task = await newTask(project.id);
+        const writer = systemDb ?? db;
+        const notify = () =>
+          writer.table("memberNotifications").insert({
+            organizationId: ctx.organizationId,
+            recipientId: ctx.userId,
+            kind: "assigned",
+            projectId: project.id,
+            taskId: task.id,
+          });
+        await notify();
+        await notify();
+        // A past cutoff leaves everything; a future one takes at most the limit.
+        expect(await writer.purgeExpiredMemberNotifications("2000-01-01T00:00:00.000Z")).toBe(0);
+        const future = new Date(Date.now() + 60_000).toISOString();
+        expect(await writer.purgeExpiredMemberNotifications(future, 1)).toBe(1);
+        expect(await writer.purgeExpiredMemberNotifications(future)).toBeGreaterThanOrEqual(1);
+        expect(await db.table("memberNotifications").list({ taskId: task.id })).toEqual([]);
+      });
+
+      it("hard-deletes comments deleted before the cutoff and leaves live ones", async () => {
+        const project = await newProject();
+        const task = await newTask(project.id);
+        const writer = systemDb ?? db;
+        const comment = (body: string) =>
+          db.table("taskComments").insert({
+            organizationId: ctx.organizationId,
+            projectId: project.id,
+            taskId: task.id,
+            authorMemberId: ctx.userId,
+            body,
+            mentions: [],
+          });
+        const gone = await comment("deleted");
+        const kept = await comment("live");
+        await db.table("taskComments").update(gone.id, { deletedAt: new Date(Date.now() - 1000).toISOString() });
+        expect(await writer.purgeDeletedTaskComments("2000-01-01T00:00:00.000Z")).toBe(0);
+        const future = new Date(Date.now() + 60_000).toISOString();
+        expect(await writer.purgeDeletedTaskComments(future)).toBe(1);
+        expect(await db.table("taskComments").get(gone.id)).toBeNull();
+        expect(await db.table("taskComments").get(kept.id)).not.toBeNull();
+      });
+
+      it("deletes one organization's Work Activity before the cutoff", async () => {
+        const project = await newProject();
+        const writer = systemDb ?? db;
+        await writer.table("workActivity").insert({
+          organizationId: ctx.organizationId,
+          projectId: project.id,
+          verb: "project.updated",
+        });
+        expect(await writer.deleteExpiredWorkActivity(ctx.organizationId, "2000-01-01T00:00:00.000Z")).toBe(0);
+        const future = new Date(Date.now() + 60_000).toISOString();
+        expect(await writer.deleteExpiredWorkActivity(ctx.organizationId, future)).toBeGreaterThanOrEqual(1);
+        expect(await writer.table("workActivity").list({ projectId: project.id })).toEqual([]);
+      });
+
+      it("keeps one preferences row per Member, defaulting to every email on", async () => {
+        const prefs = await db.table("notificationPreferences").insert({
+          organizationId: ctx.organizationId,
+          userId: ctx.userId,
+        });
+        expect(prefs).toMatchObject({ emailAssigned: true, emailMentioned: true });
+        const off = await db.table("notificationPreferences").update(prefs.id, { emailMentioned: false });
+        expect(off.emailMentioned).toBe(false);
       });
     });
 

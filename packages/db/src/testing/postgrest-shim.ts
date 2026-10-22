@@ -21,6 +21,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * not tenant isolation. RLS behavior stays a live-project concern.
  */
 
+/** `max_rows` in supabase/config.toml. */
+const POSTGREST_MAX_ROWS = 1000;
+
 interface ShimUser {
   id: string;
   email: string;
@@ -804,7 +807,10 @@ class ShimQueryBuilder implements PromiseLike<{
           .map((o) => `${alias}.${quoteColumn(o.column)} ${o.ascending ? "asc" : "desc"}`)
           .join(", ")}`;
       }
-      if (this.limitN !== null) sql += ` limit ${this.limitN}`;
+      // PostgREST's `max_rows` (supabase/config.toml) caps every response,
+      // asked-for limit or not, so a read that forgets to page loses rows on a
+      // real project. Capped here too, so the contract suite sees it.
+      sql += ` limit ${Math.min(this.limitN ?? POSTGREST_MAX_ROWS, POSTGREST_MAX_ROWS)}`;
       if (this.offsetN !== null) sql += ` offset ${this.offsetN}`;
       const res = await this.pg.query<Row>(sql, params);
       const result = this.finish(res.rows);

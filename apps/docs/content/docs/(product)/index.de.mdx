@@ -6,7 +6,7 @@ description: Erstellen, testen, veröffentlichen und betreiben Sie fundierte KI-
 import { BookOpen, Boxes, Cloud, Terminal } from 'lucide-react';
 
 Ciele unterstützt Unternehmen dabei, KI-Assistenten für Websites und Anwendungen
-zu erstellen. Jeder Assistent verwendet konfigurierte Knowledge, Flows, Tools
+zu erstellen. Jeder Assistent verwendet konfiguriertes Knowledge, Flows, Tools
 und Help Desks.
 
 Die Administratorkonsole enthält eine Preview. Verwenden Sie Preview, um
@@ -14,15 +14,15 @@ Die Administratorkonsole enthält eine Preview. Verwenden Sie Preview, um
 
 ## Navigation auf Smartphones und Tablets
 
-Auf Smartphones und Tablets blendet die Konsole die Seitenleiste aus. Unten
-links bleiben drei Symbole sichtbar: **Home**, **Chat** und **Settings**.
+Auf Smartphones und Tablets blendet die Konsole die Seitenleiste aus. Drei
+Symbole bleiben unten links sichtbar: **Home**, **Chat** und **Settings**.
 
-**Home** öffnet einen Vollbild-Navigationsauswahl. Ziehen Sie vertikal, scrollen
+**Home** öffnet eine Vollbild-Navigationsauswahl. Ziehen Sie vertikal, scrollen
 Sie oder verwenden Sie die Pfeiltasten, um ein Ziel auszuwählen. Tippen Sie auf
 ein Ziel oder wählen Sie **Open**, um dorthin zu gelangen. Durch Scrollen werden
 keine Seiten geöffnet.
 
-Der Picker enthält die Workspace-Seiten und die Assistant-Bereiche, die für Ihre
+Der Picker enthält die Workspace-Seiten und Assistant-Bereiche, die für Ihre
 Rolle verfügbar sind. Es umfasst außerdem Organization settings für
 Administratoren sowie Personal settings.
 
@@ -35,7 +35,7 @@ Organisationen anzuzeigen, zu denen Sie wechseln können.
 **Chat** öffnet den Chat-Arbeitsbereich. **Settings** öffnet auf Smartphones und
 Touch-Tablets eine Vollbildansicht mit vergrößerten Bedienelementen. Die drei
 Symbole bleiben in Settings verfügbar. Settings fragt Sie weiterhin, bevor Sie
-nicht gespeicherte Änderungen verwerfen. Im Assistant Editor öffnet das
+ungespeicherte Änderungen verwerfen. Im Assistant Editor öffnet das
 Vorschausymbol oben rechts den Chatbot im Vollbildmodus. Schließen Sie die
 Vorschau, um zum Editor zurückzukehren.
 
@@ -44,17 +44,77 @@ Vorschau, um zum Editor zurückzukehren.
 Konsolentabellen behalten bei jeder Breite des Bereichs für jede Überschrift
 eine Spalte bei. Spaltenränder erstrecken sich über die gesamte Zeile.
 
-Ziehen Sie einen Spaltenrand, um die Breite zu ändern. Die Steuerelemente zum
-Ändern der Größe bleiben auch in schmalen Panels verfügbar. Headings behalten
-ihre Sortier- und Filtersteuerungen bei.
+Ziehen Sie eine Spaltenbegrenzung, um ihre Breite zu ändern. Die Steuerelemente
+zum Ändern der Größe bleiben auch in schmalen Panels verfügbar. Überschriften
+behalten ihre Sortier- und Filtersteuerelemente bei.
 
 Wenn die Spalten nicht in den Bereich passen, verwenden Sie die horizontale
-Bildlaufleiste, um sie zu erreichen. Werte bleiben in ihren eigenen Spalten.
+Bildlaufleiste, um sie zu erreichen. Werte verbleiben in ihren eigenen Spalten.
 
 Alle Datenspalten haben die gleiche Mindestbreite von 120 Pixeln. Die Konsole
-behält die von Ihnen gewählte Breite bei, nachdem Sie den Ziehpunkt zum Ändern
-der Größe loslassen und die Seite neu laden. Die Auswahl-Checkboxen befinden
-sich in der Überschrift und in jeder Zeile an derselben Position.
+behält die von Ihnen gewählte Breite bei, nachdem Sie den Größenänderungsgriff
+loslassen und die Seite neu laden. Die Auswahl-Checkboxen befinden sich in der
+Überschrift und in jeder Zeile an derselben Position.
+
+**Total Results** zeigt die Anzahl der Elemente an, die den Filtern entsprechen.
+Die Suchfunktion und die Filter der Tabelle befinden sich auf der rechten Seite,
+neben **Undo** / **Redo**. Verwenden Sie **Previous**, eine Seitenzahl oder
+**Next** unterhalb der Tabelle, um die Seite zu wechseln. Sofern verfügbar,
+ändert das Steuerelement für die Seitengröße, wie viele Zeilen gleichzeitig
+angezeigt werden. Die Gesamtzahl gibt die Anzahl der übereinstimmenden Elemente
+über alle Seiten hinweg an.
+
+Diese Steuerelemente werden auch in den Tabellen unter Settings Usage, in den
+Tabellen unter Insights Data sowie in den Eval Results angezeigt. Importierte
+Dokumente können nach Dateityp gefiltert werden. Jüngste Eval-Durchläufe können
+nach Stage, Assistant und Dataset gefiltert werden. Dokumenttabellen verfügen
+über eine sichtbare Spalte **Actions**, über die Sie ein Dokument öffnen, seine
+ID kopieren und – sofern zulässig – es ausschließen oder wiederherstellen
+können.
+
+In schmalen Bereichen werden die Filter unter die Anzeige der Anzahl der
+Ergebnisse und die Steuerelemente für den Verlauf verschoben. Aktive Filter
+bleiben sichtbar hervorgehoben. Das Suchfeld verfügt über eine Schaltfläche zum
+Löschen. Nachdem Sie die Suchanfrage gelöscht haben, bleibt der Fokus im Feld.
+
+Ziehen Sie einen Überschriften-Griff, um eine Datenspalte zu verschieben. Die
+gesamte Spalte bewegt sich mit dem Mauszeiger, und die anderen Spalten weichen
+sofort aus ihrem Weg. Wenn Sie eine Tabelle seitwärts scrollen, bleiben die
+ersten beiden Spalten sichtbar. Der Bereich mit den Kontrollkästchen und die
+Spalte Actions behalten ihre Positionen bei. Die Spaltenreihenfolge wird nur in
+Ihrem Browser gespeichert, und zwar separat für jedes Mitglied, jede
+Organisation und jede Tabelle. Dies ändert die Reihenfolge auf dem Server nicht.
+Das Löschen der Browserdaten dieser Website setzt sie zurück. Zeilen folgen der
+Sortierung und Paginierung der Tabelle und können nicht durch Ziehen neu
+angeordnet werden. Die Sortierung wird auf das Ergebnisset vor der Paginierung
+angewendet.
+
+Setzen Sie den Fokus auf den Ziehpunkt einer Spalte und verwenden Sie **Alt +
+Left/Right**, um sie zu verschieben. Tastatur-Verschiebungen werden sofort
+wirksam. Klicken Sie auf eine Zelle und klicken Sie dann bei gedrückter
+Umschalttaste auf eine andere Zelle, um einen rechteckigen Bereich auszuwählen.
+Mit den Pfeiltasten bewegen Sie sich zwischen den Zellen. Halten Sie die
+Umschalttaste gedrückt, um die Auswahl zu erweitern. **Copy** kopiert die
+ausgewählten Zellen als durch Tabstopps getrennten Text. **Escape** hebt die
+Zellenauswahl auf.
+
+**Undo** und **Redo** stellen während des aktuellen Besuchs vorgenommene
+Änderungen an der Ansicht wieder her: Verschieben per Drag-and-drop,
+Spaltenbreiten, unterstützte Sortierung, Spaltenfilter und Auswahlen. **Cmd/Ctrl
++ Z** macht eine Änderung rückgängig. **Cmd/Ctrl + Shift + Z** oder **Ctrl + Y**
+stellt sie wieder her. Diese Tastenkombinationen belassen den eigenen
+Bearbeitungsverlauf von Textfeldern unverändert. Doppelklicken Sie auf eine
+bearbeitbare Zelle (oder drücken Sie Enter/F2), um ihren Wert zu ändern.
+Einzeilige Editoren halten die Zeilenhöhe konstant. **Escape** bricht die
+Bearbeitung ab und setzt den Fokus wieder auf die Zelle. Namen, verknüpfte
+Assistenten, FAQ-Inhalte sowie Alert-Kategorie/Issue/Status verwenden die
+vorhandenen Berechtigungen und Speicheraktionen. Crawl URLs, Source Status und
+Timestamps bleiben schreibgeschützt. Die Rollen der Mitglieder werden als
+farbige Kategorien angezeigt und können von autorisierten Admins oder Owners
+geändert werden. Änderungen der Ownership behalten ihre Bestätigung bei. Die
+Bearbeitung, das Löschen, die Erfassung und die Massenaktionen von Datensätzen
+behalten ihre Workflows und Bestätigungen bei.
+
 
 ## Textänderungen
 
@@ -66,26 +126,46 @@ des Betriebssystems deaktiviert diese Übergänge.
 Bei einer erfolgreichen Veröffentlichung und einer erfolgreichen
 Bestätigungsanfrage für den Newsletter werden Konfetti angezeigt. Wenn Sie die
 E-Mail-Bestätigung für den Newsletter abschließen, wird derselbe Effekt
-angezeigt. Bei fehlgeschlagenen Anfragen werden keine Konfetti angezeigt.
-Reduced motion deaktiviert den Effekt.
+angezeigt. Bei fehlgeschlagenen Anfragen werden keine Konfetti angezeigt. Bei
+aktivierter Option „Reduced motion“ wird der Effekt deaktiviert.
 
-## Interface-Sounds
+## Kontomenü
+
+Öffnen Sie **Profile and preferences** neben **New chat**, um Ihre Account-Karte
+anzuzeigen. **Profile** öffnet Ihre persönlichen Einstellungen. **Theme**
+schaltet zwischen hellem und dunklem Modus um. Die Lautstärketaste neben
+**Sounds** steuert den Interface-Sound auf diesem Gerät. Schallwellen zeigen an,
+dass die Audioausgabe aktiviert ist. Ein durchgestrichener Lautsprecher zeigt
+an, dass der Ton stummgeschaltet ist.
+
+Wählen Sie **Logout**, um Ihre authentifizierte Sitzung zu beenden und zur
+Anmeldeseite zurückzukehren. Im Demo-Modus, der keine Anmeldesitzung hat, ist
+Logout deaktiviert.
+
+**Profile setup** zeigt Ihren gespeicherten Vornamen, Nachnamen, Benutzernamen,
+Ihr Foto und Ihre angemeldete E-Mail-Adresse als Fortschrittszähler und
+Fortschrittsbalken an. Im Demo-Modus umfasst die Anzahl nur die vier
+bearbeitbaren Profilfelder. Wählen Sie **Next** aus, um die Profileinstellungen
+zu öffnen und das vorgeschlagene Feld auszufüllen. Ein generierter Avatar zählt
+nicht als hochgeladenes Foto.
+
+## Töne der Benutzeroberfläche
 
 Die Konsole, die öffentliche Website und Ciele Desktop geben kurze Sounds bei
-der Interaktion mit Schaltflächen, Schaltern, Menüs und bei Ergebnissen aus.
+der Bedienung von Buttons, Switches, Menüs und bei Ergebnissen aus.
 Chat-Oberflächen in der Konsole geben ebenfalls einen Ton aus, wenn Sie eine
-Nachricht senden und wenn eine Antwort eingeht. Auf einem Smartphone werden zu
-denselben Anlässen kurze haptische Impulse ausgelöst.
+Nachricht senden und wenn eine Antwort eingeht. Auf einem Smartphone lösen
+dieselben Ereignisse eine kurze haptische Rückmeldung aus.
 
 Um die Sounds auszuschalten, öffnen Sie das Account-Menü und setzen Sie
 **Sounds** auf off. Die Auswahl wird auf diesem Gerät gespeichert. Verwenden Sie
 in Ciele Desktop **Interface sounds** in **Settings**. Die Haptik richtet sich
 nach der Einstellung für reduzierte Bewegungen des Betriebssystems.
 
-WebHaptics stellt auf unterstützten Geräten haptisches Feedback bereit. Wenn Sie
-im Home-Auswahlfeld ein Ziel auswählen, ertönt ein kurzes Klicken. Schnelles
-Scrollen begrenzt die Anzahl der Ticks, und die Einstellung „Reduzierte
-Bewegung“ schaltet sie aus.
+WebHaptics liefert Touch-Feedback für unterstützte Geräte. Wenn Sie im Home
+Picker ein Ziel auswählen, ertönt ein kurzes Tickgeräusch. Schnelles Scrollen
+begrenzt die Anzahl der Klickgeräusche, und die Einstellung „Reduzierte
+Bewegungen“ schaltet sie ganz aus.
 
 Das veröffentlichte Widget gibt nur zwei Sounds wieder. Ein Visitor hört einen
 Ton, wenn die Nachricht gesendet wird, und einen weiteren Ton, wenn die Antwort
@@ -102,12 +182,12 @@ eintrifft. Nichts in einem Assistant oder einer Organization konfiguriert sie.
 
 ## Hauptaufgaben
 
-- Erstellen Sie einen Assistenten und wählen Sie dessen Modell aus.
+- Erstellen Sie einen Assistant und wählen Sie dessen Modell aus.
 - Fügen Sie Websites, Dateien, Text und FAQs zu Knowledge hinzu.
-- Importieren Sie strukturierte Records und verbinden Sie sie mit einem
+- Importieren Sie strukturierte Records und verknüpfen Sie sie mit einem
   Assistant.
 - Speichern Sie bei Bedarf dauerhafte Fakten für angemeldete Besucher.
-- Leiten Sie Nachrichten durch geordnete Flows weiter.
+- Leiten Sie Nachrichten über geordnete Flows weiter.
 - Senden Sie proaktive Notifications aus Seiten- und Chat-Ereignissen.
 - Verbinden Sie Besucher mit einem Help Desk.
 - Veröffentlichen Sie einen unveränderlichen Konfigurations-Snapshot.

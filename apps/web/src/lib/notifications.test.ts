@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   alertNotification,
   visibleNotifications,
+  workNotification,
   type AppNotification,
 } from "@/lib/notifications";
 
@@ -64,5 +65,31 @@ describe("notifications", () => {
     });
 
     expect(items.map((i) => i.id)).toEqual(["m2"]);
+  });
+});
+
+describe("workNotification", () => {
+  it("shows a Member Notification as one card keyed by its row", () => {
+    const card = workNotification({
+      id: "n1",
+      kind: "mentioned",
+      createdAt: "2026-10-09T10:00:00.000Z",
+      text: "Ada mentioned you on WEB-12",
+      taskTitle: "Fix the footer",
+      excerpt: "Can you look?",
+    });
+    expect(card).toEqual({
+      id: "work:n1",
+      status: "info",
+      title: "Ada mentioned you on WEB-12",
+      description: "“Can you look?”",
+      tag: "Mention",
+      createdAt: Date.parse("2026-10-09T10:00:00.000Z"),
+      source: "work",
+    });
+    expect(
+      workNotification({ id: "n2", kind: "assigned", createdAt: "2026-10-09T10:00:00.000Z", text: "x", taskTitle: "Fix the footer", excerpt: null })
+        .description
+    ).toBe("Fix the footer");
   });
 });

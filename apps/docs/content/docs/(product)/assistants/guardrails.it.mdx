@@ -1,19 +1,20 @@
 ---
 title: Guardrail
-description: Controlla ciò che inviano i Visitor e nascondi il testo contrassegnato nelle risposte dell'Assistant.
+description: Controlla ciò che inviano i Visitor, maschera i dati personali prima che un modello li legga e nascondi il testo contrassegnato nelle risposte dell'Assistant.
 ---
 
-Un Guardrail è un controllo che viene eseguito su ogni messaggio dei Visitor o
-su ogni risposta in streaming. Ogni Assistente dispone del proprio elenco
-ordinato di Guardrail.
+Un Guardrail è un controllo che viene eseguito su ogni messaggio dei Visitatori,
+sul testo che viene inviato a un modello o su ogni risposta in streaming. Ogni
+Assistente dispone del proprio elenco ordinato di Guardrail.
 
 ## Tipi di Guardrail
 
 | Type | Runs on | Check |
 | --- | --- | --- |
-| **Input length limit** | Visitor message | Il messaggio contiene più caratteri o token del limite consentito. Ciele conta un token ogni quattro caratteri. |
+| **Input length limit** | Visitor message | Il messaggio supera il limite di caratteri o di token. Ciele conta un token ogni quattro caratteri. |
 | **Regular expression** | Visitor message | Il messaggio corrisponde al pattern. |
-| **Moderation** | Visitor message | Il modello di moderazione di OpenAI segnala il messaggio. Puoi selezionare le categorie che bloccano. |
+| **Moderation** | Visitor message | Il modello di moderazione OpenAI segnala il messaggio. Puoi selezionare le categorie che bloccano. |
+| **PII masking** | Text sent to models | I dati personali vengono sostituiti con un placeholder prima che un modello li legga. La risposta mostra i valori reali. |
 | **Restrict to topic** | Visitor message | Un modello rileva che l'argomento principale del messaggio non è presente nel tuo elenco. |
 | **Sensitive content in stream** | Answer | Il testo compreso tra un marcatore di inizio e un marcatore di fine non viene visualizzato. |
 
@@ -23,8 +24,9 @@ ordinato di Guardrail.
 2. Seleziona **Guardrails**.
 3. Trova la sezione relativa al tipo di Guardrail.
 4. Seleziona **Add** in quella sezione.
-5. Compila i campi relativi al tipo.
-6. Scrivi il messaggio che viene mostrato al Visitor.
+5. Compila i campi per il tipo.
+6. Scrivi il messaggio che vedrà il Visitor. **PII masking** non ha alcun
+   messaggio.
 7. Seleziona **Add guardrail** per salvare.
 
 Le modifiche si riflettono immediatamente in Preview. Il widget live cambia solo
@@ -55,14 +57,88 @@ mancante:
 - **Let the message through** mantiene l'Assistente disponibile.
 - **Block the message** mantiene il controllo rigoroso.
 
-**Moderation** richiede una connessione al provider OpenAI nell'Organizzazione.
+**Moderation** richiede una connessione al provider OpenAI nell'organizzazione.
 Il modulo mostra un avviso quando non è presente alcuna connessione al provider
 OpenAI.
+
+## Mascheramento dei dati PII
+
+**PII masking** tiene i dati personali lontani dai provider di modelli. Ciò
+include i dati digitati da un Visitor e i dati presenti nella tua knowledge e
+nei risultati degli strumenti. Un Assistente può avere un **PII masking**
+Guardrail.
+
+Seleziona i tipi di dati da mascherare:
+
+| Tipo | Ciele maschera |
+| --- | --- |
+| **Email address** | Un indirizzo con un `@` e un dominio. |
+| **Phone number** | Un numero con il relativo prefisso internazionale, ad esempio `+39 06 1234 5678`. Un numero che inizia con `00` deve presentare raggruppamenti, ad esempio `0039 06 1234 5678`. Un numero nazionale che inizia con `0` e presenta gruppi di cifre, ad esempio `06 1234 5678`. Un numero suddiviso nei gruppi 3, 3 e 4, ad esempio `555 123 4567`. |
+| **Payment card number** | Da 13 a 19 cifre che superano il controllo Luhn. Le cifre sono raggruppate insieme o in gruppi di quattro. |
+| **IBAN** | Un IBAN con cifre di controllo corrette. |
+| **Italian tax code (codice fiscale)** | Un codice di 16 caratteri con un carattere di controllo corretto. Ciele maschera anche un codice che presenta lettere al posto di alcune cifre (omocodia). |
+
+Ciele non maschera un numero che sembra soltanto un dato personale. Ad esempio,
+Ciele non maschera un numero d'ordine di 10 cifre senza spazi, una data o un
+elenco di importi. Ciele non maschera nemmeno i nomi.
+
+Quando il Guardrail è attivo, Ciele sostituisce ogni valore con un placeholder,
+ad esempio `[EMAIL_1]`. Il segnaposto sostituisce il valore in tutto il testo
+che viene inviato a un provider di modelli durante il turno. Ciò include:
+
+- Il messaggio del Visitor e i messaggi precedenti nella Conversation.
+- L'instradamento del messaggio verso un Flow e la ricerca nella knowledge base.
+- I passaggi che una ricerca nella knowledge base trova e le Sources che il
+  modello legge nelle sezioni.
+- I risultati delle chiamate **Query API**, delle azioni **API request** e delle
+  azioni dei connettori.
+- La risposta e i controlli **Moderation** e **Restrict to topic**.
+
+In un turno, un valore ottiene sempre lo stesso placeholder. Se il Visitatore
+digita un indirizzo e-mail che si trova anche in una Source, i due ottengono un
+unico placeholder. In questo modo, il modello può collegare i valori.
+
+Il modello inserisce il placeholder nella sua risposta. Ciele reinserisce il
+valore reale prima che il Visitor veda la risposta. Il Visitor e la trascrizione
+mostrano sempre i valori reali.
+
+Quando il modello richiama uno strumento, Ciele reinserisce i valori reali
+nell'input dello strumento prima che questo venga eseguito. Pertanto, una
+chiamata **Query API** invia comunque l'indirizzo email reale al tuo sistema.
+
+L'elenco **Sources** sotto una risposta mostra sempre la Source così com'è
+scritta, senza segnaposto.
+
+Ciele non applica questo Guardrail alle azioni **Message** letterali. Quel testo
+non viene inviato a un modello.
+
+Alcune operazioni vengono eseguite dopo il turno e inviano anche il testo della
+conversazione a un modello. Ciele maschera anche quel testo:
+
+- Il controllo della risposta che scrive il badge **Verified** o **Failed
+  verification**.
+- La bozza di un **Suggested Fix** per un Improvement.
+- I Miglioramenti settimanali con il tag **AI proposal**.
+- Una routine di Teammate che ordina le risposte che i Visitor hanno valutato
+  negativamente.
+- La memoria a lungo termine di un Visitor connesso.
+
+In una bozza **Suggested Fix**, Ciele non reinserisce i valori del Visitor. Una
+frase neutra sostituisce ogni valore, ad esempio "your email address". Quando
+accetti la bozza, diventa una FAQ che tutti i Visitor possono trovare. I valori
+tratti dalla tua knowledge rimangono nella bozza.
+
+Se Ciele non riesce a leggere l'impostazione **PII masking** dell'Assistente,
+questo lavoro non invia il testo a un modello.
+
+Ciele maschera solo il testo. Se un Visitor allega un'immagine, un modello la
+legge per estrarne il testo. Quel modello riceve l'immagine prima che Ciele
+possa mascherare il testo.
 
 ## Stream Guardrails
 
 **Sensitive content in stream** modifica la risposta mentre il modello la sta
-scrivendo. Il testo compreso tra i marcatori non viene mostrato al Visitor e non
+scrivendo. Il testo compreso tra i marker non viene mostrato al Visitor e non
 viene incluso nel transcript. Il messaggio Guardrail viene visualizzato una sola
 volta al posto di ogni sezione nascosta.
 
@@ -76,7 +152,13 @@ amministratore scrive quel testo.
 
 Apri la Conversation in **Inbox**. Un turno bloccato da un Guardrail mostra il
 marcatore di flusso `Guardrail:` e il nome del Guardrail. Un badge sulla
-risposta indica ogni Guardrail che ha bloccato, registrato o non è riuscito a
+risposta mostra ogni Guardrail che ha bloccato, registrato o non è riuscito a
 essere eseguito.
+
+Un badge **PII masking** mostra quanti valori di ciascun tipo Ciele ha
+mascherato nel turno. Il badge mostra solo i conteggi, non i valori né i
+segnaposto. Posiziona il puntatore sul badge per vedere da dove provengono i
+valori: dal Visitor, dalla knowledge, dai risultati degli strumenti oppure dalle
+istruzioni e dalle risposte precedenti.
 
 Il Visitor non vede quale Guardrail è scattato.

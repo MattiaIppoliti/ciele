@@ -56,6 +56,10 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
 - `local-subscriptions.ts` / `local-subscription-model.ts`, provider CLIs as an inference backend
   (ADR-0015), published through the `./local-providers` barrel.
 - `egress.ts`, `trust.ts`, `redact.ts`, `pinned-fetch.ts`, the outbound-request guardrails.
+- `pii-masking.ts`: the PII masking Guardrail's runtime (#1078). A turn opens a masking scope;
+  `buildModel` puts the masking middleware on every language model, and the masker lives in
+  core's `pii.ts`. Work after a turn (the Verdict, Suggested Fix, Compost, memory promotion,
+  feedback triage) opens its own scope through `withPostTurnMasking` (#1080).
 - `untrusted-content.ts`: the per-turn prompt fence and the persistence signal scanner (#801);
   `tools.ts`, `api-catalog-tools.ts`, `memories.ts` and `agent-learnings.ts` consume it.
 - `host.ts`: the host ports above. `ee.ts`, the enterprise capability registry.
@@ -93,6 +97,18 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
   action that never retrieves, so it must never assert a fact about the organization. A new action
   that wants to generate needs an argument for why it is not one of these three.
 - Citations resolve to a Concept → Source, never an opaque chunk (ADR-0002).
+- **Every request to a model provider is masked under an active PII masking scope.** A language
+  model built by `buildModel` gets this through its middleware. Anything else that sends text to a
+  provider (an evaluation model, an embedding, a reranker, a raw `fetch`) passes that text through
+  `maskOutbound` or `maskOutboundValue` from `pii-masking.ts`. Outside a scope both are the
+  identity, so the call costs nothing when masking is off. When you hand a model text from
+  knowledge or a tool, seed it with its origin first (`seedOutbound`, or `piiOrigin` on a
+  `RuntimeToolSpec`). The trace's per-origin counts read nothing else: a value you forget to seed
+  is still masked, but counted as `other`. A job that sends Conversation text to a model after the
+  turn wraps the call in `withPostTurnMasking`, which throws when the guardrail cannot be read:
+  catch that and skip the call, never retry it unmasked. `turn.pii.test.ts` tags each request a
+  turn sends by kind and asserts every kind ran, so a masked path that stops running fails it; a
+  new provider it does not fake is invisible to it, so add the fake with the call.
 - Published widget traffic runs only on Platform/API-key Provider Connections. A Member's own
   personal subscription runs only on their own internal surfaces, the Assistant Preview and their
   own Teammate chat turns (ADR-0001, ADR-0007 as amended by #769); `mayUsePersonalSubscription`

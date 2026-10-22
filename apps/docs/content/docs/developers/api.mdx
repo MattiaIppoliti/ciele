@@ -75,7 +75,10 @@ These are examples. The [API reference](/api-reference) lists the complete, curr
 - SSO: manage identity claims, connection settings, validation, and disconnection.
 - Help Desks: manage desks, escalation channels, ordering, and ServiceNow.
 - Teammates: manage AI Teammates and read your own Teammate conversations.
-- Projects: manage the Projects that Teammates attach to, and their Project documents.
+- Projects: manage Projects, their milestones, and the Project documents that Teammates read.
+- Tasks: list, read, create, change, archive, and delete Tasks, comment on them, and manage task Labels.
+  The list filters by Project, assignee, status, Label, due dates, text, and Improvement, and uses a cursor for each page.
+  A key reads only the Projects that its member can read. A comment shows that member as the author.
 - Reviews: list, read, and decide Human review requests.
 - Channels: read and shape the teammate channels you are in, and their rosters.
   There is no endpoint to send a message: a message starts a chain of teammate

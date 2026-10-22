@@ -1,6 +1,6 @@
 ---
 title: Connetti i client AI
-description: Collega i client di IA supportati al server MCP Ciele ospitato o locale.
+description: Collega i client AI supportati al server MCP Ciele ospitato o locale.
 ---
 
 Il server MCP di Ciele dispone di due transport. Entrambi registrano gli stessi
@@ -11,8 +11,8 @@ strumenti.
 - Il **local server** è un processo `stdio` che il client avvia come processo
   figlio.
 
-Preferisci l'endpoint ospitato. Non richiede alcun checkout, né Node.js sulla
-macchina client, né un percorso da mantenere aggiornato.
+Dai la preferenza all'hosted endpoint. Non richiede alcun checkout, né Node.js
+sulla macchina client, né un percorso da mantenere aggiornato.
 
 Questa pagina riflette la documentazione client verificata il 6 agosto 2026. Le
 interfacce client e i formati di configurazione possono cambiare.
@@ -22,8 +22,8 @@ interfacce client e i formati di configurazione possono cambiare.
 | Client | Hosted endpoint | Local `stdio` |
 | --- | :---: | :---: |
 | Claude Code | Sì | Sì |
-| Codex CLI, app Codex ed estensione Codex per IDE | Sì | Sì |
-| App desktop ChatGPT | Sì | Sì |
+| Codex CLI, Codex app e Codex IDE extension | Sì | Sì |
+| ChatGPT desktop app | Sì | Sì |
 | Cursor | Sì | Sì |
 | OpenCode | Sì | Sì |
 | GitHub Copilot in VS Code | Sì | Sì |
@@ -35,7 +35,7 @@ interfacce client e i formati di configurazione possono cambiare.
 
 1. Crea una [API key](/developers/api-keys) per un viewer.
 2. Fornisci al client l'URL dell'endpoint per la tua distribuzione.
-3. Configura l'header `Authorization` come `Bearer <key>`.
+3. Configura l'intestazione `Authorization` come `Bearer <key>`.
 
 ```bash
 claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
@@ -57,7 +57,7 @@ quando l'agente non deve modificare assolutamente nulla.
 4. Risolvi il percorso assoluto di `packages/mcp/bin/ciele-mcp.mjs`.
 5. Imposta `CIELE_MCP_READ_ONLY=1` per la prima connessione.
 
-Sostituisci `<repo>` e l'origin di esempio in ogni configurazione.
+Sostituisci `<repo>` e l'origin di esempio in ciascuna configurazione.
 
 ## Claude Code
 
@@ -71,7 +71,7 @@ claude mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Apri `/mcp` in Claude Code. Verifica che il server `ciele` mostri sedici
+Apri `/mcp` in Claude Code. Verifica che il server `ciele` mostri diciassette
 strumenti.
 
 Consulta la
@@ -166,7 +166,7 @@ Aggiungi questo server a `opencode.json`:
 Esegui `opencode2 mcp list` per verificare la connessione.
 
 Consulta la [OpenCode MCP guide](https://opencode.ai/v2/docs/mcp-servers) per lo
-schema della versione 2 corrente.
+schema dell'attuale versione 2.
 
 ## GitHub Copilot in VS Code
 
@@ -217,12 +217,11 @@ copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
 Aggiungi le tre variabili di ambiente Ciele tramite la configurazione MCP di
-Copilot. Non inserire la chiave API nel sistema di controllo del codice
-sorgente.
+Copilot. Non inserire la chiave API nel controllo del codice sorgente.
 
 Consulta la
 [GitHub Copilot CLI MCP guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)
-per il formato di configurazione corrente.
+per il formato di configurazione attualmente in uso.
 
 ## Prompt copiabili
 
@@ -274,7 +273,7 @@ ChatGPT web non può avviare un server `stdio` locale. Invece, puntalo
 all'endpoint ospitato. Il deployment deve essere raggiungibile dalla rete
 internet pubblica, cosa che non avviene per uno stack locale di Ciele Desktop.
 
-Pi non include una procedura di connessione MCP integrata. Le estensioni di Pi
+Pi non include una procedura di connessione MCP integrata. Le estensioni Pi
 possono aggiungere il supporto MCP, ma Ciele non distribuisce né testa tali
 estensioni. Usa `ciele ... --json` tramite un flusso di lavoro shell approvato
 oppure chiama direttamente l'[HTTP API](/developers/api).

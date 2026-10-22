@@ -480,6 +480,31 @@ describe("the feedback triage template, with a decision backend", () => {
     expect((await db.listImprovements(DEMO_ORG.id)).length).toBe(before);
   });
 
+  it("tells the backend which Conversation the evidence came from, for its masking (#1080)", async () => {
+    const db = getMockDb();
+    await drain(db);
+    await flagged(db, "Where is my refund?");
+    const asked: { id: string; assistantId: string | null }[] = [];
+    const ports = backend({});
+    const answer = ports!.triageDecisions!;
+    await triageFeedbackOp.run(
+      ctx({
+        db: pinned(db),
+        ports: {
+          ...ports,
+          triageDecisions: async (input) => {
+            asked.push(input.conversation);
+            return answer(input);
+          },
+        },
+      }),
+      {}
+    );
+    const assistant = (await db.listAssistants(DEMO_ORG.id))[0];
+    expect(asked.length).toBeGreaterThan(0);
+    expect(asked.every((c) => c.id && c.assistantId === assistant.id)).toBe(true);
+  });
+
   it("files a new item when the backend says it is a different problem", async () => {
     const db = getMockDb();
     await drain(db);

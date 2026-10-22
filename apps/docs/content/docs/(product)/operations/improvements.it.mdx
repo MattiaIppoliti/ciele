@@ -1,6 +1,6 @@
 ---
 title: Miglioramenti
-description: Monitora e porta a termine il lavoro volto a correggere le risposte carenti dell'Assistente.
+description: Monitora e porta a termine le attività volte a correggere le risposte carenti dell'Assistente.
 ---
 
 Un Improvement registra un problema relativo alla qualità delle risposte. Può
@@ -23,9 +23,27 @@ Apri un elemento per esaminare i messaggi collegati e la correzione suggerita
 disponibile. Puoi modificare lo stato, la priorità, i tag, l'assegnatario e la
 data di scadenza.
 
-L'API, la CLI e il server MCP possono elencare, leggere e aggiornare i
-**Improvements** esistenti. La creazione di un Improvement rimane un'operazione
+L'API, la CLI e il server MCP possono elencare, leggere e aggiornare gli
+Improvement esistenti. La creazione di un Improvement rimane un'operazione
 eseguita durante il runtime del prodotto.
+
+## Pianifica il lavoro come Tasks
+
+Un Improvement registra il problema. Una Task registra il lavoro che risolve il
+problema. La pagina Improvement mostra le Tasks che lo risolvono.
+
+1. Apri l'Improvement.
+2. Seleziona **Create task**. La Task eredita il titolo e il Project
+   dell'Improvement.
+3. Modifica la Task se necessario, quindi seleziona **Create task**.
+
+Puoi anche collegare una Task esistente: apri la Task e seleziona l'Improvement
+nel suo campo **Resolves**.
+
+Quando tutte le Task collegate sono completate, Ciele sposta l'Improvement da
+**To do** o **In progress** a **In review**. Quindi una persona esamina la
+risposta e chiude l'Improvement. Se riapri una Task, l'Improvement non viene
+spostato indietro.
 
 ## Correggi la risposta
 
@@ -35,7 +53,7 @@ eseguita durante il runtime del prodotto.
 4. Poni la domanda originale in Preview.
 5. Conferma la risposta e le Sources.
 6. Pubblica l'Assistente.
-7. Contrassegna l'Improvement come completato.
+7. Contrassegna il miglioramento come completato.
 
-Rivedi le correzioni suggerite generate prima di usarle. Il suggerimento
+Rivedi le correzioni suggerite generate prima di utilizzarle. Il suggerimento
 memorizzato non costituisce una modifica alla pubblicazione.

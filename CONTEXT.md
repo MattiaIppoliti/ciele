@@ -304,10 +304,83 @@ reverted. Deliberately not the embedding-recall Memory the widget keeps for Visi
 _Avoid_: memory (unqualified), context, notes, profile
 
 **Project**:
-A lightweight org-owned entity (name, description, archived flag, one Memory Document) that gives
-decisions belonging to the work a home outliving the conversation they were made in. A Teammate
-attaches to at most one; archiving stops its decisions reaching any prompt.
-_Avoid_: workspace, initiative, board, folder
+The org-owned container of a piece of work: its **Tasks**, files, **Milestones** and **Saved
+Views**, plus one Memory Document that gives the decisions made about the work a home outliving the
+conversation they were made in. It carries a key (`WEB`) that prefixes its Tasks' keys, a status
+(Planning / In progress / At risk / On hold / Completed, a report that changes nothing else), a
+**Lead**, start and target dates, a colour, an icon, and an access setting: visible to the whole
+Organization, or **private** to its listed Members (and to Owners and Admins). Archiving hides it and
+everything in it and stops its decisions reaching any prompt; deleting it deletes its work. A
+Teammate, a Teammate Channel and an Improvement may point at one.
+_Avoid_: workspace, initiative, folder, board (that is one of its views), space
+
+**Task**:
+A unit of work inside exactly one Project, done by people: a title, a markdown description, one of
+five statuses (Backlog / To do / In progress / In review / Done), a priority (Urgent / High / Medium
+/ Low / No priority), at most one **Assignee**, start and due dates, an estimate in minutes,
+**Labels**, an optional recurrence, and a place in its Project's manual order. Its key is the
+Project's key and a number (`WEB-12`); moving it to another Project gives it a new number there. A
+Task may name the one **Improvement** it resolves. Archived Tasks leave every view and can be
+restored; deleted ones are gone.
+_Avoid_: ticket, issue (that is an **Improvement**), todo, card (that is how the Board draws it),
+work item. Not a **Routine** (a Teammate's standing instruction), a **Review Request** (an approval a
+Flow waits on) or a **Job** (a unit of the durable runtime ledger)
+
+**Subtask**:
+A Task whose parent is another Task in the same Project, one level deep: it has its own status,
+assignee and due date, and travels with its parent when the parent moves or is archived. "Convert to
+task" removes the parent.
+_Avoid_: checklist item, child issue
+
+**Dependency**:
+"Blocked by": a Task names another Task in the same Project it cannot finish before. No cycles; a
+Task moved to another Project loses its dependencies.
+_Avoid_: link, relation, prerequisite
+
+**Assignee**:
+The one Member (at least an Editor) a Task is given to, or nobody. The record allows an **AI
+Teammate** instead, which the console does not yet offer.
+_Avoid_: owner (a Teammate's owner is someone else), responsible
+
+**Lead**:
+The Member who answers for a Project as a whole. Informational; it grants nothing.
+_Avoid_: owner, manager, admin
+
+**Label**:
+An Organization-wide name and colour attached to Tasks to group and filter them, managed by Editors.
+Distinct from an Improvement's free-text **tags**.
+_Avoid_: tag (the Improvement's), category
+
+**Milestone**:
+A named date on a Project, drawn on its Timeline.
+_Avoid_: deadline, goal, release
+
+**Saved View**:
+A named filter, sort and layout (list, board or table) saved on a Project, shown as an extra tab to
+everyone who can see the Project.
+_Avoid_: filter, preset, perspective
+
+**Favorite**:
+A Member's star on a Project or a Task; personal, never shown to anyone else. Starred Projects list
+in the sidebar.
+_Avoid_: pin (a Conversation's), bookmark
+
+**Comment**:
+A Member's (or Teammate's) markdown note on a Task, with `@` mentions and reactions; its author may
+edit or delete it.
+_Avoid_: message (a Conversation's or a channel's), reply, note
+
+**Work Activity**:
+The append-only record of what happened to a Project and its Tasks: who (a Member, or a Teammate
+acting for one), what changed, when. Feeds the Activity tabs and Member Notifications.
+_Avoid_: audit log, history, feed, events
+
+**Member Notification**:
+A notice addressed to one Member about the work: assigned to them, mentioned, commented on or
+changed status on a Task they are on. Persisted with a read state, triaged on the Notifications
+page, and arriving in the console's notification stack. Distinct from a **Notification** (the
+Visitor-facing Flow Action) and an **Alert** (an org-wide health notice).
+_Avoid_: notification (unqualified), inbox (that is Visitor Conversations), alert, activity
 
 **Routine**:
 A standing instruction plus a preset cadence (daily / weekly / monthly, at a chosen UTC hour) that
@@ -356,6 +429,10 @@ _Avoid_: fan-out (that is the behaviour, not the unit), cascade, run, session, l
 - A **Conversation** belongs to exactly one of an **Assistant** or a **Teammate**, never both, never neither
 - A **Teammate** holds zero or more **Action Grants**, at most one per domain, under one **Capability Ceiling**; with no grant it can only talk
 - An **Organization** owns many **Projects**; a **Teammate** attaches to 0..1 of them
+- A **Project** owns many **Tasks**, **Milestones** and **Saved Views**; every Task belongs to exactly one Project; a private Project lists the **Members** who may see it
+- A **Task** has 0..1 parent Task (one level), 0..N **Dependencies** inside its Project, 0..N **Labels**, 0..1 **Assignee** (a Member, or a Teammate, never both) and 0..N **Comments**
+- A **Task** resolves 0..1 **Improvement**; an Improvement may be resolved by many Tasks
+- A **Member** has many **Favorites** and **Member Notifications**, each visible only to that Member
 - A **Teammate** owns 0..5 **Routines**; a Routine run acts only on that Teammate's **Action Grants**, with no invoking **Member**
 - A **Teammate** may **refer** a Member to any org-visible Teammate; the continuation is a second **Conversation** carrying a summary, and each of the two points at the other
 - Each **Member**, each **Teammate** and each **Project** owns at most one **Memory Document**; a document belongs to exactly one of the three, never two
@@ -387,6 +464,7 @@ _Avoid_: fan-out (that is the behaviour, not the unit), cascade, run, session, l
 
 - "agente" (spoken wording) vs **Assistant**, resolved: **Assistant** is canonical in code, DB, APIs and docs; "agente" may appear only as an Italian UI label.
 - "aziende univoche" resolved to **Organization**: one shared SaaS platform, tenant isolation via RLS, not one deployment per company.
+- "Team" resolved to nothing: there is no group-of-Members entity (#1052). People on a piece of work are a private **Project**'s Members; an AI colleague is a **Teammate**. Do not name a feature "team".
 
 ## Additional language (full product surface)
 
@@ -411,10 +489,13 @@ form and attaching conversation data; may open a ticket in a connected system.
 _Avoid_: handoff (reserved for assistant-to-assistant **Handover**), transfer.
 
 **Improvement**:
-A tracked answer-quality work item (status/priority/tags/assignee) linked to the flagged AI
-message(s); created by the Flow Improvement action, a Help Desk's auto-generate setting, or a manual
-"Improve Answer" flag.
-_Avoid_: ticket (reserved for external ticketing), issue.
+A problem record about answer quality (status/priority/tags/assignee, `IMP-n`) carrying its
+evidence, the flagged AI message(s), and at most one Suggested Fix. Created by people ("Improve
+Answer", a manual item) and by nine producers, each of which attaches a recurrence to the existing
+*open* item (open: neither Done nor Archived) instead of filing a duplicate. Work that a Suggested
+Fix cannot close goes on a **Task** that names it; when every such Task is Done the Improvement
+moves to In Review, and a person closes it (ADR-0027).
+_Avoid_: ticket (reserved for external ticketing), issue, task (the work that resolves it).
 
 **Alert**:
 A system-raised operational health notice (e.g. an integration whose credentials stopped working)
@@ -571,8 +652,12 @@ One entry in an Assistant's ordered list of checks around every Visitor turn. An
 Guardrail (length limit, moderation, regular expression, topic restriction) reads the Visitor's
 message before any Flow routes it, and the first that blocks ends the turn on its own reply; a
 `log` Guardrail only records the hit in the turn trace. A **stream** Guardrail hides the text a
-model writes between two markers, on the wire and in the saved message alike. Travels in the
-Publication snapshot. Never applied to Teammate turns or to verbatim Message text.
+model writes between two markers, on the wire and in the saved message alike. A **masking**
+Guardrail (PII masking, at most one per Assistant) rewrites what the model sees: personal data in
+everything the turn sends to a model provider becomes a typed placeholder (`[EMAIL_1]`), and the
+placeholders in what comes back are restored, so the Visitor, the tools and the transcript keep the
+real values; it neither blocks nor logs. Travels in the Publication snapshot. Never applied to
+Teammate turns or to verbatim Message text.
 _Avoid_: filter, policy, moderation (one type of Guardrail, not the concept).
 
 **Answer Verdict**:

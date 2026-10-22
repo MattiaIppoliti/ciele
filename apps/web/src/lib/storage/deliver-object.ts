@@ -51,6 +51,16 @@ export interface DeliverObjectInput {
   responseHeaders?: HeadersInit;
 }
 
+/**
+ * The `content-disposition` every private object is served with: always an
+ * attachment, never inline (an original that renders in the browser is an
+ * original that can run script on this origin), with the quote, backslash
+ * and line breaks that could end the header stripped from the filename.
+ */
+export function attachmentDisposition(filename: string | undefined): string {
+  return `attachment; filename="${(filename ?? "download").replace(/["\\\r\n]/g, "")}"`;
+}
+
 /** How long the app's own fetch of the object stays valid. Seconds. */
 const INTERNAL_URL_TTL = 60;
 
@@ -202,12 +212,7 @@ export async function deliverObject(
   if (length && !upstream.headers.get("content-encoding")) {
     headers.set("content-length", length);
   }
-  // Always an attachment, never inline: an original that renders in the
-  // browser is an original that can run script on this origin.
-  headers.set(
-    "content-disposition",
-    `attachment; filename="${(input.filename ?? "download").replace(/["\\\r\n]/g, "")}"`
-  );
+  headers.set("content-disposition", attachmentDisposition(input.filename));
   headers.set("cache-control", "private, no-store");
 
   return new Response(counted, { status: 200, headers });

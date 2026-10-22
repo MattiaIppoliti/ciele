@@ -19,6 +19,7 @@ import { sso } from "./commands/sso.ts";
 import { helpDesks } from "./commands/help-desks.ts";
 import { teammates } from "./commands/teammates.ts";
 import { projects } from "./commands/projects.ts";
+import { tasks } from "./commands/tasks.ts";
 import { channels } from "./commands/channels.ts";
 import { alerts, goals, skills } from "./commands/configuration.ts";
 import { apiKeys, invites, members, organization } from "./commands/organization.ts";
@@ -49,6 +50,7 @@ const COMMAND_GROUPS: Record<
   teammates,
   channels,
   projects,
+  tasks,
   skills,
   goals,
   alerts,

@@ -11,6 +11,7 @@ import { getClassifierModel } from "./models";
 import { getRuntimeHost } from "./host";
 import { decide, resolveDecisionModel } from "./decision-model";
 import { usageTotals } from "./usage";
+import { withPostTurnMasking } from "./pii-masking";
 import {
   admitAiSpend,
   CONVERSATION_SPEND_CAPACITY,
@@ -128,7 +129,19 @@ export async function runDueAnswerVerifications(
       await db.releaseAnswerVerifierClaim(candidate.messageId).catch(() => {});
       continue;
     }
-    const outcome = await verifyOne(db, candidate, options.model);
+    // The question and the answer are the Conversation's own words, so the
+    // grading masks them as its turns did (#1080); the reason a Member reads
+    // comes back with the values restored. A guardrail that cannot be read
+    // skips the candidate rather than grade it unmasked.
+    const outcome = await withPostTurnMasking(
+      db,
+      candidate.assistantId,
+      () => db.listMessages(candidate.conversationId),
+      () => verifyOne(db, candidate, options.model)
+    ).catch((error) => {
+      console.error("[verifier] masking could not be read, skipped:", error);
+      return null;
+    });
     if (!outcome) {
       // Skipped (no credential, malformed output, or a grading error): release
       // the claim so a later tick can retry immediately.

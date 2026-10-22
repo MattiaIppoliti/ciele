@@ -53,7 +53,7 @@ ciele doctor
 Der Befehl `login` validiert den Schlüssel, bevor er `~/.ciele/config.json`
 schreibt. Auf unterstützten Systemen ist der Dateimodus `0600`.
 
-Die CLI löst einen Schlüssel in folgender Reihenfolge auf:
+Die CLI löst einen Schlüssel in dieser Reihenfolge auf:
 
 1. Die Option `--api-key`.
 2. Die Umgebungsvariable `CIELE_API_KEY`.
@@ -71,8 +71,8 @@ erhalten.
 | --- | --- |
 | `0` | Der Vorgang wurde abgeschlossen. |
 | `1` | Der Server hat einen Fehler zurückgegeben. |
-| `2` | Die Befehlseingabe ist ungültig. |
-| `3` | Authentication failed. |
+| `2` | Die Eingabe des Befehls ist ungültig. |
+| `3` | Authentifizierung fehlgeschlagen. |
 
 `ciele doctor` überprüft die API-Erkennung, die API-Kompatibilität, den
 Schlüssel, seine Role und seine Organization.
@@ -91,9 +91,9 @@ ciele publish status <assistant-id>
 ```
 
 Jeder Befehl, der Wissen hinzufügt, benötigt `--assistants`. Eine Collection hat
-keinen Owner, daher sind diese Links das Einzige, was das Wissen einem Assistant
-zugänglich macht. Die Befehle sind `sources add-text`, `sources add-url`,
-`sources add-file`, `faqs add` und `faqs import`.
+keinen Owner, daher sind diese Links das Einzige, was das Wissen für einen
+Assistant zugänglich macht. Die Befehle sind `sources add-text`,
+`sources add-url`, `sources add-file`, `faqs add` und `faqs import`.
 
 ### Wissen ohne Collection hinzufügen
 
@@ -114,7 +114,7 @@ Geben Sie eines von `--url`, `--file` oder `--text` an. Der Befehl benötigt
 ### Quellenverknüpfungen
 
 Eine Source beantwortet Anfragen für die mit ihr verknüpften Assistants. Diese
-Befehle lesen und ändern die Links.
+Befehle lesen die Links aus und ändern sie.
 
 ```bash
 ciele sources list-org
@@ -128,10 +128,10 @@ zwar über alle Assistants hinweg.
 `sources link` ersetzt den Link-Satz. Eine leere Liste entfernt alle
 Verknüpfungen, und die Source hört auf zu antworten.
 
-`sources direct-access` legt fest, ob dieser eine Assistant einem Visitor die
+`sources direct-access` entscheidet, ob dieser eine Assistant einem Visitor die
 Originaldatei zur Verfügung stellen darf.
 
-### Das Wissen durchsuchen
+### Die Knowledge Base durchsuchen
 
 `knowledge search` zeigt die Passagen an, die zu einer Frage passen, zusammen
 mit dem Document und der Source jeder Passage. Es generiert keine Antwort.
@@ -149,7 +149,7 @@ verknüpft sind. Ohne diese Option verwendet die Suche die gesamte Library.
 ### Einen Assistenten fragen
 
 `assistants ask` sendet eine Frage an einen veröffentlichten Assistenten. Der
-Befehl zeigt die Antwort, die von der Antwort zitierten Sources und die ID der
+Befehl zeigt die Antwort, die von der Antwort zitierten Sources sowie die ID der
 Conversation an.
 
 ```bash
@@ -162,10 +162,11 @@ Conversation fortzusetzen. Nur der API-Schlüssel, mit dem eine Conversation
 gestartet wurde, kann sie fortsetzen. Mit einer anderen ID startet die Frage
 eine neue Conversation.
 
-Jede Frage verwendet einen Model-Turn und erstellt eine Conversation. Die Inbox
+Jede Frage verbraucht einen Model Turn und erzeugt eine Conversation. Die Inbox
 zeigt es mit dem Label **API key** an, wenn Sie den Filter **Staff
 conversations** auf **Include staff** oder **Staff only** setzen. Der Befehl
-wird mit einem Fehlercode beendet, wenn der Assistant nicht antworten konnte.
+wird mit einem Fehlercode beendet, wenn der Assistant keine Antwort geben
+konnte.
 
 ## Flow-Befehle
 
@@ -187,7 +188,7 @@ ciele flows catalog
 ### Überprüfen Sie einen Flow, bevor Sie ihn speichern
 
 `flows draft` überprüft eine Änderung an einem Flow. `flows validate` überprüft
-einen vollständigen Flow. Keiner der beiden Befehle speichert etwas. Beide
+einen vollständigen Flow. Keiner der beiden Befehle speichert irgendetwas. Beide
 zeigen Ihnen den Flow an, den Ciele speichern würde.
 
 ```bash
@@ -209,16 +210,16 @@ Aufruf.
 ciele flows runs <flow-id> --limit 20
 ```
 
-Conversations beinhalten diese Runs nicht, da ein eingehender Aufruf keine
+Conversations umfassen diese Runs nicht, da ein eingehender Aufruf keine
 Conversation ist.
 
-## Befehle für Teammates
+## Teammate-Befehle
 
 ### Einem Teammate seine Fähigkeiten zuweisen
 
-Ein neuer KI-Teammate kann Fragen beantworten. Er kann erst handeln, wenn Sie
-ihm eine Domain zuweisen, und er erledigt keine unbeaufsichtigte Arbeit, bis Sie
-ihm eine Routine zuweisen.
+Ein neues KI-Teammitglied kann Fragen beantworten. Er kann erst dann handeln,
+wenn Sie ihm eine Domain zuweisen, und er erledigt keine unbeaufsichtigte
+Arbeit, bis Sie ihm eine Routine zuweisen.
 
 ```bash
 ciele teammates grants <teammate-id>
@@ -228,16 +229,16 @@ ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --
 ```
 
 `set-grants` sendet jedes Mal den vollständigen Satz von Domains. `--domains ""`
-entfernt sie alle. Für diesen Befehl ist ein API-Schlüssel mit der Rolle „Admin“
-oder einer höheren Rolle erforderlich, da er einem Agenten erlaubt, Ihre Daten
+entfernt sie alle. Dieser Befehl erfordert einen API-Schlüssel mit der Rolle
+„Admin“ oder einer höheren Rolle, da er es einem Agenten ermöglicht, Ihre Daten
 zu ändern. Die anderen Teammate-Befehle erfordern die Rolle Editor.
 
 Ein Teammate kann maximal fünf Routines haben.
 
-### Richten Sie ein Teammitglied mit einem einzigen Befehl ein
+### Richten Sie ein Teammember mit einem einzigen Befehl ein
 
-`teammates create` erstellt ein Teammitglied, das Fragen beantwortet. Er kann
-nicht handeln und erledigt keine unbeaufsichtigte Arbeit. `teammates provision`
+`teammates create` erstellt einen Teammate, der Fragen beantwortet. Er kann
+nicht handeln und führt keine unbeaufsichtigte Arbeit aus. `teammates provision`
 führt die drei Schritte gemeinsam aus.
 
 ```bash
@@ -252,7 +253,7 @@ Punkt bleibt der Teammate nutzbar.
 
 Ein Schlüssel ohne die Rolle „Admin Role“ kann den Teammate erstellen. Es kann
 keine Domain gewähren. Der Befehl meldet dann, dass er beim Schritt „grants“
-abgebrochen hat.
+angehalten hat.
 
 ### Projekte und Speicher
 
@@ -272,8 +273,37 @@ ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
 `set-document` und `set-memory` ersetzen den vollständigen Text. Ciele speichert
 den vorherigen Text im Verlauf des Dokuments.
 
-Es gibt keinen Befehl für Ihre eigene Memory-Ebene. Ein API-Schlüssel fungiert
-als das Mitglied, das ihn erstellt hat. Daher würde ein Befehl hier das private
+### Aufgaben
+
+```bash
+ciele tasks list --project <project-id> --status to_do,in_progress
+ciele tasks list --label <label-id> --due-from 2026-11-01 --due-to 2026-11-30 --q "brief"
+ciele tasks list --improvement <improvement-id> --cursor <next-cursor>
+ciele tasks create --project <project-id> --title "Draft the launch brief" --due 2026-11-02
+ciele tasks get <task-id>
+ciele tasks update <task-id> --status in_review --assignee <user-id>
+ciele tasks update <task-id> --json '{"labelIds":["<label-id>"],"blockedBy":["<task-id>"]}'
+ciele tasks update <task-id> --archive
+ciele tasks comment <task-id> --body "Ready for review"
+ciele tasks labels
+ciele tasks create-label --name "Bug" --color red
+ciele tasks update-label <label-id> --color amber
+ciele tasks delete-label <label-id> --yes
+ciele projects milestones <project-id>
+ciele projects set-milestones <project-id> --json '[{"name":"Launch","date":"2026-11-02"}]'
+ciele tasks delete <task-id> --yes
+```
+
+`set-milestones` ersetzt die vollständige Liste. Um einen Meilenstein
+beizubehalten, senden Sie ihn erneut mit seiner ID. `tasks delete` löscht
+außerdem die Unteraufgaben, Kommentare und Dateien der Aufgabe.
+`tasks update --archive` blendet die Aufgabe und ihre Unteraufgaben aus.
+`--restore` zeigt sie wieder an. Wenn es mehrere Tasks gibt, zeigt `tasks list`
+den Cursor für die nächste Seite an. `tasks delete-label` entfernt das Label von
+jeder Task. Die Tasks bleiben erhalten.
+
+Es gibt keinen Befehl für Ihre eigene Memory Layer. Ein API-Schlüssel agiert als
+das Mitglied, das ihn erstellt hat. Daher würde ein Befehl hier das private
 Dokument dieses Mitglieds anzeigen. Verwenden Sie in der Konsole Settings und
 anschließend Memory.
 
@@ -299,7 +329,7 @@ ciele providers list
 ciele sso connection
 ```
 
-Befehle, die Daten löschen, erfordern `--yes`. Der Flow „Default behavior“ kann
+Befehle, die Daten löschen, erfordern `--yes`. Der Default Behavior Flow kann
 nicht gelöscht werden.
 
 Führen Sie `ciele help` für jede Befehlsgruppe und jede akzeptierte Option aus.

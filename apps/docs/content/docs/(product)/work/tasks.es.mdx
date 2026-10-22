@@ -1,0 +1,117 @@
+---
+title: Tareas y vistas
+description: Crea tareas y visualízalas como lista, tablero, tabla, calendario o cronograma.
+---
+
+Una tarea tiene un título, un estado, una prioridad, un responsable, fechas, una
+estimación, etiquetas y una descripción en Markdown.
+
+| Status | Significado |
+| --- | --- |
+| Backlog | Aún no está planificado. |
+| To do | Planificada. |
+| In progress | Ahora alguien está trabajando en ello. |
+| In review | Está pendiente de revisión. |
+| Done | Completado. |
+
+La prioridad es **Urgent**, **High**, **Medium**, **Low** o **None**.
+
+## Crea una tarea
+
+1. Selecciona **New task** en la barra de herramientas.
+2. Escribe un título.
+3. Selecciona el Project, el estado, la prioridad, el assignee y la fecha de
+   vencimiento si es necesario.
+4. Selecciona **Create task**.
+
+También puedes escribir un título en la parte inferior de un grupo en la Lista o
+en la Tabla, o en una columna del Tablero.
+
+## Abre una tarea
+
+Selecciona una tarea para abrirla en un panel junto a la vista. El panel muestra
+sus campos, la descripción, las subtareas, los archivos adjuntos, los
+comentarios y la actividad. Para abrir la tarea en su propia página, selecciona
+el botón de página completa situado junto a las acciones de la tarea. Para
+cerrar el panel, selecciona el botón close o pulsa **Esc**.
+
+Ciele conserva el ancho del panel en este navegador. También conserva los grupos
+y las columnas del tablero que contraigas.
+
+Una tarea puede estar en espera de otras tareas. Selecciona las Tasks en
+**Blocked by**. La línea de tiempo muestra una flecha desde cada tarea
+bloqueante hasta la tarea que está en espera.
+
+Cuando completes una tarea, selecciona **Undo** en el mensaje para devolverle a
+la tarea su estado anterior. Esto también funciona cuando completas varias
+tareas al mismo tiempo.
+
+Una tarea puede repetirse. Cuando completas una tarea repetitiva, Ciele crea la
+siguiente copia con nuevas fechas. Si seleccionas **Undo**, Ciele también
+elimina esa copia y la tarea vuelve a repetirse. Si alguien ya ha empezado la
+copia, Ciele la conserva.
+
+Para cambiar el orden de las tareas sin usar arrastrar y soltar, selecciona una
+tarea y pulsa **Alt+Up** o **Alt+Down**. En la Lista, también puedes seleccionar
+**Move up** o **Move down** en el menú de la Tarea.
+
+## Resolver una mejora
+
+Una Task puede resolver una Improvement. Selecciona la Improvement en el campo
+**Resolves** de la Task. Para eliminar el enlace, selecciona **None**.
+
+También puedes abrir la Improvement y seleccionar **Create task**. La nueva
+tarea hereda el título y el proyecto de la mejora, así como el enlace.
+
+Cuando todas las Tasks que resuelven una Improvement están completadas, Ciele
+traslada la Improvement a **In review**. A continuación, una persona la cierra.
+La actividad de la tarea muestra este cambio.
+
+## La barra de herramientas
+
+Cada vista tiene la misma barra de herramientas:
+
+- **Search tasks** busca tareas por título o por clave.
+- **Filter** muestra únicamente las tareas que coinciden con tus filtros.
+- **Sort** cambia el orden. **Manual** mantiene el orden que has establecido
+  mediante arrastrar y soltar.
+- **Group** agrupa las tareas por estado, prioridad, responsable, proyecto o
+  fecha de entrega.
+
+La dirección de la página conserva tus filtros, el orden y la agrupación. Puedes
+compartir la dirección.
+
+## Las vistas
+
+| View | Uso |
+| --- | --- |
+| List | Consulta las tareas agrupadas. Arrastra una fila para cambiar su orden o su grupo. Selecciona filas para cambiar varias tareas a la vez. |
+| Board | Arrastra una tarjeta a otra columna de estado. Usa el menú de la columna para añadir una tarea, contraer la columna o marcar todas las tareas como completadas. |
+| Table | Modifica cada campo en su celda. Selecciona **Columns** para mostrar, ocultar o restablecer las columnas. Arrastra el borde de la cabecera de una columna para cambiar su tamaño. |
+| Calendar | Consulta las tareas en sus fechas de entrega por mes o por semana. Arrastra una tarea a otro día. La tarea mantiene su duración. Selecciona **+** en un día para crear una tarea para ese día. |
+| Timeline | Visualiza las tareas como barras por semana o por mes. Arrastra una barra para moverla. Arrastra un extremo de una barra para cambiar una fecha. |
+
+La línea de tiempo solo muestra las tareas con fecha de vencimiento. Considera
+las demás tareas como no programadas.
+
+Cada acción de arrastrar también tiene un atajo de teclado. Abre la tarea y
+cambia su estado o sus fechas en el panel.
+
+## Vistas guardadas
+
+En un proyecto, puedes guardar los filtros, el orden, la agrupación y el diseño
+actuales como una vista guardada. Selecciona **Save view** en la barra de
+herramientas. La vista guardada se muestra como una pestaña para todos los
+miembros que pueden ver el proyecto.
+
+El creador de una vista guardada y los administradores pueden cambiarle el
+nombre, actualizarla o eliminarla.
+
+## Archivar o eliminar una tarea
+
+Abre el menú Task.
+
+- Selecciona **Archive** para ocultar la tarea y sus subtareas. Selecciona
+  **Undo** en el mensaje para restaurarlo de inmediato.
+- Selecciona **Delete** para eliminar la tarea, sus subtareas, sus comentarios y
+  sus archivos. No puedes deshacer esta acción.

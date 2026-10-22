@@ -44,6 +44,10 @@ function DateChip({ value, label, onCommit, onValidityChange }: {
     }} />;
 }
 
+/** Weeks start on Monday (#1073): the band stops at the row's ends, Monday and Sunday. */
+const WEEK_FIRST = 1;
+const WEEK_LAST = 0;
+
 function DayCell({ date, formattedDate, isSelected, isSelectionStart, isSelectionEnd,
   isHovered, isFocusVisible, isDisabled, isOutsideMonth, isRange }: CalendarCellRenderProps & { isRange: boolean }) {
   if (isOutsideMonth) return <div className="date-picker-day" />;
@@ -52,8 +56,8 @@ function DayCell({ date, formattedDate, isSelected, isSelectionStart, isSelectio
   const edge = isRange ? isSelectionStart || isSelectionEnd : isSelected;
   return <div className="date-picker-day relative">
     <span aria-hidden className={cn("date-picker-band", isSelected && !single && "date-picker-band-selected")}
-      style={{ left: isSelectionStart ? "50%" : isRange && isSelected && weekday !== 0 ? "-6px" : 0,
-        right: isSelectionEnd ? "50%" : isRange && isSelected && weekday !== 6 ? "-6px" : 0 }} />
+      style={{ left: isSelectionStart ? "50%" : isRange && isSelected && weekday !== WEEK_FIRST ? "-6px" : 0,
+        right: isSelectionEnd ? "50%" : isRange && isSelected && weekday !== WEEK_LAST ? "-6px" : 0 }} />
     <div className={cn("date-picker-day-face", isHovered && !isSelected && "date-picker-day-hover",
       isFocusVisible && "date-picker-day-focus", edge && "date-picker-day-edge", isDisabled && "opacity-40")}
       data-start={isSelectionStart || undefined} data-end={isSelectionEnd || undefined} data-single={single || undefined}>
@@ -128,10 +132,10 @@ export default function DatePickerPanel({ mode, from, to, label, allowClear, pre
             if (start && end && start.compare(end) <= 0) { selectRange({ start, end }); setFocused(start); }
           }} className="date-picker-preset">{preset.label}</button>)}
       </div>}
-      {mode === "range" ? <RangeCalendar aria-label={label} autoFocus firstDayOfWeek="sun"
+      {mode === "range" ? <RangeCalendar aria-label={label} autoFocus firstDayOfWeek="mon"
         visibleDuration={{ months: 2 }} pageBehavior="single" selectionAlignment="start"
         focusedValue={focused} onFocusChange={setFocused} value={range} onChange={selectRange}>{months}</RangeCalendar>
-        : <Calendar aria-label={label} autoFocus firstDayOfWeek="sun" value={single}
+        : <Calendar aria-label={label} autoFocus firstDayOfWeek="mon" value={single}
           focusedValue={focused} onFocusChange={setFocused} onChange={value => {
             setSingle(value); setCleared(false); setInvalid({ from: false, to: false });
             setRevision(old => old + 1);

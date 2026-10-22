@@ -60,6 +60,8 @@ import { memberDisplayName } from "@/lib/members";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { toast } from "@/lib/toast";
 import { unsavedEdits } from "./improvement-edits";
+import { ImprovementTasks } from "./improvement-tasks";
+import type { ImprovementTaskRow } from "@/lib/work/improvement-tasks";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
 
@@ -130,7 +132,9 @@ export function ImprovementDetail({
   members,
   proposal,
   projects,
+  tasks,
   canEdit,
+  canCreateTasks,
   variant = "page",
   onUpdated,
   onDeleted,
@@ -139,6 +143,8 @@ export function ImprovementDetail({
   associationPage: ImprovementAssociationPage;
   members: MemberOption[];
   proposal: ImprovementProposal | null;
+  /** The Tasks that resolve it, those in Projects the viewer can read (ADR-0027 rule 2). */
+  tasks: ImprovementTaskRow[];
   /**
    * Live Projects this work can belong to (#771). Archived ones are not
    * offered: attaching to one would file the work under something the team has
@@ -146,6 +152,11 @@ export function ImprovementDetail({
    */
   projects: { id: string; name: string }[];
   canEdit: boolean;
+  /**
+   * Whether the viewer may file a Task against it. Linking is a Task write,
+   * so this is the rank on Tasks, not `canEdit`'s rank on Improvements.
+   */
+  canCreateTasks: boolean;
   /**
    * "drawer" drops the breadcrumb (the drawer has its own header), the columns
    * need no flag, they respond to the container's width, not the viewport's.
@@ -539,6 +550,16 @@ export function ImprovementDetail({
             improvementId={improvement.id}
             proposal={proposal}
             canEdit={canEdit}
+          />
+
+          <ImprovementTasks
+            improvementId={improvement.id}
+            improvementSeq={improvement.seq}
+            title={title.trim() || improvement.title}
+            projectId={projectId}
+            tasks={tasks}
+            members={members}
+            canCreate={canCreateTasks}
           />
 
           <section>

@@ -4,8 +4,10 @@ import { RollInText } from "@/components/motion/roll-in-text";
 
 import { memo } from "react";
 import {
+  CircleCheckBig,
   CornerDownLeft,
   FlaskConical,
+  FolderKanban,
   MessageSquareText,
   MessagesSquare,
   MousePointerClick,
@@ -15,6 +17,7 @@ import {
 import { AnimatedGlyph, AnimatedIcon } from "@/components/ui/animated-icon";
 import { localGlyphFor } from "@/components/ui/icons/local-glyphs";
 import { opensInNewTab, type FindKind, type FindRecord } from "@/lib/find-index";
+import type { MatchRanges } from "@/lib/fuzzy";
 
 /** One selectable row: a workspace record or a page/section of the console. */
 export interface FindItem {
@@ -27,6 +30,31 @@ export interface FindItem {
   href: string;
   /** Present for a workspace record, drives the preview pane. */
   record: FindRecord | null;
+  /** Where the query landed in the label and in the hint, for highlighting (#1072). */
+  matches?: { label: MatchRanges | null; hint: MatchRanges | null };
+  /** The body around the query, for a record listed because of its body alone. */
+  excerpt?: { text: string; ranges: MatchRanges };
+  /** An action rather than a destination: run on select instead of navigating. */
+  run?: () => void;
+  /** Leave the palette open after `run` (a recent search refills the box). */
+  keepOpen?: boolean;
+}
+
+/** The text with the matched letters marked. */
+function Highlighted({ text, ranges }: { text: string; ranges: MatchRanges }) {
+  const parts: React.ReactNode[] = [];
+  let at = 0;
+  ranges.forEach(([start, end], i) => {
+    if (start > at) parts.push(text.slice(at, start));
+    parts.push(
+      <mark key={i} className="text-foreground rounded-sm bg-tone-amber px-px">
+        {text.slice(start, end)}
+      </mark>
+    );
+    at = end;
+  });
+  if (at < text.length) parts.push(text.slice(at));
+  return <>{parts}</>;
 }
 
 /** The glyph beside a record of each kind. */
@@ -36,6 +64,8 @@ export const KIND_ICONS: Record<FindKind, LucideIcon> = {
   improvement: FlaskConical,
   help_desk: UsersRound,
   teammate: MousePointerClick,
+  task: CircleCheckBig,
+  project: FolderKanban,
 };
 
 /**
@@ -86,11 +116,23 @@ export const FindRow = memo(function FindRow({
         <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
       )}
       <span className="min-w-0 flex-1 truncate">
-        <span className="text-foreground font-medium"><RollInText text={item.label} /></span>
+        <span className="text-foreground font-medium">
+          {item.matches?.label?.length ? (
+            <Highlighted text={item.label} ranges={item.matches.label} />
+          ) : (
+            <RollInText text={item.label} />
+          )}
+        </span>
         {item.hint && (
           <span className="text-muted-foreground text-xs">
             {" · "}
-            {item.hint}
+            {item.matches?.hint?.length ? <Highlighted text={item.hint} ranges={item.matches.hint} /> : item.hint}
+          </span>
+        )}
+        {item.excerpt && (
+          <span className="text-muted-foreground text-xs">
+            {" · "}
+            <Highlighted text={item.excerpt.text} ranges={item.excerpt.ranges} />
           </span>
         )}
       </span>

@@ -13,7 +13,8 @@ vi.mock("./pinned-fetch", () => ({
 import { lookup } from "node:dns/promises";
 import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
 import { createTurnSession } from "./session";
-import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
+import { createPiiMasker, PII_DETECTORS, PROGRESS_MAX_CHARS } from "@agent-hub/core";
+import { withPiiMasking } from "./pii-masking";
 import {
   MAX_QUERIES_PER_SEARCH,
   buildToolset,
@@ -485,6 +486,39 @@ describe("remember tool", () => {
     await run(buildToolset(ctx), "remember", { fact: "Student of Marketing (A)" });
     expect(ctx.session.memory()).toEqual(["Student of Marketing (A)"]);
     expect(ctx.session.dirty).toBe(true);
+  });
+});
+
+describe("PII origins of tool results (#1079)", () => {
+  it("counts a windowed read as knowledge, a memory as the Visitor's, a fetched page as a tool's", async () => {
+    requestMock.mockResolvedValueOnce(
+      pinnedResponse(200, { "content-type": "text/plain" }, "Front desk: +39 06 1234 5678")
+    );
+    const { ctx } = makeContext({
+      assistant: makeAssistant({ tools: { builtIns: { fetchUrl: true } } }),
+      readKnowledgeDocument: async () => ({
+        id: "doc-1",
+        title: "Refund policy",
+        sourceName: "policy.pdf",
+        text: "Send refund requests to refunds@example.org.",
+      }),
+      searchMemories: async () => [{ text: "Prefers IBAN DE89370400440532013000" }] as never,
+    });
+    const toolset = buildToolset(ctx);
+    const masker = createPiiMasker(PII_DETECTORS);
+    await withPiiMasking(masker, async () => {
+      await run(toolset, "readKnowledgeSource", { sourceId: "doc-1" });
+      await run(toolset, "searchMemories", { query: "preferences" });
+      await run(toolset, "fetchUrl", { url: "https://example.com/contact" });
+    });
+    // Seeding numbers the values; a request carrying them is what counts them.
+    expect(masker.report()).toEqual([]);
+    masker.mask("refunds@example.org DE89370400440532013000 +39 06 1234 5678");
+    expect(masker.report()).toEqual([
+      { detector: "email", origin: "knowledge", count: 1 },
+      { detector: "phone", origin: "tool", count: 1 },
+      { detector: "iban", origin: "visitor", count: 1 },
+    ]);
   });
 });
 

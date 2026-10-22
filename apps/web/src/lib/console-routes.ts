@@ -19,6 +19,11 @@ export const CONSOLE_PATH_PREFIXES = [
   "/inbox",
   "/insights",
   "/library",
+  // The work section (#1053), and a Member's own notifications (#1067).
+  "/my-tasks",
+  "/notifications",
+  "/projects",
+  "/tasks",
   // Human review decision pages (#841): a signed link lands here, behind the login wall.
   "/reviews",
   "/settings",

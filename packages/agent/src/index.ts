@@ -103,6 +103,8 @@ export type {
 export {
   sweepDueRecrawls,
   finalizeDueCrawls,
+  sweepDeletedTaskComments,
+  sweepExpiredMemberNotifications,
   sweepExpiredObjectAccess,
   sweepExpiredTraces,
   sweepExpiredTranscripts,

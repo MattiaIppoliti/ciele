@@ -1,17 +1,17 @@
 ---
 title: Mejoras
-description: Haz un seguimiento y completa el trabajo para corregir las respuestas deficientes del asistente.
+description: Haz un seguimiento y completa el trabajo para corregir las respuestas deficientes del Asistente.
 ---
 
 Una Improvement registra un problema de calidad de la respuesta. Puede incluir
-mensajes vinculados, Sources, una descripción y una sugerencia de solución.
+mensajes vinculados, Sources, una descripción y una solución sugerida.
 
 ## Fuentes de las mejoras
 
 - Una acción de Improvement Flow crea un elemento.
 - Un Help Desk puede crear un elemento después de una escalada.
 - Un administrador puede marcar una respuesta desde la Inbox.
-- Search Knowledge puede crear un elemento para una consulta no resuelta cuando
+- Search knowledge puede crear un elemento para una consulta no resuelta cuando
   está configurado.
 - Un Goal permanente que falla crea un elemento. Los fallos posteriores añaden
   evidencias al mismo elemento.
@@ -23,18 +23,37 @@ disponible. Puedes cambiar su estado, su prioridad, sus etiquetas, su
 responsable y su fecha de vencimiento.
 
 La API, la CLI y el servidor MCP pueden listar, leer y actualizar las
-Improvements existentes. La creación de mejoras sigue siendo una operación que
-se realiza durante el tiempo de ejecución del producto.
+Improvements existentes. La creación de mejoras sigue siendo una operación en
+tiempo de ejecución del producto.
+
+## Planifica el trabajo como Tasks
+
+Una Improvement registra el problema. Una Task registra el trabajo que lo
+soluciona. La página Improvement muestra las Tasks que la resuelven.
+
+1. Abre la Mejora.
+2. Selecciona **Create task**. La tarea hereda el título y el proyecto de la
+   mejora.
+3. Modifica la tarea si es necesario y, a continuación, selecciona **Create
+   task**.
+
+También puedes vincular una tarea existente: abre la tarea y selecciona la
+mejora en su campo **Resolves**.
+
+Cuando todas las tareas vinculadas están completadas, Ciele desplaza la mejora
+de **To do** o **In progress** a **In review**. A continuación, una persona
+examina la respuesta y cierra la Improvement. Si vuelves a abrir una Task, la
+Improvement no retrocede.
 
 ## Corrige la respuesta
 
 1. Lee la Conversation vinculada.
 2. Identifica la Source, la FAQ, el Flow o la instrucción incorrectos.
 3. Corrige la configuración del borrador.
-4. Plantea la pregunta original en Preview.
+4. Formula la pregunta original en Preview.
 5. Confirma la respuesta y las Sources.
 6. Publica el asistente.
 7. Marca la mejora como completada.
 
 Revisa las correcciones sugeridas generadas antes de usarlas. La sugerencia
-almacenada no constituye un cambio en la publicación.
+almacenada no constituye un cambio de publicación.

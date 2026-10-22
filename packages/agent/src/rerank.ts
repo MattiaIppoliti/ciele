@@ -33,6 +33,7 @@ import type {
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { alertKeys, signalHealth } from "./health";
+import { maskOutbound } from "./pii-masking";
 import { meterUsage } from "./usage";
 
 /** How many hybrid candidates the reranker chooses the six from. */
@@ -124,8 +125,9 @@ export function createReranker(opts: {
     try {
       const result = await rerank({
         model,
-        query,
-        documents,
+        // The reranker is a model provider too (#1078).
+        query: maskOutbound(query),
+        documents: documents.map((document) => maskOutbound(document)),
         topN: limit,
         // One attempt: a retry inside a 1.5 s budget only moves the timeout.
         maxRetries: 0,

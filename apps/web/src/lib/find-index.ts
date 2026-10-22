@@ -1,6 +1,6 @@
 import { describePage, type PageLink, type PageShortcuts } from "@/lib/find-pages";
 import { FIND_KIND_INFO, type FindKind } from "@/lib/find-kinds";
-import { fuzzyMatch } from "@/lib/fuzzy";
+import { fuzzyMatch, substringMatch, type MatchRanges } from "@/lib/fuzzy";
 
 /**
  * The record shape behind the Find palette: one row per thing a Member can
@@ -128,6 +128,51 @@ function byRecency(a: FindRecord, b: FindRecord): number {
   return (Number.isNaN(bt) ? 0 : bt) - (Number.isNaN(at) ? 0 : at);
 }
 
+/** Where a query landed in a record, field by field; null in a field it missed. */
+export interface FindRecordMatch {
+  title: MatchRanges | null;
+  subtitle: MatchRanges | null;
+  snippet: MatchRanges | null;
+}
+
+/**
+ * Whether a record answers the query, and where, in one pass: the filter
+ * keeps what this matches and the row highlights what it returns (#1072), so
+ * a row cannot be listed for a match it does not show. Null when no field
+ * matches. With "Title only" the body is not searched, so it marks nothing.
+ */
+export function matchFindRecord(record: FindRecord, query: string, titleOnly: boolean): FindRecordMatch | null {
+  const title = fuzzyMatch(query, record.title);
+  // Body text matches by substring. The typo-tolerant subsequence match that
+  // suits a short title matches almost any paragraph ("support" is a
+  // subsequence of most sentences), which buries the real hits.
+  const subtitle = titleOnly ? null : substringMatch(query, record.subtitle);
+  const snippet = titleOnly ? null : substringMatch(query, record.snippet);
+  return title || subtitle || snippet ? { title, subtitle, snippet } : null;
+}
+
+/**
+ * The body text from just before its first match, for a row listed because of
+ * its body: the row is one truncated line, so a match past its end would be
+ * cut off. Starts on a word, with an ellipsis when anything was cut.
+ */
+export function matchExcerpt(
+  text: string,
+  ranges: MatchRanges,
+  lead = 24
+): { text: string; ranges: MatchRanges } {
+  const first = ranges[0];
+  if (!first || first[0] <= lead) return { text, ranges };
+  let start = first[0] - lead;
+  const space = text.indexOf(" ", start);
+  if (space >= 0 && space < first[0]) start = space + 1;
+  const shift = 1 - start;
+  return {
+    text: `…${text.slice(start)}`,
+    ranges: ranges.map(([from, to]) => [from + shift, to + shift]),
+  };
+}
+
 export function filterFindRecords(
   records: readonly FindRecord[],
   filters: FindFilters,
@@ -138,17 +183,7 @@ export function filterFindRecords(
     .filter((record) => {
       if (filters.kind && record.kind !== filters.kind) return false;
       if (!withinUpdated(record.updatedAt, filters.updated, now)) return false;
-      if (!q) return true;
-      if (fuzzyMatch(q, record.title)) return true;
-      if (filters.titleOnly) return false;
-      // Body text matches by substring. The typo-tolerant subsequence match
-      // that suits a short title matches almost any paragraph ("support"
-      // is a subsequence of most sentences), which buries the real hits.
-      const needle = q.toLowerCase();
-      return (
-        record.subtitle.toLowerCase().includes(needle) ||
-        record.snippet.toLowerCase().includes(needle)
-      );
+      return !q || matchFindRecord(record, q, filters.titleOnly) !== null;
     })
     .sort(byRecency);
 }
@@ -312,3 +347,10 @@ export function detailRequest(row: {
  */
 export const findScopeKey = (scope: { organizationId: string; userId: string; role: string | null }) =>
   `${scope.organizationId}:${scope.userId}:${scope.role ?? "none"}`;
+
+/**
+ * The Organization and Member half of a `findScopeKey`, without the Role.
+ * What a Member searched for stays theirs when their Role changes; only what
+ * the palette may show them is a matter of Role.
+ */
+export const findMemberKey = (scopeKey: string) => scopeKey.slice(0, scopeKey.lastIndexOf(":"));

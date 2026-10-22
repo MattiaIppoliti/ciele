@@ -13,8 +13,8 @@ import {
   useContext,
   useState,
 } from "react";
-import { Archive, ArrowUp, BookText, ChartLine, UsersRound, Copy, ExternalLink, FlaskConical, LayoutGrid, MessageCircle, Plus, Search, Trash2, type LucideIcon } from "lucide-react";
-import { ArrowLeft, ChevronDown, ChevronRight, Ellipsis, Globe, Hash, Link2, UserPlus } from "lucide-react";
+import { Archive, ArrowUp, BookText, ChartLine, UsersRound, Copy, ExternalLink, FlaskConical, LayoutGrid, MessageCircle, Plus, Search, Trash2, type LucideIcon, BellDot } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, CircleCheckBig, Ellipsis, FolderKanban, Globe, Hash, Link2, ListChecks, UserPlus } from "lucide-react";
 import type { AnimatedIcon } from "@/components/ui/animated-icon";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -1118,6 +1118,93 @@ function EvalPane() {
   );
 }
 
+const MOCK_TASKS: [string, string, string, string][] = [
+  ["WEB-12", "Write the launch brief", "In progress", "Today"],
+  ["WEB-14", "Review the pricing page", "In review", "Tomorrow"],
+  ["OPS-3", "Rotate the support rota", "To do", "Fri"],
+  ["WEB-9", "Collect partner logos", "Done", "Mon"],
+];
+
+function TaskRowsMock() {
+  return (
+    <div className="mt-5 overflow-hidden rounded-xl border bg-card">
+      {MOCK_TASKS.map(([key, title, status, due]) => (
+        <div key={key} className="grid grid-cols-[64px_1fr_100px_70px] items-center border-b px-4 py-3 text-sm last:border-0">
+          <span className="font-mono text-xs text-muted-foreground">{key}</span>
+          <span className={status === "Done" ? "text-muted-foreground line-through" : undefined}>{title}</span>
+          <span className="text-xs text-muted-foreground">{status}</span>
+          <span className="text-right text-xs text-muted-foreground">{due}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MyTasksPane() {
+  const compact = useContext(CompactContext);
+  return (
+    <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
+      <PaneHeading icon={CircleCheckBig} title="My Tasks" />
+      <TaskRowsMock />
+    </div>
+  );
+}
+
+function ProjectsPane() {
+  const compact = useContext(CompactContext);
+  return (
+    <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
+      <PaneHeading icon={FolderKanban} title="Projects" />
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        {[["Website relaunch", "62%"], ["Support operations", "35%"], ["Partner program", "80%"], ["Onboarding guide", "10%"]].map(([name, progress]) => (
+          <div key={name} className="rounded-xl border bg-card p-4">
+            <p className="text-sm font-medium">{name}</p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-foreground/60" style={{ width: progress }} />
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">{progress} done</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AllTasksPane() {
+  const compact = useContext(CompactContext);
+  return (
+    <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
+      <PaneHeading icon={ListChecks} title="All tasks" />
+      <TaskRowsMock />
+    </div>
+  );
+}
+
+function NotificationsPane() {
+  const compact = useContext(CompactContext);
+  const rows = [
+    { who: "AL", text: "assigned you WEB-12", title: "Refresh the pricing table" },
+    { who: "GH", text: "mentioned you on OPS-4", title: "Weekend support rota" },
+    { who: "KJ", text: "commented on WEB-9", title: "Accessibility pass on forms" },
+  ];
+  return (
+    <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
+      <PaneHeading icon={BellDot} title="Notifications" />
+      <ul className="border-alpha-medium divide-alpha-medium divide-y overflow-hidden rounded-xl border">
+        {rows.map((row) => (
+          <li key={row.text} className="flex items-start gap-3 px-3 py-2.5">
+            <span className="bg-tone-blue text-tone-blue-ink grid size-6 shrink-0 place-items-center rounded-full text-2xs font-semibold">{row.who}</span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium">{row.text}</span>
+              <span className="text-muted-foreground block truncate text-xs">{row.title}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------- */
 /* Pane registry                                                     */
 /* ---------------------------------------------------------------- */
@@ -1133,6 +1220,10 @@ export const GLOBAL_PANES: Record<GlobalView, () => React.ReactNode> = {
   Insights: InsightsPane,
   Eval: EvalPane,
   Library: LibraryPane,
+  "My Tasks": MyTasksPane,
+  Projects: ProjectsPane,
+  "All tasks": AllTasksPane,
+  Notifications: NotificationsPane,
 };
 
 /* Render the pane for a given view (global pane or the shared setup picker). */

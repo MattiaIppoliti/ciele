@@ -244,6 +244,33 @@ ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
 `set-document` and `set-memory` replace the full text. Ciele keeps the previous
 text in the history of the document.
 
+### Tasks
+
+```bash
+ciele tasks list --project <project-id> --status to_do,in_progress
+ciele tasks list --label <label-id> --due-from 2026-11-01 --due-to 2026-11-30 --q "brief"
+ciele tasks list --improvement <improvement-id> --cursor <next-cursor>
+ciele tasks create --project <project-id> --title "Draft the launch brief" --due 2026-11-02
+ciele tasks get <task-id>
+ciele tasks update <task-id> --status in_review --assignee <user-id>
+ciele tasks update <task-id> --json '{"labelIds":["<label-id>"],"blockedBy":["<task-id>"]}'
+ciele tasks update <task-id> --archive
+ciele tasks comment <task-id> --body "Ready for review"
+ciele tasks labels
+ciele tasks create-label --name "Bug" --color red
+ciele tasks update-label <label-id> --color amber
+ciele tasks delete-label <label-id> --yes
+ciele projects milestones <project-id>
+ciele projects set-milestones <project-id> --json '[{"name":"Launch","date":"2026-11-02"}]'
+ciele tasks delete <task-id> --yes
+```
+
+`set-milestones` replaces the full list. To keep a milestone, send it again with its ID.
+`tasks delete` also deletes the subtasks, comments, and files of the Task.
+`tasks update --archive` hides the Task and its subtasks. `--restore` shows them again.
+When there are more Tasks, `tasks list` shows the cursor for the next page.
+`tasks delete-label` removes the Label from every Task. The Tasks stay.
+
 There is no command for your own memory layer. An API key operates as the member
 who made it, so a command here would show the private document of that member.
 Use Settings, then Memory, in the console.

@@ -64,6 +64,21 @@ export const SPRING_THROW = {
   mass: 0.7,
 } as const;
 
+/**
+ * Fields springing to a new place when the layout around them reflows: a
+ * column appears or goes, a panel is resized, a table column is dragged
+ * wider. The second spring allowed to overshoot (ζ ≈ 0.76), on purpose: the
+ * Improvements grouped table shipped this bounce, and the product owner asked
+ * for the task views to move the same way (#1076). It answers a resize the
+ * person is making, which is the next thing to a gesture they threw.
+ */
+export const SPRING_REFLOW = {
+  type: "spring",
+  stiffness: 420,
+  damping: 28,
+  mass: 0.8,
+} as const;
+
 /** Shared-layout glides, pills, indicators and panels morphing between positions. */
 export const SPRING_LAYOUT = {
   type: "spring",
@@ -119,4 +134,11 @@ export const SPRING_MOUSE = {
 /** Transitions.dev recipe timings, adapted to Motion's existing React lifecycle. */
 export const TRANSITION_TEXT_SWAP = { duration: 0.15, ease: "easeInOut" } as const;
 export const TRANSITION_RESIZE = { duration: 0.3, ease: [0.22, 1, 0.36, 1] } as const;
+/**
+ * A first message carrying the composer from the middle of an empty chat down
+ * to its dock, as Web Animations timing (`useDockGlide`). A tween, not a
+ * spring: it leaves at once, settles long, and never overshoots the edge it
+ * lands on.
+ */
+export const DOCK_GLIDE = { duration: 480, easing: "cubic-bezier(0.23, 1, 0.32, 1)" } as const;
 export const TRANSITION_TABS = { duration: 0.25, ease: [0.22, 1, 0.36, 1] } as const;

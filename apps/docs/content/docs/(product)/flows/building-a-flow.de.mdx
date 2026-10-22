@@ -1,6 +1,6 @@
 ---
 title: Einen Flow erstellen
-description: Konfigurieren Sie einen Trigger, die verfügbaren Bedingungen und die in der gewünschten Reihenfolge ausgeführten Antwortaktionen.
+description: Konfigurieren Sie einen Trigger, die verfügbaren Bedingungen und die in der Reihenfolge festgelegten Response Actions.
 ---
 
 ## Den Flow erstellen
@@ -11,9 +11,8 @@ description: Konfigurieren Sie einen Trigger, die verfügbaren Bedingungen und d
 4. Geben Sie einen eindeutigen Namen und eine aussagekräftige Beschreibung ein.
 5. Wählen Sie einen Trigger aus.
 
-Die Beschreibung unterstützt die Intent Classification dabei, einen Message Flow
-auszuwählen. Geben Sie die Absicht des Besuchers und den erforderlichen Scope
-an.
+Die Beschreibung hilft der Intent Classification, einen Message Flow
+auszuwählen. Geben Sie die Absicht des Visitors und den erforderlichen Scope an.
 
 Ein Flow wird durch eine Nachricht eines Besuchers, durch ein Widget-Ereignis
 oder durch eine eingehende HTTP-Anfrage ausgelöst. Die Widget-Ereignisse sind
@@ -41,13 +40,22 @@ ausgewählt zu werden.
 ## Antwortaktionen hinzufügen
 
 1. Fügen Sie die erforderlichen Aktionen hinzu.
-2. Ordnen Sie die Aktionen in ihrer Ausführungsreihenfolge an.
+2. Ordnen Sie die Actions in ihrer Ausführungsreihenfolge an.
 3. Konfigurieren Sie jedes Pflichtfeld.
 4. Speichern Sie den Flow.
 5. Testen Sie eine übereinstimmende und eine nicht übereinstimmende Nachricht.
 
-Der Editor beschränkt proaktive Flows auf eine einzige Notification-Aktion. Der
-Server wendet dieselbe Regel an, wenn er einen Flow speichert oder versendet.
+Bewegen Sie den Mauszeiger über einen Action-Knoten und wählen Sie **Copy step**
+aus, um unmittelbar danach eine identische Aktion einzufügen. Die Kopie hat ihre
+eigenen Einstellungen: Das Bearbeiten, Verschieben oder Löschen der Kopie hat
+keine Auswirkungen auf das Original. Die Funktion „Copy“ ist auch in der
+Form-Ansicht und im Menü „Step options“ des Knotens verfügbar. Verwenden Sie
+**Undo** oder **Redo**, um eine Änderung rückgängig zu machen oder
+wiederherzustellen. Ein Flow unterstützt bis zu 20 Actions.
+
+Der Editor begrenzt proaktive Flows auf eine einzige Notification-Aktion, sodass
+Copy für diese Flows nicht verfügbar ist. Der Server wendet dieselbe Regel an,
+wenn er einen Flow speichert oder versendet.
 
 ## Reihenfolge der Flows ändern
 

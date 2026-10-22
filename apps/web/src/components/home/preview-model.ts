@@ -22,7 +22,11 @@ export type GlobalView =
   | "Improvements"
   | "Insights"
   | "Eval"
-  | "Library";
+  | "Library"
+  | "My Tasks"
+  | "Projects"
+  | "All tasks"
+  | "Notifications";
 
 export type View =
   | { kind: "global"; label: GlobalView }
@@ -37,6 +41,10 @@ export const GLOBAL_VIEWS: GlobalView[] = [
   "Insights",
   "Eval",
   "Library",
+  "My Tasks",
+  "Notifications",
+  "Projects",
+  "All tasks",
 ];
 
 /* Idle showcase step: advance to the next global view, wrapping around.

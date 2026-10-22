@@ -1,7 +1,12 @@
 "use server";
 
 import { roleAllowsCapability } from "@agent-hub/core";
-import { listOrgApiKeysOp, listTeammatesOp } from "@ciele/ops";
+import {
+  allTasksOp,
+  listOrgApiKeysOp,
+  listProjectsOp,
+  listTeammatesOp,
+} from "@ciele/ops";
 import { requireMember } from "@/lib/authz";
 import { runOperation } from "@/lib/operations";
 import {
@@ -32,6 +37,7 @@ import { WARM_LIMIT } from "@/lib/find-store";
 /** Everything an authorized read starts from. */
 async function readContext(): Promise<FindReadContext> {
   const { db, session } = await requireMember();
+  let work: ReturnType<NonNullable<FindReadContext["listWork"]>> | undefined;
   return {
     db,
     organizationId: session.organization.id,
@@ -39,6 +45,12 @@ async function readContext(): Promise<FindReadContext> {
     role: session.role ?? null,
     userId: session.userId,
     listTeammates: () => runOperation(listTeammatesOp, {}),
+    // Both through the work operations, which own the private-Project rule.
+    // Read once per search: the Task and Project kinds both stand on it.
+    listWork: () =>
+      (work ??= Promise.all([runOperation(listProjectsOp, {}), runOperation(allTasksOp, {})]).then(
+        ([projects, all]) => ({ projects, tasks: all.tasks })
+      )),
     // The operation declares who may list keys; asking it first keeps a
     // refused Member from reaching the capability check that redirects.
     listApiKeys: async () =>

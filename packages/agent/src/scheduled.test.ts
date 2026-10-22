@@ -50,9 +50,13 @@ import {
   finalizeDueCrawls,
   runDueAgenticOps,
   sweepDueRecrawls,
+  sweepDeletedTaskComments,
+  sweepExpiredMemberNotifications,
   sweepExpiredObjectAccess,
   sweepExpiredTraces,
   sweepExpiredTranscripts,
+  MEMBER_NOTIFICATION_RETENTION_DAYS,
+  DELETED_COMMENT_GRACE_DAYS,
   OBJECT_ACCESS_RETENTION_DAYS,
 } from "./scheduled";
 
@@ -84,6 +88,7 @@ const NO_EFFECTS = {
 function stubDb(overrides: Partial<Db>): Db {
   return {
     deleteExpiredMemories: vi.fn().mockResolvedValue(0),
+    deleteExpiredWorkActivity: vi.fn().mockResolvedValue(0),
     claimDueRecrawlSources: vi.fn().mockResolvedValue([]),
     claimProcessingCrawlSources: vi.fn().mockResolvedValue([]),
     claimBackgroundJobs: vi.fn().mockResolvedValue([]),
@@ -552,7 +557,48 @@ describe("sweepExpiredObjectAccess", () => {
   });
 });
 
+describe("sweepExpiredMemberNotifications", () => {
+  it("purges a bounded batch at exactly the 90-day cutoff", async () => {
+    const purgeExpiredMemberNotifications = vi.fn().mockResolvedValue(3);
+    const db = stubDb({ purgeExpiredMemberNotifications });
+    const now = new Date("2026-10-09T02:30:00.000Z");
+
+    const report = await sweepExpiredMemberNotifications({ db }, { now });
+
+    expect(MEMBER_NOTIFICATION_RETENTION_DAYS).toBe(90);
+    expect(purgeExpiredMemberNotifications).toHaveBeenCalledWith("2026-07-11T02:30:00.000Z", 5000);
+    expect(report).toEqual({ memberNotifications: { purged: 3 } });
+  });
+});
+
+describe("sweepDeletedTaskComments", () => {
+  it("hard-deletes comments deleted more than a day ago", async () => {
+    const purgeDeletedTaskComments = vi.fn().mockResolvedValue(2);
+    const db = stubDb({ purgeDeletedTaskComments });
+    const now = new Date("2026-10-09T02:30:00.000Z");
+
+    const report = await sweepDeletedTaskComments({ db }, { now });
+
+    expect(DELETED_COMMENT_GRACE_DAYS).toBe(1);
+    expect(purgeDeletedTaskComments).toHaveBeenCalledWith("2026-10-08T02:30:00.000Z", 5000);
+    expect(report).toEqual({ deletedComments: { purged: 2 } });
+  });
+});
+
 describe("sweepExpiredTranscripts", () => {
+  it("sweeps Work Activity under the transcript window (#1051)", async () => {
+    const now = new Date("2026-08-30T12:00:00.000Z");
+    const deleteExpiredWorkActivity = vi.fn().mockResolvedValue(5);
+    const db = stubDb({
+      listTranscriptRetentionPolicies: async () => [{ organizationId: "org-30", retentionDays: 30 }],
+      deleteExpiredConversations: vi.fn().mockResolvedValue(1),
+      deleteExpiredWorkActivity,
+    });
+    const report = await sweepExpiredTranscripts({ db }, { now });
+    expect(deleteExpiredWorkActivity).toHaveBeenCalledWith("org-30", "2026-07-31T12:00:00.000Z", RETENTION_SWEEP_BATCH);
+    expect(report.transcripts.deleted).toBe(6);
+  });
+
   it("sweeps the Visitor memories distilled from transcripts under the same window", async () => {
     const now = new Date("2026-08-30T12:00:00.000Z");
     const deleteExpiredMemories = vi.fn().mockResolvedValue(4);

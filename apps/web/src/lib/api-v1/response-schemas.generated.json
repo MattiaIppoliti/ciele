@@ -1748,6 +1748,19 @@
                     "guardrails": {
                       "type": "array",
                       "items": {}
+                    },
+                    "piiMasking": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "masked": {}
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "masked"
+                      ]
                     }
                   },
                   "required": [
@@ -6862,6 +6875,19 @@
                     "guardrails": {
                       "type": "array",
                       "items": {}
+                    },
+                    "piiMasking": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "masked": {}
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "masked"
+                      ]
                     }
                   },
                   "required": [
@@ -7534,6 +7560,19 @@
                     "guardrails": {
                       "type": "array",
                       "items": {}
+                    },
+                    "piiMasking": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "masked": {}
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "masked"
+                      ]
                     }
                   },
                   "required": [
@@ -9126,6 +9165,19 @@
                     "guardrails": {
                       "type": "array",
                       "items": {}
+                    },
+                    "piiMasking": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "masked": {}
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "masked"
+                      ]
                     }
                   },
                   "required": [
@@ -16720,7 +16772,8 @@
                         "iterationLimit": {},
                         "terminal": {},
                         "preflight": {},
-                        "guardrails": {}
+                        "guardrails": {},
+                        "piiMasking": {}
                       },
                       "required": [
                         "steps",
@@ -18425,6 +18478,10 @@
           },
           {
             "type": "string",
+            "const": "tasks"
+          },
+          {
+            "type": "string",
             "const": "sso"
           },
           {
@@ -18801,6 +18858,98 @@
       "updatedAt"
     ]
   },
+  "get /projects/{id}/milestones": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "organizationId": {
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "organizationId",
+            "projectId",
+            "name",
+            "date",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "put /projects/{id}/milestones": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "organizationId": {
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "organizationId",
+            "projectId",
+            "name",
+            "date",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
   "get /projects/{id}": {
     "allOf": [
       {
@@ -18839,6 +18988,106 @@
               },
               "updatedAt": {
                 "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "status": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "const": "active"
+                  },
+                  {
+                    "type": "string",
+                    "const": "planning"
+                  },
+                  {
+                    "type": "string",
+                    "const": "at_risk"
+                  },
+                  {
+                    "type": "string",
+                    "const": "on_hold"
+                  },
+                  {
+                    "type": "string",
+                    "const": "completed"
+                  }
+                ]
+              },
+              "leadId": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "startDate": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "dueDate": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "color": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "const": "gray"
+                  },
+                  {
+                    "type": "string",
+                    "const": "blue"
+                  },
+                  {
+                    "type": "string",
+                    "const": "green"
+                  },
+                  {
+                    "type": "string",
+                    "const": "amber"
+                  },
+                  {
+                    "type": "string",
+                    "const": "red"
+                  },
+                  {
+                    "type": "string",
+                    "const": "purple"
+                  }
+                ]
+              },
+              "icon": {
+                "type": "string"
+              },
+              "visibility": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "const": "organization"
+                  },
+                  {
+                    "type": "string",
+                    "const": "private"
+                  }
+                ]
               }
             },
             "required": [
@@ -18849,7 +19098,15 @@
               "archived",
               "createdBy",
               "createdAt",
-              "updatedAt"
+              "updatedAt",
+              "key",
+              "status",
+              "leadId",
+              "startDate",
+              "dueDate",
+              "color",
+              "icon",
+              "visibility"
             ]
           }
         },
@@ -19041,6 +19298,106 @@
       },
       "updatedAt": {
         "type": "string"
+      },
+      "key": {
+        "type": "string"
+      },
+      "status": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "active"
+          },
+          {
+            "type": "string",
+            "const": "planning"
+          },
+          {
+            "type": "string",
+            "const": "at_risk"
+          },
+          {
+            "type": "string",
+            "const": "on_hold"
+          },
+          {
+            "type": "string",
+            "const": "completed"
+          }
+        ]
+      },
+      "leadId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "startDate": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "dueDate": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "color": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "gray"
+          },
+          {
+            "type": "string",
+            "const": "blue"
+          },
+          {
+            "type": "string",
+            "const": "green"
+          },
+          {
+            "type": "string",
+            "const": "amber"
+          },
+          {
+            "type": "string",
+            "const": "red"
+          },
+          {
+            "type": "string",
+            "const": "purple"
+          }
+        ]
+      },
+      "icon": {
+        "type": "string"
+      },
+      "visibility": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "organization"
+          },
+          {
+            "type": "string",
+            "const": "private"
+          }
+        ]
       }
     },
     "required": [
@@ -19051,7 +19408,15 @@
       "archived",
       "createdBy",
       "createdAt",
-      "updatedAt"
+      "updatedAt",
+      "key",
+      "status",
+      "leadId",
+      "startDate",
+      "dueDate",
+      "color",
+      "icon",
+      "visibility"
     ]
   },
   "get /projects": {
@@ -19092,6 +19457,106 @@
             },
             "updatedAt": {
               "type": "string"
+            },
+            "key": {
+              "type": "string"
+            },
+            "status": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "active"
+                },
+                {
+                  "type": "string",
+                  "const": "planning"
+                },
+                {
+                  "type": "string",
+                  "const": "at_risk"
+                },
+                {
+                  "type": "string",
+                  "const": "on_hold"
+                },
+                {
+                  "type": "string",
+                  "const": "completed"
+                }
+              ]
+            },
+            "leadId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "startDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "dueDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "color": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "gray"
+                },
+                {
+                  "type": "string",
+                  "const": "blue"
+                },
+                {
+                  "type": "string",
+                  "const": "green"
+                },
+                {
+                  "type": "string",
+                  "const": "amber"
+                },
+                {
+                  "type": "string",
+                  "const": "red"
+                },
+                {
+                  "type": "string",
+                  "const": "purple"
+                }
+              ]
+            },
+            "icon": {
+              "type": "string"
+            },
+            "visibility": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "organization"
+                },
+                {
+                  "type": "string",
+                  "const": "private"
+                }
+              ]
             }
           },
           "required": [
@@ -19102,7 +19567,15 @@
             "archived",
             "createdBy",
             "createdAt",
-            "updatedAt"
+            "updatedAt",
+            "key",
+            "status",
+            "leadId",
+            "startDate",
+            "dueDate",
+            "color",
+            "icon",
+            "visibility"
           ]
         }
       }
@@ -19144,6 +19617,106 @@
       },
       "updatedAt": {
         "type": "string"
+      },
+      "key": {
+        "type": "string"
+      },
+      "status": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "active"
+          },
+          {
+            "type": "string",
+            "const": "planning"
+          },
+          {
+            "type": "string",
+            "const": "at_risk"
+          },
+          {
+            "type": "string",
+            "const": "on_hold"
+          },
+          {
+            "type": "string",
+            "const": "completed"
+          }
+        ]
+      },
+      "leadId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "startDate": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "dueDate": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "color": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "gray"
+          },
+          {
+            "type": "string",
+            "const": "blue"
+          },
+          {
+            "type": "string",
+            "const": "green"
+          },
+          {
+            "type": "string",
+            "const": "amber"
+          },
+          {
+            "type": "string",
+            "const": "red"
+          },
+          {
+            "type": "string",
+            "const": "purple"
+          }
+        ]
+      },
+      "icon": {
+        "type": "string"
+      },
+      "visibility": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "organization"
+          },
+          {
+            "type": "string",
+            "const": "private"
+          }
+        ]
       }
     },
     "required": [
@@ -19154,7 +19727,15 @@
       "archived",
       "createdBy",
       "createdAt",
-      "updatedAt"
+      "updatedAt",
+      "key",
+      "status",
+      "leadId",
+      "startDate",
+      "dueDate",
+      "color",
+      "icon",
+      "visibility"
     ]
   },
   "post /providers/api-key": {
@@ -21472,6 +22053,2487 @@
       }
     ]
   },
+  "patch /task-labels/{id}": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "organizationId": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "color": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "gray"
+          },
+          {
+            "type": "string",
+            "const": "blue"
+          },
+          {
+            "type": "string",
+            "const": "green"
+          },
+          {
+            "type": "string",
+            "const": "amber"
+          },
+          {
+            "type": "string",
+            "const": "red"
+          },
+          {
+            "type": "string",
+            "const": "purple"
+          }
+        ]
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "updatedAt": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "organizationId",
+      "name",
+      "color",
+      "createdAt",
+      "updatedAt"
+    ]
+  },
+  "delete /task-labels/{id}": {
+    "type": "object",
+    "properties": {
+      "deleted": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "deleted"
+    ]
+  },
+  "get /task-labels": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "organizationId": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "color": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "gray"
+                },
+                {
+                  "type": "string",
+                  "const": "blue"
+                },
+                {
+                  "type": "string",
+                  "const": "green"
+                },
+                {
+                  "type": "string",
+                  "const": "amber"
+                },
+                {
+                  "type": "string",
+                  "const": "red"
+                },
+                {
+                  "type": "string",
+                  "const": "purple"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "organizationId",
+            "name",
+            "color",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "post /task-labels": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "organizationId": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "color": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "gray"
+          },
+          {
+            "type": "string",
+            "const": "blue"
+          },
+          {
+            "type": "string",
+            "const": "green"
+          },
+          {
+            "type": "string",
+            "const": "amber"
+          },
+          {
+            "type": "string",
+            "const": "red"
+          },
+          {
+            "type": "string",
+            "const": "purple"
+          }
+        ]
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "updatedAt": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "organizationId",
+      "name",
+      "color",
+      "createdAt",
+      "updatedAt"
+    ]
+  },
+  "get /tasks/{id}/comments": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "reactions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "organizationId": {
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "commentId": {
+                    "type": "string"
+                  },
+                  "userId": {
+                    "type": "string"
+                  },
+                  "emoji": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "organizationId",
+                  "projectId",
+                  "commentId",
+                  "userId",
+                  "emoji",
+                  "createdAt"
+                ]
+              }
+            },
+            "id": {
+              "type": "string"
+            },
+            "organizationId": {
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "taskId": {
+              "type": "string"
+            },
+            "authorMemberId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "authorTeammateId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "type": "string"
+            },
+            "mentions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "editedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "deletedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "reactions",
+            "id",
+            "organizationId",
+            "projectId",
+            "taskId",
+            "authorMemberId",
+            "authorTeammateId",
+            "body",
+            "mentions",
+            "createdAt",
+            "editedAt",
+            "deletedAt"
+          ]
+        }
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "post /tasks/{id}/comments": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "organizationId": {
+        "type": "string"
+      },
+      "projectId": {
+        "type": "string"
+      },
+      "taskId": {
+        "type": "string"
+      },
+      "authorMemberId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "authorTeammateId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "body": {
+        "type": "string"
+      },
+      "mentions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "editedAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "deletedAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "organizationId",
+      "projectId",
+      "taskId",
+      "authorMemberId",
+      "authorTeammateId",
+      "body",
+      "mentions",
+      "createdAt",
+      "editedAt",
+      "deletedAt"
+    ]
+  },
+  "get /tasks/{id}": {
+    "type": "object",
+    "properties": {
+      "task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "parentId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "seq": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "string",
+                "const": "to_do"
+              },
+              {
+                "type": "string",
+                "const": "in_progress"
+              },
+              {
+                "type": "string",
+                "const": "in_review"
+              },
+              {
+                "type": "string",
+                "const": "done"
+              },
+              {
+                "type": "string",
+                "const": "backlog"
+              }
+            ]
+          },
+          "priority": {
+            "oneOf": [
+              {
+                "type": "string",
+                "const": "none"
+              },
+              {
+                "type": "string",
+                "const": "high"
+              },
+              {
+                "type": "string",
+                "const": "medium"
+              },
+              {
+                "type": "string",
+                "const": "low"
+              },
+              {
+                "type": "string",
+                "const": "urgent"
+              }
+            ]
+          },
+          "assigneeMemberId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "assigneeTeammateId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "startDate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "dueDate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "estimateMinutes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "recurrence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "daily"
+              },
+              {
+                "type": "string",
+                "const": "weekly"
+              },
+              {
+                "type": "string",
+                "const": "monthly"
+              },
+              {
+                "type": "string",
+                "const": "biweekly"
+              }
+            ]
+          },
+          "rank": {
+            "type": "string"
+          },
+          "improvementId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "completedAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "archivedAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "createdBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "projectId",
+          "parentId",
+          "seq",
+          "title",
+          "description",
+          "status",
+          "priority",
+          "assigneeMemberId",
+          "assigneeTeammateId",
+          "startDate",
+          "dueDate",
+          "estimateMinutes",
+          "recurrence",
+          "rank",
+          "improvementId",
+          "completedAt",
+          "archivedAt",
+          "createdBy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "createdBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "string",
+                "const": "active"
+              },
+              {
+                "type": "string",
+                "const": "planning"
+              },
+              {
+                "type": "string",
+                "const": "at_risk"
+              },
+              {
+                "type": "string",
+                "const": "on_hold"
+              },
+              {
+                "type": "string",
+                "const": "completed"
+              }
+            ]
+          },
+          "leadId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "startDate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "dueDate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "color": {
+            "oneOf": [
+              {
+                "type": "string",
+                "const": "gray"
+              },
+              {
+                "type": "string",
+                "const": "blue"
+              },
+              {
+                "type": "string",
+                "const": "green"
+              },
+              {
+                "type": "string",
+                "const": "amber"
+              },
+              {
+                "type": "string",
+                "const": "red"
+              },
+              {
+                "type": "string",
+                "const": "purple"
+              }
+            ]
+          },
+          "icon": {
+            "type": "string"
+          },
+          "visibility": {
+            "oneOf": [
+              {
+                "type": "string",
+                "const": "organization"
+              },
+              {
+                "type": "string",
+                "const": "private"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "name",
+          "description",
+          "archived",
+          "createdBy",
+          "createdAt",
+          "updatedAt",
+          "key",
+          "status",
+          "leadId",
+          "startDate",
+          "dueDate",
+          "color",
+          "icon",
+          "visibility"
+        ]
+      },
+      "subtasks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "organizationId": {
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "parentId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "seq": {
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "status": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "to_do"
+                },
+                {
+                  "type": "string",
+                  "const": "in_progress"
+                },
+                {
+                  "type": "string",
+                  "const": "in_review"
+                },
+                {
+                  "type": "string",
+                  "const": "done"
+                },
+                {
+                  "type": "string",
+                  "const": "backlog"
+                }
+              ]
+            },
+            "priority": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "none"
+                },
+                {
+                  "type": "string",
+                  "const": "high"
+                },
+                {
+                  "type": "string",
+                  "const": "medium"
+                },
+                {
+                  "type": "string",
+                  "const": "low"
+                },
+                {
+                  "type": "string",
+                  "const": "urgent"
+                }
+              ]
+            },
+            "assigneeMemberId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "assigneeTeammateId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "startDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "dueDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "estimateMinutes": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "recurrence": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "daily"
+                },
+                {
+                  "type": "string",
+                  "const": "weekly"
+                },
+                {
+                  "type": "string",
+                  "const": "monthly"
+                },
+                {
+                  "type": "string",
+                  "const": "biweekly"
+                }
+              ]
+            },
+            "rank": {
+              "type": "string"
+            },
+            "improvementId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "completedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "archivedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "createdBy": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "organizationId",
+            "projectId",
+            "parentId",
+            "seq",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assigneeMemberId",
+            "assigneeTeammateId",
+            "startDate",
+            "dueDate",
+            "estimateMinutes",
+            "recurrence",
+            "rank",
+            "improvementId",
+            "completedAt",
+            "archivedAt",
+            "createdBy",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      },
+      "parent": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "organizationId": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "parentId": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "seq": {
+                "type": "number"
+              },
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "status": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "const": "to_do"
+                  },
+                  {
+                    "type": "string",
+                    "const": "in_progress"
+                  },
+                  {
+                    "type": "string",
+                    "const": "in_review"
+                  },
+                  {
+                    "type": "string",
+                    "const": "done"
+                  },
+                  {
+                    "type": "string",
+                    "const": "backlog"
+                  }
+                ]
+              },
+              "priority": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "const": "none"
+                  },
+                  {
+                    "type": "string",
+                    "const": "high"
+                  },
+                  {
+                    "type": "string",
+                    "const": "medium"
+                  },
+                  {
+                    "type": "string",
+                    "const": "low"
+                  },
+                  {
+                    "type": "string",
+                    "const": "urgent"
+                  }
+                ]
+              },
+              "assigneeMemberId": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "assigneeTeammateId": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "startDate": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "dueDate": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "estimateMinutes": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "recurrence": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "const": "daily"
+                  },
+                  {
+                    "type": "string",
+                    "const": "weekly"
+                  },
+                  {
+                    "type": "string",
+                    "const": "monthly"
+                  },
+                  {
+                    "type": "string",
+                    "const": "biweekly"
+                  }
+                ]
+              },
+              "rank": {
+                "type": "string"
+              },
+              "improvementId": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "completedAt": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "archivedAt": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "createdBy": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "organizationId",
+              "projectId",
+              "parentId",
+              "seq",
+              "title",
+              "description",
+              "status",
+              "priority",
+              "assigneeMemberId",
+              "assigneeTeammateId",
+              "startDate",
+              "dueDate",
+              "estimateMinutes",
+              "recurrence",
+              "rank",
+              "improvementId",
+              "completedAt",
+              "archivedAt",
+              "createdBy",
+              "createdAt",
+              "updatedAt"
+            ]
+          }
+        ]
+      },
+      "labelIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "blockedBy": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "organizationId": {
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "parentId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "seq": {
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "status": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "to_do"
+                },
+                {
+                  "type": "string",
+                  "const": "in_progress"
+                },
+                {
+                  "type": "string",
+                  "const": "in_review"
+                },
+                {
+                  "type": "string",
+                  "const": "done"
+                },
+                {
+                  "type": "string",
+                  "const": "backlog"
+                }
+              ]
+            },
+            "priority": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "none"
+                },
+                {
+                  "type": "string",
+                  "const": "high"
+                },
+                {
+                  "type": "string",
+                  "const": "medium"
+                },
+                {
+                  "type": "string",
+                  "const": "low"
+                },
+                {
+                  "type": "string",
+                  "const": "urgent"
+                }
+              ]
+            },
+            "assigneeMemberId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "assigneeTeammateId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "startDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "dueDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "estimateMinutes": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "recurrence": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "daily"
+                },
+                {
+                  "type": "string",
+                  "const": "weekly"
+                },
+                {
+                  "type": "string",
+                  "const": "monthly"
+                },
+                {
+                  "type": "string",
+                  "const": "biweekly"
+                }
+              ]
+            },
+            "rank": {
+              "type": "string"
+            },
+            "improvementId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "completedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "archivedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "createdBy": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "organizationId",
+            "projectId",
+            "parentId",
+            "seq",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assigneeMemberId",
+            "assigneeTeammateId",
+            "startDate",
+            "dueDate",
+            "estimateMinutes",
+            "recurrence",
+            "rank",
+            "improvementId",
+            "completedAt",
+            "archivedAt",
+            "createdBy",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      },
+      "blocking": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "organizationId": {
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "parentId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "seq": {
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "status": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "to_do"
+                },
+                {
+                  "type": "string",
+                  "const": "in_progress"
+                },
+                {
+                  "type": "string",
+                  "const": "in_review"
+                },
+                {
+                  "type": "string",
+                  "const": "done"
+                },
+                {
+                  "type": "string",
+                  "const": "backlog"
+                }
+              ]
+            },
+            "priority": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "none"
+                },
+                {
+                  "type": "string",
+                  "const": "high"
+                },
+                {
+                  "type": "string",
+                  "const": "medium"
+                },
+                {
+                  "type": "string",
+                  "const": "low"
+                },
+                {
+                  "type": "string",
+                  "const": "urgent"
+                }
+              ]
+            },
+            "assigneeMemberId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "assigneeTeammateId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "startDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "dueDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "estimateMinutes": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "recurrence": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "daily"
+                },
+                {
+                  "type": "string",
+                  "const": "weekly"
+                },
+                {
+                  "type": "string",
+                  "const": "monthly"
+                },
+                {
+                  "type": "string",
+                  "const": "biweekly"
+                }
+              ]
+            },
+            "rank": {
+              "type": "string"
+            },
+            "improvementId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "completedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "archivedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "createdBy": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "organizationId",
+            "projectId",
+            "parentId",
+            "seq",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assigneeMemberId",
+            "assigneeTeammateId",
+            "startDate",
+            "dueDate",
+            "estimateMinutes",
+            "recurrence",
+            "rank",
+            "improvementId",
+            "completedAt",
+            "archivedAt",
+            "createdBy",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      },
+      "improvement": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "seq": {
+                "type": "number"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "seq",
+              "title",
+              "status"
+            ]
+          }
+        ]
+      },
+      "memberIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "task",
+      "project",
+      "subtasks",
+      "parent",
+      "labelIds",
+      "blockedBy",
+      "blocking",
+      "improvement",
+      "memberIds"
+    ]
+  },
+  "patch /tasks/{id}": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "organizationId": {
+        "type": "string"
+      },
+      "projectId": {
+        "type": "string"
+      },
+      "parentId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "seq": {
+        "type": "number"
+      },
+      "title": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "status": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "to_do"
+          },
+          {
+            "type": "string",
+            "const": "in_progress"
+          },
+          {
+            "type": "string",
+            "const": "in_review"
+          },
+          {
+            "type": "string",
+            "const": "done"
+          },
+          {
+            "type": "string",
+            "const": "backlog"
+          }
+        ]
+      },
+      "priority": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "none"
+          },
+          {
+            "type": "string",
+            "const": "high"
+          },
+          {
+            "type": "string",
+            "const": "medium"
+          },
+          {
+            "type": "string",
+            "const": "low"
+          },
+          {
+            "type": "string",
+            "const": "urgent"
+          }
+        ]
+      },
+      "assigneeMemberId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "assigneeTeammateId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "startDate": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "dueDate": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "estimateMinutes": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      },
+      "recurrence": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "const": "daily"
+          },
+          {
+            "type": "string",
+            "const": "weekly"
+          },
+          {
+            "type": "string",
+            "const": "monthly"
+          },
+          {
+            "type": "string",
+            "const": "biweekly"
+          }
+        ]
+      },
+      "rank": {
+        "type": "string"
+      },
+      "improvementId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "completedAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "archivedAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "createdBy": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "updatedAt": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "organizationId",
+      "projectId",
+      "parentId",
+      "seq",
+      "title",
+      "description",
+      "status",
+      "priority",
+      "assigneeMemberId",
+      "assigneeTeammateId",
+      "startDate",
+      "dueDate",
+      "estimateMinutes",
+      "recurrence",
+      "rank",
+      "improvementId",
+      "completedAt",
+      "archivedAt",
+      "createdBy",
+      "createdAt",
+      "updatedAt"
+    ]
+  },
+  "delete /tasks/{id}": {
+    "type": "object",
+    "properties": {
+      "deleted": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "deleted"
+    ]
+  },
+  "get /tasks": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "organizationId": {
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "parentId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "seq": {
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "status": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "to_do"
+                },
+                {
+                  "type": "string",
+                  "const": "in_progress"
+                },
+                {
+                  "type": "string",
+                  "const": "in_review"
+                },
+                {
+                  "type": "string",
+                  "const": "done"
+                },
+                {
+                  "type": "string",
+                  "const": "backlog"
+                }
+              ]
+            },
+            "priority": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "none"
+                },
+                {
+                  "type": "string",
+                  "const": "high"
+                },
+                {
+                  "type": "string",
+                  "const": "medium"
+                },
+                {
+                  "type": "string",
+                  "const": "low"
+                },
+                {
+                  "type": "string",
+                  "const": "urgent"
+                }
+              ]
+            },
+            "assigneeMemberId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "assigneeTeammateId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "startDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "dueDate": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "estimateMinutes": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "recurrence": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "const": "daily"
+                },
+                {
+                  "type": "string",
+                  "const": "weekly"
+                },
+                {
+                  "type": "string",
+                  "const": "monthly"
+                },
+                {
+                  "type": "string",
+                  "const": "biweekly"
+                }
+              ]
+            },
+            "rank": {
+              "type": "string"
+            },
+            "improvementId": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "completedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "archivedAt": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "createdBy": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "organizationId",
+            "projectId",
+            "parentId",
+            "seq",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assigneeMemberId",
+            "assigneeTeammateId",
+            "startDate",
+            "dueDate",
+            "estimateMinutes",
+            "recurrence",
+            "rank",
+            "improvementId",
+            "completedAt",
+            "archivedAt",
+            "createdBy",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      },
+      "nextCursor": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "required": [
+      "data",
+      "nextCursor"
+    ]
+  },
+  "post /tasks": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "organizationId": {
+        "type": "string"
+      },
+      "projectId": {
+        "type": "string"
+      },
+      "parentId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "seq": {
+        "type": "number"
+      },
+      "title": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "status": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "to_do"
+          },
+          {
+            "type": "string",
+            "const": "in_progress"
+          },
+          {
+            "type": "string",
+            "const": "in_review"
+          },
+          {
+            "type": "string",
+            "const": "done"
+          },
+          {
+            "type": "string",
+            "const": "backlog"
+          }
+        ]
+      },
+      "priority": {
+        "oneOf": [
+          {
+            "type": "string",
+            "const": "none"
+          },
+          {
+            "type": "string",
+            "const": "high"
+          },
+          {
+            "type": "string",
+            "const": "medium"
+          },
+          {
+            "type": "string",
+            "const": "low"
+          },
+          {
+            "type": "string",
+            "const": "urgent"
+          }
+        ]
+      },
+      "assigneeMemberId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "assigneeTeammateId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "startDate": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "dueDate": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "estimateMinutes": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      },
+      "recurrence": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "const": "daily"
+          },
+          {
+            "type": "string",
+            "const": "weekly"
+          },
+          {
+            "type": "string",
+            "const": "monthly"
+          },
+          {
+            "type": "string",
+            "const": "biweekly"
+          }
+        ]
+      },
+      "rank": {
+        "type": "string"
+      },
+      "improvementId": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "completedAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "archivedAt": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "createdBy": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "updatedAt": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "organizationId",
+      "projectId",
+      "parentId",
+      "seq",
+      "title",
+      "description",
+      "status",
+      "priority",
+      "assigneeMemberId",
+      "assigneeTeammateId",
+      "startDate",
+      "dueDate",
+      "estimateMinutes",
+      "recurrence",
+      "rank",
+      "improvementId",
+      "completedAt",
+      "archivedAt",
+      "createdBy",
+      "createdAt",
+      "updatedAt"
+    ]
+  },
   "get /teammates/{id}/conversations/{conversationId}": {
     "type": "object",
     "properties": {
@@ -21963,6 +25025,19 @@
                     "guardrails": {
                       "type": "array",
                       "items": {}
+                    },
+                    "piiMasking": {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "name": {},
+                        "masked": {}
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "masked"
+                      ]
                     }
                   },
                   "required": [
@@ -22343,6 +25418,10 @@
             },
             {
               "type": "string",
+              "const": "tasks"
+            },
+            {
+              "type": "string",
               "const": "improvements"
             }
           ]
@@ -22392,6 +25471,10 @@
             {
               "type": "string",
               "const": "knowledge"
+            },
+            {
+              "type": "string",
+              "const": "tasks"
             },
             {
               "type": "string",
@@ -24252,6 +27335,10 @@
                     {
                       "type": "string",
                       "const": "knowledge"
+                    },
+                    {
+                      "type": "string",
+                      "const": "tasks"
                     },
                     {
                       "type": "string",

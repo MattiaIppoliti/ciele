@@ -17,17 +17,25 @@ import * as improvements from "./improvements";
 import * as inbox from "./inbox";
 import * as integrations from "./integrations";
 import * as knowledge from "./knowledge";
+import * as memberNotifications from "./member-notifications";
 import * as memory from "./memory";
 import * as organization from "./organization";
+import * as projectFiles from "./project-files";
+import * as projectsWork from "./projects-work";
 import * as publish from "./publish";
 import * as reviews from "./reviews";
 import * as routines from "./routines";
+import * as taskComments from "./task-comments";
+import * as taskLabels from "./task-labels";
+import * as tasks from "./tasks";
 import * as teammateGrants from "./teammate-grants";
 import * as teammateProvision from "./teammate-provision";
 import * as teammateRuntime from "./teammate-runtime";
 import * as teammates from "./teammates";
 import * as usage from "./usage";
 import * as threadPreferences from "./thread-preferences";
+import * as workReads from "./work-reads";
+import * as workViews from "./work-views";
 import type { MutatedEntity } from "./entities";
 import { OperationError, type Operation, type OperationContext } from "./operation";
 
@@ -87,6 +95,16 @@ const MODULES: Record<string, unknown>[] = [
   teammates,
   usage,
   threadPreferences,
+  // The work domain (#1062): Ciele AI manages Projects and Tasks with the
+  // chatting Member's own Role, like any other part of the console.
+  memberNotifications,
+  projectFiles,
+  projectsWork,
+  taskComments,
+  taskLabels,
+  tasks,
+  workReads,
+  workViews,
 ];
 
 function isOperation(value: unknown): value is PlatformOperation {
@@ -146,6 +164,11 @@ const EXCLUDED_PREFIXES = [
   "members.leave",
   // Personal console triage belongs to the Member, not an agent turn.
   "threads.",
+  // A file's bytes reach the bucket through the console's upload route only;
+  // the steps that bracket it mean nothing without the bytes (#1068).
+  "files.prepare",
+  "files.create",
+  "files.discard",
 ];
 
 export type PlatformOperationPolicy = "excluded" | "confirm" | "run";

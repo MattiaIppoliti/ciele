@@ -31,13 +31,19 @@ import { DEFAULT_WIDTH as SIDEBAR_DEFAULT_WIDTH } from "@/components/shell/sideb
 import type { SnippetTab } from "@/lib/developer-panel/types";
 import { chatSession } from "@/lib/chat-session";
 import { TopBarSlotsProvider } from "@/components/shell/top-bar-slots";
-import { shellHotkey } from "@/components/shell/shell-hotkeys";
+import { requestCreate, resolveHotkey, type PendingSequence } from "@/components/shell/shell-hotkeys";
+import { ShortcutsDialog } from "@/components/shell/shortcuts-dialog";
 import { isTypingTarget } from "@/lib/typing-target";
+import { canManageMembers } from "@/lib/rbac";
+import { PERSONAL_SETTINGS_HOME } from "@/components/settings/settings-nav";
+import type { Role } from "@agent-hub/core";
 
 interface ShellContextValue {
   /** Streamed from the server — resolve via {@link useShellAssistants}. */
   assistants: Promise<AssistantSummary[]>;
   openFind: () => void;
+  /** The `?` dialog, also offered in the account and Support menus (#1071). */
+  openShortcuts: () => void;
   /** Whether the sidebar is docked (visible in the layout flow). Only consulted
    * from `md` up, below it the sidebar is never in the flow at all. */
   sidebarDocked: boolean;
@@ -118,14 +124,32 @@ export function useShellAssistants(): AssistantSummary[] {
 export function ShellProvider({
   assistants,
   findScope,
+  role,
   children,
 }: {
   assistants: Promise<AssistantSummary[]>;
   /** Organization, Member and Role, as one string: the Find store's identity. */
   findScope: Promise<string>;
+  /** The Member's Role, for the one shortcut whose target depends on it (`G S`). */
+  role: Promise<Role | null>;
   children: React.ReactNode;
 }) {
+  // Organization settings are an admin's; everyone else's Settings are their
+  // own. A ref, read at the keypress: nothing renders from it.
+  const managesSettings = useRef(false);
+  useEffect(() => {
+    let live = true;
+    void role.then((value) => {
+      if (live) managesSettings.current = canManageMembers(value);
+    });
+    return () => {
+      live = false;
+    };
+  }, [role]);
   const [findOpen, setFindOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // A `G` waiting for its second key; a ref, because no render depends on it.
+  const pendingSequence = useRef<PendingSequence>(null);
   const [sidebarDocked, setSidebarDocked] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [rail, dispatchRail] = useReducer(rightRailReducer, INITIAL_RIGHT_RAIL);
@@ -209,7 +233,10 @@ export function ShellProvider({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const command = shellHotkey(
+      // Last in line, so a field with its own handler (the comment composer,
+      // Find's Cmd/Ctrl+Enter) has already answered and prevented it.
+      if (event.defaultPrevented) return;
+      const { command, pending } = resolveHotkey(
         {
           key: event.key,
           metaKey: event.metaKey,
@@ -218,14 +245,38 @@ export function ShellProvider({
           altKey: event.altKey,
           typing: isTypingTarget(event.target),
         },
-        { pageHasApiDomains }
+        { pageHasApiDomains },
+        pendingSequence.current,
+        Date.now()
       );
+      pendingSequence.current = pending;
       if (!command) return;
+      if (command === "submit") {
+        // Submits the form being written in: a textarea's, or any field's
+        // inside a dialog. Anywhere else the chord stays the page's.
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        const form = target?.closest("form");
+        if (form && (target instanceof HTMLTextAreaElement || target?.closest("[role=dialog]"))) {
+          event.preventDefault();
+          form.requestSubmit();
+        }
+        return;
+      }
       // Also keeps the browser's own answer (Cmd+O's "open file") away.
       event.preventDefault();
-      if (command === "find") setFindOpen(true);
+      if (typeof command === "object") {
+        router.push(command.go === "settings" && !managesSettings.current ? PERSONAL_SETTINGS_HOME : navItem(command.go).href);
+      }
+      else if (command === "find") setFindOpen(true);
+      else if (command === "shortcuts") setShortcutsOpen(true);
+      else if (command === "toggleSidebar") setSidebarDocked((docked) => !docked);
       else if (command === "developerPanel") dispatchRail({ type: "toggle", occupant: "developer" });
-      else {
+      else if (command === "newTask") {
+        // The open page creates it if it can; otherwise All tasks does.
+        if (!requestCreate("task")) router.push("/tasks?new=task");
+      } else if (command === "newProject") {
+        if (!requestCreate("project")) router.push("/projects?new=project");
+      } else if (command === "newChat") {
         router.push(navItem("teammates").href);
         chatSession.requestNewChat();
       }
@@ -248,6 +299,7 @@ export function ShellProvider({
     () => ({
       assistants,
       openFind: () => setFindOpen(true),
+      openShortcuts: () => setShortcutsOpen(true),
       sidebarDocked,
       setSidebarDocked,
       sidebarWidth,
@@ -296,6 +348,8 @@ export function ShellProvider({
       <Suspense fallback={null}>
         <ShellCommandMenu open={findOpen} onOpenChange={setFindOpen} scope={findScope} />
       </Suspense>
+      {/* Mounted while closed, so closing plays the same path as opening. */}
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </ShellContext.Provider>
   );
 }

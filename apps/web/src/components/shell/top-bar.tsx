@@ -1,7 +1,7 @@
 "use client";
 
 import { prefetchFind } from "@/lib/find-client";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Search } from "lucide-react";
 import { Badge } from "@agent-hub/ui";
 import { Button as CieleButton, Hint } from "@agent-hub/ui";
@@ -17,12 +17,15 @@ import {
 } from "@/components/motion/breadcrumb";
 import { ScopeSwitcher } from "@/components/shell/scope-switcher";
 import { DeveloperPanelButton } from "@/components/developer-panel/developer-panel-button";
-import { useShell } from "@/components/shell/shell-provider";
+import { useShell, useShellAssistants } from "@/components/shell/shell-provider";
 import { PortalSlot, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { DEFAULT_WIDTH, isRailWidth } from "@/components/shell/sidebar-drag";
-import { breadcrumbTrail } from "@/components/shell/breadcrumb-trail";
+import { breadcrumbTrail, documentTitle } from "@/components/shell/breadcrumb-trail";
+import { assistantIdFromPath } from "@/components/shell/nav";
 import { useUnderlyingPathname } from "@/components/shell/use-underlying-pathname";
 import { useTopBarContent } from "@/components/shell/top-bar-slots";
+import { settingsTabLabel } from "@/components/settings/settings-nav";
+import { usePathname } from "next/navigation";
 
 const subscribeNoop = () => () => {};
 
@@ -51,8 +54,33 @@ export function TopBar({ demo }: { demo: boolean }) {
   // The page under an open Settings dialog: the bar belongs to it, not to the
   // dialog, the same way the sidebar keeps it lit.
   const underlying = useUnderlyingPathname();
+  const pathname = usePathname();
   const { title, actions, form, crumbLabel } = useTopBarContent();
   const trail = breadcrumbTrail(underlying, crumbLabel);
+  // The trail is the page's name, so it is also the tab's (#1073). Next's
+  // metadata writes the root title into <head> after hydration on a hard load,
+  // so the title is held rather than set once.
+  // Settings is a dialog over the page, so it names its own tab rather than
+  // the page under it, and a switch between tabs is announced.
+  const settingsTab = settingsTabLabel(pathname);
+  // An Assistant's sections share labels, so the title names the Assistant.
+  // The bar already waits for this list (the scope switcher reads it), so
+  // reading it here adds no wait.
+  const assistants = useShellAssistants();
+  const scopedId = assistantIdFromPath(underlying);
+  const assistantName = scopedId ? assistants.find((a) => a.id === scopedId)?.title : null;
+  const tabTitle = settingsTab
+    ? `${settingsTab} · Settings · Ciele`
+    : documentTitle(trail, underlying, assistantName, crumbLabel !== null);
+  useEffect(() => {
+    const apply = () => {
+      if (document.title !== tabTitle) document.title = tabTitle;
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [tabTitle]);
   const isLocalhost = useIsLocalhost();
   // Desktop layouts put Find and the sidebar control in the bar when the
   // sidebar is hidden or reduced to its icon rail. Touch layouts always show
