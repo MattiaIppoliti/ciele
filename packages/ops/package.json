@@ -17,6 +17,8 @@
   },
   "devDependencies": {
     "@agent-hub/eslint-config": "workspace:*",
+    "@electric-sql/pglite": "^0.5.4",
+    "@electric-sql/pglite-socket": "0.2.7",
     "@types/node": "^20.19.43",
     "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^9.39.4",

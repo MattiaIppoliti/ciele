@@ -61,6 +61,8 @@ export async function runApiOperation<In, Out>(
       // nothing downstream may branch on this.
       apiKeyId: ctx.keyId,
       db: ctx.db,
+      // Service role pinned to the key's Organization; the Rust service pins it the same way.
+      dbScope: "pinned",
       // Ports need more Db surface than the pinned view exposes; the raw
       // service Db is confined to them, never handed to operations directly.
       ports: webOperationPorts(getApiV1Db(), {

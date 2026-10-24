@@ -19,6 +19,16 @@ export {
   type OperationContext,
   type TeammateActor,
 } from "./operation";
+// The Rust service seam (#1121): which operations run there, and the client that sends them.
+export {
+  createHttpRemoteExecutor,
+  registerRemoteExecutor,
+  RUST_OPERATIONS,
+  signAssertion,
+  type DbScope,
+  type RemoteExecutor,
+  type RemoteOperationCall,
+} from "./remote";
 
 // Assistants domain (#620): the extraction pattern later domains follow.
 export {

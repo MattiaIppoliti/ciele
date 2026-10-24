@@ -14,3 +14,4 @@
  * migration directories via `extraMigrationDirs`.
  */
 export { createSchemaLoadedPglite } from "./supabase-contract-harness";
+export { createPgliteSupabaseClient } from "./postgrest-shim";

@@ -100,6 +100,24 @@ export async function register() {
         : null,
   });
 
+  // The Rust service (#1121, map #1111). Operations named in
+  // CIELE_RUST_OPERATIONS run there; every other one, and every one when any
+  // of the three is unset, runs here as before. Never in the mock demo: the
+  // service talks to Postgres, and the demo has none.
+  const rustApiUrl = process.env.CIELE_RUST_API_URL;
+  const rustApiSecret = process.env.CIELE_RUST_API_SECRET;
+  const rustOperations = (process.env.CIELE_RUST_OPERATIONS ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+  if (rustApiUrl && rustApiSecret && rustOperations.length > 0 && isSupabaseConfigured()) {
+    const { createHttpRemoteExecutor, registerRemoteExecutor } = await import("@ciele/ops");
+    registerRemoteExecutor(
+      createHttpRemoteExecutor({ baseUrl: rustApiUrl, secret: rustApiSecret }),
+      rustOperations
+    );
+  }
+
   await import("@/ee/register");
 }
 

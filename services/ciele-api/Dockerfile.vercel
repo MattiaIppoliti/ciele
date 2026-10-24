@@ -1,0 +1,15 @@
+FROM rust:1.90.0-bookworm@sha256:3914072ca0c3b8aad871db9169a651ccfce30cf58303e5d6f2db16d1d8a7e58f AS build
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+RUN cargo build --release --locked
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /app/target/release/ciele-api /usr/local/bin/ciele-api
+ENV HOST=0.0.0.0 PORT=8080
+USER 65532:65532
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/ciele-api"]

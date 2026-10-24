@@ -26,6 +26,8 @@ export async function runOperation<In, Out>(
     actorEmail: session.email,
     actorName: profileName(session.profile) ?? null,
     db,
+    // The Member's own RLS session, which the Rust service rebuilds for a forwarded operation.
+    dbScope: "session",
     ports: webOperationPorts(db, {
       organizationId: session.organization.id,
       actorEmail: session.email,

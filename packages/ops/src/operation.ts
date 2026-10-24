@@ -30,6 +30,7 @@ import type { Db, DbTableInsert } from "@agent-hub/db";
 import { observe } from "@agent-hub/diagnostics";
 import type { ZodType } from "zod";
 import type { MutatedEntity } from "./entities";
+import { remoteExecutorFor, type DbScope } from "./remote";
 
 /** One Work Activity entry as an operation records it (#1051): the table's own insert shape. */
 export type WorkActivityEntry = DbTableInsert<"workActivity">;
@@ -106,6 +107,14 @@ export interface OperationContext {
    * Operations never construct a Db and never widen what it can reach.
    */
   db: Db;
+  /**
+   * Which Db the surface resolved, said in a form another process can rebuild:
+   * the Member's RLS session or the org-pinned service role. Set by the console
+   * and `/api/v1` and nowhere else, and only a context that carries it can be
+   * forwarded to the Rust service (`remote.ts`); every other caller keeps
+   * running the TypeScript body.
+   */
+  dbScope?: DbScope;
   /**
    * Host ports for side effects that need more Db surface than the pinned
    * view exposes (job enqueueing, the OKF persist pipeline, crawls). Each
@@ -438,20 +447,8 @@ export type OperationCapability =
   | "manageApiKeys"
   | "changeRoles";
 
-/**
- * A caller-attributable failure. `code` maps to an HTTP status on the API
- * surface (not_found → 404, invalid_input → 400, conflict → 409) and to a
- * thrown message on the web surface, operations throw one vocabulary, each
- * surface translates once.
- */
-export class OperationError extends Error {
-  readonly code: "not_found" | "invalid_input" | "conflict";
-  constructor(code: OperationError["code"], message: string) {
-    super(message);
-    this.name = "OperationError";
-    this.code = code;
-  }
-}
+// Its own module so `remote.ts` can throw one without importing this file.
+export { OperationError } from "./errors";
 
 /**
  * What a run does to the Organization, declared by the operation itself so no
@@ -479,7 +476,10 @@ export interface Operation<In, Out> {
   run(ctx: OperationContext, input: In): Promise<Out>;
 }
 
-/** Observe every caller through the same interface; callers still authorize. */
+/**
+ * Observe every caller through the same interface; callers still authorize.
+ * An operation routed to the Rust service runs there instead (`remote.ts`).
+ */
 export function defineOperation<In, Out>(
   op: Operation<In, Out>
 ): Operation<In, Out> {
@@ -488,6 +488,19 @@ export function defineOperation<In, Out>(
     run: (ctx, input) => observe({
       name: "operation",
       context: { operation: op.name, organizationId: ctx.organizationId },
-    }, () => op.run(ctx, input)),
+    }, () => {
+      const remote = remoteExecutorFor(op.name, ctx);
+      if (!remote || !ctx.dbScope) return op.run(ctx, input);
+      return remote({
+        operation: op.name,
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+        role: ctx.role,
+        dbScope: ctx.dbScope,
+        actorEmail: ctx.actorEmail,
+        input,
+        signal: ctx.signal,
+      }) as Promise<Out>;
+    }),
   };
 }
