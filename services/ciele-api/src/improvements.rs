@@ -24,7 +24,7 @@ const STATUSES: [&str; 5] = ["to_do", "in_progress", "in_review", "done", "archi
 /// One `ImprovementListItem`: `toImprovement` plus the linked message count.
 /// The count subquery runs under the caller's RLS, as PostgREST's embedded
 /// `improvement_messages(id.count())` does.
-const LIST_ITEM_JSON: &str = "jsonb_build_object( \
+pub(crate) const LIST_ITEM_JSON: &str = "jsonb_build_object( \
        'id', i.id, 'organizationId', i.organization_id, 'seq', i.seq, \
        'title', i.title, 'description', i.description, 'status', i.status, \
        'priority', i.priority, 'tags', coalesce(i.tags, '[]'::jsonb), \
@@ -99,7 +99,7 @@ pub async fn list_page(
 
 /// `finalizeImprovementPage`: rows were fetched with `limit + 1`, so a cursor
 /// exists only when the extra row came back.
-fn finalize_page(rows: Value, limit: usize) -> Value {
+pub(crate) fn finalize_page(rows: Value, limit: usize) -> Value {
     let mut items = match rows {
         Value::Array(items) => items,
         _ => Vec::new(),

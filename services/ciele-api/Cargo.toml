@@ -17,9 +17,15 @@ sqlx = { version = "0.8", default-features = false, features = ["postgres", "run
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tower = { version = "0.5", features = ["util"] }
+vercel_runtime = { version = "2", features = ["axum"] }
+
+# The Vercel Function; src/main.rs stays the self-host binary.
+[[bin]]
+name = "ops"
+path = "api/ops.rs"
 
 [dev-dependencies]
-tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 
 [profile.release]

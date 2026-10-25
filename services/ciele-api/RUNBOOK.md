@@ -25,25 +25,29 @@ in TypeScript instead.` at startup and keeps running it here.
 
 ## Deploying on Vercel
 
-The service runs as a Vercel container: `vercel.json` routes every path to
-the `api` service built from `Dockerfile.vercel`, in `fra1`, the web app's
-region. Deploy from a clean export of a commit, never from a working tree, so
-what runs is what was reviewed:
+On Vercel the service is a Rust Function, `api/ops.rs`, which serves the
+self-host binary's router through `vercel_runtime`'s axum layer. `vercel.json`
+rewrites every path to it, in `fra1`, the web app's region. Deploy from a
+clean export of a commit, never from a working tree, so what runs is what was
+reviewed:
 
 ```sh
 git archive <commit> services/ciele-api | tar -x -C /tmp/ciele-api --strip-components=2
 cd /tmp/ciele-api && vercel link --project <rust project> && vercel deploy --prod
 ```
 
-Without `vercel.json` the build succeeds and every path answers Vercel's
-`404 NOT_FOUND`, because nothing tells Vercel there is a server to start.
+Not a container. Vercel's container runtime serves one request per instance,
+and after any request lasting more than a few milliseconds it held the next
+one for about a second: back-to-back `alerts.list` calls took ~1 s each while
+the handler ran in 37 ms, and a handler that only slept 40 ms did the same.
+As a Function the same calls take 0.16 to 0.32 s from a laptop.
 
 The project needs, for each environment it serves: `DATABASE_URL` (the
 Supabase session pooler, see below), `CIELE_RUST_API_SECRET` (the same value
-as the web project's), `PORT=8080` and `DATABASE_MAX_CONNECTIONS` (3 per
-instance keeps a burst of instances under the pooler's limit). The web
-project's `CIELE_RUST_API_URL` and the service's own deployment must come from
-the same commit: the assertion format is part of the contract.
+as the web project's) and `DATABASE_MAX_CONNECTIONS` (3 per instance keeps a
+burst of instances under the pooler's limit). The web project's
+`CIELE_RUST_API_URL` and the service's own deployment must come from the same
+commit: the assertion format is part of the contract.
 
 ## Database connection
 

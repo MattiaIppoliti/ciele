@@ -1,7 +1,7 @@
 import { listImprovementsOp, listImprovementsPageOp, proposeSuggestedFixOp, dismissSuggestedFixOp } from "./improvements";
 import { createTaskLabelOp, deleteTaskLabelOp, listTaskLabelsOp, updateTaskLabelOp } from "./task-labels";
 import { spawn, type ChildProcess } from "node:child_process";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -63,6 +63,20 @@ let organizationId: string;
 let foreignOrganizationId: string;
 let crowdedOrganizationId: string;
 let editor: { id: string; email: string };
+let outsider: string;
+
+// Built, not written: the mirror's secret scan reads a literal key as leaked.
+const KEY_VALID = `ciele_sk_${randomBytes(18).toString("base64url")}`;
+const KEY_REVOKED = `ciele_sk_${randomBytes(18).toString("base64url")}`;
+const KEY_ORPHANED = `ciele_sk_${randomBytes(18).toString("base64url")}`;
+const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
+
+/** A user with no seat anywhere: a key they minted outlived their membership. */
+async function seedOutsider(): Promise<string> {
+  const id = randomUUID();
+  await pg.query(`insert into auth.users (id, email) values ($1, 'gone@parity-test.edu')`, [id]);
+  return id;
+}
 
 async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -443,6 +457,19 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
       await seedLabel(`lb-delete-${twin}`, organizationId, `Delete ${twin}`);
     }
 
+    outsider = await seedOutsider();
+    for (const [id, secret, createdBy, revoked] of [
+      ["00000000-0000-4000-8000-000000000001", KEY_VALID, editor.id, false],
+      ["00000000-0000-4000-8000-000000000002", KEY_REVOKED, editor.id, true],
+      ["00000000-0000-4000-8000-000000000003", KEY_ORPHANED, outsider, false],
+    ] as const) {
+      await pg.query(
+        `insert into public.organization_api_keys (id, organization_id, name, secret_hash, secret_hint, role, created_by, revoked_at)
+         values ($1, $2, 'parity', $3, 'ciele_sk_xxxx', 'viewer', $4, case when $5 then now() end)`,
+        [id, organizationId, sha256(secret), createdBy, revoked]
+      );
+    }
+
     const dbPort = await freePort();
     socket = new PGLiteSocketServer({ db: pg, port: dbPort, host: "127.0.0.1" });
     await socket.start();
@@ -455,6 +482,8 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
         DATABASE_URL: `postgres://postgres@127.0.0.1:${dbPort}/postgres?sslmode=disable`,
         // PGlite is one backend; the socket server serialises behind it anyway.
         DATABASE_MAX_CONNECTIONS: "1",
+        // PGlite has one session: no second pool with its own role.
+        DATABASE_DIRECT_ROLE: "",
         CIELE_RUST_API_SECRET: SECRET,
         PORT: String(port),
         RUST_LOG: "warn",
@@ -781,6 +810,85 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
         );
         expect((rust as { nextCursor: unknown }).nextCursor).toBe((typescript as { nextCursor: unknown }).nextCursor);
       }
+    });
+  });
+
+  describe("direct /api/v1 routes", () => {
+    const get = (path: string, authorization?: string) =>
+      fetch(`${serviceUrl}${path}`, { headers: authorization ? { authorization } : {} });
+
+    it("answers GET /api/v1/alerts with what the TypeScript route answers for the same key", async () => {
+      registerRemoteExecutor(null);
+      const typescript = await listAlertsOp.run(context("pinned"), {});
+      const response = await get("/api/v1/alerts", `Bearer ${KEY_VALID}`);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { data: unknown[] };
+      expect(normalize(body.data)).toEqual(normalize(typescript));
+      expect(body.data.map((alert) => (alert as { id: string }).id)).not.toContain("al-foreign");
+    });
+
+    it("answers GET /api/v1/task-labels with what the TypeScript route answers", async () => {
+      registerRemoteExecutor(null);
+      const typescript = await listTaskLabelsOp.run(context("pinned"), {});
+      const response = await get("/api/v1/task-labels", `Bearer ${KEY_VALID}`);
+      expect(response.status).toBe(200);
+      expect(normalize(((await response.json()) as { data: unknown[] }).data)).toEqual(normalize(typescript));
+    });
+
+    it("pages GET /api/v1/improvements the way the TypeScript route does, cursor by cursor", async () => {
+      registerRemoteExecutor(null);
+      let cursor: string | null = null;
+      const seen: string[] = [];
+      do {
+        // The route reads ?limit= and ?cursor= through parseListParams.
+        const typescript = (await listImprovementsPageOp.run(context("pinned"), { limit: 2, cursor })) as {
+          items: unknown[];
+          nextCursor: string | null;
+        };
+        const query: string = cursor ? `?limit=2&cursor=${cursor}` : "?limit=2";
+        const response = await get(`/api/v1/improvements${query}`, `Bearer ${KEY_VALID}`);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { data: { id: string }[]; nextCursor: string | null };
+        expect(normalize(body.data)).toEqual(normalize(typescript.items));
+        expect(body.nextCursor).toBe(typescript.nextCursor);
+        seen.push(...body.data.map((item) => item.id));
+        cursor = body.nextCursor;
+      } while (cursor);
+      expect(seen).toEqual(["imp-5", "imp-4", "imp-3", "imp-2", "imp-1"]);
+    });
+
+    it("stamps the key as used", async () => {
+      const { rows } = await pg.query<{ used: boolean }>(
+        `select last_used_at is not null as used from public.organization_api_keys where secret_hash = $1`,
+        [sha256(KEY_VALID)]
+      );
+      expect(rows[0]?.used).toBe(true);
+    });
+
+    it("refuses every key auth.ts refuses, with the same body", async () => {
+      const refused = { error: { code: "unauthorized", message: "Provide a valid API key as a Bearer token" } };
+      for (const path of ["/api/v1/task-labels", "/api/v1/improvements"]) {
+        const response = await get(path, `Bearer ${KEY_REVOKED}`);
+        expect([path, response.status]).toEqual([path, 401]);
+        expect(await response.json()).toEqual(refused);
+      }
+      for (const authorization of [
+        undefined,
+        `Basic ${KEY_VALID}`,
+        `Bearer  ${KEY_VALID}`,
+        `Bearer ciele_sk_${randomBytes(18).toString("base64url")}`,
+        `Bearer ${KEY_REVOKED}`,
+        `Bearer ${KEY_ORPHANED}`,
+      ]) {
+        const response = await get("/api/v1/alerts", authorization);
+        expect([authorization, response.status]).toEqual([authorization, 401]);
+        expect(await response.json()).toEqual(refused);
+      }
+      const { rows } = await pg.query<{ used: boolean }>(
+        `select last_used_at is not null as used from public.organization_api_keys where secret_hash = any($1)`,
+        [[sha256(KEY_REVOKED), sha256(KEY_ORPHANED)]]
+      );
+      expect(rows.map((row) => row.used)).toEqual([false, false]);
     });
   });
 });

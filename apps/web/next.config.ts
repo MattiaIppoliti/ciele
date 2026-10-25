@@ -60,6 +60,24 @@ const nextConfig: NextConfig = {
     // standalone bundle. The terminal one-liner is served from here too.
     "/api/local-connector/runtime": [connectorArtifact],
   },
+  // /api/v1 routes the Rust service answers itself, key check included
+  // (services/ciele-api/src/direct.rs, map #1111). Listed in
+  // CIELE_RUST_DIRECT_ROUTES, they are proxied to it before any route here
+  // runs, so no Node function starts for them. Read at build time: changing
+  // the list takes a redeploy. A path the service does not serve is ignored.
+  async rewrites() {
+    const base = process.env.CIELE_RUST_API_URL?.replace(/\/+$/, "");
+    const served = new Set(["/api/v1/alerts", "/api/v1/task-labels", "/api/v1/improvements"]);
+    const routes = (process.env.CIELE_RUST_DIRECT_ROUTES ?? "")
+      .split(",")
+      .map((route) => route.trim())
+      .filter((route) => served.has(route));
+    return {
+      beforeFiles: base ? routes.map((source) => ({ source, destination: `${base}${source}` })) : [],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
   async headers() {
     // Crawlers still need these resources to render pages and social cards.
     // Exclude them from search results without blocking their fetches.

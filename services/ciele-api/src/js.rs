@@ -26,37 +26,40 @@ fn is_js_whitespace(c: char) -> bool {
     )
 }
 
-/// `Number(raw)` kept only when it is a safe integer, what a numeric cursor
-/// goes through on the TypeScript side. Covers what `Number` accepts that a
-/// float parser does not (`0x`/`0o`/`0b`, surrounding whitespace, a blank
-/// string meaning 0) and refuses what a float parser accepts that `Number`
-/// does not (`inf`, `nan`).
-pub fn js_number_to_safe_integer(raw: &str) -> Option<i64> {
-    const MAX_SAFE: f64 = 9_007_199_254_740_991.0;
+/// `Number(raw)`: `NaN` where JavaScript answers `NaN`. Covers what `Number`
+/// accepts that a float parser does not (`0x`/`0o`/`0b`, surrounding
+/// whitespace, a blank string meaning 0) and refuses what a float parser
+/// accepts that `Number` does not (`inf`, `nan`).
+pub fn js_number(raw: &str) -> f64 {
     let text = js_trim(raw);
     if text.is_empty() {
-        return Some(0);
+        return 0.0;
     }
     let radix = |prefix: &str, radix: u32| {
         text.strip_prefix(prefix)
             .or_else(|| text.strip_prefix(&prefix.to_uppercase()))
-            .map(|digits| u64::from_str_radix(digits, radix).ok().map(|n| n as f64))
+            .map(|digits| u64::from_str_radix(digits, radix).map_or(f64::NAN, |n| n as f64))
     };
-    let value = match radix("0x", 16)
+    if let Some(parsed) = radix("0x", 16)
         .or_else(|| radix("0o", 8))
         .or_else(|| radix("0b", 2))
     {
-        Some(parsed) => parsed?,
-        None => {
-            let bare = text.trim_start_matches(['+', '-']);
-            let numeric = bare.starts_with(|c: char| c.is_ascii_digit() || c == '.');
-            if !numeric && bare != "Infinity" {
-                return None;
-            }
-            text.parse::<f64>().ok()?
-        }
-    };
-    (value.fract() == 0.0 && value.abs() <= MAX_SAFE).then_some(value as i64)
+        return parsed;
+    }
+    let bare = text.trim_start_matches(['+', '-']);
+    let numeric = bare.starts_with(|c: char| c.is_ascii_digit() || c == '.');
+    if !numeric && bare != "Infinity" {
+        return f64::NAN;
+    }
+    text.parse::<f64>().unwrap_or(f64::NAN)
+}
+
+/// `Number(raw)` kept only when it is a safe integer, what a numeric cursor
+/// goes through on the TypeScript side.
+pub fn js_number_to_safe_integer(raw: &str) -> Option<i64> {
+    const MAX_SAFE: f64 = 9_007_199_254_740_991.0;
+    let value = js_number(raw);
+    (value.is_finite() && value.fract() == 0.0 && value.abs() <= MAX_SAFE).then_some(value as i64)
 }
 
 #[cfg(test)]
@@ -73,5 +76,16 @@ mod tests {
     fn counts_utf16_code_units() {
         assert_eq!(js_length("😀"), 2);
         assert_eq!(js_length("é"), 1);
+    }
+
+    #[test]
+    fn reads_numbers_the_way_number_does() {
+        assert_eq!(js_number(" 2.7 "), 2.7);
+        assert_eq!(js_number(""), 0.0);
+        assert_eq!(js_number("0x10"), 16.0);
+        assert!(js_number("abc").is_nan());
+        assert!(js_number("inf").is_nan());
+        assert!(js_number("-0x10").is_nan());
+        assert_eq!(js_number("-Infinity"), f64::NEG_INFINITY);
     }
 }

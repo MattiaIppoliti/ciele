@@ -172,20 +172,37 @@ export function createHttpRemoteExecutor(options: {
   const send = options.fetch ?? fetch;
   const base = options.baseUrl.replace(/\/+$/, "");
   return async (call) => {
+    const started = performance.now();
     const timeout = AbortSignal.timeout(options.timeoutMs ?? 10_000);
     const body = JSON.stringify(call.input ?? {});
+    const assertion = await signAssertion(options.secret, call, body);
+    const signed = performance.now();
     const response = await send(`${base}/v1/ops/${encodeURIComponent(call.operation)}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        [ASSERTION_HEADER]: await signAssertion(options.secret, call, body),
+        [ASSERTION_HEADER]: assertion,
       },
       body,
       signal: call.signal ? AbortSignal.any([call.signal, timeout]) : timeout,
     });
+    const answered = performance.now();
     const answer = (await response.json().catch(() => null)) as
       | { result?: unknown; error?: { code?: string; message?: string } }
       | null;
+    // Where the hop's time goes (map #1111): the service itself logs its own
+    // share, so the two lines together split a slow call.
+    console.info(
+      JSON.stringify({
+        event: "rust.hop",
+        operation: call.operation,
+        status: response.status,
+        signMs: Math.round(signed - started),
+        responseMs: Math.round(answered - signed),
+        bodyMs: Math.round(performance.now() - answered),
+        at: new Date(started + performance.timeOrigin).toISOString(),
+      })
+    );
     if (response.ok && answer && "result" in answer) return answer.result;
     const code = answer?.error?.code ?? "";
     const message = answer?.error?.message ?? `ciele-api answered ${response.status}`;

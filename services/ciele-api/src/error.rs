@@ -52,6 +52,15 @@ impl ApiError {
         )
     }
 
+    /// `/api/v1`'s own 401, word for word (`lib/api-v1/auth.ts`).
+    pub fn unauthorized_key() -> Self {
+        Self::new(
+            StatusCode::UNAUTHORIZED,
+            "unauthorized",
+            "Provide a valid API key as a Bearer token",
+        )
+    }
+
     pub fn forbidden() -> Self {
         Self::new(
             StatusCode::FORBIDDEN,

@@ -1,0 +1,23 @@
+[package]
+name = "html-extract-wasm"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+scraper = "0.24"
+ego-tree = "0.10"
+serde_json = "1"
+url = "2"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+panic = "abort"
+# No symbol names: they carry crate hashes, which RUSTFLAGS (machine paths)
+# change, so an unstripped module differs per machine.
+strip = true

@@ -1,7 +1,9 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import * as cheerio from "cheerio";
 import { pageBudget } from "@agent-hub/core";
+import { reportError } from "@agent-hub/diagnostics";
 import type { CrawledPage, CrawlOptions } from "./apify";
+import { extractPageWasm } from "./html-wasm";
 import {
   EgressPolicyError,
   validateEgressTarget,
@@ -131,7 +133,25 @@ function normalizeUrl(raw: string): string {
 const SKIP_EXTENSIONS =
   /\.(pdf|zip|rar|7z|png|jpe?g|gif|svg|webp|ico|css|js|mjs|json|xml|rss|mp[34]|wav|avi|mov|webm|woff2?|ttf|eot|docx?|xlsx?|pptx?)$/i;
 
+/**
+ * One crawled page's title, text and links. Runs the Rust extractor
+ * (`html-wasm.ts`); if the module fails, this one page falls back to cheerio,
+ * whose output the Rust port matches (`html-wasm.test.ts`).
+ */
 export function extractPage(
+  html: string,
+  url: string
+): { page: CrawledPage | null; links: string[] } {
+  try {
+    return extractPageWasm(html, url);
+  } catch (error) {
+    reportError("crawl.html_wasm", error, {});
+    return extractPageCheerio(html, url);
+  }
+}
+
+/** The reference implementation, and the fallback. */
+export function extractPageCheerio(
   html: string,
   url: string
 ): { page: CrawledPage | null; links: string[] } {

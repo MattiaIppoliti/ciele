@@ -13,6 +13,7 @@
 
 pub mod alerts;
 pub mod assertion;
+pub mod direct;
 pub mod error;
 pub mod improvements;
 pub mod input;
@@ -23,7 +24,7 @@ pub mod task_labels;
 
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use axum::body::Bytes;
 use axum::extract::{Path, State};
@@ -39,12 +40,93 @@ use error::ApiError;
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
+    /// `service_role` for the whole session: the `/api/v1` routes this
+    /// service answers itself (`direct.rs`) run one statement each on it.
+    pub direct_pool: PgPool,
     pub secret: Arc<[u8]>,
+}
+
+/// The service's state from its environment, shared by the self-host binary
+/// (`src/main.rs`) and the Vercel Function (`api/ops.rs`).
+///
+/// Prepared statements are cached per connection, which a transaction-mode
+/// pooler breaks: point DATABASE_URL at Postgres directly or at a
+/// session-mode pooler. See RUNBOOK.md.
+pub async fn state_from_env() -> Result<AppState, Box<dyn std::error::Error + Send + Sync>> {
+    let database_url = required_env("DATABASE_URL")?;
+    let secret = required_env("CIELE_RUST_API_SECRET")?;
+    if secret.len() < 32 {
+        return Err("CIELE_RUST_API_SECRET must be at least 32 bytes".into());
+    }
+    let max_connections = std::env::var("DATABASE_MAX_CONNECTIONS")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(10);
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(max_connections)
+        .connect(&database_url)
+        .await?;
+    // The direct routes' session role, `service_role` unless
+    // DATABASE_DIRECT_ROLE says otherwise. Empty means the operation pool's
+    // own connections: the parity test's PGlite is one session shared with
+    // the TypeScript side, where a second pool's statements would collide.
+    let direct_role =
+        std::env::var("DATABASE_DIRECT_ROLE").unwrap_or_else(|_| "service_role".into());
+    if !direct_role
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c == '_')
+    {
+        return Err("DATABASE_DIRECT_ROLE must be a plain role name".into());
+    }
+    let direct_pool = if direct_role.is_empty() {
+        pool.clone()
+    } else {
+        // No ping before each use: on the direct routes the statement is the
+        // whole request, and a ping would add a round trip to every one.
+        sqlx::postgres::PgPoolOptions::new()
+            .max_connections(max_connections.min(2))
+            .test_before_acquire(false)
+            .idle_timeout(std::time::Duration::from_secs(60))
+            .after_connect(move |conn, _| {
+                let statement = format!("set role {direct_role}");
+                Box::pin(async move {
+                    sqlx::query(&statement).execute(conn).await?;
+                    Ok(())
+                })
+            })
+            .connect_lazy(&database_url)?
+    };
+    Ok(AppState {
+        pool,
+        direct_pool,
+        secret: Arc::from(secret.into_bytes()),
+    })
+}
+
+/// JSON logs, `RUST_LOG` or `info`.
+pub fn init_tracing() {
+    tracing_subscriber::fmt()
+        .json()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
+}
+
+fn required_env(name: &str) -> Result<String, String> {
+    std::env::var(name)
+        .ok()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| format!("{name} is not set"))
 }
 
 pub fn router(state: AppState) -> Router {
     Router::<AppState>::new()
         .route("/healthz", get(|| async { "ok" }))
+        .route("/api/v1/alerts", get(direct::alerts))
+        .route("/api/v1/task-labels", get(direct::task_labels))
+        .route("/api/v1/improvements", get(direct::improvements))
         .route("/v1/ops", get(list_operations))
         .route("/v1/ops/{operation}", post(run_operation))
         .with_state(state)
@@ -160,11 +242,29 @@ async fn run_operation(
         return Err(ApiError::invalid_input("Input must be an object"));
     }
 
+    // Where a call's time goes, one line per call: opening the transaction
+    // as the caller (pool acquire included), the operation's own queries,
+    // and the commit. The web app's `operation` event times the whole hop.
+    let started = Instant::now();
+    let (idle, size) = (state.pool.num_idle(), state.pool.size());
     let mut tx = scope::begin(&state.pool, &claims).await?;
+    let begun = started.elapsed();
     let outcome = (op.run)(&mut tx, &claims, input).await;
+    let ran = started.elapsed() - begun;
     match outcome {
         Ok(result) => {
             tx.commit().await?;
+            let total = started.elapsed();
+            tracing::info!(
+                operation = op.name,
+                begin_ms = millis(begun),
+                run_ms = millis(ran),
+                commit_ms = millis(total - begun - ran),
+                total_ms = millis(total),
+                pool_idle = idle,
+                pool_size = size,
+                "operation"
+            );
             Ok(Json(json!({ "result": result })))
         }
         Err(error) => {
@@ -175,6 +275,10 @@ async fn run_operation(
             Err(error)
         }
     }
+}
+
+fn millis(elapsed: std::time::Duration) -> f64 {
+    (elapsed.as_secs_f64() * 10_000.0).round() / 10.0
 }
 
 fn unix_now() -> i64 {
@@ -200,6 +304,7 @@ mod tests {
             .connect_lazy("postgres://nobody@127.0.0.1:1/none")
             .unwrap();
         router(AppState {
+            direct_pool: pool.clone(),
             pool,
             secret: Arc::from(SECRET),
         })

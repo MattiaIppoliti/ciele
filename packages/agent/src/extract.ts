@@ -15,7 +15,9 @@ import {
   type TriageEvidence,
 } from "@agent-hub/core";
 import { createHash } from "node:crypto";
+import { reportError } from "@agent-hub/diagnostics";
 import { egressFetch } from "./egress";
+import { htmlToTextWasm } from "./html-wasm";
 import { ooxmlText } from "./ooxml";
 import type { VisionReader } from "./vision";
 
@@ -98,7 +100,22 @@ function collectText(node: DomNode, parts: string[]): void {
 
 /** HTML → plain text via a real parser: drops script/style/noscript/template
  *  (and comments/CDATA correctly), decodes entities, extracts the title. */
+/**
+ * A page's title and visible text. Runs the Rust extractor (`html-wasm.ts`);
+ * if the module fails, this one call falls back to cheerio, whose output the
+ * Rust port matches (`html-wasm.test.ts`).
+ */
 export async function htmlToText(html: string): Promise<{ title: string; text: string }> {
+  try {
+    return htmlToTextWasm(html);
+  } catch (error) {
+    reportError("extract.html_wasm", error, {});
+    return htmlToTextCheerio(html);
+  }
+}
+
+/** The reference implementation, and the fallback. */
+export async function htmlToTextCheerio(html: string): Promise<{ title: string; text: string }> {
   const { load } = await import("cheerio");
   const $ = load(html);
   const title = $("title").first().text().replace(/\s+/g, " ").trim();
